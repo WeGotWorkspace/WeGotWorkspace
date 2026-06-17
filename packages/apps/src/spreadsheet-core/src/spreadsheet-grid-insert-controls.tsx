@@ -30,12 +30,15 @@ function headerInsertBand(
   columnWidths: readonly number[],
   canvasRect: DOMRect,
 ): ScreenRect | null {
+  const firstHeader = grid.getBounds(0, -1);
+  const firstCell = grid.getBounds(0, 0);
+  if (!firstHeader || !firstCell || colCount < 1) return null;
+
   const lastHeader = grid.getBounds(colCount - 1, -1);
   if (lastHeader && lastHeader.width > 0) return lastHeader;
 
-  const firstHeader = grid.getBounds(0, -1);
   const lastCell = grid.getBounds(colCount - 1, 0);
-  if (firstHeader && lastCell && lastCell.width > 0) {
+  if (lastCell && lastCell.width > 0) {
     return {
       x: lastCell.x,
       y: firstHeader.y,
@@ -44,17 +47,37 @@ function headerInsertBand(
     };
   }
 
-  const firstCell = grid.getBounds(0, 0);
-  if (!firstHeader || !firstCell || colCount < 1) return null;
-
   const rowMarkerWidth = Math.max(0, firstCell.x - canvasRect.x);
+  const lastWidth = columnWidths[colCount - 1] ?? 0;
   const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0);
   return {
-    x: canvasRect.x + rowMarkerWidth + totalWidth - (columnWidths[colCount - 1] ?? 0),
+    x: canvasRect.x + rowMarkerWidth + totalWidth - lastWidth,
     y: firstHeader.y,
-    width: columnWidths[colCount - 1] ?? 0,
+    width: lastWidth,
     height: firstHeader.height,
   };
+}
+
+/** Right edge of the last data column in screen coordinates (row marker + summed widths). */
+function lastColumnRightScreen(
+  grid: DataEditorRef,
+  colCount: number,
+  columnWidths: readonly number[],
+  canvasRect: DOMRect,
+): number | null {
+  const firstCell = grid.getBounds(0, 0);
+  if (!firstCell || colCount < 1) return null;
+
+  const rowMarkerWidth = Math.max(0, firstCell.x - canvasRect.x);
+  const totalWidth = columnWidths.slice(0, colCount).reduce((sum, width) => sum + width, 0);
+  const summedRight = canvasRect.x + rowMarkerWidth + totalWidth;
+
+  const lastHeader = grid.getBounds(colCount - 1, -1);
+  if (lastHeader && lastHeader.width > 0) {
+    return Math.max(summedRight, lastHeader.x + lastHeader.width);
+  }
+
+  return summedRight;
 }
 
 /** Positions add-row / add-column buttons on Glide header and row-marker chrome. */
@@ -107,12 +130,12 @@ export function SpreadsheetGridInsertControls({
       }
     }
     const headerBand = headerInsertBand(grid, colCount, columnWidths, canvasRect);
+    const columnRight = lastColumnRightScreen(grid, colCount, columnWidths, canvasRect);
 
-    if (headerBand && headerBand.width > 0) {
-      const headerRight = headerBand.x + headerBand.width;
+    if (headerBand && headerBand.width > 0 && columnRight != null) {
       setAddColumnRect({
         // After last column right edge: bounds.right + gap (not centered into header label).
-        left: headerRight - containerRect.left + INSERT_EDGE_GAP,
+        left: columnRight - containerRect.left + INSERT_EDGE_GAP,
         top: headerBand.y - containerRect.top + (headerBand.height - CONTROL_SIZE) / 2,
         width: CONTROL_SIZE,
         height: CONTROL_SIZE,

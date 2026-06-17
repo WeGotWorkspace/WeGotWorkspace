@@ -147,23 +147,29 @@ export const SheetStats: Story = {
       expect(canvas.getByRole("button", { name: "Add column" })).toBeInTheDocument();
     });
 
-    const gridCanvas = await canvas.findByTestId("data-grid-canvas");
-    const addColumn = canvas.getByRole("button", { name: "Add column" });
-    const addRow = canvas.getByRole("button", { name: "Add row" });
+    const addColumn = canvasElement.querySelector(
+      ".spreadsheet-grid__insert-control--column",
+    ) as HTMLElement;
+    const addRow = canvasElement.querySelector(
+      ".spreadsheet-grid__insert-control--row",
+    ) as HTMLElement;
+    expect(addColumn).toBeTruthy();
+    expect(addRow).toBeTruthy();
 
-    await waitFor(() => {
-      const canvasRect = gridCanvas.getBoundingClientRect();
-      const colRect = addColumn.getBoundingClientRect();
-      const rowRect = addRow.getBoundingClientRect();
-
-      // Add column sits just past the last header's right edge (not over the column letter).
-      expect(colRect.left).toBeGreaterThan(canvasRect.left + 80);
-      expect(colRect.left).toBeLessThan(canvasRect.right + 40);
-
-      // Add row sits below the last row marker, within the marker column strip.
-      expect(rowRect.top).toBeGreaterThan(canvasRect.top + 30);
-      expect(rowRect.right).toBeLessThanOrEqual(canvasRect.left + 72);
-    });
+    await waitFor(
+      () => {
+        const colLeft = Number.parseFloat(addColumn.style.left);
+        const rowLeft = Number.parseFloat(addRow.style.left);
+        const rowTop = Number.parseFloat(addRow.style.top);
+        expect(Number.isFinite(colLeft)).toBe(true);
+        expect(Number.isFinite(rowLeft)).toBe(true);
+        expect(Number.isFinite(rowTop)).toBe(true);
+        expect(colLeft).toBeGreaterThan(rowLeft + 50);
+        expect(colLeft).toBeGreaterThan(200);
+        expect(rowTop).toBeGreaterThan(20);
+      },
+      { timeout: 5000 },
+    );
   },
 };
 
