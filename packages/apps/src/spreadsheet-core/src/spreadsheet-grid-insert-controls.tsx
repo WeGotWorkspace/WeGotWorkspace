@@ -121,21 +121,33 @@ export function SpreadsheetGridInsertControls({
 
   useLayoutEffect(() => {
     measure();
-  }, [measure, layoutEpoch]);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(container);
-
-    window.addEventListener("resize", measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
+    let raf = 0;
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
     };
-  }, [containerRef, measure]);
+    schedule();
+    const raf2 = requestAnimationFrame(schedule);
+
+    const container = containerRef.current;
+    if (!container) {
+      return () => {
+        cancelAnimationFrame(raf);
+        cancelAnimationFrame(raf2);
+      };
+    }
+
+    const observer = new MutationObserver(schedule);
+    observer.observe(container, { childList: true, subtree: true, attributes: true });
+
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf2);
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [containerRef, measure, layoutEpoch]);
 
   return (
     <>

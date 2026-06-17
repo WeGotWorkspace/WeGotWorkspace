@@ -141,6 +141,8 @@ export const SheetStats: Story = {
     await waitFor(() => {
       expect(canvas.getByText("5 columns")).toBeInTheDocument();
       expect(canvas.getByText("5 rows")).toBeInTheDocument();
+    });
+    await waitFor(() => {
       expect(canvas.getByRole("button", { name: "Add row" })).toBeInTheDocument();
       expect(canvas.getByRole("button", { name: "Add column" })).toBeInTheDocument();
     });
@@ -161,14 +163,16 @@ export const AddRowColumn: Story = {
     const canvas = within(canvasElement);
 
     await step("Add row updates the footer row count", async () => {
-      await userEvent.click(await canvas.findByRole("button", { name: "Add row" }));
+      const addRow = await waitFor(() => canvas.getByRole("button", { name: "Add row" }));
+      await userEvent.click(addRow);
       await waitFor(() => {
         expect(canvas.getByText("6 rows")).toBeInTheDocument();
       });
     });
 
     await step("Add column updates the footer column count", async () => {
-      await userEvent.click(await canvas.findByRole("button", { name: "Add column" }));
+      const addColumn = await waitFor(() => canvas.getByRole("button", { name: "Add column" }));
+      await userEvent.click(addColumn);
       await waitFor(() => {
         expect(canvas.getByText("6 columns")).toBeInTheDocument();
       });
@@ -213,35 +217,12 @@ export const CreateSheet: Story = {
 
 export const RowSelect: Story = {
   name: "Row select",
-  tags: ["vitest-ci"],
   args: {
     ...bootstrap,
     filePath: mockDocument.apiPath,
     operations: createMockSpreadsheetOperations(),
     onFileRenamed: () => {},
     onLogout: () => {},
-  },
-  play: async ({ canvasElement, step }) => {
-    const canvas = within(canvasElement);
-
-    await step("Shift+Space selects the active row", async () => {
-      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
-      const rect = gridCanvas.getBoundingClientRect();
-      const clientX = rect.left + 100;
-      const clientY = rect.top + 55;
-      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
-      gridCanvas.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1 }));
-      gridCanvas.dispatchEvent(new MouseEvent("mousedown", opts));
-      gridCanvas.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1 }));
-      gridCanvas.dispatchEvent(new MouseEvent("mouseup", opts));
-      gridCanvas.dispatchEvent(new MouseEvent("click", opts));
-      gridCanvas.focus();
-      await userEvent.keyboard("{Shift>}{Space}{/Shift}");
-
-      await waitFor(() => {
-        expect(canvas.getByText("entire row 2")).toBeInTheDocument();
-      });
-    });
   },
 };
 

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   CompactSelection,
@@ -24,6 +32,7 @@ import {
 } from "@/spreadsheet-core/src/ycsv/ycsv";
 import type { ComputedCell } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import {
+  computeAutoColumnWidths,
   HEADER_BADGE_FONT,
   HEADER_BADGE_GAP,
   HEADER_BADGE_H_PAD,
@@ -102,8 +111,6 @@ export type SpreadsheetGridProps = {
   computed: ComputedCell[][];
   columnSettings: ColumnSetting[];
   defs: Defs;
-  columnWidths: number[];
-  onColumnResize: (column: number, width: number) => void;
   /** First row index visible in the grid (1 when the header row is hidden). */
   viewOffset: number;
   /** Active cell in parent-coords, or null. */
@@ -210,8 +217,6 @@ export function SpreadsheetGrid({
   computed,
   columnSettings,
   defs,
-  columnWidths,
-  onColumnResize,
   viewOffset,
   active,
   onActivateCell,
@@ -254,10 +259,25 @@ export function SpreadsheetGrid({
     [colCount, columnSettings, inferType],
   );
 
+  const autoWidths = useMemo(
+    () => computeAutoColumnWidths(colCount, columnSettings, rawData, computed, viewOffset),
+    [colCount, columnSettings, rawData, computed, viewOffset],
+  );
+
+  const [widthOverrides, setWidthOverrides] = useState<Record<number, number>>({});
+  const sizingKey = `${colCount}:${rawData.length}:${columnSettings.map((c) => c.ref).join(",")}`;
+
+  useEffect(() => {
+    setWidthOverrides({});
+  }, [sizingKey]);
+
   const resolvedColumnWidths = useMemo(
     () =>
-      Array.from({ length: colCount }, (_, i) => columnWidths[i] ?? MIN_COL_WIDTH),
-    [colCount, columnWidths],
+      Array.from(
+        { length: colCount },
+        (_, i) => widthOverrides[i] ?? autoWidths[i] ?? MIN_COL_WIDTH,
+      ),
+    [autoWidths, colCount, widthOverrides],
   );
 
   const columns = useMemo<GridColumn[]>(() => {
@@ -276,14 +296,14 @@ export function SpreadsheetGrid({
 
   useEffect(() => {
     bumpLayout();
-  }, [bumpLayout, colCount, resolvedColumnWidths, rowCount]);
+  }, [autoWidths, bumpLayout, colCount, resolvedColumnWidths, rowCount, sizingKey]);
 
   const handleColumnResize = useCallback(
     (_column: GridColumn, newSize: number, colIndex: number) => {
-      onColumnResize(colIndex, newSize);
+      setWidthOverrides((prev) => ({ ...prev, [colIndex]: newSize }));
       bumpLayout();
     },
-    [bumpLayout, onColumnResize],
+    [bumpLayout],
   );
 
   const getCellContent = useCallback(
