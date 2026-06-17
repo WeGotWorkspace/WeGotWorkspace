@@ -176,28 +176,54 @@
 /* ── Schema panel (right sidebar) ─────────────────────────────────────── */
 
 .spreadsheet-workspace__schema-panel {
-  @apply flex min-h-0 shrink-0 flex-col gap-3 overflow-y-auto;
+  @apply flex min-h-0 shrink-0 flex-col overflow-y-auto;
   flex: 0 0 clamp(17.5rem, 28vw, 20rem);
   padding: 0.75rem;
   border-left: 1px solid var(--spreadsheet-border);
   background-color: color-mix(in oklab, #ffffff 94%, transparent);
 }
 
-.spreadsheet-workspace__schema-card {
-  @apply shrink-0;
+.spreadsheet-workspace__schema-tabs {
+  @apply flex min-h-0 flex-1 flex-col gap-3;
 }
 
-.spreadsheet-workspace__schema-card .card__header-row {
-  @apply items-center gap-2;
-}
-
-.spreadsheet-workspace__schema-card .card__title {
-  @apply text-xs font-semibold uppercase tracking-wider;
+.spreadsheet-workspace__schema-tabs-list {
+  @apply grid h-8 w-full shrink-0 grid-cols-2 p-0.5;
+  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
   color: var(--spreadsheet-muted);
 }
 
-.spreadsheet-workspace__schema-section-body {
+.spreadsheet-workspace__schema-tabs-trigger {
+  @apply h-7 rounded px-2 text-xs font-medium uppercase tracking-wide;
+}
+
+.spreadsheet-workspace__schema-tabs-content {
+  @apply mt-0 min-h-0 flex-1 focus-visible:outline-none focus-visible:ring-0;
+}
+
+.spreadsheet-workspace__schema-section {
   @apply flex flex-col gap-3;
+}
+
+.spreadsheet-workspace__schema-mapping-card {
+  @apply shrink-0;
+}
+
+.spreadsheet-workspace__schema-mapping-card .card__header-row {
+  @apply items-center gap-2;
+}
+
+.spreadsheet-workspace__schema-mapping-card .card__title {
+  @apply text-[11px] font-medium normal-case tracking-normal;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-workspace__schema-mapping-actions {
+  @apply pt-1;
+}
+
+.spreadsheet-workspace__schema-field--inline {
+  @apply min-w-0 flex-1;
 }
 
 .spreadsheet-workspace__schema-empty,
@@ -264,14 +290,8 @@
   border-color: color-mix(in oklab, var(--spreadsheet-error) 55%, transparent);
 }
 
-.spreadsheet-workspace__schema-mapping-title {
-  @apply text-[11px] font-medium;
-  color: var(--spreadsheet-muted);
-}
-
 .spreadsheet-workspace__schema-mapping-row {
-  @apply grid items-center gap-2;
-  grid-template-columns: 1fr 1fr auto;
+  @apply flex items-end gap-2;
 }
 
 .spreadsheet-workspace__schema-column-position {
@@ -289,14 +309,6 @@
 
 .spreadsheet-workspace__schema-textarea {
   @apply min-h-16 resize-y;
-}
-
-.spreadsheet-workspace__schema-chevron {
-  @apply size-4 transition-transform;
-}
-
-.spreadsheet-workspace__schema-chevron--closed {
-  transform: rotate(-90deg);
 }
 
 .spreadsheet-workspace__source .text-editor-source {
@@ -394,6 +406,67 @@
   inset: 0;
   z-index: 5;
   cursor: cell;
+}
+
+/* ── Format bar (reuses text-editor toolbar chrome) ───────────────────── */
+
+.spreadsheet-workspace .spreadsheet-format-bar.text-editor-format-bar {
+  @apply shrink-0;
+  position: static;
+  border-bottom: 1px solid var(--spreadsheet-border);
+  background-color: color-mix(in oklab, #ffffff 92%, transparent);
+}
+
+.spreadsheet-workspace .spreadsheet-format-bar .text-editor-format-bar__btn-icon svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+
+.spreadsheet-format-bar__fill-trigger {
+  @apply inline-flex items-center justify-center gap-1;
+  width: auto !important;
+  min-width: 2.5rem !important;
+  max-width: none !important;
+  padding-inline: 0.375rem !important;
+}
+
+.spreadsheet-format-bar__fill-swatch {
+  @apply block rounded-sm border;
+  width: 1rem;
+  height: 1rem;
+  border-color: var(--spreadsheet-border);
+}
+
+.spreadsheet-format-bar__fill-icon {
+  @apply size-3.5;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-format-bar__fill-menu {
+  @apply min-w-[12rem] p-2;
+}
+
+.spreadsheet-format-bar__swatches {
+  @apply mb-2 grid grid-cols-7 gap-1.5 px-1;
+}
+
+.spreadsheet-format-bar__swatch {
+  @apply size-6 rounded-sm border p-0;
+  border-color: var(--spreadsheet-border);
+}
+
+.spreadsheet-format-bar__swatch--selected {
+  box-shadow: 0 0 0 2px var(--spreadsheet-accent);
+}
+
+.spreadsheet-format-bar__custom-fill {
+  @apply mt-1 flex items-center justify-between gap-2 px-2 py-1 text-xs;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-format-bar__custom-fill input[type="color"] {
+  @apply size-7 cursor-pointer rounded border-0 bg-transparent p-0;
 }
 
 /* ── Formula bar ──────────────────────────────────────────────────────── */
@@ -498,6 +571,10 @@
 }
 .spreadsheet-formula-token--const {
   color: #d97706;
+}
+.spreadsheet-formula-token--defkey {
+  color: #b45309;
+  font-weight: 500;
 }
 .spreadsheet-formula-token--ref {
   color: #16a34a;
@@ -621,6 +698,10 @@
 .spreadsheet-suggest__kind--def {
   color: #d97706;
   background-color: color-mix(in oklab, #d97706 12%, transparent);
+}
+.spreadsheet-suggest__kind--defkey {
+  color: #b45309;
+  background-color: color-mix(in oklab, #b45309 12%, transparent);
 }
 .spreadsheet-suggest__kind--ref {
   color: #16a34a;

@@ -67,3 +67,46 @@ describe("computeSuggestions cross-sheet refs", () => {
     expect(suggestions.some((s) => s.kind === "sheet")).toBe(false);
   });
 });
+
+const MAPPING_DEFS: Defs = {
+  btw: 0.21,
+  categorieen: { zuivel: "Zuivel", groente: "Groente", fruit: "Fruit" },
+};
+
+describe("computeSuggestions mapping def keys", () => {
+  const columns = [{ ref: "product", type: "string" as const }];
+
+  it("suggests all mapping keys after def.", () => {
+    const draft = "=categorieen.";
+    const suggestions = computeSuggestions(draft, draft.length, MAPPING_DEFS, columns);
+    expect(suggestions.every((s) => s.kind === "defkey")).toBe(true);
+    expect(suggestions.map((s) => s.label)).toEqual(
+      expect.arrayContaining(["categorieen.zuivel", "categorieen.groente", "categorieen.fruit"]),
+    );
+    expect(suggestions.find((s) => s.label === "categorieen.zuivel")).toMatchObject({
+      insert: "zuivel",
+      detail: "Zuivel",
+      tokenLen: 0,
+    });
+  });
+
+  it("filters mapping keys while typing a partial key", () => {
+    const draft = "=categorieen.zu";
+    const suggestions = computeSuggestions(draft, draft.length, MAPPING_DEFS, columns);
+    expect(suggestions).toEqual([
+      expect.objectContaining({
+        kind: "defkey",
+        label: "zuivel",
+        insert: "zuivel",
+        detail: "Zuivel",
+        tokenLen: 2,
+      }),
+    ]);
+  });
+
+  it("does not suggest keys after dot on a scalar def", () => {
+    const draft = "=btw.";
+    const suggestions = computeSuggestions(draft, draft.length, MAPPING_DEFS, columns);
+    expect(suggestions).toEqual([]);
+  });
+});

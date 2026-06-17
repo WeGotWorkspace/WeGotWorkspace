@@ -39,6 +39,7 @@ import {
   MIN_COL_WIDTH,
 } from "@/spreadsheet-core/src/spreadsheet-column-widths";
 import { FormulaTokens, tokenizeFormula } from "@/spreadsheet-core/src/formula-highlight";
+import { buildFormulaDefContext } from "@/spreadsheet-core/src/spreadsheet-defs-utils";
 import {
   buildFormulaSheetContext,
   computeSuggestions,
@@ -61,6 +62,7 @@ import {
 } from "@/spreadsheet-core/src/spreadsheet-grid-context";
 import { SpreadsheetGridInsertControls } from "@/spreadsheet-core/src/spreadsheet-grid-insert-controls";
 import { useSpreadsheetGridTheme } from "@/spreadsheet-core/src/spreadsheet-grid-theme";
+import { resolveCellStyle, type SheetCells } from "@/spreadsheet-core/src/spreadsheet-cell-styles";
 
 import "@glideapps/glide-data-grid/dist/index.css";
 
@@ -122,6 +124,7 @@ export type SpreadsheetGridProps = {
   /** Resolved display values per cell (same shape as rawData). */
   computed: ComputedCell[][];
   columnSettings: ColumnSetting[];
+  cells?: SheetCells;
   defs: Defs;
   columnWidths: number[];
   onColumnResize: (column: number, width: number) => void;
@@ -301,6 +304,7 @@ export function SpreadsheetGrid({
   rawData,
   computed,
   columnSettings,
+  cells = {},
   defs,
   columnWidths,
   onColumnResize,
@@ -405,11 +409,24 @@ export function SpreadsheetGrid({
           : formatValue(cmp?.display ?? "", colSpec)
         : formatValue(raw, colSpec);
 
-      const themeOverride = isErr
-        ? { textDark: ERROR_COLOR, textLight: ERROR_COLOR }
-        : isFormula
-          ? { textDark: FORMULA_COLOR, textLight: FORMULA_COLOR }
-          : undefined;
+      const styled = resolveCellStyle(realRow, col, columnSettings, cells);
+      const themeOverride: GridCell["themeOverride"] = {};
+      if (isErr) {
+        themeOverride.textDark = ERROR_COLOR;
+        themeOverride.textLight = ERROR_COLOR;
+      } else if (isFormula) {
+        themeOverride.textDark = FORMULA_COLOR;
+        themeOverride.textLight = FORMULA_COLOR;
+      }
+      if (styled.fill) themeOverride.bgCell = styled.fill;
+      if (styled.color) {
+        themeOverride.textDark = styled.color;
+        themeOverride.textLight = styled.color;
+      }
+      if (styled.bold) {
+        themeOverride.baseFontStyle = "bold 13px";
+        themeOverride.headerFontStyle = "bold 13px";
+      }
 
       return {
         kind: GridCellKind.Text,
@@ -418,10 +435,37 @@ export function SpreadsheetGrid({
         allowOverlay: true,
         readonly: false,
         contentAlign: isNum ? "right" : undefined,
-        themeOverride,
+        themeOverride: Object.keys(themeOverride).length ? themeOverride : undefined,
       };
     },
-    [rawData, computed, columnSettings, colTypes, viewOffset],
+    [rawData, computed, columnSettings, cells, colTypes, viewOffset],
+  );
+
+  const borderCells = useMemo(() => {
+    const out = new Set<string>();
+    const rowCountParent = rawData.length;
+    const colCountLocal = rawData[0]?.length ?? columnSettings.length;
+    for (let row = 0; row < rowCountParent; row++) {
+      for (let col = 0; col < colCountLocal; col++) {
+        if (resolveCellStyle(row, col, columnSettings, cells).border) {
+          out.add(`${col},${row - viewOffset}`);
+        }
+      }
+    }
+    return out;
+  }, [cells, columnSettings, rawData, viewOffset]);
+
+  const drawCell = useCallback<NonNullable<React.ComponentProps<typeof DataEditor>["drawCell"]>>(
+    (args, drawContent) => {
+      drawContent();
+      const gridRow = args.row;
+      if (!borderCells.has(`${args.col},${gridRow}`)) return;
+      const { ctx, rect, theme } = args;
+      ctx.strokeStyle = theme.textLight;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width - 1, rect.height - 1);
+    },
+    [borderCells],
   );
 
   const onCellEdited = useCallback(
@@ -795,6 +839,7 @@ export function SpreadsheetGrid({
           highlightRegions={highlightRegions}
           provideEditor={provideEditor}
           drawHeader={drawHeader}
+          drawCell={drawCell}
           getCellsForSelection
           keybindings={{ search: false }}
           onVisibleRegionChanged={bumpLayout}
@@ -959,11 +1004,11 @@ function FormulaCellEditor(props: {
     };
   }, [idx, suggestions.length, raw, caret]);
 
-  const consts = useMemo(() => new Set(Object.keys(defs)), [defs]);
   const refs = useMemo(
     () => new Set(columnSettings.filter((c) => c.ref).map((c) => c.ref!)),
     [columnSettings],
   );
+  const { consts, mappingDefs } = useMemo(() => buildFormulaDefContext(defs), [defs]);
   const { sheetRefs, sheetColumnRefs } = useMemo(() => buildFormulaSheetContext(sheets), [sheets]);
 
   const commit = (text: string) => {
@@ -1009,6 +1054,7 @@ function FormulaCellEditor(props: {
         refs={refs}
         sheetRefs={sheetRefs}
         sheetColumnRefs={sheetColumnRefs}
+        mappingDefs={mappingDefs}
         className="spreadsheet-cell-editor__tokens"
       />
 

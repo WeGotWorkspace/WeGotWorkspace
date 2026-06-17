@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { tokenizeFormula } from "@/spreadsheet-core/src/formula-highlight";
+import { buildFormulaDefContext } from "@/spreadsheet-core/src/spreadsheet-defs-utils";
 import { buildFormulaSheetContext } from "@/spreadsheet-core/src/formula-suggest";
 import { parseYcsv } from "@/spreadsheet-core/src/ycsv/ycsv";
 import { SAMPLE_MULTI_SHEET_YCSV } from "@/spreadsheet-core/src/fixtures/sample-sheet";
@@ -54,5 +55,38 @@ describe("tokenizeFormula cross-sheet refs", () => {
   it("tokenizes resolved A1 cross-sheet refs", () => {
     const toks = tokenizeFormula("categorieen!B1", consts, refs, sheetRefs, sheetColumnRefs);
     expect(toks).toEqual([{ type: "sheetref", text: "categorieen!B1" }]);
+  });
+});
+
+describe("tokenizeFormula mapping def access", () => {
+  const defs = {
+    btw: 0.21,
+    categorieen: { zuivel: "Zuivel", groente: "Groente" },
+  };
+  const { consts, mappingDefs } = buildFormulaDefContext(defs);
+  const refs = new Set<string>();
+
+  it("tokenizes name.key as const, op, and defkey", () => {
+    const toks = tokenizeFormula(
+      "categorieen.zuivel",
+      consts,
+      refs,
+      new Set(),
+      new Map(),
+      mappingDefs,
+    );
+    expect(toks).toEqual([
+      { type: "const", text: "categorieen" },
+      { type: "op", text: "." },
+      { type: "defkey", text: "zuivel" },
+    ]);
+  });
+
+  it("tokenizes def name and dot when key is not yet typed", () => {
+    const toks = tokenizeFormula("categorieen.", consts, refs, new Set(), new Map(), mappingDefs);
+    expect(toks).toEqual([
+      { type: "const", text: "categorieen" },
+      { type: "op", text: "." },
+    ]);
   });
 });

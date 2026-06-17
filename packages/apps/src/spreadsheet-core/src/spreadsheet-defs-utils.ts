@@ -1,4 +1,4 @@
-import type { Defs, DefValue } from "@/spreadsheet-core/src/ycsv/ycsv";
+import type { DefMapping, Defs, DefValue } from "@/spreadsheet-core/src/ycsv/ycsv";
 
 export type DefKind = "scalar" | "mapping" | "list";
 
@@ -6,6 +6,30 @@ export function defKind(value: DefValue): DefKind {
   if (Array.isArray(value)) return "list";
   if (value !== null && typeof value === "object") return "mapping";
   return "scalar";
+}
+
+/** Resolve a mapping def by name (case-insensitive). */
+export function getMappingDef(defs: Defs, name: string): DefMapping | undefined {
+  const key = Object.keys(defs).find((k) => k.toLowerCase() === name.toLowerCase());
+  if (!key) return undefined;
+  const value = defs[key];
+  return defKind(value) === "mapping" ? (value as DefMapping) : undefined;
+}
+
+/** Names and mapping keys for formula autocomplete and highlighting. */
+export function buildFormulaDefContext(defs: Defs) {
+  const consts = new Set<string>();
+  const mappingDefs = new Map<string, Set<string>>();
+  for (const [name, value] of Object.entries(defs)) {
+    consts.add(name);
+    if (defKind(value) === "mapping") {
+      mappingDefs.set(
+        name.toLowerCase(),
+        new Set(Object.keys(value as DefMapping).map((k) => k.toLowerCase())),
+      );
+    }
+  }
+  return { consts, mappingDefs };
 }
 
 function defValuesEqual(a: DefValue, b: DefValue): boolean {

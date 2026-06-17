@@ -12,6 +12,7 @@ export type Tok = {
   type:
     | "fn"
     | "const"
+    | "defkey"
     | "ref"
     | "cellref"
     | "sheetref"
@@ -38,6 +39,8 @@ export function tokenizeFormula(
   sheetRefs: Set<string> = new Set(),
   /** Column refs per sheet (lowercase sheet ref → lowercase column refs). */
   sheetColumnRefs: Map<string, Set<string>> = new Map(),
+  /** Mapping def name → lowercase mapping keys (for `name.key` highlighting). */
+  mappingDefs: Map<string, Set<string>> = new Map(),
 ): Tok[] {
   const out: Tok[] = [];
   let i = 0;
@@ -81,6 +84,17 @@ export function tokenizeFormula(
         }
       }
 
+      if (j < s.length && s[j] === "." && mappingDefs.has(word.toLowerCase())) {
+        let k = j + 1;
+        while (k < s.length && /[A-Za-z0-9_]/.test(s[k])) k++;
+        const keyPart = s.slice(j + 1, k);
+        out.push({ type: "const", text: word });
+        out.push({ type: "op", text: "." });
+        if (keyPart) out.push({ type: "defkey", text: keyPart });
+        i = k;
+        continue;
+      }
+
       const uppRange = /^[A-Z]+\d+$/.test(word);
       const lower = word.match(/^([a-z][a-z0-9_]*?)(\d+)$/);
       if (uppRange) {
@@ -112,6 +126,7 @@ export function FormulaTokens({
   refs,
   sheetRefs,
   sheetColumnRefs,
+  mappingDefs,
   className,
 }: {
   value: string;
@@ -119,11 +134,12 @@ export function FormulaTokens({
   refs: Set<string>;
   sheetRefs?: Set<string>;
   sheetColumnRefs?: Map<string, Set<string>>;
+  mappingDefs?: Map<string, Set<string>>;
   className?: string;
 }) {
   if (!value.startsWith("=")) return null;
   const body = value.slice(1);
-  const toks = tokenizeFormula(body, consts, refs, sheetRefs, sheetColumnRefs);
+  const toks = tokenizeFormula(body, consts, refs, sheetRefs, sheetColumnRefs, mappingDefs);
   return (
     <div aria-hidden className={cn("spreadsheet-formula-tokens", className)}>
       <span className="spreadsheet-formula-token spreadsheet-formula-token--fn">=</span>

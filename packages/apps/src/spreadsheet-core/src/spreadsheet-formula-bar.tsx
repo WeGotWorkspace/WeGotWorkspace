@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { colLetter } from "@/spreadsheet-core/src/ycsv/ycsv";
 import { FormulaTokens, useScrollSync } from "@/spreadsheet-core/src/formula-highlight";
+import { buildFormulaDefContext } from "@/spreadsheet-core/src/spreadsheet-defs-utils";
 import {
   buildFormulaSheetContext,
   computeSuggestions,
@@ -60,7 +61,7 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
     [formulaSheets],
   );
 
-  const consts = useMemo(() => new Set(Object.keys(defs)), [defs]);
+  const { consts, mappingDefs } = useMemo(() => buildFormulaDefContext(defs), [defs]);
   const refs = useMemo(
     () => new Set(columnSettings.filter((c) => c.ref).map((c) => c.ref!)),
     [columnSettings],
@@ -123,6 +124,7 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
               refs={refs}
               sheetRefs={sheetRefs}
               sheetColumnRefs={sheetColumnRefs}
+              mappingDefs={mappingDefs}
               className="spreadsheet-formula-bar__tokens"
             />
             <input

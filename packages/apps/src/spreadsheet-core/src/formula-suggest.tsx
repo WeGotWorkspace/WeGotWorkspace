@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { getMappingDef } from "@/spreadsheet-core/src/spreadsheet-defs-utils";
 import { FORMULA_FUNCTIONS } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import type { ColumnSetting, Defs } from "@/spreadsheet-core/src/ycsv/ycsv";
 
@@ -24,7 +25,7 @@ export function buildFormulaSheetContext(sheets: FormulaSheetInfo[]) {
 }
 
 export type Suggestion = {
-  kind: "fn" | "def" | "ref" | "sheet";
+  kind: "fn" | "def" | "defkey" | "ref" | "sheet";
   label: string;
   detail: string;
   insert: string;
@@ -83,7 +84,8 @@ function columnSuggestions(
 type SuggestContext =
   | { mode: "open" }
   | { mode: "ident"; token: string }
-  | { mode: "sheetColumn"; sheetRef: string; token: string };
+  | { mode: "sheetColumn"; sheetRef: string; token: string }
+  | { mode: "defKey"; defName: string; token: string };
 
 function analyzeContext(upTo: string): SuggestContext {
   const justOpened = /^(=|[+\-*/^&,(:<>!%]\s*)$/.test(upTo.trimEnd());
@@ -99,9 +101,42 @@ function analyzeContext(upTo: string): SuggestContext {
     return { mode: "sheetColumn", sheetRef: sheetBangMatch[1], token: "" };
   }
 
-  const m = upTo.match(/([A-Za-z_][A-Za-z0-9_.]*)$/);
+  const defKeyPartial = upTo.match(/([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$/i);
+  if (defKeyPartial) {
+    return { mode: "defKey", defName: defKeyPartial[1], token: defKeyPartial[2] };
+  }
+
+  const defKeyOpen = upTo.match(/([a-z][a-z0-9_]*)\.$/i);
+  if (defKeyOpen) {
+    return { mode: "defKey", defName: defKeyOpen[1], token: "" };
+  }
+
+  const m = upTo.match(/([A-Za-z_][A-Za-z0-9_]*)$/);
   if (!m) return { mode: "open" };
   return { mode: "ident", token: m[1] };
+}
+
+function defKeySuggestions(
+  defs: Defs,
+  defName: string,
+  token: string,
+  tokenLen: number,
+): Suggestion[] {
+  const mapping = getMappingDef(defs, defName);
+  if (!mapping) return [];
+  const tl = token.toLowerCase();
+  const canonicalName =
+    Object.keys(defs).find((k) => k.toLowerCase() === defName.toLowerCase()) ?? defName;
+  return Object.entries(mapping)
+    .filter(([key]) => key.toLowerCase().startsWith(tl))
+    .slice(0, 8)
+    .map(([key, label]) => ({
+      kind: "defkey" as const,
+      label: tokenLen > 0 ? key : `${canonicalName}.${key}`,
+      detail: label,
+      insert: key,
+      tokenLen,
+    }));
 }
 
 export function computeSuggestions(
@@ -119,6 +154,10 @@ export function computeSuggestions(
     const sheet = findSheet(sheets, ctx.sheetRef);
     if (!sheet) return [];
     return columnSuggestions(sheet.columnSettings, ctx.token, ctx.token.length, sheet.name);
+  }
+
+  if (ctx.mode === "defKey") {
+    return defKeySuggestions(defs, ctx.defName, ctx.token, ctx.token.length);
   }
 
   if (ctx.mode === "open") {
@@ -221,7 +260,7 @@ export function SuggestionList({
             <span
               className={cn("spreadsheet-suggest__kind", `spreadsheet-suggest__kind--${s.kind}`)}
             >
-              {s.kind === "ref" ? "col" : s.kind}
+              {s.kind === "ref" ? "col" : s.kind === "defkey" ? "key" : s.kind}
             </span>
             <span className="spreadsheet-suggest__name">{s.label}</span>
           </span>
