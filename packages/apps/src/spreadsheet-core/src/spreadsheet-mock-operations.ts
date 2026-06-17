@@ -1,5 +1,6 @@
 import { parentAndName } from "@/lib/files/api-path";
 import { SAMPLE_YCSV } from "@/spreadsheet-core/src/fixtures/sample-sheet";
+import { DEFAULT_EMPTY_YCSV } from "@/spreadsheet-core/src/ycsv/ycsv";
 import type { SpreadsheetAPIOperations } from "@/spreadsheet-core/src/spreadsheet-types";
 
 const MOCK_FILES: Record<string, string> = {
@@ -10,7 +11,7 @@ const MOCK_FILES: Record<string, string> = {
 export function createMockSpreadsheetOperations(): SpreadsheetAPIOperations {
   return {
     async loadFile(apiPath) {
-      return MOCK_FILES[apiPath] ?? SAMPLE_YCSV;
+      return MOCK_FILES[apiPath] ?? DEFAULT_EMPTY_YCSV;
     },
     async saveFile() {},
     async renameFile(apiPath, newName) {

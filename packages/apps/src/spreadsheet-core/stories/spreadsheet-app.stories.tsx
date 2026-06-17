@@ -221,8 +221,8 @@ export const CreateSheet: Story = {
       await userEvent.click(await canvas.findByRole("button", { name: "New sheet" }));
       await waitFor(() => {
         expect(canvas.getByRole("button", { name: "sheet2" })).toBeInTheDocument();
-        expect(canvas.getByText("1 column")).toBeInTheDocument();
-        expect(canvas.getByText("0 rows")).toBeInTheDocument();
+        expect(canvas.getByText("5 columns")).toBeInTheDocument();
+        expect(canvas.getByText("5 rows")).toBeInTheDocument();
       });
     });
 

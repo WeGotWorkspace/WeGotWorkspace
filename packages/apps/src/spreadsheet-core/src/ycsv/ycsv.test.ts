@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   colLetter,
   colIndexFromLetter,
+  createDefaultSheet,
+  createDefaultWorkbook,
+  DEFAULT_EMPTY_YCSV,
+  DEFAULT_SHEET_COLUMN_COUNT,
+  DEFAULT_SHEET_ROW_COUNT,
   formatValue,
   parseYcsv,
   resolveFormula,
@@ -171,6 +176,39 @@ describe("resolveFormula", () => {
     const workbook = parseYcsv(SAMPLE_MULTI_SHEET_YCSV);
     const producten = workbook.sheets[0];
     expect(resolveFormula("=categorieen!label1", producten, workbook)).toBe("=categorieen!B1");
+  });
+});
+
+describe("default sheet bootstrap", () => {
+  it("creates five columns A–E and five empty data rows", () => {
+    const sheet = createDefaultSheet("sheet2");
+    expect(sheet.ref).toBe("sheet2");
+    expect(sheet.refs).toEqual(["A", "B", "C", "D", "E"]);
+    expect(sheet.headers).toEqual(["A", "B", "C", "D", "E"]);
+    expect(sheet.rows).toHaveLength(DEFAULT_SHEET_ROW_COUNT);
+    expect(sheet.rows.every((row) => row.length === DEFAULT_SHEET_COLUMN_COUNT)).toBe(true);
+    expect(sheet.rows.every((row) => row.every((cell) => cell === ""))).toBe(true);
+    expect(sheet.hadHeader).toBe(true);
+  });
+
+  it("round-trips DEFAULT_EMPTY_YCSV with five columns and five data rows", () => {
+    const workbook = parseYcsv(DEFAULT_EMPTY_YCSV);
+    expect(workbook.sheets).toHaveLength(1);
+    const sheet = workbook.sheets[0]!;
+    expect(sheet.refs).toEqual(["a", "b", "c", "d", "e"]);
+    expect(sheet.rows).toHaveLength(5);
+    expect(sheet.rows.every((row) => row.every((cell) => cell === ""))).toBe(true);
+
+    const reparsed = parseYcsv(serializeYcsv(workbook));
+    expect(reparsed.sheets[0]!.refs).toEqual(sheet.refs);
+    expect(reparsed.sheets[0]!.rows).toEqual(sheet.rows);
+  });
+
+  it("round-trips a default workbook built from createDefaultWorkbook", () => {
+    const serialized = serializeYcsv(createDefaultWorkbook());
+    const reparsed = parseYcsv(serialized);
+    expect(reparsed.sheets[0]!.columnSettings).toHaveLength(DEFAULT_SHEET_COLUMN_COUNT);
+    expect(reparsed.sheets[0]!.rows).toHaveLength(DEFAULT_SHEET_ROW_COUNT);
   });
 });
 

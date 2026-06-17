@@ -74,6 +74,11 @@ export interface ParsedWorkbook {
 
 export const YCSV_VERSION = 1;
 
+/** Minimum columns (A–E) for newly created sheets. */
+export const DEFAULT_SHEET_COLUMN_COUNT = 5;
+/** Minimum data rows (header excluded) for newly created sheets. */
+export const DEFAULT_SHEET_ROW_COUNT = 5;
+
 // =============================================================================
 // File splitting — spec §A.2 (frontmatter + N CSV blocks)
 // =============================================================================
@@ -154,7 +159,14 @@ export function parseCSV(text: string): string[][] {
     row.push(cell);
     rows.push(row);
   }
-  while (rows.length && rows[rows.length - 1].every((c) => c === "")) rows.pop();
+  // Drop a trailing all-blank row only when the prior row has content (trailing newline artifact).
+  if (
+    rows.length > 1 &&
+    rows[rows.length - 1].every((c) => c === "") &&
+    !rows[rows.length - 2].every((c) => c === "")
+  ) {
+    rows.pop();
+  }
   return rows;
 }
 
@@ -476,6 +488,52 @@ export function serializeYcsv(workbook: ParsedWorkbook): string {
 
   return `---\n${dumped}\n---\n${bodies.join("\n---\n")}\n`;
 }
+
+// =============================================================================
+// Default sheet / workbook bootstrap (5 columns × 5 data rows)
+// =============================================================================
+
+function emptyDataRow(colCount: number): string[] {
+  return Array.from({ length: colCount }, () => "");
+}
+
+/** Parsed sheet with columns A–E and five empty data rows (row 0 = headers in matrix). */
+export function createDefaultSheet(ref = "sheet1"): ParsedSheet {
+  const columnSettings: ColumnSetting[] = [];
+  const refs: string[] = [];
+  const headers: string[] = [];
+  for (let i = 0; i < DEFAULT_SHEET_COLUMN_COUNT; i++) {
+    const letter = colLetter(i);
+    columnSettings.push({ ref: letter, name: letter, refExplicit: false });
+    refs.push(letter);
+    headers.push(letter);
+  }
+  const rows = Array.from({ length: DEFAULT_SHEET_ROW_COUNT }, () =>
+    emptyDataRow(DEFAULT_SHEET_COLUMN_COUNT),
+  );
+  return {
+    ref,
+    name: ref,
+    columnSettings,
+    defs: {},
+    refs,
+    headers,
+    rows,
+    hadHeader: true,
+  };
+}
+
+export function createDefaultWorkbook(): ParsedWorkbook {
+  return {
+    version: YCSV_VERSION,
+    defs: {},
+    sheets: [createDefaultSheet()],
+    warnings: [],
+  };
+}
+
+/** Minimal single-sheet `.ycsv` used for new workbooks and empty file loads. */
+export const DEFAULT_EMPTY_YCSV = serializeYcsv(createDefaultWorkbook());
 
 // =============================================================================
 // Matrix conversions (row 0 = synthetic header row of names; data rows follow)

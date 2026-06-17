@@ -21,6 +21,7 @@ import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
+import { DEFAULT_EMPTY_YCSV } from "@/spreadsheet-core/src/ycsv/ycsv";
 
 export type UseDriveMutationsArgs = {
   shell: DriveShellState;
@@ -484,7 +485,10 @@ export function useDriveMutations({
     if (operations) {
       void operations
         .createFile({ cwd, name })
-        .then((nextData) => {
+        .then(async (nextData) => {
+          const blob = new Blob([DEFAULT_EMPTY_YCSV], { type: "text/plain;charset=utf-8" });
+          const file = new File([blob], name, { type: "text/plain", lastModified: Date.now() });
+          await operations.uploadFiles({ cwd, files: [file] });
           setFiles(
             nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
           );
