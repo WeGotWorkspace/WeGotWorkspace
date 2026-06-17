@@ -6,6 +6,7 @@
 // =============================================================================
 
 import yaml from "js-yaml";
+import { parseSheetCells, type SheetCells } from "@/spreadsheet-core/src/spreadsheet-cell-styles";
 
 export type CellType =
   | "string"
@@ -61,6 +62,8 @@ export interface ParsedSheet {
   rows: string[][];
   /** Whether the original CSV body contained a header row. */
   hadHeader: boolean;
+  /** Cell-specific style overrides (§3.5). */
+  cells?: SheetCells;
 }
 
 export interface ParsedWorkbook {
@@ -255,6 +258,7 @@ type SheetFrontmatter = {
   columns?: unknown;
   defs?: unknown;
   constants?: unknown;
+  cells?: unknown;
 };
 
 /** Build column settings for `count` columns (A-Z fallback when frontmatter omits `columns`). */
@@ -345,8 +349,10 @@ function resolveSheet(
     return out;
   });
   const headers = columnSettings.map((c) => c.name ?? c.ref!);
+  const cells = parseSheetCells(sheetFm.cells);
+  const cellsOut = Object.keys(cells).length ? cells : undefined;
 
-  return { ref, name, columnSettings, defs, refs, headers, rows, hadHeader };
+  return { ref, name, columnSettings, defs, refs, headers, rows, hadHeader, cells: cellsOut };
 }
 
 // =============================================================================
@@ -404,6 +410,7 @@ export function parseYcsv(input: string): ParsedWorkbook {
               columns: frontmatter.columns,
               name: typeof frontmatter.name === "string" ? frontmatter.name : undefined,
               ref: typeof frontmatter.ref === "string" ? frontmatter.ref : undefined,
+              cells: frontmatter.cells,
             }
           : {};
       sheets.push(resolveSheet(i, sheetFm, blocks[i] ?? "", workbookDefs));
@@ -413,6 +420,7 @@ export function parseYcsv(input: string): ParsedWorkbook {
       columns: frontmatter.columns,
       name: typeof frontmatter.name === "string" ? frontmatter.name : undefined,
       ref: typeof frontmatter.ref === "string" ? frontmatter.ref : undefined,
+      cells: frontmatter.cells,
     };
     sheets.push(resolveSheet(0, singleFm, blocks[0] ?? "", workbookDefs));
   }
@@ -474,6 +482,13 @@ function serializeSheetFrontmatterEntry(
   if (hasExplicitColumnMetadata(sheet.columnSettings)) {
     entry.columns = serializeColumns(sheet.columnSettings);
   }
+  if (sheet.cells && Object.keys(sheet.cells).length) {
+    const cellsOut: Record<string, { style: Record<string, unknown> }> = {};
+    for (const [key, value] of Object.entries(sheet.cells)) {
+      cellsOut[key] = { style: { ...value.style } };
+    }
+    entry.cells = cellsOut;
+  }
   return entry;
 }
 
@@ -490,8 +505,17 @@ export function serializeYcsv(workbook: ParsedWorkbook): string {
     );
   } else {
     const sheet = workbook.sheets[0];
-    if (sheet && hasExplicitColumnMetadata(sheet.columnSettings)) {
-      fm.columns = serializeColumns(sheet.columnSettings);
+    if (sheet) {
+      if (hasExplicitColumnMetadata(sheet.columnSettings)) {
+        fm.columns = serializeColumns(sheet.columnSettings);
+      }
+      if (sheet.cells && Object.keys(sheet.cells).length) {
+        const cellsOut: Record<string, { style: Record<string, unknown> }> = {};
+        for (const [key, value] of Object.entries(sheet.cells)) {
+          cellsOut[key] = { style: { ...value.style } };
+        }
+        fm.cells = cellsOut;
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { SpreadsheetFormulaBar } from "@/spreadsheet-core/src/spreadsheet-formula-bar";
+import { SpreadsheetFormatBar } from "@/spreadsheet-core/src/spreadsheet-format-bar";
 import { SpreadsheetSchemaPanel } from "@/spreadsheet-core/src/spreadsheet-schema-panel";
 import { SpreadsheetStatsFooter } from "@/spreadsheet-core/src/spreadsheet-stats-footer";
 import { SpreadsheetGrid } from "@/spreadsheet-core/src/spreadsheet-grid";
@@ -51,6 +52,14 @@ export function SpreadsheetMainPane({
   return (
     <div className="spreadsheet-workspace__pane">
       <div className="spreadsheet-workspace__grid-area">
+        <SpreadsheetFormatBar
+          labels={controller.labels}
+          styleState={controller.selectionStyle}
+          visible={controller.hasStyleSelection && !controller.picking}
+          onBold={controller.toggleBoldOnSelection}
+          onBorder={controller.toggleBorderOnSelection}
+          onFill={controller.setFillOnSelection}
+        />
         <SpreadsheetFormulaBar controller={controller} />
         {controller.parseError ? (
           <div className="spreadsheet-workspace__parse-banner" role="status">
@@ -62,6 +71,7 @@ export function SpreadsheetMainPane({
             rawData={controller.rawData}
             computed={controller.computed}
             columnSettings={controller.columnSettings}
+            cells={controller.workbook.sheets[controller.activeSheetIndex]?.cells}
             defs={controller.defs}
             columnWidths={controller.columnWidths}
             onColumnResize={controller.setColumnWidth}

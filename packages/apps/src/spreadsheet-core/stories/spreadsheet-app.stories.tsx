@@ -443,6 +443,53 @@ export const FormulaInCellPicking: Story = {
   },
 };
 
+export const FormatBar: Story = {
+  name: "Format bar",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+
+    await step("Format bar appears when a cell is selected", async () => {
+      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
+      const rect = gridCanvas.getBoundingClientRect();
+      const clientX = rect.left + 100;
+      const clientY = rect.top + 55;
+      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
+      gridCanvas.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mousedown", opts));
+      gridCanvas.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mouseup", opts));
+      gridCanvas.dispatchEvent(new MouseEvent("click", opts));
+
+      await waitFor(() => {
+        expect(canvas.getByRole("toolbar", { name: "Cell formatting" })).toBeInTheDocument();
+        expect(canvas.getByRole("button", { name: "Bold" })).toBeInTheDocument();
+        expect(canvas.getByRole("button", { name: "Border" })).toBeInTheDocument();
+        expect(canvas.getByRole("button", { name: "Fill color" })).toBeInTheDocument();
+      });
+    });
+
+    await step("Bold toggle writes cells frontmatter", async () => {
+      await userEvent.click(canvas.getByRole("button", { name: "Bold" }));
+      await userEvent.click(await canvas.findByRole("button", { name: "Edit source" }));
+      const source = await canvas.findByRole<HTMLTextAreaElement>("textbox", {
+        name: "YCSV source",
+      });
+      await waitFor(() => {
+        expect(source.value).toContain("cells:");
+        expect(source.value).toContain("bold: true");
+      });
+    });
+  },
+};
+
 export const RowSelect: Story = {
   name: "Row select",
   args: {
@@ -481,20 +528,47 @@ export const SchemaPanel: Story = {
     });
 
     await step("Defs and column editors are visible", async () => {
+      const panel = await canvas.findByRole("complementary", { name: "Sheet schema" });
+      const inPanel = within(panel);
+
       await waitFor(() => {
-        expect(canvas.getByRole("complementary", { name: "Sheet schema" })).toBeInTheDocument();
-        expect(canvas.getByText("Defs")).toBeInTheDocument();
-        expect(canvas.getByText("Columns")).toBeInTheDocument();
-        expect(canvas.getByDisplayValue("btw")).toBeInTheDocument();
-        expect(canvas.getByDisplayValue("product")).toBeInTheDocument();
-        expect(canvas.getByDisplayValue("Prijs ex. BTW")).toBeInTheDocument();
+        expect(inPanel.getByRole("button", { name: "Defs" })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        expect(inPanel.getByDisplayValue("btw")).toBeInTheDocument();
+      });
+
+      await userEvent.click(inPanel.getByRole("button", { name: "Columns" }));
+      await waitFor(() => {
+        expect(inPanel.getByRole("button", { name: "Columns" })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        expect(inPanel.getAllByLabelText("Ref")[0]).toHaveValue("product");
+        expect(inPanel.getByDisplayValue("Prijs ex. BTW")).toBeInTheDocument();
       });
     });
 
+    await step("Mapping key input keeps focus while typing", async () => {
+      const panel = canvas.getByRole("complementary", { name: "Sheet schema" });
+      const inPanel = within(panel);
+      await userEvent.click(inPanel.getByRole("button", { name: "Defs" }));
+      await userEvent.click(await inPanel.findByRole("button", { name: "Add mapping" }));
+      const keyInput = await inPanel.findByLabelText("Key");
+      await userEvent.click(keyInput);
+      await userEvent.type(keyInput, "extra");
+      expect(document.activeElement).toBe(keyInput);
+      expect(keyInput).toHaveValue("keyextra");
+    });
+
     await step("Editing a def updates serialized YCSV", async () => {
-      const btwInput = canvas.getByDisplayValue("0.21");
+      const panel = canvas.getByRole("complementary", { name: "Sheet schema" });
+      const inPanel = within(panel);
+      const btwInput = inPanel.getByDisplayValue("0.21");
       await userEvent.clear(btwInput);
       await userEvent.type(btwInput, "0.19");
+      await userEvent.tab();
       await userEvent.click(await canvas.findByRole("button", { name: "Edit source" }));
       const source = await canvas.findByRole<HTMLTextAreaElement>("textbox", {
         name: /YCSV source/,
