@@ -1,7 +1,10 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { textEditorSourceLines } from "@/text-editor-core/src/text-editor-source-lines";
-import { applyTextEditorSourceTabEdit } from "@/text-editor-core/src/text-editor-source-tab";
+import {
+  applyTextEditorSourceEnterEdit,
+  applyTextEditorSourceTabEdit,
+} from "@/text-editor-core/src/text-editor-source-tab";
 
 export { textEditorSourceLineCount } from "@/text-editor-core/src/text-editor-source-lines";
 
@@ -15,6 +18,11 @@ export type TextEditorSourceProps = {
   formatLabel?: string;
   /** When true, Tab inserts spaces at the caret instead of moving focus. */
   indentWithSpaces?: boolean;
+  /**
+   * When true, Enter splits the line and copies leading whitespace to the new line.
+   * Defaults to the value of `indentWithSpaces`.
+   */
+  autoIndentOnEnter?: boolean;
   /** Spaces inserted per Tab when `indentWithSpaces` is enabled. Defaults to 2. */
   tabSize?: number;
   /** When true, Escape blurs the textarea (for use with trapped Tab indent). */
@@ -36,6 +44,7 @@ export function TextEditorSource({
   editable = true,
   formatLabel = "source",
   indentWithSpaces = false,
+  autoIndentOnEnter,
   tabSize = 2,
   escapeToBlur = false,
   onEscapeBlur,
@@ -97,6 +106,8 @@ export function TextEditorSource({
     gutter.scrollTop = textarea.scrollTop;
   }, []);
 
+  const shouldAutoIndentOnEnter = autoIndentOnEnter ?? indentWithSpaces;
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (!editable) return;
@@ -108,10 +119,27 @@ export function TextEditorSource({
         return;
       }
 
-      if (!indentWithSpaces || event.key !== "Tab") return;
-
       const textarea = textareaRef.current;
       if (!textarea) return;
+
+      if (shouldAutoIndentOnEnter && event.key === "Enter") {
+        event.preventDefault();
+
+        const result = applyTextEditorSourceEnterEdit(
+          value,
+          textarea.selectionStart,
+          textarea.selectionEnd,
+        );
+
+        pendingSelectionRef.current = {
+          start: result.selectionStart,
+          end: result.selectionEnd,
+        };
+        onChange(result.value);
+        return;
+      }
+
+      if (!indentWithSpaces || event.key !== "Tab") return;
 
       event.preventDefault();
 
@@ -129,7 +157,16 @@ export function TextEditorSource({
       };
       onChange(result.value);
     },
-    [editable, escapeToBlur, indentWithSpaces, onChange, onEscapeBlur, tabSize, value],
+    [
+      editable,
+      escapeToBlur,
+      indentWithSpaces,
+      onChange,
+      onEscapeBlur,
+      shouldAutoIndentOnEnter,
+      tabSize,
+      value,
+    ],
   );
 
   return (

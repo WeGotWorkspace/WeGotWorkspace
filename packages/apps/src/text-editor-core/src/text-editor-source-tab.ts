@@ -142,6 +142,24 @@ function outdentSingleLine(
   };
 }
 
+function leadingWhitespaceBeforeCaret(value: string, position: number): string {
+  const lineStart = lineStartAt(value, position);
+  const prefix = value.slice(lineStart, position);
+  return prefix.match(/^[ \t]*/)?.[0] ?? "";
+}
+
+/** Split at the caret (or replace a selection) and carry leading whitespace to the new line. */
+export function applyTextEditorSourceEnterEdit(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+): TextEditorSourceTabEdit {
+  const indent = leadingWhitespaceBeforeCaret(value, selectionStart);
+  const newValue = value.slice(0, selectionStart) + "\n" + indent + value.slice(selectionEnd);
+  const caret = selectionStart + 1 + indent.length;
+  return { value: newValue, selectionStart: caret, selectionEnd: caret };
+}
+
 /** Apply Tab / Shift+Tab indentation to a plain-text buffer and caret range. */
 export function applyTextEditorSourceTabEdit(
   value: string,
