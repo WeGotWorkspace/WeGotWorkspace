@@ -22,6 +22,7 @@ import {
   type Item,
   type ProvideEditorCallback,
   type Rectangle,
+  type CellClickedEventArgs,
 } from "@glideapps/glide-data-grid";
 import { cn } from "@/lib/utils";
 import { formatValue, type ColumnSetting, type Defs } from "@/spreadsheet-core/src/ycsv/ycsv";
@@ -208,6 +209,64 @@ function parseFormulaRegions(
     }
   }
   return out;
+}
+
+/** Map a viewport point to a grid cell using Glide bounds (grid row/col, not parent coords). */
+function cellAtClientPoint(
+  grid: DataEditorRef,
+  clientX: number,
+  clientY: number,
+  colCount: number,
+  rowCount: number,
+): { col: number; row: number } | null {
+  for (let row = 0; row < rowCount; row++) {
+    for (let col = 0; col < colCount; col++) {
+      const bounds = grid.getBounds(col, row);
+      if (!bounds) continue;
+      if (
+        clientX >= bounds.x &&
+        clientX < bounds.x + bounds.width &&
+        clientY >= bounds.y &&
+        clientY < bounds.y + bounds.height
+      ) {
+        return { col, row };
+      }
+    }
+  }
+  return null;
+}
+
+function gridSelectionForPick(
+  sel: Extract<SpreadsheetGridSelection, { kind: "cell" | "range" }>,
+  viewOffset: number,
+): GridSelection {
+  if (sel.kind === "cell") {
+    const gridRow = sel.row - viewOffset;
+    return {
+      columns: CompactSelection.empty(),
+      rows: CompactSelection.empty(),
+      current: {
+        cell: [sel.column, gridRow],
+        range: { x: sel.column, y: gridRow, width: 1, height: 1 },
+        rangeStack: [],
+      },
+    };
+  }
+  const startRow = sel.start.row - viewOffset;
+  const endRow = sel.end.row - viewOffset;
+  const left = Math.min(sel.start.column, sel.end.column);
+  const right = Math.max(sel.start.column, sel.end.column);
+  const top = Math.min(startRow, endRow);
+  const bottom = Math.max(startRow, endRow);
+  return {
+    columns: CompactSelection.empty(),
+    rows: CompactSelection.empty(),
+    current: {
+      cell: [sel.end.column, endRow],
+      range: { x: left, y: top, width: right - left + 1, height: bottom - top + 1 },
+      rangeStack: [],
+    },
+  };
 }
 
 /** Match Glide `drawSingleTextLine` padding and horizontal alignment. */
@@ -477,6 +536,57 @@ export function SpreadsheetGrid({
     [active, cellPicking, colCount, formatPickedRange, formatPickedRef, rowCount],
   );
 
+  const pickShieldRef = useRef<HTMLDivElement>(null);
+
+  const handleCellPickAtPoint = useCallback(
+    (clientX: number, clientY: number, extend: boolean) => {
+      if (!cellPicking || !active) return;
+      const grid = gridRef.current;
+      if (!grid) return;
+      const hit = cellAtClientPoint(grid, clientX, clientY, colCount, rowCount);
+      if (!hit) return;
+
+      const picked = { row: hit.row + viewOffset, column: hit.col };
+      let sel: SpreadsheetGridSelection;
+      if (extend) {
+        const anchor = cellPickAnchorRef.current ?? active;
+        if (!cellPickAnchorRef.current) cellPickAnchorRef.current = anchor;
+        sel = { kind: "range", start: anchor, end: picked };
+      } else {
+        cellPickAnchorRef.current = picked;
+        sel = { kind: "cell", row: picked.row, column: picked.column };
+      }
+
+      setGridSel(gridSelectionForPick(sel, viewOffset));
+      onSelect(sel);
+      insertPickedSelection(sel);
+    },
+    [active, cellPicking, colCount, insertPickedSelection, onSelect, rowCount, viewOffset],
+  );
+
+  useEffect(() => {
+    const shield = pickShieldRef.current;
+    if (!shield || !cellPicking) return;
+    const onMouseDown = (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handleCellPickAtPoint(event.clientX, event.clientY, event.shiftKey);
+    };
+    shield.addEventListener("mousedown", onMouseDown, true);
+    return () => shield.removeEventListener("mousedown", onMouseDown, true);
+  }, [cellPicking, handleCellPickAtPoint]);
+
+  const isOutsideClick = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!pickingRef.current) return true;
+    const target = event.target;
+    if (!(target instanceof Node)) return true;
+    return !containerRef.current?.contains(target);
+  }, []);
+
+  const onCellClicked = useCallback((_cell: Item, args: CellClickedEventArgs) => {
+    if (pickingRef.current) args.preventDefault();
+  }, []);
+
   const onGridSelectionChange = useCallback(
     (newSel: GridSelection) => {
       setGridSel(newSel);
@@ -658,7 +768,10 @@ export function SpreadsheetGrid({
     >
       <div
         ref={containerRef}
-        className={cn("spreadsheet-grid", isPicking && "spreadsheet-grid--picking")}
+        className={cn(
+          "spreadsheet-grid",
+          isPicking && "spreadsheet-grid--picking click-outside-ignore",
+        )}
         tabIndex={isPicking ? -1 : undefined}
       >
         <DataEditor
@@ -677,6 +790,8 @@ export function SpreadsheetGrid({
           height="100%"
           gridSelection={gridSel}
           onGridSelectionChange={onGridSelectionChange}
+          onCellClicked={onCellClicked}
+          isOutsideClick={isOutsideClick}
           highlightRegions={highlightRegions}
           provideEditor={provideEditor}
           drawHeader={drawHeader}
@@ -690,6 +805,9 @@ export function SpreadsheetGrid({
             ...glideTheme,
           }}
         />
+        {cellPicking ? (
+          <div ref={pickShieldRef} className="spreadsheet-grid__pick-shield" aria-hidden />
+        ) : null}
         <SpreadsheetGridInsertControls
           gridRef={gridRef}
           containerRef={containerRef}

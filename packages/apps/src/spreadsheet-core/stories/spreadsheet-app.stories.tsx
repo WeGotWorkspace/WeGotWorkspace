@@ -379,6 +379,70 @@ export const FormulaPicking: Story = {
   },
 };
 
+export const FormulaInCellPicking: Story = {
+  name: "Formula in-cell picking",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const doc = canvasElement.ownerDocument;
+    const findCellInput = () =>
+      waitFor(() => {
+        const el = doc.querySelector<HTMLInputElement>(".spreadsheet-cell-editor__input");
+        if (!el) throw new Error("in-cell editor did not open");
+        return el;
+      });
+
+    await step("Open in-cell edit and start a formula", async () => {
+      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
+      const rect = gridCanvas.getBoundingClientRect();
+      const clientX = rect.left + 100;
+      const clientY = rect.top + 55;
+      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
+      gridCanvas.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mousedown", opts));
+      gridCanvas.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mouseup", opts));
+      gridCanvas.dispatchEvent(new MouseEvent("click", opts));
+      gridCanvas.focus();
+      await userEvent.keyboard("{Enter}");
+      const input = await findCellInput();
+      await userEvent.clear(input);
+      await userEvent.type(input, "=");
+      await waitFor(() => {
+        expect(input).toHaveValue("=");
+        expect(canvasElement.querySelector(".spreadsheet-grid__pick-shield")).toBeTruthy();
+      });
+    });
+
+    await step("Click another cell keeps the editor open and inserts a ref", async () => {
+      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
+      const rect = gridCanvas.getBoundingClientRect();
+      const clientX = rect.left + 180;
+      const clientY = rect.top + 80;
+      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
+      const shield = await waitFor(() => {
+        const el = canvasElement.querySelector(".spreadsheet-grid__pick-shield");
+        if (!el) throw new Error("pick shield not visible");
+        return el;
+      });
+      shield.dispatchEvent(new MouseEvent("mousedown", opts));
+
+      const input = await findCellInput();
+      await waitFor(() => {
+        expect(input.value).toMatch(/^=[a-z]+\d+$/i);
+        expect(doc.querySelector(".spreadsheet-cell-editor__input")).toBe(input);
+      });
+    });
+  },
+};
+
 export const RowSelect: Story = {
   name: "Row select",
   args: {
