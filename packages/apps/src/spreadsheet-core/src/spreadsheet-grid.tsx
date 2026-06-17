@@ -29,7 +29,6 @@ import type { ComputedCell } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engi
 import {
   columnHeaderLabel,
   columnHeaderRefBadge,
-  computeAutoColumnWidths,
   HEADER_BADGE_FONT,
   HEADER_BADGE_GAP,
   HEADER_BADGE_H_PAD,
@@ -108,6 +107,8 @@ export type SpreadsheetGridProps = {
   computed: ComputedCell[][];
   columnSettings: ColumnSetting[];
   defs: Defs;
+  columnWidths: number[];
+  onColumnResize: (column: number, width: number) => void;
   /** First row index visible in the grid (1 when the header row is hidden). */
   viewOffset: number;
   /** Active cell in parent-coords, or null. */
@@ -214,6 +215,8 @@ export function SpreadsheetGrid({
   computed,
   columnSettings,
   defs,
+  columnWidths,
+  onColumnResize,
   viewOffset,
   active,
   onActivateCell,
@@ -256,25 +259,9 @@ export function SpreadsheetGrid({
     [colCount, columnSettings, inferType],
   );
 
-  const autoWidths = useMemo(
-    () => computeAutoColumnWidths(colCount, columnSettings, rawData, computed, viewOffset),
-    [colCount, columnSettings, rawData, computed, viewOffset],
-  );
-
-  const [widthOverrides, setWidthOverrides] = useState<Record<number, number>>({});
-  const sizingKey = `${colCount}:${rawData.length}:${columnSettings.map((c) => c.ref).join(",")}`;
-
-  useEffect(() => {
-    setWidthOverrides({});
-  }, [sizingKey]);
-
   const resolvedColumnWidths = useMemo(
-    () =>
-      Array.from(
-        { length: colCount },
-        (_, i) => widthOverrides[i] ?? autoWidths[i] ?? MIN_COL_WIDTH,
-      ),
-    [autoWidths, colCount, widthOverrides],
+    () => Array.from({ length: colCount }, (_, i) => columnWidths?.[i] ?? MIN_COL_WIDTH),
+    [colCount, columnWidths],
   );
 
   const columns = useMemo<GridColumn[]>(() => {
@@ -293,14 +280,14 @@ export function SpreadsheetGrid({
 
   useEffect(() => {
     bumpLayout();
-  }, [autoWidths, bumpLayout, colCount, resolvedColumnWidths, rowCount, sizingKey]);
+  }, [bumpLayout, colCount, resolvedColumnWidths, rowCount]);
 
   const handleColumnResize = useCallback(
     (_column: GridColumn, newSize: number, colIndex: number) => {
-      setWidthOverrides((prev) => ({ ...prev, [colIndex]: newSize }));
+      onColumnResize(colIndex, newSize);
       bumpLayout();
     },
-    [bumpLayout],
+    [bumpLayout, onColumnResize],
   );
 
   const getCellContent = useCallback(

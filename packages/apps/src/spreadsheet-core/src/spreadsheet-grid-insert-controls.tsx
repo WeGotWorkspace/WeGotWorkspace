@@ -6,6 +6,8 @@ import { IconButton } from "@/button/src/button";
 type ControlRect = { left: number; top: number; width: number; height: number };
 
 const CONTROL_SIZE = 28;
+/** Gap between grid boundary and insert control (reads as "after" last column/row). */
+const INSERT_EDGE_GAP = 2;
 
 type SpreadsheetGridInsertControlsProps = {
   gridRef: RefObject<DataEditorRef | null>;
@@ -107,8 +109,10 @@ export function SpreadsheetGridInsertControls({
     const headerBand = headerInsertBand(grid, colCount, columnWidths, canvasRect);
 
     if (headerBand && headerBand.width > 0) {
+      const headerRight = headerBand.x + headerBand.width;
       setAddColumnRect({
-        left: headerBand.x + headerBand.width - containerRect.left - CONTROL_SIZE / 2,
+        // After last column right edge: bounds.right + gap (not centered into header label).
+        left: headerRight - containerRect.left + INSERT_EDGE_GAP,
         top: headerBand.y - containerRect.top + (headerBand.height - CONTROL_SIZE) / 2,
         width: CONTROL_SIZE,
         height: CONTROL_SIZE,
@@ -118,13 +122,11 @@ export function SpreadsheetGridInsertControls({
     }
 
     if (lastRowMarker) {
+      const rowMarkerBottom = lastRowMarker.y + lastRowMarker.height;
       setAddRowRect({
         left: lastRowMarker.x - containerRect.left + (lastRowMarker.width - CONTROL_SIZE) / 2,
-        top:
-          lastRowMarker.y +
-          lastRowMarker.height -
-          containerRect.top +
-          (lastRowMarker.height - CONTROL_SIZE) / 2,
+        // Below last row marker bottom edge, centered in marker column.
+        top: rowMarkerBottom - containerRect.top + INSERT_EDGE_GAP,
         width: CONTROL_SIZE,
         height: CONTROL_SIZE,
       });
