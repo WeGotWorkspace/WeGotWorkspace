@@ -253,11 +253,19 @@ function buildColumnSettings(
   const columnSettings: ColumnSetting[] = [];
   for (let i = 0; i < colCount; i++) {
     const raw = rawCols[i] ?? {};
-    const refExplicit = typeof raw.ref === "string" && isValidRefName(raw.ref);
-    const refValue = refExplicit ? raw.ref : colLetter(i);
-    const cs: ColumnSetting = { ...raw, ref: refValue, refExplicit };
-    cs.name = typeof raw.name === "string" ? raw.name : refValue;
+    const explicitRef =
+      typeof raw.ref === "string" && isValidRefName(raw.ref) ? raw.ref : undefined;
+    const refValue = explicitRef ?? colLetter(i);
+    const cs: ColumnSetting = {
+      ref: refValue,
+      refExplicit: explicitRef !== undefined,
+      name: typeof raw.name === "string" ? raw.name : refValue,
+    };
     if (typeof raw.type === "string") cs.type = raw.type as CellType;
+    for (const [k, v] of Object.entries(raw)) {
+      if (k === "ref" || k === "name" || k === "type" || v === undefined) continue;
+      cs[k] = v;
+    }
     columnSettings.push(cs);
   }
   return columnSettings;
@@ -404,6 +412,8 @@ export function parseYcsv(input: string): ParsedWorkbook {
 // serializeYcsv — emit frontmatter + CSV bodies (header row from refs)
 // =============================================================================
 
+const INTERNAL_COLUMN_KEYS = new Set(["ref", "name", "type", "refExplicit"]);
+
 function serializeColumns(columnSettings: ColumnSetting[]): Record<string, unknown>[] {
   return columnSettings.map((c, index) => {
     const o: Record<string, unknown> = {};
@@ -412,7 +422,7 @@ function serializeColumns(columnSettings: ColumnSetting[]): Record<string, unkno
     if (c.name && c.name !== c.ref) o.name = c.name;
     if (c.type) o.type = c.type;
     for (const [k, v] of Object.entries(c)) {
-      if (["ref", "name", "type", "refExplicit"].includes(k)) continue;
+      if (INTERNAL_COLUMN_KEYS.has(k)) continue;
       if (v !== undefined) o[k] = v;
     }
     return o;
@@ -426,7 +436,7 @@ function hasExplicitColumnMetadata(columnSettings: ColumnSetting[]): boolean {
     if (c.type) return true;
     if (c.ref && c.ref !== fallbackRef) return true;
     if (c.name && c.name !== (c.ref ?? fallbackRef)) return true;
-    return Object.keys(c).some((key) => !["ref", "name", "type"].includes(key));
+    return Object.keys(c).some((key) => !INTERNAL_COLUMN_KEYS.has(key));
   });
 }
 
