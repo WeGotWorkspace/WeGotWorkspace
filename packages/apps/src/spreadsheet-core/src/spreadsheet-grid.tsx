@@ -24,14 +24,11 @@ import {
   type Rectangle,
 } from "@glideapps/glide-data-grid";
 import { cn } from "@/lib/utils";
-import {
-  colLetter,
-  formatValue,
-  type ColumnSetting,
-  type Defs,
-} from "@/spreadsheet-core/src/ycsv/ycsv";
+import { formatValue, type ColumnSetting, type Defs } from "@/spreadsheet-core/src/ycsv/ycsv";
 import type { ComputedCell } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import {
+  columnHeaderLabel,
+  columnHeaderRefBadge,
   computeAutoColumnWidths,
   HEADER_BADGE_FONT,
   HEADER_BADGE_GAP,
@@ -283,8 +280,8 @@ export function SpreadsheetGrid({
   const columns = useMemo<GridColumn[]>(() => {
     return Array.from({ length: colCount }, (_, i) => {
       const cs = columnSettings[i];
-      const label = cs?.name || cs?.ref || colLetter(i);
-      const badge = cs?.ref && cs.ref !== label ? cs.ref : "";
+      const label = columnHeaderLabel(cs, i);
+      const badge = columnHeaderRefBadge(cs, i);
       return {
         title: label,
         id: String(i),
@@ -469,8 +466,8 @@ export function SpreadsheetGrid({
     (args: Parameters<NonNullable<React.ComponentProps<typeof DataEditor>["drawHeader"]>>[0]) => {
       const { ctx, theme, rect, columnIndex, isSelected } = args;
       const cs = columnSettings[columnIndex];
-      const label = cs?.name || cs?.ref || colLetter(columnIndex);
-      const badge = cs?.ref && cs.ref !== label ? cs.ref : "";
+      const label = columnHeaderLabel(cs, columnIndex);
+      const badge = columnHeaderRefBadge(cs, columnIndex);
       const isNum = isNumericColumnType(colTypes[columnIndex]);
       const align = isNum ? "right" : undefined;
       const pad = theme.cellHorizontalPadding + 0.5;

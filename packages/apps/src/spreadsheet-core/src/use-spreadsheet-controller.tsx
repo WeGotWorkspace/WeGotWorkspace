@@ -93,8 +93,9 @@ function nextSheetRef(sheets: ParsedSheet[]): string {
 }
 
 function createDefaultSheet(ref: string): ParsedSheet {
-  const columnSettings: ColumnSetting[] = [{ ref: "a", name: "A" }];
-  const refs = ["a"];
+  const letter = colLetter(0);
+  const columnSettings: ColumnSetting[] = [{ ref: letter, name: letter, refExplicit: false }];
+  const refs = [letter];
   return {
     ref,
     name: ref,
@@ -180,13 +181,7 @@ export function useSpreadsheetController({
 
   const autoColumnWidths = useMemo(
     () =>
-      computeAutoColumnWidths(
-        columnSettings.length,
-        columnSettings,
-        rawData,
-        activeComputed,
-        1,
-      ),
+      computeAutoColumnWidths(columnSettings.length, columnSettings, rawData, activeComputed, 1),
     [activeComputed, columnSettings, rawData],
   );
 
@@ -386,7 +381,10 @@ export function useSpreadsheetController({
     if (!activeSheet) return;
     const nextCol = activeSheet.columnSettings.length;
     const ref = colLetter(nextCol);
-    const nextColumnSettings: ColumnSetting[] = [...activeSheet.columnSettings, { ref, name: ref }];
+    const nextColumnSettings: ColumnSetting[] = [
+      ...activeSheet.columnSettings,
+      { ref, name: ref, refExplicit: false },
+    ];
     const nextSheet: ParsedSheet = {
       ...activeSheet,
       rows: activeSheet.rows.map((row) => [...row, ""]),
@@ -410,13 +408,7 @@ export function useSpreadsheetController({
       [sheetWidthKey]: appendAutoColumnWidth(prev[sheetWidthKey], newWidth),
     }));
     applyWorkbookChange(workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet));
-  }, [
-    activeSheet,
-    applyWorkbookChange,
-    safeSheetIndex,
-    sheetWidthKey,
-    workbook,
-  ]);
+  }, [activeSheet, applyWorkbookChange, safeSheetIndex, sheetWidthKey, workbook]);
 
   const setColumnWidth = useCallback(
     (column: number, width: number) => {

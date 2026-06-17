@@ -52,7 +52,24 @@ describe("parseYcsv — single sheet", () => {
     const sheet = workbook.sheets[0];
     expect(sheet.hadHeader).toBe(false);
     expect(sheet.refs).toEqual(["A", "B", "C"]);
+    expect(sheet.columnSettings.every((c) => c.refExplicit === false)).toBe(true);
     expect(sheet.rows).toHaveLength(2);
+  });
+
+  it("marks frontmatter column refs as refExplicit", () => {
+    const workbook = parseYcsv(SAMPLE_YCSV);
+    const sheet = workbook.sheets[0];
+    expect(sheet.columnSettings[0].refExplicit).toBe(true);
+    expect(sheet.columnSettings[0].ref).toBe("product");
+  });
+
+  it("does not mark header-inferred A-Z refs as refExplicit", () => {
+    const workbook = parseYcsv(`---\nycsv_version: 1\n---\nA,B\n1,2\n3,4\n`);
+    const sheet = workbook.sheets[0];
+    expect(sheet.hadHeader).toBe(true);
+    expect(sheet.columnSettings[0].ref).toBe("a");
+    expect(sheet.columnSettings[0].name).toBe("A");
+    expect(sheet.columnSettings[0].refExplicit).toBe(false);
   });
 
   it("warns but parses a higher spec version", () => {

@@ -72,8 +72,6 @@ export function SpreadsheetMainPane({ controller, viewSource }: SpreadsheetMainP
             computed={controller.computed}
             columnSettings={controller.columnSettings}
             defs={controller.defs}
-            columnWidths={controller.columnWidths}
-            onColumnResize={controller.setColumnWidth}
             viewOffset={controller.viewOffset}
             active={controller.activeCell}
             onActivateCell={handleActivateCell}

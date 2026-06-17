@@ -81,7 +81,9 @@ export function SpreadsheetGridInsertControls({
     }
 
     const containerRect = container.getBoundingClientRect();
-    const canvas = container.querySelector<HTMLCanvasElement>('[data-testid="data-grid-canvas"]');
+    const canvas =
+      container.querySelector<HTMLCanvasElement>('[data-testid="data-grid-canvas"]') ??
+      container.querySelector<HTMLCanvasElement>("canvas");
     if (!canvas) {
       setAddColumnRect(null);
       setAddRowRect(null);
@@ -89,7 +91,19 @@ export function SpreadsheetGridInsertControls({
     }
 
     const canvasRect = canvas.getBoundingClientRect();
-    const lastRowMarker = grid.getBounds(-1, rowCount - 1);
+    let lastRowMarker = grid.getBounds(-1, rowCount - 1);
+    if (!lastRowMarker) {
+      const lastRow = grid.getBounds(0, rowCount - 1);
+      if (lastRow) {
+        const rowMarkerWidth = Math.max(CONTROL_SIZE + 4, lastRow.x - canvasRect.x);
+        lastRowMarker = {
+          x: canvasRect.x,
+          y: lastRow.y,
+          width: rowMarkerWidth,
+          height: lastRow.height,
+        };
+      }
+    }
     const headerBand = headerInsertBand(grid, colCount, columnWidths, canvasRect);
 
     if (headerBand && headerBand.width > 0) {
@@ -106,11 +120,7 @@ export function SpreadsheetGridInsertControls({
     if (lastRowMarker) {
       setAddRowRect({
         left: lastRowMarker.x - containerRect.left + (lastRowMarker.width - CONTROL_SIZE) / 2,
-        top:
-          lastRowMarker.y +
-          lastRowMarker.height -
-          containerRect.top +
-          (lastRowMarker.height - CONTROL_SIZE) / 2,
+        top: lastRowMarker.y - containerRect.top + (lastRowMarker.height - CONTROL_SIZE) / 2,
         width: CONTROL_SIZE,
         height: CONTROL_SIZE,
       });

@@ -1,10 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
   appendAutoColumnWidth,
+  columnHeaderLabel,
+  columnHeaderRefBadge,
   MIN_COL_WIDTH,
   refreshAutoColumnWidths,
   resolveSheetColumnWidths,
 } from "@/spreadsheet-core/src/spreadsheet-column-widths";
+
+describe("column header badge", () => {
+  it("hides badge for A-Z fallback columns even when ref casing differs from label", () => {
+    expect(columnHeaderLabel({ ref: "a", name: "A" }, 0)).toBe("A");
+    expect(columnHeaderRefBadge({ ref: "a", name: "A" }, 0)).toBe("");
+  });
+
+  it("shows badge when frontmatter ref differs from display name", () => {
+    expect(columnHeaderLabel({ ref: "prijs", name: "Price", refExplicit: true }, 2)).toBe("Price");
+    expect(columnHeaderRefBadge({ ref: "prijs", name: "Price", refExplicit: true }, 2)).toBe(
+      "prijs",
+    );
+  });
+});
 
 describe("spreadsheet-column-widths", () => {
   it("preserves manual widths when auto widths refresh", () => {

@@ -20,6 +20,8 @@ export type CellType =
 export interface ColumnSetting {
   /** Lowercase identifier used in formulas (falls back to A-Z by position). */
   ref?: string;
+  /** True when `ref` was set in column frontmatter (not A-Z position fallback). */
+  refExplicit?: boolean;
   /** Display name (defaults to `ref`). */
   name?: string;
   type?: CellType;
@@ -251,9 +253,9 @@ function buildColumnSettings(
   const columnSettings: ColumnSetting[] = [];
   for (let i = 0; i < colCount; i++) {
     const raw = rawCols[i] ?? {};
-    const refValue =
-      typeof raw.ref === "string" && isValidRefName(raw.ref) ? raw.ref : colLetter(i);
-    const cs: ColumnSetting = { ...raw, ref: refValue };
+    const refExplicit = typeof raw.ref === "string" && isValidRefName(raw.ref);
+    const refValue = refExplicit ? raw.ref : colLetter(i);
+    const cs: ColumnSetting = { ...raw, ref: refValue, refExplicit };
     cs.name = typeof raw.name === "string" ? raw.name : refValue;
     if (typeof raw.type === "string") cs.type = raw.type as CellType;
     columnSettings.push(cs);
@@ -410,7 +412,7 @@ function serializeColumns(columnSettings: ColumnSetting[]): Record<string, unkno
     if (c.name && c.name !== c.ref) o.name = c.name;
     if (c.type) o.type = c.type;
     for (const [k, v] of Object.entries(c)) {
-      if (["ref", "name", "type"].includes(k)) continue;
+      if (["ref", "name", "type", "refExplicit"].includes(k)) continue;
       if (v !== undefined) o[k] = v;
     }
     return o;

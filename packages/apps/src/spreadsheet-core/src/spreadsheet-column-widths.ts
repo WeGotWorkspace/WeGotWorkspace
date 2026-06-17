@@ -40,6 +40,18 @@ export function clearSpreadsheetColumnWidthCache(): void {
   widthCache.clear();
 }
 
+/** Display label for a column header (name, else ref, else A-Z letter). */
+export function columnHeaderLabel(cs: ColumnSetting | undefined, colIndex: number): string {
+  return cs?.name ?? cs?.ref ?? colLetter(colIndex);
+}
+
+/** Ref badge text when frontmatter defines an explicit ref distinct from the label. */
+export function columnHeaderRefBadge(cs: ColumnSetting | undefined, colIndex: number): string {
+  if (!cs?.refExplicit) return "";
+  const label = columnHeaderLabel(cs, colIndex);
+  return cs.ref && cs.ref !== label ? cs.ref : "";
+}
+
 /** Width of header label + optional ref badge as drawn in the grid header row. */
 export function measureHeaderContentWidth(label: string, badge: string): number {
   const labelW = measurePretextWidth(label, HEADER_FONT);
@@ -74,8 +86,8 @@ export function computeAutoColumnWidth(
   viewOffset: number,
 ): number {
   const cs = columnSettings[colIndex];
-  const label = cs?.name || cs?.ref || colLetter(colIndex);
-  const badge = cs?.ref && cs.ref !== label ? cs.ref : "";
+  const label = columnHeaderLabel(cs, colIndex);
+  const badge = columnHeaderRefBadge(cs, colIndex);
   let maxW = measureHeaderContentWidth(label, badge);
 
   const headerCell = rawData[0]?.[colIndex]?.value ?? "";
