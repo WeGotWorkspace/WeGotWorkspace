@@ -28,8 +28,7 @@ export const spreadsheetLabels = {
   toastSheetRenamed: (name: string) => `Renamed to “${name}”`,
   deleteSheet: "Delete sheet",
   deleteSheetTitle: "Delete sheet?",
-  deleteSheetDescription: (name: string) =>
-    `“${name}” and its data will be removed from this workbook.`,
+  deleteSheetDescription: (name: string) => `“${name}” will be removed from this workbook.`,
   deleteSheetConfirm: "Delete",
   sheetsEmpty: "No sheets in this workbook yet.",
   formulaBarPlaceholder: "Type a value or =FORMULA(…)",

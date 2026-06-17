@@ -282,15 +282,21 @@ export const SheetSidebarActions: Story = {
       });
     });
 
-    await step("Delete empty sheet removes it without a confirm dialog", async () => {
+    await step("Delete empty sheet asks for confirmation", async () => {
       const summarySheet = await canvas.findByRole("button", { name: "Summary" });
       const summaryRow = summarySheet.closest(".spreadsheet-sheets-sidebar__item");
       expect(summaryRow).toBeTruthy();
       await revealAndClick(summaryRow!, "Delete sheet");
+      const confirm = await waitFor(() => within(doc.body).getByRole("alertdialog"));
+      expect(within(confirm).getByText("Delete sheet?")).toBeInTheDocument();
+      expect(
+        within(confirm).getByText("“Summary” will be removed from this workbook."),
+      ).toBeInTheDocument();
+      await userEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
       await waitFor(() => {
         expect(canvas.queryByRole("button", { name: "Summary" })).not.toBeInTheDocument();
+        expect(within(doc.body).queryByRole("alertdialog")).not.toBeInTheDocument();
       });
-      expect(within(doc.body).queryByRole("alertdialog")).not.toBeInTheDocument();
     });
 
     await step("Delete sheet with data asks for confirmation", async () => {
@@ -302,6 +308,9 @@ export const SheetSidebarActions: Story = {
       await revealAndClick(dataRow!, "Delete sheet");
       const confirm = await waitFor(() => within(doc.body).getByRole("alertdialog"));
       expect(within(confirm).getByText("Delete sheet?")).toBeInTheDocument();
+      expect(
+        within(confirm).getByText("“sheet1” will be removed from this workbook."),
+      ).toBeInTheDocument();
       await userEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
         expect(within(doc.body).queryByRole("alertdialog")).not.toBeInTheDocument();

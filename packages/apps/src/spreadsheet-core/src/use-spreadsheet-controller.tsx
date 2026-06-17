@@ -109,10 +109,6 @@ function createDefaultSheet(ref: string): ParsedSheet {
   };
 }
 
-function sheetHasData(sheet: ParsedSheet): boolean {
-  return sheet.rows.some((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
-}
-
 export function useSpreadsheetController({
   filePath,
   labels,
@@ -510,10 +506,6 @@ export function useSpreadsheetController({
       const sheet = workbook.sheets[index];
       if (!sheet) return;
       const displayName = sheet.name || sheet.ref;
-      if (!sheetHasData(sheet)) {
-        deleteSheet(index);
-        return;
-      }
       requestConfirm({
         title: L.deleteSheetTitle,
         description: L.deleteSheetDescription(displayName),
