@@ -28,6 +28,7 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
     commitFormulaBar,
     picking,
     selectionInfo,
+    onPickingArrow,
   } = controller;
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +146,15 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
               onClick={(e) => setFbCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
               onKeyUp={(e) => setFbCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
               onKeyDown={(e) => {
-                if (showSuggestions) {
+                if (picking && onPickingArrow && /^Arrow(Up|Down|Left|Right)$/.test(e.key)) {
+                  e.preventDefault();
+                  onPickingArrow(
+                    e.key as "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight",
+                    e.shiftKey,
+                  );
+                  return;
+                }
+                if (showSuggestions && !picking) {
                   if (e.key === "ArrowDown") {
                     e.preventDefault();
                     setActiveSuggestion((i) => (i + 1) % suggestions.length);

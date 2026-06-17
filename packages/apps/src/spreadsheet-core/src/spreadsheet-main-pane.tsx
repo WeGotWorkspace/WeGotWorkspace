@@ -3,10 +3,7 @@ import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { SpreadsheetFormulaBar } from "@/spreadsheet-core/src/spreadsheet-formula-bar";
 import { SpreadsheetSchemaPanel } from "@/spreadsheet-core/src/spreadsheet-schema-panel";
 import { SpreadsheetStatsFooter } from "@/spreadsheet-core/src/spreadsheet-stats-footer";
-import {
-  SpreadsheetGrid,
-  type SpreadsheetGridSelection,
-} from "@/spreadsheet-core/src/spreadsheet-grid";
+import { SpreadsheetGrid } from "@/spreadsheet-core/src/spreadsheet-grid";
 import type { SpreadsheetController } from "@/spreadsheet-core/src/use-spreadsheet-controller";
 
 type SpreadsheetMainPaneProps = {
@@ -20,22 +17,10 @@ export function SpreadsheetMainPane({
   viewSource,
   onSourceEscapeBlur,
 }: SpreadsheetMainPaneProps) {
-  const handleActivateCell = useCallback(
-    (p: { row: number; column: number }) => {
-      // While picking, a grid click inserts a ref into the formula draft.
-      if (controller.picking) {
-        controller.insertRefAtCaret(controller.refForCell(p.row, p.column));
-        return;
-      }
-      controller.setActiveCell(p);
-    },
-    [controller],
-  );
-
   const handleSelect = useCallback(
-    (sel: SpreadsheetGridSelection) => {
-      controller.setSelection(sel);
-      if (sel && sel.kind !== "cell") {
+    (sel: Parameters<SpreadsheetController["onGridSelect"]>[0]) => {
+      controller.onGridSelect(sel);
+      if (sel && sel.kind !== "cell" && !controller.picking) {
         controller.cancelFormulaEdit();
       }
     },
@@ -82,7 +67,7 @@ export function SpreadsheetMainPane({
             onColumnResize={controller.setColumnWidth}
             viewOffset={controller.viewOffset}
             active={controller.activeCell}
-            onActivateCell={handleActivateCell}
+            onActivateCell={controller.onGridActivate}
             onSelect={handleSelect}
             writeCell={controller.writeCell}
             onAddRow={controller.addRow}
@@ -90,12 +75,16 @@ export function SpreadsheetMainPane({
             addRowLabel={controller.labels.addRow}
             addColumnLabel={controller.labels.addColumn}
             picking={controller.picking}
+            formulaHighlight={controller.formulaHighlight}
+            formulaCaret={controller.fbCaret}
+            onPickRef={controller.picking ? controller.insertRefAtCaret : undefined}
+            onPickingArrow={controller.picking ? controller.onPickingArrow : undefined}
             sheets={controller.sheets.map((s) => ({
               ref: s.ref,
               name: s.name,
               columnSettings: s.columnSettings,
             }))}
-            activeSheetRef={controller.sheets[controller.activeSheetIndex]?.ref ?? ""}
+            activeSheetRef={controller.activeSheetRef}
           />
         </div>
         <SpreadsheetStatsFooter controller={controller} />

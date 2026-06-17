@@ -25,9 +25,17 @@ import {
   type ParsedSheet,
   type ParsedWorkbook,
 } from "@/spreadsheet-core/src/ycsv/ycsv";
-import { OPEN_TOKEN_RE } from "@/spreadsheet-core/src/formula-suggest";
-import { evaluateWorkbook } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
+import {
+  cellRefFor,
+  isOpenFormulaContext,
+  moveCellPoint,
+  rangeRefFor,
+  sheetRefBeforeCaret,
+  withSheetPrefix,
+  type CellPoint,
+} from "@/spreadsheet-core/src/formula-ref-pick";
 import type { SpreadsheetGridSelection } from "@/spreadsheet-core/src/spreadsheet-grid";
+import { evaluateWorkbook } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import { selectionInfoFromGridSelection } from "@/spreadsheet-core/src/spreadsheet-selection-info";
 import {
   appendAutoColumnWidth,
@@ -721,16 +729,22 @@ export function useSpreadsheetController({
   const [fbEditing, setFbEditing] = useState(false);
   const [fbDraft, setFbDraft] = useState("");
   const [fbCaret, setFbCaret] = useState(0);
+  const insertedRangeLenRef = useRef(0);
+  const pickKeyboardAnchorRef = useRef<CellPoint | null>(null);
 
   const beginFormulaEdit = useCallback(() => {
     setFbDraft(activeRaw);
     setFbCaret(activeRaw.length);
     setFbEditing(true);
+    insertedRangeLenRef.current = 0;
+    pickKeyboardAnchorRef.current = null;
   }, [activeRaw]);
 
   const cancelFormulaEdit = useCallback(() => {
     setFbEditing(false);
     setFbDraft("");
+    insertedRangeLenRef.current = 0;
+    pickKeyboardAnchorRef.current = null;
   }, []);
 
   const commitFormulaBar = useCallback(
@@ -787,16 +801,44 @@ export function useSpreadsheetController({
   const canUndo = undoStack.length > 0;
   const canRedo = redoStack.length > 0;
 
+  const activeSheetRef = activeSheet?.ref ?? "";
+
   // Picking mode: editing a formula whose caret sits in an "open" reference slot.
-  const picking =
-    fbEditing && fbDraft.startsWith("=") && OPEN_TOKEN_RE.test(fbDraft.slice(0, fbCaret));
+  const picking = fbEditing && isOpenFormulaContext(fbDraft, fbCaret);
+
+  const formatPickedRef = useCallback(
+    (row: number, column: number, sheetRef = activeSheetRef, cols = columnSettings): string => {
+      const bare = cellRefFor(row, column, cols);
+      const contextSheet = sheetRefBeforeCaret(fbDraft, fbCaret);
+      return withSheetPrefix(bare, sheetRef, contextSheet, activeSheetRef);
+    },
+    [activeSheetRef, columnSettings, fbCaret, fbDraft],
+  );
+
+  const formatPickedRange = useCallback(
+    (
+      start: CellPoint,
+      end: CellPoint,
+      sheetRef = activeSheetRef,
+      cols = columnSettings,
+    ): string => {
+      const bare = rangeRefFor(start, end, cols);
+      const contextSheet = sheetRefBeforeCaret(fbDraft, fbCaret);
+      return withSheetPrefix(bare, sheetRef, contextSheet, activeSheetRef);
+    },
+    [activeSheetRef, columnSettings, fbCaret, fbDraft],
+  );
 
   const insertRefAtCaret = useCallback(
     (ref: string) => {
       setFbDraft((prev) => {
         const caret = Math.min(fbCaret, prev.length);
-        const next = prev.slice(0, caret) + ref + prev.slice(caret);
-        setFbCaret(caret + ref.length);
+        const before = prev.slice(0, caret - insertedRangeLenRef.current);
+        const after = prev.slice(caret);
+        const next = before + ref + after;
+        const newCaret = before.length + ref.length;
+        insertedRangeLenRef.current = ref.length;
+        setFbCaret(newCaret);
         return next;
       });
     },
@@ -805,13 +847,67 @@ export function useSpreadsheetController({
 
   /** A1 / named ref for a clicked cell, used while picking in the formula bar. */
   const refForCell = useCallback(
-    (row: number, column: number): string => {
-      const cs = columnSettings[column];
-      const named = cs?.ref && /^[a-z][a-z0-9_]*$/.test(cs.ref) ? cs.ref : colLetter(column);
-      return `${named}${row + 1}`;
-    },
-    [columnSettings],
+    (row: number, column: number) => formatPickedRef(row, column),
+    [formatPickedRef],
   );
+
+  const refRangeForSelection = useCallback(
+    (sel: Extract<SpreadsheetGridSelection, { kind: "range" }>) =>
+      formatPickedRange(sel.start, sel.end),
+    [formatPickedRange],
+  );
+
+  const onGridSelect = useCallback((sel: SpreadsheetGridSelection) => {
+    setSelection(sel);
+  }, []);
+
+  const onGridActivate = useCallback(
+    (p: { row: number; column: number }) => {
+      if (picking) return;
+      insertedRangeLenRef.current = 0;
+      pickKeyboardAnchorRef.current = null;
+      setActiveCell(p);
+    },
+    [picking],
+  );
+
+  const onFormulaDraftChange = useCallback((next: string, caret?: number) => {
+    insertedRangeLenRef.current = 0;
+    pickKeyboardAnchorRef.current = null;
+    setFbDraft(next);
+    if (caret != null) setFbCaret(caret);
+  }, []);
+
+  const onFormulaCaretChange = useCallback((caret: number) => {
+    setFbCaret(caret);
+  }, []);
+
+  useEffect(() => {
+    if (!fbEditing || !isOpenFormulaContext(fbDraft, fbCaret)) {
+      insertedRangeLenRef.current = 0;
+      pickKeyboardAnchorRef.current = null;
+    }
+  }, [fbCaret, fbDraft, fbEditing]);
+
+  const rowCount = activeSheet?.rows.length ?? 0;
+  const colCount = columnSettings.length;
+
+  const onPickingArrow = useCallback(
+    (key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight", extend: boolean) => {
+      if (!picking || !activeCell) return;
+      const origin = pickKeyboardAnchorRef.current ?? activeCell;
+      if (!pickKeyboardAnchorRef.current) pickKeyboardAnchorRef.current = origin;
+      const next = moveCellPoint(origin, key, rowCount, colCount);
+      pickKeyboardAnchorRef.current = next;
+      const ref = extend
+        ? formatPickedRange(activeCell, next)
+        : formatPickedRef(next.row, next.column);
+      insertRefAtCaret(ref);
+    },
+    [activeCell, colCount, formatPickedRange, formatPickedRef, insertRefAtCaret, picking, rowCount],
+  );
+
+  const formulaHighlight = fbEditing ? fbDraft : activeRaw;
 
   const selectionInfo = useMemo(
     () => selectionInfoFromGridSelection(selection, columnSettings, L),
@@ -919,15 +1015,21 @@ export function useSpreadsheetController({
     setColumnWidth,
     commitFormulaBar,
     refForCell,
+    refRangeForSelection,
     fbEditing,
     fbDraft,
-    setFbDraft,
+    setFbDraft: onFormulaDraftChange,
     fbCaret,
-    setFbCaret,
+    setFbCaret: onFormulaCaretChange,
     beginFormulaEdit,
     cancelFormulaEdit,
     picking,
     insertRefAtCaret,
+    onGridSelect,
+    onGridActivate,
+    onPickingArrow,
+    formulaHighlight,
+    activeSheetRef,
     sidebarOpen,
     setSidebarOpen,
     schemaPanelOpen,

@@ -322,6 +322,63 @@ export const SheetSidebarActions: Story = {
   },
 };
 
+export const FormulaPicking: Story = {
+  name: "Formula cell picking",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+
+    await step("Activate a cell for formula editing", async () => {
+      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
+      const rect = gridCanvas.getBoundingClientRect();
+      const clientX = rect.left + 180;
+      const clientY = rect.top + 55;
+      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
+      gridCanvas.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mousedown", opts));
+      gridCanvas.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mouseup", opts));
+      gridCanvas.dispatchEvent(new MouseEvent("click", opts));
+    });
+
+    await step("Focus formula bar and start a formula", async () => {
+      const formulaInput = await canvas.findByPlaceholderText(/Type a value or =FORMULA/i);
+      await userEvent.click(formulaInput);
+      await userEvent.clear(formulaInput);
+      await userEvent.type(formulaInput, "=");
+      await waitFor(() => {
+        expect(formulaInput).toHaveValue("=");
+        expect(canvas.getByText("click cells to insert")).toBeInTheDocument();
+      });
+    });
+
+    await step("Click a cell to insert its reference", async () => {
+      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
+      const rect = gridCanvas.getBoundingClientRect();
+      const clientX = rect.left + 180;
+      const clientY = rect.top + 80;
+      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
+      gridCanvas.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mousedown", opts));
+      gridCanvas.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mouseup", opts));
+      gridCanvas.dispatchEvent(new MouseEvent("click", opts));
+
+      const formulaInput = await canvas.findByPlaceholderText(/Type a value or =FORMULA/i);
+      await waitFor(() => {
+        expect(formulaInput.value).toMatch(/^=[a-z]+\d+$/i);
+      });
+    });
+  },
+};
+
 export const RowSelect: Story = {
   name: "Row select",
   args: {

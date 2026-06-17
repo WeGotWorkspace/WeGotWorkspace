@@ -45,8 +45,18 @@ import {
   SuggestionList,
 } from "@/spreadsheet-core/src/formula-suggest";
 import {
+  cellRefFor,
+  isOpenFormulaContext,
+  moveCellPoint,
+  rangeRefFor,
+  sheetRefBeforeCaret,
+  withSheetPrefix,
+  type CellPoint,
+} from "@/spreadsheet-core/src/formula-ref-pick";
+import {
   SpreadsheetGridProvider,
   useSpreadsheetGridContext,
+  type CellFormulaEditBridge,
 } from "@/spreadsheet-core/src/spreadsheet-grid-context";
 import { SpreadsheetGridInsertControls } from "@/spreadsheet-core/src/spreadsheet-grid-insert-controls";
 import { useSpreadsheetGridTheme } from "@/spreadsheet-core/src/spreadsheet-grid-theme";
@@ -127,6 +137,17 @@ export type SpreadsheetGridProps = {
   addColumnLabel: string;
   /** When true, clicking cells inserts refs into the formula bar instead of editing. */
   picking: boolean;
+  /** Draft formula used for related-cell highlights while editing. */
+  formulaHighlight?: string;
+  /** Caret position in the formula draft (for sheet-prefix detection). */
+  formulaCaret?: number;
+  /** Insert a formatted reference while picking (formula bar). */
+  onPickRef?: (ref: string) => void;
+  /** Arrow-key navigation while picking (formula bar). */
+  onPickingArrow?: (
+    key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight",
+    extend: boolean,
+  ) => void;
   sheets?: FormulaSheetInfo[];
   activeSheetRef?: string;
 };
@@ -234,11 +255,20 @@ export function SpreadsheetGrid({
   addRowLabel,
   addColumnLabel,
   picking,
+  formulaHighlight,
+  formulaCaret = 0,
+  onPickRef,
+  onPickingArrow,
   sheets = [],
   activeSheetRef = "",
 }: SpreadsheetGridProps) {
   const gridRef = useRef<DataEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const cellFormulaEditRef = useRef<CellFormulaEditBridge | null>(null);
+  const [cellPicking, setCellPicking] = useState(false);
+  const [cellFormulaDraft, setCellFormulaDraft] = useState("");
+  const cellPickAnchorRef = useRef<CellPoint | null>(null);
+  const isPicking = picking || cellPicking;
   useGlidePortalRoot(containerRef);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
   const bumpLayout = useCallback(() => {
@@ -356,7 +386,7 @@ export function SpreadsheetGrid({
   });
 
   useEffect(() => {
-    if (picking) return;
+    if (isPicking) return;
     if (!active) return;
     const gridRow = active.row - viewOffset;
     if (gridRow < 0 || gridRow >= rowCount) return;
@@ -374,12 +404,78 @@ export function SpreadsheetGrid({
         },
       };
     });
-  }, [active, viewOffset, rowCount, picking]);
+  }, [active, viewOffset, rowCount, isPicking]);
 
-  const pickingRef = useRef(picking);
+  const pickingRef = useRef(isPicking);
   useEffect(() => {
-    pickingRef.current = picking;
-  }, [picking]);
+    pickingRef.current = isPicking;
+  }, [isPicking]);
+
+  const formatPickedRef = useCallback(
+    (row: number, column: number, draft: string, caret: number) => {
+      const bare = cellRefFor(row, column, columnSettings);
+      const contextSheet = sheetRefBeforeCaret(draft, caret);
+      return withSheetPrefix(bare, activeSheetRef, contextSheet, activeSheetRef);
+    },
+    [activeSheetRef, columnSettings],
+  );
+
+  const formatPickedRange = useCallback(
+    (start: CellPoint, end: CellPoint, draft: string, caret: number) => {
+      const bare = rangeRefFor(start, end, columnSettings);
+      const contextSheet = sheetRefBeforeCaret(draft, caret);
+      return withSheetPrefix(bare, activeSheetRef, contextSheet, activeSheetRef);
+    },
+    [activeSheetRef, columnSettings],
+  );
+
+  const insertPickedSelection = useCallback(
+    (sel: SpreadsheetGridSelection) => {
+      if (!sel) return;
+      if (picking && onPickRef) {
+        const draft = formulaHighlight ?? "";
+        const caret = formulaCaret;
+        if (sel.kind === "range") {
+          onPickRef(formatPickedRange(sel.start, sel.end, draft, caret));
+        } else if (sel.kind === "cell") {
+          onPickRef(formatPickedRef(sel.row, sel.column, draft, caret));
+        }
+        return;
+      }
+      const bridge = cellFormulaEditRef.current;
+      if (!cellPicking || !bridge) return;
+      if (sel.kind === "range") {
+        bridge.insertRef(formatPickedRange(sel.start, sel.end, bridge.draft, bridge.caret));
+      } else if (sel.kind === "cell") {
+        bridge.insertRef(formatPickedRef(sel.row, sel.column, bridge.draft, bridge.caret));
+      }
+    },
+    [
+      cellPicking,
+      formatPickedRange,
+      formatPickedRef,
+      formulaHighlight,
+      formulaCaret,
+      onPickRef,
+      picking,
+    ],
+  );
+
+  const handleCellPickingArrow = useCallback(
+    (key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight", extend: boolean) => {
+      const bridge = cellFormulaEditRef.current;
+      if (!cellPicking || !bridge || !active) return;
+      const origin = cellPickAnchorRef.current ?? active;
+      if (!cellPickAnchorRef.current) cellPickAnchorRef.current = origin;
+      const next = moveCellPoint(origin, key, rowCount, colCount);
+      cellPickAnchorRef.current = next;
+      const ref = extend
+        ? formatPickedRange(active, next, bridge.draft, bridge.caret)
+        : formatPickedRef(next.row, next.column, bridge.draft, bridge.caret);
+      bridge.insertRef(ref);
+    },
+    [active, cellPicking, colCount, formatPickedRange, formatPickedRef, rowCount],
+  );
 
   const onGridSelectionChange = useCallback(
     (newSel: GridSelection) => {
@@ -410,20 +506,28 @@ export function SpreadsheetGrid({
           row: range.y + range.height - 1 + viewOffset,
           column: range.x + range.width - 1,
         };
-        onSelect({ kind: "range", start, end });
-        if (!pickingRef.current) onActivateCell({ row: cell[1] + viewOffset, column: cell[0] });
+        const sel = { kind: "range" as const, start, end };
+        onSelect(sel);
+        if (pickingRef.current) insertPickedSelection(sel);
+        else onActivateCell({ row: cell[1] + viewOffset, column: cell[0] });
         return;
       }
       const p = { row: cell[1] + viewOffset, column: cell[0] };
-      onSelect({ kind: "cell", row: p.row, column: p.column });
-      onActivateCell(p);
+      const sel = { kind: "cell" as const, row: p.row, column: p.column };
+      onSelect(sel);
+      if (pickingRef.current) insertPickedSelection(sel);
+      else onActivateCell(p);
     },
-    [onSelect, onActivateCell, viewOffset],
+    [insertPickedSelection, onSelect, onActivateCell, viewOffset],
   );
 
   const highlightRegions = useMemo(() => {
     if (!active) return undefined;
-    const raw = rawData[active.row]?.[active.column]?.value ?? "";
+    const raw =
+      (cellFormulaDraft && cellPicking ? cellFormulaDraft : null) ??
+      formulaHighlight ??
+      rawData[active.row]?.[active.column]?.value ??
+      "";
     if (!raw.startsWith("=")) return undefined;
     const regs = parseFormulaRegions(raw, columnSettings);
     if (!regs.length) return undefined;
@@ -447,7 +551,47 @@ export function SpreadsheetGrid({
         style: "solid" as const,
       };
     });
-  }, [active, rawData, columnSettings, viewOffset, rowCount]);
+  }, [
+    active,
+    cellFormulaDraft,
+    cellPicking,
+    formulaHighlight,
+    rawData,
+    columnSettings,
+    viewOffset,
+    rowCount,
+  ]);
+
+  useEffect(() => {
+    if (!isPicking) cellPickAnchorRef.current = null;
+  }, [isPicking]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !isPicking) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!/^Arrow(Up|Down|Left|Right)$/.test(event.key)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest(".spreadsheet-suggest")) return;
+      if (picking && onPickingArrow) {
+        event.preventDefault();
+        onPickingArrow(
+          event.key as "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight",
+          event.shiftKey,
+        );
+        return;
+      }
+      if (cellPicking) {
+        event.preventDefault();
+        handleCellPickingArrow(
+          event.key as "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight",
+          event.shiftKey,
+        );
+      }
+    };
+    el.addEventListener("keydown", onKeyDown);
+    return () => el.removeEventListener("keydown", onKeyDown);
+  }, [cellPicking, handleCellPickingArrow, isPicking, onPickingArrow, picking]);
 
   const provideEditor = useCallback<ProvideEditorCallback<GridCell>>((cell) => {
     if (cell.kind !== GridCellKind.Text) return undefined;
@@ -501,10 +645,21 @@ export function SpreadsheetGrid({
   );
 
   return (
-    <SpreadsheetGridProvider value={{ defs, columnSettings, sheets, activeSheetRef }}>
+    <SpreadsheetGridProvider
+      value={{
+        defs,
+        columnSettings,
+        sheets,
+        activeSheetRef,
+        cellFormulaEdit: cellFormulaEditRef,
+        notifyCellPicking: setCellPicking,
+        setCellFormulaDraft,
+      }}
+    >
       <div
         ref={containerRef}
-        className={cn("spreadsheet-grid", picking && "spreadsheet-grid--picking")}
+        className={cn("spreadsheet-grid", isPicking && "spreadsheet-grid--picking")}
+        tabIndex={isPicking ? -1 : undefined}
       >
         <DataEditor
           ref={gridRef}
@@ -579,18 +734,80 @@ function FormulaCellEditor(props: {
   target: Rectangle;
 }) {
   const { value, onChange, onFinishedEditing } = props;
-  const { defs, columnSettings, sheets } = useSpreadsheetGridContext();
+  const { defs, columnSettings, sheets, cellFormulaEdit, notifyCellPicking, setCellFormulaDraft } =
+    useSpreadsheetGridContext();
   const initial = (value.kind === GridCellKind.Text ? (value as { data?: string }).data : "") ?? "";
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [raw, setRaw] = useState<string>(initial);
   const [caret, setCaret] = useState(initial.length);
+  const insertedLenRef = useRef(0);
   const [idx, setIdx] = useState(0);
   const [popupPos, setPopupPos] = useState<{ left: number; top: number; width: number } | null>(
     null,
   );
   const ignoreMousePick = useRef(false);
   const skipCommit = useRef(false);
+
+  const cellPicking = isOpenFormulaContext(raw, caret);
+
+  useEffect(() => {
+    notifyCellPicking(cellPicking);
+    return () => notifyCellPicking(false);
+  }, [cellPicking, notifyCellPicking]);
+
+  useEffect(() => {
+    if (!cellPicking) insertedLenRef.current = 0;
+  }, [cellPicking]);
+
+  const applyDraft = useCallback(
+    (next: string, nextCaret: number) => {
+      setRaw(next);
+      setCaret(nextCaret);
+      setCellFormulaDraft(next);
+      onChange({
+        ...(value as { kind: GridCellKind.Text }),
+        data: next,
+        displayData: next,
+      } as GridCell);
+    },
+    [onChange, setCellFormulaDraft, value],
+  );
+
+  const insertRef = useCallback(
+    (ref: string) => {
+      const safeCaret = Math.min(caret, raw.length);
+      const before = raw.slice(0, safeCaret - insertedLenRef.current);
+      const after = raw.slice(safeCaret);
+      const next = before + ref + after;
+      const newCaret = before.length + ref.length;
+      insertedLenRef.current = ref.length;
+      applyDraft(next, newCaret);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus({ preventScroll: true });
+        inputRef.current?.setSelectionRange(newCaret, newCaret);
+      });
+    },
+    [applyDraft, caret, raw],
+  );
+
+  useEffect(() => {
+    cellFormulaEdit.current = {
+      draft: raw,
+      caret,
+      insertedLen: insertedLenRef.current,
+      setDraft: applyDraft,
+      insertRef,
+    };
+    return () => {
+      cellFormulaEdit.current = null;
+    };
+  }, [applyDraft, caret, cellFormulaEdit, insertRef, raw]);
+
+  useEffect(() => {
+    setCellFormulaDraft(initial);
+    return () => setCellFormulaDraft("");
+  }, [initial, setCellFormulaDraft]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -632,11 +849,7 @@ function FormulaCellEditor(props: {
   const { sheetRefs, sheetColumnRefs } = useMemo(() => buildFormulaSheetContext(sheets), [sheets]);
 
   const commit = (text: string) => {
-    onChange({
-      ...(value as { kind: GridCellKind.Text }),
-      data: text,
-      displayData: text,
-    } as GridCell);
+    applyDraft(text, text.length);
   };
 
   const applySuggestion = (i: number) => {
@@ -685,6 +898,7 @@ function FormulaCellEditor(props: {
         ref={inputRef}
         value={raw}
         onChange={(e) => {
+          insertedLenRef.current = 0;
           setRaw(e.target.value);
           setCaret(e.target.selectionStart ?? 0);
           commit(e.target.value);
@@ -692,7 +906,11 @@ function FormulaCellEditor(props: {
         onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
         onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
         onKeyDown={(e) => {
-          if (suggestions.length > 0 && idx >= 0) {
+          if (cellPicking && /^Arrow(Up|Down|Left|Right)$/.test(e.key)) {
+            // Grid container handles arrow picking while the in-cell editor is open.
+            return;
+          }
+          if (suggestions.length > 0 && idx >= 0 && !cellPicking) {
             if (e.key === "ArrowDown") {
               e.preventDefault();
               e.stopPropagation();

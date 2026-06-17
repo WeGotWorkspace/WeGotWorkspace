@@ -386,6 +386,7 @@
 
 .spreadsheet-grid--picking {
   cursor: cell;
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent) 40%, transparent);
 }
 
 /* ── Formula bar ──────────────────────────────────────────────────────── */
