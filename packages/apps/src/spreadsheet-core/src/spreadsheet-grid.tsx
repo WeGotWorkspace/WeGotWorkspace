@@ -5,6 +5,7 @@ import {
   DataEditor,
   GridCellKind,
   GridColumnIcon,
+  getMiddleCenterBias,
   type DataEditorRef,
   type EditableGridCell,
   type GridCell,
@@ -23,7 +24,12 @@ import {
 } from "@/spreadsheet-core/src/ycsv/ycsv";
 import type { ComputedCell } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import {
-  computeAutoColumnWidths,
+  HEADER_BADGE_FONT,
+  HEADER_BADGE_GAP,
+  HEADER_BADGE_H_PAD,
+  HEADER_FONT,
+  isNumericColumnType,
+  measurePretextWidth,
   MIN_COL_WIDTH,
 } from "@/spreadsheet-core/src/spreadsheet-column-widths";
 import { FormulaTokens, tokenizeFormula } from "@/spreadsheet-core/src/formula-highlight";
@@ -32,6 +38,8 @@ import {
   SpreadsheetGridProvider,
   useSpreadsheetGridContext,
 } from "@/spreadsheet-core/src/spreadsheet-grid-context";
+import { SpreadsheetGridInsertControls } from "@/spreadsheet-core/src/spreadsheet-grid-insert-controls";
+import { useSpreadsheetGridTheme } from "@/spreadsheet-core/src/spreadsheet-grid-theme";
 
 import "@glideapps/glide-data-grid/dist/index.css";
 
@@ -73,6 +81,9 @@ export type SpreadsheetGridProps = {
   computed: ComputedCell[][];
   columnSettings: ColumnSetting[];
   defs: Defs;
+  /** Resolved column widths (controller-owned). */
+  columnWidths: number[];
+  onColumnResize: (column: number, width: number) => void;
   /** First row index visible in the grid (1 when the header row is hidden). */
   viewOffset: number;
   /** Active cell in parent-coords, or null. */
@@ -80,8 +91,10 @@ export type SpreadsheetGridProps = {
   onActivateCell: (p: { row: number; column: number }) => void;
   onSelect: (sel: SpreadsheetGridSelection) => void;
   writeCell: (row: number, column: number, value: string) => void;
-  /** Append an empty data row (Glide trailing row + footer control). */
   onAddRow: () => void;
+  onAddColumn: () => void;
+  addRowLabel: string;
+  addColumnLabel: string;
   /** When true, clicking cells inserts refs into the formula bar instead of editing. */
   picking: boolean;
 };
@@ -144,21 +157,60 @@ function parseFormulaRegions(
   return out;
 }
 
+/** Match Glide `drawSingleTextLine` padding and horizontal alignment. */
+function drawAlignedHeaderText(
+  ctx: CanvasRenderingContext2D,
+  rect: Rectangle,
+  theme: { cellHorizontalPadding: number; headerFontStyle: string; fontFamily: string },
+  text: string,
+  color: string,
+  contentAlign?: "left" | "right" | "center",
+) {
+  const { x, y, width: w, height: h } = rect;
+  const pad = theme.cellHorizontalPadding + 0.5;
+  const headerFont = `${theme.headerFontStyle} ${theme.fontFamily}`;
+  const bias = getMiddleCenterBias(ctx, headerFont);
+  ctx.fillStyle = color;
+  ctx.font = headerFont;
+  if (contentAlign === "right") {
+    ctx.textAlign = "right";
+    ctx.fillText(text, x + w - pad, y + h / 2 + bias);
+  } else if (contentAlign === "center") {
+    ctx.textAlign = "center";
+    ctx.fillText(text, x + w / 2, y + h / 2 + bias);
+  } else {
+    ctx.textAlign = "left";
+    ctx.fillText(text, x + pad, y + h / 2 + bias);
+  }
+  ctx.textAlign = "left";
+}
+
 export function SpreadsheetGrid({
   rawData,
   computed,
   columnSettings,
   defs,
+  columnWidths,
+  onColumnResize,
   viewOffset,
   active,
   onActivateCell,
   onSelect,
   writeCell,
   onAddRow,
+  onAddColumn,
+  addRowLabel,
+  addColumnLabel,
   picking,
 }: SpreadsheetGridProps) {
   useGlidePortalRoot();
   const gridRef = useRef<DataEditorRef>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [layoutEpoch, setLayoutEpoch] = useState(0);
+  const bumpLayout = useCallback(() => {
+    requestAnimationFrame(() => setLayoutEpoch((n) => n + 1));
+  }, []);
+  const { tokens: gridThemeTokens, glideTheme } = useSpreadsheetGridTheme(containerRef);
   const colCount = rawData[0]?.length ?? columnSettings.length ?? 1;
   const rowCount = Math.max(0, rawData.length - viewOffset);
 
@@ -182,18 +234,6 @@ export function SpreadsheetGrid({
     [colCount, columnSettings, inferType],
   );
 
-  const autoWidths = useMemo(
-    () => computeAutoColumnWidths(colCount, columnSettings, rawData, computed, viewOffset),
-    [colCount, columnSettings, rawData, computed, viewOffset],
-  );
-
-  const [widthOverrides, setWidthOverrides] = useState<Record<number, number>>({});
-  const sizingKey = `${colCount}:${rawData.length}:${columnSettings.map((c) => c.ref).join(",")}`;
-
-  useEffect(() => {
-    setWidthOverrides({});
-  }, [sizingKey]);
-
   const columns = useMemo<GridColumn[]>(() => {
     return Array.from({ length: colCount }, (_, i) => {
       const cs = columnSettings[i];
@@ -202,15 +242,23 @@ export function SpreadsheetGrid({
       return {
         title: label,
         id: String(i),
-        width: widthOverrides[i] ?? autoWidths[i] ?? MIN_COL_WIDTH,
+        width: columnWidths[i] ?? MIN_COL_WIDTH,
         icon: badge ? GridColumnIcon.HeaderString : undefined,
       };
     });
-  }, [autoWidths, colCount, columnSettings, widthOverrides]);
+  }, [colCount, columnSettings, columnWidths]);
 
-  const onColumnResize = useCallback((_column: GridColumn, newSize: number, colIndex: number) => {
-    setWidthOverrides((prev) => ({ ...prev, [colIndex]: newSize }));
-  }, []);
+  useEffect(() => {
+    bumpLayout();
+  }, [bumpLayout, colCount, columnWidths, rowCount]);
+
+  const handleColumnResize = useCallback(
+    (_column: GridColumn, newSize: number, colIndex: number) => {
+      onColumnResize(colIndex, newSize);
+      bumpLayout();
+    },
+    [bumpLayout, onColumnResize],
+  );
 
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
@@ -221,7 +269,7 @@ export function SpreadsheetGrid({
       const isErr = !!cmp?.error;
       const colSpec = columnSettings[col];
       const t = colTypes[col];
-      const isNum = t === "number" || t === "currency" || t === "percent";
+      const isNum = isNumericColumnType(t);
 
       const display = isFormula
         ? isErr
@@ -274,6 +322,7 @@ export function SpreadsheetGrid({
     const gridRow = active.row - viewOffset;
     if (gridRow < 0 || gridRow >= rowCount) return;
     setGridSel((prev) => {
+      if (prev.rows.length > 0 || prev.columns.length > 0) return prev;
       const cur = prev.current?.cell;
       if (cur && cur[0] === active.column && cur[1] === gridRow) return prev;
       return {
@@ -372,50 +421,62 @@ export function SpreadsheetGrid({
 
   const drawHeader = useCallback(
     (args: Parameters<NonNullable<React.ComponentProps<typeof DataEditor>["drawHeader"]>>[0]) => {
-      const { ctx, theme, rect, columnIndex } = args;
+      const { ctx, theme, rect, columnIndex, isSelected } = args;
       const cs = columnSettings[columnIndex];
       const label = cs?.name || cs?.ref || colLetter(columnIndex);
       const badge = cs?.ref && cs.ref !== label ? cs.ref : "";
+      const isNum = isNumericColumnType(colTypes[columnIndex]);
+      const align = isNum ? "right" : undefined;
+      const pad = theme.cellHorizontalPadding + 0.5;
+      const headerFont = `${theme.headerFontStyle} ${theme.fontFamily}`;
+      const bias = getMiddleCenterBias(ctx, headerFont);
+      const labelColor = isSelected ? gridThemeTokens.textHeaderSelected : theme.textHeader;
+
       ctx.save();
-      ctx.fillStyle = theme.textHeader;
-      ctx.font = `600 13px ${theme.fontFamily}`;
-      ctx.textBaseline = "middle";
-      const padX = 8;
-      ctx.fillText(label, rect.x + padX, rect.y + rect.height / 2);
+      if (isSelected) {
+        ctx.fillStyle = gridThemeTokens.accentLight;
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      }
+      drawAlignedHeaderText(ctx, rect, theme, label, labelColor, align);
+
       if (badge) {
-        const labelW = ctx.measureText(label).width;
-        const bx = rect.x + padX + labelW + 6;
-        ctx.font = `500 10px ${theme.fontFamily}`;
-        const bw = ctx.measureText(badge).width + 8;
+        const labelW = measurePretextWidth(label, HEADER_FONT);
+        ctx.font = HEADER_BADGE_FONT;
+        const bw = measurePretextWidth(badge, HEADER_BADGE_FONT) + HEADER_BADGE_H_PAD;
         const bh = 14;
         const by = rect.y + (rect.height - bh) / 2;
-        ctx.fillStyle = "hsla(142, 71%, 45%, 0.15)";
+        const bx = isNum
+          ? rect.x + rect.width - pad - labelW - HEADER_BADGE_GAP - bw
+          : rect.x + pad + labelW + HEADER_BADGE_GAP;
+        ctx.fillStyle = gridThemeTokens.accentBadgeBg;
         roundRect(ctx, bx, by, bw, bh, 3);
         ctx.fill();
-        ctx.fillStyle = "hsl(142, 71%, 35%)";
-        ctx.fillText(badge, bx + 4, rect.y + rect.height / 2);
+        ctx.fillStyle = gridThemeTokens.accentBadgeFg;
+        ctx.textAlign = "left";
+        ctx.fillText(badge, bx + HEADER_BADGE_H_PAD / 2, rect.y + rect.height / 2 + bias);
       }
       ctx.restore();
       return true;
     },
-    [columnSettings],
+    [colTypes, columnSettings, gridThemeTokens],
   );
-
-  const onRowAppended = useCallback(() => {
-    onAddRow();
-  }, [onAddRow]);
 
   return (
     <SpreadsheetGridProvider value={{ defs, columnSettings }}>
-      <div className={cn("spreadsheet-grid", picking && "spreadsheet-grid--picking")}>
+      <div
+        ref={containerRef}
+        className={cn("spreadsheet-grid", picking && "spreadsheet-grid--picking")}
+      >
         <DataEditor
           ref={gridRef}
           getCellContent={getCellContent}
           onCellEdited={onCellEdited}
           columns={columns}
           rows={rowCount}
-          onColumnResize={onColumnResize}
-          rowMarkers={{ kind: "number", startIndex: 1 + viewOffset }}
+          onColumnResize={handleColumnResize}
+          rowMarkers={{ kind: "clickable-number", startIndex: 1 + viewOffset }}
+          rowSelect="multi"
+          columnSelect="multi"
           smoothScrollX
           smoothScrollY
           width="100%"
@@ -427,15 +488,24 @@ export function SpreadsheetGrid({
           drawHeader={drawHeader}
           getCellsForSelection
           keybindings={{ search: false }}
-          trailingRowOptions={{ hint: "Add row", sticky: true, tint: true }}
-          onRowAppended={onRowAppended}
+          onVisibleRegionChanged={bumpLayout}
           theme={{
             baseFontStyle: "13px",
             headerFontStyle: "600 13px",
             fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
-            accentColor: "hsl(217, 91%, 60%)",
-            accentLight: "hsla(217, 91%, 60%, 0.15)",
+            ...glideTheme,
           }}
+        />
+        <SpreadsheetGridInsertControls
+          gridRef={gridRef}
+          containerRef={containerRef}
+          colCount={colCount}
+          rowCount={rowCount}
+          layoutEpoch={layoutEpoch}
+          addRowLabel={addRowLabel}
+          addColumnLabel={addColumnLabel}
+          onAddRow={onAddRow}
+          onAddColumn={onAddColumn}
         />
       </div>
     </SpreadsheetGridProvider>
