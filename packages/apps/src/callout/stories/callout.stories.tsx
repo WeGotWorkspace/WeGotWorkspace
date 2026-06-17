@@ -49,7 +49,6 @@ export const WithAction: Story = {
     action: (
       <Button
         label="Undo"
-        variant="primary"
         size="sm"
         icon={<Undo2 className="size-4" aria-hidden />}
         variant="outline"
