@@ -43,7 +43,6 @@ import {
   SpreadsheetGridProvider,
   useSpreadsheetGridContext,
 } from "@/spreadsheet-core/src/spreadsheet-grid-context";
-import { SpreadsheetGridInsertControls } from "@/spreadsheet-core/src/spreadsheet-grid-insert-controls";
 import { useSpreadsheetGridTheme } from "@/spreadsheet-core/src/spreadsheet-grid-theme";
 
 import "@glideapps/glide-data-grid/dist/index.css";
@@ -116,10 +115,6 @@ export type SpreadsheetGridProps = {
   onActivateCell: (p: { row: number; column: number }) => void;
   onSelect: (sel: SpreadsheetGridSelection) => void;
   writeCell: (row: number, column: number, value: string) => void;
-  onAddRow: () => void;
-  onAddColumn: () => void;
-  addRowLabel: string;
-  addColumnLabel: string;
   /** When true, clicking cells inserts refs into the formula bar instead of editing. */
   picking: boolean;
 };
@@ -222,19 +217,11 @@ export function SpreadsheetGrid({
   onActivateCell,
   onSelect,
   writeCell,
-  onAddRow,
-  onAddColumn,
-  addRowLabel,
-  addColumnLabel,
   picking,
 }: SpreadsheetGridProps) {
   const gridRef = useRef<DataEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   useGlidePortalRoot(containerRef);
-  const [layoutEpoch, setLayoutEpoch] = useState(0);
-  const bumpLayout = useCallback(() => {
-    requestAnimationFrame(() => setLayoutEpoch((n) => n + 1));
-  }, []);
   const { tokens: gridThemeTokens, glideTheme } = useSpreadsheetGridTheme(containerRef);
   const colCount = rawData[0]?.length ?? columnSettings.length ?? 1;
   const rowCount = Math.max(0, rawData.length - viewOffset);
@@ -278,16 +265,11 @@ export function SpreadsheetGrid({
     });
   }, [colCount, columnSettings, resolvedColumnWidths]);
 
-  useEffect(() => {
-    bumpLayout();
-  }, [bumpLayout, colCount, resolvedColumnWidths, rowCount]);
-
   const handleColumnResize = useCallback(
     (_column: GridColumn, newSize: number, colIndex: number) => {
       onColumnResize(colIndex, newSize);
-      bumpLayout();
     },
-    [bumpLayout, onColumnResize],
+    [onColumnResize],
   );
 
   const getCellContent = useCallback(
@@ -518,25 +500,12 @@ export function SpreadsheetGrid({
           drawHeader={drawHeader}
           getCellsForSelection
           keybindings={{ search: false }}
-          onVisibleRegionChanged={bumpLayout}
           theme={{
             baseFontStyle: "13px",
             headerFontStyle: "600 13px",
             fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
             ...glideTheme,
           }}
-        />
-        <SpreadsheetGridInsertControls
-          gridRef={gridRef}
-          containerRef={containerRef}
-          colCount={colCount}
-          rowCount={rowCount}
-          columnWidths={resolvedColumnWidths}
-          layoutEpoch={layoutEpoch}
-          addRowLabel={addRowLabel}
-          addColumnLabel={addColumnLabel}
-          onAddRow={onAddRow}
-          onAddColumn={onAddColumn}
         />
       </div>
     </SpreadsheetGridProvider>

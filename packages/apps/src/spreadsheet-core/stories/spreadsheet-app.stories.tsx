@@ -142,27 +142,15 @@ export const SheetStats: Story = {
       expect(canvas.getByText("5 columns")).toBeInTheDocument();
       expect(canvas.getByText("5 rows")).toBeInTheDocument();
     });
-    await waitFor(() => {
-      expect(canvas.getByRole("button", { name: "Add row" })).toBeInTheDocument();
-      expect(canvas.getByRole("button", { name: "Add column" })).toBeInTheDocument();
+
+    const footer = await waitFor(() => {
+      const el = canvasElement.querySelector(".spreadsheet-workspace__stats-footer");
+      if (!el) throw new Error("stats footer missing");
+      return el as HTMLElement;
     });
-
-    const gridCanvas = await canvas.findByTestId("data-grid-canvas");
-    const addColumn = canvas.getByRole("button", { name: "Add column" });
-    const addRow = canvas.getByRole("button", { name: "Add row" });
-
     await waitFor(() => {
-      const canvasRect = gridCanvas.getBoundingClientRect();
-      const colRect = addColumn.getBoundingClientRect();
-      const rowRect = addRow.getBoundingClientRect();
-
-      // Add column sits just past the last header's right edge (not over the column letter).
-      expect(colRect.left).toBeGreaterThan(canvasRect.left + 80);
-      expect(colRect.left).toBeLessThan(canvasRect.right + 40);
-
-      // Add row sits below the last row marker, within the marker column strip.
-      expect(rowRect.top).toBeGreaterThan(canvasRect.top + 30);
-      expect(rowRect.right).toBeLessThanOrEqual(canvasRect.left + 72);
+      expect(within(footer).getByRole("button", { name: "Add row" })).toBeInTheDocument();
+      expect(within(footer).getByRole("button", { name: "Add column" })).toBeInTheDocument();
     });
   },
 };

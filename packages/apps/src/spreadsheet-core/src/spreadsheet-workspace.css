@@ -164,8 +164,12 @@
   border-top: 1px solid var(--spreadsheet-border);
 }
 
-.spreadsheet-workspace__stats-tags {
+.spreadsheet-workspace__sheet-actions {
   @apply flex flex-wrap items-center gap-1.5;
+}
+
+.spreadsheet-workspace__stats-tags {
+  @apply ml-auto flex flex-wrap items-center gap-1.5;
 }
 
 .spreadsheet-workspace__stats-footer .tag {
@@ -216,21 +220,6 @@
     var(--spreadsheet-accent) 88%,
     var(--color-ink)
   );
-}
-
-.spreadsheet-grid__insert-control {
-  @apply absolute z-10 p-0;
-  --button-subtle-background: color-mix(in oklab, var(--spreadsheet-accent) 10%, #ffffff);
-  --button-subtle-hover-background: color-mix(in oklab, var(--spreadsheet-accent) 18%, #ffffff);
-  --button-subtle-color: var(--spreadsheet-accent);
-}
-
-.spreadsheet-grid__insert-control--column {
-  box-shadow: -1px 0 0 var(--spreadsheet-border);
-}
-
-.spreadsheet-grid__insert-control--row {
-  box-shadow: 0 -1px 0 var(--spreadsheet-border);
 }
 
 .spreadsheet-grid--picking {
