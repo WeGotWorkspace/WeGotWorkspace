@@ -9,11 +9,36 @@ import { FORMULA_FUNCTIONS } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engi
 const FN_NAMES = new Set(FORMULA_FUNCTIONS.map((f) => f.name.toUpperCase()));
 
 export type Tok = {
-  type: "fn" | "const" | "ref" | "cellref" | "string" | "number" | "op" | "ws" | "ident";
+  type:
+    | "fn"
+    | "const"
+    | "ref"
+    | "cellref"
+    | "sheetref"
+    | "string"
+    | "number"
+    | "op"
+    | "ws"
+    | "ident";
   text: string;
 };
 
-export function tokenizeFormula(s: string, consts: Set<string>, refs: Set<string>): Tok[] {
+function isSheetRefPart(refPart: string, refs: Set<string>): boolean {
+  if (/^[A-Z]+\d+$/.test(refPart)) return true;
+  const named = refPart.match(/^([a-z][a-z0-9_]*?)(\d+)$/i);
+  if (named && refs.has(named[1].toLowerCase())) return true;
+  if (/^[a-z][a-z0-9_]*$/i.test(refPart) && refs.has(refPart.toLowerCase())) return true;
+  return false;
+}
+
+export function tokenizeFormula(
+  s: string,
+  consts: Set<string>,
+  refs: Set<string>,
+  sheetRefs: Set<string> = new Set(),
+  /** Column refs per sheet (lowercase sheet ref → lowercase column refs). */
+  sheetColumnRefs: Map<string, Set<string>> = new Map(),
+): Tok[] {
   const out: Tok[] = [];
   let i = 0;
   while (i < s.length) {
@@ -43,6 +68,19 @@ export function tokenizeFormula(s: string, consts: Set<string>, refs: Set<string
       let j = i;
       while (j < s.length && /[A-Za-z0-9_]/.test(s[j])) j++;
       const word = s.slice(i, j);
+
+      if (j < s.length && s[j] === "!" && sheetRefs.has(word.toLowerCase())) {
+        let k = j + 1;
+        while (k < s.length && /[A-Za-z0-9_]/.test(s[k])) k++;
+        const refPart = s.slice(j + 1, k);
+        const targetCols = sheetColumnRefs.get(word.toLowerCase()) ?? refs;
+        if (refPart && isSheetRefPart(refPart, targetCols)) {
+          out.push({ type: "sheetref", text: s.slice(i, k) });
+          i = k;
+          continue;
+        }
+      }
+
       const uppRange = /^[A-Z]+\d+$/.test(word);
       const lower = word.match(/^([a-z][a-z0-9_]*?)(\d+)$/);
       if (uppRange) {
@@ -72,16 +110,20 @@ export function FormulaTokens({
   value,
   consts,
   refs,
+  sheetRefs,
+  sheetColumnRefs,
   className,
 }: {
   value: string;
   consts: Set<string>;
   refs: Set<string>;
+  sheetRefs?: Set<string>;
+  sheetColumnRefs?: Map<string, Set<string>>;
   className?: string;
 }) {
   if (!value.startsWith("=")) return null;
   const body = value.slice(1);
-  const toks = tokenizeFormula(body, consts, refs);
+  const toks = tokenizeFormula(body, consts, refs, sheetRefs, sheetColumnRefs);
   return (
     <div aria-hidden className={cn("spreadsheet-formula-tokens", className)}>
       <span className="spreadsheet-formula-token spreadsheet-formula-token--fn">=</span>

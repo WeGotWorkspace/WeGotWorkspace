@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { FormulaSheetInfo } from "@/spreadsheet-core/src/formula-suggest";
 import type { ColumnSetting, Defs } from "@/spreadsheet-core/src/ycsv/ycsv";
 
 /**
@@ -8,11 +9,15 @@ import type { ColumnSetting, Defs } from "@/spreadsheet-core/src/ycsv/ycsv";
 export type SpreadsheetGridContextValue = {
   defs: Defs;
   columnSettings: ColumnSetting[];
+  sheets: FormulaSheetInfo[];
+  activeSheetRef: string;
 };
 
 const SpreadsheetGridContext = createContext<SpreadsheetGridContextValue>({
   defs: {},
   columnSettings: [],
+  sheets: [],
+  activeSheetRef: "",
 });
 
 export const SpreadsheetGridProvider = SpreadsheetGridContext.Provider;

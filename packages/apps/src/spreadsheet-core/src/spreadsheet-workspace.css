@@ -88,6 +88,29 @@
   color: #ffffff;
 }
 
+.spreadsheet-sheets-sidebar__item {
+  @apply relative flex items-center;
+}
+
+.spreadsheet-sheets-sidebar__item .spreadsheet-sheets-sidebar__select {
+  @apply min-w-0 flex-1 pr-14;
+}
+
+.spreadsheet-sheets-sidebar__item .actions {
+  @apply absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms ease,
+    visibility 120ms ease;
+}
+
+.spreadsheet-sheets-sidebar__item:hover .actions,
+.spreadsheet-sheets-sidebar__item:focus-within .actions {
+  opacity: 1;
+  visibility: visible;
+}
+
 .spreadsheet-workspace .app-sidebar__footer {
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
@@ -335,6 +358,9 @@
 .spreadsheet-formula-token--cellref {
   color: #c2410c;
 }
+.spreadsheet-formula-token--sheetref {
+  color: #9333ea;
+}
 .spreadsheet-formula-token--string {
   color: #16a34a;
 }
@@ -447,6 +473,9 @@
 }
 .spreadsheet-suggest__kind--ref {
   color: #2563eb;
+}
+.spreadsheet-suggest__kind--sheet {
+  color: #9333ea;
 }
 
 .spreadsheet-suggest__name {

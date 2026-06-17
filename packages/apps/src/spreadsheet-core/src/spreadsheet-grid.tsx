@@ -38,7 +38,12 @@ import {
   MIN_COL_WIDTH,
 } from "@/spreadsheet-core/src/spreadsheet-column-widths";
 import { FormulaTokens, tokenizeFormula } from "@/spreadsheet-core/src/formula-highlight";
-import { computeSuggestions, SuggestionList } from "@/spreadsheet-core/src/formula-suggest";
+import {
+  buildFormulaSheetContext,
+  computeSuggestions,
+  type FormulaSheetInfo,
+  SuggestionList,
+} from "@/spreadsheet-core/src/formula-suggest";
 import {
   SpreadsheetGridProvider,
   useSpreadsheetGridContext,
@@ -122,6 +127,8 @@ export type SpreadsheetGridProps = {
   addColumnLabel: string;
   /** When true, clicking cells inserts refs into the formula bar instead of editing. */
   picking: boolean;
+  sheets?: FormulaSheetInfo[];
+  activeSheetRef?: string;
 };
 
 /** Parse a raw formula into related-cell highlight regions (parent-coords). */
@@ -227,6 +234,8 @@ export function SpreadsheetGrid({
   addRowLabel,
   addColumnLabel,
   picking,
+  sheets = [],
+  activeSheetRef = "",
 }: SpreadsheetGridProps) {
   const gridRef = useRef<DataEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -492,7 +501,7 @@ export function SpreadsheetGrid({
   );
 
   return (
-    <SpreadsheetGridProvider value={{ defs, columnSettings }}>
+    <SpreadsheetGridProvider value={{ defs, columnSettings, sheets, activeSheetRef }}>
       <div
         ref={containerRef}
         className={cn("spreadsheet-grid", picking && "spreadsheet-grid--picking")}
@@ -570,7 +579,7 @@ function FormulaCellEditor(props: {
   target: Rectangle;
 }) {
   const { value, onChange, onFinishedEditing } = props;
-  const { defs, columnSettings } = useSpreadsheetGridContext();
+  const { defs, columnSettings, sheets } = useSpreadsheetGridContext();
   const initial = (value.kind === GridCellKind.Text ? (value as { data?: string }).data : "") ?? "";
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -591,8 +600,8 @@ function FormulaCellEditor(props: {
   }, []);
 
   const suggestions = useMemo(
-    () => computeSuggestions(raw, caret, defs, columnSettings),
-    [raw, caret, defs, columnSettings],
+    () => computeSuggestions(raw, caret, defs, columnSettings, sheets),
+    [raw, caret, defs, columnSettings, sheets],
   );
   useEffect(() => setIdx(0), [suggestions.length]);
 
@@ -620,6 +629,7 @@ function FormulaCellEditor(props: {
     () => new Set(columnSettings.filter((c) => c.ref).map((c) => c.ref!)),
     [columnSettings],
   );
+  const { sheetRefs, sheetColumnRefs } = useMemo(() => buildFormulaSheetContext(sheets), [sheets]);
 
   const commit = (text: string) => {
     onChange({
@@ -666,6 +676,8 @@ function FormulaCellEditor(props: {
         value={raw}
         consts={consts}
         refs={refs}
+        sheetRefs={sheetRefs}
+        sheetColumnRefs={sheetColumnRefs}
         className="spreadsheet-cell-editor__tokens"
       />
 

@@ -5,8 +5,26 @@ import type { ColumnSetting, Defs } from "@/spreadsheet-core/src/ycsv/ycsv";
 /** "Open" formula context: the cursor is awaiting a reference. */
 export const OPEN_TOKEN_RE = /[=+\-*/^&,(:<>!%]\s*$/;
 
+export type FormulaSheetInfo = {
+  ref: string;
+  name: string;
+  columnSettings: ColumnSetting[];
+};
+
+export function buildFormulaSheetContext(sheets: FormulaSheetInfo[]) {
+  const sheetRefs = new Set(sheets.map((s) => s.ref.toLowerCase()));
+  const sheetColumnRefs = new Map<string, Set<string>>();
+  for (const sheet of sheets) {
+    sheetColumnRefs.set(
+      sheet.ref.toLowerCase(),
+      new Set(sheet.columnSettings.filter((c) => c.ref).map((c) => c.ref!.toLowerCase())),
+    );
+  }
+  return { sheetRefs, sheetColumnRefs };
+}
+
 export type Suggestion = {
-  kind: "fn" | "def" | "ref";
+  kind: "fn" | "def" | "ref" | "sheet";
   label: string;
   detail: string;
   insert: string;
@@ -19,17 +37,91 @@ function defDetail(value: Defs[string]): string {
   return `= ${value}`;
 }
 
+function findSheet(sheets: FormulaSheetInfo[], partial: string): FormulaSheetInfo | undefined {
+  const lower = partial.toLowerCase();
+  return sheets.find((s) => s.ref.toLowerCase() === lower);
+}
+
+function sheetSuggestions(
+  sheets: FormulaSheetInfo[],
+  token: string,
+  tokenLen: number,
+): Suggestion[] {
+  if (sheets.length <= 1) return [];
+  const tl = token.toLowerCase();
+  return sheets
+    .filter((s) => s.ref.toLowerCase().startsWith(tl) || s.name.toLowerCase().startsWith(tl))
+    .slice(0, 6)
+    .map((s) => ({
+      kind: "sheet" as const,
+      label: s.ref,
+      detail: s.name !== s.ref ? s.name : "sheet",
+      insert: `${s.ref}!`,
+      tokenLen,
+    }));
+}
+
+function columnSuggestions(
+  columnSettings: ColumnSetting[],
+  token: string,
+  tokenLen: number,
+  detailPrefix?: string,
+): Suggestion[] {
+  const tl = token.toLowerCase();
+  return columnSettings
+    .filter((c) => c.ref && c.ref.toLowerCase().startsWith(tl))
+    .slice(0, 8)
+    .map((c) => ({
+      kind: "ref" as const,
+      label: c.ref!,
+      detail: detailPrefix ? `${detailPrefix}: ${c.name ?? c.ref}` : `column ${c.name ?? c.ref}`,
+      insert: c.ref!,
+      tokenLen,
+    }));
+}
+
+type SuggestContext =
+  | { mode: "open" }
+  | { mode: "ident"; token: string }
+  | { mode: "sheetColumn"; sheetRef: string; token: string };
+
+function analyzeContext(upTo: string): SuggestContext {
+  const justOpened = /^(=|[+\-*/^&,(:<>!%]\s*)$/.test(upTo.trimEnd());
+  if (justOpened) return { mode: "open" };
+
+  const sheetColMatch = upTo.match(/([a-z][a-z0-9_]*)!([a-z][a-z0-9_]*)$/i);
+  if (sheetColMatch) {
+    return { mode: "sheetColumn", sheetRef: sheetColMatch[1], token: sheetColMatch[2] };
+  }
+
+  const sheetBangMatch = upTo.match(/([a-z][a-z0-9_]*)!$/i);
+  if (sheetBangMatch) {
+    return { mode: "sheetColumn", sheetRef: sheetBangMatch[1], token: "" };
+  }
+
+  const m = upTo.match(/([A-Za-z_][A-Za-z0-9_.]*)$/);
+  if (!m) return { mode: "open" };
+  return { mode: "ident", token: m[1] };
+}
+
 export function computeSuggestions(
   draft: string,
   caret: number,
   defs: Defs,
   columnSettings: ColumnSetting[],
+  sheets: FormulaSheetInfo[] = [],
 ): Suggestion[] {
   if (!draft.startsWith("=")) return [];
   const upTo = draft.slice(0, caret);
+  const ctx = analyzeContext(upTo);
 
-  const justOpened = /^(=|[+\-*/^&,(:<>!%]\s*)$/.test(upTo.trimEnd());
-  if (justOpened) {
+  if (ctx.mode === "sheetColumn") {
+    const sheet = findSheet(sheets, ctx.sheetRef);
+    if (!sheet) return [];
+    return columnSuggestions(sheet.columnSettings, ctx.token, ctx.token.length, sheet.name);
+  }
+
+  if (ctx.mode === "open") {
     const fns: Suggestion[] = FORMULA_FUNCTIONS.slice(0, 6).map((f) => ({
       kind: "fn",
       label: f.name,
@@ -54,12 +146,11 @@ export function computeSuggestions(
         insert: c.ref!,
         tokenLen: 0,
       }));
-    return [...defSuggestions, ...fns, ...refs];
+    const sheetsOpen = sheetSuggestions(sheets, "", 0);
+    return [...sheetsOpen, ...defSuggestions, ...fns, ...refs];
   }
 
-  const m = upTo.match(/([A-Za-z_][A-Za-z0-9_.]*)$/);
-  if (!m) return [];
-  const token = m[1];
+  const token = ctx.token;
   if (token.length < 1) return [];
   const tu = token.toUpperCase();
   const tl = token.toLowerCase();
@@ -92,7 +183,8 @@ export function computeSuggestions(
       insert: c.ref!,
       tokenLen: token.length,
     }));
-  return [...defMatches, ...fns, ...refMatches];
+  const sheetMatches = sheetSuggestions(sheets, token, token.length);
+  return [...sheetMatches, ...defMatches, ...fns, ...refMatches];
 }
 
 export function SuggestionList({
@@ -112,7 +204,7 @@ export function SuggestionList({
     <div className={cn("spreadsheet-suggest", className)}>
       {suggestions.map((s, i) => (
         <button
-          key={`${s.kind}-${s.label}`}
+          key={`${s.kind}-${s.label}-${i}`}
           type="button"
           data-suggestion-index={i}
           onMouseDown={(e) => {

@@ -89,6 +89,12 @@ export function SpreadsheetMainPane({
             addRowLabel={controller.labels.addRow}
             addColumnLabel={controller.labels.addColumn}
             picking={controller.picking}
+            sheets={controller.sheets.map((s) => ({
+              ref: s.ref,
+              name: s.name,
+              columnSettings: s.columnSettings,
+            }))}
+            activeSheetRef={controller.sheets[controller.activeSheetIndex]?.ref ?? ""}
           />
         </div>
         <SpreadsheetStatsFooter controller={controller} />

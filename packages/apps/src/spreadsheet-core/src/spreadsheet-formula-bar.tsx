@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { colLetter } from "@/spreadsheet-core/src/ycsv/ycsv";
 import { FormulaTokens, useScrollSync } from "@/spreadsheet-core/src/formula-highlight";
-import { computeSuggestions, SuggestionList } from "@/spreadsheet-core/src/formula-suggest";
+import {
+  buildFormulaSheetContext,
+  computeSuggestions,
+  type FormulaSheetInfo,
+  SuggestionList,
+} from "@/spreadsheet-core/src/formula-suggest";
 import type { SpreadsheetController } from "@/spreadsheet-core/src/use-spreadsheet-controller";
 
 export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetController }) {
@@ -12,6 +17,7 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
     activeRaw,
     columnSettings,
     defs,
+    sheets,
     fbEditing,
     fbDraft,
     setFbDraft,
@@ -39,6 +45,20 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
     return `${letter}${activeCell.row + 1}`;
   }, [activeCell, columnSettings]);
 
+  const formulaSheets = useMemo<FormulaSheetInfo[]>(
+    () =>
+      sheets.map((s) => ({
+        ref: s.ref,
+        name: s.name,
+        columnSettings: s.columnSettings,
+      })),
+    [sheets],
+  );
+  const { sheetRefs, sheetColumnRefs } = useMemo(
+    () => buildFormulaSheetContext(formulaSheets),
+    [formulaSheets],
+  );
+
   const consts = useMemo(() => new Set(Object.keys(defs)), [defs]);
   const refs = useMemo(
     () => new Set(columnSettings.filter((c) => c.ref).map((c) => c.ref!)),
@@ -46,8 +66,9 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
   );
 
   const suggestions = useMemo(
-    () => (fbEditing ? computeSuggestions(fbDraft, fbCaret, defs, columnSettings) : []),
-    [columnSettings, defs, fbCaret, fbDraft, fbEditing],
+    () =>
+      fbEditing ? computeSuggestions(fbDraft, fbCaret, defs, columnSettings, formulaSheets) : [],
+    [columnSettings, defs, fbCaret, fbDraft, fbEditing, formulaSheets],
   );
   useEffect(() => setActiveSuggestion(0), [suggestions.length]);
 
@@ -99,6 +120,8 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
               value={value}
               consts={consts}
               refs={refs}
+              sheetRefs={sheetRefs}
+              sheetColumnRefs={sheetColumnRefs}
               className="spreadsheet-formula-bar__tokens"
             />
             <input
