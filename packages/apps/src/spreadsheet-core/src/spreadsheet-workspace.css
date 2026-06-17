@@ -164,12 +164,8 @@
   border-top: 1px solid var(--spreadsheet-border);
 }
 
-.spreadsheet-workspace__sheet-actions {
-  @apply flex flex-wrap items-center gap-1.5;
-}
-
 .spreadsheet-workspace__stats-tags {
-  @apply ml-auto flex flex-wrap items-center gap-1.5;
+  @apply flex flex-wrap items-center gap-1.5;
 }
 
 .spreadsheet-workspace__stats-footer .tag {
@@ -346,11 +342,7 @@
   border-radius: 0.125rem;
   background-color: var(--spreadsheet-surface, #ffffff);
   border: 1px solid
-    color-mix(
-      in oklab,
-      var(--spreadsheet-accent, #0d9488) 36%,
-      var(--spreadsheet-border, #d1d5db)
-    );
+    color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 36%, var(--spreadsheet-border, #d1d5db));
   box-shadow:
     0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 24%, transparent),
     0 2px 8px rgba(17, 24, 39, 0.14);
@@ -364,11 +356,7 @@
   @apply relative box-border flex items-center rounded-sm;
   background-color: var(--spreadsheet-surface, #ffffff);
   border: 1px solid
-    color-mix(
-      in oklab,
-      var(--spreadsheet-accent, #0d9488) 40%,
-      var(--spreadsheet-border, #d1d5db)
-    );
+    color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 40%, var(--spreadsheet-border, #d1d5db));
   box-shadow:
     0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 24%, transparent),
     0 2px 8px rgba(17, 24, 39, 0.14);
