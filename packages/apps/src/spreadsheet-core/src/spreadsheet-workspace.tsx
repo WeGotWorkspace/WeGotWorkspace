@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Code2, Pencil } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { IconButton } from "@/button/src/button";
@@ -68,6 +68,10 @@ function SpreadsheetWorkspaceShell({
 }) {
   const [viewSource, setViewSource] = useState(false);
 
+  const handleSourceEscapeBlur = useCallback(() => {
+    document.getElementById("spreadsheet-workspace-source-toggle")?.focus();
+  }, []);
+
   useEffect(() => {
     setViewSource(false);
   }, [fileKey]);
@@ -120,6 +124,7 @@ function SpreadsheetWorkspaceShell({
             controller.hasFile ? (
               <div className="spreadsheet-workspace__header-actions">
                 <IconButton
+                  id="spreadsheet-workspace-source-toggle"
                   label={viewSource ? controller.labels.hideSource : controller.labels.viewSource}
                   icon={<Code2 />}
                   size="sm"
@@ -144,7 +149,13 @@ function SpreadsheetWorkspaceShell({
           }
         />
       }
-      main={<SpreadsheetMainPane controller={controller} viewSource={viewSource} />}
+      main={
+        <SpreadsheetMainPane
+          controller={controller}
+          viewSource={viewSource}
+          onSourceEscapeBlur={handleSourceEscapeBlur}
+        />
+      }
     />
   );
 }

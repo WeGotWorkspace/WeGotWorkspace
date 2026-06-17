@@ -40,6 +40,9 @@ const meta = {
   argTypes: {
     editable: { control: "boolean" },
     formatLabel: { control: "text" },
+    indentWithSpaces: { control: "boolean" },
+    tabSize: { control: "number" },
+    escapeToBlur: { control: "boolean" },
   },
 } satisfies Meta<typeof TextEditorSource>;
 
@@ -97,5 +100,17 @@ export const LongLine: Story = {
     value: `${LONG_LINE}\nSecond line`,
     editable: true,
     formatLabel: "Markdown",
+  },
+};
+
+export const TabIndent: Story = {
+  name: "Tab indent",
+  args: {
+    value: "name,age\nAlice,30\nBob,25",
+    editable: true,
+    formatLabel: "YCSV",
+    indentWithSpaces: true,
+    tabSize: 2,
+    escapeToBlur: true,
   },
 };

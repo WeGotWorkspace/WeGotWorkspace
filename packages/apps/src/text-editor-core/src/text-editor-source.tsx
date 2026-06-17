@@ -1,6 +1,7 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { textEditorSourceLines } from "@/text-editor-core/src/text-editor-source-lines";
+import { applyTextEditorSourceTabEdit } from "@/text-editor-core/src/text-editor-source-tab";
 
 export { textEditorSourceLineCount } from "@/text-editor-core/src/text-editor-source-lines";
 
@@ -12,6 +13,14 @@ export type TextEditorSourceProps = {
   editable?: boolean;
   /** Shown in `aria-label` (e.g. HTML or Markdown). */
   formatLabel?: string;
+  /** When true, Tab inserts spaces at the caret instead of moving focus. */
+  indentWithSpaces?: boolean;
+  /** Spaces inserted per Tab when `indentWithSpaces` is enabled. Defaults to 2. */
+  tabSize?: number;
+  /** When true, Escape blurs the textarea (for use with trapped Tab indent). */
+  escapeToBlur?: boolean;
+  /** Called after Escape blurs the textarea; use to restore focus elsewhere. */
+  onEscapeBlur?: () => void;
   className?: string;
 };
 
@@ -26,14 +35,23 @@ export function TextEditorSource({
   onBlur,
   editable = true,
   formatLabel = "source",
+  indentWithSpaces = false,
+  tabSize = 2,
+  escapeToBlur = false,
+  onEscapeBlur,
   className,
 }: TextEditorSourceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
+  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const [lineHeights, setLineHeights] = useState<number[]>([]);
 
   const lines = useMemo(() => textEditorSourceLines(value), [value]);
+
+  const inputAriaLabel = escapeToBlur
+    ? `${formatLabel} source. Press Escape to exit.`
+    : `${formatLabel} source`;
 
   const measureLineHeights = useCallback(() => {
     const mirror = mirrorRef.current;
@@ -56,6 +74,15 @@ export function TextEditorSource({
   }, [lines, measureLineHeights]);
 
   useLayoutEffect(() => {
+    const pending = pendingSelectionRef.current;
+    const textarea = textareaRef.current;
+    if (!pending || !textarea) return;
+    textarea.selectionStart = pending.start;
+    textarea.selectionEnd = pending.end;
+    pendingSelectionRef.current = null;
+  }, [value]);
+
+  useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const observer = new ResizeObserver(() => measureLineHeights());
@@ -69,6 +96,41 @@ export function TextEditorSource({
     if (!textarea || !gutter) return;
     gutter.scrollTop = textarea.scrollTop;
   }, []);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!editable) return;
+
+      if (escapeToBlur && event.key === "Escape") {
+        event.preventDefault();
+        textareaRef.current?.blur();
+        onEscapeBlur?.();
+        return;
+      }
+
+      if (!indentWithSpaces || event.key !== "Tab") return;
+
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      event.preventDefault();
+
+      const result = applyTextEditorSourceTabEdit(
+        value,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        tabSize,
+        event.shiftKey,
+      );
+
+      pendingSelectionRef.current = {
+        start: result.selectionStart,
+        end: result.selectionEnd,
+      };
+      onChange(result.value);
+    },
+    [editable, escapeToBlur, indentWithSpaces, onChange, onEscapeBlur, tabSize, value],
+  );
 
   return (
     <div className={cn("text-editor-source", className)}>
@@ -93,6 +155,7 @@ export function TextEditorSource({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             onScroll={syncGutterScroll}
+            onKeyDown={handleKeyDown}
             onFocus={onFocus}
             onBlur={onBlur}
             readOnly={!editable}
@@ -101,7 +164,8 @@ export function TextEditorSource({
             autoComplete="off"
             autoCorrect="off"
             wrap="soft"
-            aria-label={`${formatLabel} source`}
+            aria-label={inputAriaLabel}
+            aria-keyshortcuts={escapeToBlur ? "Escape" : undefined}
           />
           <div ref={mirrorRef} className="text-editor-source__mirror" aria-hidden>
             {lines.map((line, index) => (

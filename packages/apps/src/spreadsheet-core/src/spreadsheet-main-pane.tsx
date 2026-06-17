@@ -11,9 +11,14 @@ import type { SpreadsheetController } from "@/spreadsheet-core/src/use-spreadshe
 type SpreadsheetMainPaneProps = {
   controller: SpreadsheetController;
   viewSource: boolean;
+  onSourceEscapeBlur?: () => void;
 };
 
-export function SpreadsheetMainPane({ controller, viewSource }: SpreadsheetMainPaneProps) {
+export function SpreadsheetMainPane({
+  controller,
+  viewSource,
+  onSourceEscapeBlur,
+}: SpreadsheetMainPaneProps) {
   const handleActivateCell = useCallback(
     (p: { row: number; column: number }) => {
       // While picking, a grid click inserts a ref into the formula draft.
@@ -92,6 +97,9 @@ export function SpreadsheetMainPane({ controller, viewSource }: SpreadsheetMainP
             value={controller.source}
             onChange={controller.onSourceChange}
             formatLabel="YCSV"
+            indentWithSpaces
+            escapeToBlur
+            onEscapeBlur={onSourceEscapeBlur}
           />
         </div>
       ) : null}

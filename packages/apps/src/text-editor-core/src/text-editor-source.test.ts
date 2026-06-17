@@ -3,6 +3,7 @@ import {
   textEditorSourceLineCount,
   textEditorSourceLines,
 } from "@/text-editor-core/src/text-editor-source-lines";
+import { applyTextEditorSourceTabEdit } from "@/text-editor-core/src/text-editor-source-tab";
 
 describe("textEditorSourceLines", () => {
   it("returns a single empty line for empty buffer", () => {
@@ -26,5 +27,54 @@ describe("textEditorSourceLineCount", () => {
 
   it("normalizes CRLF", () => {
     expect(textEditorSourceLineCount("a\r\nb")).toBe(2);
+  });
+});
+
+describe("applyTextEditorSourceTabEdit", () => {
+  it("inserts spaces at a collapsed caret", () => {
+    const result = applyTextEditorSourceTabEdit("hello", 2, 2, 2);
+    expect(result).toEqual({
+      value: "he  llo",
+      selectionStart: 4,
+      selectionEnd: 4,
+    });
+  });
+
+  it("replaces a single-line selection with spaces", () => {
+    const result = applyTextEditorSourceTabEdit("hello world", 6, 11, 2);
+    expect(result).toEqual({
+      value: "hello   ",
+      selectionStart: 8,
+      selectionEnd: 8,
+    });
+  });
+
+  it("indents each line in a multi-line selection", () => {
+    const source = "alpha\nbeta\ngamma";
+    const result = applyTextEditorSourceTabEdit(source, 0, source.length, 2);
+    expect(result).toEqual({
+      value: "  alpha\n  beta\n  gamma",
+      selectionStart: 2,
+      selectionEnd: source.length + 6,
+    });
+  });
+
+  it("outdent removes leading spaces on the current line", () => {
+    const result = applyTextEditorSourceTabEdit("  hello", 4, 4, 2, true);
+    expect(result).toEqual({
+      value: "hello",
+      selectionStart: 2,
+      selectionEnd: 2,
+    });
+  });
+
+  it("outdent removes leading spaces from each selected line", () => {
+    const source = "  alpha\n    beta";
+    const result = applyTextEditorSourceTabEdit(source, 0, source.length, 2, true);
+    expect(result).toEqual({
+      value: "alpha\n  beta",
+      selectionStart: 0,
+      selectionEnd: source.length - 4,
+    });
   });
 });
