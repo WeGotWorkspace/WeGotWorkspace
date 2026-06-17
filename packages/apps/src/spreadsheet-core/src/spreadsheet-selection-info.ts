@@ -8,6 +8,60 @@ export type SpreadsheetSelectionInfo = {
   multi: boolean;
 };
 
+export type SpreadsheetCellPoint = { row: number; column: number };
+
+/** Expand a grid selection into parent-matrix cell coordinates for bulk edits. */
+export function cellsInGridSelection(
+  selection: SpreadsheetGridSelection,
+  columnCount: number,
+  matrixRowCount: number,
+  viewOffset = 1,
+): SpreadsheetCellPoint[] {
+  if (!selection || columnCount <= 0 || matrixRowCount <= 0) return [];
+
+  const dataRowStart = Math.min(viewOffset, matrixRowCount - 1);
+  const dataRowEnd = matrixRowCount - 1;
+
+  if (selection.kind === "cell") {
+    return [{ row: selection.row, column: selection.column }];
+  }
+
+  if (selection.kind === "range") {
+    const r1 = Math.min(selection.start.row, selection.end.row);
+    const r2 = Math.max(selection.start.row, selection.end.row);
+    const c1 = Math.min(selection.start.column, selection.end.column);
+    const c2 = Math.max(selection.start.column, selection.end.column);
+    const out: SpreadsheetCellPoint[] = [];
+    for (let row = r1; row <= r2; row++) {
+      for (let column = c1; column <= c2; column++) out.push({ row, column });
+    }
+    return out;
+  }
+
+  if (selection.kind === "rows") {
+    const r1 = Math.max(dataRowStart, Math.min(selection.start, selection.end));
+    const r2 = Math.max(selection.start, selection.end);
+    if (r1 > r2 || r1 > dataRowEnd) return [];
+    const out: SpreadsheetCellPoint[] = [];
+    for (let row = r1; row <= r2; row++) {
+      for (let column = 0; column < columnCount; column++) out.push({ row, column });
+    }
+    return out;
+  }
+
+  if (selection.kind === "cols") {
+    const c1 = Math.min(selection.start, selection.end);
+    const c2 = Math.max(selection.start, selection.end);
+    const out: SpreadsheetCellPoint[] = [];
+    for (let column = c1; column <= c2; column++) {
+      for (let row = dataRowStart; row <= dataRowEnd; row++) out.push({ row, column });
+    }
+    return out;
+  }
+
+  return [];
+}
+
 function colLabelOf(columnSettings: ColumnSetting[], column: number): string {
   const cs = columnSettings[column];
   if (cs?.ref && /^[a-z][a-z0-9_]*$/.test(cs.ref)) return cs.ref;
@@ -39,7 +93,10 @@ export function selectionInfoFromGridSelection(
   if (selection.kind === "cols") {
     const c1 = Math.min(selection.start, selection.end);
     const c2 = Math.max(selection.start, selection.end);
-    const label = c1 === c2 ? colLabelOf(columnSettings, c1) : `${colLabelOf(columnSettings, c1)}:${colLabelOf(columnSettings, c2)}`;
+    const label =
+      c1 === c2
+        ? colLabelOf(columnSettings, c1)
+        : `${colLabelOf(columnSettings, c1)}:${colLabelOf(columnSettings, c2)}`;
     const count = c2 - c1 + 1;
     return {
       label,
@@ -64,7 +121,10 @@ export function selectionInfoFromGridSelection(
   }
 
   if (selection.kind === "range") {
-    if (selection.start.row === selection.end.row && selection.start.column === selection.end.column) {
+    if (
+      selection.start.row === selection.end.row &&
+      selection.start.column === selection.end.column
+    ) {
       return null;
     }
     const count =

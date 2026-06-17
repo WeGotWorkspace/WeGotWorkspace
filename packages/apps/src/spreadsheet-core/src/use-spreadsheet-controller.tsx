@@ -36,7 +36,15 @@ import {
 } from "@/spreadsheet-core/src/formula-ref-pick";
 import type { SpreadsheetGridSelection } from "@/spreadsheet-core/src/spreadsheet-grid";
 import { evaluateWorkbook } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
-import { selectionInfoFromGridSelection } from "@/spreadsheet-core/src/spreadsheet-selection-info";
+import {
+  selectionInfoFromGridSelection,
+  cellsInGridSelection,
+} from "@/spreadsheet-core/src/spreadsheet-selection-info";
+import {
+  applyStyleToSheet,
+  selectionStyleState,
+  toggleBooleanStyle,
+} from "@/spreadsheet-core/src/spreadsheet-cell-styles";
 import {
   appendAutoColumnWidth,
   computeAutoColumnWidth,
@@ -490,6 +498,48 @@ export function useSpreadsheetController({
     [activeSheet, applyWorkbookChange, safeSheetIndex, workbook],
   );
 
+  const clearSelection = useCallback((): boolean => {
+    if (!activeSheet) return false;
+    const targetSelection =
+      selection ??
+      (activeCell
+        ? ({ kind: "cell", row: activeCell.row, column: activeCell.column } as const)
+        : null);
+    if (!targetSelection) return false;
+
+    const points = cellsInGridSelection(targetSelection, columnSettings.length, rawData.length, 1);
+    if (!points.length) return false;
+
+    const matrix = sheetToMatrix(activeSheet).map((r) => r.map((c) => ({ value: c.value ?? "" })));
+    let changed = false;
+    for (const { row, column } of points) {
+      if (row < 0 || column < 0) continue;
+      while (matrix.length <= row) {
+        matrix.push(matrix[0]?.map(() => ({ value: "" })) ?? [{ value: "" }]);
+      }
+      const targetRow = matrix[row];
+      while (targetRow.length <= column) targetRow.push({ value: "" });
+      if ((targetRow[column]?.value ?? "") !== "") {
+        targetRow[column] = { value: "" };
+        changed = true;
+      }
+    }
+    if (!changed) return false;
+
+    const nextWorkbook = workbookWithSheetMatrix(workbook, safeSheetIndex, matrix);
+    applyWorkbookChange(nextWorkbook, "immediate");
+    return true;
+  }, [
+    activeCell,
+    activeSheet,
+    applyWorkbookChange,
+    columnSettings.length,
+    rawData.length,
+    safeSheetIndex,
+    selection,
+    workbook,
+  ]);
+
   const addRow = useCallback(() => {
     if (!activeSheet) return;
     const colLen = Math.max(1, activeSheet.columnSettings.length);
@@ -914,6 +964,44 @@ export function useSpreadsheetController({
     [L, columnSettings, selection],
   );
 
+  const selectionStyle = useMemo(
+    () => (activeSheet ? selectionStyleState(selection, activeSheet) : null),
+    [activeSheet, selection],
+  );
+
+  const hasStyleSelection = selection != null;
+
+  const applyStyleToSelection = useCallback(
+    (patch: { bold?: boolean; border?: boolean; fill?: string | null }) => {
+      if (!activeSheet || !selection) return;
+      const stylePatch = {
+        ...(patch.bold !== undefined ? { bold: patch.bold } : {}),
+        ...(patch.border !== undefined ? { border: patch.border } : {}),
+        ...(patch.fill !== undefined ? { fill: patch.fill ?? undefined } : {}),
+      };
+      const nextSheet = applyStyleToSheet(activeSheet, selection, stylePatch);
+      applyWorkbookChange(workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet));
+    },
+    [activeSheet, applyWorkbookChange, safeSheetIndex, selection, workbook],
+  );
+
+  const toggleBoldOnSelection = useCallback(() => {
+    if (!selectionStyle) return;
+    applyStyleToSelection({ bold: toggleBooleanStyle(selectionStyle.bold) });
+  }, [applyStyleToSelection, selectionStyle]);
+
+  const toggleBorderOnSelection = useCallback(() => {
+    if (!selectionStyle) return;
+    applyStyleToSelection({ border: toggleBooleanStyle(selectionStyle.border) });
+  }, [applyStyleToSelection, selectionStyle]);
+
+  const setFillOnSelection = useCallback(
+    (fill: string | null) => {
+      applyStyleToSelection({ fill });
+    },
+    [applyStyleToSelection],
+  );
+
   const title = document?.fileName ?? (filePath ? fileNameFromApiPath(filePath) : "");
 
   const openRenameDialog = useCallback(() => {
@@ -1000,7 +1088,14 @@ export function useSpreadsheetController({
     selection,
     setSelection,
     selectionInfo,
+    selectionStyle,
+    hasStyleSelection,
+    applyStyleToSelection,
+    toggleBoldOnSelection,
+    toggleBorderOnSelection,
+    setFillOnSelection,
     writeCell,
+    clearSelection,
     addRow,
     addColumn,
     addSheet,

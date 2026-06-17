@@ -81,7 +81,9 @@ function SpreadsheetWorkspaceShell({
   useSpreadsheetKeyboardShortcuts({
     undo: controller.undo,
     redo: controller.redo,
+    clearSelection: controller.clearSelection,
     viewSource,
+    formulaBarEditing: controller.fbEditing,
   });
 
   return (

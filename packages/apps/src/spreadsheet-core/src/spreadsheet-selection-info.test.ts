@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { mergeSpreadsheetLabels } from "@/spreadsheet-core/src/spreadsheet-labels";
-import { selectionInfoFromGridSelection } from "@/spreadsheet-core/src/spreadsheet-selection-info";
+import {
+  cellsInGridSelection,
+  selectionInfoFromGridSelection,
+} from "@/spreadsheet-core/src/spreadsheet-selection-info";
 
 const labels = mergeSpreadsheetLabels();
 const columnSettings = [
@@ -43,5 +46,80 @@ describe("selectionInfoFromGridSelection", () => {
     expect(
       selectionInfoFromGridSelection({ kind: "cell", row: 1, column: 0 }, columnSettings, labels),
     ).toBeNull();
+  });
+});
+
+describe("cellsInGridSelection", () => {
+  const columnCount = 3;
+  const matrixRowCount = 5; // row 0 = header, rows 1–4 = data
+  const viewOffset = 1;
+
+  it("returns a single cell", () => {
+    expect(
+      cellsInGridSelection(
+        { kind: "cell", row: 2, column: 1 },
+        columnCount,
+        matrixRowCount,
+        viewOffset,
+      ),
+    ).toEqual([{ row: 2, column: 1 }]);
+  });
+
+  it("expands a rectangular range", () => {
+    expect(
+      cellsInGridSelection(
+        {
+          kind: "range",
+          start: { row: 1, column: 0 },
+          end: { row: 2, column: 1 },
+        },
+        columnCount,
+        matrixRowCount,
+        viewOffset,
+      ),
+    ).toEqual([
+      { row: 1, column: 0 },
+      { row: 1, column: 1 },
+      { row: 2, column: 0 },
+      { row: 2, column: 1 },
+    ]);
+  });
+
+  it("expands row selection across all columns and skips the header row", () => {
+    expect(
+      cellsInGridSelection(
+        { kind: "rows", start: 0, end: 2 },
+        columnCount,
+        matrixRowCount,
+        viewOffset,
+      ),
+    ).toEqual([
+      { row: 1, column: 0 },
+      { row: 1, column: 1 },
+      { row: 1, column: 2 },
+      { row: 2, column: 0 },
+      { row: 2, column: 1 },
+      { row: 2, column: 2 },
+    ]);
+  });
+
+  it("expands column selection across all data rows", () => {
+    expect(
+      cellsInGridSelection(
+        { kind: "cols", start: 0, end: 1 },
+        columnCount,
+        matrixRowCount,
+        viewOffset,
+      ),
+    ).toEqual([
+      { row: 1, column: 0 },
+      { row: 2, column: 0 },
+      { row: 3, column: 0 },
+      { row: 4, column: 0 },
+      { row: 1, column: 1 },
+      { row: 2, column: 1 },
+      { row: 3, column: 1 },
+      { row: 4, column: 1 },
+    ]);
   });
 });
