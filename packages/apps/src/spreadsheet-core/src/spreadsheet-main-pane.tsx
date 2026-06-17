@@ -84,6 +84,10 @@ export function SpreadsheetMainPane({
             onActivateCell={handleActivateCell}
             onSelect={handleSelect}
             writeCell={controller.writeCell}
+            onAddRow={controller.addRow}
+            onAddColumn={controller.addColumn}
+            addRowLabel={controller.labels.addRow}
+            addColumnLabel={controller.labels.addColumn}
             picking={controller.picking}
           />
         </div>
