@@ -38,6 +38,10 @@ import {
   type SheetColumnWidthState,
 } from "@/spreadsheet-core/src/spreadsheet-column-widths";
 import {
+  extractSheetLocalDefs,
+  mergeSheetDefs,
+} from "@/spreadsheet-core/src/spreadsheet-defs-utils";
+import {
   captureSpreadsheetSnapshot,
   popSpreadsheetRedo,
   popSpreadsheetUndo,
@@ -97,6 +101,28 @@ function workbookWithActiveSheet(
   };
 }
 
+function sheetWithColumnSettings(sheet: ParsedSheet, columnSettings: ColumnSetting[]): ParsedSheet {
+  const colCount = columnSettings.length;
+  const refs = columnSettings.map((column, index) => column.ref ?? colLetter(index));
+  const headers = columnSettings.map(
+    (column, index) => column.name ?? column.ref ?? colLetter(index),
+  );
+  const rows = sheet.rows.map((row) => {
+    const next = row.slice(0, colCount);
+    while (next.length < colCount) next.push("");
+    return next;
+  });
+  return { ...sheet, columnSettings, refs, headers, rows };
+}
+
+function sheetWithMergedDefs(
+  sheet: ParsedSheet,
+  workbookDefs: Defs,
+  sheetLocalDefs: Defs,
+): ParsedSheet {
+  return { ...sheet, defs: mergeSheetDefs(workbookDefs, sheetLocalDefs) };
+}
+
 function nextSheetRef(sheets: ParsedSheet[]): string {
   const used = new Set(sheets.map((sheet) => sheet.ref));
   let n = 1;
@@ -126,6 +152,7 @@ export function useSpreadsheetController({
   const [activeCell, setActiveCell] = useState<{ row: number; column: number } | null>(null);
   const [selection, setSelection] = useState<SpreadsheetGridSelection>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [schemaPanelOpen, setSchemaPanelOpen] = useState(false);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
@@ -519,6 +546,57 @@ export function useSpreadsheetController({
     [autoColumnWidths, pushDebouncedHistory, sheetWidthKey],
   );
 
+  const updateDefs = useCallback(
+    (nextWorkbookDefs: Defs, nextSheetLocalDefs: Defs) => {
+      if (!activeSheet) return;
+      applyWorkbookChange(
+        {
+          ...workbook,
+          defs: nextWorkbookDefs,
+          sheets: workbook.sheets.map((sheet, index) => {
+            const localDefs =
+              index === safeSheetIndex
+                ? nextSheetLocalDefs
+                : extractSheetLocalDefs(sheet.defs, workbook.defs);
+            return sheetWithMergedDefs(sheet, nextWorkbookDefs, localDefs);
+          }),
+        },
+        "debounced",
+      );
+    },
+    [activeSheet, applyWorkbookChange, safeSheetIndex, workbook],
+  );
+
+  const updateColumnSettings = useCallback(
+    (nextColumnSettings: ColumnSetting[]) => {
+      if (!activeSheet) return;
+      const nextSheet = sheetWithColumnSettings(activeSheet, nextColumnSettings);
+      const nextMatrix = sheetToMatrix(nextSheet);
+      const nextComputed = evaluateWorkbook(
+        workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet),
+      )[safeSheetIndex];
+      const nextAutoWidths = computeAutoColumnWidths(
+        nextColumnSettings.length,
+        nextColumnSettings,
+        nextMatrix,
+        nextComputed ?? [],
+        1,
+      );
+      setColumnWidthsBySheet((prev) => ({
+        ...prev,
+        [sheetWidthKey]: {
+          widths: nextAutoWidths,
+          manualCols: new Set<number>(),
+        },
+      }));
+      applyWorkbookChange(
+        workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet),
+        "debounced",
+      );
+    },
+    [activeSheet, applyWorkbookChange, safeSheetIndex, sheetWidthKey, workbook],
+  );
+
   const addSheet = useCallback(() => {
     const ref = nextSheetRef(workbook.sheets);
     const nextSheet = createDefaultSheet(ref);
@@ -852,6 +930,10 @@ export function useSpreadsheetController({
     insertRefAtCaret,
     sidebarOpen,
     setSidebarOpen,
+    schemaPanelOpen,
+    setSchemaPanelOpen,
+    updateDefs,
+    updateColumnSettings,
     renameDialogOpen,
     renameName,
     setRenameName,

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { SpreadsheetFormulaBar } from "@/spreadsheet-core/src/spreadsheet-formula-bar";
+import { SpreadsheetSchemaPanel } from "@/spreadsheet-core/src/spreadsheet-schema-panel";
 import { SpreadsheetStatsFooter } from "@/spreadsheet-core/src/spreadsheet-stats-footer";
 import {
   SpreadsheetGrid,
@@ -99,6 +100,15 @@ export function SpreadsheetMainPane({
         </div>
         <SpreadsheetStatsFooter controller={controller} />
       </div>
+      {controller.schemaPanelOpen ? (
+        <SpreadsheetSchemaPanel
+          workbook={controller.workbook}
+          activeSheetIndex={controller.activeSheetIndex}
+          labels={controller.labels}
+          onDefsChange={controller.updateDefs}
+          onColumnsChange={controller.updateColumnSettings}
+        />
+      ) : null}
       {viewSource ? (
         <div className="spreadsheet-workspace__source">
           <TextEditorSource

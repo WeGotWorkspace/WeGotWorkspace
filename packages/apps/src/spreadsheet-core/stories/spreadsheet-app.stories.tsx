@@ -341,3 +341,46 @@ export const Empty: Story = {
     onLogout: () => {},
   },
 };
+
+export const SchemaPanel: Story = {
+  name: "Schema panel",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+
+    await step("Open the schema panel", async () => {
+      await userEvent.click(await canvas.findByRole("button", { name: "Schema" }));
+    });
+
+    await step("Defs and column editors are visible", async () => {
+      await waitFor(() => {
+        expect(canvas.getByRole("complementary", { name: "Sheet schema" })).toBeInTheDocument();
+        expect(canvas.getByText("Defs")).toBeInTheDocument();
+        expect(canvas.getByText("Columns")).toBeInTheDocument();
+        expect(canvas.getByDisplayValue("btw")).toBeInTheDocument();
+        expect(canvas.getByDisplayValue("product")).toBeInTheDocument();
+        expect(canvas.getByDisplayValue("Prijs ex. BTW")).toBeInTheDocument();
+      });
+    });
+
+    await step("Editing a def updates serialized YCSV", async () => {
+      const btwInput = canvas.getByDisplayValue("0.21");
+      await userEvent.clear(btwInput);
+      await userEvent.type(btwInput, "0.19");
+      await userEvent.click(await canvas.findByRole("button", { name: "Edit source" }));
+      const source = await canvas.findByRole<HTMLTextAreaElement>("textbox", {
+        name: /YCSV source/,
+      });
+      await waitFor(() => {
+        expect(source.value).toContain("btw: 0.19");
+      });
+    });
+  },
+};

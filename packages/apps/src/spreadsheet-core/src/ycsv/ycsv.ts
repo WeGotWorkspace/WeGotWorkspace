@@ -452,9 +452,25 @@ function hasExplicitColumnMetadata(columnSettings: ColumnSetting[]): boolean {
   });
 }
 
-function serializeSheetFrontmatterEntry(sheet: ParsedSheet): Record<string, unknown> {
+function sheetLocalDefsForSerialize(sheet: ParsedSheet, workbookDefs: Defs): Defs {
+  const local: Defs = {};
+  for (const [key, value] of Object.entries(sheet.defs)) {
+    const workbookValue = workbookDefs[key];
+    if (workbookValue === undefined || JSON.stringify(workbookValue) !== JSON.stringify(value)) {
+      local[key] = value;
+    }
+  }
+  return local;
+}
+
+function serializeSheetFrontmatterEntry(
+  sheet: ParsedSheet,
+  workbookDefs: Defs,
+): Record<string, unknown> {
   const entry: Record<string, unknown> = { ref: sheet.ref };
   if (sheet.name && sheet.name !== sheet.ref) entry.name = sheet.name;
+  const localDefs = sheetLocalDefsForSerialize(sheet, workbookDefs);
+  if (Object.keys(localDefs).length) entry.defs = { ...localDefs };
   if (hasExplicitColumnMetadata(sheet.columnSettings)) {
     entry.columns = serializeColumns(sheet.columnSettings);
   }
@@ -469,7 +485,9 @@ export function serializeYcsv(workbook: ParsedWorkbook): string {
 
   const multiSheet = workbook.sheets.length > 1;
   if (multiSheet) {
-    fm.sheets = workbook.sheets.map(serializeSheetFrontmatterEntry);
+    fm.sheets = workbook.sheets.map((sheet) =>
+      serializeSheetFrontmatterEntry(sheet, workbook.defs),
+    );
   } else {
     const sheet = workbook.sheets[0];
     if (sheet && hasExplicitColumnMetadata(sheet.columnSettings)) {

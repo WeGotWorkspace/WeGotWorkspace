@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Code2, Pencil, Redo2, Undo2 } from "lucide-react";
+import { Code2, Columns3, Pencil, Redo2, Undo2 } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -161,6 +161,24 @@ function SpreadsheetWorkspaceShell({
                     viewSource ? "spreadsheet-workspace__source-toggle--active" : undefined
                   }
                   onClick={() => setViewSource((on) => !on)}
+                />
+                <IconButton
+                  label={
+                    controller.schemaPanelOpen
+                      ? controller.labels.schemaPanelClose
+                      : controller.labels.schemaPanelToggle
+                  }
+                  icon={<Columns3 />}
+                  size="sm"
+                  variant="subtle"
+                  active={controller.schemaPanelOpen}
+                  aria-pressed={controller.schemaPanelOpen}
+                  className={
+                    controller.schemaPanelOpen
+                      ? "spreadsheet-workspace__schema-toggle--active"
+                      : undefined
+                  }
+                  onClick={() => controller.setSchemaPanelOpen((open) => !open)}
                 />
                 <IconButton
                   label={controller.labels.rename}
