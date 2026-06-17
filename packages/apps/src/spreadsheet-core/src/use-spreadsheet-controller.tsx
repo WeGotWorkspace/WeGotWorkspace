@@ -14,11 +14,12 @@ import type {
 } from "@/spreadsheet-core/src/spreadsheet-types";
 import {
   colLetter,
+  createDefaultSheet,
+  DEFAULT_EMPTY_YCSV,
   matrixToSheet,
   parseYcsv,
   serializeYcsv,
   sheetToMatrix,
-  YCSV_VERSION,
   type ColumnSetting,
   type Defs,
   type ParsedSheet,
@@ -36,12 +37,22 @@ import {
   resolveSheetColumnWidths,
   type SheetColumnWidthState,
 } from "@/spreadsheet-core/src/spreadsheet-column-widths";
+import {
+  captureSpreadsheetSnapshot,
+  popSpreadsheetRedo,
+  popSpreadsheetUndo,
+  pushSpreadsheetHistory,
+  type SpreadsheetHistorySnapshot,
+} from "@/spreadsheet-core/src/spreadsheet-history";
 
 const SAVE_DEBOUNCE_MS = 2500;
+const CELL_HISTORY_DEBOUNCE_MS = 800;
+const SOURCE_HISTORY_DEBOUNCE_MS = 800;
+const COLUMN_RESIZE_HISTORY_DEBOUNCE_MS = 500;
 const AUTO_SAVE_TOAST_DEBOUNCE_MS = 1200;
 const AUTO_SAVE_TOAST_THROTTLE_MS = 8000;
 
-const EMPTY_YCSV = `---\nycsv_version: ${YCSV_VERSION}\n---\n`;
+const EMPTY_YCSV = DEFAULT_EMPTY_YCSV;
 
 type UseSpreadsheetControllerArgs = {
   filePath: string | null;
@@ -93,22 +104,6 @@ function nextSheetRef(sheets: ParsedSheet[]): string {
   return `sheet${n}`;
 }
 
-function createDefaultSheet(ref: string): ParsedSheet {
-  const letter = colLetter(0);
-  const columnSettings: ColumnSetting[] = [{ ref: letter, name: letter, refExplicit: false }];
-  const refs = [letter];
-  return {
-    ref,
-    name: ref,
-    columnSettings,
-    defs: {},
-    refs,
-    headers: ["A"],
-    rows: [],
-    hadHeader: true,
-  };
-}
-
 export function useSpreadsheetController({
   filePath,
   labels,
@@ -154,6 +149,79 @@ export function useSpreadsheetController({
   const [columnWidthsBySheet, setColumnWidthsBySheet] = useState<
     Record<string, SheetColumnWidthState>
   >({});
+  const [undoStack, setUndoStack] = useState<SpreadsheetHistorySnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<SpreadsheetHistorySnapshot[]>([]);
+
+  const historyStateRef = useRef({
+    source,
+    workbookOverride,
+    activeSheetIndex,
+    activeCell,
+    selection,
+    columnWidthsBySheet,
+  });
+  const cellHistoryArmedRef = useRef(false);
+  const cellHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sourceHistoryArmedRef = useRef(false);
+  const sourceHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const columnResizeHistoryArmedRef = useRef(false);
+  const columnResizeHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    historyStateRef.current = {
+      source,
+      workbookOverride,
+      activeSheetIndex,
+      activeCell,
+      selection,
+      columnWidthsBySheet,
+    };
+  }, [activeCell, activeSheetIndex, columnWidthsBySheet, selection, source, workbookOverride]);
+
+  const clearHistory = useCallback(() => {
+    setUndoStack([]);
+    setRedoStack([]);
+    cellHistoryArmedRef.current = false;
+    sourceHistoryArmedRef.current = false;
+    columnResizeHistoryArmedRef.current = false;
+    if (cellHistoryTimerRef.current) {
+      clearTimeout(cellHistoryTimerRef.current);
+      cellHistoryTimerRef.current = null;
+    }
+    if (sourceHistoryTimerRef.current) {
+      clearTimeout(sourceHistoryTimerRef.current);
+      sourceHistoryTimerRef.current = null;
+    }
+    if (columnResizeHistoryTimerRef.current) {
+      clearTimeout(columnResizeHistoryTimerRef.current);
+      columnResizeHistoryTimerRef.current = null;
+    }
+  }, []);
+
+  const pushHistory = useCallback(() => {
+    const snapshot = captureSpreadsheetSnapshot(historyStateRef.current);
+    setUndoStack((current) => pushSpreadsheetHistory(current, snapshot));
+    setRedoStack([]);
+  }, []);
+
+  const pushDebouncedHistory = useCallback(
+    (
+      armedRef: { current: boolean },
+      timerRef: { current: ReturnType<typeof setTimeout> | null },
+      debounceMs: number,
+    ) => {
+      if (!armedRef.current) {
+        pushHistory();
+        armedRef.current = true;
+      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        armedRef.current = false;
+        timerRef.current = null;
+      }, debounceMs);
+    },
+    [pushHistory],
+  );
 
   const workbookFromSource = useMemo<ParsedWorkbook>(() => {
     try {
@@ -287,6 +355,7 @@ export function useSpreadsheetController({
     setParseError(null);
     setWorkbookOverride(null);
     setColumnWidthsBySheet({});
+    clearHistory();
 
     if (!filePath) {
       setDocument(initialDocument);
@@ -330,12 +399,15 @@ export function useSpreadsheetController({
     return () => {
       cancelled = true;
     };
-  }, [filePath, initialDocument, operations]);
+  }, [filePath, initialDocument, operations, clearHistory]);
 
   useEffect(
     () => () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       if (autoSaveToastTimerRef.current) clearTimeout(autoSaveToastTimerRef.current);
+      if (cellHistoryTimerRef.current) clearTimeout(cellHistoryTimerRef.current);
+      if (sourceHistoryTimerRef.current) clearTimeout(sourceHistoryTimerRef.current);
+      if (columnResizeHistoryTimerRef.current) clearTimeout(columnResizeHistoryTimerRef.current);
       const pending = pendingContentRef.current;
       if (pending != null && latestPathRef.current && operations) {
         void operations.saveFile(latestPathRef.current, pending).catch(() => {});
@@ -353,16 +425,22 @@ export function useSpreadsheetController({
     [scheduleSave],
   );
 
+  type WorkbookUndoMode = "immediate" | "debounced" | "none";
+
   const applyWorkbookChange = useCallback(
-    (nextWorkbook: ParsedWorkbook) => {
+    (nextWorkbook: ParsedWorkbook, undoMode: WorkbookUndoMode = "immediate") => {
+      if (undoMode === "immediate") pushHistory();
+      else if (undoMode === "debounced") {
+        pushDebouncedHistory(cellHistoryArmedRef, cellHistoryTimerRef, CELL_HISTORY_DEBOUNCE_MS);
+      }
       setWorkbookOverride(nextWorkbook);
       applySource(serializeYcsv(nextWorkbook));
     },
-    [applySource],
+    [applySource, pushDebouncedHistory, pushHistory],
   );
 
   const writeCell = useCallback(
-    (row: number, column: number, value: string) => {
+    (row: number, column: number, value: string, undoMode: WorkbookUndoMode = "debounced") => {
       if (!activeSheet) return;
       const matrix = sheetToMatrix(activeSheet).map((r) => r.map((c) => ({ value: c.value })));
       while (matrix.length <= row) {
@@ -372,7 +450,7 @@ export function useSpreadsheetController({
       while (targetRow.length <= column) targetRow.push({ value: "" });
       targetRow[column] = { value };
       const nextWorkbook = workbookWithSheetMatrix(workbook, safeSheetIndex, matrix);
-      applyWorkbookChange(nextWorkbook);
+      applyWorkbookChange(nextWorkbook, undoMode);
     },
     [activeSheet, applyWorkbookChange, safeSheetIndex, workbook],
   );
@@ -420,6 +498,11 @@ export function useSpreadsheetController({
 
   const setColumnWidth = useCallback(
     (column: number, width: number) => {
+      pushDebouncedHistory(
+        columnResizeHistoryArmedRef,
+        columnResizeHistoryTimerRef,
+        COLUMN_RESIZE_HISTORY_DEBOUNCE_MS,
+      );
       setColumnWidthsBySheet((prev) => {
         const current = prev[sheetWidthKey] ?? {
           widths: [...autoColumnWidths],
@@ -433,7 +516,7 @@ export function useSpreadsheetController({
         return { ...prev, [sheetWidthKey]: { widths, manualCols } };
       });
     },
-    [autoColumnWidths, sheetWidthKey],
+    [autoColumnWidths, pushDebouncedHistory, sheetWidthKey],
   );
 
   const addSheet = useCallback(() => {
@@ -528,6 +611,11 @@ export function useSpreadsheetController({
 
   const onSourceChange = useCallback(
     (next: string) => {
+      pushDebouncedHistory(
+        sourceHistoryArmedRef,
+        sourceHistoryTimerRef,
+        SOURCE_HISTORY_DEBOUNCE_MS,
+      );
       setWorkbookOverride(null);
       setColumnWidthsBySheet((prev) => {
         if (!prev[sheetWidthKey]) return prev;
@@ -543,7 +631,7 @@ export function useSpreadsheetController({
       }
       applySource(next);
     },
-    [L.parseError, applySource, sheetWidthKey],
+    [L.parseError, applySource, pushDebouncedHistory, sheetWidthKey],
   );
 
   // Formula-bar editing of the active cell.
@@ -572,10 +660,54 @@ export function useSpreadsheetController({
       setFbEditing(false);
       setFbDraft("");
       if (!activeCell) return;
-      writeCell(activeCell.row, activeCell.column, value);
+      writeCell(activeCell.row, activeCell.column, value, "immediate");
     },
     [activeCell, writeCell],
   );
+
+  const applySnapshot = useCallback(
+    (snapshot: SpreadsheetHistorySnapshot) => {
+      setWorkbookOverride(snapshot.workbookOverride);
+      setSource(snapshot.source);
+      setActiveSheetIndex(snapshot.activeSheetIndex);
+      setActiveCell(snapshot.activeCell);
+      setSelection(snapshot.selection);
+      setColumnWidthsBySheet(snapshot.columnWidthsBySheet);
+      setFbEditing(false);
+      setFbDraft("");
+      try {
+        const parsed = parseYcsv(snapshot.source);
+        setParseError(parsed.warnings.find((w) => w.includes("not valid YAML")) ?? null);
+      } catch {
+        setParseError(L.parseError);
+      }
+      scheduleSave(snapshot.source);
+    },
+    [L.parseError, scheduleSave],
+  );
+
+  const undo = useCallback(() => {
+    const popped = popSpreadsheetUndo(undoStack);
+    if (!popped) return false;
+    const current = captureSpreadsheetSnapshot(historyStateRef.current);
+    setUndoStack(popped.undo);
+    setRedoStack((currentRedo) => pushSpreadsheetHistory(currentRedo, current));
+    applySnapshot(popped.snapshot);
+    return true;
+  }, [applySnapshot, undoStack]);
+
+  const redo = useCallback(() => {
+    const popped = popSpreadsheetRedo(redoStack);
+    if (!popped) return false;
+    const current = captureSpreadsheetSnapshot(historyStateRef.current);
+    setRedoStack(popped.redo);
+    setUndoStack((currentUndo) => pushSpreadsheetHistory(currentUndo, current));
+    applySnapshot(popped.snapshot);
+    return true;
+  }, [applySnapshot, redoStack]);
+
+  const canUndo = undoStack.length > 0;
+  const canRedo = redoStack.length > 0;
 
   // Picking mode: editing a formula whose caret sits in an "open" reference slot.
   const picking =
@@ -728,6 +860,10 @@ export function useSpreadsheetController({
     openRenameDialog,
     closeRenameDialog,
     submitRename,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }
 

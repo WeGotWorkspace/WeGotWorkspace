@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Code2, Pencil } from "lucide-react";
+import { Code2, Pencil, Redo2, Undo2 } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -14,6 +14,7 @@ import { SpreadsheetMainPane } from "@/spreadsheet-core/src/spreadsheet-main-pan
 import { SpreadsheetSheetsSidebar } from "@/spreadsheet-core/src/spreadsheet-sheets-sidebar";
 import { SpreadsheetWorkspaceModals } from "@/spreadsheet-core/src/spreadsheet-workspace-modals";
 import { useSpreadsheetController } from "@/spreadsheet-core/src/use-spreadsheet-controller";
+import { useSpreadsheetKeyboardShortcuts } from "@/spreadsheet-core/src/use-spreadsheet-keyboard-shortcuts";
 import type { SpreadsheetWorkspaceProps } from "@/spreadsheet-core/src/spreadsheet-workspace-props";
 import "@/spreadsheet-core/src/spreadsheet-workspace.css";
 
@@ -77,6 +78,12 @@ function SpreadsheetWorkspaceShell({
     setViewSource(false);
   }, [fileKey]);
 
+  useSpreadsheetKeyboardShortcuts({
+    undo: controller.undo,
+    redo: controller.redo,
+    viewSource,
+  });
+
   return (
     <WorkspaceAppLayout
       className={cn(
@@ -126,6 +133,22 @@ function SpreadsheetWorkspaceShell({
           actions={
             controller.hasFile ? (
               <div className="spreadsheet-workspace__header-actions">
+                <IconButton
+                  label={controller.labels.undo}
+                  icon={<Undo2 />}
+                  size="sm"
+                  variant="subtle"
+                  disabled={!controller.canUndo}
+                  onClick={controller.undo}
+                />
+                <IconButton
+                  label={controller.labels.redo}
+                  icon={<Redo2 />}
+                  size="sm"
+                  variant="subtle"
+                  disabled={!controller.canRedo}
+                  onClick={controller.redo}
+                />
                 <IconButton
                   id="spreadsheet-workspace-source-toggle"
                   label={viewSource ? controller.labels.hideSource : controller.labels.viewSource}
