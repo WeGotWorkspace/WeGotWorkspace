@@ -332,6 +332,17 @@
 }
 
 /* ── Formula token overlay (shared by formula bar + cell editor) ───────── */
+/*
+ * Syntax palette (keep suggest badge colors in sync below):
+ *   fn       — functions (SUM, IF, …)           #2563eb blue
+ *   sheetref — cross-sheet refs (sheet!col)    #0d9488 teal (--spreadsheet-accent)
+ *   ref      — column refs on current sheet    #16a34a green
+ *   cellref  — A1-style absolute refs          #c2410c orange
+ *   const    — named defs / constants          #d97706 amber
+ *   string   — quoted literals                 #15803d green (darker)
+ *   number   — numeric literals                #0891b2 cyan
+ *   op       — operators                       #6b7280 gray
+ */
 
 .spreadsheet-formula-tokens {
   @apply pointer-events-none absolute inset-0 overflow-hidden whitespace-pre;
@@ -342,23 +353,24 @@
 }
 
 .spreadsheet-formula-token--fn {
-  color: #7c3aed;
+  color: #2563eb;
   font-weight: 600;
 }
 .spreadsheet-formula-token--const {
-  color: #0d9488;
+  color: #d97706;
 }
 .spreadsheet-formula-token--ref {
-  color: #2563eb;
+  color: #16a34a;
 }
 .spreadsheet-formula-token--cellref {
   color: #c2410c;
 }
 .spreadsheet-formula-token--sheetref {
-  color: #9333ea;
+  color: #0d9488;
+  font-weight: 600;
 }
 .spreadsheet-formula-token--string {
-  color: #16a34a;
+  color: #15803d;
 }
 .spreadsheet-formula-token--number {
   color: #0891b2;
@@ -456,22 +468,27 @@
   @apply flex min-w-0 items-center gap-2;
 }
 
+/* Badge colors mirror formula token palette (see comment above). */
 .spreadsheet-suggest__kind {
   @apply inline-flex shrink-0 items-center rounded px-1 text-[10px] font-medium uppercase;
   background-color: color-mix(in oklab, var(--color-ink, #111) 8%, transparent);
 }
 
 .spreadsheet-suggest__kind--fn {
-  color: #7c3aed;
+  color: #2563eb;
+  background-color: color-mix(in oklab, #2563eb 12%, transparent);
 }
 .spreadsheet-suggest__kind--def {
-  color: #0d9488;
+  color: #d97706;
+  background-color: color-mix(in oklab, #d97706 12%, transparent);
 }
 .spreadsheet-suggest__kind--ref {
-  color: #2563eb;
+  color: #16a34a;
+  background-color: color-mix(in oklab, #16a34a 12%, transparent);
 }
 .spreadsheet-suggest__kind--sheet {
-  color: #9333ea;
+  color: #0d9488;
+  background-color: color-mix(in oklab, #0d9488 12%, transparent);
 }
 
 .spreadsheet-suggest__name {
