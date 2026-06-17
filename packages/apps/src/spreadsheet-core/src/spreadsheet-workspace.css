@@ -270,6 +270,20 @@
   color: var(--spreadsheet-accent);
 }
 
+.spreadsheet-formula-bar__selection {
+  @apply flex min-h-7 flex-1 items-center gap-2 px-2 font-mono text-xs;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-formula-bar__selection-tag {
+  @apply rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider;
+  background-color: color-mix(in oklab, var(--color-ink, #111) 8%, transparent);
+}
+
+.spreadsheet-formula-bar__selection-value {
+  color: var(--spreadsheet-text);
+}
+
 .spreadsheet-formula-bar__suggest {
   @apply absolute left-0 top-full z-30 mt-1 w-full;
 }
@@ -313,17 +327,33 @@
 
 /* ── In-cell editor (rendered inside the Glide overlay) ────────────────── */
 
-/* Glide uses disableStyling on our custom editor, so the default gdg shadow is
-   absent. Restore visible chrome on the overlay wrapper + editor surface. */
+/* Glide portals the editor to #portal on document.body — outside
+   .spreadsheet-workspace — so workspace tokens must be defined here (with
+   fallbacks) or copied from the grid at runtime. */
+#portal {
+  --spreadsheet-accent: #0d9488;
+  --spreadsheet-surface: #ffffff;
+  --spreadsheet-border: color-mix(in oklab, #111827 12%, transparent);
+  --spreadsheet-text: #111827;
+  --color-ink: #111827;
+}
+
+/* disableStyling removes Glide's default gdg-style shadow; restore chrome on the
+   overlay wrapper (overflow: hidden would clip the elevation). */
 #portal [class*="gdg-"].gdg-unstyle:has(.spreadsheet-cell-editor),
 #portal [class*="gdg-"].gdg-style:has(.spreadsheet-cell-editor) {
-  overflow: visible;
+  overflow: visible !important;
   border-radius: 0.125rem;
   background-color: var(--spreadsheet-surface, #ffffff);
-  border: 1px solid color-mix(in oklab, var(--spreadsheet-accent) 36%, var(--spreadsheet-border));
+  border: 1px solid
+    color-mix(
+      in oklab,
+      var(--spreadsheet-accent, #0d9488) 36%,
+      var(--spreadsheet-border, #d1d5db)
+    );
   box-shadow:
-    0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent) 14%, transparent),
-    0 2px 10px -2px color-mix(in oklab, var(--color-ink) 16%, transparent);
+    0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 24%, transparent),
+    0 2px 8px rgba(17, 24, 39, 0.14);
 }
 
 #portal .gdg-clip-region:has(.spreadsheet-cell-editor) {
@@ -331,8 +361,17 @@
 }
 
 .spreadsheet-cell-editor {
-  @apply relative flex items-center rounded-sm;
+  @apply relative box-border flex items-center rounded-sm;
   background-color: var(--spreadsheet-surface, #ffffff);
+  border: 1px solid
+    color-mix(
+      in oklab,
+      var(--spreadsheet-accent, #0d9488) 40%,
+      var(--spreadsheet-border, #d1d5db)
+    );
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 24%, transparent),
+    0 2px 8px rgba(17, 24, 39, 0.14);
 }
 
 .spreadsheet-cell-editor__input,

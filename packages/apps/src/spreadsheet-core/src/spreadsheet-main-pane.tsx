@@ -29,6 +29,9 @@ export function SpreadsheetMainPane({ controller, viewSource }: SpreadsheetMainP
   const handleSelect = useCallback(
     (sel: SpreadsheetGridSelection) => {
       controller.setSelection(sel);
+      if (sel && sel.kind !== "cell") {
+        controller.cancelFormulaEdit();
+      }
     },
     [controller],
   );
@@ -69,12 +72,17 @@ export function SpreadsheetMainPane({ controller, viewSource }: SpreadsheetMainP
             computed={controller.computed}
             columnSettings={controller.columnSettings}
             defs={controller.defs}
+            columnWidths={controller.columnWidths}
+            onColumnResize={controller.setColumnWidth}
             viewOffset={controller.viewOffset}
             active={controller.activeCell}
             onActivateCell={handleActivateCell}
             onSelect={handleSelect}
             writeCell={controller.writeCell}
             onAddRow={controller.addRow}
+            onAddColumn={controller.addColumn}
+            addRowLabel={controller.labels.addRow}
+            addColumnLabel={controller.labels.addColumn}
             picking={controller.picking}
           />
         </div>

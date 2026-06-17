@@ -21,6 +21,7 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
     cancelFormulaEdit,
     commitFormulaBar,
     picking,
+    selectionInfo,
   } = controller;
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +73,8 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
 
   const showSuggestions = fbEditing && suggestions.length > 0;
   const isFormula = value.startsWith("=");
+  const showSelectionSummary = selectionInfo?.multi && !fbEditing;
+  const addressLabel = selectionInfo?.label || cellLabel;
 
   return (
     <div
@@ -81,72 +84,83 @@ export function SpreadsheetFormulaBar({ controller }: { controller: SpreadsheetC
         isFormula && "spreadsheet-formula-bar--formula",
       )}
     >
-      <span className="spreadsheet-formula-bar__cell">{cellLabel || "—"}</span>
+      <span className="spreadsheet-formula-bar__cell" aria-label="Selection address">
+        {addressLabel || "—"}
+      </span>
       <div className="spreadsheet-formula-bar__field">
-        <FormulaTokens
-          value={value}
-          consts={consts}
-          refs={refs}
-          className="spreadsheet-formula-bar__tokens"
-        />
-        <input
-          ref={inputRef}
-          className={cn(
-            "spreadsheet-formula-bar__input",
-            isFormula && "spreadsheet-formula-bar__input--formula",
-          )}
-          value={value}
-          placeholder={labels.formulaBarPlaceholder}
-          disabled={!activeCell}
-          spellCheck={false}
-          onFocus={() => {
-            if (!fbEditing) beginFormulaEdit();
-          }}
-          onChange={(e) => {
-            if (!fbEditing) beginFormulaEdit();
-            setFbDraft(e.target.value);
-            setFbCaret(e.target.selectionStart ?? e.target.value.length);
-          }}
-          onClick={(e) => setFbCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-          onKeyUp={(e) => setFbCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-          onKeyDown={(e) => {
-            if (showSuggestions) {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setActiveSuggestion((i) => (i + 1) % suggestions.length);
-                return;
-              }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length);
-                return;
-              }
-              if (e.key === "Tab") {
-                e.preventDefault();
-                applySuggestion(activeSuggestion);
-                return;
-              }
-            }
-            if (e.key === "Enter") {
-              e.preventDefault();
-              if (showSuggestions) applySuggestion(activeSuggestion);
-              else commitFormulaBar(fbDraft);
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              cancelFormulaEdit();
-              inputRef.current?.blur();
-            }
-          }}
-        />
-        {showSuggestions ? (
-          <SuggestionList
-            className="spreadsheet-formula-bar__suggest"
-            suggestions={suggestions}
-            activeIdx={activeSuggestion}
-            onPick={applySuggestion}
-            onHover={setActiveSuggestion}
-          />
-        ) : null}
+        {showSelectionSummary ? (
+          <div className="spreadsheet-formula-bar__selection">
+            <span className="spreadsheet-formula-bar__selection-tag">selection</span>
+            <span className="spreadsheet-formula-bar__selection-value">{selectionInfo.value}</span>
+          </div>
+        ) : (
+          <>
+            <FormulaTokens
+              value={value}
+              consts={consts}
+              refs={refs}
+              className="spreadsheet-formula-bar__tokens"
+            />
+            <input
+              ref={inputRef}
+              className={cn(
+                "spreadsheet-formula-bar__input",
+                isFormula && "spreadsheet-formula-bar__input--formula",
+              )}
+              value={value}
+              placeholder={labels.formulaBarPlaceholder}
+              disabled={!activeCell}
+              spellCheck={false}
+              onFocus={() => {
+                if (!fbEditing) beginFormulaEdit();
+              }}
+              onChange={(e) => {
+                if (!fbEditing) beginFormulaEdit();
+                setFbDraft(e.target.value);
+                setFbCaret(e.target.selectionStart ?? e.target.value.length);
+              }}
+              onClick={(e) => setFbCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+              onKeyUp={(e) => setFbCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+              onKeyDown={(e) => {
+                if (showSuggestions) {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveSuggestion((i) => (i + 1) % suggestions.length);
+                    return;
+                  }
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length);
+                    return;
+                  }
+                  if (e.key === "Tab") {
+                    e.preventDefault();
+                    applySuggestion(activeSuggestion);
+                    return;
+                  }
+                }
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (showSuggestions) applySuggestion(activeSuggestion);
+                  else commitFormulaBar(fbDraft);
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelFormulaEdit();
+                  inputRef.current?.blur();
+                }
+              }}
+            />
+            {showSuggestions ? (
+              <SuggestionList
+                className="spreadsheet-formula-bar__suggest"
+                suggestions={suggestions}
+                activeIdx={activeSuggestion}
+                onPick={applySuggestion}
+                onHover={setActiveSuggestion}
+              />
+            ) : null}
+          </>
+        )}
       </div>
       {picking ? <span className="spreadsheet-formula-bar__hint">{labels.pickingHint}</span> : null}
     </div>

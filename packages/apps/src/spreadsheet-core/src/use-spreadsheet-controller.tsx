@@ -27,6 +27,14 @@ import { OPEN_TOKEN_RE } from "@/spreadsheet-core/src/formula-suggest";
 import { evaluateWorkbook } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import type { SpreadsheetGridSelection } from "@/spreadsheet-core/src/spreadsheet-grid";
 import { selectionInfoFromGridSelection } from "@/spreadsheet-core/src/spreadsheet-selection-info";
+import {
+  appendAutoColumnWidth,
+  computeAutoColumnWidth,
+  computeAutoColumnWidths,
+  refreshAutoColumnWidths,
+  resolveSheetColumnWidths,
+  type SheetColumnWidthState,
+} from "@/spreadsheet-core/src/spreadsheet-column-widths";
 
 const SAVE_DEBOUNCE_MS = 2500;
 const AUTO_SAVE_TOAST_DEBOUNCE_MS = 1200;
@@ -134,6 +142,9 @@ export function useSpreadsheetController({
   const [renamePending, setRenamePending] = useState(false);
   /** Preserves structural edits (e.g. trailing empty rows) that YCSV re-parse would drop. */
   const [workbookOverride, setWorkbookOverride] = useState<ParsedWorkbook | null>(null);
+  const [columnWidthsBySheet, setColumnWidthsBySheet] = useState<
+    Record<string, SheetColumnWidthState>
+  >({});
 
   const workbookFromSource = useMemo<ParsedWorkbook>(() => {
     try {
@@ -164,6 +175,53 @@ export function useSpreadsheetController({
     [activeSheet],
   );
   const defs = useMemo<Defs>(() => activeSheet?.defs ?? {}, [activeSheet]);
+
+  const sheetWidthKey = activeSheet?.ref ?? `sheet-${safeSheetIndex}`;
+
+  const autoColumnWidths = useMemo(
+    () =>
+      computeAutoColumnWidths(
+        columnSettings.length,
+        columnSettings,
+        rawData,
+        activeComputed,
+        1,
+      ),
+    [activeComputed, columnSettings, rawData],
+  );
+
+  const columnWidths = useMemo(
+    () =>
+      resolveSheetColumnWidths(
+        columnSettings.length,
+        autoColumnWidths,
+        columnWidthsBySheet[sheetWidthKey],
+      ),
+    [autoColumnWidths, columnSettings.length, columnWidthsBySheet, sheetWidthKey],
+  );
+
+  useEffect(() => {
+    setColumnWidthsBySheet((prev) => {
+      if (prev[sheetWidthKey]) return prev;
+      return {
+        ...prev,
+        [sheetWidthKey]: {
+          widths: autoColumnWidths,
+          manualCols: new Set(),
+        },
+      };
+    });
+  }, [autoColumnWidths, sheetWidthKey]);
+
+  useEffect(() => {
+    setColumnWidthsBySheet((prev) => {
+      const current = prev[sheetWidthKey];
+      if (!current) return prev;
+      const next = refreshAutoColumnWidths(current, autoColumnWidths);
+      if (next.widths.every((w, i) => w === current.widths[i])) return prev;
+      return { ...prev, [sheetWidthKey]: next };
+    });
+  }, [autoColumnWidths, sheetWidthKey]);
 
   const queueAutoSaveToast = useCallback(() => {
     if (autoSaveToastTimerRef.current) clearTimeout(autoSaveToastTimerRef.current);
@@ -225,6 +283,7 @@ export function useSpreadsheetController({
     setSelection(null);
     setParseError(null);
     setWorkbookOverride(null);
+    setColumnWidthsBySheet({});
 
     if (!filePath) {
       setDocument(initialDocument);
@@ -335,8 +394,47 @@ export function useSpreadsheetController({
       refs: nextColumnSettings.map((c) => c.ref!),
       headers: nextColumnSettings.map((c) => c.name ?? c.ref!),
     };
+    const nextMatrix = sheetToMatrix(nextSheet);
+    const nextComputed = evaluateWorkbook(
+      workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet),
+    )[safeSheetIndex];
+    const newWidth = computeAutoColumnWidth(
+      nextCol,
+      nextColumnSettings,
+      nextMatrix,
+      nextComputed ?? [],
+      1,
+    );
+    setColumnWidthsBySheet((prev) => ({
+      ...prev,
+      [sheetWidthKey]: appendAutoColumnWidth(prev[sheetWidthKey], newWidth),
+    }));
     applyWorkbookChange(workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet));
-  }, [activeSheet, applyWorkbookChange, safeSheetIndex, workbook]);
+  }, [
+    activeSheet,
+    applyWorkbookChange,
+    safeSheetIndex,
+    sheetWidthKey,
+    workbook,
+  ]);
+
+  const setColumnWidth = useCallback(
+    (column: number, width: number) => {
+      setColumnWidthsBySheet((prev) => {
+        const current = prev[sheetWidthKey] ?? {
+          widths: [...autoColumnWidths],
+          manualCols: new Set<number>(),
+        };
+        const widths = [...current.widths];
+        while (widths.length <= column) widths.push(width);
+        widths[column] = width;
+        const manualCols = new Set(current.manualCols);
+        manualCols.add(column);
+        return { ...prev, [sheetWidthKey]: { widths, manualCols } };
+      });
+    },
+    [autoColumnWidths, sheetWidthKey],
+  );
 
   const addSheet = useCallback(() => {
     const ref = nextSheetRef(workbook.sheets);
@@ -355,6 +453,12 @@ export function useSpreadsheetController({
   const onSourceChange = useCallback(
     (next: string) => {
       setWorkbookOverride(null);
+      setColumnWidthsBySheet((prev) => {
+        if (!prev[sheetWidthKey]) return prev;
+        const nextState = { ...prev };
+        delete nextState[sheetWidthKey];
+        return nextState;
+      });
       try {
         const parsed = parseYcsv(next);
         setParseError(parsed.warnings.find((w) => w.includes("not valid YAML")) ?? null);
@@ -363,7 +467,7 @@ export function useSpreadsheetController({
       }
       applySource(next);
     },
-    [L.parseError, applySource],
+    [L.parseError, applySource, sheetWidthKey],
   );
 
   // Formula-bar editing of the active cell.
@@ -518,6 +622,8 @@ export function useSpreadsheetController({
     addRow,
     addColumn,
     addSheet,
+    columnWidths,
+    setColumnWidth,
     commitFormulaBar,
     refForCell,
     fbEditing,

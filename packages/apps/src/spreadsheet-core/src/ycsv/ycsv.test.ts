@@ -81,6 +81,59 @@ describe("parseYcsv — multi sheet", () => {
     // Workbook-level defs are shared across sheets.
     expect(workbook.sheets[1].defs.btw).toBe(0.21);
   });
+
+  it("lists a sheet without columns in frontmatter using A-Z fallback", () => {
+    const text = `---
+ycsv_version: 1
+sheets:
+  - ref: producten
+    columns:
+      - ref: product
+        type: string
+  - ref: notes
+    name: Notes
+---
+product
+Appels
+---
+1,2
+3,4
+`;
+    const workbook = parseYcsv(text);
+    expect(workbook.sheets).toHaveLength(2);
+    expect(workbook.sheets[1].ref).toBe("notes");
+    expect(workbook.sheets[1].name).toBe("Notes");
+    expect(workbook.sheets[1].refs).toEqual(["A", "B"]);
+    expect(workbook.sheets[1].rows).toEqual([
+      ["1", "2"],
+      ["3", "4"],
+    ]);
+  });
+
+  it("infers multiple sheets from extra CSV blocks when sheets frontmatter is missing", () => {
+    const text = `---
+ycsv_version: 1
+columns:
+  - ref: product
+    type: string
+---
+product
+Appels
+---
+2,3
+4,5
+`;
+    const workbook = parseYcsv(text);
+    expect(workbook.warnings.some((w) => w.includes("inferring sheet1"))).toBe(true);
+    expect(workbook.sheets).toHaveLength(2);
+    expect(workbook.sheets[0].refs).toEqual(["product"]);
+    expect(workbook.sheets[1].ref).toBe("sheet2");
+    expect(workbook.sheets[1].refs).toEqual(["A", "B"]);
+    expect(workbook.sheets[1].rows).toEqual([
+      ["2", "3"],
+      ["4", "5"],
+    ]);
+  });
 });
 
 describe("resolveFormula", () => {
@@ -119,6 +172,30 @@ describe("serializeYcsv round-trip", () => {
     const workbook = parseYcsv(SAMPLE_MULTI_SHEET_YCSV);
     const reparsed = parseYcsv(serializeYcsv(workbook));
     expect(reparsed.sheets.map((s) => s.ref)).toEqual(["producten", "categorieen"]);
+    expect(reparsed.sheets[1].rows).toEqual(workbook.sheets[1].rows);
+  });
+
+  it("keeps sheets without frontmatter columns through a round-trip", () => {
+    const text = `---
+ycsv_version: 1
+sheets:
+  - ref: producten
+    columns:
+      - ref: product
+        type: string
+  - ref: notes
+    name: Notes
+---
+product
+Appels
+---
+1,2
+3,4
+`;
+    const workbook = parseYcsv(text);
+    const reparsed = parseYcsv(serializeYcsv(workbook));
+    expect(reparsed.sheets.map((s) => s.ref)).toEqual(["producten", "notes"]);
+    expect(reparsed.sheets[1].refs).toEqual(["a", "b"]);
     expect(reparsed.sheets[1].rows).toEqual(workbook.sheets[1].rows);
   });
 });

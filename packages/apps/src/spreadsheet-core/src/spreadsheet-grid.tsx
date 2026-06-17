@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import {
   CompactSelection,
@@ -48,23 +48,44 @@ type Cell = { value?: string } | undefined;
 const FORMULA_COLOR = "#2563eb";
 const ERROR_COLOR = "#dc2626";
 
+const PORTAL_THEME_VARS = [
+  "--spreadsheet-accent",
+  "--spreadsheet-surface",
+  "--spreadsheet-border",
+  "--spreadsheet-text",
+  "--color-ink",
+] as const;
+
 /**
  * Glide renders its in-cell overlay editor into `document.getElementById("portal")`
  * and silently bails (no editor, console error) when that element is missing — which
  * breaks in-cell typing. Ensure the mount point exists wherever the grid is used
  * (app, Storybook, tests) so the editor can open.
+ *
+ * The portal sits on `document.body`, outside `.spreadsheet-workspace`, so copy
+ * workspace theme tokens onto it for overlay chrome (border, shadow).
  */
-function useGlidePortalRoot() {
-  useEffect(() => {
-    if (document.getElementById("portal")) return;
-    const el = document.createElement("div");
-    el.id = "portal";
-    el.style.position = "fixed";
-    el.style.left = "0";
-    el.style.top = "0";
-    el.style.zIndex = "9999";
-    document.body.appendChild(el);
-  }, []);
+function useGlidePortalRoot(containerRef: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    let portal = document.getElementById("portal");
+    if (!portal) {
+      portal = document.createElement("div");
+      portal.id = "portal";
+      portal.style.position = "fixed";
+      portal.style.left = "0";
+      portal.style.top = "0";
+      portal.style.zIndex = "9999";
+      document.body.appendChild(portal);
+    }
+
+    const workspace = containerRef.current?.closest(".spreadsheet-workspace");
+    if (!workspace) return;
+    const source = getComputedStyle(workspace);
+    for (const prop of PORTAL_THEME_VARS) {
+      const value = source.getPropertyValue(prop).trim();
+      if (value) portal.style.setProperty(prop, value);
+    }
+  });
 }
 
 export type SpreadsheetGridSelection =
@@ -81,7 +102,6 @@ export type SpreadsheetGridProps = {
   computed: ComputedCell[][];
   columnSettings: ColumnSetting[];
   defs: Defs;
-  /** Resolved column widths (controller-owned). */
   columnWidths: number[];
   onColumnResize: (column: number, width: number) => void;
   /** First row index visible in the grid (1 when the header row is hidden). */
@@ -203,9 +223,9 @@ export function SpreadsheetGrid({
   addColumnLabel,
   picking,
 }: SpreadsheetGridProps) {
-  useGlidePortalRoot();
   const gridRef = useRef<DataEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  useGlidePortalRoot(containerRef);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
   const bumpLayout = useCallback(() => {
     requestAnimationFrame(() => setLayoutEpoch((n) => n + 1));
@@ -234,6 +254,12 @@ export function SpreadsheetGrid({
     [colCount, columnSettings, inferType],
   );
 
+  const resolvedColumnWidths = useMemo(
+    () =>
+      Array.from({ length: colCount }, (_, i) => columnWidths[i] ?? MIN_COL_WIDTH),
+    [colCount, columnWidths],
+  );
+
   const columns = useMemo<GridColumn[]>(() => {
     return Array.from({ length: colCount }, (_, i) => {
       const cs = columnSettings[i];
@@ -242,15 +268,15 @@ export function SpreadsheetGrid({
       return {
         title: label,
         id: String(i),
-        width: columnWidths[i] ?? MIN_COL_WIDTH,
+        width: resolvedColumnWidths[i],
         icon: badge ? GridColumnIcon.HeaderString : undefined,
       };
     });
-  }, [colCount, columnSettings, columnWidths]);
+  }, [colCount, columnSettings, resolvedColumnWidths]);
 
   useEffect(() => {
     bumpLayout();
-  }, [bumpLayout, colCount, columnWidths, rowCount]);
+  }, [bumpLayout, colCount, resolvedColumnWidths, rowCount]);
 
   const handleColumnResize = useCallback(
     (_column: GridColumn, newSize: number, colIndex: number) => {
@@ -501,6 +527,7 @@ export function SpreadsheetGrid({
           containerRef={containerRef}
           colCount={colCount}
           rowCount={rowCount}
+          columnWidths={resolvedColumnWidths}
           layoutEpoch={layoutEpoch}
           addRowLabel={addRowLabel}
           addColumnLabel={addColumnLabel}

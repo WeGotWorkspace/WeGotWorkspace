@@ -243,6 +243,24 @@ type SheetFrontmatter = {
   constants?: unknown;
 };
 
+/** Build column settings for `count` columns (A-Z fallback when frontmatter omits `columns`). */
+function buildColumnSettings(
+  rawCols: Array<Record<string, unknown>>,
+  colCount: number,
+): ColumnSetting[] {
+  const columnSettings: ColumnSetting[] = [];
+  for (let i = 0; i < colCount; i++) {
+    const raw = rawCols[i] ?? {};
+    const refValue =
+      typeof raw.ref === "string" && isValidRefName(raw.ref) ? raw.ref : colLetter(i);
+    const cs: ColumnSetting = { ...raw, ref: refValue };
+    cs.name = typeof raw.name === "string" ? raw.name : refValue;
+    if (typeof raw.type === "string") cs.type = raw.type as CellType;
+    columnSettings.push(cs);
+  }
+  return columnSettings;
+}
+
 function resolveSheet(
   index: number,
   sheetFm: SheetFrontmatter,
@@ -266,16 +284,7 @@ function resolveSheet(
   const rawRows = parseCSV(csvText);
   const colCount = Math.max(rawCols.length, ...rawRows.map((r) => r.length), 1);
 
-  const columnSettings: ColumnSetting[] = [];
-  for (let i = 0; i < colCount; i++) {
-    const raw = rawCols[i] ?? {};
-    const refValue =
-      typeof raw.ref === "string" && isValidRefName(raw.ref) ? raw.ref : colLetter(i);
-    const cs: ColumnSetting = { ...raw, ref: refValue };
-    cs.name = typeof raw.name === "string" ? raw.name : refValue;
-    if (typeof raw.type === "string") cs.type = raw.type as CellType;
-    columnSettings.push(cs);
-  }
+  const columnSettings = buildColumnSettings(rawCols, colCount);
   const refs = columnSettings.map((c) => c.ref!);
 
   // Detect an optional header row (spec §4.1).
@@ -358,13 +367,30 @@ export function parseYcsv(input: string): ParsedWorkbook {
 
   const sheets: ParsedSheet[] = [];
   if (sheetDefs && sheetDefs.length) {
+    // Honor every `sheets[]` entry (columns optional per spec §3.2).
     for (let i = 0; i < sheetDefs.length; i++) {
       sheets.push(resolveSheet(i, sheetDefs[i] ?? {}, blocks[i] ?? "", workbookDefs));
+    }
+  } else if (blocks.length > 1) {
+    warnings.push(
+      "Multiple CSV blocks without a sheets frontmatter array; inferring sheet1, sheet2, …",
+    );
+    for (let i = 0; i < blocks.length; i++) {
+      const sheetFm: SheetFrontmatter =
+        i === 0
+          ? {
+              columns: frontmatter.columns,
+              name: typeof frontmatter.name === "string" ? frontmatter.name : undefined,
+              ref: typeof frontmatter.ref === "string" ? frontmatter.ref : undefined,
+            }
+          : {};
+      sheets.push(resolveSheet(i, sheetFm, blocks[i] ?? "", workbookDefs));
     }
   } else {
     const singleFm: SheetFrontmatter = {
       columns: frontmatter.columns,
       name: typeof frontmatter.name === "string" ? frontmatter.name : undefined,
+      ref: typeof frontmatter.ref === "string" ? frontmatter.ref : undefined,
     };
     sheets.push(resolveSheet(0, singleFm, blocks[0] ?? "", workbookDefs));
   }
@@ -391,6 +417,26 @@ function serializeColumns(columnSettings: ColumnSetting[]): Record<string, unkno
   });
 }
 
+/** True when frontmatter should persist `columns` (named refs, types, or extra metadata). */
+function hasExplicitColumnMetadata(columnSettings: ColumnSetting[]): boolean {
+  return columnSettings.some((c, index) => {
+    const fallbackRef = colLetter(index);
+    if (c.type) return true;
+    if (c.ref && c.ref !== fallbackRef) return true;
+    if (c.name && c.name !== (c.ref ?? fallbackRef)) return true;
+    return Object.keys(c).some((key) => !["ref", "name", "type"].includes(key));
+  });
+}
+
+function serializeSheetFrontmatterEntry(sheet: ParsedSheet): Record<string, unknown> {
+  const entry: Record<string, unknown> = { ref: sheet.ref };
+  if (sheet.name && sheet.name !== sheet.ref) entry.name = sheet.name;
+  if (hasExplicitColumnMetadata(sheet.columnSettings)) {
+    entry.columns = serializeColumns(sheet.columnSettings);
+  }
+  return entry;
+}
+
 export function serializeYcsv(workbook: ParsedWorkbook): string {
   const fm: Record<string, unknown> = { ycsv_version: workbook.version ?? YCSV_VERSION };
   if (workbook.defs && Object.keys(workbook.defs).length) {
@@ -399,20 +445,20 @@ export function serializeYcsv(workbook: ParsedWorkbook): string {
 
   const multiSheet = workbook.sheets.length > 1;
   if (multiSheet) {
-    fm.sheets = workbook.sheets.map((sheet) => {
-      const entry: Record<string, unknown> = { ref: sheet.ref };
-      if (sheet.name && sheet.name !== sheet.ref) entry.name = sheet.name;
-      if (sheet.columnSettings.length) entry.columns = serializeColumns(sheet.columnSettings);
-      return entry;
-    });
+    fm.sheets = workbook.sheets.map(serializeSheetFrontmatterEntry);
   } else {
     const sheet = workbook.sheets[0];
-    if (sheet?.columnSettings.length) fm.columns = serializeColumns(sheet.columnSettings);
+    if (sheet && hasExplicitColumnMetadata(sheet.columnSettings)) {
+      fm.columns = serializeColumns(sheet.columnSettings);
+    }
   }
 
   const dumped = yaml.dump(fm, { lineWidth: 100, noRefs: true }).trim();
   const bodies = workbook.sheets.map((sheet) => {
-    const refs = sheet.columnSettings.map((c) => c.ref!);
+    const refs =
+      sheet.refs.length > 0
+        ? sheet.refs
+        : sheet.columnSettings.map((c, i) => c.ref ?? colLetter(i));
     return serializeCSV([refs, ...sheet.rows]);
   });
 
