@@ -49,6 +49,7 @@ export function SpreadsheetWorkspace({
         onLogout={onLogout}
       />
       <SpreadsheetWorkspaceModals controller={controller} />
+      {controller.confirmDialog}
     </TooltipProvider>
   );
 }
@@ -102,6 +103,8 @@ function SpreadsheetWorkspaceShell({
             sheets={controller.sheets}
             activeIndex={controller.activeSheetIndex}
             onAdd={controller.canAddSheet ? controller.addSheet : undefined}
+            onRename={controller.canAddSheet ? controller.openSheetRenameDialog : undefined}
+            onDelete={controller.canAddSheet ? controller.requestDeleteSheet : undefined}
             onSelect={(index) => {
               controller.setActiveSheetIndex(index);
               controller.setActiveCell(null);

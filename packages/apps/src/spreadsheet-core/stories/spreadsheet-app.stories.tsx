@@ -239,6 +239,80 @@ export const CreateSheet: Story = {
   },
 };
 
+export const SheetSidebarActions: Story = {
+  name: "Sheet sidebar actions",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const doc = canvasElement.ownerDocument;
+    const actionButton = (row: Element, label: string) => {
+      const button = (row as HTMLElement).querySelector<HTMLButtonElement>(
+        `button[aria-label="${label}"]`,
+      );
+      if (!button) throw new Error(`Missing action button: ${label}`);
+      return button;
+    };
+
+    const revealAndClick = async (row: Element, label: string) => {
+      const button = actionButton(row, label);
+      button.focus();
+      await userEvent.click(button);
+    };
+
+    await step("Rename sheet updates display name while keeping ref stable", async () => {
+      await userEvent.click(await canvas.findByRole("button", { name: "New sheet" }));
+      const emptySheet = await canvas.findByRole("button", { name: "sheet2" });
+      const emptyRow = emptySheet.closest(".spreadsheet-sheets-sidebar__item");
+      expect(emptyRow).toBeTruthy();
+      await revealAndClick(emptyRow!, "Rename sheet");
+      const dialog = await waitFor(() => within(doc.body).getByRole("dialog"));
+      const input = within(dialog).getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "Summary");
+      await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      await waitFor(() => {
+        expect(canvas.getByRole("button", { name: "Summary" })).toBeInTheDocument();
+      });
+    });
+
+    await step("Delete empty sheet removes it without a confirm dialog", async () => {
+      const summarySheet = await canvas.findByRole("button", { name: "Summary" });
+      const summaryRow = summarySheet.closest(".spreadsheet-sheets-sidebar__item");
+      expect(summaryRow).toBeTruthy();
+      await revealAndClick(summaryRow!, "Delete sheet");
+      await waitFor(() => {
+        expect(canvas.queryByRole("button", { name: "Summary" })).not.toBeInTheDocument();
+      });
+      expect(within(doc.body).queryByRole("alertdialog")).not.toBeInTheDocument();
+    });
+
+    await step("Delete sheet with data asks for confirmation", async () => {
+      await userEvent.click(await canvas.findByRole("button", { name: "New sheet" }));
+      const extraSheet = await canvas.findByRole("button", { name: "sheet2" });
+      const dataSheet = await canvas.findByRole("button", { name: "sheet1" });
+      const dataRow = dataSheet.closest(".spreadsheet-sheets-sidebar__item");
+      expect(dataRow).toBeTruthy();
+      await revealAndClick(dataRow!, "Delete sheet");
+      const confirm = await waitFor(() => within(doc.body).getByRole("alertdialog"));
+      expect(within(confirm).getByText("Delete sheet?")).toBeInTheDocument();
+      await userEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => {
+        expect(within(doc.body).queryByRole("alertdialog")).not.toBeInTheDocument();
+        expect(canvas.getByRole("button", { name: "sheet1" })).toBeInTheDocument();
+        expect(canvas.getByRole("button", { name: "sheet2" })).toBeInTheDocument();
+      });
+      expect(extraSheet).toBeInTheDocument();
+    });
+  },
+};
+
 export const RowSelect: Story = {
   name: "Row select",
   args: {

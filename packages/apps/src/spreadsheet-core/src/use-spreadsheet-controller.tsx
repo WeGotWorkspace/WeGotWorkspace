@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Pencil } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { parentAndName } from "@/lib/files/api-path";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 import {
@@ -108,6 +109,10 @@ function createDefaultSheet(ref: string): ParsedSheet {
   };
 }
 
+function sheetHasData(sheet: ParsedSheet): boolean {
+  return sheet.rows.some((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
+}
+
 export function useSpreadsheetController({
   filePath,
   labels,
@@ -117,6 +122,9 @@ export function useSpreadsheetController({
 }: UseSpreadsheetControllerArgs) {
   const L = useMemo(() => mergeSpreadsheetLabels(labels), [labels]);
   const { show, showError } = useAppToast();
+  const { confirmDialog, requestConfirm } = useConfirmDialog({
+    contentClassName: "spreadsheet-dialog-surface",
+  });
 
   const [document, setDocument] = useState<SpreadsheetDocument | null>(initialDocument);
   const [source, setSource] = useState(() => initialDocument?.content ?? EMPTY_YCSV);
@@ -141,6 +149,10 @@ export function useSpreadsheetController({
   const [renameName, setRenameName] = useState("");
   const [renameExtension, setRenameExtension] = useState("");
   const [renamePending, setRenamePending] = useState(false);
+  const [sheetRenameDialog, setSheetRenameDialog] = useState<null | {
+    index: number;
+    name: string;
+  }>(null);
   /** Preserves structural edits (e.g. trailing empty rows) that YCSV re-parse would drop. */
   const [workbookOverride, setWorkbookOverride] = useState<ParsedWorkbook | null>(null);
   const [columnWidthsBySheet, setColumnWidthsBySheet] = useState<
@@ -442,6 +454,86 @@ export function useSpreadsheetController({
     show(L.toastSheetCreated(ref), { icon: <Check className="size-4" /> });
   }, [L.toastSheetCreated, applyWorkbookChange, show, workbook]);
 
+  const openSheetRenameDialog = useCallback(
+    (index: number) => {
+      const sheet = workbook.sheets[index];
+      if (!sheet) return;
+      setSheetRenameDialog({ index, name: sheet.name || sheet.ref });
+    },
+    [workbook.sheets],
+  );
+
+  const closeSheetRenameDialog = useCallback(() => {
+    setSheetRenameDialog(null);
+  }, []);
+
+  const renameSheet = useCallback(
+    (index: number, name: string) => {
+      const sheet = workbook.sheets[index];
+      const trimmed = name.trim();
+      if (!sheet || !trimmed || trimmed === (sheet.name || sheet.ref)) return;
+      const nextSheet: ParsedSheet = { ...sheet, name: trimmed };
+      applyWorkbookChange(workbookWithActiveSheet(workbook, index, nextSheet));
+      show(L.toastSheetRenamed(trimmed), { icon: <Pencil className="size-4" /> });
+    },
+    [L.toastSheetRenamed, applyWorkbookChange, show, workbook],
+  );
+
+  const deleteSheet = useCallback(
+    (index: number) => {
+      if (workbook.sheets.length <= 1) return;
+      const deletedRef = workbook.sheets[index]?.ref;
+      const nextSheets = workbook.sheets.filter((_, i) => i !== index);
+      applyWorkbookChange({ ...workbook, sheets: nextSheets });
+      if (deletedRef) {
+        setColumnWidthsBySheet((prev) => {
+          if (!prev[deletedRef]) return prev;
+          const next = { ...prev };
+          delete next[deletedRef];
+          return next;
+        });
+      }
+      setActiveSheetIndex((current) => {
+        if (index < current) return current - 1;
+        if (index === current) return Math.min(current, nextSheets.length - 1);
+        return current;
+      });
+      setActiveCell(null);
+      setSelection(null);
+    },
+    [applyWorkbookChange, workbook],
+  );
+
+  const requestDeleteSheet = useCallback(
+    (index: number) => {
+      if (workbook.sheets.length <= 1) return;
+      const sheet = workbook.sheets[index];
+      if (!sheet) return;
+      const displayName = sheet.name || sheet.ref;
+      if (!sheetHasData(sheet)) {
+        deleteSheet(index);
+        return;
+      }
+      requestConfirm({
+        title: L.deleteSheetTitle,
+        description: L.deleteSheetDescription(displayName),
+        confirmLabel: L.deleteSheetConfirm,
+        cancelLabel: L.cancel,
+        variant: "destructive",
+        onConfirm: () => deleteSheet(index),
+      });
+    },
+    [
+      L.cancel,
+      L.deleteSheetConfirm,
+      L.deleteSheetDescription,
+      L.deleteSheetTitle,
+      deleteSheet,
+      requestConfirm,
+      workbook.sheets,
+    ],
+  );
+
   const onSourceChange = useCallback(
     (next: string) => {
       setWorkbookOverride(null);
@@ -614,6 +706,13 @@ export function useSpreadsheetController({
     addRow,
     addColumn,
     addSheet,
+    renameSheet,
+    deleteSheet,
+    requestDeleteSheet,
+    openSheetRenameDialog,
+    closeSheetRenameDialog,
+    sheetRenameDialog,
+    confirmDialog,
     columnWidths,
     setColumnWidth,
     commitFormulaBar,
