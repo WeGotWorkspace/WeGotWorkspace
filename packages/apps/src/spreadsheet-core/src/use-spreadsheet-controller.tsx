@@ -26,6 +26,7 @@ import {
 import { OPEN_TOKEN_RE } from "@/spreadsheet-core/src/formula-suggest";
 import { evaluateWorkbook } from "@/spreadsheet-core/src/ycsv/ycsv-formula-engine";
 import type { SpreadsheetGridSelection } from "@/spreadsheet-core/src/spreadsheet-grid";
+import { selectionInfoFromGridSelection } from "@/spreadsheet-core/src/spreadsheet-selection-info";
 
 const SAVE_DEBOUNCE_MS = 2500;
 const AUTO_SAVE_TOAST_DEBOUNCE_MS = 1200;
@@ -73,6 +74,28 @@ function workbookWithActiveSheet(
   return {
     ...workbook,
     sheets: workbook.sheets.map((sheet, i) => (i === sheetIndex ? nextSheet : sheet)),
+  };
+}
+
+function nextSheetRef(sheets: ParsedSheet[]): string {
+  const used = new Set(sheets.map((sheet) => sheet.ref));
+  let n = 1;
+  while (used.has(`sheet${n}`)) n++;
+  return `sheet${n}`;
+}
+
+function createDefaultSheet(ref: string): ParsedSheet {
+  const columnSettings: ColumnSetting[] = [{ ref: "a", name: "A" }];
+  const refs = ["a"];
+  return {
+    ref,
+    name: ref,
+    columnSettings,
+    defs: {},
+    refs,
+    headers: ["A"],
+    rows: [],
+    hadHeader: true,
   };
 }
 
@@ -315,6 +338,20 @@ export function useSpreadsheetController({
     applyWorkbookChange(workbookWithActiveSheet(workbook, safeSheetIndex, nextSheet));
   }, [activeSheet, applyWorkbookChange, safeSheetIndex, workbook]);
 
+  const addSheet = useCallback(() => {
+    const ref = nextSheetRef(workbook.sheets);
+    const nextSheet = createDefaultSheet(ref);
+    const nextIndex = workbook.sheets.length;
+    applyWorkbookChange({
+      ...workbook,
+      sheets: [...workbook.sheets, nextSheet],
+    });
+    setActiveSheetIndex(nextIndex);
+    setActiveCell(null);
+    setSelection(null);
+    show(L.toastSheetCreated(ref), { icon: <Check className="size-4" /> });
+  }, [L.toastSheetCreated, applyWorkbookChange, show, workbook]);
+
   const onSourceChange = useCallback(
     (next: string) => {
       setWorkbookOverride(null);
@@ -386,6 +423,11 @@ export function useSpreadsheetController({
     [columnSettings],
   );
 
+  const selectionInfo = useMemo(
+    () => selectionInfoFromGridSelection(selection, columnSettings, L),
+    [L, columnSettings, selection],
+  );
+
   const title = document?.fileName ?? (filePath ? fileNameFromApiPath(filePath) : "");
 
   const openRenameDialog = useCallback(() => {
@@ -449,6 +491,7 @@ export function useSpreadsheetController({
     canRename: Boolean(
       resolveActiveApiPath(filePath, document, initialDocument) && operations?.renameFile,
     ),
+    canAddSheet: !!filePath || !!initialDocument,
     source,
     parseError,
     onSourceChange,
@@ -470,9 +513,11 @@ export function useSpreadsheetController({
     activeRaw,
     selection,
     setSelection,
+    selectionInfo,
     writeCell,
     addRow,
     addColumn,
+    addSheet,
     commitFormulaBar,
     refForCell,
     fbEditing,

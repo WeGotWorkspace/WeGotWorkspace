@@ -19,12 +19,16 @@ export const spreadsheetLabels = {
   renameAction: "Rename",
   cancel: "Cancel",
   sidebarSheets: "Sheets",
+  newSheet: "New sheet",
+  toastSheetCreated: (ref: string) => `Sheet “${ref}” created`,
   sheetsEmpty: "No sheets in this workbook yet.",
   formulaBarPlaceholder: "Type a value or =FORMULA(…)",
   pickingHint: "click cells to insert",
   selectionCells: (count: number) => `${count} cells selected`,
   selectionRows: (count: number) => `${count} rows selected`,
   selectionColumns: (count: number) => `${count} columns selected`,
+  selectionEntireRow: (row: number) => `entire row ${row}`,
+  selectionEntireColumn: (column: string) => `entire column ${column}`,
 } as const;
 
 export type SpreadsheetUILabels = typeof spreadsheetLabels;

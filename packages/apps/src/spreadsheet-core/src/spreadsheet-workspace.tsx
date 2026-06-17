@@ -97,6 +97,7 @@ function SpreadsheetWorkspaceShell({
             labels={controller.labels}
             sheets={controller.sheets}
             activeIndex={controller.activeSheetIndex}
+            onAdd={controller.canAddSheet ? controller.addSheet : undefined}
             onSelect={(index) => {
               controller.setActiveSheetIndex(index);
               controller.setActiveCell(null);

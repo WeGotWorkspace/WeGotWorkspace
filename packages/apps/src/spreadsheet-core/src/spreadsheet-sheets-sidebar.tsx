@@ -10,6 +10,7 @@ type SpreadsheetSheetsSidebarProps = {
   sheets: ParsedSheet[];
   activeIndex: number;
   onSelect: (index: number) => void;
+  onAdd?: () => void;
 };
 
 export function SpreadsheetSheetsSidebar({
@@ -17,6 +18,7 @@ export function SpreadsheetSheetsSidebar({
   sheets,
   activeIndex,
   onSelect,
+  onAdd,
 }: SpreadsheetSheetsSidebarProps) {
   const items = useMemo((): MenuItemProps[] => {
     if (sheets.length === 0) return [{ label: labels.sheetsEmpty }];
@@ -28,5 +30,12 @@ export function SpreadsheetSheetsSidebar({
     }));
   }, [activeIndex, labels.sheetsEmpty, onSelect, sheets]);
 
-  return <SidebarSection title={labels.sidebarSheets} items={items} />;
+  return (
+    <SidebarSection
+      title={labels.sidebarSheets}
+      items={items}
+      onAdd={onAdd}
+      addLabel={labels.newSheet}
+    />
+  );
 }

@@ -103,6 +103,11 @@ export const InCellEditing: Story = {
       gridCanvas.focus();
       await userEvent.keyboard("{Enter}");
       const input = await findCellInput();
+      const editor = input.closest(".spreadsheet-cell-editor");
+      expect(editor).toBeTruthy();
+      const chrome = doc.defaultView!.getComputedStyle(editor!);
+      expect(chrome.borderTopWidth).not.toBe("0px");
+      expect(chrome.boxShadow).not.toBe("none");
       await userEvent.clear(input);
       await userEvent.type(input, "Pears");
       await userEvent.keyboard("{Enter}");
@@ -166,6 +171,75 @@ export const AddRowColumn: Story = {
       await userEvent.click(await canvas.findByRole("button", { name: "Add column" }));
       await waitFor(() => {
         expect(canvas.getByText("6 columns")).toBeInTheDocument();
+      });
+    });
+  },
+};
+
+export const CreateSheet: Story = {
+  name: "Create sheet",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+
+    await step("Create sheet adds a second tab and switches to it", async () => {
+      await userEvent.click(await canvas.findByRole("button", { name: "New sheet" }));
+      await waitFor(() => {
+        expect(canvas.getByRole("button", { name: "sheet2" })).toBeInTheDocument();
+        expect(canvas.getByText("1 column")).toBeInTheDocument();
+        expect(canvas.getByText("0 rows")).toBeInTheDocument();
+      });
+    });
+
+    await step("Serialized YCSV includes the new multi-sheet frontmatter", async () => {
+      await userEvent.click(await canvas.findByRole("button", { name: "Edit source" }));
+      const source = await canvas.findByRole<HTMLTextAreaElement>("textbox", {
+        name: "YCSV source",
+      });
+      await waitFor(() => {
+        expect(source.value).toContain("sheets:");
+        expect(source.value).toContain("ref: sheet2");
+      });
+    });
+  },
+};
+
+export const RowSelect: Story = {
+  name: "Row select",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    filePath: mockDocument.apiPath,
+    operations: createMockSpreadsheetOperations(),
+    onFileRenamed: () => {},
+    onLogout: () => {},
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+
+    await step("Shift+Space selects the active row", async () => {
+      const gridCanvas = await canvas.findByTestId("data-grid-canvas");
+      const rect = gridCanvas.getBoundingClientRect();
+      const clientX = rect.left + 100;
+      const clientY = rect.top + 55;
+      const opts = { bubbles: true, cancelable: true, clientX, clientY, button: 0 };
+      gridCanvas.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mousedown", opts));
+      gridCanvas.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1 }));
+      gridCanvas.dispatchEvent(new MouseEvent("mouseup", opts));
+      gridCanvas.dispatchEvent(new MouseEvent("click", opts));
+      gridCanvas.focus();
+      await userEvent.keyboard("{Shift>}{Space}{/Shift}");
+
+      await waitFor(() => {
+        expect(canvas.getByText("entire row 2")).toBeInTheDocument();
       });
     });
   },
