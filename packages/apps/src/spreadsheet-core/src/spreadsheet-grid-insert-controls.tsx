@@ -120,7 +120,11 @@ export function SpreadsheetGridInsertControls({
     if (lastRowMarker) {
       setAddRowRect({
         left: lastRowMarker.x - containerRect.left + (lastRowMarker.width - CONTROL_SIZE) / 2,
-        top: lastRowMarker.y - containerRect.top + (lastRowMarker.height - CONTROL_SIZE) / 2,
+        top:
+          lastRowMarker.y +
+          lastRowMarker.height -
+          containerRect.top +
+          (lastRowMarker.height - CONTROL_SIZE) / 2,
         width: CONTROL_SIZE,
         height: CONTROL_SIZE,
       });
