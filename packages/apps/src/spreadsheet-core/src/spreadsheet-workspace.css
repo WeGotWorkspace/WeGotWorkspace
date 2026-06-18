@@ -176,131 +176,153 @@
 /* ── Schema panel (right sidebar) ─────────────────────────────────────── */
 
 .spreadsheet-workspace__schema-panel {
-  @apply flex min-h-0 shrink-0 flex-col overflow-y-auto;
-  flex: 0 0 clamp(17.5rem, 28vw, 20rem);
-  padding: 0.75rem;
+  @apply flex min-h-0 shrink-0 flex-col;
+  flex: 0 0 clamp(18rem, 30vw, 22rem);
   border-left: 1px solid var(--spreadsheet-border);
-  background-color: color-mix(in oklab, #ffffff 94%, transparent);
+  background-color: color-mix(in oklab, var(--spreadsheet-canvas) 35%, var(--spreadsheet-surface));
+
+  --field-label-font-family: var(--font-sans);
+  --field-label-color: var(--spreadsheet-muted);
+  --card-surface-bg: var(--spreadsheet-surface);
+  --card-surface-border-color: var(--spreadsheet-border);
+  --segmented-control-track-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --segmented-control-active-bg: var(--spreadsheet-surface);
+  --segmented-control-active-fg: var(--spreadsheet-text);
+  --segmented-control-active-shadow: 0 1px 2px
+    color-mix(in oklab, var(--color-ink) 12%, transparent);
 }
 
-.spreadsheet-workspace__schema-tabs {
-  @apply flex min-h-0 flex-1 flex-col gap-3;
+.spreadsheet-workspace__schema-panel .field-label-row {
+  @apply mb-3 last:mb-0;
 }
 
-.spreadsheet-workspace__schema-tabs-list {
-  @apply grid h-8 w-full shrink-0 grid-cols-2 p-0.5;
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+.spreadsheet-workspace__schema-panel .field-label-row__label {
+  @apply text-sm font-medium normal-case tracking-normal;
+  font-family: var(--font-sans);
   color: var(--spreadsheet-muted);
 }
 
-.spreadsheet-workspace__schema-tabs-trigger {
-  @apply h-7 rounded px-2 text-xs font-medium uppercase tracking-wide;
+.spreadsheet-workspace__schema-toolbar {
+  @apply shrink-0 px-4 pt-4 pb-3;
+  border-bottom: 1px solid var(--spreadsheet-border);
+  background-color: color-mix(in oklab, var(--spreadsheet-surface) 92%, transparent);
 }
 
-.spreadsheet-workspace__schema-tabs-content {
-  @apply mt-0 min-h-0 flex-1 focus-visible:outline-none focus-visible:ring-0;
+.spreadsheet-workspace__schema-segmented {
+  @apply flex w-full;
+}
+
+.spreadsheet-workspace__schema-segmented .segmented-control__button--text {
+  @apply min-w-0 flex-1;
+}
+
+.spreadsheet-workspace__schema-scroll {
+  @apply min-h-0 flex-1 overflow-y-auto px-4 py-4;
 }
 
 .spreadsheet-workspace__schema-section {
-  @apply flex flex-col gap-3;
+  @apply flex flex-col gap-4;
 }
 
-.spreadsheet-workspace__schema-mapping-card {
-  @apply shrink-0;
+.spreadsheet-workspace__schema-def-list,
+.spreadsheet-workspace__schema-column-list {
+  @apply m-0 flex list-none flex-col gap-3 p-0;
 }
 
-.spreadsheet-workspace__schema-mapping-card .card__header-row {
-  @apply items-center gap-2;
+.spreadsheet-workspace__schema-def-card.card,
+.spreadsheet-workspace__schema-column-card.card {
+  @apply mb-0 p-4;
 }
 
-.spreadsheet-workspace__schema-mapping-card .card__title {
-  @apply text-[11px] font-medium normal-case tracking-normal;
+.spreadsheet-workspace__schema-def-card .card__header-row,
+.spreadsheet-workspace__schema-column-card .card__header-row {
+  @apply mb-0 -mt-1 justify-end;
+}
+
+.spreadsheet-workspace__schema-caption {
+  @apply mb-3 text-sm;
   color: var(--spreadsheet-muted);
 }
 
-.spreadsheet-workspace__schema-mapping-actions {
-  @apply pt-1;
+.spreadsheet-workspace__schema-empty-state {
+  @apply rounded-md border px-4 py-6 text-center;
+  border-color: var(--spreadsheet-border);
+  background-color: color-mix(in oklab, var(--spreadsheet-surface) 80%, transparent);
 }
 
-.spreadsheet-workspace__schema-field--inline {
-  @apply min-w-0 flex-1;
+.spreadsheet-workspace__schema-empty-title {
+  @apply mb-1 text-sm font-medium;
+  color: var(--spreadsheet-text);
 }
 
 .spreadsheet-workspace__schema-empty,
 .spreadsheet-workspace__schema-hint {
-  @apply text-xs leading-relaxed;
+  @apply text-sm leading-relaxed;
   color: var(--spreadsheet-muted);
 }
 
-.spreadsheet-workspace__schema-def-list,
-.spreadsheet-workspace__schema-column-list,
-.spreadsheet-workspace__schema-mapping-list {
-  @apply m-0 flex list-none flex-col gap-3 p-0;
-}
-
-.spreadsheet-workspace__schema-def-row,
-.spreadsheet-workspace__schema-column-row {
-  @apply flex flex-col gap-2 rounded-md border p-2;
+.spreadsheet-workspace__schema-footer {
+  @apply flex flex-col gap-2 border-t pt-4;
   border-color: var(--spreadsheet-border);
-  background-color: color-mix(in oklab, var(--spreadsheet-canvas) 55%, #ffffff);
 }
 
-.spreadsheet-workspace__schema-def-header {
-  @apply flex items-start justify-between gap-2;
-}
-
-.spreadsheet-workspace__schema-def-meta {
-  @apply flex shrink-0 items-center gap-1;
-}
-
-.spreadsheet-workspace__schema-field {
-  @apply mb-0 gap-1;
-}
-
-.spreadsheet-workspace__schema-field .field-label-row__label {
-  @apply text-[11px];
-  color: var(--spreadsheet-muted);
-}
-
-.spreadsheet-workspace__schema-actions {
+.spreadsheet-workspace__schema-footer-actions {
   @apply flex flex-wrap gap-2;
 }
 
-.spreadsheet-workspace__schema-tag {
-  @apply inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase;
-  background-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+.spreadsheet-workspace__schema-footer-actions .button {
+  @apply min-w-0 flex-1 justify-center;
+}
+
+.spreadsheet-workspace__schema-hint {
+  @apply text-xs;
+}
+
+.spreadsheet-workspace__schema-mapping {
+  @apply space-y-2;
+}
+
+.spreadsheet-workspace__schema-mapping-label {
+  @apply text-sm font-medium;
   color: var(--spreadsheet-muted);
 }
 
-.spreadsheet-workspace__schema-tag--sheet {
-  background-color: var(--spreadsheet-stat-tag-bg);
-  color: var(--spreadsheet-stat-tag-color);
+.spreadsheet-workspace__schema-mapping-table {
+  @apply overflow-hidden rounded-md border;
+  border-color: var(--spreadsheet-border);
 }
 
-.spreadsheet-workspace__schema-tag--explicit {
-  background-color: var(--spreadsheet-stat-tag-bg);
-  color: var(--spreadsheet-stat-tag-color);
-}
-
-.spreadsheet-workspace__schema-tag--implicit {
+.spreadsheet-workspace__schema-mapping-head {
+  @apply grid items-center gap-2 px-2 py-1.5 text-xs font-medium;
+  grid-template-columns: 1fr 1fr 2rem;
   color: var(--spreadsheet-muted);
+  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  border-bottom: 1px solid var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__schema-mapping-head-action {
+  @apply size-8;
+}
+
+.spreadsheet-workspace__schema-mapping-list {
+  @apply m-0 list-none p-0;
+}
+
+.spreadsheet-workspace__schema-mapping-row {
+  @apply grid items-center gap-2 px-2 py-1.5;
+  grid-template-columns: 1fr 1fr 2rem;
+}
+
+.spreadsheet-workspace__schema-mapping-row + .spreadsheet-workspace__schema-mapping-row {
+  border-top: 1px solid var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__schema-mapping-row-action {
+  @apply flex justify-center;
 }
 
 .spreadsheet-workspace__schema-input--invalid {
   border-color: color-mix(in oklab, var(--spreadsheet-error) 55%, transparent);
-}
-
-.spreadsheet-workspace__schema-mapping-row {
-  @apply flex items-end gap-2;
-}
-
-.spreadsheet-workspace__schema-column-position {
-  @apply flex items-center justify-between gap-2;
-}
-
-.spreadsheet-workspace__schema-column-index {
-  @apply font-mono text-xs font-semibold;
-  color: var(--spreadsheet-accent);
 }
 
 .spreadsheet-workspace__schema-select {
@@ -308,7 +330,7 @@
 }
 
 .spreadsheet-workspace__schema-textarea {
-  @apply min-h-16 resize-y;
+  @apply min-h-20 resize-y;
 }
 
 .spreadsheet-workspace__source .text-editor-source {
