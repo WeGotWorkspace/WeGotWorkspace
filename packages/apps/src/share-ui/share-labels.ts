@@ -4,7 +4,6 @@ export const shareLabels = {
   dialogDescription: "Share a public link, or invite teammates and guests individually.",
   publicSectionTitle: "Anyone with the link",
   publicEnabledHint: "No sign-in required — anyone with the URL can view this doc.",
-  publicViewOnlyHint: "Public links are view-only.",
   publicDisabledHint: "Public access is off. Turn it on to share a link.",
   teamSectionTitle: "Team access",
   teamSectionHint: "Grant access to a whole group, or pick individual teammates.",
@@ -18,9 +17,21 @@ export const shareLabels = {
   requirePassword: "Require password",
   passwordPlaceholder: "Set a password",
   passwordDisabledPlaceholder: "Password disabled",
+  passwordDisableWarning: "Anyone with the link can open this without a password.",
+  confirmCancel: "Cancel",
+  confirmContinue: "Continue",
+  disablePublicLinkTitle: "Disable public link?",
+  disablePublicLinkConfirm: "Anyone with the current link will lose access. Continue?",
+  disablePasswordTitle: "Disable password?",
+  disablePasswordConfirm: "The link will work without a password. Continue?",
+  regenerateLinkTitle: "Generate new link?",
+  regenerateLinkConfirm:
+    "The current link will stop working immediately. Anyone with the old URL will need the new one. Continue?",
   invitePlaceholder: "name@company.com",
   inviteAction: "Invite",
+  inviteGuest: "Invite guest",
   removeGuest: "Remove guest",
+  removeGrant: "Remove access",
   enablePublicAccess: "Enable public access",
   noAccess: "No access",
   addTeamGrantPlaceholder: "Add people or groups…",
@@ -51,6 +62,7 @@ export const sharePermissionLabels: Record<
   view: { label: "Can view", shortLabel: "View" },
   suggest: { label: "Can suggest", shortLabel: "Suggest" },
   edit: { label: "Can edit", shortLabel: "Edit" },
+  full: { label: "Full access", shortLabel: "Full" },
 };
 
 export function formatSharePathLabel(sharePath: string): string {

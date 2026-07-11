@@ -7,6 +7,7 @@ import type {
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { uiPermissionToAccess, type ShareUIPermission } from "@/share-ui/share-access-map";
+import { generateFriendlySharePassword } from "@/share-ui/generate-friendly-share-password";
 import { shareLabels } from "@/share-ui/share-labels";
 import {
   findDirectMemberShare,
@@ -49,22 +50,26 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
   );
 
   const setPublicEnabled = useCallback(
-    async (enabled: boolean) => {
-      if (!atPath) return;
+    async (enabled: boolean): Promise<string | undefined> => {
+      if (!atPath) return undefined;
+      let generatedPassword: string | undefined;
       await runMutation("public-toggle", async () => {
         const directPublic = findDirectPublicShare(atPath);
         if (enabled) {
           if (directPublic) return;
+          generatedPassword = generateFriendlySharePassword();
           await operations.createShare({
             path,
             kind: "public",
             defaultAccess: "view",
+            password: generatedPassword,
           });
           return;
         }
         if (!directPublic) return;
         await operations.deleteShare(directPublic.shareId);
       });
+      return generatedPassword;
     },
     [atPath, operations, path, runMutation],
   );
@@ -87,38 +92,44 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
   );
 
   const updatePublicPassword = useCallback(
-    async (enabled: boolean, password: string) => {
-      if (!atPath) return;
+    async (enabled: boolean, password: string): Promise<string | undefined> => {
+      if (!atPath) return undefined;
       const directPublic = findDirectPublicShare(atPath);
-      if (!directPublic) return;
-      const trimmed = password.trim();
-      if (enabled && !trimmed) return;
+      if (!directPublic) return undefined;
+      let trimmed = password.trim();
+      if (enabled && !trimmed) {
+        trimmed = generateFriendlySharePassword();
+      }
       const share = findShareRecord(atPath, directPublic.shareId);
-      if (!share?.updatedAt) return;
+      if (!share?.updatedAt) return undefined;
       await runMutation(`public-password-${directPublic.shareId}`, async () => {
         await operations.patchShare(directPublic.shareId, {
           updatedAt: share.updatedAt!,
           password: enabled ? trimmed : null,
         });
       });
+      return enabled ? trimmed : undefined;
     },
     [atPath, operations, runMutation],
   );
 
-  const regeneratePublicLink = useCallback(async () => {
-    if (!atPath) return;
+  const regeneratePublicLink = useCallback(async (): Promise<string | undefined> => {
+    if (!atPath) return undefined;
     const directPublic = findDirectPublicShare(atPath);
-    if (!directPublic) return;
+    if (!directPublic) return undefined;
     const share = findShareRecord(atPath, directPublic.shareId);
+    let generatedPassword: string | undefined;
     await runMutation(`public-regenerate-${directPublic.shareId}`, async () => {
+      generatedPassword = share?.hasPassword ? generateFriendlySharePassword() : undefined;
       await operations.deleteShare(directPublic.shareId);
       await operations.createShare({
         path,
         kind: "public",
         defaultAccess: directPublic.defaultAccess,
-        password: share?.hasPassword ? "" : null,
+        password: generatedPassword ?? null,
       });
     });
+    return generatedPassword;
   }, [atPath, operations, path, runMutation]);
 
   const updateGrantAccess = useCallback(

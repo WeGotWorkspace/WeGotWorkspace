@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { Code2, Pencil, Printer, Share2 } from "lucide-react";
-import { Button } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import {
@@ -17,8 +16,6 @@ import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
-import { driveSearchFromView } from "@/drive-core/src/drive-route-search";
-import type { ViewKey } from "@/drive-core/src/drive-models";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
@@ -34,16 +31,6 @@ import "@/docs-core/src/docs-workspace.css";
 type DocsController = ReturnType<typeof useDocsController>;
 type DocsShareDialog = ReturnType<typeof useDriveShareDialog>;
 
-function buildDriveAccessHref(view: ViewKey): string | null {
-  if (view.type !== "access") return null;
-  const search = driveSearchFromView(view);
-  const params = new URLSearchParams();
-  if (search.view) params.set("view", search.view);
-  if (search.path) params.set("path", search.path);
-  const qs = params.toString();
-  return `/drive${qs ? `?${qs}` : ""}`;
-}
-
 export function DocsWorkspace({
   data,
   session,
@@ -53,7 +40,6 @@ export function DocsWorkspace({
   labels,
   onLogout,
   onFileRenamed,
-  onNavigate,
   className,
 }: DocsWorkspaceProps) {
   const isGuestSession = wgwIsGuestSession();
@@ -68,18 +54,9 @@ export function DocsWorkspace({
 
   const apiPath = filePath ?? data.document?.apiPath ?? "";
 
-  const handleShareViewChange = useCallback(
-    (view: ViewKey) => {
-      const href = buildDriveAccessHref(view);
-      if (href) onNavigate?.(href);
-    },
-    [onNavigate],
-  );
-
   const shareDialog = useDriveShareDialog({
     shareOperations,
     username: session.user.username ?? "",
-    onViewChange: handleShareViewChange,
   });
 
   const { mayShare } = useDriveShareMayShare({
@@ -263,19 +240,6 @@ function DocsMainHeader({
       actions={
         controller.hasFile ? (
           <DocsHeaderActions
-            leading={
-              showShare ? (
-                <Button
-                  label={controller.labels.share}
-                  icon={<Share2 className="size-4" aria-hidden />}
-                  size="sm"
-                  pill
-                  variant="primary"
-                  className="docs-workspace__share-button"
-                  onClick={() => shareDialog.openShareDialog(apiPath, title)}
-                />
-              ) : null
-            }
             actions={[
               {
                 id: "view-source",
@@ -293,6 +257,17 @@ function DocsMainHeader({
                 disabled: !editor,
                 onClick: () => printTextEditorSheet(editor),
               },
+              ...(showShare
+                ? [
+                    {
+                      id: "share",
+                      label: controller.labels.share,
+                      icon: <Share2 />,
+                      className: "docs-workspace__share-button",
+                      onClick: () => shareDialog.openShareDialog(apiPath, title),
+                    },
+                  ]
+                : []),
               {
                 id: "rename",
                 label: controller.labels.rename,

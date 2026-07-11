@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "reac
 import type { Editor } from "@tiptap/react";
 import { Code2, MessageSquare, Printer, Share2 } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
-import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { DocsDocStatus } from "@/docs-core/src/docs-doc-status";
@@ -574,17 +573,6 @@ function DocsCollabWorkspaceInner({
                 <DocsHeaderActions
                   leading={
                     <>
-                      {showShare && onShare ? (
-                        <Button
-                          label={shareLabel ?? labels.share}
-                          icon={<Share2 className="size-4" aria-hidden />}
-                          size="sm"
-                          pill
-                          variant="primary"
-                          className="docs-workspace__share-button"
-                          onClick={onShare}
-                        />
-                      ) : null}
                       {showPendingSyncIndicator ? (
                         <span
                           className="docs-workspace__pending-sync"
@@ -631,6 +619,17 @@ function DocsCollabWorkspaceInner({
                       disabled: !editor,
                       onClick: () => printTextEditorSheet(editor),
                     },
+                    ...(showShare && onShare
+                      ? [
+                          {
+                            id: "share",
+                            label: shareLabel ?? labels.share,
+                            icon: <Share2 />,
+                            className: "docs-workspace__share-button",
+                            onClick: onShare,
+                          },
+                        ]
+                      : []),
                     {
                       id: "review",
                       label: viewSource

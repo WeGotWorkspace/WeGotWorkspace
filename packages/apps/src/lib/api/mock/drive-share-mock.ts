@@ -54,13 +54,15 @@ export function createMockDriveShareOperations(): DriveShareOperations {
       if (body.kind === "public" && body.defaultAccess !== "view") {
         throw new Error("Public shares only support view access.");
       }
+      const hasPassword =
+        body.password !== null && body.password !== undefined && body.password.trim() !== "";
       const created: DriveShare = {
         id: `mock-share-${nextShareId++}`,
         path: body.path,
         kind: body.kind,
         defaultAccess: body.defaultAccess,
         publicToken: body.kind === "public" ? `mock-token-${Date.now()}` : null,
-        hasPassword: Boolean(body.password),
+        hasPassword,
         expiresAt: body.expiresAt ?? null,
         updatedAt: new Date().toISOString(),
         shareWith: body.shareWith ?? null,

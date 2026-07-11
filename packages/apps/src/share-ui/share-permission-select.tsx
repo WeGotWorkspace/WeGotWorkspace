@@ -1,4 +1,4 @@
-import { Eye, Lock, MessageSquare, Pencil } from "lucide-react";
+import { Eye, Lock, MessageSquare, Pencil, ShieldCheck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/share-ui/share-access-map";
 import { shareLabels, sharePermissionLabels } from "@/share-ui/share-labels";
@@ -7,6 +7,7 @@ const PERMISSION_ICONS = {
   view: Eye,
   suggest: MessageSquare,
   edit: Pencil,
+  full: ShieldCheck,
 } as const;
 
 type SharePermissionSelectProps = {

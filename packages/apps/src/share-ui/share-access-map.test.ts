@@ -10,18 +10,22 @@ describe("share-access-map", () => {
     expect(uiPermissionToAccess("view")).toBe("view");
     expect(uiPermissionToAccess("suggest")).toBe("review");
     expect(uiPermissionToAccess("edit")).toBe("edit");
+    expect(uiPermissionToAccess("full")).toBe("full");
   });
 
   it("maps supported API access levels to UI permissions", () => {
     expect(accessToUIPermission("view")).toBe("view");
     expect(accessToUIPermission("review")).toBe("suggest");
     expect(accessToUIPermission("edit")).toBe("edit");
+    expect(accessToUIPermission("full")).toBe("full");
   });
 
-  it("hides comment and full from the share dialog dropdown", () => {
+  it("hides comment from the share dialog dropdown", () => {
     expect(accessToUIPermission("comment")).toBeNull();
-    expect(accessToUIPermission("full")).toBeNull();
     expect(isDialogEditableAccess("comment")).toBe(false);
-    expect(isDialogEditableAccess("full")).toBe(false);
+  });
+
+  it("treats full access as dialog-editable", () => {
+    expect(isDialogEditableAccess("full")).toBe(true);
   });
 });

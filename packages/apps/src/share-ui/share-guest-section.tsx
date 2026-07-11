@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Mail, Trash2 } from "lucide-react";
+import { Mail, Send, Trash2 } from "lucide-react";
 import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
-import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
-import { Input } from "@/ui/input";
+import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
 import { accessToUIPermission, type ShareUIPermission } from "@/share-ui/share-access-map";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -16,14 +15,22 @@ type ShareGuestSectionProps = {
   disabled?: boolean;
 };
 
+function isValidGuestEmail(value: string): boolean {
+  const email = value.trim();
+  if (!email.includes("@")) return false;
+  const [, domain] = email.split("@");
+  return Boolean(domain?.includes("."));
+}
+
 export function ShareGuestSection({ atPath, mutations, disabled = false }: ShareGuestSectionProps) {
   const guestGrants = atPath.effectiveGrants.filter((grant) => grant.principalType === "email");
   const [newEmail, setNewEmail] = useState("");
   const [newPermission, setNewPermission] = useState<ShareUIPermission>("view");
+  const canInvite = isValidGuestEmail(newEmail);
 
   const addGuest = () => {
     const email = newEmail.trim();
-    if (!email) return;
+    if (!isValidGuestEmail(email)) return;
     void mutations.inviteGuest(email, newPermission).then(() => {
       setNewEmail("");
       setNewPermission("view");
@@ -94,26 +101,32 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
         })}
 
         <div className="share-dialog__guest-composer">
-          <Input
+          <ShareDialogInput
             type="email"
+            className="share-dialog__guest-input"
             value={newEmail}
             disabled={disabled}
             placeholder={shareLabels.invitePlaceholder}
-            className="share-dialog__guest-input"
             onChange={(event) => setNewEmail(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") addGuest();
+              if (event.key === "Enter" && canInvite) addGuest();
             }}
           />
           <SharePermissionSelect
             value={newPermission}
+            disabled={disabled}
             onChange={(next) => {
               if (next !== "none") setNewPermission(next);
             }}
           />
-          <Button size="sm" className="h-8" disabled={disabled} onClick={addGuest}>
-            {shareLabels.inviteAction}
-          </Button>
+          <IconButton
+            label={shareLabels.inviteGuest}
+            icon={<Send className="size-3.5" aria-hidden />}
+            size="sm"
+            variant="primary"
+            disabled={disabled || !canInvite}
+            onClick={addGuest}
+          />
         </div>
       </div>
     </section>

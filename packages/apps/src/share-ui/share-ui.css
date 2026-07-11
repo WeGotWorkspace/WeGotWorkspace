@@ -18,6 +18,7 @@
     color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
   );
   max-width: 36rem;
+  --input-height: 2rem;
 }
 
 .share-dialog__content {
@@ -143,6 +144,30 @@
 
 .share-dialog__link-row {
   @apply flex min-w-0 items-center gap-2 px-1;
+}
+
+.share-dialog__input {
+  @apply min-w-0 flex-1;
+}
+
+.share-dialog__input--mono {
+  --input-font-size: 0.75rem;
+  @apply truncate font-mono;
+}
+
+.share-dialog__link-row > :not(.share-dialog__input) {
+  @apply shrink-0;
+}
+
+.share-dialog__password-row .share-dialog__input {
+  --input-height: 1.75rem;
+  --input-font-size: 0.75rem;
+  @apply sm:ml-auto sm:max-w-[11.25rem] sm:flex-none;
+}
+
+.share-dialog__password-warning {
+  @apply text-xs;
+  color: var(--share-dialog-muted);
 }
 
 .share-dialog__link-row > :not(.share-dialog__link-field) {

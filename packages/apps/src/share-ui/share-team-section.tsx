@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Users, Users2 } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
-import { Input } from "@/ui/input";
+import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { initialsFromDisplayName, UserAvatar } from "@/user-avatar/src/user-avatar";
 import { accessToUIPermission } from "@/share-ui/share-access-map";
 import { formatSharePathLabel, shareLabels } from "@/share-ui/share-labels";
@@ -24,6 +24,10 @@ export function ShareTeamSection({
   const groupGrants = useMemo(
     () => atPath.effectiveGrants.filter((grant) => grant.principalType === "group"),
     [atPath.effectiveGrants],
+  );
+  const directMemberAccess = useMemo(
+    () => atPath.memberAccess.filter((member) => member.viaGroup === null),
+    [atPath.memberAccess],
   );
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<DriveSharePrincipalEntry[]>([]);
@@ -92,28 +96,39 @@ export function ShareTeamSection({
               inheritedFromPath={inherited ? grant.source.sharePath : undefined}
               access={grant.access}
               editable={Boolean(grant.removal) && !inherited}
-              allowNone={Boolean(grant.removal) && !inherited}
+              removeDisabled={disabled}
               onOpenAccess={onOpenAccess}
               onAccessChange={(next) => {
                 if (!grant.removal) return;
                 void mutations.updateGrantAccess(
                   grant.removal.shareId,
                   grant.removal.principal ?? grant.principal,
-                  next === "none" ? null : next,
+                  next,
                 );
               }}
+              onRemove={
+                grant.removal && !inherited
+                  ? () => {
+                      void mutations.updateGrantAccess(
+                        grant.removal!.shareId,
+                        grant.removal!.principal ?? grant.principal,
+                        null,
+                      );
+                    }
+                  : undefined
+              }
             />
           );
         })}
 
-        {groupGrants.length > 0 && atPath.memberAccess.length > 0 ? (
+        {groupGrants.length > 0 && directMemberAccess.length > 0 ? (
           <div className="share-dialog__row-divider" />
         ) : null}
 
-        {atPath.memberAccess.map((member) => {
+        {directMemberAccess.map((member) => {
           const inherited = member.source.inherited;
           const uiPermission = accessToUIPermission(member.access);
-          const active = Boolean(uiPermission) || member.access === "full";
+          const active = Boolean(uiPermission);
           const subtitle = inherited
             ? (member.editHint ??
               `${shareLabels.inheritedFrom(formatSharePathLabel(member.source.sharePath))} · ${member.username}`)
@@ -143,22 +158,33 @@ export function ShareTeamSection({
               access={member.access}
               editable={member.editable && !inherited}
               editHint={member.editHint}
-              allowNone={Boolean(member.removal) && member.editable && !inherited}
+              removeDisabled={disabled}
               onOpenAccess={onOpenAccess}
               onAccessChange={(next) => {
                 if (!member.removal?.principal) return;
                 void mutations.updateGrantAccess(
                   member.removal.shareId,
                   member.removal.principal,
-                  next === "none" ? null : next,
+                  next,
                 );
               }}
+              onRemove={
+                member.removal?.principal && member.editable && !inherited
+                  ? () => {
+                      void mutations.updateGrantAccess(
+                        member.removal!.shareId,
+                        member.removal!.principal!,
+                        null,
+                      );
+                    }
+                  : undefined
+              }
             />
           );
         })}
 
         <div className="share-dialog__add-grant">
-          <Input
+          <ShareDialogInput
             value={query}
             disabled={disabled}
             placeholder={shareLabels.addTeamGrantPlaceholder}

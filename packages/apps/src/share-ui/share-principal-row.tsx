@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Trash2 } from "lucide-react";
 import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
+import { IconButton } from "@/button/src/icon-button";
 import {
   accessToUIPermission,
   isDialogEditableAccess,
@@ -19,9 +21,10 @@ type SharePrincipalRowProps = {
   access: DriveShareAccess;
   editable?: boolean;
   editHint?: string;
-  allowNone?: boolean;
+  removeDisabled?: boolean;
   onOpenAccess?: (path: string) => void;
-  onAccessChange?: (permission: ShareUIPermission | "none") => void;
+  onAccessChange?: (permission: ShareUIPermission) => void;
+  onRemove?: () => void;
 };
 
 export function SharePrincipalRow({
@@ -33,9 +36,10 @@ export function SharePrincipalRow({
   access,
   editable = true,
   editHint,
-  allowNone = false,
+  removeDisabled = false,
   onOpenAccess,
   onAccessChange,
+  onRemove,
 }: SharePrincipalRowProps) {
   const inherited = Boolean(inheritedFromPath);
   const uiPermission = accessToUIPermission(access);
@@ -60,9 +64,10 @@ export function SharePrincipalRow({
       {canEdit && uiPermission ? (
         <SharePermissionSelect
           value={uiPermission}
-          allowNone={allowNone}
           title={editHint}
-          onChange={(next) => onAccessChange?.(next)}
+          onChange={(next) => {
+            if (next !== "none") onAccessChange?.(next);
+          }}
         />
       ) : uiPermission ? (
         <SharePermissionSelect value={uiPermission} disabled title={editHint} onChange={() => {}} />
@@ -71,6 +76,16 @@ export function SharePrincipalRow({
           {accessLabelForReadOnly(access)}
         </span>
       )}
+      {onRemove ? (
+        <IconButton
+          label={shareLabels.removeGrant}
+          icon={<Trash2 className="size-3.5" aria-hidden />}
+          size="sm"
+          variant="ghost"
+          disabled={removeDisabled}
+          onClick={onRemove}
+        />
+      ) : null}
     </div>
   );
 }
