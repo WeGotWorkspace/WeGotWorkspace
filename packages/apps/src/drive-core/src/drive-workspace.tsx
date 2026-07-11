@@ -75,7 +75,6 @@ export function DriveWorkspace({
   const shareDialog = useDriveShareDialog({
     shareOperations,
     username: controller.currentUsername,
-    onViewChange: controller.selectView,
   });
 
   const activeFile = controller.active;

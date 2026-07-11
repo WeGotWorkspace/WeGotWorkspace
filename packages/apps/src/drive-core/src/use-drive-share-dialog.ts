@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import { openDriveAccessInNewWindow } from "@/drive-core/src/drive-route-search";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 
@@ -17,13 +17,11 @@ function titleFromApiPath(apiPath: string): string {
 export type UseDriveShareDialogArgs = {
   shareOperations?: DriveShareOperations;
   username: string;
-  onViewChange?: (view: ViewKey) => void;
 };
 
 export function useDriveShareDialog({
   shareOperations: _shareOperations,
   username,
-  onViewChange,
 }: UseDriveShareDialogArgs) {
   const [shareDialog, setShareDialog] = useState<DriveShareDialogState>({
     open: false,
@@ -51,9 +49,9 @@ export function useDriveShareDialog({
       if (!path) return;
       setShareDialog((prev) => ({ ...prev, open: false }));
       const scopePath = uiPathFromApiPath(path, username);
-      onViewChange?.({ type: "access", scopePath });
+      openDriveAccessInNewWindow(scopePath);
     },
-    [onViewChange, username],
+    [username],
   );
 
   return {

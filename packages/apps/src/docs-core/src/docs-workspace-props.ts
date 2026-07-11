@@ -14,7 +14,5 @@ export type DocsWorkspaceProps = {
   onLogout?: () => void;
   /** Called after a successful rename with the new drive API path. */
   onFileRenamed?: (apiPath: string) => void;
-  /** Same-tab navigation (e.g. Drive access manager from share dialog footer). */
-  onNavigate?: (href: string) => void;
   className?: string;
 };

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
+import { openDriveAccessInNewWindow } from "@/drive-core/src/drive-route-search";
 import type { ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
@@ -69,7 +70,7 @@ export function useDriveSidebarModel({
       {
         label: labels.sidebarAccess,
         selected: isAccessView(view),
-        onClick: () => selectView({ type: "access" }),
+        onClick: () => openDriveAccessInNewWindow(),
         icon: <DriveViewIcon view={{ type: "access" }} />,
       },
       {

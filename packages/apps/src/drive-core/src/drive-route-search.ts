@@ -35,6 +35,22 @@ export function driveViewFromSearch(search: DriveRouteSearch): ViewKey {
   return { type: "folder", path: "My Drive" };
 }
 
+/** Drive workspace URL for a view (`/drive?…`). */
+export function driveHrefFromView(view: ViewKey): string {
+  const search = driveSearchFromView(view);
+  const params = new URLSearchParams();
+  if (search.view) params.set("view", search.view);
+  if (search.path) params.set("path", search.path);
+  const qs = params.toString();
+  return `/drive${qs ? `?${qs}` : ""}`;
+}
+
+/** Open the drive access manager in a new browser tab/window (user-gesture safe). */
+export function openDriveAccessInNewWindow(scopePath?: string): Window | null {
+  const view: ViewKey = scopePath ? { type: "access", scopePath } : { type: "access" };
+  return window.open(driveHrefFromView(view), "_blank", "noopener,noreferrer");
+}
+
 /** Serialize a workspace view for the /drive URL search params. */
 export function driveSearchFromView(view: ViewKey): DriveRouteSearch {
   if (view.type === "access") {

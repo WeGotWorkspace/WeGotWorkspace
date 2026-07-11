@@ -32,21 +32,9 @@ import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
-import { driveSearchFromView } from "@/drive-core/src/drive-route-search";
-import type { ViewKey } from "@/drive-core/src/drive-models";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
 import { ShareDialog } from "@/share-ui/share-dialog";
-
-function buildDriveAccessHref(view: ViewKey): string | null {
-  if (view.type !== "access") return null;
-  const search = driveSearchFromView(view);
-  const params = new URLSearchParams();
-  if (search.view) params.set("view", search.view);
-  if (search.path) params.set("path", search.path);
-  const qs = params.toString();
-  return `/drive${qs ? `?${qs}` : ""}`;
-}
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));
@@ -96,42 +84,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [],
   );
 
-  const handleNavigate = useCallback(
-    (href: string) => {
-      try {
-        const url = new URL(href, window.location.origin);
-        if (url.pathname === "/drive") {
-          const view = url.searchParams.get("view") ?? undefined;
-          const path = url.searchParams.get("path") ?? undefined;
-          const search: Record<string, string | undefined> = {};
-          if (view) search.view = view;
-          if (path) search.path = path;
-          void navigate({
-            to: "/drive",
-            search,
-          });
-          return;
-        }
-      } catch {
-        // Fall through to full navigation.
-      }
-      window.location.assign(href);
-    },
-    [navigate],
-  );
-
-  const handleShareViewChange = useCallback(
-    (view: ViewKey) => {
-      const href = buildDriveAccessHref(view);
-      if (href) handleNavigate(href);
-    },
-    [handleNavigate],
-  );
-
   const collabShareDialog = useDriveShareDialog({
     shareOperations,
     username: session.user.username ?? "",
-    onViewChange: handleShareViewChange,
   });
 
   const showCollab = isDocsCollabEditablePath(filePath) && !wgwIsGuestSession();
@@ -281,7 +236,6 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               filePath={filePath}
               onLogout={handleLogout}
               onFileRenamed={handleFileRenamed}
-              onNavigate={handleNavigate}
             />
           )}
         </div>
