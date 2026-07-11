@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createDocsAppBootstrap, createDocsTxtBootstrap } from "@/lib/api/mock/docs-bootstrap";
+import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { createMockDocsOperations } from "@/docs-core/src/docs-mock-operations";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import "@/docs-core/src/docs-workspace.css";
+
+const mockShareOperations = createMockDriveShareOperations();
 
 const meta: Meta<typeof DocsWorkspace> = {
   title: "Apps/Docs",
@@ -25,6 +28,7 @@ export const Default: Story = {
     ...bootstrap,
     filePath: mockDocument.apiPath,
     operations: mockOperations,
+    shareOperations: mockShareOperations,
     onFileRenamed: () => {},
     onLogout: () => {},
   },
@@ -55,6 +59,7 @@ export const PlainText: Story = {
     ...txtBootstrap,
     filePath: txtBootstrap.data.document!.apiPath,
     operations: createMockDocsOperations(),
+    shareOperations: mockShareOperations,
     onFileRenamed: () => {},
     onLogout: () => {},
   },

@@ -31,6 +31,7 @@ export const docsLabels = {
   saveError: "Could not save this document.",
   renameError: "Could not rename this document.",
   print: "Print",
+  share: "Share",
   viewSource: "Edit source",
   hideSource: "Hide source",
   rename: "Rename",

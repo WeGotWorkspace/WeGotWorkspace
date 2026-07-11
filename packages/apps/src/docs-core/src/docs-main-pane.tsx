@@ -47,9 +47,14 @@ export function DocsMainPane({
         key={fileKey}
         format={controller.editorFormat}
         content={controller.content}
+        editable={!controller.readOnly}
         sheetFill
         viewSource={viewSource}
-        formatBar={isPlainText ? false : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }}
+        formatBar={
+          isPlainText || controller.readOnly
+            ? false
+            : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }
+        }
         onUpdate={({ content }) => controller.onContentChange(content)}
         onEditorReady={onEditorReady}
       />

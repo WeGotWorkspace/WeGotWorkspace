@@ -17,6 +17,8 @@ type UseDocsControllerArgs = {
   operations?: DocsAPIOperations;
   /** Mock bootstrap document when no `filePath` (Storybook). */
   initialDocument?: DocsDocument | null;
+  /** Public share guests are view-only (no autosave/rename). */
+  readOnly?: boolean;
   onFileRenamed?: (apiPath: string) => void;
 };
 
@@ -41,6 +43,7 @@ export function useDocsController({
   labels,
   operations,
   initialDocument = null,
+  readOnly = false,
   onFileRenamed,
 }: UseDocsControllerArgs) {
   const L = useMemo(() => mergeDocsLabels(labels), [labels]);
@@ -182,10 +185,10 @@ export function useDocsController({
   const handleContentChange = useCallback(
     (nextContent: string) => {
       setContent(nextContent);
-      if (!filePath || !operations) return;
+      if (readOnly || !filePath || !operations) return;
       scheduleSave(nextContent);
     },
-    [filePath, operations, scheduleSave],
+    [filePath, operations, readOnly, scheduleSave],
   );
 
   const title = document?.fileName ?? (filePath ? fileNameFromApiPath(filePath) : "");
@@ -276,8 +279,11 @@ export function useDocsController({
     loadError,
     hasFile: !!filePath || !!initialDocument,
     canRename: Boolean(
-      resolveActiveApiPath(filePath, document, initialDocument) && operations?.renameFile,
+      !readOnly &&
+      resolveActiveApiPath(filePath, document, initialDocument) &&
+      operations?.renameFile,
     ),
+    readOnly,
     sidebarOpen,
     setSidebarOpen,
     renameDialogOpen,
