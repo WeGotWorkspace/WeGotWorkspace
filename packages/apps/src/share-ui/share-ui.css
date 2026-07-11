@@ -1,0 +1,262 @@
+@import "../styles.css" reference;
+
+.share-dialog {
+  /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
+  --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-row-hover: color-mix(
+    in oklab,
+    var(--muted, oklch(0.968 0.007 247.896)) 50%,
+    transparent
+  );
+  --share-dialog-panel-border: color-mix(
+    in oklab,
+    var(--border, oklch(0.929 0.013 255.508)) 70%,
+    transparent
+  );
+  --share-dialog-muted: var(
+    --muted-foreground,
+    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+  );
+  max-width: 36rem;
+}
+
+.share-dialog__content {
+  @apply max-h-[90vh] overflow-x-hidden overflow-y-auto p-0;
+}
+
+.share-dialog__header {
+  @apply px-6 pb-3 pt-6;
+}
+
+.share-dialog__body {
+  @apply min-w-0 space-y-5 overflow-x-hidden px-6 pb-6;
+}
+
+.share-dialog__section-heading {
+  @apply mb-1 flex items-center gap-2;
+}
+
+.share-dialog__section-icon {
+  @apply size-4;
+  color: var(--share-dialog-accent);
+}
+
+.share-dialog__section-title {
+  @apply text-lg font-semibold tracking-tight;
+}
+
+.share-dialog__section-hint {
+  @apply mb-3 text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__panel {
+  @apply flex flex-col gap-1 rounded-xl border border-border/70 bg-card/60 p-2;
+}
+
+.share-dialog__row {
+  @apply flex items-center gap-2 rounded-lg px-2 py-1.5;
+}
+
+.share-dialog__row:hover {
+  background: var(--share-dialog-row-hover);
+}
+
+.share-dialog__row-main {
+  @apply min-w-0 flex-1;
+}
+
+.share-dialog__row-title-line {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.share-dialog__row-title {
+  @apply truncate text-sm font-medium;
+}
+
+.share-dialog__row-subtitle {
+  @apply truncate text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__row-divider {
+  @apply my-1 border-t;
+  border-color: var(--share-dialog-panel-border);
+}
+
+.share-dialog__group-mark,
+.share-dialog__guest-mark {
+  @apply flex size-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold uppercase transition-colors;
+}
+
+.share-dialog__group-mark {
+  @apply rounded-lg;
+}
+
+.share-dialog__group-mark--active,
+.share-dialog__member-mark--active {
+  background: var(--share-dialog-accent);
+  color: var(--primary-foreground, #fff);
+}
+
+.share-dialog__group-mark--idle,
+.share-dialog__member-mark--idle {
+  background: color-mix(in oklab, var(--share-dialog-accent) 10%, transparent);
+  color: var(--share-dialog-accent);
+}
+
+.share-dialog__member-mark {
+  @apply flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold uppercase transition-colors;
+}
+
+.share-dialog__permission-select {
+  @apply h-8 w-[8.125rem] shrink-0 border-border/60 bg-transparent text-xs;
+}
+
+.share-dialog__permission-item {
+  @apply flex items-center gap-2 text-xs;
+}
+
+.share-dialog__permission-item-icon {
+  @apply size-3.5;
+}
+
+.share-dialog__inherited-link {
+  @apply inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium;
+  border-color: var(--share-dialog-panel-border);
+  background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__inherited-link:hover {
+  border-color: color-mix(in oklab, var(--share-dialog-accent) 50%, transparent);
+  color: var(--share-dialog-accent);
+}
+
+.share-dialog__inherited-link-icon {
+  @apply size-2.5;
+}
+
+.share-dialog__link-controls {
+  @apply flex min-w-0 flex-col gap-2 rounded-xl border border-border/70 bg-card/60 p-2;
+}
+
+.share-dialog__link-row {
+  @apply flex min-w-0 items-center gap-2 px-1;
+}
+
+.share-dialog__link-row > :not(.share-dialog__link-field) {
+  @apply shrink-0;
+}
+
+.share-dialog__link-field {
+  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5;
+}
+
+.share-dialog__link-field-icon {
+  @apply size-3.5 shrink-0;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__link-url {
+  @apply min-w-0 truncate font-mono text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__password-row {
+  @apply flex min-w-0 flex-wrap items-center gap-2 rounded-lg px-3 py-2;
+  background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
+}
+
+.share-dialog__password-icon {
+  @apply size-3.5 shrink-0;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__password-label {
+  @apply shrink-0 text-xs font-medium;
+}
+
+.share-dialog__password-input {
+  @apply h-7 min-w-0 flex-1 text-xs sm:ml-auto sm:max-w-[11.25rem] sm:flex-none;
+}
+
+.share-dialog__guest-composer {
+  @apply flex items-center gap-2 border-t p-1.5 pt-2.5;
+  border-color: var(--share-dialog-panel-border);
+}
+
+.share-dialog__guest-input {
+  @apply h-8 border-none bg-transparent text-sm shadow-none focus-visible:ring-0;
+}
+
+.share-dialog__footer {
+  @apply flex items-center justify-between border-t px-6 py-3 text-xs;
+  border-color: var(--share-dialog-panel-border);
+  background: color-mix(in oklab, var(--color-ink, #111) 4%, transparent);
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__footer-link {
+  @apply inline-flex items-center gap-1 font-medium text-foreground hover:text-primary;
+}
+
+.share-dialog__pending-badge {
+  @apply rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide;
+  background: color-mix(in oklab, var(--share-dialog-accent) 12%, transparent);
+  color: var(--share-dialog-accent);
+}
+
+.share-dialog__add-grant {
+  @apply border-t p-2;
+  border-color: var(--share-dialog-panel-border);
+}
+
+.share-dialog__add-grant-input {
+  @apply h-8 w-full text-sm;
+}
+
+.share-dialog__add-grant-results {
+  @apply mt-1 flex flex-col gap-0.5;
+}
+
+.share-dialog__add-grant-option {
+  @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/50;
+}
+
+.share-dialog__loading,
+.share-dialog__error {
+  @apply px-6 py-8 text-sm;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__read-only-access {
+  @apply inline-flex h-8 min-w-[8.125rem] items-center justify-end px-2 text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-public-route {
+  @apply bg-background text-foreground;
+}
+
+.share-public-route__title {
+  @apply text-3xl font-semibold tracking-tight;
+}
+
+.share-public-route__hint {
+  @apply mt-3 text-sm;
+  color: var(--share-dialog-muted);
+}
+
+.share-public-route__error {
+  @apply mt-4 text-sm text-destructive;
+}
+
+.share-public-route__form {
+  @apply mt-6 space-y-4 text-left;
+}
+
+.share-public-route__inline-link {
+  @apply font-medium underline underline-offset-2;
+  color: var(--share-dialog-accent, var(--primary));
+}
