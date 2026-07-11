@@ -32,6 +32,9 @@ export type DriveMainPaneProps = {
   onMakeOfflineAvailable?: (file: DriveFile) => void;
   pinLoadingId?: string | null;
   extraFileActions?: (file: DriveFile) => ActionBarAction[];
+  shareEnabled?: boolean;
+  onOpenShare?: (apiPath: string, title: string) => void;
+  activeMayShare?: boolean;
 };
 
 export function DriveMainPane({
@@ -44,6 +47,9 @@ export function DriveMainPane({
   onMakeOfflineAvailable,
   pinLoadingId,
   extraFileActions,
+  shareEnabled = false,
+  onOpenShare,
+  activeMayShare,
 }: DriveMainPaneProps) {
   const {
     labels,
@@ -103,6 +109,17 @@ export function DriveMainPane({
 
   const searchActive = Boolean(searchQuery.trim());
 
+  const handleShare = (file: DriveFile) => {
+    if (!file.apiPath || !onOpenShare) return;
+    onOpenShare(file.apiPath, file.title);
+  };
+
+  const fileCanShare = (file: DriveFile) => {
+    if (!shareEnabled || inTrashView || !file.apiPath?.trim()) return false;
+    const resolvedMayShare = file.id === active?.id ? activeMayShare : file.mayShare;
+    return resolvedMayShare === true;
+  };
+
   const sharedBrowserProps = {
     items: visibleItems,
     selectedIds,
@@ -123,6 +140,8 @@ export function DriveMainPane({
     onRename: requestRenameItem,
     onMove: requestMoveItem,
     onTrash: requestDeleteItem,
+    onShare: shareEnabled ? handleShare : undefined,
+    fileCanShare: shareEnabled ? fileCanShare : undefined,
     offlineEnabled,
     offlineAvailableIds,
     offlinePendingSyncIds,
@@ -274,6 +293,15 @@ export function DriveMainPane({
                   isUnderTrash(active.parent)
                     ? setConfirmDelete({ ids: [active.id], permanent: true })
                     : setConfirmDelete({ ids: [active.id], permanent: false }),
+                canShare:
+                  shareEnabled &&
+                  !inTrashView &&
+                  Boolean(active.apiPath?.trim()) &&
+                  activeMayShare === true,
+                onShare:
+                  shareEnabled && active.apiPath && onOpenShare
+                    ? () => onOpenShare(active.apiPath!, active.title)
+                    : undefined,
               })}
             />
           </aside>
@@ -305,6 +333,15 @@ export function DriveMainPane({
                 isUnderTrash(active.parent)
                   ? setConfirmDelete({ ids: [active.id], permanent: true })
                   : setConfirmDelete({ ids: [active.id], permanent: false }),
+              canShare:
+                shareEnabled &&
+                !inTrashView &&
+                Boolean(active.apiPath?.trim()) &&
+                activeMayShare === true,
+              onShare:
+                shareEnabled && active.apiPath && onOpenShare
+                  ? () => onOpenShare(active.apiPath!, active.title)
+                  : undefined,
               mobile: true,
             })}
           />
@@ -340,6 +377,8 @@ function buildDetailPanelProps({
   onRename,
   onMove,
   onDelete,
+  canShare,
+  onShare,
   mobile,
 }: {
   labels: DriveUILabels;
@@ -354,6 +393,8 @@ function buildDetailPanelProps({
   onRename: () => void;
   onMove: () => void;
   onDelete: () => void;
+  canShare?: boolean;
+  onShare?: () => void;
   mobile?: boolean;
 }) {
   return {
@@ -367,6 +408,8 @@ function buildDetailPanelProps({
     onRename,
     onMove,
     onDelete,
+    canShare,
+    onShare,
     mobile,
     onDownload: () => {
       if (operations && file.apiPath && file.kind !== "folder") {

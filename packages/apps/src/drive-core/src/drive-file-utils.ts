@@ -63,6 +63,7 @@ export function driveFileFromEntry(
     kind,
     size,
     apiPath,
+    mayShare: entry.myRights?.mayShare,
   };
 }
 

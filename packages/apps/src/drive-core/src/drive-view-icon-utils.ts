@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock, HardDrive, Star, Trash2 } from "lucide-react";
+import { Clock, HardDrive, Shield, Star, Trash2 } from "lucide-react";
 import { isDriveSharedGroupPath } from "@/drive-core/src/drive-breadcrumbs";
 import type { ViewKey } from "@/drive-core/src/drive-models";
 
@@ -10,9 +10,11 @@ export const driveViewIcons = {
   starred: Star,
   trash: Trash2,
   groupDrive: HardDrive,
+  access: Shield,
 } as const satisfies Record<string, LucideIcon>;
 
 export function resolveDriveViewIcon(view: ViewKey): LucideIcon {
+  if (view.type === "access") return driveViewIcons.access;
   if (view.type === "recent") return driveViewIcons.recent;
   if (view.type === "starred") return driveViewIcons.starred;
   if (view.type === "shared") return driveViewIcons.myDrive;

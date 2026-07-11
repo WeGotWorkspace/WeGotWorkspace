@@ -19,6 +19,10 @@ type UseDriveSidebarModelArgs = {
   commitMoveToFolder: (ids: string[], destinationPath: string) => void;
 };
 
+function isAccessView(view: ViewKey) {
+  return view.type === "access";
+}
+
 function isMyDriveView(view: ViewKey) {
   return view.type === "folder" && (view.path === "My Drive" || view.path.startsWith("My Drive/"));
 }
@@ -61,6 +65,12 @@ export function useDriveSidebarModel({
         selected: view.type === "starred",
         onClick: () => selectView({ type: "starred" }),
         icon: <DriveViewIcon view={{ type: "starred" }} />,
+      },
+      {
+        label: labels.sidebarAccess,
+        selected: isAccessView(view),
+        onClick: () => selectView({ type: "access" }),
+        icon: <DriveViewIcon view={{ type: "access" }} />,
       },
       {
         label: labels.sidebarTrash,

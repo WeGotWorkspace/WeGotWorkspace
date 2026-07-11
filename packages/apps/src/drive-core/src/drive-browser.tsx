@@ -172,6 +172,8 @@ export function DriveGridView({
   onRename,
   onMove,
   onTrash,
+  onShare,
+  fileCanShare,
   searchActive: _searchActive = false,
   showLocationColumn = false,
   offlineAvailableIds,
@@ -213,6 +215,8 @@ export function DriveGridView({
   onRename: (file: DriveFile) => void;
   onMove: (file: DriveFile) => void;
   onTrash: (file: DriveFile) => void;
+  onShare?: (file: DriveFile) => void;
+  fileCanShare?: (file: DriveFile) => boolean;
 }) {
   const folders = items.filter((i) => i.kind === "folder");
   const files = items.filter((i) => i.kind !== "folder");
@@ -243,6 +247,8 @@ export function DriveGridView({
                 onRename={() => onRename(f)}
                 onMove={() => onMove(f)}
                 onTrash={() => onTrash(f)}
+                canShare={fileCanShare?.(f)}
+                onShare={onShare ? () => onShare(f) : undefined}
               />
             ))}
           </div>
@@ -281,6 +287,8 @@ export function DriveGridView({
                 onRename={() => onRename(f)}
                 onMove={() => onMove(f)}
                 onTrash={() => onTrash(f)}
+                canShare={fileCanShare?.(f)}
+                onShare={onShare ? () => onShare(f) : undefined}
               />
             ))}
           </div>
@@ -338,6 +346,8 @@ function FolderTile({
   onRename,
   onMove,
   onTrash,
+  canShare,
+  onShare,
 }: {
   file: DriveFile;
   isSelected: boolean;
@@ -357,6 +367,8 @@ function FolderTile({
   onRename: () => void;
   onMove: () => void;
   onTrash: () => void;
+  canShare?: boolean;
+  onShare?: () => void;
 }) {
   const lp = useLongPress(onLongPress);
   // Tile root is non-interactive so the actions menu is not nested inside a
@@ -419,6 +431,8 @@ function FolderTile({
         onRename={onRename}
         onMove={onMove}
         onDelete={onTrash}
+        canShare={canShare}
+        onShare={onShare}
       />
     </div>
   );
@@ -450,6 +464,8 @@ function FileTile({
   onRename,
   onMove,
   onTrash,
+  canShare,
+  onShare,
   itemDragHandlers,
 }: {
   file: DriveFile;
@@ -478,6 +494,8 @@ function FileTile({
   onRename: () => void;
   onMove: () => void;
   onTrash: () => void;
+  canShare?: boolean;
+  onShare?: () => void;
 }) {
   const lp = useLongPress(onLongPress);
   // Same overlay pattern as FolderTile: keeps the actions menu out of the
@@ -564,6 +582,8 @@ function FileTile({
             onRename={onRename}
             onMove={onMove}
             onDelete={onTrash}
+            canShare={canShare}
+            onShare={onShare}
             extraActions={extraActions}
             disabled={actionsDisabled}
           />
@@ -585,6 +605,8 @@ function DriveFileItemActions({
   onRename,
   onMove,
   onDelete,
+  canShare,
+  onShare,
   extraActions,
   disabled = false,
 }: {
@@ -600,6 +622,8 @@ function DriveFileItemActions({
   onRename?: () => void;
   onMove?: () => void;
   onDelete: () => void;
+  canShare?: boolean;
+  onShare?: () => void;
   extraActions?: ActionBarAction[];
   disabled?: boolean;
 }) {
@@ -611,6 +635,7 @@ function DriveFileItemActions({
       isFolder: file.kind === "folder",
       canOpen,
       canDownload: file.kind !== "folder",
+      canShare,
     },
     {
       onOpen,
@@ -619,6 +644,7 @@ function DriveFileItemActions({
       onRename,
       onMove,
       onDelete,
+      onShare,
     },
   );
   const merged = extraActions?.length ? [...actions, ...extraActions] : actions;
@@ -656,6 +682,8 @@ export function DriveListView({
   onRename,
   onMove,
   onTrash,
+  onShare,
+  fileCanShare,
   onLongPress,
   searchActive = false,
   showLocationColumn = false,
@@ -705,6 +733,8 @@ export function DriveListView({
   onRename: (file: DriveFile) => void;
   onMove: (file: DriveFile) => void;
   onTrash: (file: DriveFile) => void;
+  onShare?: (file: DriveFile) => void;
+  fileCanShare?: (file: DriveFile) => boolean;
   onLongPress: (id: string) => void;
 }) {
   return (
@@ -872,6 +902,8 @@ export function DriveListView({
                       onRename={() => onRename(f)}
                       onMove={() => onMove(f)}
                       onDelete={() => onTrash(f)}
+                      canShare={fileCanShare?.(f)}
+                      onShare={onShare ? () => onShare(f) : undefined}
                       extraActions={extraFileActions?.(f)}
                       disabled={isPinning}
                     />
@@ -900,6 +932,8 @@ export function DriveDetailPanel({
   onRename,
   onMove,
   onDelete,
+  canShare,
+  onShare,
   mobile,
 }: {
   labels: DriveUILabels;
@@ -913,13 +947,15 @@ export function DriveDetailPanel({
   onRename: () => void;
   onMove: () => void;
   onDelete: () => void;
+  canShare?: boolean;
+  onShare?: () => void;
   mobile?: boolean;
 }) {
   const { show } = useAppToast();
 
   const actions = buildDriveFileActions(
     labels,
-    { isStarred, inTrash, canDownload: file.kind !== "folder" },
+    { isStarred, inTrash, canDownload: file.kind !== "folder", canShare },
     {
       onDownload: () => {
         onDownload();
@@ -929,6 +965,7 @@ export function DriveDetailPanel({
       onRename,
       onMove,
       onDelete,
+      onShare,
     },
   );
 

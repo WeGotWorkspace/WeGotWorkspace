@@ -4,6 +4,7 @@ import {
   FolderInput,
   FolderOpen,
   Pencil,
+  Share2,
   Star,
   Trash2,
 } from "lucide-react";
@@ -17,6 +18,7 @@ export type DriveFileActionCallbacks = {
   onOpen?: () => void;
   onRename?: () => void;
   onMove?: () => void;
+  onShare?: () => void;
 };
 
 export function buildDriveFileActions(
@@ -28,6 +30,7 @@ export function buildDriveFileActions(
     canOpen?: boolean;
     canDownload?: boolean;
     canMove?: boolean;
+    canShare?: boolean;
   },
   callbacks: DriveFileActionCallbacks,
 ): ActionBarAction[] {
@@ -65,6 +68,15 @@ export function buildDriveFileActions(
       label: labels.detailRename,
       onClick: callbacks.onRename,
       icon: <Pencil />,
+    });
+  }
+
+  if (options.canShare && callbacks.onShare) {
+    actions.push({
+      id: "share",
+      label: labels.detailShare,
+      onClick: callbacks.onShare,
+      icon: <Share2 />,
     });
   }
 

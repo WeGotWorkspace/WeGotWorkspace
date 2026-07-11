@@ -91,11 +91,11 @@ export function useDriveShell({
   }, [templatePlugin]);
 
   const currentUsername = data.user.username || session.user.username || "";
-  const [files, setFiles] = useState<DriveFile[]>(
-    operations
-      ? data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername))
-      : DRIVE_MOCK_FILES,
-  );
+  const [files, setFiles] = useState<DriveFile[]>(() => {
+    if (!operations) return DRIVE_MOCK_FILES;
+    if (data.directory.files.length === 0) return [];
+    return data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername));
+  });
   const [internalView, setInternalView] = useState<ViewKey>({ type: "folder", path: "My Drive" });
   const isViewControlled = onViewChange !== undefined;
   const view = controlledView ?? internalView;
@@ -329,6 +329,9 @@ export function useDriveShell({
   }, [currentUsername, hydratedFolderPath, listLoading, operations, view]);
 
   const breadcrumbs = useMemo(() => {
+    if (view.type === "access") {
+      return [{ label: driveLabels.accessTitle, path: null as string | null }];
+    }
     if (view.type !== "folder") {
       return [
         {
@@ -346,7 +349,12 @@ export function useDriveShell({
   }, [view]);
 
   const viewLabel = breadcrumbs[breadcrumbs.length - 1].label;
-  const viewResetKey = view.type === "folder" ? `${view.type}:${view.path}` : view.type;
+  const viewResetKey =
+    view.type === "folder"
+      ? `${view.type}:${view.path}`
+      : view.type === "access"
+        ? `access:${view.scopePath ?? ""}`
+        : view.type;
 
   const createUnifiedSearchSelectHandler = useCallback(
     (openFile: DriveShellOpenFileHandler, selection: DriveShellSelectionHandlers) =>

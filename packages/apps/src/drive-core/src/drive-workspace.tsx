@@ -10,11 +10,17 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
+import {
+  workspaceUserFooterDetailLine,
+  workspaceUserInitials,
+  type WorkspaceSession,
+} from "@/lib/workspace/workspace-session";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
+import { DriveAccessPane } from "@/drive-core/src/drive-access-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
 import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
@@ -22,6 +28,8 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
 import { DriveWorkspaceModals } from "@/drive-core/src/drive-workspace-modals";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
 import {
   useDriveOfflineAvailability,
   useDriveOfflineOpenGuard,
@@ -37,12 +45,14 @@ export function DriveWorkspace({
   data,
   session,
   operations,
+  shareOperations,
   listLoading = false,
   offlineUsername = null,
   view,
   onViewChange,
   onOpenDocsFile,
   onNavigate,
+  onOpenShare,
   onLogout,
   className,
 }: DriveWorkspaceProps) {
@@ -61,6 +71,28 @@ export function DriveWorkspace({
     onOpenDocsFile,
     onNavigate,
   });
+
+  const shareDialog = useDriveShareDialog({
+    shareOperations,
+    username: controller.currentUsername,
+    onViewChange: controller.selectView,
+  });
+
+  const activeFile = controller.active;
+  const { mayShare: fetchedActiveMayShare } = useDriveShareMayShare({
+    path: activeFile?.apiPath ?? "",
+    operations: shareOperations,
+    enabled: Boolean(shareOperations && activeFile?.apiPath && activeFile.mayShare === undefined),
+  });
+  const activeMayShare = activeFile?.mayShare ?? fetchedActiveMayShare;
+
+  const handleOpenShareForFile = useCallback(
+    (apiPath: string, title: string) => {
+      shareDialog.openShareDialog(apiPath, title);
+      onOpenShare?.(apiPath);
+    },
+    [onOpenShare, shareDialog],
+  );
 
   const {
     offlineAvailableIds: rowOfflineAvailableIds,
@@ -124,8 +156,14 @@ export function DriveWorkspace({
   }, [searchEnabled, searchQuery, setSearchQuery]);
 
   const browserTitleContext =
-    searchEnabled && searchQuery.trim() ? controller.labels.searchViewTitle : controller.viewLabel;
+    controller.view.type === "access"
+      ? controller.labels.accessTitle
+      : searchEnabled && searchQuery.trim()
+        ? controller.labels.searchViewTitle
+        : controller.viewLabel;
   useDocumentTitle(browserTitleContext);
+
+  const isAccessView = controller.view.type === "access";
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -142,27 +180,51 @@ export function DriveWorkspace({
           />
         }
         mainHeader={
-          <DriveMainHeader
-            controller={controller}
-            unifiedSearchEnabled={Boolean(operations)}
-            searchEnabled={searchEnabled}
-          />
+          isAccessView ? undefined : (
+            <DriveMainHeader
+              controller={controller}
+              unifiedSearchEnabled={Boolean(operations)}
+              searchEnabled={searchEnabled}
+            />
+          )
         }
         main={
-          <DriveMainPane
-            controller={controller}
-            operations={operations}
-            openFile={guardedOpenFile}
-            offlineEnabled={offlineEnabled}
-            offlineAvailableIds={rowOfflineAvailableIds}
-            offlinePendingSyncIds={rowOfflinePendingSyncIds}
-            onMakeOfflineAvailable={handleMakeOfflineAvailable}
-            pinLoadingId={pinLoadingId}
-            extraFileActions={offlineEnabled ? extraFileActions : undefined}
-          />
+          isAccessView && shareOperations ? (
+            <DriveAccessPane
+              shareOperations={shareOperations}
+              operations={operations}
+              username={controller.currentUsername}
+              sidebarGroupPaths={controller.sidebarGroupPaths}
+              groupRootNames={controller.groupRootNames}
+              view={controller.view}
+              onViewChange={controller.selectView}
+              onOpenShare={shareDialog.openShareDialog}
+              sidebarOpen={controller.sidebarOpen}
+              onToggleSidebar={() => controller.setSidebarOpen((v) => !v)}
+            />
+          ) : (
+            <DriveMainPane
+              controller={controller}
+              operations={operations}
+              openFile={guardedOpenFile}
+              offlineEnabled={offlineEnabled}
+              offlineAvailableIds={rowOfflineAvailableIds}
+              offlinePendingSyncIds={rowOfflinePendingSyncIds}
+              onMakeOfflineAvailable={handleMakeOfflineAvailable}
+              pinLoadingId={pinLoadingId}
+              extraFileActions={offlineEnabled ? extraFileActions : undefined}
+              shareEnabled={Boolean(shareOperations)}
+              onOpenShare={handleOpenShareForFile}
+              activeMayShare={activeMayShare}
+            />
+          )
         }
       />
-      <DriveWorkspaceModals controller={controller} />
+      <DriveWorkspaceModals
+        controller={controller}
+        shareOperations={shareOperations}
+        shareDialog={shareDialog}
+      />
       <input
         ref={controller.fileInputRef}
         type="file"
@@ -213,7 +275,7 @@ function DriveSidebar({
         <WorkspaceUserFooter
           name={session.user.displayName}
           initials={workspaceUserInitials(session.user)}
-          detailLine={session.user.username}
+          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
           onLogoutClick={onLogout}
           linkHoverClassName="hover:bg-[color-mix(in_oklab,var(--color-ink)_18%,transparent)]"
         />
