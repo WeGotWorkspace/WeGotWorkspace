@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, MessageSquare, Printer } from "lucide-react";
+import { Code2, MessageSquare, Printer, Share2 } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { DocsDocStatus } from "@/docs-core/src/docs-doc-status";
@@ -76,6 +77,10 @@ export type DocsCollabWorkspaceProps = {
   wire?: DocsCollabWireOperations;
   /** Logout handler for the sidebar user footer. */
   onLogout?: () => void;
+  /** When set with {@link showShare}, renders Share in the docs header. */
+  onShare?: () => void;
+  shareLabel?: string;
+  showShare?: boolean;
 };
 
 function countWords(text: string): number {
@@ -105,6 +110,9 @@ export function DocsCollabWorkspace({
   urls,
   wire,
   onLogout,
+  onShare,
+  shareLabel,
+  showShare = false,
 }: DocsCollabWorkspaceProps = {}) {
   const [userName, setUserName] = useState<string | null>(() => userNameProp?.trim() || null);
   const [promptDismissed, setPromptDismissed] = useState(false);
@@ -137,6 +145,9 @@ export function DocsCollabWorkspace({
       urls={urls}
       wire={wire}
       onLogout={onLogout}
+      onShare={onShare}
+      shareLabel={shareLabel}
+      showShare={showShare}
     />
   );
 }
@@ -147,12 +158,18 @@ function DocsCollabWorkspaceInner({
   urls,
   wire,
   onLogout,
+  onShare,
+  shareLabel,
+  showShare = false,
 }: {
   userName: string;
   documentTitle?: string;
   urls?: DocsCollabUrls;
   wire?: DocsCollabWireOperations;
   onLogout?: () => void;
+  onShare?: () => void;
+  shareLabel?: string;
+  showShare?: boolean;
 }) {
   const labels = docsLabels;
   const session = useMemo(
@@ -557,6 +574,17 @@ function DocsCollabWorkspaceInner({
                 <DocsHeaderActions
                   leading={
                     <>
+                      {showShare && onShare ? (
+                        <Button
+                          label={shareLabel ?? labels.share}
+                          icon={<Share2 className="size-4" aria-hidden />}
+                          size="sm"
+                          pill
+                          variant="primary"
+                          className="docs-workspace__share-button"
+                          onClick={onShare}
+                        />
+                      ) : null}
                       {showPendingSyncIndicator ? (
                         <span
                           className="docs-workspace__pending-sync"
