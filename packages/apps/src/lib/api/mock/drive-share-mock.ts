@@ -51,6 +51,9 @@ export function createMockDriveShareOperations(): DriveShareOperations {
       return filterPrincipals(query);
     },
     async createShare(body: DriveShareCreateRequest) {
+      if (body.kind === "public" && body.defaultAccess !== "view") {
+        throw new Error("Public shares only support view access.");
+      }
       const created: DriveShare = {
         id: `mock-share-${nextShareId++}`,
         path: body.path,
@@ -74,9 +77,13 @@ export function createMockDriveShareOperations(): DriveShareOperations {
       }
       const passwordProvided = Object.prototype.hasOwnProperty.call(body, "password");
       const nextPassword = passwordProvided ? body.password : direct.hasPassword;
+      const nextAccess = body.defaultAccess ?? direct.defaultAccess;
+      if (direct.kind === "public" && nextAccess !== "view") {
+        throw new Error("Public shares only support view access.");
+      }
       return {
         ...direct,
-        defaultAccess: body.defaultAccess ?? direct.defaultAccess,
+        defaultAccess: nextAccess,
         expiresAt: body.expiresAt === undefined ? direct.expiresAt : body.expiresAt,
         shareWith: body.shareWith === undefined ? direct.shareWith : body.shareWith,
         hasPassword: passwordProvided
