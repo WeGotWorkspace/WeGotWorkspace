@@ -146,6 +146,11 @@ export function useDriveAPI(source?: DriveApiSource) {
     return createHybridDriveOperations(offlineUsername, data ?? undefined);
   }, [data, liveEnabled, offlineUsername, resolvedSource]);
 
+  const shareOperations = useMemo(
+    () => resolvedSource.createShareOperations(data ?? undefined),
+    [data, resolvedSource],
+  );
+
   const listLoading = phase === "loading";
 
   return {
@@ -157,6 +162,7 @@ export function useDriveAPI(source?: DriveApiSource) {
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,
     operations,
+    shareOperations,
     offlineUsername,
   };
 }
