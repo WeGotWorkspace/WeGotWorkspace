@@ -1,7 +1,11 @@
 import { useEffect, type ComponentType, type ReactNode } from "react";
 import { useNavigate, useRouterState, type RouteComponent } from "@tanstack/react-router";
 import { wgwHasAuthenticatedSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { isWgwAuthRoutePathname, sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
+import {
+  isWgwAuthRoutePathname,
+  isWgwPublicRoutePathname,
+  sanitizeWgwReturnPath,
+} from "@/lib/api/wgw/route-guard";
 
 type WeGotWorkspaceRequireAuthProps = {
   children: ReactNode;
@@ -17,6 +21,7 @@ function WeGotWorkspaceRequireAuth({ children }: WeGotWorkspaceRequireAuthProps)
     if (!wgwLiveApiEnabled()) return;
     if (wgwHasAuthenticatedSession()) return;
     if (isWgwAuthRoutePathname(pathname)) return;
+    if (isWgwPublicRoutePathname(pathname)) return;
     const returnPath = sanitizeWgwReturnPath(`${pathname}${searchStr}${hash}`);
     void navigate({
       to: "/login",

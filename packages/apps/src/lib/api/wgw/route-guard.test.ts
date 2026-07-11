@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildWgwLoginHref,
   isWgwAuthRoutePathname,
+  isWgwPublicRoutePathname,
   requireWgwAuth,
   sanitizeWgwReturnPath,
 } from "@/lib/api/wgw/route-guard";
@@ -22,6 +23,14 @@ describe("isWgwAuthRoutePathname", () => {
 
   it("normalizes duplicate slashes and trailing slashes", () => {
     expect(isWgwAuthRoutePathname("//login//")).toBe(true);
+  });
+});
+
+describe("isWgwPublicRoutePathname", () => {
+  it("detects share and meet guest routes", () => {
+    expect(isWgwPublicRoutePathname("/share/demo-token")).toBe(true);
+    expect(isWgwPublicRoutePathname("/meet/guest")).toBe(true);
+    expect(isWgwPublicRoutePathname("/drive")).toBe(false);
   });
 });
 

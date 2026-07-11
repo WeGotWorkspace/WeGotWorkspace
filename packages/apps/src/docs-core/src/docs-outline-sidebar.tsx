@@ -13,6 +13,8 @@ type DocsOutlineSidebarProps = {
   items: DocsOutlineItem[];
   activeIndex: number | null;
   onSelect: (index: number) => void;
+  /** Public share guests cannot navigate to docs home. */
+  showBackToHome?: boolean;
 };
 
 export function DocsOutlineSidebar({
@@ -20,6 +22,7 @@ export function DocsOutlineSidebar({
   items,
   activeIndex,
   onSelect,
+  showBackToHome = true,
 }: DocsOutlineSidebarProps) {
   const navigate = useNavigate();
 
@@ -50,7 +53,7 @@ export function DocsOutlineSidebar({
 
   return (
     <>
-      <SidebarSection items={homeItems} />
+      {showBackToHome ? <SidebarSection items={homeItems} /> : null}
       <SidebarSection title={labels.sidebarOutline} items={menuItems} />
     </>
   );

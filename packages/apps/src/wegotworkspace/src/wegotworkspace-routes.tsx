@@ -58,6 +58,7 @@ import { withWeGotWorkspaceAuth } from "@/wegotworkspace/src/wegotworkspace-requ
 import { wegotworkspaceRootRoute } from "@/wegotworkspace/src/wegotworkspace-router-shared";
 import { WeGotWorkspaceNotFound } from "@/wegotworkspace/src/wegotworkspace-shell";
 import { useWeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-story-logout";
+import { SharePublicRoute } from "@/share-ui/share-public-route";
 import { createWorkspacePwaHead } from "@/lib/workspace-pwa-head";
 
 export type WeGotWorkspaceRouteMode = "mock" | "live";
@@ -78,6 +79,11 @@ const meetGuestPwaHead = () =>
   createWorkspacePwaHead("meet", {
     title: "Join meeting",
     description: "Join a video meeting as a guest.",
+  });
+const sharePublicPwaHead = () =>
+  createWorkspacePwaHead("docs", {
+    title: "Shared link",
+    description: "Open a document or folder shared with you.",
   });
 const adminPwaHead = () => createWorkspacePwaHead("admin");
 const contactsPwaHead = () => createWorkspacePwaHead("contacts");
@@ -485,6 +491,13 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: isLive ? InstallApp : MockInstallRoute,
   });
 
+  const sharePublicRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/share/$token",
+    head: sharePublicPwaHead,
+    component: SharePublicRoute,
+  });
+
   return wegotworkspaceRootRoute.addChildren([
     indexRoute,
     loginRoute,
@@ -520,6 +533,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     tasksListRoute,
     tasksPriorityRoute,
     installRoute,
+    sharePublicRoute,
   ]);
 }
 

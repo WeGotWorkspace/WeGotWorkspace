@@ -24,3 +24,14 @@ export function workspaceUserInitials(user: WorkspaceUser): string {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+/** Sidebar footer subtitle for public share guest sessions. */
+export const WORKSPACE_GUEST_FOOTER_DETAIL = "View only";
+
+export function workspaceUserFooterDetailLine(
+  session: WorkspaceSession,
+  isGuest = false,
+): string | undefined {
+  if (isGuest) return WORKSPACE_GUEST_FOOTER_DETAIL;
+  return session.user.username;
+}

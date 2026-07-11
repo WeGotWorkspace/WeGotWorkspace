@@ -6,9 +6,15 @@ import {
   wgwAwaitSessionRefreshForReconnect,
   wgwEnsureFreshAccessToken,
   wgwEnsureSession,
+  wgwCompleteLogoutNavigation,
+  wgwEstablishGuestShareSession,
+  wgwFetchPrincipal,
+  wgwGuestShareToken,
   wgwHasAuthenticatedSession,
+  wgwIsGuestSession,
   wgwLoginWithCredentials,
   wgwRefreshInFlight,
+  WGW_GUEST_REFRESH_TOKEN,
 } from "./http";
 import { decodeJwtExp } from "./jwt-exp";
 
@@ -69,6 +75,7 @@ beforeEach(() => {
   });
   setOnline(true);
   window.localStorage.clear();
+  window.sessionStorage.clear();
   resetAuthRefreshLockForTests();
   resetWgwSessionStateForTests();
   vi.restoreAllMocks();
@@ -80,6 +87,7 @@ afterEach(() => {
   resetAuthRefreshLockForTests();
   resetWgwSessionStateForTests();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -338,5 +346,85 @@ describe("login applies refresh expiry metadata", () => {
 
     await expect(wgwLoginWithCredentials("alice", "secret")).resolves.toBeUndefined();
     expect(Number(window.localStorage.getItem(REFRESH_EXPIRES_AT_KEY))).toBeGreaterThan(Date.now());
+  });
+});
+
+describe("guest share session", () => {
+  it("stores guest JWT with sentinel refresh token", () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+      sub: "share:abc123",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession({ access_token: accessToken, expires_in: 3600 });
+
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(wgwIsGuestSession()).toBe(true);
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe(WGW_GUEST_REFRESH_TOKEN);
+    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBe(accessToken);
+  });
+
+  it("resolves guest principal without calling /me", async () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+      sub: "share:deadbeef",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession({ access_token: accessToken, expires_in: 3600 });
+
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwFetchPrincipal()).resolves.toMatchObject({
+      user: {
+        displayName: "Guest",
+        username: "share:deadbeef",
+      },
+      viewerInboxLabel: "guest",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not attempt refresh for expired guest sessions", async () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) - 100, {
+      sub: "share:expired",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession({ access_token: accessToken, expires_in: -100 });
+
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwEnsureSession()).rejects.toThrow("Share session expired");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(wgwHasAuthenticatedSession()).toBe(false);
+  });
+
+  it("persists the public share token for guest sign-out navigation", () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+      sub: "share:abc123",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession({ access_token: accessToken, expires_in: 3600 }, "share-token-1");
+
+    expect(wgwGuestShareToken()).toBe("share-token-1");
+  });
+
+  it("returns guest viewers to the public share route on sign out", async () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+      sub: "share:abc123",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession({ access_token: accessToken, expires_in: 3600 }, "share-token-1");
+
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { assign },
+    });
+
+    globalThis.fetch = vi.fn(async () => new Response("{}", { status: 200 })) as typeof fetch;
+
+    await expect(wgwCompleteLogoutNavigation()).resolves.toBe("guest_share");
+    expect(assign).toHaveBeenCalledWith("/share/share-token-1");
+    expect(wgwHasAuthenticatedSession()).toBe(false);
   });
 });

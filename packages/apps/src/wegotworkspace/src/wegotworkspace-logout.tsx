@@ -1,14 +1,16 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { wgwLogout } from "@/lib/api/wgw/http";
+import { wgwCompleteLogoutNavigation } from "@/lib/api/wgw/http";
 
 export function WeGotWorkspaceLogout() {
   const navigate = useNavigate();
 
   useEffect(() => {
     void (async () => {
-      await wgwLogout();
-      await navigate({ to: "/login" });
+      const navigation = await wgwCompleteLogoutNavigation();
+      if (navigation === "member_login") {
+        await navigate({ to: "/login" });
+      }
     })();
   }, [navigate]);
 
