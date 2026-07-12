@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Eraser, RefreshCw } from "lucide-react";
+import { Eraser, Globe2, RefreshCw } from "lucide-react";
 import { Input } from "@/ui/input";
 import { Button } from "@/button/src/button";
 import { Card } from "../src/card";
@@ -65,6 +65,20 @@ export const WithHeaderIconActions: Story = {
       ]}
     >
       <p className="text-sm opacity-80">Card header supports one or more icon actions.</p>
+    </Card>
+  ),
+};
+
+export const WithTitleIconAndDescription: Story = {
+  render: () => (
+    <Card
+      titleIcon={<Globe2 className="size-4" />}
+      title="Anyone with the link"
+      description="No sign-in required — anyone with the URL can view this doc."
+    >
+      <FormField label="Share URL" readOnly>
+        <Input value="https://example.com/s/abc123" readOnly className="cursor-default" />
+      </FormField>
     </Card>
   ),
 };

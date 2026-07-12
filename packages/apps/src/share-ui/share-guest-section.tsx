@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, Send, Trash2 } from "lucide-react";
 import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
@@ -38,13 +39,11 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
   };
 
   return (
-    <section>
-      <div className="share-dialog__section-heading">
-        <Mail className="share-dialog__section-icon" aria-hidden />
-        <h3 className="share-dialog__section-title">{shareLabels.guestSectionTitle}</h3>
-      </div>
-      <p className="share-dialog__section-hint">{shareLabels.guestSectionHint}</p>
-
+    <Card
+      titleIcon={<Mail className="size-4" />}
+      title={shareLabels.guestSectionTitle}
+      description={shareLabels.guestSectionHint}
+    >
       <div className="share-dialog__panel">
         {guestGrants.map((grant) => {
           const permission = accessToUIPermission(grant.access) ?? "view";
@@ -129,6 +128,6 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
           />
         </div>
       </div>
-    </section>
+    </Card>
   );
 }

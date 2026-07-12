@@ -3,6 +3,12 @@
 .share-dialog {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
   --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-muted: var(
+    --muted-foreground,
+    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+  );
+  --card-title-icon-color: var(--share-dialog-accent);
+  --card-description-color: var(--share-dialog-muted);
   --share-dialog-row-hover: color-mix(
     in oklab,
     var(--muted, oklch(0.968 0.007 247.896)) 50%,
@@ -12,10 +18,6 @@
     in oklab,
     var(--border, oklch(0.929 0.013 255.508)) 70%,
     transparent
-  );
-  --share-dialog-muted: var(
-    --muted-foreground,
-    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
   );
   max-width: 36rem;
   --input-height: 2rem;
@@ -30,25 +32,11 @@
 }
 
 .share-dialog__body {
-  @apply min-w-0 space-y-5 overflow-x-hidden px-6 pb-6;
+  @apply flex min-w-0 flex-col gap-6 overflow-x-hidden px-6 pb-6;
 }
 
-.share-dialog__section-heading {
-  @apply mb-1 flex items-center gap-2;
-}
-
-.share-dialog__section-icon {
-  @apply size-4;
-  color: var(--share-dialog-accent);
-}
-
-.share-dialog__section-title {
-  @apply text-lg font-semibold tracking-tight;
-}
-
-.share-dialog__section-hint {
-  @apply mb-3 text-xs;
-  color: var(--share-dialog-muted);
+.share-dialog__body > .card {
+  @apply mb-0;
 }
 
 .share-dialog__panel {

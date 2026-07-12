@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Users, Users2 } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
+import { Card } from "@/card/src/card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { initialsFromDisplayName, UserAvatar } from "@/user-avatar/src/user-avatar";
 import { accessToUIPermission } from "@/share-ui/share-access-map";
@@ -63,13 +64,11 @@ export function ShareTeamSection({
   const selectableResults = results.filter((entry) => !existingPrincipals.has(entry.principal));
 
   return (
-    <section>
-      <div className="share-dialog__section-heading">
-        <Users className="share-dialog__section-icon" aria-hidden />
-        <h3 className="share-dialog__section-title">{shareLabels.teamSectionTitle}</h3>
-      </div>
-      <p className="share-dialog__section-hint">{shareLabels.teamSectionHint}</p>
-
+    <Card
+      titleIcon={<Users className="size-4" />}
+      title={shareLabels.teamSectionTitle}
+      description={shareLabels.teamSectionHint}
+    >
       <div className="share-dialog__panel">
         {groupGrants.map((grant) => {
           const inherited = grant.source.inherited;
@@ -216,6 +215,6 @@ export function ShareTeamSection({
           ) : null}
         </div>
       </div>
-    </section>
+    </Card>
   );
 }

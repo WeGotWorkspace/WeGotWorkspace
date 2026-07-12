@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Copy, Globe2, Lock, RefreshCw } from "lucide-react";
+import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
 import { Switch } from "@/ui/switch";
@@ -105,12 +106,12 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
   const dialogCopy = confirmAction ? confirmDialogCopy[confirmAction] : null;
 
   return (
-    <section>
-      <div className="share-dialog__section-heading">
-        <Globe2 className="share-dialog__section-icon" aria-hidden />
-        <h3 className="share-dialog__section-title">{shareLabels.publicSectionTitle}</h3>
+    <Card
+      titleIcon={<Globe2 className="size-4" />}
+      title={shareLabels.publicSectionTitle}
+      description={enabled ? shareLabels.publicEnabledHint : shareLabels.publicDisabledHint}
+      action={
         <Switch
-          className="ml-auto"
           checked={enabled}
           disabled={disabled || mutations.busyKey === "public-toggle"}
           onCheckedChange={(next) => {
@@ -128,11 +129,8 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
           }}
           aria-label={shareLabels.enablePublicAccess}
         />
-      </div>
-      <p className="share-dialog__section-hint">
-        {enabled ? shareLabels.publicEnabledHint : shareLabels.publicDisabledHint}
-      </p>
-
+      }
+    >
       {enabled && directPublic ? (
         <div className="share-dialog__link-controls">
           <div className="share-dialog__link-row">
@@ -228,6 +226,6 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </Card>
   );
 }

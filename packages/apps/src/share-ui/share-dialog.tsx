@@ -1,6 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/ui/separator";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { ShareGuestSection } from "@/share-ui/share-guest-section";
 import { ShareLinkSection } from "@/share-ui/share-link-section";
@@ -67,14 +66,12 @@ export function ShareDialog({
           <>
             <div className="share-dialog__body">
               <ShareLinkSection atPath={data} mutations={mutations} disabled={!canManage} />
-              <Separator />
               <ShareTeamSection
                 atPath={data}
                 mutations={mutations}
                 disabled={!canManage}
                 onOpenAccess={onOpenAccess ? handleOpenAccess : undefined}
               />
-              <Separator />
               <ShareGuestSection atPath={data} mutations={mutations} disabled={!canManage} />
             </div>
 
