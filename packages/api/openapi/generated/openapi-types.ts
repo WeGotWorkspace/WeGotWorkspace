@@ -6208,6 +6208,15 @@ export interface paths {
                         "application/json": components["schemas"]["DriveShareInviteDataResponse"];
                     };
                 };
+                /** @description Guest already has access on this share */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriveShareConflictError"];
+                    };
+                };
             };
         };
         delete?: never;

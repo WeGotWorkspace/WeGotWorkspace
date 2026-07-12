@@ -304,15 +304,7 @@ final class DriveShareService
             $share = $this->ownerShareOrFail($username, $shareId, lockForUpdate: true);
             $this->assertCommentReviewApplicable($share->path, $access);
 
-            $grant = new DriveShareGrant;
-            $grant->id = (string) Str::uuid();
-            $grant->share_id = (string) $share->id;
-            $grant->grantee_type = 'email';
-            $grant->grantee_email = $email;
-            $grant->access = $access;
-            $grant->status = 'pending';
-            $grant->invite_token = bin2hex(random_bytes(16));
-            $grant->save();
+            $grant = $this->upsertEmailInviteGrant($share, $email, $access);
 
             return [
                 'id' => (string) $grant->id,
@@ -811,12 +803,21 @@ final class DriveShareService
 
     private function upsertEmailGrant(DriveShare $share, string $email, string $access): void
     {
+        $this->upsertEmailInviteGrant($share, $email, $access);
+    }
+
+    private function upsertEmailInviteGrant(DriveShare $share, string $email, string $access): DriveShareGrant
+    {
         /** @var DriveShareGrant|null $grant */
         $grant = DriveShareGrant::query()
             ->where('share_id', $share->id)
-            ->where('grantee_type', 'email')
             ->where('grantee_email', $email)
+            ->lockForUpdate()
             ->first();
+
+        if ($grant !== null && $grant->status === 'active') {
+            throw new ApiHttpException(409, 'Guest already has access.', 'share_conflict');
+        }
 
         if ($grant === null) {
             $grant = new DriveShareGrant;
@@ -826,10 +827,17 @@ final class DriveShareService
             $grant->grantee_email = $email;
             $grant->status = 'pending';
             $grant->invite_token = bin2hex(random_bytes(16));
+        } elseif ($grant->status === 'revoked') {
+            $grant->grantee_type = 'email';
+            $grant->grantee_user = null;
+            $grant->status = 'pending';
+            $grant->invite_token = bin2hex(random_bytes(16));
         }
 
         $grant->access = $access;
         $grant->save();
+
+        return $grant;
     }
 
     private function assertUpdatedAtMatches(DriveShare $share, mixed $updatedAt): void
