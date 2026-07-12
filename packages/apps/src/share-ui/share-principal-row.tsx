@@ -10,7 +10,7 @@ import {
 import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
-import { shareLabels } from "@/share-ui/share-labels";
+import { shareLabels, formatSharePathLabel } from "@/share-ui/share-labels";
 import { accessLabelForReadOnly } from "@/share-ui/use-share-mutations";
 
 type SharePrincipalRowProps = {
@@ -44,6 +44,11 @@ export function SharePrincipalRow({
   const uiPermission = accessToUIPermission(access);
   const canEdit =
     editable && !inherited && Boolean(onAccessChange) && isDialogEditableAccess(access);
+  const showRemove = inherited || Boolean(onRemove);
+  const canRemove = Boolean(onRemove) && !inherited && !removeDisabled;
+  const inheritedRemoveHint = inheritedFromPath
+    ? shareLabels.inheritedFrom(formatSharePathLabel(inheritedFromPath))
+    : undefined;
 
   return (
     <div className="share-dialog__row">
@@ -73,14 +78,15 @@ export function SharePrincipalRow({
           {accessLabelForReadOnly(access)}
         </span>
       )}
-      {onRemove ? (
+      {showRemove ? (
         <IconButton
           label={shareLabels.removeGrant}
           icon={<Trash2 className="size-3.5" aria-hidden />}
           size="sm"
           variant="ghost"
-          disabled={removeDisabled}
-          onClick={onRemove}
+          disabled={!canRemove}
+          title={inherited ? (editHint ?? inheritedRemoveHint) : undefined}
+          onClick={canRemove ? onRemove : undefined}
         />
       ) : null}
     </div>

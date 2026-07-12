@@ -22,8 +22,6 @@ export const shareStoryAtPathPublicOff = cloneAtPath({
 
 export const shareStoryAtPathInherited = cloneAtPath();
 
-export const shareStoryAtPathPendingGuest = cloneAtPath();
-
 export const shareStoryAtPathReadOnlyMember = cloneAtPath({
   memberAccess: mockDriveShareAtPath.memberAccess.map((member) =>
     member.username === "alice"

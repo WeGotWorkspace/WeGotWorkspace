@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Users, Users2 } from "lucide-react";
+import { Users } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
 import { Card } from "@/card/src/card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { initialsFromDisplayName, UserAvatar } from "@/user-avatar/src/user-avatar";
+import { SharePrincipalSearchDropdown } from "@/share-ui/share-principal-search-dropdown";
 import { accessToUIPermission } from "@/share-ui/share-access-map";
 import { formatSharePathLabel, shareLabels } from "@/share-ui/share-labels";
+import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";
 
@@ -72,13 +73,11 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
             <SharePrincipalRow
               key={grant.principal}
               mark={
-                <div
-                  className={`share-dialog__group-mark ${
-                    active ? "share-dialog__group-mark--active" : "share-dialog__group-mark--idle"
-                  }`}
-                >
-                  <Users2 className="size-3.5" aria-hidden />
-                </div>
+                <SharePrincipalMark
+                  principalType="group"
+                  displayName={grant.displayName ?? formatSharePathLabel(grant.principal)}
+                  active={active}
+                />
               }
               title={grant.displayName ?? formatSharePathLabel(grant.principal)}
               subtitle={shareLabels.membersSuffix(grant.memberCount ?? 0)}
@@ -127,17 +126,11 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
             <SharePrincipalRow
               key={member.username}
               mark={
-                <div
-                  className={`share-dialog__member-mark ${
-                    active ? "share-dialog__member-mark--active" : "share-dialog__member-mark--idle"
-                  }`}
-                >
-                  {active && uiPermission ? (
-                    <Check className="size-3.5" aria-hidden />
-                  ) : (
-                    initialsFromDisplayName(member.displayName)
-                  )}
-                </div>
+                <SharePrincipalMark
+                  principalType="user"
+                  displayName={member.displayName}
+                  active={active}
+                />
               }
               title={member.displayName}
               subtitle={subtitle}
@@ -170,36 +163,24 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
         })}
 
         <div className="share-dialog__add-grant">
-          <ShareDialogInput
-            value={query}
-            disabled={disabled}
-            placeholder={shareLabels.addTeamGrantPlaceholder}
-            className="share-dialog__add-grant-input"
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          {searching ? <p className="share-dialog__row-subtitle mt-1 px-1">Searching…</p> : null}
-          {selectableResults.length > 0 ? (
-            <div className="share-dialog__add-grant-results">
-              {selectableResults.map((entry) => (
-                <button
-                  key={entry.principal}
-                  type="button"
-                  className="share-dialog__add-grant-option"
-                  onClick={() => {
-                    void mutations.addTeamGrant(entry, "view").then(() => setQuery(""));
-                  }}
-                >
-                  <UserAvatar displayName={entry.displayName} compact size="sm" />
-                  <span>{entry.displayName}</span>
-                  {entry.memberCount != null ? (
-                    <span className="share-dialog__row-subtitle">
-                      {shareLabels.membersSuffix(entry.memberCount)}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          ) : null}
+          <div className="share-dialog__add-grant-field anchored-dropdown-anchor">
+            <ShareDialogInput
+              value={query}
+              disabled={disabled}
+              placeholder={shareLabels.addTeamGrantPlaceholder}
+              className="share-dialog__add-grant-input"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <SharePrincipalSearchDropdown
+              className="share-dialog__principal-search-dropdown"
+              query={query}
+              searching={searching}
+              results={selectableResults}
+              onSelect={(entry) => {
+                void mutations.addTeamGrant(entry, "view").then(() => setQuery(""));
+              }}
+            />
+          </div>
         </div>
       </div>
     </Card>
