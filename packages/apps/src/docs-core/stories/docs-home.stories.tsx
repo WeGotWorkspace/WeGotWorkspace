@@ -26,7 +26,7 @@ const NOW = 1_750_000_000;
 
 /** Mixed My Drive + Groups fixtures, newest first. */
 const FIXTURES: WgwUnifiedSearchResult[] = [
-  fixture(1, "users/alice/Roadmap 2026.md", "Roadmap 2026", 0),
+  fixture(1, "users/alice/Roadmap 2026.md", "Roadmap 2026", 0, { hasShares: true }),
   fixture(2, "groups/engineering/RFC Storage Tiers.md", "RFC: Storage Tiers", 1),
   fixture(3, "users/alice/Notes/Standup.txt", "Standup", 2),
   fixture(4, "groups/design/Brand Voice.markdown", "Brand Voice", 4),
@@ -41,6 +41,7 @@ function fixture(
   sourceKey: string,
   title: string,
   ageDays: number,
+  options?: { hasShares?: boolean },
 ): WgwUnifiedSearchResult {
   const extension = sourceKey.split(".").pop() ?? "md";
   return {
@@ -54,7 +55,10 @@ function fixture(
     size: 1024 + id * 37,
     modifiedAt: NOW - ageDays * DAY,
     snippet: `Preview of ${title}…`,
-    metadata: { path: `/${sourceKey}` },
+    metadata: {
+      path: `/${sourceKey}`,
+      ...(options?.hasShares ? { hasShares: true } : {}),
+    },
   };
 }
 

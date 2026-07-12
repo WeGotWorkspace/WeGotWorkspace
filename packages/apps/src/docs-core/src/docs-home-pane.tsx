@@ -12,9 +12,12 @@ import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
 import { resolveGridFilePreview } from "@/lib/file-preview/file-preview-utils";
+import { ShareDialog } from "@/share-ui/share-dialog";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 
 /** The home list is server-driven; the controller never mutates items locally. */
@@ -58,6 +61,10 @@ export type DocsHomePaneProps = {
   onUndoQueuedAction?: () => boolean;
   /** When false, the header search field is hidden (e.g. offline without live search). */
   searchEnabled?: boolean;
+  /** When set, enables Share in row action menus (parity with Drive home). */
+  shareOperations?: DriveShareOperations;
+  /** Current user handle — used for ShareDialog "Manage access" navigation. */
+  username?: string;
 };
 
 export function DocsHomePane({
@@ -89,6 +96,8 @@ export function DocsHomePane({
   requestDeleteSelected,
   onUndoQueuedAction,
   searchEnabled = true,
+  shareOperations,
+  username = "",
 }: DocsHomePaneProps) {
   const filesById = useMemo(() => {
     const map = new Map<string, DriveFile>();
@@ -197,6 +206,33 @@ export function DocsHomePane({
     onUndoQueuedAction: onUndoQueuedAction ?? noopUndo,
   });
 
+  const shareDialog = useDriveShareDialog({ shareOperations, username });
+  const activeFile = activeId ? filesById.get(activeId) : undefined;
+  const { mayShare: fetchedActiveMayShare } = useDriveShareMayShare({
+    path: activeFile?.apiPath ?? "",
+    operations: shareOperations,
+    enabled: Boolean(shareOperations && activeFile?.apiPath && activeFile.mayShare === undefined),
+  });
+  const activeMayShare = activeFile?.mayShare ?? fetchedActiveMayShare;
+  const shareEnabled = Boolean(shareOperations);
+
+  const handleShare = useCallback(
+    (file: DriveFile) => {
+      if (!file.apiPath) return;
+      shareDialog.openShareDialog(file.apiPath, file.title);
+    },
+    [shareDialog],
+  );
+
+  const fileCanShare = useCallback(
+    (file: DriveFile) => {
+      if (!shareEnabled || !file.apiPath?.trim()) return false;
+      const resolvedMayShare = file.id === activeFile?.id ? activeMayShare : file.mayShare;
+      return resolvedMayShare === true;
+    },
+    [activeFile?.id, activeMayShare, shareEnabled],
+  );
+
   const sharedBrowserProps = {
     items: files,
     selectedIds,
@@ -218,6 +254,8 @@ export function DocsHomePane({
     onRename: onRename ?? noop,
     onMove: onMove ?? noop,
     onTrash: onTrash ?? noop,
+    onShare: shareEnabled ? handleShare : undefined,
+    fileCanShare: shareEnabled ? fileCanShare : undefined,
     offlinePendingSyncIds,
     offlineBadgeLabels: offlineLabels,
   };
@@ -283,6 +321,18 @@ export function DocsHomePane({
         )}
         {selectionBar}
       </div>
+
+      {shareOperations ? (
+        <ShareDialog
+          path={shareDialog.shareDialog.path}
+          title={shareDialog.shareDialog.title}
+          open={shareDialog.shareDialog.open}
+          onOpenChange={shareDialog.handleShareDialogOpenChange}
+          onOpenAccess={shareDialog.handleShareDialogOpenAccess}
+          shareOperations={shareOperations}
+          dialogSurfaceClassName="docs-dialog-surface"
+        />
+      ) : null}
     </section>
   );
 }

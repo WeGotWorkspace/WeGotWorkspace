@@ -33,7 +33,7 @@ import {
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import { DocsHomeModals } from "@/docs-core/src/docs-home-modals";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import {
@@ -55,6 +55,8 @@ export type DocsHomeWorkspaceProps = {
   offlineUsername?: string | null;
   /** Live drive operations powering row actions (star/download/rename/move/trash). */
   operations?: DriveAPIOperations;
+  /** When set, enables Share in docs home row action menus. */
+  shareOperations?: DriveShareOperations;
   /** Called with the drive API path when a row is opened (route navigation lives in `*App`). */
   onOpenFile?: (apiPath: string) => void;
   /**
@@ -72,6 +74,7 @@ export function DocsHomeWorkspace({
   fetcher,
   offlineUsername: offlineUsernameProp = null,
   operations,
+  shareOperations,
   onOpenFile,
   onCreateDocument,
   onLogout,
@@ -353,6 +356,8 @@ export function DocsHomeWorkspace({
             requestMoveSelected={actions.requestMoveSelected}
             requestDeleteSelected={actions.requestDeleteSelected}
             onUndoQueuedAction={actions.undoLatest}
+            shareOperations={shareOperations}
+            username={username}
           />
         }
       />

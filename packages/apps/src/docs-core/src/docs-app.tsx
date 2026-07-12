@@ -188,6 +188,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               session={session}
               offlineUsername={resolveDocsOfflineUsername(session.user.username)}
               operations={driveOperations}
+              shareOperations={shareOperations}
               onOpenFile={handleOpenHomeFile}
               onCreateDocument={handleCreateHomeDocument}
               onLogout={handleLogout}
