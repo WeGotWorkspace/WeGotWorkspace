@@ -3,6 +3,8 @@
 .share-dialog {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
   --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
+  --share-dialog-tag-fg: var(--color-ink);
   --share-dialog-muted: var(
     --muted-foreground,
     color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
@@ -93,7 +95,13 @@
 }
 
 .share-dialog__row-title {
-  @apply truncate text-sm font-medium;
+  @apply min-w-0 flex-1 truncate text-sm font-medium;
+}
+
+.share-dialog__row-title-line .tag {
+  @apply shrink-0;
+  background-color: var(--share-dialog-tag-bg);
+  color: var(--share-dialog-tag-fg);
 }
 
 .share-dialog__row-subtitle {
@@ -240,12 +248,6 @@
   @apply inline-flex items-center gap-1 font-medium text-foreground hover:text-primary;
   min-height: var(--input-height);
   padding-inline: 0.25rem;
-}
-
-.share-dialog__pending-badge {
-  @apply rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide;
-  background: color-mix(in oklab, var(--share-dialog-accent) 12%, transparent);
-  color: var(--share-dialog-accent);
 }
 
 .share-dialog__add-grant {

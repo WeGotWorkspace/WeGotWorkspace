@@ -9,6 +9,7 @@ import {
 } from "@/share-ui/share-access-map";
 import { ShareInheritedLink } from "@/share-ui/share-inherited-link";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
+import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
 import { accessLabelForReadOnly } from "@/share-ui/use-share-mutations";
 
@@ -52,9 +53,7 @@ export function SharePrincipalRow({
       <div className="share-dialog__row-main">
         <div className="share-dialog__row-title-line">
           <p className="share-dialog__row-title">{title}</p>
-          {pending ? (
-            <span className="share-dialog__pending-badge">{shareLabels.pendingGuest}</span>
-          ) : null}
+          {pending ? <SharePendingTag /> : null}
           {inheritedFromPath ? (
             <ShareInheritedLink sharePath={inheritedFromPath} onOpenAccess={onOpenAccess} />
           ) : null}

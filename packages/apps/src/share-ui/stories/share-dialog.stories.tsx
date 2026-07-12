@@ -7,7 +7,6 @@ import {
   SHARE_STORY_PATH,
   SHARE_STORY_TITLE,
   shareStoryAtPathInherited,
-  shareStoryAtPathPendingGuest,
   shareStoryAtPathPublicOff,
   shareStoryAtPathPublicOn,
   shareStoryAtPathReadOnlyMember,
@@ -55,10 +54,6 @@ export const PublicOff: Story = {
 
 export const InheritedRows: Story = {
   render: () => <ShareDialogHarness fixture={shareStoryAtPathInherited} />,
-};
-
-export const PendingGuest: Story = {
-  render: () => <ShareDialogHarness fixture={shareStoryAtPathPendingGuest} />,
 };
 
 export const ReadOnlyMember: Story = {

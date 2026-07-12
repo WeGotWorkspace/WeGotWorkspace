@@ -6,6 +6,7 @@ import { IconButton } from "@/button/src/icon-button";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
 import { accessToUIPermission, type ShareUIPermission } from "@/share-ui/share-access-map";
+import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";
@@ -56,9 +57,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
               <div className="share-dialog__row-main">
                 <div className="share-dialog__row-title-line">
                   <span className="share-dialog__row-title">{grant.principal}</span>
-                  {pending ? (
-                    <span className="share-dialog__pending-badge">{shareLabels.pendingGuest}</span>
-                  ) : null}
+                  {pending ? <SharePendingTag /> : null}
                 </div>
               </div>
               <SharePermissionSelect

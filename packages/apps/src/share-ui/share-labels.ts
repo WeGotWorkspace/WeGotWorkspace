@@ -1,7 +1,7 @@
 import type { ShareUIPermission } from "@/share-ui/share-access-map";
 
 export const shareLabels = {
-  dialogDescription: "Share a public link, or invite teammates and guests individually.",
+  dialogDescription: "Share a public link or invite teammates.",
   publicSectionTitle: "Anyone with the link",
   publicEnabledHint: "No sign-in required — anyone with the URL can view this doc.",
   publicDisabledHint: "Public access is off. Turn it on to share a link.",
