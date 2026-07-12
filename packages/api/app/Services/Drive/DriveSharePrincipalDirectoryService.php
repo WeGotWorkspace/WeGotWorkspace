@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
+use App\Dav\Server\AccountPrincipalFilter;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Settings\GroupDirectoryService;
@@ -39,10 +40,10 @@ final class DriveSharePrincipalDirectoryService
 
             foreach ($users as $user) {
                 $uri = (string) $user->uri;
-                $username = substr($uri, strlen('principals/'));
-                if ($username === '' || str_contains($username, '/')) {
+                if (! AccountPrincipalFilter::isAccountPrincipalUri($uri)) {
                     continue;
                 }
+                $username = substr($uri, strlen('principals/'));
                 $displayName = trim((string) $user->displayname);
                 $results[] = [
                     'principal' => $username,
