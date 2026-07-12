@@ -15,6 +15,7 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "My Drive",
     kind: "folder",
     size: "84 MB",
+    isShared: true,
   },
   {
     id: "f-archives",
@@ -43,6 +44,7 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "My Drive",
     kind: "doc",
     size: "240 KB",
+    isShared: true,
   },
   ...DRIVE_DOCS_EDITOR_STORY_FILES,
   {

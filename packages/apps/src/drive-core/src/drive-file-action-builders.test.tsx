@@ -36,4 +36,26 @@ describe("buildDriveFileActions", () => {
 
     expect(actions.some((action) => action.id === "open")).toBe(false);
   });
+
+  it("includes Share after Rename when canShare and onShare are set", () => {
+    const onShare = vi.fn();
+    const actions = buildDriveFileActions(
+      driveLabels,
+      { isStarred: false, inTrash: false, canShare: true },
+      {
+        onDownload: vi.fn(),
+        onStar: vi.fn(),
+        onDelete: vi.fn(),
+        onRename: vi.fn(),
+        onShare,
+      },
+    );
+
+    const renameIndex = actions.findIndex((action) => action.id === "rename");
+    const shareIndex = actions.findIndex((action) => action.id === "share");
+    expect(shareIndex).toBeGreaterThan(renameIndex);
+    expect(actions[shareIndex]?.label).toBe(driveLabels.detailShare);
+    actions[shareIndex]?.onClick?.();
+    expect(onShare).toHaveBeenCalledOnce();
+  });
 });

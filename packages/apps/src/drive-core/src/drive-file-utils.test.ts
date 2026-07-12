@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   canBrowserPreviewImage,
+  driveFileFromEntry,
   extensionFromFileName,
   formatBytesCompact,
   inferFileKindFromName,
   suggestNewMarkdownFileName,
 } from "@/drive-core/src/drive-file-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 
 function file(title: string, kind: DriveFile["kind"] = "doc"): DriveFile {
   return {
@@ -78,5 +80,40 @@ describe("suggestNewMarkdownFileName", () => {
   it("does not treat folder titles as file name collisions", () => {
     const files = [file("Untitled.md", "folder")];
     expect(suggestNewMarkdownFileName(files)).toBe("Untitled.md");
+  });
+});
+
+describe("driveFileFromEntry isShared", () => {
+  it("maps hasShares from directory listing entries", () => {
+    const mapped = driveFileFromEntry(
+      {
+        type: "file",
+        path: "/users/alice/report.md",
+        name: "report.md",
+        size: 100,
+        time: 1,
+        permissions: 0,
+        myRights: fullDriveMyRights,
+        hasShares: true,
+      },
+      "alice",
+    );
+    expect(mapped.isShared).toBe(true);
+  });
+
+  it("leaves isShared undefined when hasShares is absent", () => {
+    const mapped = driveFileFromEntry(
+      {
+        type: "file",
+        path: "/users/alice/private.md",
+        name: "private.md",
+        size: 100,
+        time: 1,
+        permissions: 0,
+        myRights: fullDriveMyRights,
+      },
+      "alice",
+    );
+    expect(mapped.isShared).toBeUndefined();
   });
 });

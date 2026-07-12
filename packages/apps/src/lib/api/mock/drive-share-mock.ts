@@ -16,7 +16,22 @@ import {
   mockDriveSharePrincipals,
 } from "@/lib/api/mock/drive-share-fixtures";
 
+const SHARED_FIXTURE_PATH = mockDriveShareAtPath.path;
+
 function cloneAtPath(path: string): DriveShareAtPath {
+  if (path !== SHARED_FIXTURE_PATH) {
+    return {
+      ...mockDriveShareAtPath,
+      path,
+      directShares: [],
+      coveringShares: [],
+      nestedShares: [],
+      grantSources: [],
+      effectiveGrants: [],
+      memberAccess: [],
+      publicShares: [],
+    };
+  }
   return {
     ...mockDriveShareAtPath,
     path,

@@ -41,6 +41,7 @@ const DEFAULT_DATA: DriveUIData = {
         time: now - 180,
         permissions: 0,
         myRights: fullDriveMyRights,
+        hasShares: true,
       },
     ],
   },

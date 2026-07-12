@@ -93,6 +93,8 @@ export type DriveUnifiedSearchResult = {
   size: number;
   /** Unix seconds of the last modification (used for the Modified column). */
   modifiedAt?: number;
+  /** Optional browse metadata (e.g. `hasShares` for shared indicators). */
+  metadata?: Record<string, unknown>;
 };
 
 export type DriveUnifiedSearchDownloadInput = {

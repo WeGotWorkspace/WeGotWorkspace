@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Check, Star, Download, Folder, HardDrive, Users } from "lucide-react";
+import { Check, Star, Download, Folder, HardDrive, Share2, Users } from "lucide-react";
 import { Tag } from "@/tag/src/tag";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
@@ -32,6 +32,31 @@ function DriveLocationLabel({ file }: { file: DriveFile }) {
     <span className="drive-location-label">
       <Icon className="drive-location-label__icon" aria-hidden />
       <span className="drive-location-label__text">{file.location}</span>
+    </span>
+  );
+}
+
+function DriveSharedIndicator({
+  shared,
+  label,
+  showLabel = false,
+}: {
+  shared?: boolean;
+  label: string;
+  showLabel?: boolean;
+}) {
+  if (!shared) return null;
+  if (showLabel) {
+    return (
+      <span className="drive-shared-indicator" title={label}>
+        <Share2 className="drive-shared-indicator__icon" aria-hidden />
+        <span className="drive-shared-indicator__label">{label}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="drive-shared-indicator" title={label} role="img" aria-label={label}>
+      <Share2 className="drive-shared-indicator__icon" aria-hidden />
     </span>
   );
 }
@@ -419,6 +444,7 @@ function FolderTile({
       />
       <span className="drive-folder-tile__title">{file.title}</span>
       {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
+      <DriveSharedIndicator shared={file.isShared} label={labels.sharedIndicator} />
       <DriveFileItemActions
         labels={labels}
         file={file}
@@ -556,6 +582,7 @@ function FileTile({
         <div className="drive-file-tile__text min-w-0 flex-1">
           <div className="drive-file-tile__title-row">
             <span className="drive-file-tile__title">{file.title}</span>
+            <DriveSharedIndicator shared={file.isShared} label={labels.sharedIndicator} />
           </div>
           {showLocation && file.location ? <DriveLocationLabel file={file} /> : null}
         </div>
@@ -842,6 +869,11 @@ export function DriveListView({
                           fill="currentColor"
                         />
                       ) : null}
+                      <DriveSharedIndicator
+                        shared={f.isShared}
+                        label={labels.sharedIndicator}
+                        showLabel
+                      />
                       {!offlineEnabled ? (
                         <DriveOfflineBadge
                           pinned={offlinePinnedIds?.has(f.id) ?? false}

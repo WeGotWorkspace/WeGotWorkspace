@@ -13,6 +13,8 @@ export type DriveFile = Note & {
   apiPath?: string;
   /** From directory listing `myRights.mayShare` when available. */
   mayShare?: boolean;
+  /** True when the item has outgoing share grants (member, guest, or public). */
+  isShared?: boolean;
   /** Top-level drive location label (e.g. `My Drive`, shared drive name) for cross-drive listings. */
   location?: string;
 };

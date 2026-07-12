@@ -64,6 +64,7 @@ export function driveFileFromEntry(
     size,
     apiPath,
     mayShare: entry.myRights?.mayShare,
+    ...(entry.hasShares === true ? { isShared: true } : {}),
   };
 }
 

@@ -79,6 +79,7 @@ export const driveLabels = {
   accessNoGrants: "No grants match your filters.",
   accessLoading: "Loading access…",
   accessRevokeSuccess: "Public links revoked",
+  sharedIndicator: "Shared",
 } as const;
 
 export type DriveUILabels = typeof driveLabels;

@@ -74,6 +74,7 @@ export function driveFileFromSearchResult(
     size: result.size > 0 ? formatBytesCompact(result.size) : "—",
     apiPath: apiPath || undefined,
     location: driveLocationLabel(result.sourceKey) ?? undefined,
+    ...(result.metadata?.hasShares === true ? { isShared: true } : {}),
   };
 }
 

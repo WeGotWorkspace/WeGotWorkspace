@@ -406,6 +406,19 @@
   background-color: var(--drive-offline-badge-pending);
 }
 
+.drive-workspace .drive-shared-indicator {
+  @apply inline-flex items-center gap-1 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.drive-workspace .drive-shared-indicator__icon {
+  @apply size-3;
+}
+
+.drive-workspace .drive-shared-indicator__label {
+  @apply text-xs font-medium;
+}
+
 .drive-workspace .drive-list-muted {
   color: color-mix(in oklab, var(--color-ink) 60%, transparent);
 }

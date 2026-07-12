@@ -22,6 +22,10 @@
       },
       "myRights": {
         "$ref": "#/components/schemas/DriveRights"
+      },
+      "hasShares": {
+        "type": "boolean",
+        "description": "True when this path has direct outgoing share grants (member, guest, or public)."
       }
     },
     "required": [

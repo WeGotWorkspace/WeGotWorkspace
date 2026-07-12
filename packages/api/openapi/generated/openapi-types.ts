@@ -7093,6 +7093,8 @@ export interface components {
             time: number;
             permissions: number;
             myRights: components["schemas"]["DriveRights"];
+            /** @description True when this path has direct outgoing share grants (member, guest, or public). */
+            hasShares?: boolean;
         };
         DriveDirectoryEntryList: components["schemas"]["DriveDirectoryEntry"][];
         DriveDirectoryData: {
