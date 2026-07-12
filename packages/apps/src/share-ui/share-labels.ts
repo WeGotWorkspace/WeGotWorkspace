@@ -41,6 +41,7 @@ export const shareLabels = {
   viaGroup: (groupLabel: string) => `via ${groupLabel}`,
   loadError: "Could not load sharing settings.",
   mutationError: "Could not update sharing settings.",
+  guestAlreadyHasAccess: "This guest already has access.",
   copiedLink: "Link copied.",
   publicLinkOpeningTitle: "Opening shared link…",
   publicLinkOpeningHint: "Checking access and preparing your workspace.",

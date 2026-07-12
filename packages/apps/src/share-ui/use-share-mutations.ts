@@ -34,6 +34,12 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
         await refetch();
       } catch (cause) {
         const detail = cause instanceof Error ? cause.message : shareLabels.mutationError;
+        if (detail.includes("Guest already has access")) {
+          showError(shareLabels.mutationError, {
+            description: shareLabels.guestAlreadyHasAccess,
+          });
+          return;
+        }
         if (detail.includes("share_conflict")) {
           showError(shareLabels.mutationError, {
             description: "Someone else changed sharing. Reloading.",
