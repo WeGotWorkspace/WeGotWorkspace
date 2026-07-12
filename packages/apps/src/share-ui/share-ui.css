@@ -20,7 +20,40 @@
     transparent
   );
   max-width: 36rem;
-  --input-height: 2rem;
+  --input-height: 2.25rem;
+}
+
+/* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
+.share-dialog .icon-button--size-sm {
+  width: var(--input-height);
+  height: var(--input-height);
+}
+
+/*
+ * Boolean switches: compact track (~20px) inside a 36px touch row.
+ * Visual track = segment (1rem) + track padding (0.125rem × 2) = 1.25rem.
+ * Touch padding lives on the wrapper only — switch geometry stays default.
+ */
+.share-dialog {
+  --share-switch-track-height: calc(1rem + 0.25rem);
+  --share-switch-touch-pad: calc((var(--input-height) - var(--share-switch-track-height)) / 2);
+}
+
+.share-dialog__switch-touch {
+  @apply inline-flex shrink-0 items-center;
+  min-height: var(--input-height);
+  padding-block: var(--share-switch-touch-pad);
+}
+
+/* Invisible hit-area into wrapper padding; switch layout/visual unchanged. */
+.share-dialog__switch-touch .segmented-control--boolean .segmented-control__button--boolean::before,
+.share-dialog__switch-touch .segmented-control--boolean .segmented-control__thumb::before {
+  content: "";
+  position: absolute;
+  left: -0.125rem;
+  right: -0.125rem;
+  top: calc(-1 * var(--share-switch-touch-pad));
+  bottom: calc(-1 * var(--share-switch-touch-pad));
 }
 
 .share-dialog__content {
@@ -99,7 +132,9 @@
 }
 
 .share-dialog__permission-select {
-  @apply h-8 w-[8.125rem] shrink-0 border-border/60 bg-transparent text-xs;
+  @apply w-[8.125rem] shrink-0 border-border/60 bg-transparent text-xs;
+  height: var(--input-height);
+  min-height: var(--input-height);
 }
 
 .share-dialog__permission-item {
@@ -112,6 +147,7 @@
 
 .share-dialog__inherited-link {
   @apply inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium;
+  min-height: var(--input-height);
   border-color: var(--share-dialog-panel-border);
   background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
   color: var(--share-dialog-muted);
@@ -148,8 +184,6 @@
 }
 
 .share-dialog__password-row .share-dialog__input {
-  --input-height: 1.75rem;
-  --input-font-size: 0.75rem;
   @apply sm:ml-auto sm:max-w-[11.25rem] sm:flex-none;
 }
 
@@ -190,17 +224,9 @@
   @apply shrink-0 text-xs font-medium;
 }
 
-.share-dialog__password-input {
-  @apply h-7 min-w-0 flex-1 text-xs sm:ml-auto sm:max-w-[11.25rem] sm:flex-none;
-}
-
-.share-dialog__guest-composer {
-  @apply flex items-center gap-2 border-t p-1.5 pt-2.5;
+.share-dialog__guest-invite-row {
+  @apply border-t pt-2.5;
   border-color: var(--share-dialog-panel-border);
-}
-
-.share-dialog__guest-input {
-  @apply h-8 border-none bg-transparent text-sm shadow-none focus-visible:ring-0;
 }
 
 .share-dialog__footer {
@@ -212,6 +238,8 @@
 
 .share-dialog__footer-link {
   @apply inline-flex items-center gap-1 font-medium text-foreground hover:text-primary;
+  min-height: var(--input-height);
+  padding-inline: 0.25rem;
 }
 
 .share-dialog__pending-badge {
@@ -226,7 +254,7 @@
 }
 
 .share-dialog__add-grant-input {
-  @apply h-8 w-full text-sm;
+  @apply w-full text-sm;
 }
 
 .share-dialog__add-grant-results {
@@ -235,6 +263,7 @@
 
 .share-dialog__add-grant-option {
   @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/50;
+  min-height: var(--input-height);
 }
 
 .share-dialog__loading,
@@ -244,7 +273,9 @@
 }
 
 .share-dialog__read-only-access {
-  @apply inline-flex h-8 min-w-[8.125rem] items-center justify-end px-2 text-xs;
+  @apply inline-flex min-w-[8.125rem] items-center justify-end px-2 text-xs;
+  height: var(--input-height);
+  min-height: var(--input-height);
   color: var(--share-dialog-muted);
 }
 

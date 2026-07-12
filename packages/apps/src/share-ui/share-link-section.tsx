@@ -111,24 +111,26 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
       title={shareLabels.publicSectionTitle}
       description={enabled ? shareLabels.publicEnabledHint : shareLabels.publicDisabledHint}
       action={
-        <Switch
-          checked={enabled}
-          disabled={disabled || mutations.busyKey === "public-toggle"}
-          onCheckedChange={(next) => {
-            if (!next && enabled) {
-              setConfirmAction("disable-public");
-              return;
-            }
-            void (async () => {
-              const generatedPassword = await mutations.setPublicEnabled(next);
-              if (generatedPassword) {
-                setPasswordRequired(true);
-                setPasswordDraft(generatedPassword);
+        <span className="share-dialog__switch-touch">
+          <Switch
+            checked={enabled}
+            disabled={disabled || mutations.busyKey === "public-toggle"}
+            onCheckedChange={(next) => {
+              if (!next && enabled) {
+                setConfirmAction("disable-public");
+                return;
               }
-            })();
-          }}
-          aria-label={shareLabels.enablePublicAccess}
-        />
+              void (async () => {
+                const generatedPassword = await mutations.setPublicEnabled(next);
+                if (generatedPassword) {
+                  setPasswordRequired(true);
+                  setPasswordDraft(generatedPassword);
+                }
+              })();
+            }}
+            aria-label={shareLabels.enablePublicAccess}
+          />
+        </span>
       }
     >
       {enabled && directPublic ? (
@@ -163,31 +165,35 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
           <div className="share-dialog__password-row">
             <Lock className="share-dialog__password-icon" aria-hidden />
             <span className="share-dialog__password-label">{shareLabels.requirePassword}</span>
-            <Switch
-              checked={passwordRequired}
-              disabled={disabled || passwordBusy}
-              aria-label={shareLabels.requirePassword}
-              onCheckedChange={(next) => {
-                if (!next && passwordRequired) {
-                  setConfirmAction("disable-password");
-                  return;
-                }
-                if (next) {
-                  setPasswordRequired(true);
-                  void (async () => {
-                    const password = await mutations.updatePublicPassword(true, passwordDraft);
-                    if (password) {
-                      setPasswordDraft(password);
-                    }
-                  })();
-                  return;
-                }
-                setPasswordRequired(next);
-              }}
-            />
+            <span className="share-dialog__switch-touch">
+              <Switch
+                checked={passwordRequired}
+                disabled={disabled || passwordBusy}
+                aria-label={shareLabels.requirePassword}
+                onCheckedChange={(next) => {
+                  if (!next && passwordRequired) {
+                    setConfirmAction("disable-password");
+                    return;
+                  }
+                  if (next) {
+                    setPasswordRequired(true);
+                    void (async () => {
+                      const password = await mutations.updatePublicPassword(true, passwordDraft);
+                      if (password) {
+                        setPasswordDraft(password);
+                      }
+                    })();
+                    return;
+                  }
+                  setPasswordRequired(next);
+                }}
+              />
+            </span>
             <ShareDialogInput
               type="text"
               value={passwordDraft}
+              readOnly
+              mono
               disabled={!passwordRequired || disabled || passwordBusy}
               aria-label={shareLabels.passwordPlaceholder}
               placeholder={
@@ -195,12 +201,6 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                   ? shareLabels.passwordPlaceholder
                   : shareLabels.passwordDisabledPlaceholder
               }
-              onChange={(event) => setPasswordDraft(event.target.value)}
-              onBlur={() => {
-                if (passwordRequired && passwordDraft.trim()) {
-                  void mutations.updatePublicPassword(true, passwordDraft);
-                }
-              }}
             />
           </div>
           {!passwordRequired ? (

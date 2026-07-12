@@ -99,13 +99,13 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
           );
         })}
 
-        <div className="share-dialog__guest-composer">
+        <div className="share-dialog__link-row share-dialog__guest-invite-row">
           <ShareDialogInput
             type="email"
-            className="share-dialog__guest-input"
             value={newEmail}
             disabled={disabled}
             placeholder={shareLabels.invitePlaceholder}
+            aria-label={shareLabels.invitePlaceholder}
             onChange={(event) => setNewEmail(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && canInvite) addGuest();
