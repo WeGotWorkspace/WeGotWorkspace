@@ -1,4 +1,5 @@
 @import "../../styles.css" reference;
+@import "../../ui/anchored-dropdown.css";
 @import "../../workspace-shell/src/workspace-split-app.css";
 
 .drive-workspace {
@@ -118,12 +119,6 @@
 }
 
 .drive-workspace .drive-main-header__search-dropdown {
-  position: absolute;
-  z-index: 25;
-  left: 0;
-  right: 0;
-  top: calc(100% + 0.35rem);
-  width: 100%;
   max-height: min(55dvh, 420px);
   --unified-search-dropdown-width: 100%;
 }

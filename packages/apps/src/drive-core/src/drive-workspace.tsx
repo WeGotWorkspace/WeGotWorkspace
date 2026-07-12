@@ -334,7 +334,7 @@ function DriveMainHeader({
       searchContent={
         searchEnabled && unifiedSearchEnabled ? (
           <UnifiedSearchApiDropdown
-            className="drive-main-header__search-dropdown"
+            className="drive-main-header__search-dropdown anchored-dropdown-panel"
             query={searchQuery}
             limit={10}
             onSelect={handleUnifiedSearchSelect}
