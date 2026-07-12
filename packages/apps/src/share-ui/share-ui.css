@@ -94,8 +94,12 @@
   @apply flex min-w-0 items-center gap-1.5;
 }
 
+.share-dialog__row-title-group {
+  @apply flex min-w-0 flex-1 items-center gap-1;
+}
+
 .share-dialog__row-title {
-  @apply min-w-0 flex-1 truncate text-sm font-medium;
+  @apply min-w-0 truncate text-sm font-medium;
 }
 
 .share-dialog__row-title-line .tag {
@@ -153,29 +157,23 @@
   @apply size-3.5;
 }
 
-.share-dialog__inherited-link {
+.share-dialog__inherited-label {
   @apply inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium;
-  min-height: var(--input-height);
   border-color: var(--share-dialog-panel-border);
   background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
   color: var(--share-dialog-muted);
 }
 
-.share-dialog__inherited-link:hover {
-  border-color: color-mix(in oklab, var(--share-dialog-accent) 50%, transparent);
-  color: var(--share-dialog-accent);
-}
-
-.share-dialog__inherited-link-icon {
+.share-dialog__inherited-label-icon {
   @apply size-2.5;
 }
 
 .share-dialog__link-controls {
-  @apply flex min-w-0 flex-col gap-2 rounded-xl border border-border/70 bg-card/60 p-2;
+  @apply flex min-w-0 flex-col gap-2 rounded-xl border border-border/70 bg-card/60 px-3 pt-2 pb-0;
 }
 
 .share-dialog__link-row {
-  @apply flex min-w-0 items-center gap-2 px-1;
+  @apply flex min-w-0 items-center gap-2;
 }
 
 .share-dialog__input {
@@ -193,11 +191,6 @@
 
 .share-dialog__password-row .share-dialog__input {
   @apply sm:ml-auto sm:max-w-[11.25rem] sm:flex-none;
-}
-
-.share-dialog__password-warning {
-  @apply text-xs;
-  color: var(--share-dialog-muted);
 }
 
 .share-dialog__link-row > :not(.share-dialog__link-field) {
@@ -219,7 +212,7 @@
 }
 
 .share-dialog__password-row {
-  @apply flex min-w-0 flex-wrap items-center gap-2 rounded-lg px-3 py-2;
+  @apply -mx-3 flex min-w-0 flex-wrap items-center gap-2 rounded-b-xl px-3 py-2.5;
   background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
 }
 

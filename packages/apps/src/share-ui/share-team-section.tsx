@@ -12,16 +12,10 @@ import type { ShareMutations } from "@/share-ui/use-share-mutations";
 type ShareTeamSectionProps = {
   atPath: DriveShareAtPath;
   mutations: ShareMutations;
-  onOpenAccess?: (path: string) => void;
   disabled?: boolean;
 };
 
-export function ShareTeamSection({
-  atPath,
-  mutations,
-  onOpenAccess,
-  disabled = false,
-}: ShareTeamSectionProps) {
+export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareTeamSectionProps) {
   const groupGrants = useMemo(
     () => atPath.effectiveGrants.filter((grant) => grant.principalType === "group"),
     [atPath.effectiveGrants],
@@ -87,16 +81,11 @@ export function ShareTeamSection({
                 </div>
               }
               title={grant.displayName ?? formatSharePathLabel(grant.principal)}
-              subtitle={
-                inherited
-                  ? `${shareLabels.inheritedFrom(formatSharePathLabel(grant.source.sharePath))} · ${shareLabels.membersSuffix(grant.memberCount ?? 0)}`
-                  : shareLabels.membersSuffix(grant.memberCount ?? 0)
-              }
+              subtitle={shareLabels.membersSuffix(grant.memberCount ?? 0)}
               inheritedFromPath={inherited ? grant.source.sharePath : undefined}
               access={grant.access}
               editable={Boolean(grant.removal) && !inherited}
               removeDisabled={disabled}
-              onOpenAccess={onOpenAccess}
               onAccessChange={(next) => {
                 if (!grant.removal) return;
                 void mutations.updateGrantAccess(
@@ -129,8 +118,7 @@ export function ShareTeamSection({
           const uiPermission = accessToUIPermission(member.access);
           const active = Boolean(uiPermission);
           const subtitle = inherited
-            ? (member.editHint ??
-              `${shareLabels.inheritedFrom(formatSharePathLabel(member.source.sharePath))} · ${member.username}`)
+            ? member.username
             : member.viaGroup
               ? shareLabels.viaGroup(formatSharePathLabel(member.viaGroup))
               : member.username;
@@ -158,7 +146,6 @@ export function ShareTeamSection({
               editable={member.editable && !inherited}
               editHint={member.editHint}
               removeDisabled={disabled}
-              onOpenAccess={onOpenAccess}
               onAccessChange={(next) => {
                 if (!member.removal?.principal) return;
                 void mutations.updateGrantAccess(

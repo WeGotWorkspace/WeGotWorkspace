@@ -7,7 +7,7 @@ import {
   isDialogEditableAccess,
   type ShareUIPermission,
 } from "@/share-ui/share-access-map";
-import { ShareInheritedLink } from "@/share-ui/share-inherited-link";
+import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -23,7 +23,6 @@ type SharePrincipalRowProps = {
   editable?: boolean;
   editHint?: string;
   removeDisabled?: boolean;
-  onOpenAccess?: (path: string) => void;
   onAccessChange?: (permission: ShareUIPermission) => void;
   onRemove?: () => void;
 };
@@ -38,7 +37,6 @@ export function SharePrincipalRow({
   editable = true,
   editHint,
   removeDisabled = false,
-  onOpenAccess,
   onAccessChange,
   onRemove,
 }: SharePrincipalRowProps) {
@@ -52,11 +50,11 @@ export function SharePrincipalRow({
       {mark}
       <div className="share-dialog__row-main">
         <div className="share-dialog__row-title-line">
-          <p className="share-dialog__row-title">{title}</p>
+          <div className="share-dialog__row-title-group">
+            <p className="share-dialog__row-title">{title}</p>
+            {inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null}
+          </div>
           {pending ? <SharePendingTag /> : null}
-          {inheritedFromPath ? (
-            <ShareInheritedLink sharePath={inheritedFromPath} onOpenAccess={onOpenAccess} />
-          ) : null}
         </div>
         {subtitle ? <p className="share-dialog__row-subtitle">{subtitle}</p> : null}
       </div>

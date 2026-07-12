@@ -203,9 +203,6 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               }
             />
           </div>
-          {!passwordRequired ? (
-            <p className="share-dialog__password-warning">{shareLabels.passwordDisableWarning}</p>
-          ) : null}
         </div>
       ) : null}
 

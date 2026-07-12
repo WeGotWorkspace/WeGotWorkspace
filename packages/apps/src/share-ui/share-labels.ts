@@ -17,7 +17,6 @@ export const shareLabels = {
   requirePassword: "Require password",
   passwordPlaceholder: "Set a password",
   passwordDisabledPlaceholder: "Password disabled",
-  passwordDisableWarning: "Anyone with the link can open this without a password.",
   confirmCancel: "Cancel",
   confirmContinue: "Continue",
   disablePublicLinkTitle: "Disable public link?",

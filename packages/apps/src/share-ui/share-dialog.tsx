@@ -65,12 +65,7 @@ export function ShareDialog({
           <>
             <div className="share-dialog__body">
               <ShareLinkSection atPath={data} mutations={mutations} disabled={!canManage} />
-              <ShareTeamSection
-                atPath={data}
-                mutations={mutations}
-                disabled={!canManage}
-                onOpenAccess={onOpenAccess ? handleOpenAccess : undefined}
-              />
+              <ShareTeamSection atPath={data} mutations={mutations} disabled={!canManage} />
             </div>
 
             <footer className="share-dialog__footer">
