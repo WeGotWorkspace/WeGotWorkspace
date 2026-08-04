@@ -5,7 +5,7 @@ Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols 
 **Source of truth for Goals:** GitHub issues labeled [`type:goal`](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal).  
 **Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Accepted → Building → Shipped; filter `label:type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
 
-**Community closed:** Idea intake and Goal proposals from outside maintainers are **not open** until the legal entity / CLA exists. Public Discussions Ideas may stay closed; maintainers still explore in Discussions and promote to Goals at **Accepted**. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
+**External intake:** [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas/exploration; Bug reports for defects. Goal / Epic / Task / Chore issues are **maintainers only** — maintainers promote promising Discussions to Goals at **Accepted**. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 Engineering milestones (`v0.9`, `v1.0`) pack **Epics/Tasks/Bugs** for a release train — **never** assign milestones to Goals. They are not the browsing UI for product intent.
 
@@ -70,7 +70,7 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 | Building | Active child epics/tasks |
 | Shipped | Success signals met for the intended slice |
 
-**Intake (maintainers):** explore under GitHub Discussions (Ideas) → promote to a Goal issue with Status **Accepted**. Do not use Exploring/Proposed on the board.
+**Intake:** anyone may explore in Discussions; maintainers promote to a Goal with Status **Accepted**. Do not use Exploring/Proposed on the board.
 
 Parked delivery under an Accepted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 

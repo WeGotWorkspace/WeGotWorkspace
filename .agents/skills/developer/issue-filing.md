@@ -12,7 +12,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 **Milestones NEVER on Goals.** Far-horizon Goals stay `Accepted` until Building.
 
-**Maintainer intake:** explore in GitHub Discussions (Ideas) → file a Goal and set Project Status to **Accepted** (or **Building** if already in progress). Do not put Exploring/Proposed on the board. Community Goal filing remains closed per [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+**Intake:** anyone may explore in GitHub Discussions; **maintainers** file Goals (and Epics/Tasks/Chores) and set Project Status to **Accepted** (or **Building** if already in progress). Do not put Exploring/Proposed on the board. Externals file bugs / Discussions only — see [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ## Checklist
 

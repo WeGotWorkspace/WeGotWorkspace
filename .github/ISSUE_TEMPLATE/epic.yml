@@ -1,5 +1,5 @@
-name: Epic
-description: Engineering epic — slices delivery under a parent Goal (maintainers)
+name: "[Maintainers only] Epic"
+description: Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report.
 title: "[Epic] "
 labels:
   - type:epic
@@ -7,6 +7,9 @@ body:
   - type: markdown
     attributes:
       value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
         Epics are **engineering** work under a product Goal. Link the parent Goal.
         Do not put epics on the Product roadmap Project.
 

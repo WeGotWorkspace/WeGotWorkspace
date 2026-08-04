@@ -1,5 +1,5 @@
-name: Task — implementable AC
-description: Delivery task with implementable acceptance criteria under a parent Epic or Goal
+name: "[Maintainers only] Task"
+description: Maintainers only — delivery task with implementable AC. Externals: use Discussions or Bug report.
 title: "[Task] "
 labels:
   - type:task
@@ -7,6 +7,9 @@ body:
   - type: markdown
     attributes:
       value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
         Tasks are **implementable** delivery work. Link a parent Epic or Goal.
         Acceptance criteria should be checkbox-ready (`- [ ]`) so agents and PRs can verify done.
 

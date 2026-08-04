@@ -2,7 +2,7 @@
 
 How product intent and contributions are decided for WeGotWorkspace.
 
-**Status:** Structure in place; **community participation is not open yet** (legal entity / CLA pending).
+**Status:** Structure in place. **External intake** = Discussions (explore) + bug reports. Goals and delivery issues are maintainer-filed. External code PRs wait on the legal entity / CLA.
 
 ## Three surfaces
 
@@ -24,9 +24,18 @@ Lifecycle (Product Project Status):
 2. **Building** — active delivery under the Goal.
 3. **Shipped** — success signals met for the intended slice.
 
-**Before Accepted:** maintainers explore under **GitHub Discussions** (Ideas). When ready, promote to a Goal issue and set Status to Accepted. Do not use Exploring/Proposed board columns.
+**Before Accepted:** anyone may explore under **GitHub Discussions**. When ready, **maintainers** promote a thread to a Goal issue and set Status to Accepted. Do not use Exploring/Proposed board columns.
 
 Goals live on the **Product roadmap** Project (when configured). Engineering epics, tasks, bugs, and chores do **not**.
+
+## Who may file which issues
+
+| Actor | May file |
+|-------|----------|
+| External contributors | Discussions; Bug reports; DAST/security findings |
+| Maintainers (`OWNER` / `MEMBER` / `COLLABORATOR`) | All templates (Goal, Epic, Task, Chore, Bug, DAST) |
+
+Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened by non-maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Relationship to delivery
 
@@ -43,10 +52,9 @@ See [docs/product/README.md](docs/product/README.md).
 
 When the legal entity and CLA exist, maintainers may:
 
-- Open Discussions → Ideas as **public** intake (aligned with blank_issues / CONTRIBUTING contact links)
-- Promote accepted ideas to Goals at **Accepted**
 - Accept external code under the CLA
+- Optionally refine Discussion → Goal promotion process (RFC, etc.)
 
-Until then: **no public Goal proposing, no external code contribution.** Maintainers still use Discussion → Goal Accepted internally. Bug reports may still be accepted per [CONTRIBUTING.md](CONTRIBUTING.md).
+Until then: **Discussions + bugs are open; no external Goal/Epic/Task/Chore filing; no external code contribution.** Maintainers promote Discussion → Goal **Accepted**.
 
 This document is not a substitute for a future RFC process; it is a stub so the model can open without another migration.
