@@ -54,14 +54,11 @@ body:
     id: status
     attributes:
       label: Status
-      description: Soft product status (also set on the Product roadmap Project).
+      description: Soft product status (also set on the Product roadmap Project). New Goals start as Accepted; use Building only if delivery has already started. Explore earlier work in Discussions — not on the board.
       options:
-        - Exploring
-        - Proposed
         - Accepted
         - Building
         - Shipped
-        - Later
     validations:
       required: true
 

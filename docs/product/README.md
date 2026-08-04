@@ -11,29 +11,81 @@ Product intent for WeGotWorkspace lives here and on GitHub **Goal** issues (`typ
 
 Self-hosted autonomous office: Mail, Drive, Docs, Notes, Calendar, Tasks, Contacts, Meet, and admin — on infrastructure you control.
 
-## How to read the roadmap
+## Three surfaces (systems model)
 
-1. Open [roadmap.md](./roadmap.md) for a capability map (Shipped / Building / Next / Later).
-2. On GitHub, filter issues with label [`type:goal`](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal).
-3. Use the **[Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1)** Project (Statuses: Exploring → Proposed → Accepted → Building → Shipped → Later). Filter to Goals only. Notes: [project-setup.md](./project-setup.md).
+Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
-Engineering release checklists (e.g. v0.9 milestone trackers) are **not** the product source of truth.
+| Surface | What | Browse |
+|---------|------|--------|
+| **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Accepted → Building → Shipped |
+| **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, `bug`) — implementable work under Goals | Issue filters below; **not** on the Product Project |
+| **3. Eng release packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Pack Epics/Tasks/Bugs for a release train |
 
-## Community
+### Milestones never on Goals
 
-**Community proposals for Goals are not open yet** (legal entity / CLA pending). Maintainers create and accept Goals. See [GOVERNANCE.md](../../GOVERNANCE.md) and [CONTRIBUTING.md](../../CONTRIBUTING.md).
+**Milestones are ONLY for Epics, Tasks, and Bugs** (and optional eng chores). **Never** assign a milestone to a `type:goal` issue.
+
+- Product timing → Project **Status** (`Accepted` until Building), not a milestone.
+- Release packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9).
+- Product “what’s in flight” → Goals on the board (`Building` / `Accepted`), not a mega checklist issue.
+- Early research stays in **GitHub Discussions** (Ideas) until a maintainer promotes it to a Goal at **Accepted** — do not use board columns for Exploring/Proposed.
+
+The legacy `future` label on Goals is optional hygiene only — Status on the board is the source of truth; do not mass-retag.
+
+See [GOVERNANCE.md](../../GOVERNANCE.md) and [issue-filing.md](../../.agents/skills/developer/issue-filing.md).
+
+## How to browse
+
+Use these filters instead of the default open-issue list (which mixes Goals with delivery trackers).
+
+### Product (Goals)
+
+| View | Link |
+|------|------|
+| Goals only (all states) | [issues?q=is:issue+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) |
+| Open Goals | [issues?q=is:issue+is:open+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal) |
+| Product Project board | [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — **board filter** `label:type:goal` (Goals only; Status = Accepted → Building → Shipped) |
+| Building | Board: open [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1), filter `label:type:goal status:Building` |
+| Accepted | Board filter `label:type:goal status:Accepted` |
+| Shipped | Board filter `label:type:goal status:Shipped` |
+
+Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project setup: [project-setup.md](./project-setup.md).
+
+### Delivery (maintainers)
+
+| View | Link |
+|------|------|
+| Open delivery (epic or task, not Goals) | [label:type:task OR label:type:epic, open](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+-label%3Atype%3Agoal+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
+| Bugs | [label:bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Abug) |
+| Chores / eng trackers | [label:type:chore](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Achore) |
+| Milestone v0.9 (eng packing) | [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) |
+| Milestone v1.0 (eng packing) | [milestone:v1.0](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av1.0) |
+| Needs triage | [label:needs-triage](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Aneeds-triage) |
+| Unlabeled open | [no:label](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+no%3Alabel) |
+
+**Do not** add Tasks, Epics, or Chores to the Product Project — Goals only. See [issue-filing.md](../../.agents/skills/developer/issue-filing.md).
+
+**Parked / far-horizon delivery:** for Accepted Goals not yet Building, keep the Goal on the board (`Accepted`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / far-horizon work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
+
+Engineering release packing is the **milestone filter** on delivery issues — not a product roadmap issue and not milestones on Goals.
+
+## Community and maintainer intake
+
+**Community proposals for Goals are not open yet** (legal entity / CLA pending). Blank issues are disabled; the contact link points at [CONTRIBUTING.md](../../CONTRIBUTING.md). Ideas / Discussions may remain closed to the public until maintainers deliberately open that phase.
+
+**Maintainer workflow:** explore under **GitHub Discussions** (Ideas) → when ready, file a **Goal** issue and set Product Project Status to **Accepted** (or **Building** if delivery has already started). Do not put Exploring/Proposed on the board. See [GOVERNANCE.md](../../GOVERNANCE.md).
 
 ## Labels
 
-| Kind | Label | On Product Project? |
-|------|--------|---------------------|
-| Goal | `type:goal` | Yes |
-| Epic | `type:epic` | No |
-| Task | `type:task` | No |
-| Chore | `type:chore` | No |
-| Bug | `bug` (+ `needs-triage`) | No |
-| Area | `area:*` (mail, drive, docs, …) | Optional field / label |
+| Kind | Label | On Product Project? | Milestone? |
+|------|--------|---------------------|------------|
+| Goal | `type:goal` | Yes | **Never** |
+| Epic | `type:epic` | No | Yes (release packing) |
+| Task | `type:task` | No | Yes (release packing) |
+| Chore | `type:chore` | No | Optional |
+| Bug | `bug` (+ `needs-triage`) | No | Yes (release packing) |
+| Area | `area:*` (mail, drive, docs, …) | Optional field / label | — |
 
-Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Community idea / Goal intake is **not open** — contact link points to [CONTRIBUTING.md](../../CONTRIBUTING.md); Discussions are not a public product hub yet.
+Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Community idea / Goal intake is **not open** — contact link points to [CONTRIBUTING.md](../../CONTRIBUTING.md); public Discussions Ideas may stay closed. Maintainers still use Discussion → Goal **Accepted** internally.
 
-The legacy `roadmap` label is **deprecated** for new work — prefer `type:goal` + Product Project.
+The legacy `roadmap` label has been **removed**. Use `type:goal` + the Product roadmap Project for product outcomes.

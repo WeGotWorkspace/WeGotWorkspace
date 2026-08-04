@@ -2,7 +2,7 @@
 
 Canonical reference for engineers (human and AI) working on the WeGotWorkspace Tasks product surface, REST API, and CalDAV interop.
 
-**Tracker:** [GitHub #330](https://github.com/WeGotWorkspace/wegotworkspace/issues/330) · **Roadmap:** [v0.9 #313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313)
+**Tracker:** [GitHub #330](https://github.com/WeGotWorkspace/wegotworkspace/issues/330) · **Release packing:** [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) · **Product Goals:** [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1)
 
 **API detail (conversion matrices, REST mapping):** [`packages/api/docs/tasks/`](../packages/api/docs/tasks/) — implemented with [#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134).
 
@@ -440,6 +440,6 @@ Artisan (idempotent): `wgw:tasks:migrate-default-vtodos`, `wgw:calendars:provisi
 | Remind me picker | [#299](https://github.com/WeGotWorkspace/wegotworkspace/issues/299) |
 | Offline | [#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331) |
 | Installer calendar split | [#332](https://github.com/WeGotWorkspace/wegotworkspace/issues/332) |
-| v0.9 roadmap | [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313) |
+| v0.9 release packing | [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) (former checklist [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313)) |
 
 **Execution order:** Tasks API + app before Calendar ([#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313) comment 2026-07-06).
