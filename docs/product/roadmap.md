@@ -9,6 +9,8 @@ Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols 
 
 Milestones (`v0.9`, `v1.0`) **may** attach to Goals as soft release targets for when we aim to fulfill them, and still pack **Epics/Tasks/Bugs** for eng release trains. Milestone ≠ Fulfilled (Status stays product judgment). The browsing UI for product intent remains the Product Project Status columns, not the milestone filter alone.
 
+**One outcome per Goal:** each Goal is one fulfillable user outcome; no Goal→Goal parents (group via `area:*` + milestone). See [issue-filing.md](../../.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
+
 ## How to browse
 
 Ready-to-click filters (full kit also in [README.md](./README.md)):
@@ -50,13 +52,17 @@ Eng progress is on child Epics/Tasks; Goal Status stays **Adopted** until produc
 
 | Goal | Issue | Areas | Notes |
 |------|-------|--------|--------|
-| Manage calendars, events, and sharing in the browser | [#385](https://github.com/WeGotWorkspace/wegotworkspace/issues/385) | calendar | Browser Calendar (suite UX + live API); CalDAV given via Sabre; eng parity #137 |
+| Manage calendar events (including recurrence) in the browser | [#385](https://github.com/WeGotWorkspace/wegotworkspace/issues/385) | calendar | Split from multi-outcome Calendar Goal; siblings #402, #403; eng parity #137 |
+| Manage calendars (collections) in the browser | [#402](https://github.com/WeGotWorkspace/wegotworkspace/issues/402) | calendar | Sibling of #385 / #403 |
+| Share calendars and events with others (read/write) in the browser | [#403](https://github.com/WeGotWorkspace/wegotworkspace/issues/403) | calendar | Sibling of #385 / #402; not guest Docs/Drive links (#388) |
 | Share Docs and Drive files with guests via a link | [#388](https://github.com/WeGotWorkspace/wegotworkspace/issues/388) | docs, drive | Must-have for v0.9 |
 | Recover my password without an admin | [#389](https://github.com/WeGotWorkspace/wegotworkspace/issues/389) | admin, platform | |
 | Get notified about events and tasks while using the app | [#390](https://github.com/WeGotWorkspace/wegotworkspace/issues/390) | calendar, tasks, platform | |
 | Keep files, notes, and docs private with a zero-knowledge vault | [#391](https://github.com/WeGotWorkspace/wegotworkspace/issues/391) | drive, docs, notes, platform | Far-horizon / parked delivery |
 | Get help running the instance with AI-assisted operations | [#392](https://github.com/WeGotWorkspace/wegotworkspace/issues/392) | platform | Far-horizon |
 | Sign in with my organization's identity provider (OIDC SSO) | [#395](https://github.com/WeGotWorkspace/wegotworkspace/issues/395) | admin, platform | Far-horizon |
+| Read and manage Mail as conversation threads | [#398](https://github.com/WeGotWorkspace/wegotworkspace/issues/398) | mail | |
+| Use Mail offline with message list and body previews | [#400](https://github.com/WeGotWorkspace/wegotworkspace/issues/400) | mail | Sibling offline surface to #381 |
 
 ## Identified
 
