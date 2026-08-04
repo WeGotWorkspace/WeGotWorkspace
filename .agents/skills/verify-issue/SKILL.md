@@ -13,6 +13,27 @@ Issue-linked work needs **three** gates:
 
 Do not skip (2) or (3) after (1). Do not declare an issue done based on green CI alone if AC were never mapped.
 
+## Goal vs Task / Epic modes
+
+Product governance splits GitHub issues into layers. Detect mode from labels (`type:goal` | `type:epic` | `type:task`) or body sections.
+
+| Mode | Labels | What to verify | Spec `Source:`? |
+|------|--------|----------------|-----------------|
+| **Goal** | `type:goal` | Outcome / **Success looks like** + child delivery issues | **Never** — Goals are never `Source:` |
+| **Epic / Task** | `type:epic`, `type:task`, or default eng issue | Implementer AC (`- [ ]`, Done when) + body-hash | **Yes** — `Source: #<task-or-epic>` |
+| **Bug / chore** | `bug`, `type:chore` | Bug expected behavior / chore checklist | Usually no `feat/` spec |
+
+**Goal mode rules:**
+
+- Do **not** invent eng AC from Outcome prose.
+- Check success signals as observable outcomes; map children (sub-issues / Delivery links) and verify those with Task/Epic mode (or note them as open).
+- Closing a Goal requires success signals met for the intended slice — not green CI on an unrelated PR.
+- `feat/` work that closes delivery must link a **Task or Epic**, never a Goal as the sole closing issue.
+
+**Task / Epic mode:** keep the AC + body-hash workflow below.
+
+Product intent: [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md). Spec layers: [specs/README.md](../../specs/README.md).
+
 ## When to use
 
 | Use | Skip |
@@ -21,6 +42,7 @@ Do not skip (2) or (3) after (1). Do not declare an issue done based on green CI
 | Before handoff: "is this done?", "verify the issue" | Pure refactor with no AC |
 | Before PR when PR fixes/closes an issue | Docs-only typo with obvious scope |
 | Parent after multitask merge for issue-scoped feature | Issue has no criteria and user did not ask for verification |
+| Goal issue: success signals + children status | Treating a Goal as `Source:` for `spec.md` |
 
 ## Prerequisites
 
@@ -76,7 +98,9 @@ Read title + body + relevant comments. Note **state** (`OPEN`/`CLOSED`) but veri
 
 ### 2. Extract acceptance criteria
 
-Pull every **testable** requirement into a numbered list. Sources, in order:
+**If Goal mode** (`type:goal`): extract **Success looks like** bullets and list linked children under Delivery / sub-issues. Do not treat Outcome/Who/Non-goals as eng AC. Report child status separately.
+
+**If Task / Epic / Bug mode:** pull every **testable** requirement into a numbered list. Sources, in order:
 
 | Source | How to extract |
 |--------|----------------|
@@ -91,6 +115,7 @@ Pull every **testable** requirement into a numbered list. Sources, in order:
 - One row per criterion — split compound bullets ("add X and Y") into separate rows when they verify independently.
 - Mark inferred criteria with `(inferred)` when there is no explicit AC section.
 - If the issue is vague, list assumptions you are verifying and flag gaps in the report — do not silently invent scope.
+- Never invent REST/package AC from a Goal’s Outcome section.
 
 ### 3. Map each criterion to verification
 

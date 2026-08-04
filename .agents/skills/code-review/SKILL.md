@@ -9,7 +9,7 @@ Lightweight gate before handoff or PR — not a second copy of domain skills.
 
 ## Order
 
-0. **Issue-linked work:** [verify-issue](../verify-issue/SKILL.md) — spec body-hash drift (`SYNC OK` or re-sync), then acceptance criteria report (`ISSUE_SATISFIED` or documented partial) before technical gates below.
+0. **Issue-linked work:** [verify-issue](../verify-issue/SKILL.md) — Goal vs Task/Epic mode, spec body-hash drift (`SYNC OK` or re-sync), then acceptance criteria report (`ISSUE_SATISFIED` or documented partial) before technical gates below. `feat/` must not close a Goal as the sole `fixes #` issue.
 0b. **Technical scope:** when `.agents/specs/<N>-*/spec.md` exists, confirm implementation matches spec goal, non-goals, affected packages, and edge cases — **AC still comes from the issue**, not spec.
 1. **[clean-code/smells.md](../clean-code/smells.md)** — scan touched files (required).
 2. **[developer/done-checklist.md](../developer/done-checklist.md)** — run commands for packages you changed.

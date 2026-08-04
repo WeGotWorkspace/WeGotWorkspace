@@ -99,6 +99,7 @@ Use **`--squash`** or **`--rebase`** only when the user explicitly requests it, 
 - **Do not** amend commits unless user requests it and amend rules are satisfied (unpushed, your commit, etc.).
 - Use `gh` for all GitHub tasks (PR, checks, issues).
 - **Merge with `--merge` by default** — see [Merging PRs](#merging-prs). Never use `--squash` unless the user asks.
+- **Issue linking:** `feat/` PRs close a **Task or Epic** (`fixes #N` / `closes #N`) — never a Goal alone as the sole closing issue. Spec `Source:` follows the same rule — [issue-filing.md](../developer/issue-filing.md), [verify-issue](../verify-issue/SKILL.md).
 
 ## After PR
 

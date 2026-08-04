@@ -13,6 +13,7 @@ description: Git workflow for this repository — branching, commits, pull reque
 | Staging / committing | This file (below) |
 | Opening or updating a PR | [pull-requests.md](pull-requests.md) |
 | Merging a PR | [pull-requests.md](pull-requests.md) — **`gh pr merge --merge` by default** |
+| Issue linking on `feat/` | [pull-requests.md](pull-requests.md) (Task/Epic only — not Goal alone); [issue-filing.md](../developer/issue-filing.md) |
 | PR summary wording | [document](../document/SKILL.md) |
 | Test plan for PR | [testing](../testing/SKILL.md) |
 | Parallel agent branches | [developer/multitask.md](../developer/multitask.md) |

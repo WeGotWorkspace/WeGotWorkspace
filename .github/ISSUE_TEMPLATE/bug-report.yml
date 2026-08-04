@@ -10,7 +10,8 @@ body:
         Thanks for taking the time to report this.
         Use this form to describe incorrect or broken behavior.
 
-        For feature requests or general questions, please use Discussions.
+        Ideas, Goals, and feature requests are **not open** yet — see CONTRIBUTING.md.
+        Do not use this form to propose product work.
 
   - type: textarea
     id: problem

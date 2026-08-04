@@ -1,21 +1,22 @@
 # Spec-first workflow
 
-Committed specs under `.agents/specs/` are the **technical implementation layer** beneath GitHub issues. They do not replace issues — they translate them for agents and parallel work.
+Committed specs under `.agents/specs/` are the **technical implementation layer** beneath GitHub delivery issues. They do not replace Goals or issues — they translate **Task/Epic** AC for agents and parallel work.
 
-## Two layers — no competing truth
+## Layers — no competing truth
 
-| Layer | Where | Role |
-|-------|-------|------|
-| **GitHub Issue** | GitHub | Authoritative for **what** and **why** — priority, discussion, labels, assignment, PR linking, human-visible AC checklist |
-| **`spec.md`** | Repo | Technical **translation** derived from the issue when implementation starts |
-| **`plan.md`** | Repo | Chunk split, package impact, order, parallelization |
-| **`tasks.md`** | Repo | **Engineering** split per chunk/agent — **not** a copy of the issue checklist |
+| Layer | Where | Role | Spec `Source:`? |
+|-------|-------|------|-----------------|
+| **Goal** (`type:goal`) | GitHub + [docs/product/](../../docs/product/) | User **outcome**, success signals, non-goals — Product roadmap | **Never** |
+| **Issue (AC)** — Epic / Task | GitHub | Implementable **what** — AC checklist, labels, PR linking | **Yes** — `Source: #<task-or-epic>` |
+| **Specs** (`spec.md` → `plan.md` → `tasks.md`) | Repo | Technical **translation** + chunk split / eng rows — derived from the Task/Epic when implementation starts | Derived from Source |
 
 ```text
-Issue (what + why) → spec.md → plan.md → tasks.md
+Goal (outcome) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 ```
 
-Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required only on `feat/` branches (see below).
+Optional header line (not hashed): `Goal: #M` for product context only.
+
+Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required only on `feat/` branches (see below). Product Goals: [GOVERNANCE.md](../../GOVERNANCE.md). Filing: [developer/issue-filing.md](../skills/developer/issue-filing.md).
 
 ## Folder convention
 
@@ -45,7 +46,7 @@ Copy skeletons from [`_template/`](./_template/).
 
 | File | Contents | Do not |
 |------|----------|--------|
-| `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header, goal, non-goals, packages, constraints, edge cases | Re-invent AC or duplicate the full issue body |
+| `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header (Task/Epic only), optional `Goal: #M`, goal, non-goals, packages, constraints, edge cases | Use a Goal as `Source:`; re-invent AC or duplicate the full issue body |
 | `plan.md` | Chunks, dependencies, parallelization | — |
 | `tasks.md` | Per-chunk engineering tasks: chunk-id, owner, key paths, verify command | Copy GitHub `- [ ]` AC checklist |
 
