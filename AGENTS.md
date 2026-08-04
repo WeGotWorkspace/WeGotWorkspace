@@ -30,7 +30,7 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 
 | Skill | When to use |
 |-------|-------------|
-| [developer](.agents/skills/developer/) | Starting work, onboarding, skill routing, multitask — [issue-filing.md](.agents/skills/developer/issue-filing.md) for Goals/Epics/Tasks |
+| [developer](.agents/skills/developer/) | Starting work, onboarding, skill routing, multitask — [issue-filing.md](.agents/skills/developer/issue-filing.md) for Goals/Epics/Tasks/Chores |
 | [dev-environment](.agents/skills/dev-environment/) | Docker, ports, Storybook proxy, troubleshooting |
 | [api](.agents/skills/api/) | `packages/api` — REST, auth, storage, WebDAV, tests |
 | [plugins](.agents/skills/plugins/) | Plugin registry, activation, install, Flysystem boundaries |

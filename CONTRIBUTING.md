@@ -16,7 +16,8 @@ Do not open issues to propose product Goals or large features yet. Discussions e
 ## Product vs engineering
 
 - **Goals** (`type:goal`) describe user outcomes — maintainers only for now. See [docs/product/](docs/product/).
-- **Epics / tasks / chores** track delivery under Goals or pure eng work.
+- **Epics / tasks / chores** (`type:epic` / `type:task` / `type:chore`) track delivery under Goals or pure eng work.
+- Templates: `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml`, `dast-finding.yml` under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
 - The legacy `roadmap` label is deprecated for new work.
 
 ## Maintainers

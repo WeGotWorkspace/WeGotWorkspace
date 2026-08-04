@@ -31,8 +31,9 @@ Engineering release checklists (e.g. v0.9 milestone trackers) are **not** the pr
 | Epic | `type:epic` | No |
 | Task | `type:task` | No |
 | Chore | `type:chore` | No |
+| Bug | `bug` (+ `needs-triage`) | No |
 | Area | `area:*` (mail, drive, docs, …) | Optional field / label |
 
-Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, and `bug-report.yml`. Blank issues are disabled; Ideas → Discussions (community Goal intake not open yet).
+Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Community idea / Goal intake is **not open** — contact link points to [CONTRIBUTING.md](../../CONTRIBUTING.md); Discussions are not a public product hub yet.
 
 The legacy `roadmap` label is **deprecated** for new work — prefer `type:goal` + Product Project.

@@ -23,10 +23,10 @@ Goals live on the **Product roadmap** Project (when configured). Engineering epi
 
 | Layer | Owns |
 |-------|------|
-| Goal | User outcome, success signals, non-goals, decisions |
+| Goal | User outcome, success signals, non-goals, decisions (`goal.yml`) |
 | Epic / Task | Implementable acceptance criteria; milestones (`epic.yml` / `task.yml`) |
 | Chore | Eng debt / trackers (`chore.yml`); no Goal required |
-| Bug | Defects via bug template |
+| Bug | Defects via `bug-report.yml` (`bug` label) |
 
 See [docs/product/README.md](docs/product/README.md).
 

@@ -2,14 +2,13 @@
 
 Committed specs under `.agents/specs/` are the **technical implementation layer** beneath GitHub delivery issues. They do not replace Goals or issues — they translate **Task/Epic** AC for agents and parallel work.
 
-## Three layers — no competing truth
+## Layers — no competing truth
 
 | Layer | Where | Role | Spec `Source:`? |
 |-------|-------|------|-----------------|
 | **Goal** (`type:goal`) | GitHub + [docs/product/](../../docs/product/) | User **outcome**, success signals, non-goals — Product roadmap | **Never** |
 | **Issue (AC)** — Epic / Task | GitHub | Implementable **what** — AC checklist, labels, PR linking | **Yes** — `Source: #<task-or-epic>` |
-| **`spec.md`** | Repo | Technical **translation** derived from the Task/Epic when implementation starts | Derived from Source |
-| **`plan.md`** / **`tasks.md`** | Repo | Chunk split / eng rows — **not** a copy of the issue checklist | — |
+| **Specs** (`spec.md` → `plan.md` → `tasks.md`) | Repo | Technical **translation** + chunk split / eng rows — derived from the Task/Epic when implementation starts | Derived from Source |
 
 ```text
 Goal (outcome) → Epic/Task (AC) → spec.md → plan.md → tasks.md
@@ -17,7 +16,7 @@ Goal (outcome) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 Optional header line (not hashed): `Goal: #M` for product context only.
 
-Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required only on `feat/` branches (see below). Product Goals: [GOVERNANCE.md](../../GOVERNANCE.md).
+Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required only on `feat/` branches (see below). Product Goals: [GOVERNANCE.md](../../GOVERNANCE.md). Filing: [developer/issue-filing.md](../skills/developer/issue-filing.md).
 
 ## Folder convention
 

@@ -8,7 +8,7 @@ Run before declaring work complete or opening a PR (when the user asks). Policy 
 
 If the task references an issue (`#N`, issue URL, or "fixes #N"):
 
-1. Load [verify-issue](../verify-issue/SKILL.md) — fetch issue, map acceptance criteria, run per-criterion checks, report verdict.
+1. Load [verify-issue](../verify-issue/SKILL.md) — detect Goal vs Task/Epic mode; fetch issue; map acceptance criteria (or success signals + children for Goals); run per-criterion checks; report verdict. Never treat a Goal as sole `fixes #` / `Source:` for `feat/` work.
 2. Then run the package sections below (repo quality gate).
 
 Issue AC verification and done-checklist are both required; neither replaces the other.

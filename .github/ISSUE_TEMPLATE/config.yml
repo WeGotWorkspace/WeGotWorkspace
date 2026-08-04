@@ -1,6 +1,6 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: Propose an idea or improvement
-    url: https://github.com/WeGotWorkspace/wegotworkspace/discussions
-    about: Use Discussions for feature requests, improvements, and other project ideas.
+  - name: Contributing guidelines
+    url: https://github.com/WeGotWorkspace/wegotworkspace/blob/main/CONTRIBUTING.md
+    about: Bug reports are open. Ideas, Goals, and external code contributions are closed until the legal entity / CLA exists.
