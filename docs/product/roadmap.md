@@ -3,9 +3,9 @@
 Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols or package paths.
 
 **Source of truth for Goals:** GitHub issues labeled [`type:goal`](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal).  
-**Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Accepted → Building → Shipped; filter `label:type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
+**Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Identified → Adopted → Fulfilled; filter `label:type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
 
-**External intake:** [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas/exploration; Bug reports for defects. Goal / Epic / Task / Chore issues are **maintainers only** — maintainers promote promising Discussions to Goals at **Accepted**. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
+**External intake:** [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas/exploration; Bug reports for defects. Goal / Epic / Task / Chore issues are **maintainers only** — maintainers promote promising Discussions to Goals at **Identified** (then **Adopted** when committing). See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 Engineering milestones (`v0.9`, `v1.0`) pack **Epics/Tasks/Bugs** for a release train — **never** assign milestones to Goals. They are not the browsing UI for product intent.
 
@@ -16,8 +16,9 @@ Ready-to-click filters (full kit also in [README.md](./README.md)):
 | Audience | View | Link |
 |----------|------|------|
 | Anyone | Goals only | [label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) |
-| Anyone | Board — Building | [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) → filter `label:type:goal status:Building` |
-| Anyone | Board — Accepted | filter `label:type:goal status:Accepted` |
+| Anyone | Board — Adopted | [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) → filter `label:type:goal status:Adopted` |
+| Anyone | Board — Fulfilled | filter `label:type:goal status:Fulfilled` |
+| Anyone | Board — Identified | filter `label:type:goal status:Identified` |
 | Maintainers | Open delivery (task/epic) | [type:task OR type:epic, not Goals](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+-label%3Atype%3Agoal+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
 | Maintainers | Bugs | [label:bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Abug) |
 | Maintainers | Chores | [label:type:chore](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Achore) |
@@ -27,7 +28,7 @@ If child Tasks/Epics reappear on the board (auto-add via parent linkage), keep t
 
 ---
 
-## Shipped
+## Fulfilled
 
 | Goal | Issue | Areas |
 |------|-------|--------|
@@ -41,24 +42,25 @@ If child Tasks/Epics reappear on the board (auto-add via parent linkage), keep t
 | Manage users on my instance | [#386](https://github.com/WeGotWorkspace/wegotworkspace/issues/386) | admin |
 | Install suite apps as PWAs | [#387](https://github.com/WeGotWorkspace/wegotworkspace/issues/387) | platform |
 
-Project status **Shipped** is set on these Goals in the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project.
+Project status **Fulfilled** is set on these Goals in the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project (product judgment — not auto from closed children).
 
-## Building
+## Adopted
+
+Eng progress is on child Epics/Tasks; Goal Status stays **Adopted** until product marks Fulfilled.
 
 | Goal | Issue | Areas | Notes |
 |------|-------|--------|--------|
 | Manage calendars, events, and sharing in the browser | [#385](https://github.com/WeGotWorkspace/wegotworkspace/issues/385) | calendar | Browser Calendar (suite UX + live API); CalDAV given via Sabre; eng parity #137 |
 | Share Docs and Drive files with guests via a link | [#388](https://github.com/WeGotWorkspace/wegotworkspace/issues/388) | docs, drive | Must-have for v0.9 |
+| Recover my password without an admin | [#389](https://github.com/WeGotWorkspace/wegotworkspace/issues/389) | admin, platform | |
+| Get notified about events and tasks while using the app | [#390](https://github.com/WeGotWorkspace/wegotworkspace/issues/390) | calendar, tasks, platform | |
+| Keep files, notes, and docs private with a zero-knowledge vault | [#391](https://github.com/WeGotWorkspace/wegotworkspace/issues/391) | drive, docs, notes, platform | Far-horizon / parked delivery |
+| Get help running the instance with AI-assisted operations | [#392](https://github.com/WeGotWorkspace/wegotworkspace/issues/392) | platform | Far-horizon |
+| Sign in with my organization's identity provider (OIDC SSO) | [#395](https://github.com/WeGotWorkspace/wegotworkspace/issues/395) | admin, platform | Far-horizon |
 
-## Accepted
+## Identified
 
-| Goal | Issue | Areas |
-|------|-------|--------|
-| Recover my password without an admin | [#389](https://github.com/WeGotWorkspace/wegotworkspace/issues/389) | admin, platform |
-| Get notified about events and tasks while using the app | [#390](https://github.com/WeGotWorkspace/wegotworkspace/issues/390) | calendar, tasks, platform |
-| Keep files, notes, and docs private with a zero-knowledge vault | [#391](https://github.com/WeGotWorkspace/wegotworkspace/issues/391) | drive, docs, notes, platform |
-| Get help running the instance with AI-assisted operations | [#392](https://github.com/WeGotWorkspace/wegotworkspace/issues/392) | platform |
-| Sign in with my organization's identity provider (OIDC SSO) | [#395](https://github.com/WeGotWorkspace/wegotworkspace/issues/395) | admin, platform |
+No Goals currently at **Identified** — new Goals land here when recognized (often after Discussion) before commitment.
 
 ---
 
@@ -66,13 +68,13 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 
 | Status | Meaning |
 |--------|---------|
-| Accepted | Committed product intent; delivery may not have started (far-horizon Goals stay here). |
-| Building | Active child epics/tasks |
-| Shipped | Success signals met for the intended slice |
+| Identified | Recognized as a user goal (often after Discussion). |
+| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building**. |
+| Fulfilled | Product judges outcome met — **not** auto from closed children. |
 
-**Intake:** anyone may explore in Discussions; maintainers promote to a Goal with Status **Accepted**. Do not use Exploring/Proposed on the board.
+**Intake:** anyone may explore in Discussions; maintainers promote to a Goal with Status **Identified**, then **Adopted** when committing. Do not use Exploring/Proposed on the board.
 
-Parked delivery under an Accepted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
+Parked delivery under an Adopted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 
 ## Related
 

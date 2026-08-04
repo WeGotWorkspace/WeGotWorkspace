@@ -13,11 +13,11 @@ Thank you for your interest in WeGotWorkspace.
 | **Blank issues** | Disabled |
 | **Code contributions (PRs from outside maintainers)** | **Closed** until CLA |
 
-Externals: start a **Discussion** to explore ideas, or file a **bug**. Do **not** open Goal, Epic, Task, or Chore issues — maintainers promote promising Discussions to Goals at Product Status **Accepted**.
+Externals: start a **Discussion** to explore ideas, or file a **bug**. Do **not** open Goal, Epic, Task, or Chore issues — maintainers promote promising Discussions to Goals at Product Status **Identified** (then **Adopted** when committing).
 
 ## Product vs engineering
 
-- **Goals** (`type:goal`) describe user outcomes — maintainers only. Board Status is **Accepted → Building → Shipped**. See [docs/product/](docs/product/) and [GOVERNANCE.md](GOVERNANCE.md).
+- **Goals** (`type:goal`) describe user outcomes — maintainers only. Board Status is **Identified → Adopted → Fulfilled**. See [docs/product/](docs/product/) and [GOVERNANCE.md](GOVERNANCE.md).
 - **Epics / tasks / chores** (`type:epic` / `type:task` / `type:chore`) track delivery under Goals or pure eng work — maintainers only.
 - Templates: `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml`, `dast-finding.yml` under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
 - The legacy `roadmap` label has been removed — use `type:goal` + the Product roadmap Project.

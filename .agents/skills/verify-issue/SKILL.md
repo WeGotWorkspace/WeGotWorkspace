@@ -26,9 +26,11 @@ Product governance splits GitHub issues into layers. Detect mode from labels (`t
 **Goal mode rules:**
 
 - Do **not** invent eng AC from Outcome prose.
-- Check success signals as observable outcomes; map children (sub-issues / Delivery links) and verify those with Task/Epic mode (or note them as open).
-- Closing a Goal requires success signals met for the intended slice — not green CI on an unrelated PR.
+- Check **Success looks like** as observable product outcomes; map children (sub-issues / Delivery links) and verify those with Task/Epic mode (or note them as open).
+- **Fulfilled** (Product Project Status) is a **product judgment** against success signals — **not** “all children closed,” not green CI on an unrelated PR, and not automatic from delivery issue state.
+- Moving a Goal to Fulfilled / closing it for the intended slice requires those success signals met — child progress is evidence, not the definition of done.
 - `feat/` work that closes delivery must link a **Task or Epic**, never a Goal as the sole closing issue.
+- Goal Status while building stays **Adopted**; eng progress lives on Epics/Tasks.
 
 **Task / Epic mode:** keep the AC + body-hash workflow below.
 
@@ -98,7 +100,7 @@ Read title + body + relevant comments. Note **state** (`OPEN`/`CLOSED`) but veri
 
 ### 2. Extract acceptance criteria
 
-**If Goal mode** (`type:goal`): extract **Success looks like** bullets and list linked children under Delivery / sub-issues. Do not treat Outcome/Who/Non-goals as eng AC. Report child status separately.
+**If Goal mode** (`type:goal`): extract **Success looks like** bullets and list linked children under Delivery / sub-issues. Do not treat Outcome/Who/Non-goals as eng AC. Report child status separately. Verdict for Fulfilled / Goal satisfaction is product judgment on those success signals — closing every child is neither necessary nor sufficient by itself.
 
 **If Task / Epic / Bug mode:** pull every **testable** requirement into a numbered list. Sources, in order:
 

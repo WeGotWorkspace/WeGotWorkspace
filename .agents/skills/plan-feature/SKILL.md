@@ -37,7 +37,7 @@ Skeletons: [specs/_template/](../../specs/_template/). On scope change: update t
 If the delivery issue does not exist yet, file it before writing `spec.md`. Short checklist: [developer/issue-filing.md](../developer/issue-filing.md).
 
 1. Classify: Goal | Epic | Task | Chore | Bug
-2. Goal → product language; `type:goal`; Product Project at Status **Accepted** (or **Building** if already in progress); **no milestone**; never sole `fixes #` / `Source:`
+2. Goal → product language; `type:goal`; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`
 3. Epic → `type:epic`; required parent Goal; not on Product Project; milestone OK for release packing
 4. Task → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; not on Product Project; milestone OK
 5. Chore → `type:chore`; no Goal required. Bug → `bug-report.yml` (`bug` label); not on Product Project
