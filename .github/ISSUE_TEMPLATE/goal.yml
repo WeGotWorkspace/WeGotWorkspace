@@ -55,11 +55,11 @@ body:
     id: status
     attributes:
       label: Status
-      description: Soft product status (also set on the Product roadmap Project). New Goals start as Accepted; use Building only if delivery has already started. Explore earlier work in Discussions — not on the board.
+      description: Soft product status (also set on the Product roadmap Project). Identified = recognized (often after Discussion); Adopted = committed to pursue (stays Adopted while building — eng progress is on child issues); Fulfilled = product judges outcome met (not auto from closed children). Explore earlier work in Discussions — not on the board.
       options:
-        - Accepted
-        - Building
-        - Shipped
+        - Identified
+        - Adopted
+        - Fulfilled
     validations:
       required: true
 

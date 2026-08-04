@@ -6,18 +6,18 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 | Surface | Issues | Notes |
 |---------|--------|-------|
-| Product | `type:goal` on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Accepted → Building → Shipped |
+| Product | `type:goal` on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Identified → Adopted → Fulfilled |
 | Delivery | `type:epic` / `type:task` / `bug` | Implementable work; **not** on Product Project |
 | Eng release packing | GitHub milestones on delivery issues | `v0.9` / `v1.0` pack Epics/Tasks/Bugs only |
 
-**Milestones NEVER on Goals.** Far-horizon Goals stay `Accepted` until Building.
+**Milestones NEVER on Goals.** Far-horizon Goals stay `Identified` or `Adopted` until product marks Fulfilled. Eng progress is on child issues — Goal Status stays **Adopted** while building.
 
-**Intake:** anyone may explore in GitHub Discussions; **maintainers** file Goals (and Epics/Tasks/Chores) and set Project Status to **Accepted** (or **Building** if already in progress). Do not put Exploring/Proposed on the board. Externals file bugs / Discussions only — see [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+**Intake:** anyone may explore in GitHub Discussions; **maintainers** file Goals (and Epics/Tasks/Chores) and set Project Status to **Identified** or **Adopted**. Do not put Exploring/Proposed on the board. Externals file bugs / Discussions only — see [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ## Checklist
 
 1. **Classify:** Goal | Epic | Task | Chore | Bug
-2. **Goal** → product language (Outcome / Who / Success looks like / Non-goals); label `type:goal`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Accepted** (or **Building** if already in progress); **no milestone**; never sole `fixes #` / never `Source:` for `spec.md`
+2. **Goal** → product language (Outcome / Who / Success looks like / Non-goals); label `type:goal`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / never `Source:` for `spec.md`
 3. **Epic** → `type:epic`; **required** parent Goal; **not** on Product Project (even when parented under a Goal); milestone OK for release packing
 4. **Task** → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project; milestone OK for release packing
 5. **Chore / bug** → `type:chore` or `bug-report.yml` (`bug` label); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap
@@ -40,14 +40,14 @@ Only **Goals** belong on [Product roadmap](https://github.com/orgs/WeGotWorkspac
 
 ## Parked / far-horizon work
 
-When a Goal is **Accepted** but not yet Building, and the design is already worked out across many satellite issues:
+When a Goal is **Adopted** but delivery has not started yet, and the design is already worked out across many satellite issues:
 
-1. Keep the **Goal** open on the Product Project (`Accepted`).
+1. Keep the **Goal** open on the Product Project (`Adopted`).
 2. Keep **one Epic** open under that Goal; expand its body with titled sections that **preserve full plans and AC** from each former satellite (e.g. `### From #345 — <title>`), or a durable doc under `docs/` if the epic body would be huge.
 3. Comment on each satellite with a pointer to the epic section (or doc path) + Goal, then **close** them (`not_planned` is fine for parked work).
 4. Do **not** leave long open satellite issues, and do **not** put the Epic or satellites on the Product Project.
 
-When the Goal moves to Building, re-open or create Tasks from those epic sections — do not re-scatter open trackers until delivery starts.
+When delivery starts under an Adopted Goal, re-open or create Tasks from those epic sections — do not re-scatter open trackers until delivery starts. Goal Status stays **Adopted** until product marks **Fulfilled**.
 
 Example: Goal #391 + Epic #349 (former E2EE satellites #335–#348 absorbed).
 

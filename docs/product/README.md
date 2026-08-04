@@ -17,7 +17,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
 | Surface | What | Browse |
 |---------|------|--------|
-| **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Accepted → Building → Shipped |
+| **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
 | **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, `bug`) — implementable work under Goals | Issue filters below; **not** on the Product Project |
 | **3. Eng release packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Pack Epics/Tasks/Bugs for a release train |
 
@@ -25,10 +25,10 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
 **Milestones are ONLY for Epics, Tasks, and Bugs** (and optional eng chores). **Never** assign a milestone to a `type:goal` issue.
 
-- Product timing → Project **Status** (`Accepted` until Building), not a milestone.
+- Product timing → Project **Status** (`Identified` / `Adopted` until product marks `Fulfilled`), not a milestone.
 - Release packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9).
-- Product “what’s in flight” → Goals on the board (`Building` / `Accepted`), not a mega checklist issue.
-- Early research stays in **GitHub Discussions** (Ideas) until a maintainer promotes it to a Goal at **Accepted** — do not use board columns for Exploring/Proposed.
+- Product “what’s in flight” → Goals on the board at **Adopted** (eng progress on child Epics/Tasks), not a mega checklist issue.
+- Early research stays in **GitHub Discussions** (Ideas) until a maintainer promotes it to a Goal at **Identified** (then **Adopted** when committing) — do not use board columns for Exploring/Proposed.
 
 The legacy `future` label on Goals is optional hygiene only — Status on the board is the source of truth; do not mass-retag.
 
@@ -44,10 +44,10 @@ Use these filters instead of the default open-issue list (which mixes Goals with
 |------|------|
 | Goals only (all states) | [issues?q=is:issue+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) |
 | Open Goals | [issues?q=is:issue+is:open+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal) |
-| Product Project board | [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — **board filter** `label:type:goal` (Goals only; Status = Accepted → Building → Shipped) |
-| Building | Board: open [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1), filter `label:type:goal status:Building` |
-| Accepted | Board filter `label:type:goal status:Accepted` |
-| Shipped | Board filter `label:type:goal status:Shipped` |
+| Product Project board | [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — **board filter** `label:type:goal` (Goals only; Status = Identified → Adopted → Fulfilled) |
+| Identified | Board: open [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1), filter `label:type:goal status:Identified` |
+| Adopted | Board filter `label:type:goal status:Adopted` |
+| Fulfilled | Board filter `label:type:goal status:Fulfilled` |
 
 Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project setup: [project-setup.md](./project-setup.md).
 
@@ -65,7 +65,7 @@ Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project set
 
 **Do not** add Tasks, Epics, or Chores to the Product Project — Goals only. See [issue-filing.md](../../.agents/skills/developer/issue-filing.md).
 
-**Parked / far-horizon delivery:** for Accepted Goals not yet Building, keep the Goal on the board (`Accepted`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / far-horizon work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
+**Parked / far-horizon delivery:** for **Adopted** Goals not yet in active delivery, keep the Goal on the board (`Adopted`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / far-horizon work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 
 Engineering release packing is the **milestone filter** on delivery issues — not a product roadmap issue and not milestones on Goals.
 
@@ -73,7 +73,7 @@ Engineering release packing is the **milestone filter** on delivery issues — n
 
 **Externals:** [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas/exploration, plus Bug reports (and DAST where applicable). Blank issues are disabled. Goal / Epic / Task / Chore templates are **maintainers only** (enforced by workflow). See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-**Maintainer workflow:** explore under **GitHub Discussions** (anyone may start threads) → when ready, file a **Goal** issue and set Product Project Status to **Accepted** (or **Building** if delivery has already started). Do not put Exploring/Proposed on the board. See [GOVERNANCE.md](../../GOVERNANCE.md).
+**Maintainer workflow:** explore under **GitHub Discussions** (anyone may start threads) → when ready, file a **Goal** issue at Product Project Status **Identified**, then **Adopted** when committing (or **Adopted** immediately if already committing). Do not put Exploring/Proposed on the board. See [GOVERNANCE.md](../../GOVERNANCE.md).
 
 ## Labels
 
@@ -86,6 +86,6 @@ Engineering release packing is the **milestone filter** on delivery issues — n
 | Bug | `bug` (+ `needs-triage`) | No | Yes (release packing) |
 | Area | `area:*` (mail, drive, docs, …) | Optional field / label | — |
 
-Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Accepted**.
+Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 
 The legacy `roadmap` label has been **removed**. Use `type:goal` + the Product roadmap Project for product outcomes.
