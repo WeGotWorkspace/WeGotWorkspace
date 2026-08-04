@@ -3,9 +3,9 @@
 Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols or package paths.
 
 **Source of truth for Goals:** GitHub issues labeled [`type:goal`](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal).  
-**Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Exploring → Proposed → Accepted → Building → Shipped; filter `label:type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
+**Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Accepted → Building → Shipped; filter `label:type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
 
-**Community closed:** Idea intake and Goal proposals from outside maintainers are **not open** until the legal entity / CLA exists. Do not treat Discussions as a public product hub yet. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
+**Community closed:** Idea intake and Goal proposals from outside maintainers are **not open** until the legal entity / CLA exists. Public Discussions Ideas may stay closed; maintainers still explore in Discussions and promote to Goals at **Accepted**. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 Engineering milestones (`v0.9`, `v1.0`) pack **Epics/Tasks/Bugs** for a release train — **never** assign milestones to Goals. They are not the browsing UI for product intent.
 
@@ -58,6 +58,7 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 | Get notified about events and tasks while using the app | [#390](https://github.com/WeGotWorkspace/wegotworkspace/issues/390) | calendar, tasks, platform |
 | Keep files, notes, and docs private with a zero-knowledge vault | [#391](https://github.com/WeGotWorkspace/wegotworkspace/issues/391) | drive, docs, notes, platform |
 | Get help running the instance with AI-assisted operations | [#392](https://github.com/WeGotWorkspace/wegotworkspace/issues/392) | platform |
+| Sign in with my organization's identity provider (OIDC SSO) | [#395](https://github.com/WeGotWorkspace/wegotworkspace/issues/395) | admin, platform |
 
 ---
 
@@ -65,11 +66,11 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 
 | Status | Meaning |
 |--------|---------|
-| Exploring | Research / spikes; not committed |
-| Proposed | Written Goal; awaiting maintainer accept |
-| Accepted | Committed product intent; delivery may not have started. Far-horizon Goals stay Accepted (no separate Later column — redundant for now). |
+| Accepted | Committed product intent; delivery may not have started (far-horizon Goals stay here). |
 | Building | Active child epics/tasks |
 | Shipped | Success signals met for the intended slice |
+
+**Intake (maintainers):** explore under GitHub Discussions (Ideas) → promote to a Goal issue with Status **Accepted**. Do not use Exploring/Proposed on the board.
 
 Parked delivery under an Accepted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 

@@ -18,13 +18,13 @@ How product intent and contributions are decided for WeGotWorkspace.
 
 Only **maintainers** may create, accept, defer, or close product Goals (`type:goal`).
 
-Lifecycle:
+Lifecycle (Product Project Status):
 
-1. **Exploring** — research; may live as maintainer notes or a Goal in Exploring.
-2. **Proposed** — Goal issue written (Outcome, Who it's for, Success looks like, Non-goals).
-3. **Accepted** — maintainers commit to the outcome; child epics/tasks may start (including far-horizon Goals not yet in Building).
-4. **Building** — active delivery under the Goal.
-5. **Shipped** — success signals met for the intended slice.
+1. **Accepted** — maintainers commit to the outcome (new Goals start here, or **Building** if already in progress). Child epics/tasks may start; far-horizon Goals stay Accepted until Building.
+2. **Building** — active delivery under the Goal.
+3. **Shipped** — success signals met for the intended slice.
+
+**Before Accepted:** maintainers explore under **GitHub Discussions** (Ideas). When ready, promote to a Goal issue and set Status to Accepted. Do not use Exploring/Proposed board columns.
 
 Goals live on the **Product roadmap** Project (when configured). Engineering epics, tasks, bugs, and chores do **not**.
 
@@ -43,10 +43,10 @@ See [docs/product/README.md](docs/product/README.md).
 
 When the legal entity and CLA exist, maintainers may:
 
-- Open Discussions → Ideas as intake
-- Promote accepted ideas to Goals
+- Open Discussions → Ideas as **public** intake (aligned with blank_issues / CONTRIBUTING contact links)
+- Promote accepted ideas to Goals at **Accepted**
 - Accept external code under the CLA
 
-Until then: **no public Goal proposing, no external code contribution.** Bug reports may still be accepted per [CONTRIBUTING.md](CONTRIBUTING.md).
+Until then: **no public Goal proposing, no external code contribution.** Maintainers still use Discussion → Goal Accepted internally. Bug reports may still be accepted per [CONTRIBUTING.md](CONTRIBUTING.md).
 
 This document is not a substitute for a future RFC process; it is a stub so the model can open without another migration.
