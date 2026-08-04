@@ -15,9 +15,9 @@ Exploring → Proposed → Accepted → Building → Shipped → Later
 | Accepted | #389 #390 |
 | Later | #391 #392 |
 
-Board tip: filter to label `type:goal` only (child epics/tasks may appear via parent/sub-issue linkage). Optional fields: Area, Horizon (now/next/later).
+**Board filter (required hygiene):** `label:type:goal` — paste into the Project filter box so only Goals show. Child epics/tasks may reappear via parent/sub-issue linkage or workflow automation; remove them from the Project (do not close the issues). Optional fields: Area, Horizon (now/next/later).
 
-**Do not** add eng checklist [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313) to this Project.
+**Do not** add Tasks, Epics, Chores, Bugs, or eng checklist [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313) to this Project.
 
 ## Re-auth (if scopes lapse)
 

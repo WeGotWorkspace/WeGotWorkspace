@@ -3,11 +3,27 @@
 Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols or package paths.
 
 **Source of truth for Goals:** GitHub issues labeled [`type:goal`](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal).  
-**Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Exploring → Proposed → Accepted → Building → Shipped → Later; filter `type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
+**Product Project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — statuses Exploring → Proposed → Accepted → Building → Shipped → Later; filter `label:type:goal` only. Setup notes: [project-setup.md](./project-setup.md).
 
 **Community closed:** Idea intake and Goal proposals from outside maintainers are **not open** until the legal entity / CLA exists. Do not treat Discussions as a public product hub yet. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 Engineering milestones (`v0.9`, `v1.0`) schedule delivery under Goals; they are not the browsing UI for product intent.
+
+## How to browse
+
+Ready-to-click filters (full kit also in [README.md](./README.md)):
+
+| Audience | View | Link |
+|----------|------|------|
+| Anyone | Goals only | [label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) |
+| Anyone | Board — Building | [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) → filter `label:type:goal status:Building` |
+| Anyone | Board — Accepted | filter `label:type:goal status:Accepted` |
+| Anyone | Board — Later | filter `label:type:goal status:Later` |
+| Maintainers | Open delivery (task/epic) | [type:task OR type:epic, not Goals](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+-label%3Atype%3Agoal+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
+| Maintainers | Bugs | [label:bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Abug) |
+| Maintainers | Chores | [label:type:chore](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Achore) |
+
+If child Tasks/Epics reappear on the board (auto-add via parent linkage), keep the board filter `label:type:goal` and remove non-Goals from the Project.
 
 ---
 
