@@ -71,7 +71,7 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 | Building | Active child epics/tasks |
 | Shipped | Success signals met for the intended slice |
 
-Parked delivery under an Accepted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--later-work).
+Parked delivery under an Accepted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 
 ## Related
 
