@@ -26,6 +26,19 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 Only **Goals** belong on [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). New Tasks / Epics / Chores / Bugs must **not** be added. If automation or sub-issue linkage re-adds them, remove the Project item and keep the board filter `label:type:goal`. Browse kit: [docs/product/README.md](../../../docs/product/README.md#how-to-browse).
 
+## Parked / Later work
+
+When a Goal is **Later** (or otherwise deferred) and the design is already worked out across many satellite issues:
+
+1. Keep the **Goal** open on the Product Project (`Later`).
+2. Keep **one Epic** open under that Goal; expand its body with titled sections that **preserve full plans and AC** from each former satellite (e.g. `### From #345 — <title>`), or a durable doc under `docs/` if the epic body would be huge.
+3. Comment on each satellite with a pointer to the epic section (or doc path) + Goal, then **close** them (`not_planned` is fine for parked work).
+4. Do **not** leave long open satellite issues, and do **not** put the Epic or satellites on the Product Project.
+
+When the Goal leaves Later, re-open or create Tasks from those epic sections — do not re-scatter open trackers until delivery starts.
+
+Example: Goal #391 + Epic #349 (former E2EE satellites #335–#348 absorbed).
+
 ## After filing
 
 - Planning / specs: [plan-feature](../plan-feature/SKILL.md)

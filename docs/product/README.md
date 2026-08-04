@@ -41,6 +41,8 @@ Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project set
 
 **Do not** add Tasks, Epics, or Chores to the Product Project — Goals only. See [issue-filing.md](../../.agents/skills/developer/issue-filing.md).
 
+**Parked / Later delivery:** for deferred Goals, keep the Goal on the board (`Later`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / Later work](../../.agents/skills/developer/issue-filing.md#parked--later-work).
+
 Engineering release checklists (e.g. v0.9 milestone trackers) are **not** the product source of truth.
 
 ## Community
