@@ -57,7 +57,9 @@
   "pnpm": {
     "overrides": {
       "esbuild": "0.28.1",
-      "linkify-it": "5.0.2"
+      "linkify-it": "5.0.2",
+      "postcss": "8.5.18",
+      "seroval": "1.5.3"
     }
   }
 }
