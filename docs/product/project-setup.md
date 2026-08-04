@@ -11,12 +11,12 @@ Identified → Adopted → Fulfilled
 | Status | Meaning | Goals (snapshot) |
 |--------|---------|------------------|
 | Identified | Recognized as a user goal (often after Discussion) | — (new Goals as filed) |
-| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building** | #385 #388 #389 #390 #391 #392 #395 |
+| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building** | #385 #402 #403 #388 #389 #390 #391 #392 #395 #398 #400 |
 | Fulfilled | Product judges outcome met — **not** auto from closed children | #378 #379 #380 #381 #382 #383 #384 #386 #387 |
 
 New Goals start as **Identified** (recognized) or **Adopted** (already committed). Eng progress lives on child Epics/Tasks — the Goal Status does **not** move to a separate “Building” column. Early research stays in Discussions — not on this board.
 
-**Board filter (required hygiene):** `label:type:goal` — paste into the Project filter box so only Goals show. Child epics/tasks may reappear via parent/sub-issue linkage or the built-in “Auto-add sub-issues” workflow; remove them from the Project (do not close the issues). Area is via `area:*` issue labels (visible on the board Labels field). There is **no** Horizon / Now–Next–Later field — product progress is Status (`Identified` → `Adopted` until product marks `Fulfilled`); optional milestones are soft release targets only (≠ Fulfilled).
+**Board filter (required hygiene):** `label:type:goal` — paste into the Project filter box so only Goals show. Child epics/tasks may reappear via parent/sub-issue linkage or the built-in “Auto-add sub-issues” workflow; remove them from the Project (do not close the issues). Area is via `area:*` issue labels (visible on the board Labels field) — use `area:*` + milestone to group sibling Goals; **never** Goal→Goal parents. There is **no** Horizon / Now–Next–Later field — product progress is Status (`Identified` → `Adopted` until product marks `Fulfilled`); optional milestones are soft release targets only (≠ Fulfilled).
 
 **Do not** add Tasks, Epics, Chores, or Bugs to this Project. Goals **may** carry a milestone as a soft release target (`v0.9` / `v1.0`); Status remains Identified → Adopted → Fulfilled (milestone ≠ Fulfilled). Milestones also pack delivery issues ([milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9)).
 

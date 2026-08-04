@@ -14,10 +14,19 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 **Intake:** anyone may explore in GitHub Discussions; **maintainers** file Goals (and Epics/Tasks/Chores) and set Project Status to **Identified** or **Adopted**. Do not put Exploring/Proposed on the board. Externals file bugs / Discussions only — see [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
+## One outcome per Goal
+
+**One Goal ticket = one user outcome** that can be fulfilled independently.
+
+- Do **not** bundle multiple fulfillable outcomes into one Goal (e.g. “calendars + events + sharing”). Split into sibling Goals.
+- Do **not** parent a Goal under another Goal. Group related Goals with `area:*` labels and an optional shared milestone — not Goal→Goal hierarchy.
+- **Design language / suite consistency** is a **Non-goal constraint** (or success signal) on each Goal that needs it — not its own Goal.
+- Goal labels: `type:goal` + one or more `area:*` (+ optional milestone). Do not invent extra product labels for grouping.
+
 ## Checklist
 
 1. **Classify:** Goal | Epic | Task | Chore | Bug
-2. **Goal** → product language (Outcome / Who / Success looks like / Non-goals); label `type:goal`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (or **Adopted** if already committing); optional milestone as soft release target (≠ Fulfilled); never sole `fixes #` / never `Source:` for `spec.md`
+2. **Goal** → **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); label `type:goal` + `area:*`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (or **Adopted** if already committing); optional milestone as soft release target (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`
 3. **Epic** → `type:epic`; **required** parent Goal; **not** on Product Project (even when parented under a Goal); milestone OK for release packing
 4. **Task** → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project; milestone OK for release packing
 5. **Chore / bug** → `type:chore` or `bug-report.yml` (`bug` label); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap
@@ -28,7 +37,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 | Kind | Label | Parent | Product Project? | Milestone? | Spec `Source:`? |
 |------|-------|--------|------------------|------------|-----------------|
-| Goal | `type:goal` | — | Yes | Yes (soft target) | Never |
+| Goal | `type:goal` (+ `area:*`) | — (never another Goal) | Yes | Yes (soft target) | Never |
 | Epic | `type:epic` | Goal required | No | Yes (packing) | Yes (delivery) |
 | Task | `type:task` | Epic or Goal | No | Yes (packing) | Yes (delivery) |
 | Chore | `type:chore` | Optional | No | Optional | Usually no `feat/` |

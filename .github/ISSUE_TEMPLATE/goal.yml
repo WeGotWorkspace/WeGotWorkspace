@@ -10,14 +10,15 @@ body:
         **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
         for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
 
-        Use this template for **user-facing outcomes** (Goals), not engineering tasks.
+        Use this template for **one fulfillable user-facing outcome** (Goals), not engineering tasks.
         Titles should be verb outcomes — e.g. “Share Docs and Drive files with guests via a link”.
+        **One Goal = one outcome** (fulfillable independently). Do not bundle multiple outcomes; do not parent a Goal under another Goal — group with `area:*` + milestone. Design language / suite consistency belongs in Non-goals (constraint), not as its own Goal.
 
   - type: textarea
     id: outcome
     attributes:
       label: Outcome
-      description: What can the user do when this Goal is achieved? Plain language; no REST endpoints or package paths.
+      description: Exactly one fulfillable user outcome. Plain language; no REST endpoints or package paths. If you need “and” for a second independent capability, file a sibling Goal instead.
       placeholder: Users can share a Drive file or Doc with a guest via a link, without creating an account.
     validations:
       required: true
@@ -46,8 +47,10 @@ body:
     id: non_goals
     attributes:
       label: Non-goals
-      description: What this Goal explicitly does not include.
-      placeholder: Full public wiki hosting; anonymous upload into arbitrary folders.
+      description: What this Goal explicitly does not include. Put design language / suite consistency here as a constraint when relevant — not as a separate Goal. List sibling Goals that own related outcomes.
+      placeholder: |
+        Full public wiki hosting; anonymous upload into arbitrary folders.
+        Design language / suite consistency is a constraint on this Goal, not a separate Goal.
     validations:
       required: true
 

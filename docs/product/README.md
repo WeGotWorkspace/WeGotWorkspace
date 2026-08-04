@@ -11,6 +11,10 @@ Product intent for WeGotWorkspace lives here and on GitHub **Goal** issues (`typ
 
 Self-hosted autonomous office: Mail, Drive, Docs, Notes, Calendar, Tasks, Contacts, Meet, and admin — on infrastructure you control.
 
+## One outcome per Goal
+
+Each Goal is **one fulfillable user outcome**. Split multi-outcome tickets into sibling Goals. Do **not** parent Goal→Goal — group with `area:*` and an optional shared milestone. Design language / suite consistency is a **Non-goal constraint** on Goals that need it, not its own Goal. Labels for Goals: `type:goal` + `area:*` (+ optional milestone). Details: [issue-filing.md](../../.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
+
 ## Three surfaces (systems model)
 
 Keep **three** surfaces — do not invent a fourth roadmap tracker:
@@ -80,12 +84,12 @@ Engineering release packing remains the **milestone filter** on delivery issues 
 
 | Kind | Label | On Product Project? | Milestone? |
 |------|--------|---------------------|------------|
-| Goal | `type:goal` | Yes | Yes (soft release target) |
+| Goal | `type:goal` + `area:*` | Yes | Yes (soft release target) |
 | Epic | `type:epic` | No | Yes (release packing) |
 | Task | `type:task` | No | Yes (release packing) |
 | Chore | `type:chore` | No | Optional |
 | Bug | `bug` (+ `needs-triage`) | No | Yes (release packing) |
-| Area | `area:*` (mail, drive, docs, …) | Optional field / label | — |
+| Area | `area:*` (mail, drive, docs, …) | On Goals (and optionally delivery) | Groups siblings; not a Goal parent |
 
 Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 

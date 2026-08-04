@@ -28,6 +28,8 @@ Lifecycle (Product Project Status):
 
 Goals live on the **Product roadmap** Project (when configured). Engineering epics, tasks, bugs, and chores do **not**.
 
+**One outcome per Goal:** each Goal is one fulfillable user outcome. Do not parent Goal→Goal — group with `area:*` and optional milestone. Design language / suite consistency is a Non-goal constraint, not a Goal. See [issue-filing.md](.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
+
 ## Who may file which issues
 
 | Actor | May file |
@@ -41,7 +43,7 @@ Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened 
 
 | Layer | Owns |
 |-------|------|
-| Goal | User outcome, success signals, non-goals, decisions (`goal.yml`); may take a milestone (soft release target; ≠ Fulfilled) |
+| Goal | **One** user outcome, success signals, non-goals, decisions (`goal.yml`); may take a milestone (soft release target; ≠ Fulfilled); never parented under another Goal |
 | Epic / Task | Implementable acceptance criteria; may take a milestone (`epic.yml` / `task.yml`) |
 | Chore | Eng debt / trackers (`chore.yml`); no Goal required; not a product roadmap |
 | Bug | Defects via `bug-report.yml` (`bug` label); may take a milestone |
