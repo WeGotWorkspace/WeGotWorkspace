@@ -4,6 +4,16 @@ How product intent and contributions are decided for WeGotWorkspace.
 
 **Status:** Structure in place; **community participation is not open yet** (legal entity / CLA pending).
 
+## Three surfaces
+
+| Surface | Owns |
+|---------|------|
+| **Product** | Goals (`type:goal`) on the Product roadmap Project — user outcomes and Status |
+| **Delivery** | Epics, Tasks, Bugs — implementable work under Goals |
+| **Eng release packing** | GitHub milestones on Epics/Tasks/Bugs only (`v0.9`, `v1.0`, …) |
+
+**Milestones never on Goals.** Deferral uses Project Status `Later` (not a milestone, and not a competing mega-checklist issue). Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
+
 ## Who accepts Goals
 
 Only **maintainers** may create, accept, defer, or close product Goals (`type:goal`).
@@ -23,10 +33,10 @@ Goals live on the **Product roadmap** Project (when configured). Engineering epi
 
 | Layer | Owns |
 |-------|------|
-| Goal | User outcome, success signals, non-goals, decisions (`goal.yml`) |
-| Epic / Task | Implementable acceptance criteria; milestones (`epic.yml` / `task.yml`) |
-| Chore | Eng debt / trackers (`chore.yml`); no Goal required |
-| Bug | Defects via `bug-report.yml` (`bug` label) |
+| Goal | User outcome, success signals, non-goals, decisions (`goal.yml`); **no milestone** |
+| Epic / Task | Implementable acceptance criteria; may take a milestone (`epic.yml` / `task.yml`) |
+| Chore | Eng debt / trackers (`chore.yml`); no Goal required; not a product roadmap |
+| Bug | Defects via `bug-report.yml` (`bug` label); may take a milestone |
 
 See [docs/product/README.md](docs/product/README.md).
 

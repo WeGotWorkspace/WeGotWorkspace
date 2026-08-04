@@ -7,7 +7,7 @@ Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols 
 
 **Community closed:** Idea intake and Goal proposals from outside maintainers are **not open** until the legal entity / CLA exists. Do not treat Discussions as a public product hub yet. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-Engineering milestones (`v0.9`, `v1.0`) schedule delivery under Goals; they are not the browsing UI for product intent.
+Engineering milestones (`v0.9`, `v1.0`) pack **Epics/Tasks/Bugs** for a release train — **never** assign milestones to Goals. They are not the browsing UI for product intent.
 
 ## How to browse
 
@@ -22,6 +22,7 @@ Ready-to-click filters (full kit also in [README.md](./README.md)):
 | Maintainers | Open delivery (task/epic) | [type:task OR type:epic, not Goals](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+-label%3Atype%3Agoal+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
 | Maintainers | Bugs | [label:bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Abug) |
 | Maintainers | Chores | [label:type:chore](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Achore) |
+| Maintainers | Eng packing v0.9 | [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) |
 
 If child Tasks/Epics reappear on the board (auto-add via parent linkage), keep the board filter `label:type:goal` and remove non-Goals from the Project.
 
@@ -75,10 +76,10 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 | Accepted | Committed product intent; delivery may not have started |
 | Building | Active child epics/tasks |
 | Shipped | Success signals met for the intended slice |
-| Later | Deferred (maps from `future` over time). Delivery shape: Goal on board + one Epic holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--later-work) |
+| Later | Deferred (the `future` label on Goals is redundant with this Status — prefer the board). Delivery shape: Goal on board + one Epic holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--later-work) |
 
 ## Related
 
-- [Product README](./README.md)
+- [Product README](./README.md) — three-surface model
 - [GOVERNANCE.md](../../GOVERNANCE.md)
-- Eng release checklist (not product SoT): [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313)
+- Eng release packing: [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) (not a product SoT; former mega-checklist [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313) closed)

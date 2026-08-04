@@ -2,25 +2,35 @@
 
 Use when creating or classifying GitHub issues. Product intent: [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md). Delivery → specs: [plan-feature](../plan-feature/SKILL.md), [specs/README.md](../../specs/README.md).
 
+## Three surfaces
+
+| Surface | Issues | Notes |
+|---------|--------|-------|
+| Product | `type:goal` on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Exploring → … → Later / Shipped |
+| Delivery | `type:epic` / `type:task` / `bug` | Implementable work; **not** on Product Project |
+| Eng release packing | GitHub milestones on delivery issues | `v0.9` / `v1.0` pack Epics/Tasks/Bugs only |
+
+**Milestones NEVER on Goals.** Deferral = Project Status `Later` (the `future` label on Goals is redundant with that Status — prefer the board).
+
 ## Checklist
 
 1. **Classify:** Goal | Epic | Task | Chore | Bug
-2. **Goal** → product language (Outcome / Who / Success looks like / Non-goals); label `type:goal`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1); never sole `fixes #` / never `Source:` for `spec.md`
-3. **Epic** → `type:epic`; **required** parent Goal; **not** on Product Project (even when parented under a Goal)
-4. **Task** → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project
-5. **Chore / bug** → `type:chore` or `bug-report.yml` (`bug` label); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`
+2. **Goal** → product language (Outcome / Who / Success looks like / Non-goals); label `type:goal`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1); **no milestone**; never sole `fixes #` / never `Source:` for `spec.md`
+3. **Epic** → `type:epic`; **required** parent Goal; **not** on Product Project (even when parented under a Goal); milestone OK for release packing
+4. **Task** → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project; milestone OK for release packing
+5. **Chore / bug** → `type:chore` or `bug-report.yml` (`bug` label); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap
 6. Prefer templates under [`.github/ISSUE_TEMPLATE/`](../../../.github/ISSUE_TEMPLATE/) — [`goal.yml`](../../../.github/ISSUE_TEMPLATE/goal.yml), [`epic.yml`](../../../.github/ISSUE_TEMPLATE/epic.yml), [`task.yml`](../../../.github/ISSUE_TEMPLATE/task.yml), [`chore.yml`](../../../.github/ISSUE_TEMPLATE/chore.yml), [`bug-report.yml`](../../../.github/ISSUE_TEMPLATE/bug-report.yml) (or `gh issue create --template`). Specialized: [`dast-finding.yml`](../../../.github/ISSUE_TEMPLATE/dast-finding.yml)
 7. `feat/` closes **Task/Epic**; `spec.md` `Source:` from that issue — **not** a Goal
 
 ## Quick matrix
 
-| Kind | Label | Parent | Product Project? | Spec `Source:`? |
-|------|-------|--------|------------------|-----------------|
-| Goal | `type:goal` | — | Yes | Never |
-| Epic | `type:epic` | Goal required | No | Yes (delivery) |
-| Task | `type:task` | Epic or Goal | No | Yes (delivery) |
-| Chore | `type:chore` | Optional | No | Usually no `feat/` |
-| Bug | `bug` | Optional | No | Usually no `feat/` |
+| Kind | Label | Parent | Product Project? | Milestone? | Spec `Source:`? |
+|------|-------|--------|------------------|------------|-----------------|
+| Goal | `type:goal` | — | Yes | **Never** | Never |
+| Epic | `type:epic` | Goal required | No | Yes (packing) | Yes (delivery) |
+| Task | `type:task` | Epic or Goal | No | Yes (packing) | Yes (delivery) |
+| Chore | `type:chore` | Optional | No | Optional | Usually no `feat/` |
+| Bug | `bug` | Optional | No | Yes (packing) | Usually no `feat/` |
 
 ## Product Project hygiene
 
