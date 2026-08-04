@@ -94,3 +94,5 @@ Engineering release packing remains the **milestone filter** on delivery issues 
 Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 
 The legacy `roadmap` label has been **removed**. Use `type:goal` + the Product roadmap Project for product outcomes.
+
+The `offline` label has been **removed**. Do not recreate it. Group offline / hybrid-sync work with **Goals** (e.g. [#381](https://github.com/WeGotWorkspace/wegotworkspace/issues/381) Docs/Notes offline, [#400](https://github.com/WeGotWorkspace/wegotworkspace/issues/400) Mail offline) plus `area:*` on Goals and delivery issues — not a cross-cutting eng label.

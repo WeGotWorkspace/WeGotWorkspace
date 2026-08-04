@@ -50,6 +50,8 @@ Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened 
 
 See [docs/product/README.md](docs/product/README.md).
 
+**Offline / hybrid sync:** no `offline` label — use Goals (e.g. #381, #400) and `area:*`. Details: [docs/product/README.md](docs/product/README.md#labels).
+
 ## Future: community and CLA
 
 When the legal entity and CLA exist, maintainers may:
