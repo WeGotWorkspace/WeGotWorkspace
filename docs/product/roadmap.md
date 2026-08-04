@@ -50,7 +50,7 @@ Project status **Shipped** is set on these Goals in the [Product roadmap](https:
 | Manage calendars, events, and sharing in the browser | [#385](https://github.com/WeGotWorkspace/wegotworkspace/issues/385) | calendar | Browser Calendar (suite UX + live API); CalDAV given via Sabre; eng parity #137 |
 | Share Docs and Drive files with guests via a link | [#388](https://github.com/WeGotWorkspace/wegotworkspace/issues/388) | docs, drive | Must-have for v0.9 |
 
-## Accepted / Next
+## Accepted
 
 | Goal | Issue | Areas |
 |------|-------|--------|

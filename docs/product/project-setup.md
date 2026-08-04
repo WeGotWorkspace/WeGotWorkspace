@@ -16,7 +16,7 @@ Accepted → Building → Shipped
 
 New Goals start as **Accepted** (or **Building** if already in progress). Early research stays in Discussions — not on this board.
 
-**Board filter (required hygiene):** `label:type:goal` — paste into the Project filter box so only Goals show. Child epics/tasks may reappear via parent/sub-issue linkage or the built-in “Auto-add sub-issues” workflow; remove them from the Project (do not close the issues). Optional fields: Area, Horizon (now/next/later).
+**Board filter (required hygiene):** `label:type:goal` — paste into the Project filter box so only Goals show. Child epics/tasks may reappear via parent/sub-issue linkage or the built-in “Auto-add sub-issues” workflow; remove them from the Project (do not close the issues). Area is via `area:*` issue labels (visible on the board Labels field). There is **no** Horizon / Now–Next–Later field — timing is Status only (`Accepted` until Building).
 
 **Do not** add Tasks, Epics, Chores, or Bugs to this Project. **Do not** put milestones on Goals — milestones pack delivery issues only ([milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9)).
 
