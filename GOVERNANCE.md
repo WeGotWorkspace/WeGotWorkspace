@@ -10,9 +10,9 @@ How product intent and contributions are decided for WeGotWorkspace.
 |---------|------|
 | **Product** | Goals (`type:goal`) on the Product roadmap Project — user outcomes and Status |
 | **Delivery** | Epics, Tasks, Bugs — implementable work under Goals |
-| **Eng release packing** | GitHub milestones on Epics/Tasks/Bugs only (`v0.9`, `v1.0`, …) |
+| **Release targets & eng packing** | GitHub milestones (`v0.9`, `v1.0`, …) on Goals (soft release target) and on Epics/Tasks/Bugs (eng packing) |
 
-**Milestones never on Goals.** Far-horizon / not-yet-started intent stays Project Status `Identified` or `Adopted` (not a milestone, and not a competing mega-checklist issue). Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
+**Milestones may attach to Goals** as the soft release target for when we aim to fulfill the outcome. Goal Status remains Identified → Adopted → Fulfilled — **milestone ≠ Fulfilled**. Far-horizon / not-yet-started intent stays Project Status `Identified` or `Adopted` (not a competing mega-checklist issue). Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
 
 ## Who accepts Goals
 
@@ -41,7 +41,7 @@ Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened 
 
 | Layer | Owns |
 |-------|------|
-| Goal | User outcome, success signals, non-goals, decisions (`goal.yml`); **no milestone** |
+| Goal | User outcome, success signals, non-goals, decisions (`goal.yml`); may take a milestone (soft release target; ≠ Fulfilled) |
 | Epic / Task | Implementable acceptance criteria; may take a milestone (`epic.yml` / `task.yml`) |
 | Chore | Eng debt / trackers (`chore.yml`); no Goal required; not a product roadmap |
 | Bug | Defects via `bug-report.yml` (`bug` label); may take a milestone |

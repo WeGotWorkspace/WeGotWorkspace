@@ -7,7 +7,7 @@ Capability map for WeGotWorkspace. Language is **user outcomes**, not protocols 
 
 **External intake:** [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas/exploration; Bug reports for defects. Goal / Epic / Task / Chore issues are **maintainers only** — maintainers promote promising Discussions to Goals at **Identified** (then **Adopted** when committing). See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-Engineering milestones (`v0.9`, `v1.0`) pack **Epics/Tasks/Bugs** for a release train — **never** assign milestones to Goals. They are not the browsing UI for product intent.
+Milestones (`v0.9`, `v1.0`) **may** attach to Goals as soft release targets for when we aim to fulfill them, and still pack **Epics/Tasks/Bugs** for eng release trains. Milestone ≠ Fulfilled (Status stays product judgment). The browsing UI for product intent remains the Product Project Status columns, not the milestone filter alone.
 
 ## How to browse
 

@@ -67,7 +67,7 @@ body:
     id: target_release
     attributes:
       label: Soft target release (optional)
-      description: Maintainer hint only — milestones stay on child delivery issues.
+      description: Optional soft release target — set the matching GitHub milestone on this Goal (milestone ≠ Fulfilled Status). Child Epics/Tasks may also use milestones for eng packing.
       placeholder: e.g. v0.9
     validations:
       required: false

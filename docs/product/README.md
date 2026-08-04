@@ -19,14 +19,15 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 |---------|------|--------|
 | **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
 | **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, `bug`) — implementable work under Goals | Issue filters below; **not** on the Product Project |
-| **3. Eng release packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Pack Epics/Tasks/Bugs for a release train |
+| **3. Release targets & eng packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Soft release target on Goals; pack Epics/Tasks/Bugs for a release train |
 
-### Milestones never on Goals
+### Milestones on Goals (and delivery)
 
-**Milestones are ONLY for Epics, Tasks, and Bugs** (and optional eng chores). **Never** assign a milestone to a `type:goal` issue.
+**Milestones may attach to Goals** as the soft release target for when we aim to fulfill the outcome. They are still OK on Epics/Tasks/Bugs (and optional eng chores) for eng packing.
 
-- Product timing → Project **Status** (`Identified` / `Adopted` until product marks `Fulfilled`), not a milestone.
-- Release packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9).
+- Goal Status remains **Identified → Adopted → Fulfilled** (product judgment on the board). **A milestone is not Fulfilled** — closing or hitting a milestone does not move Status.
+- Soft release target → optional milestone on the Goal (e.g. `v0.9` / `v1.0`).
+- Eng packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) (includes Goals targeting that release plus delivery work).
 - Product “what’s in flight” → Goals on the board at **Adopted** (eng progress on child Epics/Tasks), not a mega checklist issue.
 - Early research stays in **GitHub Discussions** (Ideas) until a maintainer promotes it to a Goal at **Identified** (then **Adopted** when committing) — do not use board columns for Exploring/Proposed.
 
@@ -67,7 +68,7 @@ Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project set
 
 **Parked / far-horizon delivery:** for **Adopted** Goals not yet in active delivery, keep the Goal on the board (`Adopted`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / far-horizon work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 
-Engineering release packing is the **milestone filter** on delivery issues — not a product roadmap issue and not milestones on Goals.
+Engineering release packing remains the **milestone filter** on delivery issues (and Goals that target that release) — not a product roadmap mega-checklist issue. Milestone ≠ Fulfilled.
 
 ## Community and maintainer intake
 
@@ -79,7 +80,7 @@ Engineering release packing is the **milestone filter** on delivery issues — n
 
 | Kind | Label | On Product Project? | Milestone? |
 |------|--------|---------------------|------------|
-| Goal | `type:goal` | Yes | **Never** |
+| Goal | `type:goal` | Yes | Yes (soft release target) |
 | Epic | `type:epic` | No | Yes (release packing) |
 | Task | `type:task` | No | Yes (release packing) |
 | Chore | `type:chore` | No | Optional |
