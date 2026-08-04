@@ -1,0 +1,38 @@
+name: Chore
+description: Engineering chore, debt, or tracker — no Goal required
+title: "[Chore] "
+labels:
+  - type:chore
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use for eng debt, trackers, and maintainer chores that are **not** a product Goal.
+        Prefer **Task** when work needs implementable AC under an Epic/Goal and a `feat/` spec.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What needs doing and why (brief).
+    validations:
+      required: true
+
+  - type: textarea
+    id: done_when
+    attributes:
+      label: Done when
+      description: Optional checklist or exit criteria.
+      placeholder: |
+        - [ ] …
+    validations:
+      required: false
+
+  - type: input
+    id: area
+    attributes:
+      label: Area (optional)
+      description: Product area hint (mail, drive, docs, …).
+      placeholder: e.g. ci
+    validations:
+      required: false

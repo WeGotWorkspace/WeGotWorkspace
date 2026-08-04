@@ -41,7 +41,7 @@ If the delivery issue does not exist yet, file it before writing `spec.md`. Shor
 3. Epic → `type:epic`; required parent Goal; not on Product Project
 4. Task → `type:task`; parent Epic or Goal; implementable `- [ ]` AC
 5. Chore → `type:chore`; no Goal required
-6. Prefer templates `goal.yml` / `epic.yml` (or `gh issue create --template`)
+6. Prefer templates `goal.yml` / `epic.yml` / `task.yml` / `chore.yml` (+ `bug-report.yml`) under `.github/ISSUE_TEMPLATE/` (or `gh issue create --template`)
 7. `feat/` closes Task/Epic; `spec.md` `Source:` from that issue — not Goal
 
 ## When to plan

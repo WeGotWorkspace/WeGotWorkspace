@@ -33,4 +33,6 @@ Engineering release checklists (e.g. v0.9 milestone trackers) are **not** the pr
 | Chore | `type:chore` | No |
 | Area | `area:*` (mail, drive, docs, …) | Optional field / label |
 
+Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, and `bug-report.yml`. Blank issues are disabled; Ideas → Discussions (community Goal intake not open yet).
+
 The legacy `roadmap` label is **deprecated** for new work — prefer `type:goal` + Product Project.

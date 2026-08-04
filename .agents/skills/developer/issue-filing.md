@@ -9,7 +9,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 3. **Epic** → `type:epic`; **required** parent Goal; **not** on Product Project
 4. **Task** → `type:task`; parent Epic or Goal; implementable `- [ ]` AC
 5. **Chore / bug** → `type:chore` or bug template; no Goal required
-6. Prefer templates [`.github/ISSUE_TEMPLATE/goal.yml`](../../../.github/ISSUE_TEMPLATE/goal.yml) / [`epic.yml`](../../../.github/ISSUE_TEMPLATE/epic.yml) (or equivalent via `gh issue create --template`)
+6. Prefer templates under [`.github/ISSUE_TEMPLATE/`](../../../.github/ISSUE_TEMPLATE/) — [`goal.yml`](../../../.github/ISSUE_TEMPLATE/goal.yml), [`epic.yml`](../../../.github/ISSUE_TEMPLATE/epic.yml), [`task.yml`](../../../.github/ISSUE_TEMPLATE/task.yml), [`chore.yml`](../../../.github/ISSUE_TEMPLATE/chore.yml), plus [`bug-report.yml`](../../../.github/ISSUE_TEMPLATE/bug-report.yml) (or `gh issue create --template`)
 7. `feat/` closes **Task/Epic**; `spec.md` `Source:` from that issue — **not** a Goal
 
 ## Quick matrix
