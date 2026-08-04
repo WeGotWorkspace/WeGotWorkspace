@@ -12,7 +12,7 @@ How product intent and contributions are decided for WeGotWorkspace.
 | **Delivery** | Epics, Tasks, Bugs — implementable work under Goals |
 | **Eng release packing** | GitHub milestones on Epics/Tasks/Bugs only (`v0.9`, `v1.0`, …) |
 
-**Milestones never on Goals.** Deferral uses Project Status `Later` (not a milestone, and not a competing mega-checklist issue). Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
+**Milestones never on Goals.** Far-horizon / not-yet-started intent stays Project Status `Accepted` (not a milestone, and not a competing mega-checklist issue). Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
 
 ## Who accepts Goals
 
@@ -22,10 +22,9 @@ Lifecycle:
 
 1. **Exploring** — research; may live as maintainer notes or a Goal in Exploring.
 2. **Proposed** — Goal issue written (Outcome, Who it's for, Success looks like, Non-goals).
-3. **Accepted** — maintainers commit to the outcome; child epics/tasks may start.
+3. **Accepted** — maintainers commit to the outcome; child epics/tasks may start (including far-horizon Goals not yet in Building).
 4. **Building** — active delivery under the Goal.
 5. **Shipped** — success signals met for the intended slice.
-6. **Later** — deferred without closing product intent.
 
 Goals live on the **Product roadmap** Project (when configured). Engineering epics, tasks, bugs, and chores do **not**.
 

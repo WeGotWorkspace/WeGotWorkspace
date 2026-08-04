@@ -6,11 +6,11 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 | Surface | Issues | Notes |
 |---------|--------|-------|
-| Product | `type:goal` on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Exploring → … → Later / Shipped |
+| Product | `type:goal` on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Exploring → Proposed → Accepted → Building → Shipped |
 | Delivery | `type:epic` / `type:task` / `bug` | Implementable work; **not** on Product Project |
 | Eng release packing | GitHub milestones on delivery issues | `v0.9` / `v1.0` pack Epics/Tasks/Bugs only |
 
-**Milestones NEVER on Goals.** Deferral = Project Status `Later` (the `future` label on Goals is redundant with that Status — prefer the board).
+**Milestones NEVER on Goals.** Far-horizon Goals stay `Accepted` until Building (no separate Later Status — redundant with Accepted for now).
 
 ## Checklist
 
@@ -36,16 +36,16 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 Only **Goals** belong on [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). New Tasks / Epics / Chores / Bugs must **not** be added. If automation or sub-issue linkage re-adds them, remove the Project item and keep the board filter `label:type:goal`. Browse kit: [docs/product/README.md](../../../docs/product/README.md#how-to-browse).
 
-## Parked / Later work
+## Parked / far-horizon work
 
-When a Goal is **Later** (or otherwise deferred) and the design is already worked out across many satellite issues:
+When a Goal is **Accepted** but not yet Building, and the design is already worked out across many satellite issues:
 
-1. Keep the **Goal** open on the Product Project (`Later`).
+1. Keep the **Goal** open on the Product Project (`Accepted`).
 2. Keep **one Epic** open under that Goal; expand its body with titled sections that **preserve full plans and AC** from each former satellite (e.g. `### From #345 — <title>`), or a durable doc under `docs/` if the epic body would be huge.
 3. Comment on each satellite with a pointer to the epic section (or doc path) + Goal, then **close** them (`not_planned` is fine for parked work).
 4. Do **not** leave long open satellite issues, and do **not** put the Epic or satellites on the Product Project.
 
-When the Goal leaves Later, re-open or create Tasks from those epic sections — do not re-scatter open trackers until delivery starts.
+When the Goal moves to Building, re-open or create Tasks from those epic sections — do not re-scatter open trackers until delivery starts.
 
 Example: Goal #391 + Epic #349 (former E2EE satellites #335–#348 absorbed).
 

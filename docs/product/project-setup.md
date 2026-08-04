@@ -6,14 +6,13 @@ Setup is **done**: Status options configured; open `type:goal` issues (#378–#3
 
 ## Status options
 
-Exploring → Proposed → Accepted → Building → Shipped → Later
+Exploring → Proposed → Accepted → Building → Shipped
 
 | Status | Goals |
 |--------|-------|
 | Shipped | #378 #379 #380 #381 #382 #383 #384 #386 #387 |
 | Building | #385 #388 |
-| Accepted | #389 #390 |
-| Later | #391 #392 |
+| Accepted | #389 #390 #391 #392 |
 | Exploring / Proposed | #395 (and new Goals as filed) |
 
 **Board filter (required hygiene):** `label:type:goal` — paste into the Project filter box so only Goals show. Child epics/tasks may reappear via parent/sub-issue linkage or the built-in “Auto-add sub-issues” workflow; remove them from the Project (do not close the issues). Optional fields: Area, Horizon (now/next/later).

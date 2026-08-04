@@ -17,7 +17,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
 | Surface | What | Browse |
 |---------|------|--------|
-| **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Exploring → … → Later / Shipped |
+| **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Exploring → Proposed → Accepted → Building → Shipped |
 | **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, `bug`) — implementable work under Goals | Issue filters below; **not** on the Product Project |
 | **3. Eng release packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Pack Epics/Tasks/Bugs for a release train |
 
@@ -25,11 +25,11 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
 **Milestones are ONLY for Epics, Tasks, and Bugs** (and optional eng chores). **Never** assign a milestone to a `type:goal` issue.
 
-- Product timing / deferral → Project **Status** (e.g. `Later`), not a milestone.
+- Product timing → Project **Status** (`Accepted` until Building; no separate Later column), not a milestone.
 - Release packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9).
 - Product “what’s in flight” → Goals on the board (`Building` / `Accepted`), not a mega checklist issue.
 
-The legacy `future` label on Goals is **redundant** with Project Status `Later` — prefer the board; do not mass-retag.
+The legacy `future` label on Goals is optional hygiene only — Status on the board is the source of truth; do not mass-retag.
 
 See [GOVERNANCE.md](../../GOVERNANCE.md) and [issue-filing.md](../../.agents/skills/developer/issue-filing.md).
 
@@ -43,10 +43,9 @@ Use these filters instead of the default open-issue list (which mixes Goals with
 |------|------|
 | Goals only (all states) | [issues?q=is:issue+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) |
 | Open Goals | [issues?q=is:issue+is:open+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal) |
-| Product Project board | [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — **board filter** `label:type:goal` (Goals only; Status columns = Exploring → … → Later) |
+| Product Project board | [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — **board filter** `label:type:goal` (Goals only; Status = Exploring → Proposed → Accepted → Building → Shipped) |
 | Building | Board: open [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1), filter `label:type:goal status:Building` |
 | Accepted | Board filter `label:type:goal status:Accepted` |
-| Later | Board filter `label:type:goal status:Later` |
 | Shipped | Board filter `label:type:goal status:Shipped` |
 
 Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project setup: [project-setup.md](./project-setup.md).
@@ -65,7 +64,7 @@ Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project set
 
 **Do not** add Tasks, Epics, or Chores to the Product Project — Goals only. See [issue-filing.md](../../.agents/skills/developer/issue-filing.md).
 
-**Parked / Later delivery:** for deferred Goals, keep the Goal on the board (`Later`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / Later work](../../.agents/skills/developer/issue-filing.md#parked--later-work).
+**Parked / far-horizon delivery:** for Accepted Goals not yet Building, keep the Goal on the board (`Accepted`) plus **one Epic** that holds the full plan (absorb satellite issue bodies into epic sections). Close long open satellites — do not leave a swarm of future-prefixed issues open. Details: [issue-filing.md — Parked / far-horizon work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
 
 Engineering release packing is the **milestone filter** on delivery issues — not a product roadmap issue and not milestones on Goals.
 

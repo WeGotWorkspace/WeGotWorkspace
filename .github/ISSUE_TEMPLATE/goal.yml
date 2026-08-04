@@ -61,7 +61,6 @@ body:
         - Accepted
         - Building
         - Shipped
-        - Later
     validations:
       required: true
 
