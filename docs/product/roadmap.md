@@ -62,7 +62,7 @@ Eng progress is on child Epics/Tasks; Goal Status stays **Adopted** until produc
 | Get help running the instance with AI-assisted operations | [#392](https://github.com/WeGotWorkspace/wegotworkspace/issues/392) | platform | Far-horizon |
 | Sign in with my organization's identity provider (OIDC SSO) | [#395](https://github.com/WeGotWorkspace/wegotworkspace/issues/395) | admin, platform | Far-horizon |
 | Read and manage Mail as conversation threads | [#398](https://github.com/WeGotWorkspace/wegotworkspace/issues/398) | mail | |
-| Use Mail offline with message list and body previews | [#400](https://github.com/WeGotWorkspace/wegotworkspace/issues/400) | mail | Sibling offline surface to #381 |
+| Use Mail offline with message list and body previews | [#400](https://github.com/WeGotWorkspace/wegotworkspace/issues/400) | mail | Sibling to #381; no `offline` label — Goals + `area:*` |
 
 ## Identified
 
@@ -81,6 +81,10 @@ No Goals currently at **Identified** — new Goals land here when recognized (of
 **Intake:** anyone may explore in Discussions; maintainers promote to a Goal with Status **Identified**, then **Adopted** when committing. Do not use Exploring/Proposed on the board.
 
 Parked delivery under an Adopted Goal: keep the Goal on the board plus **one Epic** holding absorbed plans — see [issue-filing parked work](../../.agents/skills/developer/issue-filing.md#parked--far-horizon-work).
+
+## Offline work (no `offline` label)
+
+Offline / hybrid-sync outcomes are **Goals** with `area:*` — not a dedicated GitHub label. Examples: [#381](https://github.com/WeGotWorkspace/wegotworkspace/issues/381) (Docs/personal Notes), [#400](https://github.com/WeGotWorkspace/wegotworkspace/issues/400) (Mail). Delivery issues parent under those Goals and keep product-surface `area:*` labels.
 
 ## Related
 

@@ -43,6 +43,10 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 | Chore | `type:chore` | Optional | No | Optional | Usually no `feat/` |
 | Bug | `bug` | Optional | No | Yes (packing) | Usually no `feat/` |
 
+## Offline / hybrid sync
+
+There is **no** `offline` GitHub label (do not recreate it). Group offline work via parent **Goals** (e.g. #381 Docs/Notes, #400 Mail) and `area:*` on the Goal and delivery issues. See [docs/product/README.md](../../../docs/product/README.md#labels).
+
 ## Product Project hygiene
 
 Only **Goals** belong on [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). New Tasks / Epics / Chores / Bugs must **not** be added. If automation or sub-issue linkage re-adds them, remove the Project item and keep the board filter `label:type:goal`. Browse kit: [docs/product/README.md](../../../docs/product/README.md#how-to-browse).
