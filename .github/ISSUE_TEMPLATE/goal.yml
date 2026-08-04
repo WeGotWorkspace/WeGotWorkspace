@@ -1,5 +1,5 @@
-name: Goal
-description: Product Goal — a user outcome for the Product roadmap (maintainers only for now)
+name: "[Maintainers only] Goal"
+description: Maintainers only — product Goal (user outcome) for the Product roadmap. Externals: use Discussions.
 title: "[Goal] "
 labels:
   - type:goal
@@ -7,10 +7,11 @@ body:
   - type: markdown
     attributes:
       value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
         Use this template for **user-facing outcomes** (Goals), not engineering tasks.
         Titles should be verb outcomes — e.g. “Share Docs and Drive files with guests via a link”.
-
-        Community goal proposals are **not open yet** (legal entity pending). Maintainers only.
 
   - type: textarea
     id: outcome

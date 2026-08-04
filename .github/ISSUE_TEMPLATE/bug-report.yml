@@ -10,8 +10,8 @@ body:
         Thanks for taking the time to report this.
         Use this form to describe incorrect or broken behavior.
 
-        Ideas, Goals, and feature requests are **not open** yet — see CONTRIBUTING.md.
-        Do not use this form to propose product work.
+        For **ideas and exploration**, use [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) instead —
+        do not use this form to propose Goals or features. See CONTRIBUTING.md.
 
   - type: textarea
     id: problem
