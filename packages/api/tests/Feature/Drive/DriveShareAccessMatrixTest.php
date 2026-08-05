@@ -15,6 +15,8 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
 
+    private const SHARE_ROOT = '/users/bob/workspace';
+
     private string $ownerToken;
 
     protected function setUp(): void
@@ -22,9 +24,12 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $this->ownerToken = $this->userBearerToken();
-        $this->createDriveFile($this->ownerToken, '/users/bob', 'plan.md');
-        $this->createDriveFile($this->ownerToken, '/users/bob', 'notes.txt');
-        $this->createDriveFile($this->ownerToken, '/users/bob', 'report.pdf');
+        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/directories?path=/users/bob', [
+            'name' => 'workspace',
+        ])->assertOk();
+        $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'plan.md');
+        $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'notes.txt');
+        $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'report.pdf');
     }
 
     protected function tearDown(): void
@@ -49,10 +54,10 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         $this->createMemberShareForCarol($access);
         $memberToken = $this->carolBearerToken();
 
-        $children = $this->withBearer($memberToken)->getJson('/api/v1/files/children?path=/users/bob');
+        $children = $this->withBearer($memberToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT);
         $mayRead ? $children->assertOk() : $children->assertStatus(400);
 
-        $upload = $this->withBearer($memberToken)->post('/api/v1/files/content?path=/users/bob', [
+        $upload = $this->withBearer($memberToken)->post('/api/v1/files/content?path='.self::SHARE_ROOT, [
             'file' => UploadedFile::fake()->createWithContent('plan.md', 'edited'),
             'resumableFilename' => 'plan.md',
             'resumableIdentifier' => 'member-edit',
@@ -61,7 +66,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         ]);
         $mayEditContent ? $upload->assertOk() : $upload->assertStatus(400);
 
-        $create = $this->withBearer($memberToken)->postJson('/api/v1/files/directories?path=/users/bob', [
+        $create = $this->withBearer($memberToken)->postJson('/api/v1/files/directories?path='.self::SHARE_ROOT, [
             'name' => 'new-dir',
             'type' => 'dir',
         ]);
@@ -75,10 +80,10 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
             'token' => $publicToken,
         ])->assertOk()->json('access_token');
 
-        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
             ->assertOk();
 
-        $this->withBearer($guestToken)->post('/api/v1/files/content?path=/users/bob', [
+        $this->withBearer($guestToken)->post('/api/v1/files/content?path='.self::SHARE_ROOT, [
             'file' => UploadedFile::fake()->createWithContent('plan.md', 'guest edited'),
             'resumableFilename' => 'plan.md',
             'resumableIdentifier' => 'guest-edit',
@@ -86,7 +91,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
             'resumableTotalChunks' => 1,
         ])->assertStatus(400);
 
-        $this->withBearer($guestToken)->postJson('/api/v1/files/directories?path=/users/bob', [
+        $this->withBearer($guestToken)->postJson('/api/v1/files/directories?path='.self::SHARE_ROOT, [
             'name' => 'guest-dir',
             'type' => 'dir',
         ])->assertStatus(400);
@@ -95,7 +100,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
     private function createMemberShareForCarol(string $access): void
     {
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'member',
             'defaultAccess' => $access,
             'shareWith' => [
@@ -107,7 +112,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
     private function createPublicShare(string $access): string
     {
         $response = $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => $access,
         ]);
@@ -119,7 +124,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
     public function test_public_share_rejects_non_view_default_access(): void
     {
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => 'edit',
         ])->assertStatus(400);
@@ -130,9 +135,9 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
      */
     public static function singleFileTargetProvider(): iterable
     {
-        yield 'markdown' => ['plan.md', '/users/bob/plan.md'];
-        yield 'pdf' => ['report.pdf', '/users/bob/report.pdf'];
-        yield 'text' => ['notes.txt', '/users/bob/notes.txt'];
+        yield 'markdown' => ['plan.md', self::SHARE_ROOT.'/plan.md'];
+        yield 'pdf' => ['report.pdf', self::SHARE_ROOT.'/report.pdf'];
+        yield 'text' => ['notes.txt', self::SHARE_ROOT.'/notes.txt'];
     }
 
     #[DataProvider('singleFileTargetProvider')]
@@ -167,7 +172,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         $this->createMemberShareForCarol('view');
         $memberToken = $this->carolBearerToken();
 
-        $this->withBearer($memberToken)->postJson('/api/v1/files/star?path=/users/bob/plan.md')
+        $this->withBearer($memberToken)->postJson('/api/v1/files/star?path='.self::SHARE_ROOT.'/plan.md')
             ->assertStatus(400);
 
         $search = $this->withBearer($memberToken)->getJson('/api/v1/files?search=plan');
@@ -182,14 +187,14 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         $this->createMemberShareForCarol('edit');
         $memberToken = $this->carolBearerToken();
 
-        $this->withBearer($memberToken)->patchJson('/api/v1/files?path=/users/bob/plan.md', [
+        $this->withBearer($memberToken)->patchJson('/api/v1/files?path='.self::SHARE_ROOT.'/plan.md', [
             'name' => 'renamed-plan.md',
         ])->assertStatus(400);
 
-        $this->withBearer($memberToken)->deleteJson('/api/v1/files?path=/users/bob/plan.md')
+        $this->withBearer($memberToken)->deleteJson('/api/v1/files?path='.self::SHARE_ROOT.'/plan.md')
             ->assertStatus(400);
 
-        $this->withBearer($memberToken)->post('/api/v1/files/content?path=/users/bob', [
+        $this->withBearer($memberToken)->post('/api/v1/files/content?path='.self::SHARE_ROOT, [
             'file' => UploadedFile::fake()->createWithContent('plan.md', 'edited content'),
             'resumableFilename' => 'plan.md',
             'resumableIdentifier' => 'matrix-edit-upload',
@@ -205,17 +210,40 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
             'token' => $publicToken,
         ])->assertOk()->json('access_token');
 
-        $this->withBearer($guestToken)->get('/api/v1/files/content?path=/users/bob/plan.md')
+        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_ROOT.'/plan.md'))
             ->assertOk();
 
-        $this->withBearer($guestToken)->patchJson('/api/v1/files?path=/users/bob/plan.md', [
+        $this->withBearer($guestToken)->patchJson('/api/v1/files?path='.urlencode(self::SHARE_ROOT.'/plan.md'), [
             'name' => 'guest-rename.md',
         ])->assertStatus(400);
 
-        $this->withBearer($guestToken)->deleteJson('/api/v1/files?path=/users/bob/plan.md')
+        $this->withBearer($guestToken)->deleteJson('/api/v1/files?path='.urlencode(self::SHARE_ROOT.'/plan.md'))
             ->assertStatus(400);
 
-        $this->withBearer($guestToken)->postJson('/api/v1/files/star?path=/users/bob/plan.md')
+        $this->withBearer($guestToken)->postJson('/api/v1/files/star?path='.self::SHARE_ROOT.'/plan.md')
             ->assertForbidden();
+    }
+
+    public function test_guest_public_share_of_single_vcf_allows_content_download(): void
+    {
+        $this->createDriveFile($this->ownerToken, '/users/bob', 'contacts.vcf');
+        $vcfPath = '/users/bob/contacts.vcf';
+
+        $share = $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $vcfPath,
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk();
+
+        $publicToken = (string) $share->json('data.publicToken');
+        $guestToken = (string) $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $publicToken,
+        ])->assertOk()->json('access_token');
+
+        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertStatus(400);
+
+        $download = $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode($vcfPath));
+        $download->assertOk();
     }
 }

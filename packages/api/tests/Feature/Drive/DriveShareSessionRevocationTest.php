@@ -13,11 +13,19 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
 
+    private const SHARE_ROOT = '/users/bob/shared';
+
+    private const SHARE_FILE = self::SHARE_ROOT.'/revoke.md';
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->setUpDriveFixtures();
-        $this->createDriveFile($this->userBearerToken(), '/users/bob', 'revoke.md');
+        $token = $this->userBearerToken();
+        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
+            'name' => 'shared',
+        ])->assertOk();
+        $this->createDriveFile($token, self::SHARE_ROOT, 'revoke.md');
     }
 
     protected function tearDown(): void
@@ -30,7 +38,7 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => 'view',
         ])->assertOk();
@@ -41,12 +49,12 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $guestToken = (string) $session->json('access_token');
-        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
             ->assertOk();
 
         $this->withBearer($ownerToken)->deleteJson('/api/v1/files/shares/'.$shareId)->assertOk();
 
-        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
             ->assertStatus(400)
             ->assertJsonPath('error', 'Access denied for this path.');
     }
@@ -55,7 +63,7 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => 'view',
             'password' => 'old-password',
@@ -70,9 +78,9 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $guestToken = (string) $session->json('access_token');
-        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
             ->assertOk();
-        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/revoke.md'))
+        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_FILE))
             ->assertOk();
 
         $this->withBearer($ownerToken)->patchJson('/api/v1/files/shares/'.$shareId, [
@@ -80,9 +88,9 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
             'password' => 'new-password',
         ])->assertOk();
 
-        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
             ->assertStatus(400);
-        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/revoke.md'))
+        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_FILE))
             ->assertStatus(400);
 
         // Reload of /share/:token must require the new password (no silent re-entry).
@@ -107,7 +115,7 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_FILE,
             'kind' => 'public',
             'defaultAccess' => 'view',
         ])->assertOk();
@@ -119,7 +127,7 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $guestToken = (string) $session->json('access_token');
-        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/revoke.md'))
+        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_FILE))
             ->assertOk();
 
         $this->withBearer($ownerToken)->patchJson('/api/v1/files/shares/'.$shareId, [
@@ -127,7 +135,7 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
             'password' => 'now-required',
         ])->assertOk();
 
-        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/revoke.md'))
+        $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_FILE))
             ->assertStatus(400);
     }
 }

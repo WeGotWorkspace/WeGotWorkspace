@@ -57,8 +57,9 @@ final class DriveShareRevokeAllPublicTest extends WgwDatabaseTestCase
             'shareWith' => ['alice' => ['access' => 'view']],
         ])->assertOk();
 
+        $this->createDriveFile($this->ownerToken, '/users/bob', 'outside.md');
         $outsidePublic = $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => '/users/bob/outside.md',
             'kind' => 'public',
             'defaultAccess' => 'view',
         ])->assertOk();

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { openDriveAccessInNewWindow } from "@/drive-core/src/drive-route-search";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import { isTopLevelDriveApiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 
 export type DriveShareDialogState = {
   open: boolean;
@@ -30,6 +30,7 @@ export function useDriveShareDialog({
   });
 
   const openShareDialog = useCallback((apiPath: string, title?: string) => {
+    if (isTopLevelDriveApiPath(apiPath)) return;
     const path = apiPath.trim();
     if (!path) return;
     setShareDialog({

@@ -14,11 +14,17 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
 
+    private const SHARE_ROOT = '/users/bob/shared';
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->setUpDriveFixtures();
-        $this->createDriveFile($this->userBearerToken(), '/users/bob', 'guest-note.md');
+        $token = $this->userBearerToken();
+        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
+            'name' => 'shared',
+        ])->assertOk();
+        $this->createDriveFile($token, self::SHARE_ROOT, 'guest-note.md');
     }
 
     protected function tearDown(): void
@@ -31,7 +37,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => 'view',
         ])->assertOk();
@@ -54,11 +60,11 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
             'JWT sub must reference session_key, not primary key'
         );
 
-        $this->withBearer($guestJwt)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($guestJwt)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
             ->assertOk()
             ->assertJsonFragment(['name' => 'guest-note.md']);
 
-        $this->withBearer($guestJwt)->postJson('/api/v1/files/directories?path=/users/bob', [
+        $this->withBearer($guestJwt)->postJson('/api/v1/files/directories?path='.self::SHARE_ROOT, [
             'name' => 'blocked.md',
             'type' => 'file',
         ])->assertStatus(400);
@@ -68,7 +74,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => 'view',
             'password' => 'super-secret',
@@ -105,7 +111,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => self::SHARE_ROOT,
             'kind' => 'public',
             'defaultAccess' => 'view',
             'password' => 'super-secret',

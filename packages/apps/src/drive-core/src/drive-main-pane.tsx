@@ -19,6 +19,7 @@ import {
 } from "@/lib/file-preview/file-preview-utils";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
+import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 
 type DriveController = ReturnType<typeof useDriveController>;
 
@@ -116,6 +117,7 @@ export function DriveMainPane({
 
   const fileCanShare = (file: DriveFile) => {
     if (!shareEnabled || inTrashView || !file.apiPath?.trim()) return false;
+    if (isTopLevelDriveApiPath(file.apiPath)) return false;
     const resolvedMayShare = file.id === active?.id ? activeMayShare : file.mayShare;
     return resolvedMayShare === true;
   };
@@ -297,6 +299,7 @@ export function DriveMainPane({
                   shareEnabled &&
                   !inTrashView &&
                   Boolean(active.apiPath?.trim()) &&
+                  !isTopLevelDriveApiPath(active.apiPath) &&
                   activeMayShare === true,
                 onShare:
                   shareEnabled && active.apiPath && onOpenShare
