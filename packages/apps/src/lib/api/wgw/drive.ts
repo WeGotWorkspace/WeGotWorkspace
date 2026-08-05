@@ -13,6 +13,7 @@ import type {
   WgwDriveDirectoryEntry,
   WgwDriveListingResponse,
   WgwDriveStarsResponse,
+  WgwDriveUserData,
   WgwDriveUserResponse,
   WgwPluginDescriptor,
 } from "@/lib/api/wgw/types";
@@ -110,6 +111,20 @@ function guestShareListingPath(sharePath: string): string {
   return destination === "/" ? normalized : destination;
 }
 
+/**
+ * Guest share sessions do not call `/files/context`. Fabricate DriveUIData.user for
+ * local shell state. OpenAPI DriveUserData only allows role "user" and roots
+ * `/users`|`/groups`; guest bootstrap uses a share-scoped root path instead.
+ */
+function guestDriveUser(username: string, rootPath: string): WgwDriveUserData {
+  return {
+    username,
+    name: "",
+    role: "guest",
+    roots: [rootPath],
+  } as unknown as WgwDriveUserData;
+}
+
 async function fetchGuestDriveState(
   sharePath: string,
   opts?: { signal?: AbortSignal },
@@ -121,12 +136,7 @@ async function fetchGuestDriveState(
   try {
     const directory = await fetchListing(listingPath, opts);
     return {
-      user: {
-        username: ownerUsername,
-        name: "",
-        role: "guest",
-        roots: [listingPath],
-      },
+      user: guestDriveUser(ownerUsername, listingPath),
       cwd: directory.location,
       directory,
       plugins: [],
@@ -148,12 +158,7 @@ async function fetchGuestDriveState(
     }
 
     return {
-      user: {
-        username: ownerUsername,
-        name: "",
-        role: "guest",
-        roots: [destination],
-      },
+      user: guestDriveUser(ownerUsername, destination),
       cwd: destination,
       directory: {
         location: destination,

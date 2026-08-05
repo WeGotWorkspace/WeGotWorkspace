@@ -6,13 +6,18 @@ type DriveAccessFiltersProps = {
   controller: DriveAccessController;
 };
 
-const FILTER_OPTIONS: { id: DriveAccessFilter; labelKey: keyof DriveAccessController["labels"] }[] =
-  [
-    { id: "all", labelKey: "accessFilterAll" },
-    { id: "external", labelKey: "accessFilterExternal" },
-    { id: "public", labelKey: "accessFilterPublic" },
-    { id: "groups", labelKey: "accessFilterGroups" },
-  ];
+type AccessFilterLabelKey =
+  | "accessFilterAll"
+  | "accessFilterExternal"
+  | "accessFilterPublic"
+  | "accessFilterGroups";
+
+const FILTER_OPTIONS: { id: DriveAccessFilter; labelKey: AccessFilterLabelKey }[] = [
+  { id: "all", labelKey: "accessFilterAll" },
+  { id: "external", labelKey: "accessFilterExternal" },
+  { id: "public", labelKey: "accessFilterPublic" },
+  { id: "groups", labelKey: "accessFilterGroups" },
+];
 
 export function DriveAccessFilters({ controller }: DriveAccessFiltersProps) {
   const { labels, filter, setFilter } = controller;

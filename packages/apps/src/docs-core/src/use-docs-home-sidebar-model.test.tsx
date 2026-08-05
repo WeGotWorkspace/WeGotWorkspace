@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import type { DocsHomeView } from "@/docs-core/src/docs-home-shared";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 
 describe("useDocsHomeSidebarModel", () => {
@@ -12,14 +13,14 @@ describe("useDocsHomeSidebarModel", () => {
   it("selects All docs and Shared with me in the primary section", () => {
     const selectView = vi.fn();
     const { result, rerender } = renderHook(
-      ({ view }) =>
+      ({ view }: { view: DocsHomeView }) =>
         useDocsHomeSidebarModel({
           labels: docsLabels,
           drives,
           view,
           selectView,
         }),
-      { initialProps: { view: { type: "all" as const } } },
+      { initialProps: { view: { type: "all" } as DocsHomeView } },
     );
 
     expect(result.current.primaryItems.map((item) => item.label)).toEqual([
@@ -29,10 +30,10 @@ describe("useDocsHomeSidebarModel", () => {
     expect(result.current.primaryItems[0]?.selected).toBe(true);
     expect(result.current.primaryItems[1]?.selected).toBe(false);
 
-    result.current.primaryItems[1]?.onClick?.({} as never);
+    result.current.primaryItems[1]?.onClick?.();
     expect(selectView).toHaveBeenCalledWith({ type: "shared" });
 
-    rerender({ view: { type: "shared" } });
+    rerender({ view: { type: "shared" } as DocsHomeView });
     expect(result.current.primaryItems[0]?.selected).toBe(false);
     expect(result.current.primaryItems[1]?.selected).toBe(true);
   });
@@ -50,7 +51,7 @@ describe("useDocsHomeSidebarModel", () => {
 
     expect(result.current.driveItems[0]?.selected).toBe(false);
     expect(result.current.driveItems[1]?.selected).toBe(true);
-    result.current.driveItems[0]?.onClick?.({} as never);
+    result.current.driveItems[0]?.onClick?.();
     expect(selectView).toHaveBeenCalledWith({ type: "drive", pathPrefix: "users/alice" });
   });
 });
