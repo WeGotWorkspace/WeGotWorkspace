@@ -34,6 +34,11 @@ export type DocsCollabEditorProps = {
   viewSource?: boolean;
   /** When false, the TipTap surface rejects typing (view / comment-only). */
   editable?: boolean;
+  /**
+   * When true, formatting controls on the bar are disabled (comment-only share).
+   * Comment control remains independently gated via `commentsDisabled`.
+   */
+  formattingDisabled?: boolean;
   className?: string;
   /** @deprecated Prefer `onContentChange`; kept for compatibility paths. */
   onMarkdownChange?: (getMarkdown: () => string) => void;
@@ -67,6 +72,7 @@ export function DocsCollabEditor({
   sheetFill = false,
   viewSource = false,
   editable = true,
+  formattingDisabled = false,
   className,
   onMarkdownChange,
   onContentChange,
@@ -174,6 +180,7 @@ export function DocsCollabEditor({
       editor={editor}
       groups={[...formatBarConfig.groups]}
       showPrint={formatBarConfig.showPrint}
+      formattingDisabled={formattingDisabled}
       className={formatBarConfig.className}
       commentControl={
         !viewSource && commentControlLabels && onAddCommentFromSelection ? (

@@ -73,6 +73,11 @@ export type TextEditorFormatBarProps = {
   groups?: readonly TextEditorFormatBarGroup[];
   /** Show a print action that calls `window.print()`. */
   showPrint?: boolean;
+  /**
+   * When true, disable formatting controls (history, marks, blocks, link, print).
+   * Comment and trailing slots stay independently controlled by the caller.
+   */
+  formattingDisabled?: boolean;
   /** Optional control rendered inline after the link group (e.g. add comment). */
   commentControl?: ReactNode;
   /** Optional controls rendered at the trailing edge of the bar. */
@@ -84,6 +89,7 @@ export function TextEditorFormatBar({
   editor,
   groups = TEXT_EDITOR_FORMAT_BAR_FULL,
   showPrint = true,
+  formattingDisabled = false,
   commentControl,
   trailing,
   className,
@@ -149,14 +155,14 @@ export function TextEditorFormatBar({
         <>
           <FormatBarButton
             title="Undo"
-            disabled={!state.canUndo}
+            disabled={formattingDisabled || !state.canUndo}
             onClick={() => chain().undo().run()}
           >
             <Undo2 className="h-4 w-4" />
           </FormatBarButton>
           <FormatBarButton
             title="Redo"
-            disabled={!state.canRedo}
+            disabled={formattingDisabled || !state.canRedo}
             onClick={() => chain().redo().run()}
           >
             <Redo2 className="h-4 w-4" />
@@ -172,6 +178,7 @@ export function TextEditorFormatBar({
             <button
               type="button"
               title="Heading level"
+              disabled={formattingDisabled}
               aria-pressed={state.headingLevel > 0 ? true : undefined}
               className={cn(
                 "text-editor-format-bar__heading-trigger",
@@ -215,6 +222,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Bold"
             active={state.bold}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleBold().run()}
           >
             <Bold className="h-4 w-4" />
@@ -222,6 +230,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Italic"
             active={state.italic}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleItalic().run()}
           >
             <Italic className="h-4 w-4" />
@@ -229,6 +238,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Underline"
             active={state.underline}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleUnderline().run()}
           >
             <UnderlineIcon className="h-4 w-4" />
@@ -240,6 +250,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Strike"
             active={state.strike}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleStrike().run()}
           >
             <Strikethrough className="h-4 w-4" />
@@ -247,6 +258,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Inline code"
             active={state.code}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleCode().run()}
           >
             <Code className="h-4 w-4" />
@@ -254,6 +266,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Highlight"
             active={state.highlight}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleHighlight().run()}
           >
             <Highlighter className="h-4 w-4" />
@@ -266,6 +279,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Bullet list"
             active={state.bulletList}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleBulletList().run()}
           >
             <List className="h-4 w-4" />
@@ -273,6 +287,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Ordered list"
             active={state.orderedList}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleOrderedList().run()}
           >
             <ListOrdered className="h-4 w-4" />
@@ -284,6 +299,7 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Task list"
             active={state.taskList}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleTaskList().run()}
           >
             <ListChecks className="h-4 w-4" />
@@ -291,18 +307,28 @@ export function TextEditorFormatBar({
           <FormatBarButton
             title="Blockquote"
             active={state.blockquote}
+            disabled={formattingDisabled}
             onClick={() => chain().toggleBlockquote().run()}
           >
             <Quote className="h-4 w-4" />
           </FormatBarButton>
-          <FormatBarButton title="Divider" onClick={() => chain().setHorizontalRule().run()}>
+          <FormatBarButton
+            title="Divider"
+            disabled={formattingDisabled}
+            onClick={() => chain().setHorizontalRule().run()}
+          >
             <Minus className="h-4 w-4" />
           </FormatBarButton>
         </>
       ) : null}
       {(showBlocks || showMarks) && showLink ? <FormatBarSeparator /> : null}
       {showLink ? (
-        <FormatBarButton title="Link" active={state.link} onClick={openLinkDialog}>
+        <FormatBarButton
+          title="Link"
+          active={state.link}
+          disabled={formattingDisabled}
+          onClick={openLinkDialog}
+        >
           <Link2 className="h-4 w-4" />
         </FormatBarButton>
       ) : null}
@@ -315,6 +341,7 @@ export function TextEditorFormatBar({
             <div className="text-editor-format-bar__print">
               <button
                 type="button"
+                disabled={formattingDisabled}
                 onClick={() => printTextEditorSheet(editor)}
                 className="text-editor-format-bar__print-btn"
               >

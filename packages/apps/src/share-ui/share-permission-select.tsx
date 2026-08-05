@@ -5,7 +5,7 @@ import { shareLabels, sharePermissionLabels } from "@/share-ui/share-labels";
 
 const PERMISSION_ICONS = {
   view: Eye,
-  suggest: MessageSquare,
+  comment: MessageSquare,
   edit: Pencil,
   full: ShieldCheck,
 } as const;

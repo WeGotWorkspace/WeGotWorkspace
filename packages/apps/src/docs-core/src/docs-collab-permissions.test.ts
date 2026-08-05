@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveDocsCollabFormatBarMode,
   resolveDocsCollabPermissions,
   resolveDocsCollabPermissionsWhileLoading,
 } from "./docs-collab-permissions";
@@ -46,7 +47,7 @@ describe("resolveDocsCollabPermissions", () => {
     });
   });
 
-  it("maps review access to editable suggest mode without content edit flag", () => {
+  it("does not unlock the editor from legacy mayReview alone", () => {
     expect(
       resolveDocsCollabPermissions({
         mayEditContent: false,
@@ -54,13 +55,13 @@ describe("resolveDocsCollabPermissions", () => {
         mayReview: true,
       }),
     ).toEqual({
-      editable: true,
+      editable: false,
       canComment: true,
-      canReview: true,
+      canReview: false,
     });
   });
 
-  it("maps edit access to full content + comment + review", () => {
+  it("maps edit access to content edit plus suggest mode and comments", () => {
     expect(
       resolveDocsCollabPermissions({
         mayEditContent: true,
@@ -95,5 +96,37 @@ describe("resolveDocsCollabPermissionsWhileLoading", () => {
       canComment: true,
       canReview: true,
     });
+  });
+});
+
+describe("resolveDocsCollabFormatBarMode", () => {
+  it("hides the bar for view access", () => {
+    expect(
+      resolveDocsCollabFormatBarMode({
+        editable: false,
+        canComment: false,
+        canReview: false,
+      }),
+    ).toBe("hidden");
+  });
+
+  it("keeps the bar with formatting disabled for comment access", () => {
+    expect(
+      resolveDocsCollabFormatBarMode({
+        editable: false,
+        canComment: true,
+        canReview: false,
+      }),
+    ).toBe("commentOnly");
+  });
+
+  it("shows a full bar for edit access", () => {
+    expect(
+      resolveDocsCollabFormatBarMode({
+        editable: true,
+        canComment: true,
+        canReview: true,
+      }),
+    ).toBe("full");
   });
 });

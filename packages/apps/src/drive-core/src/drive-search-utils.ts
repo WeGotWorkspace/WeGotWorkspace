@@ -1,7 +1,12 @@
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import type { DriveUnifiedSearchResult } from "@/drive-core/src/drive-types";
+import { driveLabels } from "@/drive-core/src/drive-labels";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
-import { formatBytesCompact, driveShareFlagsFromListing } from "@/drive-core/src/drive-file-utils";
+import {
+  formatBytesCompact,
+  driveShareFlagsFromListing,
+  shareOwnerUsernameFromApiPath,
+} from "@/drive-core/src/drive-file-utils";
 
 export function parentVirtualPath(path: string): string {
   const normalized = path.trim().replace(/\/+$/, "");
@@ -18,11 +23,22 @@ export function apiPathFromSearchSourceKey(sourceKey: string): string | null {
 
 /**
  * Top-level drive location label for a unified-search source key.
- * `users/...` → `My Drive`; `groups/{name}/...` → `{name}` (matches sidebar drive labels).
+ * Own `users/{viewer}/...` → `My Drive`; other personal drives → `Shared by {owner}`;
+ * `groups/{name}/...` → `{name}` (matches sidebar drive labels).
  */
-export function driveLocationLabel(sourceKey: string): string | null {
+export function driveLocationLabel(sourceKey: string, viewerUsername?: string): string | null {
   const segments = sourceKey.split("/").filter(Boolean);
-  if (segments[0] === "users") return "My Drive";
+  if (segments[0] === "users") {
+    const owner = shareOwnerUsernameFromApiPath(`/${segments.join("/")}`);
+    if (
+      owner &&
+      viewerUsername?.trim() &&
+      owner.toLowerCase() !== viewerUsername.trim().toLowerCase()
+    ) {
+      return driveLabels.sharedBy(owner);
+    }
+    return driveLabels.sidebarMyDrive;
+  }
   if (segments[0] === "groups" && segments[1]) return segments[1];
   return null;
 }
@@ -50,6 +66,7 @@ export function driveFileFromSearchResult(
   result: DriveUnifiedSearchResult,
   uiPath: string,
   apiPath: string,
+  viewerUsername?: string,
 ): DriveFile {
   const title = result.title || uiPath.split("/").pop() || result.sourceKey;
   const parent = parentVirtualPath(uiPath);
@@ -73,7 +90,7 @@ export function driveFileFromSearchResult(
     kind,
     size: result.size > 0 ? formatBytesCompact(result.size) : "—",
     apiPath: apiPath || undefined,
-    location: driveLocationLabel(result.sourceKey) ?? undefined,
+    location: driveLocationLabel(result.sourceKey, viewerUsername) ?? undefined,
     ...driveShareFlagsFromListing({
       hasShares: result.metadata?.hasShares === true,
       hasPublicShare: result.metadata?.hasPublicShare === true,

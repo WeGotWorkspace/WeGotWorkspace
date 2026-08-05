@@ -29,12 +29,15 @@ export function buildDriveFileActions(
     isFolder?: boolean;
     canOpen?: boolean;
     canDownload?: boolean;
+    /** Full access (`mayManageStructure`). When false, omit rename / move / delete. */
+    canManageStructure?: boolean;
     canMove?: boolean;
     canShare?: boolean;
   },
   callbacks: DriveFileActionCallbacks,
 ): ActionBarAction[] {
   const actions: ActionBarAction[] = [];
+  const canManageStructure = options.canManageStructure !== false;
 
   if (options.canOpen !== false && callbacks.onOpen) {
     actions.push({
@@ -62,7 +65,7 @@ export function buildDriveFileActions(
     icon: <Star />,
   });
 
-  if (callbacks.onRename) {
+  if (canManageStructure && callbacks.onRename) {
     actions.push({
       id: "rename",
       label: labels.detailRename,
@@ -80,7 +83,7 @@ export function buildDriveFileActions(
     });
   }
 
-  if (options.canMove !== false && callbacks.onMove) {
+  if (canManageStructure && options.canMove !== false && callbacks.onMove) {
     actions.push({
       id: "move",
       label: labels.detailMove,
@@ -89,12 +92,14 @@ export function buildDriveFileActions(
     });
   }
 
-  actions.push({
-    id: "delete",
-    label: options.inTrash ? labels.selectionDeletePermanently : labels.detailDelete,
-    onClick: callbacks.onDelete,
-    icon: <Trash2 />,
-  });
+  if (canManageStructure) {
+    actions.push({
+      id: "delete",
+      label: options.inTrash ? labels.selectionDeletePermanently : labels.detailDelete,
+      onClick: callbacks.onDelete,
+      icon: <Trash2 />,
+    });
+  }
 
   return actions;
 }

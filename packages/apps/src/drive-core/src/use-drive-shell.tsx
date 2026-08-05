@@ -423,7 +423,7 @@ export function useDriveShell({
               selectView({ type: "folder", path: uiPath });
               return;
             }
-            const file = driveFileFromSearchResult(result, uiPath, apiPath);
+            const file = driveFileFromSearchResult(result, uiPath, apiPath, currentUsername);
             if (result.category === "image") {
               selection.setActiveId(file.id);
               selection.setSelectedIds([file.id]);

@@ -73,35 +73,34 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
   const token = shareRecord?.publicToken ?? null;
   const url = token ? buildPublicShareUrl(token) : "—";
   const passwordBusy = Boolean(mutations.busyKey?.startsWith("public-password-"));
+  // Must match useShareMutations path scope (normalized in share-password-storage).
   const passwordScope = atPath.path;
+  const hasPassword = directPublic?.hasPassword ?? false;
 
-  const [passwordRequired, setPasswordRequired] = useState(directPublic?.hasPassword ?? false);
+  const [passwordRequired, setPasswordRequired] = useState(hasPassword);
   const [passwordDraft, setPasswordDraft] = useState(() =>
-    directPublic?.hasPassword ? readStoredSharePassword(passwordScope) : "",
+    hasPassword ? readStoredSharePassword(passwordScope) : "",
   );
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
+  // sessionStorage is SSOT for plaintext — restore whenever protection is active.
+  // Do NOT clear storage here on hasPassword=false; transient refetch gaps would wipe it.
   useEffect(() => {
-    const hasPassword = directPublic?.hasPassword ?? false;
     setPasswordRequired(hasPassword);
-    if (!passwordScope) {
-      setPasswordDraft("");
-      return;
-    }
-    if (hasPassword) {
-      setPasswordDraft((current) => readStoredSharePassword(passwordScope) || current);
-      return;
-    }
-    clearStoredSharePassword(passwordScope);
-    setPasswordDraft("");
-  }, [directPublic?.hasPassword, passwordScope]);
-
-  useEffect(() => {
     if (!enabled) {
       setPasswordDraft("");
+      return;
     }
-  }, [enabled]);
+    if (!hasPassword) {
+      setPasswordDraft("");
+      return;
+    }
+    setPasswordDraft((current) => readStoredSharePassword(passwordScope) || current);
+  }, [enabled, hasPassword, passwordScope]);
+
+  const visiblePassword =
+    passwordRequired && enabled ? passwordDraft || readStoredSharePassword(passwordScope) : "";
 
   const handleCopy = async () => {
     if (!token) return;
@@ -117,6 +116,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
     switch (confirmAction) {
       case "disable-public":
         clearStoredSharePassword(passwordScope);
+        setPasswordDraft("");
         void mutations.setPublicEnabled(false);
         break;
       case "disable-password":
@@ -241,14 +241,14 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
             <div className="share-dialog__password-field">
               <ShareDialogInput
                 type="text"
-                value={passwordDraft}
+                value={visiblePassword}
                 readOnly
                 mono
                 disabled={!passwordRequired || disabled || passwordBusy}
                 aria-label={shareLabels.requirePassword}
                 placeholder={
                   passwordRequired
-                    ? passwordDraft
+                    ? visiblePassword
                       ? undefined
                       : shareLabels.passwordSavedPlaceholder
                     : shareLabels.passwordDisabledPlaceholder

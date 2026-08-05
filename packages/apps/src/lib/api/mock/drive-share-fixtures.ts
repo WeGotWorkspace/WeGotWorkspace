@@ -42,7 +42,7 @@ export const mockDriveShareAtPath: DriveShareAtPath = {
         updatedAt,
         shareWith: {
           "groups/engineering": { access: "edit" },
-          alice: { access: "review" },
+          alice: { access: "edit" },
         },
         myRights: fullDriveMyRights,
       },
@@ -79,7 +79,7 @@ export const mockDriveShareAtPath: DriveShareAtPath = {
     {
       principal: "alice",
       principalType: "user",
-      access: "review",
+      access: "edit",
       status: "active",
       source: inheritedGrantSource,
     },
@@ -108,7 +108,7 @@ export const mockDriveShareAtPath: DriveShareAtPath = {
     {
       principal: "alice",
       principalType: "user",
-      access: "review",
+      access: "edit",
       source: inheritedGrantSource,
       removal: {
         method: "patchShareWith",
@@ -133,7 +133,7 @@ export const mockDriveShareAtPath: DriveShareAtPath = {
     {
       username: "alice",
       displayName: "Alice Chen",
-      access: "review",
+      access: "edit",
       viaGroup: null,
       editable: false,
       editConstraint: "groupOnly",
@@ -177,7 +177,7 @@ export const mockDriveShareByPrincipal: DriveShareByPrincipal = {
   queriedPrincipalType: "user",
   entries: [
     {
-      access: "review",
+      access: "edit",
       principalType: "user",
       status: "active",
       source: inheritedGrantSource,

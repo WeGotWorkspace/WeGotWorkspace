@@ -18,5 +18,6 @@ describe("driveLabels", () => {
   it("labels Shared with me and Team drives distinctly", () => {
     expect(driveLabels.sidebarSharedWithMe).toBe("Shared with me");
     expect(driveLabels.sidebarSharedDrives).toBe("Team drives");
+    expect(driveLabels.sharedBy("hana")).toBe("Shared by hana");
   });
 });

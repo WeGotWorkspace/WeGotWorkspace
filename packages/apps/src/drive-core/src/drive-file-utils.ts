@@ -1,7 +1,12 @@
 import { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";
 import type { DriveUIData } from "@/drive-core/src/drive-types";
+import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
-import { SHARED_WITH_ME_UI_ROOT, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import {
+  normalizeApiVirtualPath,
+  SHARED_WITH_ME_UI_ROOT,
+  uiPathFromApiPath,
+} from "@/drive-core/src/drive-path-utils";
 
 const BROWSER_PREVIEW_IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i;
 
@@ -84,7 +89,40 @@ export function driveFileFromEntry(
     size,
     apiPath,
     mayShare: entry.myRights?.mayShare,
+    mayManageStructure: entry.myRights?.mayManageStructure,
     ...driveShareFlagsFromListing(entry),
+  };
+}
+
+/**
+ * Owner username for a personal-drive share path (`/users/{owner}/…`).
+ * Returns null for group paths or malformed keys.
+ */
+export function shareOwnerUsernameFromApiPath(apiPath: string): string | null {
+  const segments = normalizeApiVirtualPath(apiPath).split("/").filter(Boolean);
+  if (segments[0] !== "users" || !segments[1]) return null;
+  return segments[1];
+}
+
+/**
+ * Prefer an explicit share owner when the API provides it; otherwise derive from `/users/{owner}/…`.
+ */
+export function shareOwnerUsernameFromShare(share: {
+  path: string;
+  ownerUsername?: string | null;
+}): string | null {
+  const explicit = share.ownerUsername?.trim();
+  if (explicit) return explicit;
+  return shareOwnerUsernameFromApiPath(share.path);
+}
+
+/** Location + share indicator for Shared with me rows (Share2, not team/Users). */
+function sharedWithMeListingFields(
+  ownerUsername: string | null,
+): Pick<DriveFile, "location" | "isShared"> {
+  return {
+    location: ownerUsername ? driveLabels.sharedBy(ownerUsername) : driveLabels.sidebarSharedWithMe,
+    ...driveShareFlagsFromListing({ hasShares: true }),
   };
 }
 
@@ -92,10 +130,14 @@ export function driveFileFromEntry(
 export function driveFileForSharedWithMeListing(
   entry: DriveUIData["directory"]["files"][number],
   username: string,
+  ownerUsername?: string | null,
 ): DriveFile {
+  const owner =
+    ownerUsername?.trim() || shareOwnerUsernameFromApiPath(pathFromDirectoryEntry(entry));
   return {
     ...driveFileFromEntry(entry, username),
     parent: SHARED_WITH_ME_UI_ROOT,
+    ...sharedWithMeListingFields(owner),
   };
 }
 
@@ -107,6 +149,7 @@ export function driveFileFromSharedWithMeEntry(
   item: {
     share: {
       path: string;
+      ownerUsername?: string | null;
       myRights?: DriveUIData["directory"]["files"][number]["myRights"];
       updatedAt?: string | null;
     };
@@ -114,8 +157,10 @@ export function driveFileFromSharedWithMeEntry(
   },
   username: string,
 ): DriveFile | null {
+  const owner = shareOwnerUsernameFromShare(item.share);
+
   if (item.entry) {
-    return driveFileForSharedWithMeListing(item.entry, username);
+    return driveFileForSharedWithMeListing(item.entry, username, owner);
   }
 
   const apiPath = item.share.path.trim();
@@ -143,6 +188,7 @@ export function driveFileFromSharedWithMeEntry(
       },
     },
     username,
+    owner,
   );
 }
 

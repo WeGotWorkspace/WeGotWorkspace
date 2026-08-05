@@ -15,7 +15,8 @@ export type DriveAccessDisplayRow =
 const ACCESS_LABELS: Record<DriveShareAccess, string> = {
   view: "Can view",
   comment: "Can comment",
-  review: "Can suggest",
+  /** Legacy suggest/review ACL — same effective rights as edit. */
+  review: "Can edit",
   edit: "Can edit",
   full: "Full access",
 };

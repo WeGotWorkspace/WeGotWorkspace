@@ -6,13 +6,22 @@ export type DocsCollabShareRights = {
 };
 
 export type DocsCollabUiPermissions = {
-  /** TipTap editable — content edit or suggest/review typing. */
+  /** TipTap editable — content editing (includes suggest-mode typing). */
   editable: boolean;
   /** Create/reply/resolve comments and reactions. */
   canComment: boolean;
-  /** Suggest mode + accept/reject suggestions. */
+  /** Suggest mode + accept/reject suggestions (part of edit access). */
   canReview: boolean;
 };
+
+/**
+ * How the Docs formatting bar should behave for the current share capabilities.
+ *
+ * - `hidden` — view access (no edit, no comment)
+ * - `commentOnly` — comment access: bar visible, formatting disabled, comment control active
+ * - `full` — edit/full access
+ */
+export type DocsCollabFormatBarMode = "hidden" | "commentOnly" | "full";
 
 const FULL_ACCESS: DocsCollabUiPermissions = {
   editable: true,
@@ -30,7 +39,7 @@ const LOCKED: DocsCollabUiPermissions = {
  * Maps share `myRights` to collab editor capabilities.
  *
  * - `undefined` rights → full access (Storybook / no share fetch)
- * - explicit rights → view < comment < review < edit
+ * - explicit rights → view < comment < edit (suggest is a Docs UI mode within edit, not a share ACL)
  */
 export function resolveDocsCollabPermissions(
   rights: DocsCollabShareRights | null | undefined,
@@ -38,14 +47,14 @@ export function resolveDocsCollabPermissions(
   if (rights == null) return FULL_ACCESS;
 
   const canComment = rights.mayComment === true;
-  const canReview = rights.mayReview === true;
   const mayEdit = rights.mayEditContent === true;
 
   return {
-    // Review needs typing for suggestions; comment-only stays non-editable (selection still works).
-    editable: mayEdit || canReview,
+    // View/comment stay non-editable for the body; only edit/full unlock typing.
+    editable: mayEdit,
     canComment,
-    canReview,
+    // Suggest/review mode is included with edit access (not a separate share level).
+    canReview: mayEdit,
   };
 }
 
@@ -57,4 +66,13 @@ export function resolveDocsCollabPermissionsWhileLoading(
   if (rights != null) return resolveDocsCollabPermissions(rights);
   if (loading) return LOCKED;
   return FULL_ACCESS;
+}
+
+/** Derive formatting-bar visibility/disabled mode from resolved collab capabilities. */
+export function resolveDocsCollabFormatBarMode(
+  permissions: DocsCollabUiPermissions,
+): DocsCollabFormatBarMode {
+  if (permissions.editable) return "full";
+  if (permissions.canComment) return "commentOnly";
+  return "hidden";
 }

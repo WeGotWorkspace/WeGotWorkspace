@@ -42,6 +42,7 @@ describe("useDriveShareMyRights", () => {
       expect(result.current.myRights).toEqual(viewRights);
     });
     expect(result.current.mayShare).toBe(false);
+    expect(result.current.mayManageStructure).toBe(false);
     expect(operations.getAtPath).toHaveBeenCalled();
   });
 
@@ -57,6 +58,7 @@ describe("useDriveShareMyRights", () => {
 
     expect(result.current.myRights).toBeNull();
     expect(result.current.mayShare).toBeUndefined();
+    expect(result.current.mayManageStructure).toBeUndefined();
     expect(operations.getAtPath).not.toHaveBeenCalled();
   });
 });

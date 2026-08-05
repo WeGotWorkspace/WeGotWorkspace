@@ -13,6 +13,8 @@ export type DriveFile = Note & {
   apiPath?: string;
   /** From directory listing `myRights.mayShare` when available. */
   mayShare?: boolean;
+  /** From directory listing `myRights.mayManageStructure` (full access) when available. */
+  mayManageStructure?: boolean;
   /** True when the item has outgoing share grants (member, guest, or public). */
   isShared?: boolean;
   /** Active public link on this path. */

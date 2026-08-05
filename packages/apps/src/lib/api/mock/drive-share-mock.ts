@@ -22,6 +22,29 @@ const SHARED_FIXTURE_PATH = mockDriveShareAtPath.path;
 const mockSharedWithMe: DriveSharedWithMeEntry[] = [
   {
     share: {
+      id: "c3333333-3333-4333-8333-333333333333",
+      path: "/users/hana/Shared Notes.md",
+      kind: "member",
+      defaultAccess: "edit",
+      publicToken: null,
+      hasPassword: false,
+      expiresAt: null,
+      updatedAt: "2026-07-01T10:00:00.000Z",
+      shareWith: null,
+      myRights: fullDriveMyRights,
+    },
+    entry: {
+      type: "file",
+      path: "/users/hana/Shared Notes.md",
+      name: "Shared Notes.md",
+      size: 2048,
+      time: 1_720_000_000,
+      permissions: 0,
+      myRights: fullDriveMyRights,
+    },
+  },
+  {
+    share: {
       id: "d4444444-4444-4444-8444-444444444444",
       path: "/users/hana/Bindery-Walkthrough.mov",
       kind: "member",

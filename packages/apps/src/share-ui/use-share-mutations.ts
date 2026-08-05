@@ -7,8 +7,13 @@ import type {
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { uiPermissionToAccess, type ShareUIPermission } from "@/share-ui/share-access-map";
+import { normalizeApiVirtualPath } from "@/lib/files/api-path";
 import { generateFriendlySharePassword } from "@/share-ui/generate-friendly-share-password";
 import { shareLabels } from "@/share-ui/share-labels";
+import {
+  clearStoredSharePassword,
+  writeStoredSharePassword,
+} from "@/share-ui/share-password-storage";
 import {
   findDirectMemberShare,
   findDirectPublicShare,
@@ -55,6 +60,8 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
     [refetch, showError],
   );
 
+  const passwordScope = normalizeApiVirtualPath(path);
+
   const setPublicEnabled = useCallback(
     async (enabled: boolean): Promise<string | undefined> => {
       if (!atPath) return undefined;
@@ -64,6 +71,8 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
         if (enabled) {
           if (directPublic) return;
           generatedPassword = generateFriendlySharePassword();
+          // Persist before refetch so reopen/sync effects can restore plaintext.
+          writeStoredSharePassword(passwordScope, generatedPassword);
           await operations.createShare({
             path,
             kind: "public",
@@ -73,11 +82,12 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
           return;
         }
         if (!directPublic) return;
+        clearStoredSharePassword(passwordScope);
         await operations.deleteShare(directPublic.shareId);
       });
       return generatedPassword;
     },
-    [atPath, operations, path, runMutation],
+    [atPath, operations, passwordScope, path, runMutation],
   );
 
   const updatePublicAccess = useCallback(
@@ -109,6 +119,11 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
       const share = findShareRecord(atPath, directPublic.shareId);
       if (!share?.updatedAt) return undefined;
       await runMutation(`public-password-${directPublic.shareId}`, async () => {
+        if (enabled) {
+          writeStoredSharePassword(passwordScope, trimmed);
+        } else {
+          clearStoredSharePassword(passwordScope);
+        }
         await operations.patchShare(directPublic.shareId, {
           updatedAt: share.updatedAt!,
           password: enabled ? trimmed : null,
@@ -116,7 +131,7 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
       });
       return enabled ? trimmed : undefined;
     },
-    [atPath, operations, runMutation],
+    [atPath, operations, passwordScope, runMutation],
   );
 
   const regeneratePublicLink = useCallback(async (): Promise<string | undefined> => {
@@ -127,6 +142,11 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
     let generatedPassword: string | undefined;
     await runMutation(`public-regenerate-${directPublic.shareId}`, async () => {
       generatedPassword = share?.hasPassword ? generateFriendlySharePassword() : undefined;
+      if (generatedPassword) {
+        writeStoredSharePassword(passwordScope, generatedPassword);
+      } else {
+        clearStoredSharePassword(passwordScope);
+      }
       await operations.deleteShare(directPublic.shareId);
       await operations.createShare({
         path,
@@ -136,7 +156,7 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
       });
     });
     return generatedPassword;
-  }, [atPath, operations, path, runMutation]);
+  }, [atPath, operations, passwordScope, path, runMutation]);
 
   const updateGrantAccess = useCallback(
     async (shareId: string, principal: string, permission: ShareUIPermission | null) => {
@@ -241,8 +261,13 @@ export function accessLabelForReadOnly(access: DriveShareAccess): string {
   switch (access) {
     case "full":
       return "Full access";
+    case "edit":
+    case "review":
+      return "Can edit";
     case "comment":
       return "Can comment";
+    case "view":
+      return "Can view";
     default:
       return access;
   }

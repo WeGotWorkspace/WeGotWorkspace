@@ -695,7 +695,7 @@ final class DriveShareService
 
     private function normalizeAccess(string $access): string
     {
-        $normalized = strtolower(trim($access));
+        $normalized = DriveShareAccess::normalize($access);
         if (! DriveShareAccess::isValid($normalized)) {
             throw new ApiHttpException(400, 'Invalid access.', 'bad_request');
         }
@@ -767,15 +767,14 @@ final class DriveShareService
 
     private function assertCommentReviewApplicable(string $path, string $access): void
     {
-        if (! in_array($access, [DriveShareAccess::COMMENT, DriveShareAccess::REVIEW], true)) {
+        if ($access !== DriveShareAccess::COMMENT) {
             return;
         }
 
         $disk = $this->filesDisk();
         $key = $this->paths->virtualToStorageKey($path);
         if ($disk->fileExists($key) && ! $this->collabDocFormats->isCollabDocPath($path)) {
-            $code = $access === DriveShareAccess::COMMENT ? 'comment_not_applicable' : 'review_not_applicable';
-            throw new ApiHttpException(400, 'Access level is not applicable for this target.', $code);
+            throw new ApiHttpException(400, 'Access level is not applicable for this target.', 'comment_not_applicable');
         }
     }
 

@@ -14,6 +14,8 @@ export type UseDriveShareMyRightsResult = {
   myRights: DriveRights | null;
   /** `undefined` while loading (hide Share until known); then boolean. */
   mayShare: boolean | undefined;
+  /** `undefined` while loading; then boolean (`true` = full access). */
+  mayManageStructure: boolean | undefined;
   loading: boolean;
 };
 
@@ -44,5 +46,12 @@ export function useDriveShareMyRights({
     return data.myRights.mayShare;
   }, [canFetch, data, loading]);
 
-  return { myRights, mayShare, loading: canFetch && loading };
+  const mayManageStructure = useMemo(() => {
+    if (!canFetch) return undefined;
+    if (!data && loading) return undefined;
+    if (!data) return false;
+    return data.myRights.mayManageStructure;
+  }, [canFetch, data, loading]);
+
+  return { myRights, mayShare, mayManageStructure, loading: canFetch && loading };
 }

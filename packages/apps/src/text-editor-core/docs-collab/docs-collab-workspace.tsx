@@ -5,7 +5,10 @@ import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import type { DocsCollabUiPermissions } from "@/docs-core/src/docs-collab-permissions";
-import { resolveDocsCollabPermissions } from "@/docs-core/src/docs-collab-permissions";
+import {
+  resolveDocsCollabFormatBarMode,
+  resolveDocsCollabPermissions,
+} from "@/docs-core/src/docs-collab-permissions";
 import { DocsDocStatus } from "@/docs-core/src/docs-doc-status";
 import { DocsEditorStatsFooter } from "@/docs-core/src/docs-stats-footer";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
@@ -182,6 +185,7 @@ function DocsCollabWorkspaceInner({
   permissions: DocsCollabUiPermissions;
 }) {
   const labels = docsLabels;
+  const formatBarMode = resolveDocsCollabFormatBarMode(permissions);
   const session = useMemo(
     () => ({
       ...mockWorkspaceSession,
@@ -679,8 +683,9 @@ function DocsCollabWorkspaceInner({
                   sheetFill
                   viewSource={viewSource}
                   editable={permissions.editable}
+                  formattingDisabled={formatBarMode === "commentOnly"}
                   formatBar={
-                    editorFormat === "text"
+                    editorFormat === "text" || formatBarMode === "hidden"
                       ? false
                       : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }
                   }

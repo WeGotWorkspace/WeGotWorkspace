@@ -15,7 +15,8 @@ import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
-import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
+import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { resolveGridFilePreview } from "@/lib/file-preview/file-preview-utils";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { ShareDialog } from "@/share-ui/share-dialog";
@@ -28,6 +29,10 @@ const noopSetItems: Dispatch<SetStateAction<DriveFile[]>> = () => {};
 
 export type DocsHomePaneProps = {
   labels: DocsUILabels;
+  /** Header title; defaults to `labels.homeTitle`. */
+  title?: string;
+  /** Empty-state copy; defaults to `labels.homeEmpty`. */
+  emptyMessage?: string;
   files: DriveFile[];
   loading: boolean;
   loadingMore: boolean;
@@ -92,6 +97,8 @@ export function resolveDocsHomeFileCanShare({
 
 export function DocsHomePane({
   labels,
+  title,
+  emptyMessage,
   files,
   loading,
   loadingMore,
@@ -230,12 +237,20 @@ export function DocsHomePane({
 
   const shareDialog = useDriveShareDialog({ shareOperations, username });
   const activeFile = activeId ? filesById.get(activeId) : undefined;
-  const { mayShare: fetchedActiveMayShare } = useDriveShareMayShare({
-    path: activeFile?.apiPath ?? "",
-    operations: shareOperations,
-    enabled: Boolean(shareOperations && activeFile?.apiPath && activeFile.mayShare === undefined),
-  });
+  const needsActiveRightsFetch = Boolean(
+    shareOperations &&
+    activeFile?.apiPath &&
+    (activeFile.mayShare === undefined || activeFile.mayManageStructure === undefined),
+  );
+  const { mayShare: fetchedActiveMayShare, mayManageStructure: fetchedActiveMayManageStructure } =
+    useDriveShareMyRights({
+      path: activeFile?.apiPath ?? "",
+      operations: shareOperations,
+      enabled: needsActiveRightsFetch,
+    });
   const activeMayShare = activeFile?.mayShare ?? fetchedActiveMayShare;
+  const activeMayManageStructure =
+    activeFile?.mayManageStructure ?? fetchedActiveMayManageStructure;
   const shareEnabled = Boolean(shareOperations);
 
   const handleShare = useCallback(
@@ -256,6 +271,15 @@ export function DocsHomePane({
         activeMayShare,
       }),
     [activeFile?.id, activeMayShare, shareEnabled],
+  );
+
+  const fileCanManageStructure = useCallback(
+    (file: DriveFile) =>
+      resolveDriveFileCanManageStructure(file.mayManageStructure, {
+        isActive: file.id === activeFile?.id,
+        activeMayManageStructure,
+      }),
+    [activeFile?.id, activeMayManageStructure],
   );
 
   const sharedBrowserProps = {
@@ -281,6 +305,7 @@ export function DocsHomePane({
     onTrash: onTrash ?? noop,
     onShare: shareEnabled ? handleShare : undefined,
     fileCanShare: shareEnabled ? fileCanShare : undefined,
+    fileCanManageStructure,
     offlinePendingSyncIds,
     offlineBadgeLabels: offlineLabels,
   };
@@ -291,7 +316,7 @@ export function DocsHomePane({
     <section className="docs-home-pane">
       <div className="docs-home-pane__header">
         <ViewHeader
-          title={labels.homeTitle}
+          title={title ?? labels.homeTitle}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={onToggleSidebar}
           searchPlaceholder={searchEnabled ? labels.homeSearchPlaceholder : undefined}
@@ -316,7 +341,7 @@ export function DocsHomePane({
           <CollectionState icon={<FileText className="size-12" />}>{error}</CollectionState>
         ) : files.length === 0 ? (
           <CollectionState icon={<FileText className="size-12" />}>
-            {labels.homeEmpty}
+            {emptyMessage ?? labels.homeEmpty}
           </CollectionState>
         ) : (
           <>

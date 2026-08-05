@@ -162,6 +162,7 @@ export const Default: Story = {
 
     await expect(await canvas.findByRole("button", { name: "New document" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "All docs" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Shared with me" })).toBeInTheDocument();
     await expect(canvas.getByText("Drives")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "My Drive" })).toBeInTheDocument();
 
@@ -170,6 +171,9 @@ export const Default: Story = {
 
     const engineering = await canvas.findByRole("button", { name: "engineering" });
     await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
+    // All docs merges docs-compatible Shared with me entries into the browse listing.
+    await expect(await canvas.findByText("Shared Notes.md")).toBeInTheDocument();
+    await expect(await canvas.findByText("Shared by hana")).toBeInTheDocument();
 
     await userEvent.click(engineering);
 
@@ -177,6 +181,38 @@ export const Default: Story = {
       await expect(canvas.queryByText("Roadmap 2026")).not.toBeInTheDocument();
     });
     await expect(canvas.getByText("RFC: Storage Tiers")).toBeInTheDocument();
+    await expect(canvas.queryByText("Shared Notes.md")).not.toBeInTheDocument();
+  },
+};
+
+/** Shared with me lists docs-compatible shares only (md/txt), not folders or binaries. */
+export const SharedWithMe: Story = {
+  name: "Shared with me",
+  tags: ["vitest-ci"],
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+    shareOperations: createMockDriveShareOperations(),
+    onOpenFile: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByRole("button", { name: "Shared with me" }));
+
+    await expect(
+      await canvas.findByRole("heading", { name: "Shared with me" }),
+    ).toBeInTheDocument();
+    await expect(await canvas.findByText("Shared Notes.md")).toBeInTheDocument();
+    await expect(canvas.getByText("Shared by hana")).toBeInTheDocument();
+    await expect(canvas.queryByText("Client Deck")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("Bindery-Walkthrough.mov")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("Roadmap 2026")).not.toBeInTheDocument();
+
+    const cell = await canvas.findByText("Shared Notes.md");
+    await userEvent.dblClick(cell);
+    await waitFor(() =>
+      expect(args.onOpenFile).toHaveBeenCalledWith("/users/hana/Shared Notes.md"),
+    );
   },
 };
 
@@ -190,6 +226,8 @@ export const ShareFromRowMenu: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
+    // Wait for All docs + shared merge so the list is stable before opening menus.
+    await expect(await canvas.findByText("Shared Notes.md")).toBeInTheDocument();
     const row = (await canvas.findByText("Roadmap 2026")).closest("tr");
     if (!row) throw new Error("Expected Roadmap 2026 in a list row");
 

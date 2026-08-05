@@ -28,7 +28,7 @@ import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
 import { DriveWorkspaceModals } from "@/drive-core/src/drive-workspace-modals";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
-import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import {
   useDriveOfflineAvailability,
   useDriveOfflineOpenGuard,
@@ -78,12 +78,20 @@ export function DriveWorkspace({
   });
 
   const activeFile = controller.active;
-  const { mayShare: fetchedActiveMayShare } = useDriveShareMayShare({
-    path: activeFile?.apiPath ?? "",
-    operations: shareOperations,
-    enabled: Boolean(shareOperations && activeFile?.apiPath && activeFile.mayShare === undefined),
-  });
+  const needsActiveRightsFetch = Boolean(
+    shareOperations &&
+    activeFile?.apiPath &&
+    (activeFile.mayShare === undefined || activeFile.mayManageStructure === undefined),
+  );
+  const { mayShare: fetchedActiveMayShare, mayManageStructure: fetchedActiveMayManageStructure } =
+    useDriveShareMyRights({
+      path: activeFile?.apiPath ?? "",
+      operations: shareOperations,
+      enabled: needsActiveRightsFetch,
+    });
   const activeMayShare = activeFile?.mayShare ?? fetchedActiveMayShare;
+  const activeMayManageStructure =
+    activeFile?.mayManageStructure ?? fetchedActiveMayManageStructure;
 
   const handleOpenShareForFile = useCallback(
     (apiPath: string, title: string) => {
@@ -193,6 +201,7 @@ export function DriveWorkspace({
             shareEnabled={Boolean(shareOperations)}
             onOpenShare={handleOpenShareForFile}
             activeMayShare={activeMayShare}
+            activeMayManageStructure={activeMayManageStructure}
           />
         }
       />

@@ -58,4 +58,42 @@ describe("buildDriveFileActions", () => {
     actions[shareIndex]?.onClick?.();
     expect(onShare).toHaveBeenCalledOnce();
   });
+
+  it("omits Rename, Move, and Delete when canManageStructure is false", () => {
+    const actions = buildDriveFileActions(
+      driveLabels,
+      { isStarred: false, inTrash: false, canManageStructure: false },
+      {
+        onDownload: vi.fn(),
+        onStar: vi.fn(),
+        onDelete: vi.fn(),
+        onRename: vi.fn(),
+        onMove: vi.fn(),
+      },
+    );
+
+    expect(actions.some((action) => action.id === "rename")).toBe(false);
+    expect(actions.some((action) => action.id === "move")).toBe(false);
+    expect(actions.some((action) => action.id === "delete")).toBe(false);
+    expect(actions.some((action) => action.id === "star")).toBe(true);
+    expect(actions.some((action) => action.id === "download")).toBe(true);
+  });
+
+  it("includes Rename, Move, and Delete when canManageStructure is true", () => {
+    const actions = buildDriveFileActions(
+      driveLabels,
+      { isStarred: false, inTrash: false, canManageStructure: true },
+      {
+        onDownload: vi.fn(),
+        onStar: vi.fn(),
+        onDelete: vi.fn(),
+        onRename: vi.fn(),
+        onMove: vi.fn(),
+      },
+    );
+
+    expect(actions.some((action) => action.id === "rename")).toBe(true);
+    expect(actions.some((action) => action.id === "move")).toBe(true);
+    expect(actions.some((action) => action.id === "delete")).toBe(true);
+  });
 });

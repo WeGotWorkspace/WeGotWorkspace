@@ -6,6 +6,7 @@ export const docsLabels = {
   homeTitle: "Documents",
   homeSearchPlaceholder: "Search documents...",
   homeEmpty: "No documents yet. Create or upload a Markdown file in Drive.",
+  homeSharedEmpty: "No shared documents yet.",
   homeLoading: "Loading documents…",
   homeLoadMore: "Load more",
   homeLoadError: "Could not load documents.",
@@ -25,6 +26,9 @@ export const docsLabels = {
   homeNewDocument: "New document",
   homeCreateError: "Could not create a new document.",
   homeAllDocs: "All docs",
+  homeSharedWithMe: "Shared with me",
+  /** Location column for docs shared with the current user. */
+  homeSharedBy: (username: string) => `Shared by ${username}`,
   homeDrivesSection: "Drives",
   homeMyDrive: "My Drive",
   loadError: "Could not load this document.",

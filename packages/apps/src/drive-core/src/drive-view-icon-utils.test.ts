@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Clock, HardDrive, Star, Trash2, Users2 } from "lucide-react";
+import { Clock, HardDrive, Share2, Star, Trash2 } from "lucide-react";
 import { driveViewIcons, resolveDriveViewIcon } from "@/drive-core/src/drive-view-icon-utils";
 
 describe("resolveDriveViewIcon", () => {
@@ -25,7 +25,7 @@ describe("resolveDriveViewIcon", () => {
   it("exposes stable icon references for sidebar model", () => {
     expect(driveViewIcons.recent).toBe(Clock);
     expect(driveViewIcons.starred).toBe(Star);
-    expect(driveViewIcons.sharedWithMe).toBe(Users2);
+    expect(driveViewIcons.sharedWithMe).toBe(Share2);
     expect(driveViewIcons.trash).toBe(Trash2);
   });
 });

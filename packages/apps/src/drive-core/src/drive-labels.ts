@@ -82,6 +82,8 @@ export const driveLabels = {
   sharedIndicator: "Shared",
   publicShareIndicator: "Public link",
   teamShareIndicator: "Shared with team",
+  /** Location column for items received via Shared with me. */
+  sharedBy: (username: string) => `Shared by ${username}`,
 } as const;
 
 export type DriveUILabels = typeof driveLabels;

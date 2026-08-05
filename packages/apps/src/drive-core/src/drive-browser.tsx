@@ -23,9 +23,10 @@ import { DriveOfflinePinButton } from "@/drive-core/src/drive-offline-pin-button
 import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
-import type { DriveUILabels } from "@/drive-core/src/drive-labels";
+import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import { isSharedDriveApiPath } from "@/drive-core/src/drive-search-utils";
+import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
 
@@ -34,10 +35,21 @@ type DriveOfflineBadgeLabels = {
   offlinePendingSync: string;
 };
 
+/** Share2 for Shared with me / “Shared by …”; Users for team drives; HardDrive for My Drive. */
+function isSharedByLocation(file: DriveFile): boolean {
+  if (file.parent === SHARED_WITH_ME_UI_ROOT) return true;
+  const location = file.location?.trim();
+  if (!location) return false;
+  if (location === driveLabels.sidebarSharedWithMe) return true;
+  // driveLabels.sharedBy("") → "Shared by "
+  return location.startsWith(driveLabels.sharedBy(""));
+}
+
 function DriveLocationLabel({ file }: { file: DriveFile }) {
   if (!file.location) return <>—</>;
-  const shared = isSharedDriveApiPath(file.apiPath);
-  const Icon = shared ? Users : HardDrive;
+  const sharedBy = isSharedByLocation(file);
+  const sharedDrive = !sharedBy && isSharedDriveApiPath(file.apiPath);
+  const Icon = sharedBy ? Share2 : sharedDrive ? Users : HardDrive;
   return (
     <span className="drive-location-label">
       <Icon className="drive-location-label__icon" aria-hidden />
@@ -237,6 +249,7 @@ export function DriveGridView({
   onTrash,
   onShare,
   fileCanShare,
+  fileCanManageStructure,
   searchActive: _searchActive = false,
   showLocationColumn = false,
   offlineAvailableIds,
@@ -280,6 +293,8 @@ export function DriveGridView({
   onTrash: (file: DriveFile) => void;
   onShare?: (file: DriveFile) => void;
   fileCanShare?: (file: DriveFile) => boolean;
+  /** When set, omit rename / move / delete without full access. */
+  fileCanManageStructure?: (file: DriveFile) => boolean;
 }) {
   const folders = items.filter((i) => i.kind === "folder");
   const files = items.filter((i) => i.kind !== "folder");
@@ -311,6 +326,7 @@ export function DriveGridView({
                 onMove={() => onMove(f)}
                 onTrash={() => onTrash(f)}
                 canShare={fileCanShare?.(f)}
+                canManageStructure={fileCanManageStructure?.(f)}
                 onShare={onShare ? () => onShare(f) : undefined}
               />
             ))}
@@ -351,6 +367,7 @@ export function DriveGridView({
                 onMove={() => onMove(f)}
                 onTrash={() => onTrash(f)}
                 canShare={fileCanShare?.(f)}
+                canManageStructure={fileCanManageStructure?.(f)}
                 onShare={onShare ? () => onShare(f) : undefined}
               />
             ))}
@@ -410,6 +427,7 @@ function FolderTile({
   onMove,
   onTrash,
   canShare,
+  canManageStructure,
   onShare,
 }: {
   file: DriveFile;
@@ -431,6 +449,7 @@ function FolderTile({
   onMove: () => void;
   onTrash: () => void;
   canShare?: boolean;
+  canManageStructure?: boolean;
   onShare?: () => void;
 }) {
   const lp = useLongPress(onLongPress);
@@ -496,6 +515,7 @@ function FolderTile({
         onMove={onMove}
         onDelete={onTrash}
         canShare={canShare}
+        canManageStructure={canManageStructure}
         onShare={onShare}
       />
     </div>
@@ -529,6 +549,7 @@ function FileTile({
   onMove,
   onTrash,
   canShare,
+  canManageStructure,
   onShare,
   itemDragHandlers,
 }: {
@@ -559,6 +580,7 @@ function FileTile({
   onMove: () => void;
   onTrash: () => void;
   canShare?: boolean;
+  canManageStructure?: boolean;
   onShare?: () => void;
 }) {
   const lp = useLongPress(onLongPress);
@@ -648,6 +670,7 @@ function FileTile({
             onMove={onMove}
             onDelete={onTrash}
             canShare={canShare}
+            canManageStructure={canManageStructure}
             onShare={onShare}
             extraActions={extraActions}
             disabled={actionsDisabled}
@@ -671,6 +694,7 @@ function DriveFileItemActions({
   onMove,
   onDelete,
   canShare,
+  canManageStructure,
   onShare,
   extraActions,
   disabled = false,
@@ -688,6 +712,7 @@ function DriveFileItemActions({
   onMove?: () => void;
   onDelete: () => void;
   canShare?: boolean;
+  canManageStructure?: boolean;
   onShare?: () => void;
   extraActions?: ActionBarAction[];
   disabled?: boolean;
@@ -701,6 +726,7 @@ function DriveFileItemActions({
       canOpen,
       canDownload: file.kind !== "folder",
       canShare,
+      canManageStructure,
     },
     {
       onOpen,
@@ -749,6 +775,7 @@ export function DriveListView({
   onTrash,
   onShare,
   fileCanShare,
+  fileCanManageStructure,
   onLongPress,
   searchActive = false,
   showLocationColumn = false,
@@ -800,6 +827,7 @@ export function DriveListView({
   onTrash: (file: DriveFile) => void;
   onShare?: (file: DriveFile) => void;
   fileCanShare?: (file: DriveFile) => boolean;
+  fileCanManageStructure?: (file: DriveFile) => boolean;
   onLongPress: (id: string) => void;
 }) {
   return (
@@ -969,6 +997,7 @@ export function DriveListView({
                       onMove={() => onMove(f)}
                       onDelete={() => onTrash(f)}
                       canShare={fileCanShare?.(f)}
+                      canManageStructure={fileCanManageStructure?.(f)}
                       onShare={onShare ? () => onShare(f) : undefined}
                       extraActions={extraFileActions?.(f)}
                       disabled={isPinning}
@@ -999,6 +1028,7 @@ export function DriveDetailPanel({
   onMove,
   onDelete,
   canShare,
+  canManageStructure,
   onShare,
   mobile,
 }: {
@@ -1014,6 +1044,7 @@ export function DriveDetailPanel({
   onMove: () => void;
   onDelete: () => void;
   canShare?: boolean;
+  canManageStructure?: boolean;
   onShare?: () => void;
   mobile?: boolean;
 }) {
@@ -1021,7 +1052,13 @@ export function DriveDetailPanel({
 
   const actions = buildDriveFileActions(
     labels,
-    { isStarred, inTrash, canDownload: file.kind !== "folder", canShare },
+    {
+      isStarred,
+      inTrash,
+      canDownload: file.kind !== "folder",
+      canShare,
+      canManageStructure,
+    },
     {
       onDownload: () => {
         onDownload();

@@ -69,7 +69,7 @@ export const sharePermissionLabels: Record<
   { label: string; shortLabel: string }
 > = {
   view: { label: "Can view", shortLabel: "View" },
-  suggest: { label: "Can suggest", shortLabel: "Suggest" },
+  comment: { label: "Can comment", shortLabel: "Comment" },
   edit: { label: "Can edit", shortLabel: "Edit" },
   full: { label: "Full access", shortLabel: "Full" },
 };
