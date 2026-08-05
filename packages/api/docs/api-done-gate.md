@@ -65,6 +65,7 @@ php vendor/bin/phpunit --display-deprecations --display-phpunit-deprecations
 | Layer | Enforces |
 |-------|----------|
 | **OpenAPI ↔ routes** | Every `routes/api.php` `/api/v1/*` route is in `openapi/openapi.json`, and every documented operation has a Laravel route (`OpenApiRouteContractTest`). |
+| **SPA shell allowlist** | Every top-level path in `wegotworkspace-routes.tsx` is on `UiStaticServer::spaRoutePrefixes()` (`SpaShellRouteAllowlistTest`). Feature checklist: `FrontRoutingTest`. |
 | **Feature tests** | Behavior for the domain you touched (happy path + main errors). Add or extend tests under `tests/Feature/{Domain}/`. |
 | **greenfield-guard** | Implementation style: Services, Eloquent, `WgwStorage` — not legacy shims or raw file I/O in the wrong layers. |
 

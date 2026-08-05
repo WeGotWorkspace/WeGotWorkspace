@@ -33,6 +33,7 @@ pnpm test:api-done-gate                                 # from repo root, before
 - [ ] Feature tests assert status + JSON shape ([testing/test-first.md](../testing/test-first.md))
 - [ ] `composer greenfield:guard` passes
 - [ ] Typegen if contract changed: `pnpm --filter @wgw/api run openapi:build-json` + apps typegen
+- [ ] New top-level SPA client routes: prefix on `UiStaticServer` + `FrontRoutingTest` ([api/SKILL.md](../api/SKILL.md))
 
 Optional local: `pnpm test:api-e2e:docker`, `pnpm test:meet-api` (meet signaling).
 
@@ -53,6 +54,7 @@ pnpm dev:ui                              # Storybook — mock-tier stories for c
 - [ ] Storybook a11y panel on new/changed stories ([storybook/a11y-testing.md](../storybook/a11y-testing.md))
 - [ ] Vitest for new/changed hooks, parsers, RTC/session logic ([testing/ui-architecture.md](../testing/ui-architecture.md))
 - [ ] New/changed hook files: [clean-code/smells.md](../clean-code/smells.md) React hooks section — split if over limits, or link a refactor issue with explicit user approval; collab hooks follow [collab-hooks.md](../workspace/collab-hooks.md)
+- [ ] New top-level route in `wegotworkspace-routes.tsx`: also update API `UiStaticServer` allowlist (apps done gate does **not** cover this — Architecture + FrontRouting on API side)
 
 Meet/RTC: `pnpm --dir packages/apps exec vitest run src/lib/rtc/session src/meet-core/src/meet-rtc-session.test.ts`
 

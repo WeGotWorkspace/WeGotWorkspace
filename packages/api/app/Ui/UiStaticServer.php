@@ -29,23 +29,6 @@ final class UiStaticServer
 
     public function matchesShellPath(string $webBase, string $path): bool
     {
-        /** @var list<string> */
-        $routePrefixes = [
-            '/',
-            '/admin',
-            '/contacts',
-            '/docs',
-            '/drive',
-            '/login',
-            '/logout',
-            '/mail',
-            '/meet',
-            '/notes',
-            '/settings',
-            '/share',
-            '/tasks',
-        ];
-
         if ($this->isPwaRootAssetPath($webBase, $path)) {
             return true;
         }
@@ -57,7 +40,7 @@ final class UiStaticServer
             }
         }
 
-        return $this->resolveRoutePrefix($webBase, $path, $routePrefixes) !== null;
+        return $this->resolveRoutePrefix($webBase, $path, self::shellRoutePrefixes()) !== null;
     }
 
     public function matchesInstallPath(string $webBase, string $path): bool
@@ -90,7 +73,7 @@ final class UiStaticServer
             return $this->serveResolvedPath($root, $rel, false);
         }
 
-        $routePrefix = $this->resolveRoutePrefix($webBase, $path, self::routePrefixes());
+        $routePrefix = $this->resolveRoutePrefix($webBase, $path, self::spaRoutePrefixes());
         if ($routePrefix === null) {
             return null;
         }
@@ -98,6 +81,24 @@ final class UiStaticServer
         $rel = $this->relativePath($path, $routePrefix);
 
         return $this->serveResolvedPath($root, $rel, $spaFallback);
+    }
+
+    /**
+     * Top-level SPA prefixes served by the shell (and install) dist — keep in sync with
+     * `packages/apps/.../wegotworkspace-routes.tsx`. Architecture test
+     * SpaShellRouteAllowlistTest fails when a router top-level path is missing here.
+     *
+     * When adding a new top-level app route (e.g. `/share`, `/tasks`): update this list,
+     * FrontRoutingTest, and the apps router together.
+     *
+     * @return list<string>
+     */
+    public static function spaRoutePrefixes(): array
+    {
+        return [
+            ...self::shellRoutePrefixes(),
+            '/install',
+        ];
     }
 
     /**
@@ -124,9 +125,11 @@ final class UiStaticServer
     }
 
     /**
+     * Shell module prefixes (excludes /install, which has its own dist + matcher).
+     *
      * @return list<string>
      */
-    private static function routePrefixes(): array
+    public static function shellRoutePrefixes(): array
     {
         return [
             '/',
@@ -142,7 +145,6 @@ final class UiStaticServer
             '/settings',
             '/share',
             '/tasks',
-            '/install',
         ];
     }
 

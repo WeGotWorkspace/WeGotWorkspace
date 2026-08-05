@@ -54,6 +54,18 @@ Build a **new Laravel application** that matches the **HTTP contract** in OpenAP
 - New `*Kernel` / `*Static` / `public static function …(\PDO $pdo)`
 - Direct `Paths::data()`, `file_put_contents`, `readfile` in domain code
 
+## SPA shell routes (UiStaticServer allowlist)
+
+Production serves the built SPA via `App\Ui\UiStaticServer`. Paths **not** on its allowlist fall through to **SabreDAV** (WebDAV) — that is how public `/share/:token` links broke after #408 until the prefix was added.
+
+**When adding a top-level client route** (first path segment in `packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx`, e.g. `/share`, `/tasks`):
+
+1. Add the prefix to `UiStaticServer::shellRoutePrefixes()` / `spaRoutePrefixes()`
+2. Extend `tests/Feature/Front/FrontRoutingTest` (data provider checklist)
+3. Confirm `tests/Architecture/SpaShellRouteAllowlistTest` still passes (runs in `composer done-gate` / Architecture suite)
+
+Precedents: `/tasks`, `/share`. This is **not** Playwright e2e — static + feature coverage only. See [.agents/POLICY.md](../../POLICY.md).
+
 ## When unsure
 
 Default for REST: **reimplement from OpenAPI.**

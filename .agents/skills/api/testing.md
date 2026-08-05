@@ -60,6 +60,8 @@ The PR tiers run as 2-leg GitHub Actions matrices (`api-quality` and `api-mysql`
 - All `app/Models/*.php` use `UsesWgwConnection`
 - No runtime `ALTER TABLE` DDL in domain services
 
+`tests/Architecture/SpaShellRouteAllowlistTest.php` enforces that every top-level path in `wegotworkspace-routes.tsx` appears on `UiStaticServer::spaRoutePrefixes()`. Feature checklist: `FrontRoutingTest`. When adding `/share`-style routes, update both — see [api/SKILL.md](SKILL.md) § SPA shell routes. This is not Playwright e2e.
+
 ## Mail
 
 Assert `{ error, message }` shape where contract requires it.

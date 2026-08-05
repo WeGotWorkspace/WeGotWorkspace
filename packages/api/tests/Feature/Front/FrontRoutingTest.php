@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Front;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\UiDistFixture;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
@@ -83,25 +84,35 @@ final class FrontRoutingTest extends TestCase
             ->assertJsonPath('status', 'ok');
     }
 
-    public function test_docs_app_path_serves_shell_not_webdav(): void
+    /**
+     * Checklist: every non-root shell SPA prefix must serve HTML, not SabreDAV.
+     * Keep paths aligned with UiStaticServer::shellRoutePrefixes() and the apps router
+     * (SpaShellRouteAllowlistTest). Precedents: /tasks, /share.
+     *
+     * @return array<string, array{0: string}>
+     */
+    public static function shellSpaPathProvider(): array
     {
-        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
-        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
-        $data = $installRoot.'/wgw-content';
-        WgwInstallFixture::markInstalled($installRoot, $data);
-        WgwInstallFixture::syncDatabaseConnection();
-
-        $docs = $this->get('/docs');
-        $docs->assertOk()
-            ->assertHeader('Content-Type', 'text/html; charset=utf-8');
-        $this->assertStringNotContainsString('Sabre\\DAV\\Exception\\NotFound', (string) $docs->getContent());
-
-        $this->get('/docs/')
-            ->assertOk()
-            ->assertHeader('Content-Type', 'text/html; charset=utf-8');
+        return [
+            'admin' => ['/admin'],
+            'contacts' => ['/contacts'],
+            'docs' => ['/docs'],
+            'drive' => ['/drive'],
+            'login' => ['/login'],
+            'logout' => ['/logout'],
+            'mail' => ['/mail'],
+            'meet' => ['/meet'],
+            'notes' => ['/notes'],
+            'settings' => ['/settings'],
+            'share' => ['/share/a4ce06285e2e44adb3c55ef3beddf65e'],
+            'share trailing slash' => ['/share/'],
+            'tasks' => ['/tasks'],
+            'tasks nested' => ['/tasks/lists/inbox'],
+        ];
     }
 
-    public function test_tasks_app_path_serves_shell_not_webdav(): void
+    #[DataProvider('shellSpaPathProvider')]
+    public function test_shell_spa_path_serves_html_not_webdav(string $path): void
     {
         $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
         $installRoot = $this->repoRoot.'/apps/wegotworkspace';
@@ -109,33 +120,11 @@ final class FrontRoutingTest extends TestCase
         WgwInstallFixture::markInstalled($installRoot, $data);
         WgwInstallFixture::syncDatabaseConnection();
 
-        $tasks = $this->get('/tasks/lists/inbox');
-        $tasks->assertOk()
+        $response = $this->get($path);
+        $response->assertOk()
             ->assertHeader('Content-Type', 'text/html; charset=utf-8');
-        $this->assertStringNotContainsString('Sabre\\DAV\\Exception\\NotFound', (string) $tasks->getContent());
-
-        $this->get('/tasks')
-            ->assertOk()
-            ->assertHeader('Content-Type', 'text/html; charset=utf-8');
-    }
-
-    public function test_share_public_path_serves_shell_not_webdav(): void
-    {
-        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
-        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
-        $data = $installRoot.'/wgw-content';
-        WgwInstallFixture::markInstalled($installRoot, $data);
-        WgwInstallFixture::syncDatabaseConnection();
-
-        $share = $this->get('/share/a4ce06285e2e44adb3c55ef3beddf65e');
-        $share->assertOk()
-            ->assertHeader('Content-Type', 'text/html; charset=utf-8');
-        $this->assertStringNotContainsString('Sabre\\DAV\\Exception\\NotFound', (string) $share->getContent());
-        $this->assertStringNotContainsString('File not found: share', (string) $share->getContent());
-
-        $this->get('/share/')
-            ->assertOk()
-            ->assertHeader('Content-Type', 'text/html; charset=utf-8');
+        $this->assertStringNotContainsString('Sabre\\DAV\\Exception\\NotFound', (string) $response->getContent());
+        $this->assertStringNotContainsString('File not found:', (string) $response->getContent());
     }
 
     public function test_api_docs_not_handled_by_webdav_catch_all(): void
