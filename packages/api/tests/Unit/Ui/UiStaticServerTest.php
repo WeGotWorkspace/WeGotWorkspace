@@ -22,6 +22,7 @@ final class UiStaticServerTest extends TestCase
         $this->assertTrue($server->matchesShellPath('', '/drive/'));
         $this->assertTrue($server->matchesShellPath('', '/contacts/'));
         $this->assertTrue($server->matchesShellPath('', '/docs'));
+        $this->assertTrue($server->matchesShellPath('', '/share/a4ce06285e2e44adb3c55ef3beddf65e'));
         $this->assertTrue($server->matchesShellPath('', '/tasks/lists/inbox'));
 
         $response = $server->tryServe($dist, '', '/assets/app.js', false);

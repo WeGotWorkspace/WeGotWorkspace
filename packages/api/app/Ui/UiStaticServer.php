@@ -42,6 +42,7 @@ final class UiStaticServer
             '/meet',
             '/notes',
             '/settings',
+            '/share',
             '/tasks',
         ];
 
@@ -139,6 +140,7 @@ final class UiStaticServer
             '/meet',
             '/notes',
             '/settings',
+            '/share',
             '/tasks',
             '/install',
         ];
