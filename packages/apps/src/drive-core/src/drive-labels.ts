@@ -4,7 +4,7 @@ export const driveLabels = {
   sidebarRecent: "Recent",
   sidebarStarred: "Starred",
   sidebarTrash: "Trash",
-  sidebarSharedDrives: "Shared drives",
+  sidebarSharedDrives: "Team drives",
   searchPlaceholder: "Search in Drive...",
   searchViewTitle: "Search",
   listColumnName: "Name",
