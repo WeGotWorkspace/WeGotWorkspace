@@ -53,6 +53,8 @@ export const shareLabels = {
   publicLinkMissingToken: "This share URL is missing a token.",
   publicLinkErrorHint: "Ask the owner for a new link, or",
   publicLinkSignIn: "sign in to your workspace",
+  publicLinkDownloadTitle: "Download started",
+  publicLinkDownloadHint: "Your browser should save the shared file. You can close this tab.",
 } as const;
 
 export const sharePermissionLabels: Record<
