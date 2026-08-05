@@ -524,22 +524,28 @@ final class DriveShareService
 
         $share = DriveShare::query()
             ->where('public_token', $token)
-            ->whereNull('revoked_at')
             ->first();
 
-        $failedAuth = $share === null || $share->kind !== 'public';
-        if (! $failedAuth && $share->expires_at !== null && $share->expires_at->lessThanOrEqualTo(Carbon::now())) {
-            $failedAuth = true;
-        }
-        if (! $failedAuth && $share->password_hash !== null) {
-            $password = $password ?? '';
-            if (! Hash::check($password, $share->password_hash)) {
-                $failedAuth = true;
-            }
+        if ($share === null) {
+            throw new ApiHttpException(404, 'This share link is invalid or has expired.', 'share_unavailable');
         }
 
-        if ($failedAuth || $share === null) {
-            throw new ApiHttpException(401, 'Invalid share token or password.', 'unauthorized');
+        if ($share->revoked_at !== null || $share->kind !== 'public') {
+            throw new ApiHttpException(410, 'This share link is no longer available.', 'share_unavailable');
+        }
+
+        if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo(Carbon::now())) {
+            throw new ApiHttpException(410, 'This share link has expired.', 'share_unavailable');
+        }
+
+        if ($share->password_hash !== null && $share->password_hash !== '') {
+            $submittedPassword = $password ?? '';
+            if ($submittedPassword === '') {
+                throw new ApiHttpException(401, 'Password is required to open this link.', 'share_password_required');
+            }
+            if (! Hash::check($submittedPassword, $share->password_hash)) {
+                throw new ApiHttpException(401, 'Incorrect password.', 'share_password_invalid');
+            }
         }
 
         // v1 intentionally couples JWT TTL and DB session lifetime (both 1h) — no refresh flow yet.

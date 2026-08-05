@@ -79,7 +79,13 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         $this->postJson('/api/v1/files/share-sessions', [
             'token' => $publicToken,
             'password' => 'wrong',
-        ])->assertUnauthorized();
+        ])->assertUnauthorized()
+            ->assertJsonPath('code', 'share_password_invalid');
+
+        $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $publicToken,
+        ])->assertUnauthorized()
+            ->assertJsonPath('code', 'share_password_required');
 
         $this->postJson('/api/v1/files/share-sessions', [
             'token' => $publicToken,
@@ -87,10 +93,33 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         ])->assertOk();
     }
 
-    public function test_invalid_share_token_returns_unauthorized(): void
+    public function test_invalid_share_token_returns_unavailable(): void
     {
         $this->postJson('/api/v1/files/share-sessions', [
             'token' => 'deadbeefdeadbeefdeadbeefdeadbeef',
-        ])->assertUnauthorized();
+        ])->assertNotFound()
+            ->assertJsonPath('code', 'share_unavailable');
+    }
+
+    public function test_revoked_public_share_returns_unavailable(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob',
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+            'password' => 'super-secret',
+        ])->assertOk();
+
+        $publicToken = (string) $share->json('data.publicToken');
+        $shareId = (string) $share->json('data.id');
+
+        $this->withBearer($ownerToken)->deleteJson('/api/v1/files/shares/'.$shareId)->assertOk();
+
+        $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $publicToken,
+        ])->assertStatus(410)
+            ->assertJsonPath('code', 'share_unavailable')
+            ->assertJsonPath('error', 'This share link is no longer available.');
     }
 }

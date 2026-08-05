@@ -112,6 +112,28 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
 
+    // Drive cwd uses Laravel session (DriveSessionStore). Share CRUD does not — keep it
+    // off StartSession so SESSION_DRIVER=database without a sessions table cannot 500 the dialog.
+    Route::get('files/shares', [DriveSharesController::class, 'index']);
+    Route::post('files/shares', [DriveSharesController::class, 'store']);
+    Route::get('files/shares/at-path', [DriveSharesController::class, 'atPath']);
+    Route::get('files/shares/principals', [DriveSharesController::class, 'principals']);
+    Route::post('files/shares/public/revoke-all', [DriveSharesController::class, 'revokeAllPublic']);
+    Route::get('files/shares/by-principal', [DriveSharesController::class, 'byPrincipal']);
+    Route::get('files/shares/{shareId}', [DriveSharesController::class, 'show'])
+        ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+    Route::patch('files/shares/{shareId}', [DriveSharesController::class, 'update'])
+        ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+    Route::delete('files/shares/{shareId}', [DriveSharesController::class, 'destroy'])
+        ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+    Route::post('files/shares/{shareId}/invites', [DriveSharesController::class, 'storeInvite'])
+        ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+    Route::delete('files/shares/{shareId}/invites/{inviteId}', [DriveSharesController::class, 'destroyInvite'])
+        ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        ->where('inviteId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+    Route::get('files/shared-with-me', [DriveSharesController::class, 'sharedWithMe']);
+    Route::post('files/share-sessions/accept', [DriveShareSessionsController::class, 'accept']);
+
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/context', [FilesController::class, 'context']);
         Route::get('files', [FilesController::class, 'index']);
@@ -119,25 +141,6 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         Route::delete('files/star', [FilesController::class, 'unstar']);
         Route::get('files/starred', [FilesController::class, 'starred']);
         Route::post('files/rooms', [FilesController::class, 'resolveRoom']);
-        Route::get('files/shares', [DriveSharesController::class, 'index']);
-        Route::post('files/shares', [DriveSharesController::class, 'store']);
-        Route::get('files/shares/at-path', [DriveSharesController::class, 'atPath']);
-        Route::get('files/shares/principals', [DriveSharesController::class, 'principals']);
-        Route::post('files/shares/public/revoke-all', [DriveSharesController::class, 'revokeAllPublic']);
-        Route::get('files/shares/by-principal', [DriveSharesController::class, 'byPrincipal']);
-        Route::get('files/shares/{shareId}', [DriveSharesController::class, 'show'])
-            ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
-        Route::patch('files/shares/{shareId}', [DriveSharesController::class, 'update'])
-            ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
-        Route::delete('files/shares/{shareId}', [DriveSharesController::class, 'destroy'])
-            ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
-        Route::post('files/shares/{shareId}/invites', [DriveSharesController::class, 'storeInvite'])
-            ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
-        Route::delete('files/shares/{shareId}/invites/{inviteId}', [DriveSharesController::class, 'destroyInvite'])
-            ->where('shareId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
-            ->where('inviteId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
-        Route::get('files/shared-with-me', [DriveSharesController::class, 'sharedWithMe']);
-        Route::post('files/share-sessions/accept', [DriveShareSessionsController::class, 'accept']);
     });
 
     Route::get('search/results', UnifiedSearchController::class);
@@ -276,9 +279,7 @@ Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
     });
 });
 
-Route::middleware($filesSession)->group(function (): void {
-    Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
-});
+Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
 
 Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
