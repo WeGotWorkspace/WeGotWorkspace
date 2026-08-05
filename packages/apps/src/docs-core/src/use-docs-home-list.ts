@@ -47,6 +47,8 @@ export type UseDocsHomeListOptions = {
   debounceMs?: number;
   /** When set, enables Dexie cache read/write for offline home browse. */
   offlineUsername?: string | null;
+  /** When false, skips browse fetches (e.g. Docs home Shared with me view). */
+  enabled?: boolean;
 };
 
 export type UseDocsHomeListResult = {
@@ -87,7 +89,7 @@ export function mapDocsHomeResults(
     if (!apiPath || seen.has(result.sourceKey)) continue;
     seen.add(result.sourceKey);
     const uiPath = uiPathFromApiPath(apiPath, username);
-    files.push(driveFileFromSearchResult(result, uiPath, apiPath));
+    files.push(driveFileFromSearchResult(result, uiPath, apiPath, username));
   }
   return files;
 }
@@ -144,10 +146,11 @@ export function useDocsHomeList({
   pageSize = DOCS_HOME_PAGE_SIZE,
   debounceMs = 300,
   offlineUsername = null,
+  enabled = true,
 }: UseDocsHomeListOptions): UseDocsHomeListResult {
   const [results, setResults] = useState<WgwUnifiedSearchResult[]>([]);
   const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -233,6 +236,16 @@ export function useDocsHomeList({
   );
 
   useEffect(() => {
+    if (!enabled) {
+      setResults([]);
+      setHasMore(false);
+      setLoading(false);
+      setLoadingMore(false);
+      setError(null);
+      setIsOfflineListing(false);
+      return;
+    }
+
     const controller = new AbortController();
     let cancelled = false;
 
@@ -281,10 +294,10 @@ export function useDocsHomeList({
       cancelled = true;
       controller.abort();
     };
-  }, [applyCachedListing, fetchLiveListing, reloadToken]);
+  }, [applyCachedListing, enabled, fetchLiveListing, reloadToken]);
 
   const loadMore = useCallback(() => {
-    if (loading || loadingMore || !hasMore || isOfflineListing) return;
+    if (!enabled || loading || loadingMore || !hasMore || isOfflineListing) return;
     const controller = new AbortController();
     setLoadingMore(true);
     void (async () => {
@@ -310,6 +323,7 @@ export function useDocsHomeList({
   }, [
     baseParams,
     debouncedQuery,
+    enabled,
     fetcher,
     hasMore,
     isOfflineListing,
@@ -322,14 +336,14 @@ export function useDocsHomeList({
 
   useOnReconnect(
     useCallback(() => {
-      if (!offlineUsername) return;
+      if (!enabled || !offlineUsername) return;
       void (async () => {
         await new Promise((resolve) => window.setTimeout(resolve, 400));
         if (!getConnectivitySnapshot()) return;
         const controller = new AbortController();
         await fetchLiveListing(controller.signal);
       })();
-    }, [fetchLiveListing, offlineUsername]),
+    }, [enabled, fetchLiveListing, offlineUsername]),
   );
 
   const files = useMemo(() => mapDocsHomeResults(results, username), [results, username]);

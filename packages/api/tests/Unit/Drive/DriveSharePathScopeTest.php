@@ -31,4 +31,26 @@ final class DriveSharePathScopeTest extends TestCase
 
         $this->assertSame($expected, $scope->isWithin($root, $requested));
     }
+
+    /**
+     * @return iterable<string, array{0: string, 1: bool}>
+     */
+    public static function topLevelDriveProvider(): iterable
+    {
+        yield 'user home' => ['/users/bob', true];
+        yield 'group drive' => ['/groups/team', true];
+        yield 'users root' => ['/users', false];
+        yield 'groups root' => ['/groups', false];
+        yield 'nested user path' => ['/users/bob/docs', false];
+        yield 'nested group path' => ['/groups/team/plan.md', false];
+        yield 'trailing slash normalized' => ['/users/bob/', true];
+    }
+
+    #[DataProvider('topLevelDriveProvider')]
+    public function test_is_top_level_drive(string $path, bool $expected): void
+    {
+        $scope = new DriveSharePathScope(new StoragePaths);
+
+        $this->assertSame($expected, $scope->isTopLevelDrive($path));
+    }
 }

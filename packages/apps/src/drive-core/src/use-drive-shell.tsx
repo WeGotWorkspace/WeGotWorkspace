@@ -13,9 +13,13 @@ import {
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
-import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import {
+  driveFileFromSharedWithMeEntry,
+  driveFileFromEntry,
+} from "@/drive-core/src/drive-file-utils";
 import type {
   DriveAPIOperations,
+  DriveShareOperations,
   DriveUIData,
   DriveUnifiedSearchResult,
   WgwPluginDescriptor,
@@ -31,6 +35,7 @@ export type UseDriveShellArgs = {
   data: DriveUIData;
   session: WorkspaceSession;
   operations?: DriveAPIOperations;
+  shareOperations?: DriveShareOperations;
   listLoading?: boolean;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
@@ -49,6 +54,7 @@ export function useDriveShell({
   data,
   session,
   operations,
+  shareOperations,
   listLoading = false,
   view: controlledView,
   onViewChange,
@@ -91,11 +97,11 @@ export function useDriveShell({
   }, [templatePlugin]);
 
   const currentUsername = data.user.username || session.user.username || "";
-  const [files, setFiles] = useState<DriveFile[]>(
-    operations
-      ? data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername))
-      : DRIVE_MOCK_FILES,
-  );
+  const [files, setFiles] = useState<DriveFile[]>(() => {
+    if (!operations) return DRIVE_MOCK_FILES;
+    if (data.directory.files.length === 0) return [];
+    return data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername));
+  });
   const [internalView, setInternalView] = useState<ViewKey>({ type: "folder", path: "My Drive" });
   const isViewControlled = onViewChange !== undefined;
   const view = controlledView ?? internalView;
@@ -113,11 +119,13 @@ export function useDriveShell({
   const [liveSearchResults, setLiveSearchResults] = useState<DriveFile[] | null>(null);
   const [starred, setStarred] = useState<Record<string, boolean>>({});
   const [starredItems, setStarredItems] = useState<DriveFile[] | null>(null);
+  const [sharedItems, setSharedItems] = useState<DriveFile[] | null>(null);
   const [knownGroupRoots, setKnownGroupRoots] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const syncedFolderPathRef = useRef<string | null>(null);
   const pendingFolderRefetchRef = useRef(false);
   const starredLoadVersionRef = useRef(0);
+  const sharedLoadVersionRef = useRef(0);
   const [hydratedFolderPath, setHydratedFolderPath] = useState<string | null>(null);
 
   const folderViewPath = view.type === "folder" ? view.path : null;
@@ -319,6 +327,39 @@ export function useDriveShell({
     reloadStarredFromServer();
   }, [operations, currentUsername, reloadStarredFromServer]);
 
+  useEffect(() => {
+    if (!shareOperations) {
+      setSharedItems(null);
+      return;
+    }
+    if (view.type !== "shared") return;
+
+    const requestVersion = sharedLoadVersionRef.current + 1;
+    sharedLoadVersionRef.current = requestVersion;
+    const controller = new AbortController();
+
+    void shareOperations
+      .listSharedWithMe({ signal: controller.signal })
+      .then((entries) => {
+        if (requestVersion !== sharedLoadVersionRef.current) return;
+        setSharedItems(
+          entries
+            .map((entry) => driveFileFromSharedWithMeEntry(entry, currentUsername))
+            .filter((file): file is DriveFile => file !== null),
+        );
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted || requestVersion !== sharedLoadVersionRef.current) return;
+        setSharedItems([]);
+        const message = error instanceof Error ? error.message : String(error);
+        showError(message);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [shareOperations, view.type, currentUsername, showError]);
+
   const inTrashView = view.type === "folder" && view.path === DRIVE_TRASH_UI_PATH;
   const isUnderTrash = isDriveUnderTrash;
 
@@ -329,15 +370,18 @@ export function useDriveShell({
   }, [currentUsername, hydratedFolderPath, listLoading, operations, view]);
 
   const breadcrumbs = useMemo(() => {
+    if (view.type === "access") {
+      return [{ label: driveLabels.accessTitle, path: null as string | null }];
+    }
     if (view.type !== "folder") {
       return [
         {
           label:
             view.type === "recent"
-              ? "Recent"
+              ? driveLabels.sidebarRecent
               : view.type === "starred"
-                ? "Starred"
-                : "Shared with me",
+                ? driveLabels.sidebarStarred
+                : driveLabels.sidebarSharedWithMe,
           path: null as string | null,
         },
       ];
@@ -346,7 +390,12 @@ export function useDriveShell({
   }, [view]);
 
   const viewLabel = breadcrumbs[breadcrumbs.length - 1].label;
-  const viewResetKey = view.type === "folder" ? `${view.type}:${view.path}` : view.type;
+  const viewResetKey =
+    view.type === "folder"
+      ? `${view.type}:${view.path}`
+      : view.type === "access"
+        ? `access:${view.scopePath ?? ""}`
+        : view.type;
 
   const createUnifiedSearchSelectHandler = useCallback(
     (openFile: DriveShellOpenFileHandler, selection: DriveShellSelectionHandlers) =>
@@ -374,7 +423,7 @@ export function useDriveShell({
               selectView({ type: "folder", path: uiPath });
               return;
             }
-            const file = driveFileFromSearchResult(result, uiPath, apiPath);
+            const file = driveFileFromSearchResult(result, uiPath, apiPath, currentUsername);
             if (result.category === "image") {
               selection.setActiveId(file.id);
               selection.setSelectedIds([file.id]);
@@ -411,6 +460,7 @@ export function useDriveShell({
     starred,
     setStarred,
     starredItems,
+    sharedItems,
     knownGroupRoots,
     groupRootNames,
     sidebarGroupPaths,

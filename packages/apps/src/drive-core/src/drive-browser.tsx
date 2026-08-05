@@ -1,5 +1,15 @@
-import { useRef } from "react";
-import { Check, Star, Download, Folder, HardDrive, Users } from "lucide-react";
+import { useRef, type ReactNode } from "react";
+import {
+  Check,
+  Star,
+  Download,
+  Folder,
+  Globe2,
+  HardDrive,
+  Share2,
+  Users,
+  Users2,
+} from "lucide-react";
 import { Tag } from "@/tag/src/tag";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
@@ -13,9 +23,10 @@ import { DriveOfflinePinButton } from "@/drive-core/src/drive-offline-pin-button
 import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
-import type { DriveUILabels } from "@/drive-core/src/drive-labels";
+import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import { isSharedDriveApiPath } from "@/drive-core/src/drive-search-utils";
+import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
 
@@ -24,14 +35,78 @@ type DriveOfflineBadgeLabels = {
   offlinePendingSync: string;
 };
 
+/** Share2 for Shared with me / “Shared by …”; Users for team drives; HardDrive for My Drive. */
+function isSharedByLocation(file: DriveFile): boolean {
+  if (file.parent === SHARED_WITH_ME_UI_ROOT) return true;
+  const location = file.location?.trim();
+  if (!location) return false;
+  if (location === driveLabels.sidebarSharedWithMe) return true;
+  // driveLabels.sharedBy("") → "Shared by "
+  return location.startsWith(driveLabels.sharedBy(""));
+}
+
 function DriveLocationLabel({ file }: { file: DriveFile }) {
   if (!file.location) return <>—</>;
-  const shared = isSharedDriveApiPath(file.apiPath);
-  const Icon = shared ? Users : HardDrive;
+  const sharedBy = isSharedByLocation(file);
+  const sharedDrive = !sharedBy && isSharedDriveApiPath(file.apiPath);
+  const Icon = sharedBy ? Share2 : sharedDrive ? Users : HardDrive;
   return (
     <span className="drive-location-label">
       <Icon className="drive-location-label__icon" aria-hidden />
       <span className="drive-location-label__text">{file.location}</span>
+    </span>
+  );
+}
+
+function DriveShareIndicatorIcon({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="drive-shared-indicator" title={label} role="img" aria-label={label}>
+      {children}
+    </span>
+  );
+}
+
+function DriveShareIndicators({
+  file,
+  labels,
+  showLabel = false,
+}: {
+  file: DriveFile;
+  labels: DriveUILabels;
+  showLabel?: boolean;
+}) {
+  const hasPublic = file.hasPublicShare === true;
+  const hasTeam = file.hasTeamShare === true;
+  const legacyShared = file.isShared === true && !hasPublic && !hasTeam;
+
+  if (!hasPublic && !hasTeam && !legacyShared) return null;
+
+  if (showLabel && legacyShared) {
+    return (
+      <span className="drive-shared-indicator" title={labels.sharedIndicator}>
+        <Share2 className="drive-shared-indicator__icon" aria-hidden />
+        <span className="drive-shared-indicator__label">{labels.sharedIndicator}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="drive-share-indicators inline-flex items-center gap-1 shrink-0">
+      {hasPublic ? (
+        <DriveShareIndicatorIcon label={labels.publicShareIndicator}>
+          <Globe2 className="drive-shared-indicator__icon" aria-hidden />
+        </DriveShareIndicatorIcon>
+      ) : null}
+      {hasTeam ? (
+        <DriveShareIndicatorIcon label={labels.teamShareIndicator}>
+          <Users2 className="drive-shared-indicator__icon" aria-hidden />
+        </DriveShareIndicatorIcon>
+      ) : null}
+      {legacyShared ? (
+        <DriveShareIndicatorIcon label={labels.sharedIndicator}>
+          <Share2 className="drive-shared-indicator__icon" aria-hidden />
+        </DriveShareIndicatorIcon>
+      ) : null}
     </span>
   );
 }
@@ -172,6 +247,9 @@ export function DriveGridView({
   onRename,
   onMove,
   onTrash,
+  onShare,
+  fileCanShare,
+  fileCanManageStructure,
   searchActive: _searchActive = false,
   showLocationColumn = false,
   offlineAvailableIds,
@@ -213,6 +291,10 @@ export function DriveGridView({
   onRename: (file: DriveFile) => void;
   onMove: (file: DriveFile) => void;
   onTrash: (file: DriveFile) => void;
+  onShare?: (file: DriveFile) => void;
+  fileCanShare?: (file: DriveFile) => boolean;
+  /** When set, omit rename / move / delete without full access. */
+  fileCanManageStructure?: (file: DriveFile) => boolean;
 }) {
   const folders = items.filter((i) => i.kind === "folder");
   const files = items.filter((i) => i.kind !== "folder");
@@ -243,6 +325,9 @@ export function DriveGridView({
                 onRename={() => onRename(f)}
                 onMove={() => onMove(f)}
                 onTrash={() => onTrash(f)}
+                canShare={fileCanShare?.(f)}
+                canManageStructure={fileCanManageStructure?.(f)}
+                onShare={onShare ? () => onShare(f) : undefined}
               />
             ))}
           </div>
@@ -281,6 +366,9 @@ export function DriveGridView({
                 onRename={() => onRename(f)}
                 onMove={() => onMove(f)}
                 onTrash={() => onTrash(f)}
+                canShare={fileCanShare?.(f)}
+                canManageStructure={fileCanManageStructure?.(f)}
+                onShare={onShare ? () => onShare(f) : undefined}
               />
             ))}
           </div>
@@ -338,6 +426,9 @@ function FolderTile({
   onRename,
   onMove,
   onTrash,
+  canShare,
+  canManageStructure,
+  onShare,
 }: {
   file: DriveFile;
   isSelected: boolean;
@@ -357,6 +448,9 @@ function FolderTile({
   onRename: () => void;
   onMove: () => void;
   onTrash: () => void;
+  canShare?: boolean;
+  canManageStructure?: boolean;
+  onShare?: () => void;
 }) {
   const lp = useLongPress(onLongPress);
   // Tile root is non-interactive so the actions menu is not nested inside a
@@ -407,6 +501,7 @@ function FolderTile({
       />
       <span className="drive-folder-tile__title">{file.title}</span>
       {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
+      <DriveShareIndicators file={file} labels={labels} />
       <DriveFileItemActions
         labels={labels}
         file={file}
@@ -419,6 +514,9 @@ function FolderTile({
         onRename={onRename}
         onMove={onMove}
         onDelete={onTrash}
+        canShare={canShare}
+        canManageStructure={canManageStructure}
+        onShare={onShare}
       />
     </div>
   );
@@ -450,6 +548,9 @@ function FileTile({
   onRename,
   onMove,
   onTrash,
+  canShare,
+  canManageStructure,
+  onShare,
   itemDragHandlers,
 }: {
   file: DriveFile;
@@ -478,6 +579,9 @@ function FileTile({
   onRename: () => void;
   onMove: () => void;
   onTrash: () => void;
+  canShare?: boolean;
+  canManageStructure?: boolean;
+  onShare?: () => void;
 }) {
   const lp = useLongPress(onLongPress);
   // Same overlay pattern as FolderTile: keeps the actions menu out of the
@@ -538,6 +642,7 @@ function FileTile({
         <div className="drive-file-tile__text min-w-0 flex-1">
           <div className="drive-file-tile__title-row">
             <span className="drive-file-tile__title">{file.title}</span>
+            <DriveShareIndicators file={file} labels={labels} />
           </div>
           {showLocation && file.location ? <DriveLocationLabel file={file} /> : null}
         </div>
@@ -564,6 +669,9 @@ function FileTile({
             onRename={onRename}
             onMove={onMove}
             onDelete={onTrash}
+            canShare={canShare}
+            canManageStructure={canManageStructure}
+            onShare={onShare}
             extraActions={extraActions}
             disabled={actionsDisabled}
           />
@@ -585,6 +693,9 @@ function DriveFileItemActions({
   onRename,
   onMove,
   onDelete,
+  canShare,
+  canManageStructure,
+  onShare,
   extraActions,
   disabled = false,
 }: {
@@ -600,6 +711,9 @@ function DriveFileItemActions({
   onRename?: () => void;
   onMove?: () => void;
   onDelete: () => void;
+  canShare?: boolean;
+  canManageStructure?: boolean;
+  onShare?: () => void;
   extraActions?: ActionBarAction[];
   disabled?: boolean;
 }) {
@@ -611,6 +725,8 @@ function DriveFileItemActions({
       isFolder: file.kind === "folder",
       canOpen,
       canDownload: file.kind !== "folder",
+      canShare,
+      canManageStructure,
     },
     {
       onOpen,
@@ -619,6 +735,7 @@ function DriveFileItemActions({
       onRename,
       onMove,
       onDelete,
+      onShare,
     },
   );
   const merged = extraActions?.length ? [...actions, ...extraActions] : actions;
@@ -656,6 +773,9 @@ export function DriveListView({
   onRename,
   onMove,
   onTrash,
+  onShare,
+  fileCanShare,
+  fileCanManageStructure,
   onLongPress,
   searchActive = false,
   showLocationColumn = false,
@@ -705,6 +825,9 @@ export function DriveListView({
   onRename: (file: DriveFile) => void;
   onMove: (file: DriveFile) => void;
   onTrash: (file: DriveFile) => void;
+  onShare?: (file: DriveFile) => void;
+  fileCanShare?: (file: DriveFile) => boolean;
+  fileCanManageStructure?: (file: DriveFile) => boolean;
   onLongPress: (id: string) => void;
 }) {
   return (
@@ -806,6 +929,7 @@ export function DriveListView({
                     <DriveFileKindIcon file={f} listStyle />
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <span className="min-w-0 truncate font-medium">{f.title}</span>
+                      <DriveShareIndicators file={f} labels={labels} />
                       {starred[f.id] ? (
                         <Star
                           className="size-3 shrink-0 drive-list-folder-icon"
@@ -872,6 +996,9 @@ export function DriveListView({
                       onRename={() => onRename(f)}
                       onMove={() => onMove(f)}
                       onDelete={() => onTrash(f)}
+                      canShare={fileCanShare?.(f)}
+                      canManageStructure={fileCanManageStructure?.(f)}
+                      onShare={onShare ? () => onShare(f) : undefined}
                       extraActions={extraFileActions?.(f)}
                       disabled={isPinning}
                     />
@@ -900,6 +1027,9 @@ export function DriveDetailPanel({
   onRename,
   onMove,
   onDelete,
+  canShare,
+  canManageStructure,
+  onShare,
   mobile,
 }: {
   labels: DriveUILabels;
@@ -913,13 +1043,22 @@ export function DriveDetailPanel({
   onRename: () => void;
   onMove: () => void;
   onDelete: () => void;
+  canShare?: boolean;
+  canManageStructure?: boolean;
+  onShare?: () => void;
   mobile?: boolean;
 }) {
   const { show } = useAppToast();
 
   const actions = buildDriveFileActions(
     labels,
-    { isStarred, inTrash, canDownload: file.kind !== "folder" },
+    {
+      isStarred,
+      inTrash,
+      canDownload: file.kind !== "folder",
+      canShare,
+      canManageStructure,
+    },
     {
       onDownload: () => {
         onDownload();
@@ -929,6 +1068,7 @@ export function DriveDetailPanel({
       onRename,
       onMove,
       onDelete,
+      onShare,
     },
   );
 

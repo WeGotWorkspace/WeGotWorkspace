@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, MessageSquare, Printer } from "lucide-react";
+import { Code2, MessageSquare, Printer, Share2 } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import type { DocsCollabUiPermissions } from "@/docs-core/src/docs-collab-permissions";
+import {
+  resolveDocsCollabFormatBarMode,
+  resolveDocsCollabPermissions,
+} from "@/docs-core/src/docs-collab-permissions";
 import { DocsDocStatus } from "@/docs-core/src/docs-doc-status";
 import { DocsEditorStatsFooter } from "@/docs-core/src/docs-stats-footer";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
@@ -76,6 +81,15 @@ export type DocsCollabWorkspaceProps = {
   wire?: DocsCollabWireOperations;
   /** Logout handler for the sidebar user footer. */
   onLogout?: () => void;
+  /** When set with {@link showShare}, renders Share in the docs header. */
+  onShare?: () => void;
+  shareLabel?: string;
+  showShare?: boolean;
+  /**
+   * Share grant rights for this document. Omit for Storybook / full access.
+   * Pass locked rights while at-path is still loading.
+   */
+  permissions?: DocsCollabUiPermissions;
 };
 
 function countWords(text: string): number {
@@ -105,6 +119,10 @@ export function DocsCollabWorkspace({
   urls,
   wire,
   onLogout,
+  onShare,
+  shareLabel,
+  showShare = false,
+  permissions,
 }: DocsCollabWorkspaceProps = {}) {
   const [userName, setUserName] = useState<string | null>(() => userNameProp?.trim() || null);
   const [promptDismissed, setPromptDismissed] = useState(false);
@@ -137,6 +155,10 @@ export function DocsCollabWorkspace({
       urls={urls}
       wire={wire}
       onLogout={onLogout}
+      onShare={onShare}
+      shareLabel={shareLabel}
+      showShare={showShare}
+      permissions={permissions ?? resolveDocsCollabPermissions(undefined)}
     />
   );
 }
@@ -147,14 +169,23 @@ function DocsCollabWorkspaceInner({
   urls,
   wire,
   onLogout,
+  onShare,
+  shareLabel,
+  showShare = false,
+  permissions,
 }: {
   userName: string;
   documentTitle?: string;
   urls?: DocsCollabUrls;
   wire?: DocsCollabWireOperations;
   onLogout?: () => void;
+  onShare?: () => void;
+  shareLabel?: string;
+  showShare?: boolean;
+  permissions: DocsCollabUiPermissions;
 }) {
   const labels = docsLabels;
+  const formatBarMode = resolveDocsCollabFormatBarMode(permissions);
   const session = useMemo(
     () => ({
       ...mockWorkspaceSession,
@@ -238,6 +269,7 @@ function DocsCollabWorkspaceInner({
       name: session.user.displayName?.trim() || session.user.username || "User",
     },
     commentsVisible: reviewPanelOpen,
+    canMutateComments: permissions.canComment,
   });
 
   const {
@@ -309,7 +341,7 @@ function DocsCollabWorkspaceInner({
   );
 
   const handleAddCommentFromSelection = useCallback(() => {
-    if (viewSource || !collabSession) return;
+    if (viewSource || !collabSession || !permissions.canComment) return;
     setReviewPanelOpen(true);
     if (draftThread) {
       selectThread(draftThread.id);
@@ -322,6 +354,7 @@ function DocsCollabWorkspaceInner({
     collabSession,
     createThreadFromSelection,
     draftThread,
+    permissions.canComment,
     selectThread,
     selectionQualifiesForComment,
     viewSource,
@@ -360,6 +393,8 @@ function DocsCollabWorkspaceInner({
         currentUserId={session.user.username}
         activeThreadId={activeThreadId}
         activeChangeId={activeChangeId}
+        canMutateComments={permissions.canComment}
+        canReviewSuggestions={permissions.canReview}
         onSelectThread={selectThread}
         onAddReply={addReply}
         onToggleReaction={toggleReaction}
@@ -384,6 +419,8 @@ function DocsCollabWorkspaceInner({
       handleReviewClose,
       labels,
       openThreads,
+      permissions.canComment,
+      permissions.canReview,
       useCommentsDrawer,
       rejectSuggestion,
       resolveThread,
@@ -603,6 +640,17 @@ function DocsCollabWorkspaceInner({
                       disabled: !editor,
                       onClick: () => printTextEditorSheet(editor),
                     },
+                    ...(showShare && onShare
+                      ? [
+                          {
+                            id: "share",
+                            label: shareLabel ?? labels.share,
+                            icon: <Share2 />,
+                            className: "docs-workspace__share-button",
+                            onClick: onShare,
+                          },
+                        ]
+                      : []),
                     {
                       id: "review",
                       label: viewSource
@@ -634,8 +682,10 @@ function DocsCollabWorkspaceInner({
                   format={editorFormat}
                   sheetFill
                   viewSource={viewSource}
+                  editable={permissions.editable}
+                  formattingDisabled={formatBarMode === "commentOnly"}
                   formatBar={
-                    editorFormat === "text"
+                    editorFormat === "text" || formatBarMode === "hidden"
                       ? false
                       : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }
                   }
@@ -644,9 +694,17 @@ function DocsCollabWorkspaceInner({
                   onCommentActivated={handleCommentActivated}
                   onSuggestionActivated={handleSuggestionActivated}
                   onAddCommentFromSelection={handleAddCommentFromSelection}
-                  canAddCommentFromSelection={selectionQualifiesForComment}
-                  commentsDisabled={viewSource}
+                  canAddCommentFromSelection={
+                    permissions.canComment && selectionQualifiesForComment
+                  }
+                  commentsDisabled={viewSource || !permissions.canComment}
+                  commentsDisabledTitle={
+                    viewSource
+                      ? labels.commentsAddFromSelectionDisabledViewSource
+                      : labels.commentsAddFromSelectionDisabledReadOnly
+                  }
                   commentControlLabels={labels}
+                  showSuggestControls={permissions.editable}
                 />
               ) : null}
               <DocsEditorStatsFooter

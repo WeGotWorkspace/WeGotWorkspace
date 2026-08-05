@@ -22,6 +22,18 @@
       },
       "myRights": {
         "$ref": "#/components/schemas/DriveRights"
+      },
+      "hasShares": {
+        "type": "boolean",
+        "description": "True when this path has direct outgoing share grants (member, guest, or public)."
+      },
+      "hasPublicShare": {
+        "type": "boolean",
+        "description": "True when this path has an active public link share."
+      },
+      "hasTeamShare": {
+        "type": "boolean",
+        "description": "True when this path has active team grants (users or groups) on a member share."
       }
     },
     "required": [

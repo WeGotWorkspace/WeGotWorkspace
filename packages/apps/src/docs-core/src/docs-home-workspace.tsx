@@ -13,11 +13,13 @@ import {
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { cn } from "@/lib/utils";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { useDocsHomeList, type DocsHomeFetcher } from "@/docs-core/src/use-docs-home-list";
+import { useDocsHomeSharedList } from "@/docs-core/src/use-docs-home-shared-list";
 import {
   useDocsHomeOfflineAvailability,
   useDocsHomeOpenGuard,
@@ -30,10 +32,15 @@ import {
   resolveDocsHomeCreateDialogBrowsePath,
   resolveNewDocumentName,
 } from "@/docs-core/src/docs-home-drives";
+import {
+  docsHomeBrowsePathPrefix,
+  mergeDocsHomeBrowseWithShared,
+  type DocsHomeView,
+} from "@/docs-core/src/docs-home-shared";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import { DocsHomeModals } from "@/docs-core/src/docs-home-modals";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import {
@@ -55,6 +62,8 @@ export type DocsHomeWorkspaceProps = {
   offlineUsername?: string | null;
   /** Live drive operations powering row actions (star/download/rename/move/trash). */
   operations?: DriveAPIOperations;
+  /** When set, enables Share in docs home row action menus. */
+  shareOperations?: DriveShareOperations;
   /** Called with the drive API path when a row is opened (route navigation lives in `*App`). */
   onOpenFile?: (apiPath: string) => void;
   /**
@@ -72,6 +81,7 @@ export function DocsHomeWorkspace({
   fetcher,
   offlineUsername: offlineUsernameProp = null,
   operations,
+  shareOperations,
   onOpenFile,
   onCreateDocument,
   onLogout,
@@ -79,7 +89,6 @@ export function DocsHomeWorkspace({
   className,
 }: DocsHomeWorkspaceProps) {
   const labels = mergeDocsLabels(labelOverrides);
-  useDocumentTitle(labels.homeTitle);
   const username = session.user.username ?? "";
   const { showError } = useAppToast();
   const offlineUsername = offlineUsernameProp;
@@ -98,19 +107,58 @@ export function DocsHomeWorkspace({
     defaultMode: "list",
   });
   const [query, setQuery] = useState("");
-  const [selectedDrivePrefix, setSelectedDrivePrefix] = useState<string | null>(null);
+  const [view, setView] = useState<DocsHomeView>({ type: "all" });
   const [knownGroupRoots, setKnownGroupRoots] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogDefaultName, setCreateDialogDefaultName] = useState("Untitled.md");
 
-  const { files, loading, loadingMore, hasMore, error, loadMore, reload, isOfflineListing } =
-    useDocsHomeList({
-      username,
-      query,
-      pathPrefix: selectedDrivePrefix ?? undefined,
-      fetcher,
-      offlineUsername,
-    });
+  const isSharedView = view.type === "shared";
+  const isAllView = view.type === "all";
+  const browsePathPrefix = docsHomeBrowsePathPrefix(view);
+  const includeSharedInListing = isAllView || isSharedView;
+
+  useDocumentTitle(isSharedView ? labels.homeSharedWithMe : labels.homeTitle);
+
+  const browseList = useDocsHomeList({
+    username,
+    query,
+    pathPrefix: browsePathPrefix,
+    fetcher,
+    offlineUsername,
+    enabled: !isSharedView,
+  });
+
+  const sharedList = useDocsHomeSharedList({
+    username,
+    shareOperations,
+    // Prefetch whenever shares are available so All docs can merge them in.
+    enabled: Boolean(shareOperations),
+    query: includeSharedInListing ? query : "",
+  });
+
+  const files = useMemo(() => {
+    if (isSharedView) return sharedList.files;
+    if (isAllView) return mergeDocsHomeBrowseWithShared(browseList.files, sharedList.files);
+    return browseList.files;
+  }, [browseList.files, isAllView, isSharedView, sharedList.files]);
+
+  // All docs waits for shared-with-me so rows don't remount when shares merge in.
+  const loading = isSharedView
+    ? sharedList.loading
+    : isAllView && shareOperations
+      ? browseList.loading || sharedList.loading
+      : browseList.loading;
+  const loadingMore = isSharedView ? false : browseList.loadingMore;
+  const hasMore = isSharedView ? false : browseList.hasMore;
+  const error = isSharedView ? sharedList.error : browseList.error;
+  const loadMore = browseList.loadMore;
+  const reloadBrowse = browseList.reload;
+  const reloadShared = sharedList.reload;
+  const reload = useCallback(() => {
+    reloadBrowse();
+    reloadShared();
+  }, [reloadBrowse, reloadShared]);
+  const isOfflineListing = isSharedView ? false : browseList.isOfflineListing;
 
   const { offlineAvailableIds, offlinePendingSyncIds, refresh } = useDocsHomeOfflineAvailability(
     files,
@@ -212,8 +260,8 @@ export function DocsHomeWorkspace({
     [username, knownGroupRoots, labels.homeMyDrive],
   );
 
-  const selectDrive = useCallback((pathPrefix: string | null) => {
-    setSelectedDrivePrefix(pathPrefix);
+  const selectView = useCallback((next: DocsHomeView) => {
+    setView(next);
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
       setSidebarOpen(false);
     }
@@ -222,8 +270,8 @@ export function DocsHomeWorkspace({
   const { primaryItems, driveItems } = useDocsHomeSidebarModel({
     labels,
     drives,
-    selectedDrivePrefix,
-    selectDrive,
+    view,
+    selectView,
   });
 
   const handleOpenFile = useCallback(
@@ -236,8 +284,8 @@ export function DocsHomeWorkspace({
 
   const groupRootNames = useMemo(() => new Set(knownGroupRoots), [knownGroupRoots]);
   const createDialogBrowsePath = useMemo(
-    () => resolveDocsHomeCreateDialogBrowsePath(selectedDrivePrefix),
-    [selectedDrivePrefix],
+    () => resolveDocsHomeCreateDialogBrowsePath(browsePathPrefix ?? null),
+    [browsePathPrefix],
   );
   const createDialogView = useMemo(
     () => ({ type: "folder" as const, path: createDialogBrowsePath }),
@@ -247,7 +295,7 @@ export function DocsHomeWorkspace({
   const handleCreateDocument = useCallback(() => {
     const handle = username.trim();
     if (!handle || !onCreateDocument) return;
-    const browsePath = resolveDocsHomeCreateDialogBrowsePath(selectedDrivePrefix);
+    const browsePath = resolveDocsHomeCreateDialogBrowsePath(browsePathPrefix ?? null);
     const apiRoot = apiPathFromUiPath(browsePath, username, groupRootNames);
     void (async () => {
       const name = await resolveNewDocumentName(driveOperations ?? operations, apiRoot, files);
@@ -255,12 +303,12 @@ export function DocsHomeWorkspace({
       setCreateDialogOpen(true);
     })();
   }, [
+    browsePathPrefix,
     driveOperations,
     files,
     groupRootNames,
     onCreateDocument,
     operations,
-    selectedDrivePrefix,
     username,
   ]);
 
@@ -289,6 +337,7 @@ export function DocsHomeWorkspace({
           <AppSidebar
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
+            appSwitchDisabled={wgwIsGuestSession()}
             appSwitchSubtitle="Docs"
             primaryButton={
               onCreateDocument ? (
@@ -321,6 +370,8 @@ export function DocsHomeWorkspace({
         main={
           <DocsHomePane
             labels={labels}
+            title={isSharedView ? labels.homeSharedWithMe : labels.homeTitle}
+            emptyMessage={isSharedView ? labels.homeSharedEmpty : labels.homeEmpty}
             files={visibleFiles}
             loading={loading}
             loadingMore={loadingMore}
@@ -353,6 +404,8 @@ export function DocsHomeWorkspace({
             requestMoveSelected={actions.requestMoveSelected}
             requestDeleteSelected={actions.requestDeleteSelected}
             onUndoQueuedAction={actions.undoLatest}
+            shareOperations={shareOperations}
+            username={username}
           />
         }
       />

@@ -6,6 +6,7 @@ import {
   driveUserTrashApiPath,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
+  isTopLevelDriveApiPath,
   normalizeApiVirtualPath,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
@@ -57,6 +58,18 @@ describe("isDriveTrashFolderName", () => {
   });
 });
 
+describe("isTopLevelDriveApiPath", () => {
+  it("matches personal and group drive roots only", () => {
+    expect(isTopLevelDriveApiPath("/users/alice")).toBe(true);
+    expect(isTopLevelDriveApiPath("/groups/Engineering")).toBe(true);
+    expect(isTopLevelDriveApiPath("/users/alice/docs")).toBe(false);
+    expect(isTopLevelDriveApiPath("/groups/Engineering/specs")).toBe(false);
+    expect(isTopLevelDriveApiPath("/users")).toBe(false);
+    expect(isTopLevelDriveApiPath("/groups")).toBe(false);
+    expect(isTopLevelDriveApiPath(undefined)).toBe(false);
+  });
+});
+
 describe("uiPathFromApiPath", () => {
   it("maps user root and nested files to My Drive UI paths", () => {
     expect(uiPathFromApiPath(`/users/${USER}`, USER)).toBe("My Drive");
@@ -72,6 +85,11 @@ describe("uiPathFromApiPath", () => {
     expect(uiPathFromApiPath(driveUserTrashApiPath(USER), USER)).toBe(DRIVE_TRASH_UI_PATH);
     expect(uiPathFromApiPath(`/users/${USER}/Trash/old.pdf`, USER)).toBe("Trash/old.pdf");
   });
+
+  it("maps foreign personal paths to Users UI paths", () => {
+    expect(uiPathFromApiPath("/users/bob/Projects", USER)).toBe("Users/bob/Projects");
+    expect(normalizeDriveFolderUiPath("Users/bob/Projects")).toBe("Users/bob/Projects");
+  });
 });
 
 describe("apiPathFromUiPath", () => {
@@ -85,6 +103,10 @@ describe("apiPathFromUiPath", () => {
     expect(apiPathFromUiPath("My Drive/Engineering/specs", USER, groupRoots)).toBe(
       "/groups/Engineering/specs",
     );
+  });
+
+  it("maps Users UI paths back to foreign personal API paths", () => {
+    expect(apiPathFromUiPath("Users/bob/Projects", USER, groupRoots)).toBe("/users/bob/Projects");
   });
 
   it("maps trash UI paths to hidden trash API directory", () => {

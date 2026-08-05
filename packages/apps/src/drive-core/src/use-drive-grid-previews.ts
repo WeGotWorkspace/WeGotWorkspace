@@ -80,7 +80,8 @@ export function useDriveGridPreviews({
     }
     const map = new Map<string, DriveFile>();
     for (const file of items) {
-      if (isMediaPreviewable(file) || isTextPreviewable(file)) {
+      // Grid only renders media thumbnails; text/markdown body previews are detail-only.
+      if (isMediaPreviewable(file)) {
         map.set(file.id, file);
       }
     }
@@ -90,11 +91,19 @@ export function useDriveGridPreviews({
     return Array.from(map.values());
   }, [enabled, extraFile, items]);
 
+  const textPreviewTargets = useMemo(() => {
+    if (!extraFile || !isTextPreviewable(extraFile)) return [] as DriveFile[];
+    return [extraFile];
+  }, [extraFile]);
+
   useEffect(() => {
     previewTargetIdsRef.current = new Set(previewTargets.map((file) => file.id));
   }, [previewTargets]);
 
-  const excerptPreviews = useMemo(() => buildExcerptPreviews(previewTargets), [previewTargets]);
+  const excerptPreviews = useMemo(
+    () => buildExcerptPreviews(textPreviewTargets),
+    [textPreviewTargets],
+  );
 
   const revokeBlobUrl = useCallback((id: string) => {
     const url = blobUrlsRef.current[id];
@@ -274,9 +283,10 @@ export function useDriveGridPreviews({
     for (const file of previewTargets) {
       if (isMediaPreviewable(file)) {
         fetchMediaPreview(file);
-      } else if (isTextPreviewable(file)) {
-        fetchTextPreview(file);
       }
+    }
+    for (const file of textPreviewTargets) {
+      fetchTextPreview(file);
       fetchDocsRichPreview(file);
     }
   }, [
@@ -286,6 +296,7 @@ export function useDriveGridPreviews({
     fetchMediaPreview,
     fetchTextPreview,
     previewTargets,
+    textPreviewTargets,
   ]);
 
   useEffect(() => {

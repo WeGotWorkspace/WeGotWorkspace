@@ -25,6 +25,7 @@ type UseDocsCommentsThreadActionsOptions = {
   setActiveThreadId: Dispatch<SetStateAction<string | null>>;
   setDraftThread: Dispatch<SetStateAction<DocsCommentThread | null>>;
   cancelDraft: () => void;
+  canMutateComments?: boolean;
 };
 
 export function useDocsCommentsThreadActions({
@@ -39,6 +40,7 @@ export function useDocsCommentsThreadActions({
   setActiveThreadId,
   setDraftThread,
   cancelDraft,
+  canMutateComments = true,
 }: UseDocsCommentsThreadActionsOptions) {
   const activateThreadFromMark = useCallback(
     (threadId: string, clickPos?: number) => {
@@ -76,7 +78,7 @@ export function useDocsCommentsThreadActions({
   );
 
   const createThreadFromSelection = useCallback((): string | null => {
-    if (!ydoc || !editor) return null;
+    if (!canMutateComments || !ydoc || !editor) return null;
     if (selectionOverlapsOpenComment(editor, openThreadIds)) return null;
 
     if (draftThreadRef.current) {
@@ -91,6 +93,7 @@ export function useDocsCommentsThreadActions({
     setActiveThreadId(thread.id);
     return thread.id;
   }, [
+    canMutateComments,
     cancelDraft,
     currentUser,
     draftThreadRef,

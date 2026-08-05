@@ -53,6 +53,18 @@ final class DriveSharePrincipalsTest extends WgwDatabaseTestCase
         $this->assertGreaterThanOrEqual(2, $team['memberCount']);
     }
 
+    public function test_principals_search_excludes_groups_container_principal(): void
+    {
+        $response = $this->withBearer($this->ownerToken)->getJson('/api/v1/files/shares/principals?query=groups');
+        $response->assertOk();
+
+        $principals = array_column((array) $response->json('data'), 'principal');
+        $this->assertNotContains('groups', $principals);
+
+        $displayNames = array_column((array) $response->json('data'), 'displayName');
+        $this->assertNotContains('Groups', $displayNames);
+    }
+
     public function test_principals_empty_query_returns_groups(): void
     {
         $response = $this->withBearer($this->ownerToken)->getJson('/api/v1/files/shares/principals');

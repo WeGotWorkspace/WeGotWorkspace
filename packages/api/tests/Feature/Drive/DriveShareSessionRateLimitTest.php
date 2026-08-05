@@ -30,7 +30,7 @@ final class DriveShareSessionRateLimitTest extends WgwDatabaseTestCase
     {
         $ownerToken = $this->userBearerToken();
         $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => '/users/bob/rate-limit.md',
             'kind' => 'public',
             'defaultAccess' => 'view',
             'password' => 'correct-password',

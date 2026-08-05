@@ -11,6 +11,16 @@ export type DriveFile = Note & {
   kind: FileKind;
   size: string;
   apiPath?: string;
+  /** From directory listing `myRights.mayShare` when available. */
+  mayShare?: boolean;
+  /** From directory listing `myRights.mayManageStructure` (full access) when available. */
+  mayManageStructure?: boolean;
+  /** True when the item has outgoing share grants (member, guest, or public). */
+  isShared?: boolean;
+  /** Active public link on this path. */
+  hasPublicShare?: boolean;
+  /** Active team grants (users or groups) on this path. */
+  hasTeamShare?: boolean;
   /** Top-level drive location label (e.g. `My Drive`, shared drive name) for cross-drive listings. */
   location?: string;
 };
@@ -19,6 +29,7 @@ export type ViewKey =
   | { type: "folder"; path: string }
   | { type: "recent" }
   | { type: "starred" }
-  | { type: "shared" };
+  | { type: "shared" }
+  | { type: "access"; scopePath?: string };
 
 export const DOCS_EDITOR_EXTENSIONS = new Set(["md", "markdown", "txt"]);

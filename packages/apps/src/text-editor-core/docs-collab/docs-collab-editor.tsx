@@ -32,6 +32,13 @@ export type DocsCollabEditorProps = {
   formatBar?: boolean | TextEditorFormatBarConfig;
   sheetFill?: boolean;
   viewSource?: boolean;
+  /** When false, the TipTap surface rejects typing (view / comment-only). */
+  editable?: boolean;
+  /**
+   * When true, formatting controls on the bar are disabled (comment-only share).
+   * Comment control remains independently gated via `commentsDisabled`.
+   */
+  formattingDisabled?: boolean;
   className?: string;
   /** @deprecated Prefer `onContentChange`; kept for compatibility paths. */
   onMarkdownChange?: (getMarkdown: () => string) => void;
@@ -42,12 +49,16 @@ export type DocsCollabEditorProps = {
   onAddCommentFromSelection?: () => void;
   canAddCommentFromSelection?: boolean;
   commentsDisabled?: boolean;
+  commentsDisabledTitle?: string;
   commentControlLabels?: Pick<
     DocsUILabels,
     | "commentsAddFromSelection"
     | "commentsAddFromSelectionDisabledNoSelection"
     | "commentsAddFromSelectionDisabledViewSource"
+    | "commentsAddFromSelectionDisabledReadOnly"
   >;
+  /** When false, hide Edit/Suggest mode control. */
+  showSuggestControls?: boolean;
   commentsOverlay?: ReactNode;
   suggestionsOverlay?: ReactNode;
 };
@@ -60,6 +71,8 @@ export function DocsCollabEditor({
   formatBar = true,
   sheetFill = false,
   viewSource = false,
+  editable = true,
+  formattingDisabled = false,
   className,
   onMarkdownChange,
   onContentChange,
@@ -69,7 +82,9 @@ export function DocsCollabEditor({
   onAddCommentFromSelection,
   canAddCommentFromSelection = false,
   commentsDisabled = false,
+  commentsDisabledTitle,
   commentControlLabels,
+  showSuggestControls = true,
   commentsOverlay,
   suggestionsOverlay,
 }: DocsCollabEditorProps) {
@@ -103,9 +118,9 @@ export function DocsCollabEditor({
 
   const editor = useEditor(
     {
-      editable: true,
+      editable,
       enableContentCheck: false,
-      autofocus: "end",
+      autofocus: editable ? "end" : false,
       immediatelyRender: false,
       extensions: createCollaborativeTextEditorExtensions({
         format,
@@ -125,6 +140,13 @@ export function DocsCollabEditor({
     },
     [ydoc, awareness, format, user.color, user.name],
   );
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    if (editor.isEditable !== editable) {
+      editor.setEditable(editable);
+    }
+  }, [editor, editable]);
 
   const { sourceValue, onSourceChange, onSourceFocus, onSourceBlur } = useTextEditorSourceSync({
     editor,
@@ -158,6 +180,7 @@ export function DocsCollabEditor({
       editor={editor}
       groups={[...formatBarConfig.groups]}
       showPrint={formatBarConfig.showPrint}
+      formattingDisabled={formattingDisabled}
       className={formatBarConfig.className}
       commentControl={
         !viewSource && commentControlLabels && onAddCommentFromSelection ? (
@@ -165,11 +188,16 @@ export function DocsCollabEditor({
             labels={commentControlLabels}
             canAddFromSelection={canAddCommentFromSelection}
             commentsDisabled={commentsDisabled}
+            commentsDisabledTitle={commentsDisabledTitle}
             onAddCommentFromSelection={onAddCommentFromSelection}
           />
         ) : undefined
       }
-      trailing={viewSource ? undefined : <DocsCollabSuggestControls editor={editor} />}
+      trailing={
+        viewSource || !showSuggestControls ? undefined : (
+          <DocsCollabSuggestControls editor={editor} />
+        )
+      }
     />
   ) : null;
 
@@ -178,7 +206,7 @@ export function DocsCollabEditor({
       editor={editor}
       variant="sheet"
       fill={sheetFill}
-      slashMenu={format !== "text"}
+      slashMenu={format !== "text" && editable}
       overlay={
         commentsOverlay || suggestionsOverlay ? (
           <>
@@ -209,7 +237,7 @@ export function DocsCollabEditor({
             onChange={onSourceChange}
             onFocus={onSourceFocus}
             onBlur={onSourceBlur}
-            editable
+            editable={editable}
             formatLabel={formatLabel}
             className="text-editor__source min-h-0"
           />

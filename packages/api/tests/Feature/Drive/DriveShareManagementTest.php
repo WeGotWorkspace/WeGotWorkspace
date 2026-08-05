@@ -125,7 +125,40 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $response = $this->withBearer($aliceToken)->getJson('/api/v1/files/shared-with-me');
         $response->assertOk()
             ->assertJsonPath('data.0.share.path', '/users/bob/shared.md')
-            ->assertJsonPath('data.0.share.defaultAccess', 'edit');
+            ->assertJsonPath('data.0.share.defaultAccess', 'edit')
+            ->assertJsonPath('data.0.entry.path', '/users/bob/shared.md')
+            ->assertJsonPath('data.0.entry.name', 'shared.md')
+            ->assertJsonPath('data.0.entry.type', 'file');
+    }
+
+    public function test_shared_with_me_includes_single_file_grant_without_parent_listing(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $granteeToken = $this->carolBearerToken();
+
+        $this->createDriveFile($ownerToken, '/users/bob', 'Jaap.md');
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/Jaap.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($granteeToken)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertStatus(400);
+
+        $this->withBearer($granteeToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/Jaap.md'))
+            ->assertOk();
+
+        $this->withBearer($granteeToken)->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->assertJsonPath('data.0.share.path', '/users/bob/Jaap.md')
+            ->assertJsonPath('data.0.share.defaultAccess', 'view')
+            ->assertJsonPath('data.0.entry.name', 'Jaap.md')
+            ->assertJsonPath('data.0.entry.type', 'file')
+            ->assertJsonPath('data.0.entry.myRights.mayView', true)
+            ->assertJsonMissingPath('data.0.viaGroup');
     }
 
     public function test_share_with_email_key_creates_pending_email_grant(): void
@@ -163,5 +196,83 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->assertNotNull($emailGrant->invite_token);
         $this->assertNotSame('', (string) $emailGrant->invite_token);
         $this->assertNull($emailGrant->grantee_user);
+    }
+
+    public function test_duplicate_pending_email_invite_is_idempotent(): void
+    {
+        $token = $this->userBearerToken();
+
+        $shareId = (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.id');
+
+        $first = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ]);
+        $first->assertOk()
+            ->assertJsonPath('data.email', 'guest@example.com')
+            ->assertJsonPath('data.access', 'view');
+
+        $inviteId = (string) $first->json('data.id');
+        $inviteToken = (string) $first->json('data.inviteToken');
+
+        $second = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'edit',
+        ]);
+        $second->assertOk()
+            ->assertJsonPath('data.id', $inviteId)
+            ->assertJsonPath('data.email', 'guest@example.com')
+            ->assertJsonPath('data.access', 'edit')
+            ->assertJsonPath('data.inviteToken', $inviteToken);
+
+        $grantCount = DriveShareGrant::query()
+            ->where('share_id', $shareId)
+            ->where('grantee_email', 'guest@example.com')
+            ->count();
+        $this->assertSame(1, $grantCount);
+
+        $grant = DriveShareGrant::query()
+            ->where('id', $inviteId)
+            ->first();
+        $this->assertNotNull($grant);
+        $this->assertSame('pending', (string) $grant->status);
+        $this->assertSame('edit', (string) $grant->access);
+    }
+
+    public function test_duplicate_active_guest_email_invite_returns_share_conflict(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $guestToken = $this->carolBearerToken();
+
+        $shareId = (string) $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol@example.com' => ['access' => 'view']],
+        ])->assertOk()->json('data.id');
+
+        $grant = DriveShareGrant::query()
+            ->where('share_id', $shareId)
+            ->where('grantee_email', 'carol@example.com')
+            ->where('status', 'pending')
+            ->first();
+        $this->assertNotNull($grant);
+
+        $this->withBearer($guestToken)->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => (string) $grant->invite_token,
+        ])->assertOk();
+
+        $duplicate = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'carol@example.com',
+            'access' => 'edit',
+        ]);
+
+        $duplicate->assertStatus(409)
+            ->assertJsonPath('code', 'share_conflict')
+            ->assertJsonPath('error', 'Guest already has access.');
     }
 }

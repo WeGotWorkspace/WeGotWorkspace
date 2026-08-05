@@ -26,6 +26,36 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
+    public function test_view_grant_can_read_collab_but_cannot_put(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/docs/plan.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $aliceToken = $this->adminBearerToken();
+        $this->withBearer($aliceToken)
+            ->get('/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'))
+            ->assertOk();
+
+        $this->withBearer($aliceToken)
+            ->putJson('/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'), [
+                'markdown' => 'blocked',
+            ])
+            ->assertForbidden();
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/files/shares/at-path?path='.urlencode('/users/bob/docs/plan.md'))
+            ->assertOk()
+            ->assertJsonPath('data.myRights.mayView', true)
+            ->assertJsonPath('data.myRights.mayComment', false)
+            ->assertJsonPath('data.myRights.mayReview', false)
+            ->assertJsonPath('data.myRights.mayEditContent', false);
+    }
+
     public function test_comment_grant_can_read_collab_but_cannot_put(): void
     {
         $ownerToken = $this->userBearerToken();
@@ -46,9 +76,15 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
                 'markdown' => 'blocked',
             ])
             ->assertForbidden();
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/files/shares/at-path?path='.urlencode('/users/bob/docs/plan.md'))
+            ->assertOk()
+            ->assertJsonPath('data.myRights.mayComment', true)
+            ->assertJsonPath('data.myRights.mayEditContent', false);
     }
 
-    public function test_review_grant_can_read_collab_but_cannot_put(): void
+    public function test_review_grant_is_normalized_to_edit_and_can_put(): void
     {
         $ownerToken = $this->userBearerToken();
         $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
@@ -56,7 +92,10 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
             'kind' => 'member',
             'defaultAccess' => 'review',
             'shareWith' => ['alice' => ['access' => 'review']],
-        ])->assertOk();
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.defaultAccess', 'edit')
+            ->assertJsonPath('data.shareWith.alice.access', 'edit');
 
         $aliceToken = $this->adminBearerToken();
         $this->withBearer($aliceToken)
@@ -65,9 +104,16 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
 
         $this->withBearer($aliceToken)
             ->putJson('/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'), [
-                'markdown' => 'blocked',
+                'markdown' => 'edited via legacy review grant',
             ])
-            ->assertForbidden();
+            ->assertOk();
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/files/shares/at-path?path='.urlencode('/users/bob/docs/plan.md'))
+            ->assertOk()
+            ->assertJsonPath('data.myRights.mayComment', true)
+            ->assertJsonPath('data.myRights.mayReview', true)
+            ->assertJsonPath('data.myRights.mayEditContent', true);
     }
 
     public function test_public_view_guest_cannot_join_collab_mesh(): void

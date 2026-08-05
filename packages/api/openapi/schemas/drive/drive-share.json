@@ -241,6 +241,10 @@
     "required": ["share"],
     "properties": {
       "share": { "$ref": "#/components/schemas/DriveShare" },
+      "entry": {
+        "$ref": "#/components/schemas/DriveDirectoryEntry",
+        "description": "Resolved filesystem metadata for the share path when it still exists. Clients should prefer this over listing the parent directory — grantees often cannot list ancestors outside the share root."
+      },
       "viaGroup": {
         "type": "string",
         "description": "Present when access is group-only (groups/{slug} grant). Omitted when the caller has a direct user grant on the same share."

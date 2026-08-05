@@ -17,7 +17,8 @@ final class DriveShareRightsTest extends TestCase
     {
         yield 'view on markdown' => [DriveShareAccess::VIEW, true, false, false, false, false];
         yield 'comment on markdown' => [DriveShareAccess::COMMENT, true, true, false, false, false];
-        yield 'review on markdown' => [DriveShareAccess::REVIEW, true, true, true, false, false];
+        // Legacy review matches edit effective rights (including mayEditContent).
+        yield 'review on markdown' => [DriveShareAccess::REVIEW, true, true, true, true, false];
         yield 'edit on markdown' => [DriveShareAccess::EDIT, true, true, true, true, false];
         yield 'full on markdown' => [DriveShareAccess::FULL, true, true, true, true, true];
     }
@@ -40,17 +41,31 @@ final class DriveShareRightsTest extends TestCase
         $this->assertSame($mayManageStructure, $rights['mayManageStructure']);
     }
 
-    public function test_comment_and_review_grants_fallback_to_view_on_non_collab_files(): void
+    public function test_comment_grants_fallback_to_view_on_non_collab_files(): void
     {
         $commentRights = DriveShareAccess::rightsFor(DriveShareAccess::COMMENT, false);
-        $reviewRights = DriveShareAccess::rightsFor(DriveShareAccess::REVIEW, false);
 
         $this->assertTrue($commentRights['mayView']);
         $this->assertFalse($commentRights['mayComment']);
         $this->assertFalse($commentRights['mayReview']);
+        $this->assertFalse($commentRights['mayEditContent']);
+    }
 
-        $this->assertTrue($reviewRights['mayView']);
+    public function test_legacy_review_grants_match_edit_on_non_collab_files(): void
+    {
+        $reviewRights = DriveShareAccess::rightsFor(DriveShareAccess::REVIEW, false);
+        $editRights = DriveShareAccess::rightsFor(DriveShareAccess::EDIT, false);
+
+        $this->assertSame($editRights, $reviewRights);
+        $this->assertTrue($reviewRights['mayEditContent']);
         $this->assertFalse($reviewRights['mayComment']);
         $this->assertFalse($reviewRights['mayReview']);
+    }
+
+    public function test_normalize_maps_review_to_edit(): void
+    {
+        $this->assertSame(DriveShareAccess::EDIT, DriveShareAccess::normalize('review'));
+        $this->assertSame(DriveShareAccess::EDIT, DriveShareAccess::normalize('REVIEW'));
+        $this->assertSame(DriveShareAccess::COMMENT, DriveShareAccess::normalize('comment'));
     }
 }

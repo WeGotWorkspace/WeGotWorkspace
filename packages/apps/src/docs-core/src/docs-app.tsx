@@ -8,7 +8,13 @@ import {
   openDocsFileInNewWindow,
   parseDocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
-import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
+import {
+  wgwApiBaseUrl,
+  wgwCompleteLogoutNavigation,
+  wgwEnsureFreshAccessToken,
+  wgwIsGuestSession,
+  wgwLiveApiEnabled,
+} from "@/lib/api/wgw/http";
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
 import type { DocsAppProps } from "@/docs-core/src/docs-app-props";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
@@ -20,10 +26,16 @@ import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/text-editor-cor
 import { createWgwDocsCollabWire } from "@/docs-core/src/docs-collab-wgw-wire";
 import { useDocsAPI } from "@/docs-core/src/use-docs-api";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
+import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
+import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
+import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
+import { ShareDialog } from "@/share-ui/share-dialog";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));
@@ -44,6 +56,10 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   );
 
   const handleLogout = useCallback(() => {
+    if (wgwIsGuestSession()) {
+      void wgwCompleteLogoutNavigation();
+      return;
+    }
     window.location.assign("/logout");
   }, []);
 
@@ -62,6 +78,38 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   }, []);
 
   const driveOperations = useMemo(() => createWgwDriveOperations("/"), []);
+
+  const shareOperations = useMemo(
+    () =>
+      wgwLiveApiEnabled() ? createWgwDriveShareOperations() : createMockDriveShareOperations(),
+    [],
+  );
+
+  const collabShareDialog = useDriveShareDialog({
+    shareOperations,
+    username: session.user.username ?? "",
+  });
+
+  const showCollab = isDocsCollabEditablePath(filePath) && !wgwIsGuestSession();
+  const {
+    myRights: collabMyRights,
+    mayShare: collabMayShare,
+    loading: collabRightsLoading,
+  } = useDriveShareMyRights({
+    path: filePath ?? "",
+    operations: shareOperations,
+    enabled: Boolean(shareOperations && filePath?.trim() && showCollab),
+  });
+  const collabPermissions = resolveDocsCollabPermissionsWhileLoading(
+    collabMyRights
+      ? {
+          mayEditContent: collabMyRights.mayEditContent,
+          mayComment: collabMyRights.mayComment,
+          mayReview: collabMyRights.mayReview,
+        }
+      : null,
+    Boolean(shareOperations && filePath?.trim() && showCollab) && collabRightsLoading,
+  );
 
   const handleCreateHomeDocument = useCallback(
     (apiPath: string) => {
@@ -86,7 +134,6 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [navigate, networkOperations, session.user.username, showError],
   );
 
-  const showCollab = isDocsCollabEditablePath(filePath);
   const [collabAuthToken, setCollabAuthToken] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -156,6 +203,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               session={session}
               offlineUsername={resolveDocsOfflineUsername(session.user.username)}
               operations={driveOperations}
+              shareOperations={shareOperations}
               onOpenFile={handleOpenHomeFile}
               onCreateDocument={handleCreateHomeDocument}
               onLogout={handleLogout}
@@ -171,13 +219,36 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                 urls={collabUrls}
                 wire={collabWire}
                 onLogout={handleLogout}
+                showShare={collabMayShare === true}
+                shareLabel={docsLabels.share}
+                permissions={collabPermissions}
+                onShare={
+                  filePath
+                    ? () =>
+                        collabShareDialog.openShareDialog(
+                          filePath,
+                          collabDocumentTitle ?? undefined,
+                        )
+                    : undefined
+                }
               />
+              {shareOperations ? (
+                <ShareDialog
+                  path={collabShareDialog.shareDialog.path}
+                  title={collabShareDialog.shareDialog.title}
+                  open={collabShareDialog.shareDialog.open}
+                  onOpenChange={collabShareDialog.handleShareDialogOpenChange}
+                  shareOperations={shareOperations}
+                  dialogSurfaceClassName="docs-dialog-surface"
+                />
+              ) : null}
             </>
           ) : (
             <DocsWorkspace
               data={data}
               session={session}
               operations={networkOperations}
+              shareOperations={shareOperations}
               filePath={filePath}
               onLogout={handleLogout}
               onFileRenamed={handleFileRenamed}

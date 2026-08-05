@@ -10,7 +10,12 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
+import {
+  workspaceUserFooterDetailLine,
+  workspaceUserInitials,
+  type WorkspaceSession,
+} from "@/lib/workspace/workspace-session";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
@@ -22,6 +27,8 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
 import { DriveWorkspaceModals } from "@/drive-core/src/drive-workspace-modals";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import {
   useDriveOfflineAvailability,
   useDriveOfflineOpenGuard,
@@ -37,12 +44,14 @@ export function DriveWorkspace({
   data,
   session,
   operations,
+  shareOperations,
   listLoading = false,
   offlineUsername = null,
   view,
   onViewChange,
   onOpenDocsFile,
   onNavigate,
+  onOpenShare,
   onLogout,
   className,
 }: DriveWorkspaceProps) {
@@ -55,12 +64,42 @@ export function DriveWorkspace({
     data,
     session,
     operations,
+    shareOperations,
     listLoading,
     view,
     onViewChange,
     onOpenDocsFile,
     onNavigate,
   });
+
+  const shareDialog = useDriveShareDialog({
+    shareOperations,
+    username: controller.currentUsername,
+  });
+
+  const activeFile = controller.active;
+  const needsActiveRightsFetch = Boolean(
+    shareOperations &&
+    activeFile?.apiPath &&
+    (activeFile.mayShare === undefined || activeFile.mayManageStructure === undefined),
+  );
+  const { mayShare: fetchedActiveMayShare, mayManageStructure: fetchedActiveMayManageStructure } =
+    useDriveShareMyRights({
+      path: activeFile?.apiPath ?? "",
+      operations: shareOperations,
+      enabled: needsActiveRightsFetch,
+    });
+  const activeMayShare = activeFile?.mayShare ?? fetchedActiveMayShare;
+  const activeMayManageStructure =
+    activeFile?.mayManageStructure ?? fetchedActiveMayManageStructure;
+
+  const handleOpenShareForFile = useCallback(
+    (apiPath: string, title: string) => {
+      shareDialog.openShareDialog(apiPath, title);
+      onOpenShare?.(apiPath);
+    },
+    [onOpenShare, shareDialog],
+  );
 
   const {
     offlineAvailableIds: rowOfflineAvailableIds,
@@ -159,10 +198,18 @@ export function DriveWorkspace({
             onMakeOfflineAvailable={handleMakeOfflineAvailable}
             pinLoadingId={pinLoadingId}
             extraFileActions={offlineEnabled ? extraFileActions : undefined}
+            shareEnabled={Boolean(shareOperations)}
+            onOpenShare={handleOpenShareForFile}
+            activeMayShare={activeMayShare}
+            activeMayManageStructure={activeMayManageStructure}
           />
         }
       />
-      <DriveWorkspaceModals controller={controller} />
+      <DriveWorkspaceModals
+        controller={controller}
+        shareOperations={shareOperations}
+        shareDialog={shareDialog}
+      />
       <input
         ref={controller.fileInputRef}
         type="file"
@@ -209,11 +256,12 @@ function DriveSidebar({
     <AppSidebar
       open={sidebarOpen}
       onCloseMobile={() => setSidebarOpen(false)}
+      appSwitchDisabled={wgwIsGuestSession()}
       footer={
         <WorkspaceUserFooter
           name={session.user.displayName}
           initials={workspaceUserInitials(session.user)}
-          detailLine={session.user.username}
+          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
           onLogoutClick={onLogout}
           linkHoverClassName="hover:bg-[color-mix(in_oklab,var(--color-ink)_18%,transparent)]"
         />
@@ -273,7 +321,7 @@ function DriveMainHeader({
       searchContent={
         searchEnabled && unifiedSearchEnabled ? (
           <UnifiedSearchApiDropdown
-            className="drive-main-header__search-dropdown"
+            className="drive-main-header__search-dropdown anchored-dropdown-panel"
             query={searchQuery}
             limit={10}
             onSelect={handleUnifiedSearchSelect}

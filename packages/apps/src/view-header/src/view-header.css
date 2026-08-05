@@ -1,6 +1,8 @@
 @import "../../styles.css" reference;
 @import "../../ui/field-label-row.css";
 
+@import "../../ui/anchored-dropdown.css";
+
 /** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
@@ -41,5 +43,4 @@
 
 .view-header__search-stack {
   @apply mt-0.5;
-  position: relative;
 }

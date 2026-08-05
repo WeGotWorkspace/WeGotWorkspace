@@ -51,6 +51,12 @@ export function useDriveSidebarModel({
         ...sidebarDropZoneProps("My Drive", (ids) => commitMoveToFolder(ids, "My Drive")),
       },
       {
+        label: labels.sidebarSharedWithMe,
+        selected: view.type === "shared",
+        onClick: () => selectView({ type: "shared" }),
+        icon: <DriveViewIcon view={{ type: "shared" }} />,
+      },
+      {
         label: labels.sidebarRecent,
         selected: view.type === "recent",
         onClick: () => selectView({ type: "recent" }),

@@ -10,6 +10,8 @@ type RouteLocationLike = {
 
 const AUTH_ROUTE_PREFIXES = ["/login", "/logout"] as const;
 
+const PUBLIC_ROUTE_PREFIXES = ["/share", "/meet/guest", "/meet/join"] as const;
+
 const ALLOWED_RETURN_PREFIXES = [
   "/",
   "/admin",
@@ -36,6 +38,14 @@ function normalizePathname(pathname: string): string {
 export function isWgwAuthRoutePathname(pathname: string): boolean {
   const normalized = normalizePathname(pathname);
   return AUTH_ROUTE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
+/** Routes that must stay reachable without a member login session. */
+export function isWgwPublicRoutePathname(pathname: string): boolean {
+  const normalized = normalizePathname(pathname);
+  return PUBLIC_ROUTE_PREFIXES.some(
     (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
   );
 }

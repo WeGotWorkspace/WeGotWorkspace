@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
+import { wgwCompleteLogoutNavigation, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import {
   driveSearchFromView,
   driveViewFromSearch,
@@ -24,6 +25,7 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
     session,
     data,
     operations,
+    shareOperations,
     offlineUsername,
   } = useDriveAPI(apiSource);
 
@@ -63,6 +65,7 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
           data={data}
           session={session}
           operations={operations}
+          shareOperations={shareOperations}
           listLoading={listLoading}
           offlineUsername={offlineUsername}
           view={routeView}
@@ -70,6 +73,10 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
           onOpenDocsFile={handleOpenDocsFile}
           onNavigate={handleNavigate}
           onLogout={() => {
+            if (wgwIsGuestSession()) {
+              void wgwCompleteLogoutNavigation();
+              return;
+            }
             window.location.assign("/logout");
           }}
         />

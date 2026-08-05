@@ -21,6 +21,18 @@
 .login-screen__hero {
   font-family: var(--font-serif);
   color: #ffffff;
+  @apply text-balance;
+}
+
+.login-screen__hint {
+  color: color-mix(in oklab, #ffffff 72%, transparent);
+}
+
+.login-screen__hint a {
+  color: #ffffff;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .login-screen__footer {

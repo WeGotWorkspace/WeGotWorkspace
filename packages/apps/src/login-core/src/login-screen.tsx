@@ -1,12 +1,11 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
+import { AuthenticationPage } from "@/login-core/src/authentication-page";
 import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 import { sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { WorkspaceShellHeader } from "@/workspace-shell/src/workspace-shell-header";
-import "@/login-core/src/login-screen.css";
 
 type LoginScreenError = "" | "invalid" | "throttled";
 
@@ -65,71 +64,55 @@ export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
   };
 
   return (
-    <main className="login-screen min-h-screen">
-      <section className="flex flex-col min-h-screen">
-        <WorkspaceShellHeader appSwitchDisabled appSwitchSubtitle="Workspace" />
+    <AuthenticationPage title="Welcome back.">
+      {errorMessage ? (
+        <p className="login-screen__error mb-5 text-sm" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
 
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-md">
-            <h2 className="login-screen__hero text-6xl md:text-7xl leading-[0.95] tracking-tight mb-10">
-              Welcome back.
-            </h2>
+      <form className="space-y-2" onSubmit={submitAuth}>
+        <input type="hidden" name="return" value={resolvedReturnPath} />
+        <FieldLabelRow label="Username">
+          <Input
+            id="username"
+            name="username"
+            type="text"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="username"
+            placeholder="yourname"
+            required
+            disabled={submitting}
+          />
+        </FieldLabelRow>
 
-            {errorMessage ? (
-              <p className="login-screen__error mb-5 text-sm" role="alert">
-                {errorMessage}
-              </p>
-            ) : null}
+        <FieldLabelRow label="Password">
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            placeholder="••••••••"
+            required
+            disabled={submitting}
+          />
+        </FieldLabelRow>
 
-            <form className="space-y-2" onSubmit={submitAuth}>
-              <input type="hidden" name="return" value={resolvedReturnPath} />
-              <FieldLabelRow label="Username">
-                <Input
-                  id="username"
-                  name="username"
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  autoComplete="username"
-                  placeholder="yourname"
-                  required
-                  disabled={submitting}
-                />
-              </FieldLabelRow>
-
-              <FieldLabelRow label="Password">
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  required
-                  disabled={submitting}
-                />
-              </FieldLabelRow>
-
-              <div className="pt-4">
-                <Button
-                  type="submit"
-                  label={submitting ? "Signing in..." : "Sign in"}
-                  variant="primary"
-                  size="lg"
-                  pill
-                  disabled={submitting}
-                  className="login-screen__submit"
-                />
-              </div>
-            </form>
-          </div>
+        <div className="pt-4">
+          <Button
+            type="submit"
+            label={submitting ? "Signing in..." : "Sign in"}
+            variant="primary"
+            size="lg"
+            pill
+            disabled={submitting}
+            className="login-screen__submit"
+          />
         </div>
-
-        <footer className="login-screen__footer px-8 pb-6 flex items-center justify-between text-xs">
-          <span>© {new Date().getFullYear()} WeGotWorkspace</span>
-        </footer>
-      </section>
-    </main>
+      </form>
+    </AuthenticationPage>
   );
 }

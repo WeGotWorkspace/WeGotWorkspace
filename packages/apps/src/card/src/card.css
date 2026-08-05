@@ -10,8 +10,21 @@
   );
 }
 
+.card__header {
+  @apply mb-4;
+}
+
 .card__header-row {
-  @apply flex items-center justify-between mb-4 gap-2;
+  @apply flex items-center justify-between gap-2;
+}
+
+.card__title-group {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.card__title-icon {
+  @apply size-4 shrink-0;
+  color: var(--card-title-icon-color, color-mix(in oklab, var(--color-ink) 75%, transparent));
 }
 
 .card__icon-actions {
@@ -35,6 +48,13 @@
  * Card chrome. Optional: `--card-title-size`, `--card-title-tracking`, `--card-title-color`.
  */
 .card__title {
-  @apply font-serif leading-tight text-2xl mb-4;
+  @apply font-sans text-lg font-semibold tracking-tight leading-tight;
   color: var(--card-title-color, color-mix(in oklab, var(--color-ink) 75%, transparent));
+  font-size: var(--card-title-size, inherit);
+  letter-spacing: var(--card-title-tracking, inherit);
+}
+
+.card__description {
+  @apply mt-1 text-xs;
+  color: var(--card-description-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }

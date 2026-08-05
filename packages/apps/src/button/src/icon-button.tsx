@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import "@/button/src/icon-button.css";
@@ -25,20 +25,24 @@ export type IconButtonProps = Omit<
   tooltipClassName?: string;
 };
 
-export function IconButton({
-  label,
-  icon,
-  size = "md",
-  variant = "subtle",
-  active = false,
-  showTooltip = true,
-  tooltipClassName,
-  className,
-  style,
-  ...props
-}: IconButtonProps) {
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  {
+    label,
+    icon,
+    size = "md",
+    variant = "subtle",
+    active = false,
+    showTooltip = true,
+    tooltipClassName,
+    className,
+    style,
+    ...props
+  },
+  ref,
+) {
   const button = (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       className={cn(
@@ -62,4 +66,4 @@ export function IconButton({
       <TooltipContent className={tooltipClassName}>{label}</TooltipContent>
     </Tooltip>
   );
-}
+});

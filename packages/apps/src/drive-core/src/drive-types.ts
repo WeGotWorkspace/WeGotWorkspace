@@ -6,6 +6,18 @@ import type {
   WgwPluginDescriptor,
   WgwDriveUserData,
 } from "@/lib/api/wgw/types";
+import type {
+  DriveShare,
+  DriveShareAtPath,
+  DriveShareByPrincipal,
+  DriveShareCreateRequest,
+  DriveShareInvite,
+  DriveShareInviteCreateRequest,
+  DriveSharePrincipalEntry,
+  DriveShareRevokeAllPublicResult,
+  DriveShareUpdateRequest,
+  DriveSharedWithMeEntry,
+} from "@wgw-api-generated/drive-types";
 
 export type DriveUIData = {
   user: WgwDriveUserData;
@@ -23,6 +35,45 @@ export type DriveMutationOpts = {
   signal?: AbortSignal;
   /** When false, skip listing refresh after create (e.g. hidden `.Trash` bootstrap). */
   refreshState?: boolean;
+};
+
+export type DriveShareMutationOpts = {
+  signal?: AbortSignal;
+};
+
+export type DriveShareOperations = {
+  getAtPath: (path: string, opts?: { signal?: AbortSignal }) => Promise<DriveShareAtPath>;
+  getByPrincipal: (
+    principal: string,
+    scope?: string,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<DriveShareByPrincipal>;
+  searchPrincipals: (
+    query: string,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<DriveSharePrincipalEntry[]>;
+  /** Paths shared with the current user via active member grants. */
+  listSharedWithMe: (opts?: { signal?: AbortSignal }) => Promise<DriveSharedWithMeEntry[]>;
+  createShare: (
+    body: DriveShareCreateRequest,
+    opts?: DriveShareMutationOpts,
+  ) => Promise<DriveShare>;
+  patchShare: (
+    shareId: string,
+    body: DriveShareUpdateRequest,
+    opts?: DriveShareMutationOpts,
+  ) => Promise<DriveShare>;
+  deleteShare: (shareId: string, opts?: DriveShareMutationOpts) => Promise<void>;
+  createInvite: (
+    shareId: string,
+    body: DriveShareInviteCreateRequest,
+    opts?: DriveShareMutationOpts,
+  ) => Promise<DriveShareInvite>;
+  deleteInvite: (shareId: string, inviteId: string, opts?: DriveShareMutationOpts) => Promise<void>;
+  revokeAllPublic: (
+    path: string,
+    opts?: DriveShareMutationOpts,
+  ) => Promise<DriveShareRevokeAllPublicResult>;
 };
 
 export type DriveUploadProgress = {
@@ -45,6 +96,8 @@ export type DriveUnifiedSearchResult = {
   size: number;
   /** Unix seconds of the last modification (used for the Modified column). */
   modifiedAt?: number;
+  /** Optional browse metadata (e.g. `hasShares` for shared indicators). */
+  metadata?: Record<string, unknown>;
 };
 
 export type DriveUnifiedSearchDownloadInput = {

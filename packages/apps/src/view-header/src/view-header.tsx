@@ -76,7 +76,7 @@ export function ViewHeader({
         </div>
       </div>
       {searchPlaceholder ? (
-        <div className="view-header__search-stack">
+        <div className="view-header__search-stack anchored-dropdown-anchor">
           <CollectionSearchInput
             inputRef={searchInputRef}
             value={query}

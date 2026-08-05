@@ -34,6 +34,7 @@ final class DriveShareService
         private JwtTokenService $jwtTokens,
         private DriveShareSessionRateLimiter $rateLimiter,
         private CollabDocFormats $collabDocFormats,
+        private DriveShareAuthorizer $authorizer,
     ) {}
 
     /**
@@ -73,6 +74,7 @@ final class DriveShareService
         $shareWith = is_array($input['shareWith'] ?? null) ? $input['shareWith'] : null;
 
         $this->assertSharePathOwnedBy($owner, $path);
+        $this->assertSharePathNotTopLevelDrive($path);
         $this->assertCommentReviewApplicable($path, $defaultAccess);
         $this->assertPublicAccessCap($kind, $defaultAccess);
 
@@ -304,15 +306,7 @@ final class DriveShareService
             $share = $this->ownerShareOrFail($username, $shareId, lockForUpdate: true);
             $this->assertCommentReviewApplicable($share->path, $access);
 
-            $grant = new DriveShareGrant;
-            $grant->id = (string) Str::uuid();
-            $grant->share_id = (string) $share->id;
-            $grant->grantee_type = 'email';
-            $grant->grantee_email = $email;
-            $grant->access = $access;
-            $grant->status = 'pending';
-            $grant->invite_token = bin2hex(random_bytes(16));
-            $grant->save();
+            $grant = $this->upsertEmailInviteGrant($share, $email, $access);
 
             return [
                 'id' => (string) $grant->id,
@@ -347,14 +341,51 @@ final class DriveShareService
     }
 
     /**
+     * Share dialog / Docs rights for a path.
+     *
+     * Owners get full share-management payload. Grantees with mayView get myRights only
+     * (empty share lists) so Docs can enforce view/comment/edit without an owner call.
+     *
+     * @param  array{username: string, role: string}  $principal
      * @return array<string, mixed>
      */
-    public function atPath(string $username, string $virtualPath): array
+    public function atPath(array $principal, string $virtualPath): array
     {
-        $owner = strtolower(trim($username));
+        $username = strtolower(trim((string) ($principal['username'] ?? '')));
         $path = $this->scope->normalize($virtualPath);
-        $this->assertSharePathOwnedBy($owner, $path);
 
+        if ($this->principalOwnsSharePath($username, $path)) {
+            return $this->atPathForOwner($username, $path);
+        }
+
+        try {
+            $rights = $this->authorizer->effectiveRights($path, $principal);
+        } catch (\InvalidArgumentException) {
+            throw new ApiHttpException(403, 'Cannot share this path.', 'forbidden');
+        }
+
+        if (! $rights['mayView']) {
+            throw new ApiHttpException(403, 'Cannot share this path.', 'forbidden');
+        }
+
+        return [
+            'path' => $path,
+            'directShares' => [],
+            'coveringShares' => [],
+            'nestedShares' => [],
+            'grantSources' => [],
+            'effectiveGrants' => [],
+            'memberAccess' => [],
+            'publicShares' => [],
+            'myRights' => $rights,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function atPathForOwner(string $owner, string $path): array
+    {
         /** @var Collection<int, DriveShare> $shares */
         $shares = DriveShare::query()
             ->where('owner_username', $owner)
@@ -440,7 +471,11 @@ final class DriveShareService
             'effectiveGrants' => $effectiveGrants,
             'memberAccess' => $memberAccess,
             'publicShares' => $publicShares,
-            'myRights' => DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, true),
+            'myRights' => DriveShareAccess::rightsFor(
+                DriveShareAccess::FULL,
+                true,
+                ! $this->scope->isTopLevelDrive($path),
+            ),
         ];
     }
 
@@ -486,9 +521,15 @@ final class DriveShareService
             if ($share === null) {
                 continue;
             }
-            $rows[] = [
-                'share' => $this->serializeShareForMember($share, (string) $grant->access),
+            $access = (string) $grant->access;
+            $row = [
+                'share' => $this->serializeShareForMember($share, $access),
             ];
+            $entry = $this->directoryEntryForSharePath((string) $share->path, $access);
+            if ($entry !== null) {
+                $row['entry'] = $entry;
+            }
+            $rows[] = $row;
         }
 
         foreach ($groupGrants as $grant) {
@@ -501,10 +542,16 @@ final class DriveShareService
                 continue;
             }
             $slug = (string) $grant->grantee_group;
-            $rows[] = [
-                'share' => $this->serializeShareForMember($share, (string) $grant->access),
+            $access = (string) $grant->access;
+            $row = [
+                'share' => $this->serializeShareForMember($share, $access),
                 'viaGroup' => 'groups/'.$slug,
             ];
+            $entry = $this->directoryEntryForSharePath((string) $share->path, $access);
+            if ($entry !== null) {
+                $row['entry'] = $entry;
+            }
+            $rows[] = $row;
         }
 
         return $rows;
@@ -532,22 +579,28 @@ final class DriveShareService
 
         $share = DriveShare::query()
             ->where('public_token', $token)
-            ->whereNull('revoked_at')
             ->first();
 
-        $failedAuth = $share === null || $share->kind !== 'public';
-        if (! $failedAuth && $share->expires_at !== null && $share->expires_at->lessThanOrEqualTo(Carbon::now())) {
-            $failedAuth = true;
-        }
-        if (! $failedAuth && $share->password_hash !== null) {
-            $password = $password ?? '';
-            if (! Hash::check($password, $share->password_hash)) {
-                $failedAuth = true;
-            }
+        if ($share === null) {
+            throw new ApiHttpException(404, 'This share link is invalid or has expired.', 'share_unavailable');
         }
 
-        if ($failedAuth || $share === null) {
-            throw new ApiHttpException(401, 'Invalid share token or password.', 'unauthorized');
+        if ($share->revoked_at !== null || $share->kind !== 'public') {
+            throw new ApiHttpException(410, 'This share link is no longer available.', 'share_unavailable');
+        }
+
+        if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo(Carbon::now())) {
+            throw new ApiHttpException(410, 'This share link has expired.', 'share_unavailable');
+        }
+
+        if ($share->password_hash !== null && $share->password_hash !== '') {
+            $submittedPassword = $password ?? '';
+            if ($submittedPassword === '') {
+                throw new ApiHttpException(401, 'Password is required to open this link.', 'share_password_required');
+            }
+            if (! Hash::check($submittedPassword, $share->password_hash)) {
+                throw new ApiHttpException(401, 'Incorrect password.', 'share_password_invalid');
+            }
         }
 
         // v1 intentionally couples JWT TTL and DB session lifetime (both 1h) — no refresh flow yet.
@@ -642,7 +695,7 @@ final class DriveShareService
 
     private function normalizeAccess(string $access): string
     {
-        $normalized = strtolower(trim($access));
+        $normalized = DriveShareAccess::normalize($access);
         if (! DriveShareAccess::isValid($normalized)) {
             throw new ApiHttpException(400, 'Invalid access.', 'bad_request');
         }
@@ -679,34 +732,49 @@ final class DriveShareService
         return $trimmed !== '' ? $trimmed : null;
     }
 
-    private function assertSharePathOwnedBy(string $username, string $path): void
+    private function principalOwnsSharePath(string $username, string $path): bool
     {
         $segments = explode('/', ltrim($path, '/'));
         $root = (string) ($segments[0] ?? '');
         if ($root === 'users' && strcasecmp((string) ($segments[1] ?? ''), $username) === 0) {
-            return;
+            return true;
         }
         if ($root === 'groups') {
             $group = (string) ($segments[1] ?? '');
             if ($group !== '' && in_array($group, $this->groups->allowedGroupSlugs($username), true)) {
-                return;
+                return true;
             }
+        }
+
+        return false;
+    }
+
+    private function assertSharePathOwnedBy(string $username, string $path): void
+    {
+        if ($this->principalOwnsSharePath($username, $path)) {
+            return;
         }
 
         throw new ApiHttpException(403, 'Cannot share this path.', 'forbidden');
     }
 
+    private function assertSharePathNotTopLevelDrive(string $path): void
+    {
+        if ($this->scope->isTopLevelDrive($path)) {
+            throw new ApiHttpException(403, 'Cannot share this path.', 'forbidden');
+        }
+    }
+
     private function assertCommentReviewApplicable(string $path, string $access): void
     {
-        if (! in_array($access, [DriveShareAccess::COMMENT, DriveShareAccess::REVIEW], true)) {
+        if ($access !== DriveShareAccess::COMMENT) {
             return;
         }
 
         $disk = $this->filesDisk();
         $key = $this->paths->virtualToStorageKey($path);
         if ($disk->fileExists($key) && ! $this->collabDocFormats->isCollabDocPath($path)) {
-            $code = $access === DriveShareAccess::COMMENT ? 'comment_not_applicable' : 'review_not_applicable';
-            throw new ApiHttpException(400, 'Access level is not applicable for this target.', $code);
+            throw new ApiHttpException(400, 'Access level is not applicable for this target.', 'comment_not_applicable');
         }
     }
 
@@ -811,12 +879,21 @@ final class DriveShareService
 
     private function upsertEmailGrant(DriveShare $share, string $email, string $access): void
     {
+        $this->upsertEmailInviteGrant($share, $email, $access);
+    }
+
+    private function upsertEmailInviteGrant(DriveShare $share, string $email, string $access): DriveShareGrant
+    {
         /** @var DriveShareGrant|null $grant */
         $grant = DriveShareGrant::query()
             ->where('share_id', $share->id)
-            ->where('grantee_type', 'email')
             ->where('grantee_email', $email)
+            ->lockForUpdate()
             ->first();
+
+        if ($grant !== null && $grant->status === 'active') {
+            throw new ApiHttpException(409, 'Guest already has access.', 'share_conflict');
+        }
 
         if ($grant === null) {
             $grant = new DriveShareGrant;
@@ -826,10 +903,17 @@ final class DriveShareService
             $grant->grantee_email = $email;
             $grant->status = 'pending';
             $grant->invite_token = bin2hex(random_bytes(16));
+        } elseif ($grant->status === 'revoked') {
+            $grant->grantee_type = 'email';
+            $grant->grantee_user = null;
+            $grant->status = 'pending';
+            $grant->invite_token = bin2hex(random_bytes(16));
         }
 
         $grant->access = $access;
         $grant->save();
+
+        return $grant;
     }
 
     private function assertUpdatedAtMatches(DriveShare $share, mixed $updatedAt): void
@@ -941,6 +1025,38 @@ final class DriveShareService
             'expiresAt' => $share->expires_at?->toISOString(),
             'updatedAt' => $share->updated_at?->toISOString(),
             'shareWith' => null,
+            'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false),
+        ];
+    }
+
+    /**
+     * Resolve listing metadata for a share root without requiring parent-directory access.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function directoryEntryForSharePath(string $virtualPath, string $grantAccess): ?array
+    {
+        $path = $this->scope->normalize($virtualPath);
+        if ($path === '' || $path === '/') {
+            return null;
+        }
+
+        $disk = $this->filesDisk();
+        $key = $this->paths->virtualToStorageKey($path);
+        $isDir = $disk->directoryExists($key);
+        if (! $isDir && ! $disk->fileExists($key)) {
+            return null;
+        }
+
+        $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
+
+        return [
+            'type' => $isDir ? 'dir' : 'file',
+            'path' => $path,
+            'name' => basename($path),
+            'size' => $isDir ? 0 : max(0, (int) ($disk->size($key) ?? 0)),
+            'time' => max(0, (int) ($disk->lastModified($key) ?? time())),
+            'permissions' => 0,
             'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false),
         ];
     }
@@ -1633,5 +1749,106 @@ final class DriveShareService
         }
 
         return 'direct';
+    }
+
+    /**
+     * @param  list<string>  $virtualPaths
+     * @return array<string, array{hasPublicShare: bool, hasTeamShare: bool}>
+     */
+    public function shareIndicatorsForPaths(string $ownerUsername, array $virtualPaths): array
+    {
+        $owner = strtolower(trim($ownerUsername));
+        if ($owner === '' || $virtualPaths === []) {
+            return [];
+        }
+
+        $pathList = [];
+        foreach ($virtualPaths as $virtualPath) {
+            $normalized = $this->scope->normalize($virtualPath);
+            if ($normalized !== '') {
+                $pathList[$normalized] = true;
+            }
+        }
+        if ($pathList === []) {
+            return [];
+        }
+
+        /** @var array<string, array{hasPublicShare: bool, hasTeamShare: bool}> $indicators */
+        $indicators = [];
+
+        /** @var Collection<int, DriveShare> $shares */
+        $shares = DriveShare::query()
+            ->where('owner_username', $owner)
+            ->whereNull('revoked_at')
+            ->whereIn('path', array_keys($pathList))
+            ->get(['id', 'path', 'kind']);
+
+        if ($shares->isEmpty()) {
+            return [];
+        }
+
+        $memberShareIds = [];
+        foreach ($shares as $share) {
+            $path = $this->scope->normalize((string) $share->path);
+            if ($share->kind === 'public') {
+                $indicators[$path] ??= ['hasPublicShare' => false, 'hasTeamShare' => false];
+                $indicators[$path]['hasPublicShare'] = true;
+
+                continue;
+            }
+            if ($share->kind === 'member') {
+                $memberShareIds[] = (string) $share->id;
+            }
+        }
+
+        if ($memberShareIds !== []) {
+            /** @var list<string> $activeMemberShareIds */
+            $activeMemberShareIds = DriveShareGrant::query()
+                ->whereIn('share_id', $memberShareIds)
+                ->where(function ($query): void {
+                    $query->where(function ($inner): void {
+                        $inner->where('grantee_type', 'user')->where('status', 'active');
+                    })->orWhere(function ($inner): void {
+                        $inner->where('grantee_type', 'group')->where('status', 'active');
+                    });
+                })
+                ->distinct()
+                ->pluck('share_id')
+                ->map(static fn (mixed $id): string => (string) $id)
+                ->all();
+
+            $activeMemberShareIds = array_flip($activeMemberShareIds);
+            foreach ($shares as $share) {
+                if ($share->kind !== 'member') {
+                    continue;
+                }
+                if (! isset($activeMemberShareIds[(string) $share->id])) {
+                    continue;
+                }
+                $path = $this->scope->normalize((string) $share->path);
+                $indicators[$path] ??= ['hasPublicShare' => false, 'hasTeamShare' => false];
+                $indicators[$path]['hasTeamShare'] = true;
+            }
+        }
+
+        return $indicators;
+    }
+
+    /**
+     * @param  list<string>  $virtualPaths
+     * @return array<string, true> normalized virtual path => true
+     *
+     * @deprecated Use shareIndicatorsForPaths() for granular listing badges.
+     */
+    public function pathsWithOutgoingShares(string $ownerUsername, array $virtualPaths): array
+    {
+        $flags = [];
+        foreach ($this->shareIndicatorsForPaths($ownerUsername, $virtualPaths) as $path => $indicator) {
+            if ($indicator['hasPublicShare'] || $indicator['hasTeamShare']) {
+                $flags[$path] = true;
+            }
+        }
+
+        return $flags;
     }
 }

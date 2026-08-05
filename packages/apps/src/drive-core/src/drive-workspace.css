@@ -1,11 +1,13 @@
 @import "../../styles.css" reference;
+@import "../../ui/anchored-dropdown.css";
 @import "../../workspace-shell/src/workspace-split-app.css";
 
 .drive-workspace {
   @apply min-w-0 overflow-x-hidden;
   --drive-accent: #10b981;
   --color-emerald: var(--drive-accent);
-  --drive-sidebar: var(--drive-accent);
+  /* Cream-tint sidebar; 32% — clearer than 12% mute, softer than solid emerald */
+  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
   --workspace-accent: var(--drive-accent);
   --app-sidebar-bg: var(--drive-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
@@ -22,11 +24,11 @@
   --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --upload-progress-active-fill: var(--drive-sidebar);
+  --upload-progress-active-fill: var(--drive-accent);
   --upload-progress-done-fill: var(--color-emerald);
-  --file-drop-overlay-card-color: var(--drive-sidebar);
-  --drive-detail-tag-bg: color-mix(in oklab, var(--drive-sidebar) 12%, transparent);
-  --drive-detail-tag-fg: var(--drive-sidebar);
+  --file-drop-overlay-card-color: var(--drive-accent);
+  --drive-detail-tag-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
+  --drive-detail-tag-fg: var(--drive-accent);
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {
@@ -39,7 +41,7 @@
 
 .drive-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--color-ink);
-  --button-primary-fg: var(--drive-sidebar);
+  --button-primary-fg: var(--drive-accent);
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
@@ -110,20 +112,14 @@
   padding-block: 1rem;
   background-color: color-mix(in oklab, var(--drive-accent) 7%, var(--color-cream, #ffffff));
   border-bottom: 1px solid color-mix(in oklab, var(--drive-accent) 12%, transparent);
-  --path-breadcrumb-lead-color: var(--drive-sidebar);
-  --path-breadcrumb-lead-bg: color-mix(in oklab, var(--drive-sidebar) 12%, transparent);
+  --path-breadcrumb-lead-color: var(--drive-accent);
+  --path-breadcrumb-lead-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
   --path-breadcrumb-link-color: color-mix(in oklab, var(--color-ink) 58%, transparent);
   --path-breadcrumb-current-color: var(--color-ink);
-  --path-breadcrumb-link-hover-bg: color-mix(in oklab, var(--drive-sidebar) 10%, transparent);
+  --path-breadcrumb-link-hover-bg: color-mix(in oklab, var(--drive-accent) 10%, transparent);
 }
 
 .drive-workspace .drive-main-header__search-dropdown {
-  position: absolute;
-  z-index: 25;
-  left: 0;
-  right: 0;
-  top: calc(100% + 0.35rem);
-  width: 100%;
   max-height: min(55dvh, 420px);
   --unified-search-dropdown-width: 100%;
 }
@@ -160,12 +156,12 @@
  */
 .drive-dialog-surface {
   --drive-accent: #10b981;
-  --drive-sidebar: var(--drive-accent);
+  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
   --destination-picker-accent: var(--drive-accent);
   --color-emerald: var(--drive-accent);
-  --button-primary-bg: var(--drive-sidebar);
+  --button-primary-bg: var(--drive-accent);
   --button-primary-fg: #ffffff;
-  --primary: var(--drive-sidebar);
+  --primary: var(--drive-accent);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }

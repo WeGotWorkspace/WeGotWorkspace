@@ -47,7 +47,7 @@
 
 .drive-workspace .drive-detail-panel__preview .file-preview-text-pane {
   @apply min-h-[12rem] rounded-md border;
-  border-color: color-mix(in oklab, var(--drive-sidebar) 18%, transparent);
+  border-color: color-mix(in oklab, var(--drive-accent) 18%, transparent);
 }
 
 .drive-workspace .drive-detail-panel__preview .file-preview-text-pane__content {

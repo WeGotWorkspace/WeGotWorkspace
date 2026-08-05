@@ -208,7 +208,7 @@
   @apply relative flex items-center justify-center overflow-hidden;
   aspect-ratio: 16 / 9;
   background-color: var(--color-cream, #fff);
-  color: var(--drive-sidebar);
+  color: var(--drive-accent);
 }
 
 .drive-workspace .drive-file-tile__preview > img,
@@ -270,7 +270,7 @@
 }
 
 .drive-workspace .drive-location-label {
-  @apply flex min-w-0 items-center gap-1.5 text-xs;
+  @apply flex min-w-0 items-center gap-1.5 text-sm;
   color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
@@ -406,6 +406,19 @@
   background-color: var(--drive-offline-badge-pending);
 }
 
+.drive-workspace .drive-shared-indicator {
+  @apply inline-flex items-center gap-1 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.drive-workspace .drive-shared-indicator__icon {
+  @apply size-3;
+}
+
+.drive-workspace .drive-shared-indicator__label {
+  @apply text-xs font-medium;
+}
+
 .drive-workspace .drive-list-muted {
   color: color-mix(in oklab, var(--color-ink) 60%, transparent);
 }
@@ -415,14 +428,14 @@
 }
 
 .drive-workspace .drive-list-file-icon {
-  color: var(--drive-sidebar);
+  color: var(--drive-accent);
 }
 
 .drive-workspace .drive-detail-panel__preview {
   @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
   border-radius: var(--control-radius);
-  background-color: color-mix(in oklab, var(--drive-sidebar) 14%, transparent);
-  color: var(--drive-sidebar);
+  background-color: color-mix(in oklab, var(--drive-accent) 14%, transparent);
+  color: var(--drive-accent);
 }
 
 .drive-workspace .drive-detail-panel__preview > img,

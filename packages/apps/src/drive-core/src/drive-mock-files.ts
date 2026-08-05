@@ -15,6 +15,7 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "My Drive",
     kind: "folder",
     size: "84 MB",
+    isShared: true,
   },
   {
     id: "f-archives",
@@ -43,6 +44,7 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "My Drive",
     kind: "doc",
     size: "240 KB",
+    isShared: true,
   },
   ...DRIVE_DOCS_EDITOR_STORY_FILES,
   {
@@ -114,6 +116,22 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "Shared with me",
     kind: "video",
     size: "128 MB",
+    apiPath: "/users/hana/Bindery-Walkthrough.mov",
+  },
+  {
+    id: "f4b",
+    notebook: "Folder",
+    category: "Folder",
+    date: "28 Sep",
+    title: "Client Deck",
+    excerpt: "Shared folder from Hana",
+    body: [],
+    tags: [],
+    wordCount: 0,
+    parent: "Shared with me",
+    kind: "folder",
+    size: "—",
+    apiPath: "/users/hana/Client Deck",
   },
   {
     id: "f5",

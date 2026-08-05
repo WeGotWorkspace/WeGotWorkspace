@@ -175,7 +175,14 @@ final class DocCollabDocumentService
         } catch (\InvalidArgumentException) {
             $this->fail('forbidden', 403);
         }
-        if (! $rights['mayComment'] && ! $rights['mayReview'] && ! $rights['mayEditContent']) {
+        // Public share guests stay on the non-collab Docs shell; collab mesh is members-only.
+        if (($principal['role'] ?? '') === 'guest') {
+            $this->fail('forbidden', 403);
+        }
+        // View-only member grants may load the document/Yjs snapshot read-only; writes stay gated
+        // by resolveWritablePath (mayEditContent). Comment mutations are UI-enforced and still
+        // cannot persist via PUT without edit rights (or a future comment-save path).
+        if (! $rights['mayView']) {
             $this->fail('forbidden', 403);
         }
 

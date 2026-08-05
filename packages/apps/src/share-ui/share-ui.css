@@ -1,0 +1,306 @@
+@import "../styles.css" reference;
+
+.share-dialog {
+  /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
+  --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
+  --share-dialog-tag-fg: var(--color-ink);
+  --share-dialog-muted: var(
+    --muted-foreground,
+    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+  );
+  --card-title-icon-color: var(--share-dialog-accent);
+  --card-description-color: var(--share-dialog-muted);
+  --share-dialog-row-hover: color-mix(
+    in oklab,
+    var(--muted, oklch(0.968 0.007 247.896)) 50%,
+    transparent
+  );
+  --share-dialog-panel-border: color-mix(
+    in oklab,
+    var(--border, oklch(0.929 0.013 255.508)) 70%,
+    transparent
+  );
+  max-width: 36rem;
+  --input-height: 2.25rem;
+  /* Match outline IconButtons to Input/Select (--control-border-color). */
+  --button-outline-border-color: var(--control-border-color);
+}
+
+/* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
+.share-dialog .icon-button--size-sm {
+  width: var(--input-height);
+  height: var(--input-height);
+}
+
+/*
+ * Boolean switches: compact track (~20px) inside a 36px touch row.
+ * Visual track = segment (1rem) + track padding (0.125rem × 2) = 1.25rem.
+ * Touch padding lives on the wrapper only — switch geometry stays default.
+ */
+.share-dialog {
+  --share-switch-track-height: calc(1rem + 0.25rem);
+  --share-switch-touch-pad: calc((var(--input-height) - var(--share-switch-track-height)) / 2);
+}
+
+.share-dialog__switch-touch {
+  @apply inline-flex shrink-0 items-center;
+  min-height: var(--input-height);
+  padding-block: var(--share-switch-touch-pad);
+}
+
+/* Invisible hit-area into wrapper padding; switch layout/visual unchanged. */
+.share-dialog__switch-touch .segmented-control--boolean .segmented-control__button--boolean::before,
+.share-dialog__switch-touch .segmented-control--boolean .segmented-control__thumb::before {
+  content: "";
+  position: absolute;
+  left: -0.125rem;
+  right: -0.125rem;
+  top: calc(-1 * var(--share-switch-touch-pad));
+  bottom: calc(-1 * var(--share-switch-touch-pad));
+}
+
+.share-dialog__content {
+  @apply max-h-[90vh] overflow-x-hidden overflow-y-auto p-0;
+}
+
+.share-dialog__header {
+  @apply px-6 pb-3 pt-6;
+}
+
+.share-dialog__body {
+  @apply flex min-w-0 flex-col gap-6 overflow-x-hidden px-6 pb-6;
+}
+
+.share-dialog__body > .card {
+  @apply mb-0;
+}
+
+.share-dialog__panel {
+  @apply flex flex-col gap-1 rounded-xl border border-border/70 bg-card/60 p-2;
+}
+
+.share-dialog__row {
+  @apply flex items-center gap-2 rounded-lg px-2 py-1.5;
+}
+
+.share-dialog__row:hover {
+  background: var(--share-dialog-row-hover);
+}
+
+.share-dialog__row-main {
+  @apply min-w-0 flex-1;
+}
+
+.share-dialog__row-title-line {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.share-dialog__row-title-group {
+  @apply flex min-w-0 flex-1 items-center gap-1;
+}
+
+.share-dialog__row-title {
+  @apply min-w-0 truncate text-sm font-medium;
+}
+
+.share-dialog__row-title-line .tag {
+  @apply shrink-0;
+  background-color: var(--share-dialog-tag-bg);
+  color: var(--share-dialog-tag-fg);
+}
+
+.share-dialog__row-subtitle {
+  @apply truncate text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__row-divider {
+  @apply my-1 border-t;
+  border-color: var(--share-dialog-panel-border);
+}
+
+.share-dialog__group-mark,
+.share-dialog__guest-mark {
+  @apply flex size-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold uppercase transition-colors;
+}
+
+.share-dialog__group-mark {
+  @apply rounded-lg;
+}
+
+.share-dialog__group-mark--active,
+.share-dialog__member-mark--active {
+  background: var(--share-dialog-accent);
+  color: var(--primary-foreground, #fff);
+}
+
+.share-dialog__group-mark--idle,
+.share-dialog__member-mark--idle {
+  background: color-mix(in oklab, var(--share-dialog-accent) 10%, transparent);
+  color: var(--share-dialog-accent);
+}
+
+.share-dialog__member-mark {
+  @apply flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold uppercase transition-colors;
+}
+
+.share-dialog__permission-select {
+  @apply w-[8.125rem] shrink-0 bg-transparent text-xs;
+  height: var(--input-height);
+  min-height: var(--input-height);
+}
+
+.share-dialog__permission-item {
+  @apply flex items-center gap-2 text-xs;
+}
+
+.share-dialog__permission-item-icon {
+  @apply size-3.5;
+}
+
+.share-dialog__inherited-label {
+  @apply inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium;
+  border-color: var(--share-dialog-panel-border);
+  background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__inherited-label-icon {
+  @apply size-2.5;
+}
+
+.share-dialog__link-controls {
+  @apply flex min-w-0 flex-col gap-2 rounded-xl border border-border/70 bg-card/60 px-3 pt-2 pb-0;
+}
+
+.share-dialog__link-row {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.share-dialog__input {
+  @apply min-w-0 flex-1;
+}
+
+.share-dialog__input--mono {
+  --input-font-size: 0.75rem;
+  @apply truncate font-mono;
+}
+
+.share-dialog__link-row > :not(.share-dialog__input) {
+  @apply shrink-0;
+}
+
+.share-dialog__password-field {
+  @apply flex min-w-0 flex-1 items-center gap-1 sm:ml-auto sm:flex-none;
+}
+
+.share-dialog__password-field .share-dialog__input {
+  @apply sm:max-w-[11.25rem] sm:flex-none;
+}
+
+.share-dialog__password-field > :not(.share-dialog__input) {
+  @apply shrink-0;
+}
+
+.share-dialog__link-row > :not(.share-dialog__link-field) {
+  @apply shrink-0;
+}
+
+.share-dialog__link-field {
+  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg bg-card/80 px-2.5 py-1.5;
+  border: 1px solid var(--control-border-color);
+}
+
+.share-dialog__link-field-icon {
+  @apply size-3.5 shrink-0;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__link-url {
+  @apply min-w-0 truncate font-mono text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__password-row {
+  @apply -mx-3 flex min-w-0 flex-wrap items-center gap-2 rounded-b-xl px-3 py-2.5;
+  background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
+}
+
+.share-dialog__password-icon {
+  @apply size-3.5 shrink-0;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__password-label {
+  @apply shrink-0 text-xs font-medium;
+}
+
+.share-dialog__guest-invite-row {
+  @apply border-t pt-2.5;
+  border-color: var(--share-dialog-panel-border);
+}
+
+.share-dialog__footer {
+  @apply flex items-center border-t px-6 py-3 text-xs;
+  border-color: var(--share-dialog-panel-border);
+  background: color-mix(in oklab, var(--color-ink, #111) 4%, transparent);
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__add-grant {
+  @apply border-t p-2;
+  border-color: var(--share-dialog-panel-border);
+}
+
+.share-dialog__add-grant-input {
+  @apply w-full text-sm;
+}
+
+.share-dialog__add-grant-field {
+  @apply min-w-0;
+}
+
+/* Portaled via Popover — keep tokens when rendered outside `.share-dialog` content. */
+.share-dialog__principal-search-dropdown {
+  max-height: min(40dvh, 280px);
+  overflow: auto;
+  --unified-search-dropdown-width: 100%;
+  --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-muted: var(
+    --muted-foreground,
+    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+  );
+  --input-height: 2.25rem;
+}
+
+.share-principal-search-dropdown__list {
+  @apply flex flex-col p-1;
+}
+
+.share-principal-search-dropdown__option {
+  @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/50;
+  min-height: var(--input-height);
+}
+
+.share-principal-search-dropdown__name {
+  @apply min-w-0 flex-1 truncate;
+}
+
+.share-principal-search-dropdown__meta {
+  @apply shrink-0 text-xs;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__loading,
+.share-dialog__error {
+  @apply px-6 py-8 text-sm;
+  color: var(--share-dialog-muted);
+}
+
+.share-dialog__read-only-access {
+  @apply inline-flex min-w-[8.125rem] items-center justify-end px-2 text-xs;
+  height: var(--input-height);
+  min-height: var(--input-height);
+  color: var(--share-dialog-muted);
+}

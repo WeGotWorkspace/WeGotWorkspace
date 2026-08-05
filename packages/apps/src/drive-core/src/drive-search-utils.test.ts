@@ -31,8 +31,13 @@ describe("apiPathFromSearchSourceKey", () => {
 });
 
 describe("driveLocationLabel", () => {
-  it("labels user drives as My Drive", () => {
+  it("labels the viewer personal drive as My Drive", () => {
+    expect(driveLocationLabel("users/alice/notes.md", "alice")).toBe("My Drive");
     expect(driveLocationLabel("users/alice/notes.md")).toBe("My Drive");
+  });
+
+  it("labels foreign personal drives as Shared by {owner}", () => {
+    expect(driveLocationLabel("users/hana/Shared Notes.md", "alice")).toBe("Shared by hana");
   });
 
   it("labels group drives with the drive name only", () => {
@@ -69,7 +74,12 @@ describe("driveFileFromSearchResult", () => {
       modifiedAt: 1_700_000_000,
     };
 
-    const file = driveFileFromSearchResult(result, "My Drive/notes.md", "/users/alice/notes.md");
+    const file = driveFileFromSearchResult(
+      result,
+      "My Drive/notes.md",
+      "/users/alice/notes.md",
+      "alice",
+    );
 
     expect(file).toMatchObject({
       id: "search:file:users/alice/notes.md",

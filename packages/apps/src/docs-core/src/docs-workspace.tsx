@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, Pencil, Printer } from "lucide-react";
+import { Code2, Pencil, Printer, Share2 } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
+import {
+  workspaceUserFooterDetailLine,
+  workspaceUserInitials,
+  type WorkspaceSession,
+} from "@/lib/workspace/workspace-session";
+import { wgwIsGuestSession, wgwRedirectGuestShareReauth } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
@@ -22,23 +29,52 @@ import type { DocsWorkspaceProps } from "@/docs-core/src/docs-workspace-props";
 import "@/docs-core/src/docs-workspace.css";
 
 type DocsController = ReturnType<typeof useDocsController>;
+type DocsShareDialog = ReturnType<typeof useDriveShareDialog>;
 
 export function DocsWorkspace({
   data,
   session,
   operations,
+  shareOperations,
   filePath = null,
   labels,
   onLogout,
   onFileRenamed,
   className,
 }: DocsWorkspaceProps) {
+  const isGuestSession = wgwIsGuestSession();
+  const apiPath = filePath ?? data.document?.apiPath ?? "";
+  const shareFetchEnabled = Boolean(shareOperations && apiPath.trim() && !isGuestSession);
+  const {
+    myRights,
+    mayShare,
+    loading: shareRightsLoading,
+  } = useDriveShareMyRights({
+    path: apiPath,
+    operations: shareOperations,
+    enabled: shareFetchEnabled,
+  });
+  const readOnlyFromShare =
+    isGuestSession ||
+    (myRights != null ? myRights.mayEditContent !== true : shareFetchEnabled && shareRightsLoading);
   const controller = useDocsController({
     filePath,
     labels,
     operations,
     initialDocument: data.document,
+    readOnly: readOnlyFromShare,
     onFileRenamed,
+  });
+
+  useEffect(() => {
+    if (!controller.loadError || !isGuestSession) return;
+    // Password rotation revokes the guest DB session; stale JWT still unlocks the shell.
+    wgwRedirectGuestShareReauth();
+  }, [controller.loadError, isGuestSession]);
+
+  const shareDialog = useDriveShareDialog({
+    shareOperations,
+    username: session.user.username ?? "",
   });
 
   const fileKey = filePath ?? data.document?.apiPath ?? "mock";
@@ -48,6 +84,10 @@ export function DocsWorkspace({
       : controller.labels.emptyTitle;
   useDocumentTitle(browserTitleContext);
 
+  if (controller.loadError && isGuestSession) {
+    return null;
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <DocsWorkspaceShell
@@ -55,9 +95,16 @@ export function DocsWorkspace({
         controller={controller}
         fileKey={fileKey}
         session={session}
+        apiPath={apiPath}
+        mayShare={mayShare}
+        shareDialog={shareDialog}
         onLogout={onLogout}
       />
-      <DocsWorkspaceModals controller={controller} />
+      <DocsWorkspaceModals
+        controller={controller}
+        shareOperations={shareOperations}
+        shareDialog={shareDialog}
+      />
     </TooltipProvider>
   );
 }
@@ -67,12 +114,18 @@ function DocsWorkspaceShell({
   controller,
   fileKey,
   session,
+  apiPath,
+  mayShare,
+  shareDialog,
   onLogout,
 }: {
   className?: string;
   controller: DocsController;
   fileKey: string;
   session: WorkspaceSession;
+  apiPath: string;
+  mayShare?: boolean;
+  shareDialog: DocsShareDialog;
   onLogout?: () => void;
 }) {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -115,6 +168,9 @@ function DocsWorkspaceShell({
             controller={controller}
             editor={editor}
             viewSource={viewSource}
+            apiPath={apiPath}
+            mayShare={mayShare}
+            shareDialog={shareDialog}
             onToggleViewSource={() => setViewSource((on) => !on)}
           />
         </>
@@ -150,12 +206,13 @@ function DocsSidebar({
     <AppSidebar
       open={controller.sidebarOpen}
       onCloseMobile={() => controller.setSidebarOpen(false)}
+      appSwitchDisabled={wgwIsGuestSession()}
       appSwitchSubtitle="Docs"
       footer={
         <WorkspaceUserFooter
           name={session.user.displayName}
           initials={workspaceUserInitials(session.user)}
-          detailLine={session.user.username}
+          detailLine={workspaceUserFooterDetailLine(session, controller.readOnly)}
           onLogoutClick={onLogout}
         />
       }
@@ -165,6 +222,7 @@ function DocsSidebar({
         items={outline}
         activeIndex={activeOutlineIndex}
         onSelect={onOutlineSelect}
+        showBackToHome={!controller.readOnly}
       />
     </AppSidebar>
   );
@@ -174,14 +232,21 @@ function DocsMainHeader({
   controller,
   editor,
   viewSource,
+  apiPath,
+  mayShare,
+  shareDialog,
   onToggleViewSource,
 }: {
   controller: DocsController;
   editor: Editor | null;
   viewSource: boolean;
+  apiPath: string;
+  mayShare?: boolean;
+  shareDialog: DocsShareDialog;
   onToggleViewSource: () => void;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
+  const showShare = Boolean(apiPath.trim() && mayShare === true);
 
   return (
     <ViewHeader
@@ -209,6 +274,17 @@ function DocsMainHeader({
                 disabled: !editor,
                 onClick: () => printTextEditorSheet(editor),
               },
+              ...(showShare
+                ? [
+                    {
+                      id: "share",
+                      label: controller.labels.share,
+                      icon: <Share2 />,
+                      className: "docs-workspace__share-button",
+                      onClick: () => shareDialog.openShareDialog(apiPath, title),
+                    },
+                  ]
+                : []),
               {
                 id: "rename",
                 label: controller.labels.rename,

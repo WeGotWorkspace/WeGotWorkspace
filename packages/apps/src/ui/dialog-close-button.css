@@ -1,0 +1,5 @@
+@import "../styles.css" reference;
+
+.dialog-close-button {
+  @apply absolute right-4 top-4;
+}

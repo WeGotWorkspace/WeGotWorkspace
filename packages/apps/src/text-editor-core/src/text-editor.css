@@ -173,6 +173,17 @@
   background: transparent;
 }
 
+.text-editor-format-bar__heading-trigger:disabled,
+.text-editor-format-bar__print-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.text-editor-format-bar__heading-trigger:disabled:hover,
+.text-editor-format-bar__print-btn:disabled:hover {
+  background: transparent;
+}
+
 .text-editor-format-bar__btn.text-editor-format-bar__btn--active,
 .text-editor-format-bar__btn.text-editor-format-bar__btn--active:hover:not(:disabled),
 .text-editor-format-bar__btn[aria-pressed="true"],

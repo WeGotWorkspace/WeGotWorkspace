@@ -90,12 +90,16 @@ final class DriveShareAuthorizer
     public function listingRightsContext(array $principal, string $listingDir): DriveShareListingRightsContext
     {
         $context = $this->resolvePathContext($listingDir, $principal);
+        $dir = $this->scope->normalize($listingDir);
+        // Drive roots themselves are not shareable, but owners may still share children listed under them.
+        $mayShareInListing = $context['rights']['mayShare']
+            || ($context['access'] === DriveShareAccess::FULL && $this->scope->isTopLevelDrive($dir));
 
         return new DriveShareListingRightsContext(
             [
                 'scopeRoot' => $context['scopeRoot'],
                 'access' => $context['access'],
-                'mayShare' => $context['rights']['mayShare'],
+                'mayShare' => $mayShareInListing,
             ],
             $this->scope,
             $this->collabDocFormats,
@@ -126,10 +130,12 @@ final class DriveShareAuthorizer
         if ($role !== 'guest') {
             $groupSlugs = $this->groups->allowedGroupSlugs($username);
             if ($this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
+                $mayShare = ! $this->scope->isTopLevelDrive($path);
+
                 return [
                     'scopeRoot' => null,
                     'access' => DriveShareAccess::FULL,
-                    'rights' => DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, true),
+                    'rights' => DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, $mayShare),
                 ];
             }
 

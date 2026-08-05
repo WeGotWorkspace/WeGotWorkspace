@@ -21,15 +21,25 @@ import {
 } from "@/ui/alert-dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
+import { ShareDialog } from "@/share-ui/share-dialog";
+import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
 
 type DriveController = ReturnType<typeof useDriveController>;
+type DriveShareDialog = ReturnType<typeof useDriveShareDialog>;
 
 type DriveWorkspaceModalsProps = {
   controller: DriveController;
+  shareOperations?: DriveShareOperations;
+  shareDialog: DriveShareDialog;
 };
 
-export function DriveWorkspaceModals({ controller }: DriveWorkspaceModalsProps) {
+export function DriveWorkspaceModals({
+  controller,
+  shareOperations,
+  shareDialog,
+}: DriveWorkspaceModalsProps) {
   const {
     labels,
     newFolderDialogOpen,
@@ -212,6 +222,16 @@ export function DriveWorkspaceModals({ controller }: DriveWorkspaceModalsProps) 
         onClose={closeMarkdownDialog}
         onConfirm={submitCreateMarkdown}
       />
+
+      {shareOperations ? (
+        <ShareDialog
+          path={shareDialog.shareDialog.path}
+          title={shareDialog.shareDialog.title}
+          open={shareDialog.shareDialog.open}
+          onOpenChange={shareDialog.handleShareDialogOpenChange}
+          shareOperations={shareOperations}
+        />
+      ) : null}
     </>
   );
 }

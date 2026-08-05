@@ -2,9 +2,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
+import { DocsHomePane, resolveDocsHomeFileCanShare } from "@/docs-core/src/docs-home-pane";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { driveLabels } from "@/drive-core/src/drive-labels";
+import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import "@/docs-core/src/docs-home-workspace.css";
 import "@/drive-core/src/drive-browser.css";
 
@@ -163,6 +164,88 @@ describe("DocsHomePane offline badges", () => {
   });
 });
 
+describe("DocsHomePane shared indicator", () => {
+  it("shows public link indicator when file hasPublicShare", () => {
+    render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={[{ ...FILE, hasPublicShare: true, isShared: true }]}
+          loading={false}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+        />
+      </TooltipProvider>,
+    );
+
+    const row = screen.getByText(FILE.title).closest("tr")!;
+    const indicator = row.querySelector('.drive-shared-indicator[aria-label="Public link"]');
+    expect(indicator).toBeTruthy();
+  });
+
+  it("shows team indicator when file hasTeamShare", () => {
+    render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={[{ ...FILE, hasTeamShare: true, isShared: true }]}
+          loading={false}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+        />
+      </TooltipProvider>,
+    );
+
+    const row = screen.getByText(FILE.title).closest("tr")!;
+    expect(
+      row.querySelector('.drive-shared-indicator[aria-label="Shared with team"]'),
+    ).toBeTruthy();
+  });
+
+  it("hides shared indicator when file is not shared", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={[FILE]}
+          loading={false}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(container.querySelector(".drive-shared-indicator")).toBeNull();
+  });
+});
+
 describe("DocsHomePane file interaction", () => {
   it("selects on single click in list view without opening", () => {
     const { onOpenFile } = renderPane("list");
@@ -228,5 +311,81 @@ describe("DocsHomePane multi-select batch bar", () => {
     const { container } = renderPane("list", [FILE, FILE2]);
     fireEvent.contextMenu(screen.getByText(FILE.title).closest("tr")!);
     expect(container.querySelector(".drive-list-row__checkbox")).toBeTruthy();
+  });
+});
+
+describe("DocsHomePane share actions", () => {
+  it("allows Share for search rows with unknown mayShare when shareOperations is wired", () => {
+    expect(
+      resolveDocsHomeFileCanShare({
+        shareEnabled: true,
+        apiPath: FILE.apiPath,
+        isActive: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides Share for the active row while mayShare is still loading", () => {
+    expect(
+      resolveDocsHomeFileCanShare({
+        shareEnabled: true,
+        apiPath: FILE.apiPath,
+        isActive: true,
+        activeMayShare: undefined,
+      }),
+    ).toBe(false);
+  });
+
+  it("renders row overflow when shareOperations is wired", () => {
+    render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={[FILE]}
+          loading={false}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+          shareOperations={createMockDriveShareOperations()}
+          username="alice"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "More actions" })).toBeTruthy();
+  });
+
+  it("hides Share when shareOperations is not wired", () => {
+    render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={[{ ...FILE, mayShare: true }]}
+          loading={false}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+        />
+      </TooltipProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.queryByRole("menuitem", { name: driveLabels.detailShare })).toBeNull();
   });
 });

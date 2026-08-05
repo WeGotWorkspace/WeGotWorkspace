@@ -19,6 +19,8 @@ export type UseDocsCommentsOptions = {
   currentUser: DocsCommentAuthor;
   /** When false, selection does not open drafts or comment compose UI. */
   commentsVisible?: boolean;
+  /** When false, create/reply/resolve/react are no-ops (view-only shares). */
+  canMutateComments?: boolean;
 };
 
 export type UseDocsCommentsResult = {
@@ -48,6 +50,7 @@ export function useDocsComments({
   editor,
   currentUser,
   commentsVisible = true,
+  canMutateComments = true,
 }: UseDocsCommentsOptions): UseDocsCommentsResult {
   const { selectionVersion, bumpSelectionVersion } = useDocsCommentsSelectionVersion();
   const {
@@ -67,7 +70,7 @@ export function useDocsComments({
 
   const { draftThread, draftThreadRef, setDraftThread, cancelDraft } = useDocsCommentsDraft({
     editor,
-    commentsVisible,
+    commentsVisible: commentsVisible && canMutateComments,
     bumpSelectionVersion,
     setActiveThreadId,
   });
@@ -85,11 +88,12 @@ export function useDocsComments({
       setActiveThreadId,
       setDraftThread,
       cancelDraft,
+      canMutateComments,
     });
 
   const { selectionQualifiesForComment } = useDocsCommentsSelection({
     editor,
-    commentsVisible,
+    commentsVisible: commentsVisible && canMutateComments,
     selectionVersion,
     bumpSelectionVersion,
     openThreadIds,
@@ -100,9 +104,9 @@ export function useDocsComments({
   });
 
   const canAddComment = useMemo(() => {
-    if (!commentsVisible || !editor) return false;
+    if (!canMutateComments || !commentsVisible || !editor) return false;
     return selectionQualifiesForComment;
-  }, [commentsVisible, editor, selectionQualifiesForComment]);
+  }, [canMutateComments, commentsVisible, editor, selectionQualifiesForComment]);
 
   useDocsCommentsOutsideClick({
     editor,
@@ -112,7 +116,7 @@ export function useDocsComments({
   });
 
   useDocsCommentsVisibilityCleanup({
-    commentsVisible,
+    commentsVisible: commentsVisible && canMutateComments,
     draftThreadRef,
     activeThreadIdRef,
     cancelDraft,
@@ -129,6 +133,7 @@ export function useDocsComments({
       setDraftThread,
       setActiveThreadId,
       cancelDraft,
+      canMutateComments,
     });
 
   return {
@@ -137,7 +142,7 @@ export function useDocsComments({
     draftThread,
     activeThreadId,
     canAddComment,
-    selectionQualifiesForComment,
+    selectionQualifiesForComment: canMutateComments && selectionQualifiesForComment,
     selectThread,
     activateThreadFromMark,
     clearActiveThread,

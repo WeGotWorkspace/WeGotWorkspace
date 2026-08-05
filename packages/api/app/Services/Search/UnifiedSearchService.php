@@ -7,6 +7,8 @@ namespace App\Services\Search;
 use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Drive\DriveShareService;
+use App\Storage\StoragePaths;
 
 final class UnifiedSearchService
 {
@@ -14,6 +16,8 @@ final class UnifiedSearchService
         private DriveGroupResolver $groups,
         private SearchTokenService $tokens,
         private SearchDocumentStore $store,
+        private DriveShareService $shares,
+        private StoragePaths $paths,
     ) {}
 
     /**
@@ -102,8 +106,62 @@ final class UnifiedSearchService
             'hasMore' => count($results) >= $limit,
             'sources' => $allowedSources === [] ? ['file', 'note', 'caldav', 'carddav'] : $allowedSources,
             'filters' => $normalizedFilters,
-            'results' => $results,
+            'results' => $this->annotateHasShares($username, $results),
         ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $results
+     * @return list<array<string, mixed>>
+     */
+    private function annotateHasShares(string $username, array $results): array
+    {
+        if ($results === []) {
+            return $results;
+        }
+
+        $pathsByIndex = [];
+        foreach ($results as $index => $result) {
+            $sourceType = (string) ($result['sourceType'] ?? '');
+            if (! in_array($sourceType, ['file', 'note'], true)) {
+                continue;
+            }
+            $sourceKey = trim((string) ($result['sourceKey'] ?? ''));
+            if ($sourceKey === '') {
+                continue;
+            }
+            $pathsByIndex[$index] = $this->paths->normalizeVirtualPath('/'.$sourceKey);
+        }
+
+        if ($pathsByIndex === []) {
+            return $results;
+        }
+
+        $sharedPaths = $this->shares->shareIndicatorsForPaths($username, array_values($pathsByIndex));
+        if ($sharedPaths === []) {
+            return $results;
+        }
+
+        foreach ($pathsByIndex as $index => $path) {
+            $flags = $sharedPaths[$path] ?? null;
+            if ($flags === null) {
+                continue;
+            }
+            if (! is_array($results[$index]['metadata'] ?? null)) {
+                $results[$index]['metadata'] = [];
+            }
+            if ($flags['hasPublicShare']) {
+                $results[$index]['metadata']['hasPublicShare'] = true;
+            }
+            if ($flags['hasTeamShare']) {
+                $results[$index]['metadata']['hasTeamShare'] = true;
+            }
+            if ($flags['hasPublicShare'] || $flags['hasTeamShare']) {
+                $results[$index]['metadata']['hasShares'] = true;
+            }
+        }
+
+        return $results;
     }
 
     /**

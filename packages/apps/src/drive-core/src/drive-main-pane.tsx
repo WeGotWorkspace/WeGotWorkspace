@@ -19,6 +19,8 @@ import {
 } from "@/lib/file-preview/file-preview-utils";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
+import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
+import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 
 type DriveController = ReturnType<typeof useDriveController>;
 
@@ -32,6 +34,10 @@ export type DriveMainPaneProps = {
   onMakeOfflineAvailable?: (file: DriveFile) => void;
   pinLoadingId?: string | null;
   extraFileActions?: (file: DriveFile) => ActionBarAction[];
+  shareEnabled?: boolean;
+  onOpenShare?: (apiPath: string, title: string) => void;
+  activeMayShare?: boolean;
+  activeMayManageStructure?: boolean;
 };
 
 export function DriveMainPane({
@@ -44,6 +50,10 @@ export function DriveMainPane({
   onMakeOfflineAvailable,
   pinLoadingId,
   extraFileActions,
+  shareEnabled = false,
+  onOpenShare,
+  activeMayShare,
+  activeMayManageStructure,
 }: DriveMainPaneProps) {
   const {
     labels,
@@ -103,6 +113,24 @@ export function DriveMainPane({
 
   const searchActive = Boolean(searchQuery.trim());
 
+  const handleShare = (file: DriveFile) => {
+    if (!file.apiPath || !onOpenShare) return;
+    onOpenShare(file.apiPath, file.title);
+  };
+
+  const fileCanShare = (file: DriveFile) => {
+    if (!shareEnabled || inTrashView || !file.apiPath?.trim()) return false;
+    if (isTopLevelDriveApiPath(file.apiPath)) return false;
+    const resolvedMayShare = file.id === active?.id ? activeMayShare : file.mayShare;
+    return resolvedMayShare === true;
+  };
+
+  const fileCanManageStructure = (file: DriveFile) =>
+    resolveDriveFileCanManageStructure(file.mayManageStructure, {
+      isActive: file.id === active?.id,
+      activeMayManageStructure,
+    });
+
   const sharedBrowserProps = {
     items: visibleItems,
     selectedIds,
@@ -123,6 +151,9 @@ export function DriveMainPane({
     onRename: requestRenameItem,
     onMove: requestMoveItem,
     onTrash: requestDeleteItem,
+    onShare: shareEnabled ? handleShare : undefined,
+    fileCanShare: shareEnabled ? fileCanShare : undefined,
+    fileCanManageStructure,
     offlineEnabled,
     offlineAvailableIds,
     offlinePendingSyncIds,
@@ -137,8 +168,7 @@ export function DriveMainPane({
   };
 
   const gridFilePreviews = useMemo(() => {
-    if (Object.keys(richPreviews).length === 0) return filePreviews;
-    const merged: Record<string, FilePreviewPayload> = { ...filePreviews };
+    const merged: Record<string, FilePreviewPayload> = {};
     for (const file of visibleItems) {
       const resolved = resolveGridFilePreview(filePreviews, richPreviews, file.id);
       if (resolved) merged[file.id] = resolved;
@@ -274,6 +304,20 @@ export function DriveMainPane({
                   isUnderTrash(active.parent)
                     ? setConfirmDelete({ ids: [active.id], permanent: true })
                     : setConfirmDelete({ ids: [active.id], permanent: false }),
+                canShare:
+                  shareEnabled &&
+                  !inTrashView &&
+                  Boolean(active.apiPath?.trim()) &&
+                  !isTopLevelDriveApiPath(active.apiPath) &&
+                  activeMayShare === true,
+                canManageStructure: resolveDriveFileCanManageStructure(active.mayManageStructure, {
+                  isActive: true,
+                  activeMayManageStructure,
+                }),
+                onShare:
+                  shareEnabled && active.apiPath && onOpenShare
+                    ? () => onOpenShare(active.apiPath!, active.title)
+                    : undefined,
               })}
             />
           </aside>
@@ -305,6 +349,20 @@ export function DriveMainPane({
                 isUnderTrash(active.parent)
                   ? setConfirmDelete({ ids: [active.id], permanent: true })
                   : setConfirmDelete({ ids: [active.id], permanent: false }),
+              canShare:
+                shareEnabled &&
+                !inTrashView &&
+                Boolean(active.apiPath?.trim()) &&
+                !isTopLevelDriveApiPath(active.apiPath) &&
+                activeMayShare === true,
+              canManageStructure: resolveDriveFileCanManageStructure(active.mayManageStructure, {
+                isActive: true,
+                activeMayManageStructure,
+              }),
+              onShare:
+                shareEnabled && active.apiPath && onOpenShare
+                  ? () => onOpenShare(active.apiPath!, active.title)
+                  : undefined,
               mobile: true,
             })}
           />
@@ -340,6 +398,9 @@ function buildDetailPanelProps({
   onRename,
   onMove,
   onDelete,
+  canShare,
+  canManageStructure,
+  onShare,
   mobile,
 }: {
   labels: DriveUILabels;
@@ -354,6 +415,9 @@ function buildDetailPanelProps({
   onRename: () => void;
   onMove: () => void;
   onDelete: () => void;
+  canShare?: boolean;
+  canManageStructure?: boolean;
+  onShare?: () => void;
   mobile?: boolean;
 }) {
   return {
@@ -367,6 +431,9 @@ function buildDetailPanelProps({
     onRename,
     onMove,
     onDelete,
+    canShare,
+    canManageStructure,
+    onShare,
     mobile,
     onDownload: () => {
       if (operations && file.apiPath && file.kind !== "folder") {

@@ -157,11 +157,32 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
         $this->assertContains('pending@example.com', $principals);
     }
 
-    public function test_non_owner_gets_forbidden(): void
+    public function test_non_owner_without_grant_gets_forbidden(): void
     {
         $this->withBearer($this->carolBearerToken())->getJson(
             '/api/v1/files/shares/at-path?path='.urlencode('/users/bob/projects/q3/draft.md')
         )->assertStatus(403);
+    }
+
+    public function test_grantee_at_path_returns_my_rights_without_share_management(): void
+    {
+        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/projects/q3/draft.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($this->carolBearerToken())->getJson(
+            '/api/v1/files/shares/at-path?path='.urlencode('/users/bob/projects/q3/draft.md')
+        )
+            ->assertOk()
+            ->assertJsonPath('data.myRights.mayView', true)
+            ->assertJsonPath('data.myRights.mayComment', false)
+            ->assertJsonPath('data.myRights.mayEditContent', false)
+            ->assertJsonPath('data.myRights.mayShare', false)
+            ->assertJsonPath('data.directShares', [])
+            ->assertJsonPath('data.effectiveGrants', []);
     }
 
     public function test_at_path_route_not_shadowed_by_share_id_param(): void

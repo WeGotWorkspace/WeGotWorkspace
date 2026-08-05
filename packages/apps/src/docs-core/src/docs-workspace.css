@@ -143,6 +143,10 @@
   @apply flex shrink-0 items-center gap-1.5;
 }
 
+.docs-workspace__share-button {
+  @apply shrink-0;
+}
+
 .docs-workspace__header-actions-row {
   @apply flex shrink-0 items-center gap-1.5;
 }

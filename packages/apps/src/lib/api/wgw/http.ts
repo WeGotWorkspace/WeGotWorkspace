@@ -2,7 +2,7 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
-import { decodeJwtExp } from "@/lib/api/wgw/jwt-exp";
+import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
@@ -51,11 +51,16 @@ let refreshFailureCount = 0;
 let refreshFailureWindowStartedAt: number | null = null;
 let refreshRejectedByAuth = false;
 
+/** Sentinel refresh token for public share guest JWTs (no refresh endpoint in v1). */
+export const WGW_GUEST_REFRESH_TOKEN = "__guest__";
+
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
 const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
 const LOGGED_OUT_KEY = "wgw.api.logged_out";
+const GUEST_SHARE_TOKEN_KEY = "wgw.api.guest_share_token";
+const GUEST_SHARE_PATH_KEY = "wgw.api.guest_share_path";
 const SESSION_DEBUG_RING_KEY = "wgw.api.session_debug";
 const SESSION_DEBUG_RING_MAX = 20;
 const REFRESH_RETRY_CAP = 3;
@@ -80,6 +85,10 @@ class AuthHttpError extends Error {
 
 function hasWindowStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function hasSessionStorage(): boolean {
+  return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
 }
 
 function readTokensFromStorage(): void {
@@ -292,12 +301,163 @@ function applyTokens(tokens: TokenResponse): void {
   resetRefreshFailures();
   refreshRejectedByAuth = false;
   setLoggedOutMarker(false);
+  if (tokens.refresh_token !== WGW_GUEST_REFRESH_TOKEN) {
+    wgwClearGuestShareContext();
+  }
+}
+
+/** True when the stored refresh token marks a public share guest session. */
+export function wgwIsGuestSession(): boolean {
+  hydrateTokensFromStorage();
+  return refreshToken === WGW_GUEST_REFRESH_TOKEN;
 }
 
 /** True when access + refresh tokens are present (localStorage or memory). */
 export function wgwHasAuthenticatedSession(): boolean {
   hydrateTokensFromStorage();
   return Boolean(accessToken && refreshToken);
+}
+
+/** Remember the public share token for guest sign-out return navigation. */
+export function wgwPersistGuestShareToken(token: string): void {
+  const normalized = token.trim();
+  if (!normalized || !hasSessionStorage()) return;
+  try {
+    window.sessionStorage.setItem(GUEST_SHARE_TOKEN_KEY, normalized);
+  } catch {
+    // Ignore storage failures (private mode/quota).
+  }
+}
+
+export function wgwGuestShareToken(): string | null {
+  if (!hasSessionStorage()) return null;
+  try {
+    const raw = window.sessionStorage.getItem(GUEST_SHARE_TOKEN_KEY);
+    const normalized = raw?.trim();
+    return normalized || null;
+  } catch {
+    return null;
+  }
+}
+
+export function wgwPersistGuestSharePath(apiPath: string): void {
+  const normalized = apiPath.trim();
+  if (!normalized || !hasSessionStorage()) return;
+  try {
+    window.sessionStorage.setItem(GUEST_SHARE_PATH_KEY, normalized);
+  } catch {
+    // Ignore storage failures (private mode/quota).
+  }
+}
+
+export function wgwGuestSharePath(): string | null {
+  if (!hasSessionStorage()) return null;
+  try {
+    const raw = window.sessionStorage.getItem(GUEST_SHARE_PATH_KEY);
+    const normalized = raw?.trim();
+    return normalized || null;
+  } catch {
+    return null;
+  }
+}
+
+export function wgwClearGuestShareToken(): void {
+  if (!hasSessionStorage()) return;
+  try {
+    window.sessionStorage.removeItem(GUEST_SHARE_TOKEN_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export function wgwClearGuestSharePath(): void {
+  if (!hasSessionStorage()) return;
+  try {
+    window.sessionStorage.removeItem(GUEST_SHARE_PATH_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export function wgwClearGuestShareContext(): void {
+  wgwClearGuestShareToken();
+  wgwClearGuestSharePath();
+}
+
+/**
+ * Drop a guest access JWT (and share path) before re-exchanging a public share session.
+ * Keeps `wgw.api.guest_share_token` so logout / re-auth can return to `/share/:token`.
+ */
+export function wgwClearGuestShareAccess(): void {
+  if (!wgwIsGuestSession()) return;
+  clearWgwSession("user_initiated");
+  wgwClearGuestSharePath();
+}
+
+/**
+ * Public-share password rotation (and share revoke) invalidate the DB session while the
+ * guest JWT may still be in localStorage. Send the visitor back to `/share/:token`.
+ */
+export function wgwRedirectGuestShareReauth(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!wgwIsGuestSession()) return false;
+  const shareToken = wgwGuestShareToken();
+  clearWgwSession("401_online");
+  wgwClearGuestSharePath();
+  if (!shareToken) {
+    wgwClearGuestShareToken();
+    return false;
+  }
+  window.location.assign(`/share/${encodeURIComponent(shareToken)}`);
+  return true;
+}
+
+/** Store a guest JWT from POST /files/share-sessions (no refresh flow in v1). */
+export function wgwEstablishGuestShareSession(
+  response: {
+    access_token: string;
+    expires_in?: number;
+  },
+  shareToken?: string,
+  sharePath?: string,
+): void {
+  const expiresIn =
+    typeof response.expires_in === "number" && Number.isFinite(response.expires_in)
+      ? response.expires_in
+      : 3600;
+  if (shareToken?.trim()) {
+    wgwPersistGuestShareToken(shareToken);
+  }
+  if (sharePath?.trim()) {
+    wgwPersistGuestSharePath(sharePath);
+  }
+  applyTokens({
+    access_token: response.access_token,
+    refresh_token: WGW_GUEST_REFRESH_TOKEN,
+    expires_in: expiresIn,
+    refresh_expires_in: expiresIn,
+  });
+}
+
+export type WgwLogoutNavigation = "guest_share" | "guest_reload" | "member_login";
+
+/**
+ * Clear the current session and navigate away. Guest share viewers return to the
+ * public share entry (or reload) instead of the member login screen.
+ */
+export async function wgwCompleteLogoutNavigation(): Promise<WgwLogoutNavigation> {
+  const isGuest = wgwIsGuestSession();
+  const shareToken = wgwGuestShareToken();
+  await wgwLogout();
+  if (isGuest) {
+    if (shareToken) {
+      window.location.assign(`/share/${encodeURIComponent(shareToken)}`);
+      return "guest_share";
+    }
+    window.location.reload();
+    return "guest_reload";
+  }
+  return "member_login";
 }
 
 /** Current in-memory/storage access token, if available. */
@@ -374,6 +534,12 @@ export async function wgwEnsureSession(): Promise<void> {
   hydrateTokensFromStorage();
   if (accessToken && !isAccessTokenExpired()) return;
 
+  if (wgwIsGuestSession()) {
+    if (accessToken && !isAccessTokenExpired()) return;
+    clearWgwSession("refresh_expired");
+    throw new Error("Share session expired. Open the link again.");
+  }
+
   if (refreshToken) {
     if (readBrowserOnline() && isRefreshTokenExpired()) {
       clearWgwSession("refresh_expired");
@@ -399,7 +565,7 @@ export async function wgwEnsureSession(): Promise<void> {
 }
 
 async function wgwTryRefresh(): Promise<boolean> {
-  if (!refreshToken) return false;
+  if (!refreshToken || wgwIsGuestSession()) return false;
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = withAuthRefreshLock(async () => {
@@ -568,7 +734,29 @@ export async function wgwReadJson(res: Response): Promise<unknown> {
   }
 }
 
+function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
+  const json = decodeJwtPayload(token);
+  const username = typeof json?.sub === "string" && json.sub.trim() ? json.sub.trim() : "guest";
+  const displayName = "Guest";
+  return {
+    user: {
+      displayName,
+      initials: workspaceUserInitials({ displayName }),
+      username,
+    },
+    viewerInboxLabel: "guest",
+  };
+}
+
 export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
+  hydrateTokensFromStorage();
+  if (wgwIsGuestSession()) {
+    if (!accessToken) {
+      throw new Error("Share session expired. Open the link again.");
+    }
+    return wgwGuestPrincipalFromAccessToken(accessToken);
+  }
+
   const res = await wgwFetch("/me");
   if (!res.ok) throw new Error(`GET /me failed (${res.status})`);
   const j = (await wgwReadJson(res)) as Record<string, unknown>;

@@ -3,6 +3,8 @@ import {
   wgwFetch,
   wgwFetchPrincipal,
   wgwEnsurePluginSession,
+  wgwGuestSharePath,
+  wgwIsGuestSession,
   wgwReadJson,
 } from "@/lib/api/wgw/http";
 import { downloadWgwUnifiedSearchRecord } from "@/lib/api/wgw/search";
@@ -11,6 +13,7 @@ import type {
   WgwDriveDirectoryEntry,
   WgwDriveListingResponse,
   WgwDriveStarsResponse,
+  WgwDriveUserData,
   WgwDriveUserResponse,
   WgwPluginDescriptor,
 } from "@/lib/api/wgw/types";
@@ -96,9 +99,106 @@ async function fetchState(
   return { user, cwd: directory.location, directory, plugins };
 }
 
+function guestShareOwnerUsername(sharePath: string): string {
+  const normalized = normalizePath(sharePath);
+  const match = normalized.match(/^\/users\/([^/]+)/);
+  return match?.[1] ?? "guest";
+}
+
+function guestShareListingPath(sharePath: string): string {
+  const normalized = normalizePath(sharePath);
+  const { destination } = parentAndName(normalized);
+  return destination === "/" ? normalized : destination;
+}
+
+/**
+ * Guest share sessions do not call `/files/context`. Fabricate DriveUIData.user for
+ * local shell state. OpenAPI DriveUserData only allows role "user" and roots
+ * `/users`|`/groups`; guest bootstrap uses a share-scoped root path instead.
+ */
+function guestDriveUser(username: string, rootPath: string): WgwDriveUserData {
+  return {
+    username,
+    name: "",
+    role: "guest",
+    roots: [rootPath],
+  } as unknown as WgwDriveUserData;
+}
+
+async function fetchGuestDriveState(
+  sharePath: string,
+  opts?: { signal?: AbortSignal },
+): Promise<DriveUIData> {
+  const normalized = normalizePath(sharePath);
+  const ownerUsername = guestShareOwnerUsername(normalized);
+  const listingPath = guestShareListingPath(normalized);
+
+  try {
+    const directory = await fetchListing(listingPath, opts);
+    return {
+      user: guestDriveUser(ownerUsername, listingPath),
+      cwd: directory.location,
+      directory,
+      plugins: [],
+    };
+  } catch (error) {
+    const { destination, from } = parentAndName(normalized);
+    if (!from || destination === normalized) {
+      throw error;
+    }
+
+    // File shares often cannot list the parent directory. Only fabricate a single-file
+    // listing when the guest can still read the shared file (session not revoked).
+    const contentRes = await wgwFetch(`/files/content?${pathQuery(normalized)}`, {
+      method: "HEAD",
+      signal: opts?.signal,
+    });
+    if (!contentRes.ok) {
+      throw error;
+    }
+
+    return {
+      user: guestDriveUser(ownerUsername, destination),
+      cwd: destination,
+      directory: {
+        location: destination,
+        files: [
+          {
+            type: "file",
+            path: normalized,
+            name: from,
+            size: 0,
+            time: 0,
+            permissions: 0,
+            myRights: {
+              mayView: true,
+              mayComment: false,
+              mayReview: false,
+              mayEditContent: false,
+              mayManageStructure: false,
+              mayShare: false,
+            },
+          },
+        ],
+      },
+      plugins: [],
+    };
+  }
+}
+
 export async function fetchDriveLiveBootstrap(): Promise<DriveAppBootstrap> {
-  const [session, driveState, plugins] = await Promise.all([
-    wgwFetchPrincipal(),
+  const session = await wgwFetchPrincipal();
+
+  if (wgwIsGuestSession()) {
+    const sharePath = wgwGuestSharePath();
+    if (!sharePath) {
+      throw new Error("Share session is missing path context. Open the link again.");
+    }
+    const driveState = await fetchGuestDriveState(sharePath);
+    return { session, data: driveState };
+  }
+
+  const [driveState, plugins] = await Promise.all([
     fetchState("/"),
     fetchWgwPlugins().catch(() => []),
   ]);

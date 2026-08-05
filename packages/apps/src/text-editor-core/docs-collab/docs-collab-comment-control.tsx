@@ -8,9 +8,12 @@ export type DocsCollabCommentControlProps = {
     | "commentsAddFromSelection"
     | "commentsAddFromSelectionDisabledNoSelection"
     | "commentsAddFromSelectionDisabledViewSource"
+    | "commentsAddFromSelectionDisabledReadOnly"
   >;
   canAddFromSelection: boolean;
   commentsDisabled?: boolean;
+  /** Prefer an explicit title when comments are disabled (view-source vs share rights). */
+  commentsDisabledTitle?: string;
   onAddCommentFromSelection: () => void;
   className?: string;
 };
@@ -20,12 +23,13 @@ export function DocsCollabCommentControl({
   labels,
   canAddFromSelection,
   commentsDisabled = false,
+  commentsDisabledTitle,
   onAddCommentFromSelection,
   className,
 }: DocsCollabCommentControlProps) {
   const disabled = commentsDisabled || !canAddFromSelection;
   const title = commentsDisabled
-    ? labels.commentsAddFromSelectionDisabledViewSource
+    ? (commentsDisabledTitle ?? labels.commentsAddFromSelectionDisabledViewSource)
     : !canAddFromSelection
       ? labels.commentsAddFromSelectionDisabledNoSelection
       : labels.commentsAddFromSelection;

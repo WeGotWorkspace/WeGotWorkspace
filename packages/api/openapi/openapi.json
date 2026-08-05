@@ -3216,6 +3216,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Guest already has access on this share",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriveShareConflictError"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"

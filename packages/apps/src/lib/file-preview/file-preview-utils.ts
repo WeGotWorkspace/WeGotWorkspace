@@ -202,13 +202,18 @@ export function resolveDetailFilePreview(
   return richPreviews[fileId] ?? filePreviews[fileId];
 }
 
-/** Grid tiles prefer rich docs payloads over plain text excerpts when both exist. */
+/**
+ * Grid tiles only show media (image/video) thumbnails.
+ * Text and markdown body previews fall back to the kind icon.
+ */
 export function resolveGridFilePreview(
   filePreviews: Record<string, FilePreviewPayload>,
   richPreviews: Record<string, FilePreviewPayload>,
   fileId: string,
 ): FilePreviewPayload | undefined {
-  return resolveDetailFilePreview(filePreviews, richPreviews, fileId);
+  const preview = resolveDetailFilePreview(filePreviews, richPreviews, fileId);
+  if (preview?.kind === "blob-url") return preview;
+  return undefined;
 }
 
 export function fileSupportsTextPreview(fileName: string, kind: string, apiPath?: string): boolean {
