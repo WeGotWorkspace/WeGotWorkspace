@@ -16,7 +16,10 @@ export const shareLabels = {
   regenerateLinkHint: "Generate a new link (invalidates the current one)",
   requirePassword: "Require password",
   passwordPlaceholder: "Set a password",
+  passwordSavedPlaceholder: "Password is set",
   passwordDisabledPlaceholder: "Password disabled",
+  regeneratePassword: "Generate new password",
+  regeneratePasswordHint: "Generate a new password (invalidates the current one)",
   confirmCancel: "Cancel",
   confirmContinue: "Continue",
   disablePublicLinkTitle: "Disable public link?",
@@ -26,6 +29,9 @@ export const shareLabels = {
   regenerateLinkTitle: "Generate new link?",
   regenerateLinkConfirm:
     "The current link will stop working immediately. Anyone with the old URL will need the new one. Continue?",
+  regeneratePasswordTitle: "Generate new password?",
+  regeneratePasswordConfirm:
+    "The current password will stop working immediately. Anyone with the old password will need the new one. Continue?",
   invitePlaceholder: "name@company.com",
   inviteAction: "Invite",
   inviteGuest: "Invite guest",

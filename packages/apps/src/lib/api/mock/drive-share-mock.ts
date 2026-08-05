@@ -35,7 +35,19 @@ function cloneAtPath(path: string): DriveShareAtPath {
   return {
     ...mockDriveShareAtPath,
     path,
+    directShares: mockDriveShareAtPath.directShares.map((entry) => ({
+      ...entry,
+      share: { ...entry.share },
+    })),
+    publicShares: mockDriveShareAtPath.publicShares.map((entry) => ({ ...entry })),
   };
+}
+
+function syncPublicSummary(share: DriveShare): void {
+  const entry = mockDriveShareAtPath.publicShares.find((item) => item.shareId === share.id);
+  if (!entry) return;
+  entry.hasPassword = share.hasPassword;
+  entry.defaultAccess = share.defaultAccess;
 }
 
 function filterPrincipals(query: string): DriveSharePrincipalEntry[] {
@@ -83,34 +95,63 @@ export function createMockDriveShareOperations(): DriveShareOperations {
         shareWith: body.shareWith ?? null,
         myRights: fullDriveMyRights,
       };
+
+      if (body.path === SHARED_FIXTURE_PATH) {
+        mockDriveShareAtPath.directShares.push({
+          share: created,
+          relationship: "direct",
+          status: "active",
+        });
+        if (created.kind === "public") {
+          mockDriveShareAtPath.publicShares.push({
+            shareId: created.id,
+            sharePath: created.path,
+            defaultAccess: created.defaultAccess,
+            hasPassword: created.hasPassword,
+            inherited: false,
+            status: "active",
+          });
+        }
+      }
+
       return created;
     },
     async patchShare(shareId, body: DriveShareUpdateRequest) {
-      const direct =
-        mockDriveShareAtPath.directShares.find((entry) => entry.share.id === shareId)?.share ??
-        mockDriveShareAtPath.directShares[0]?.share;
+      const wrapper = mockDriveShareAtPath.directShares.find((entry) => entry.share.id === shareId);
+      const direct = wrapper?.share;
       if (!direct || direct.id !== shareId) {
         throw new Error(`Share not found: ${shareId}`);
       }
       const passwordProvided = Object.prototype.hasOwnProperty.call(body, "password");
-      const nextPassword = passwordProvided ? body.password : direct.hasPassword;
       const nextAccess = body.defaultAccess ?? direct.defaultAccess;
       if (direct.kind === "public" && nextAccess !== "view") {
         throw new Error("Public shares only support view access.");
       }
-      return {
-        ...direct,
+      const hasPassword = passwordProvided
+        ? body.password !== null && body.password !== ""
+        : direct.hasPassword;
+
+      Object.assign(direct, {
         defaultAccess: nextAccess,
         expiresAt: body.expiresAt === undefined ? direct.expiresAt : body.expiresAt,
         shareWith: body.shareWith === undefined ? direct.shareWith : body.shareWith,
-        hasPassword: passwordProvided
-          ? nextPassword !== null && nextPassword !== ""
-          : direct.hasPassword,
-        updatedAt: body.updatedAt,
-      };
+        hasPassword,
+        updatedAt: body.updatedAt ?? new Date().toISOString(),
+      });
+      syncPublicSummary(direct);
+
+      return { ...direct };
     },
-    async deleteShare() {
-      return;
+    async deleteShare(shareId) {
+      const index = mockDriveShareAtPath.directShares.findIndex(
+        (entry) => entry.share.id === shareId,
+      );
+      if (index >= 0) {
+        mockDriveShareAtPath.directShares.splice(index, 1);
+      }
+      mockDriveShareAtPath.publicShares = mockDriveShareAtPath.publicShares.filter(
+        (entry) => entry.shareId !== shareId,
+      );
     },
     async createInvite(shareId, body: DriveShareInviteCreateRequest) {
       const invite: DriveShareInvite = {

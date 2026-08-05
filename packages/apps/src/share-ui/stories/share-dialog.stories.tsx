@@ -9,6 +9,7 @@ import {
   shareStoryAtPathInherited,
   shareStoryAtPathPublicOff,
   shareStoryAtPathPublicOn,
+  shareStoryAtPathPublicPasswordOn,
   shareStoryAtPathReadOnlyMember,
 } from "@/share-ui/stories/share-dialog.fixtures";
 
@@ -46,6 +47,10 @@ type Story = StoryObj<typeof ShareDialog>;
 
 export const PublicOn: Story = {
   render: () => <ShareDialogHarness fixture={shareStoryAtPathPublicOn} />,
+};
+
+export const PublicPasswordOn: Story = {
+  render: () => <ShareDialogHarness fixture={shareStoryAtPathPublicPasswordOn} />,
 };
 
 export const PublicOff: Story = {

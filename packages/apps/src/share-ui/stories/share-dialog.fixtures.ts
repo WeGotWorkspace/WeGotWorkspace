@@ -15,6 +15,24 @@ function cloneAtPath(overrides: Partial<DriveShareAtPath> = {}): DriveShareAtPat
 
 export const shareStoryAtPathPublicOn = cloneAtPath();
 
+export const shareStoryAtPathPublicPasswordOn = cloneAtPath({
+  publicShares: mockDriveShareAtPath.publicShares.map((entry) => ({
+    ...entry,
+    hasPassword: true,
+  })),
+  directShares: mockDriveShareAtPath.directShares.map((entry) =>
+    entry.share.kind === "public"
+      ? {
+          ...entry,
+          share: {
+            ...entry.share,
+            hasPassword: true,
+          },
+        }
+      : entry,
+  ),
+});
+
 export const shareStoryAtPathPublicOff = cloneAtPath({
   publicShares: [],
   directShares: mockDriveShareAtPath.directShares.filter((entry) => entry.share.kind !== "public"),

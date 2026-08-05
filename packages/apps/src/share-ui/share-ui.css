@@ -190,8 +190,16 @@
   @apply shrink-0;
 }
 
-.share-dialog__password-row .share-dialog__input {
-  @apply sm:ml-auto sm:max-w-[11.25rem] sm:flex-none;
+.share-dialog__password-field {
+  @apply flex min-w-0 flex-1 items-center gap-1 sm:ml-auto sm:flex-none;
+}
+
+.share-dialog__password-field .share-dialog__input {
+  @apply sm:max-w-[11.25rem] sm:flex-none;
+}
+
+.share-dialog__password-field > :not(.share-dialog__input) {
+  @apply shrink-0;
 }
 
 .share-dialog__link-row > :not(.share-dialog__link-field) {

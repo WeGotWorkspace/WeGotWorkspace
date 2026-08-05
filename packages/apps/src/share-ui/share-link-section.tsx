@@ -23,7 +23,17 @@ import {
   findDirectPublicShare,
   findShareRecord,
 } from "@/share-ui/share-path-utils";
+import {
+  clearStoredSharePassword,
+  readStoredSharePassword,
+  writeStoredSharePassword,
+} from "@/share-ui/share-password-storage";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";
+
+function rememberSharePassword(scope: string | undefined, password: string) {
+  if (!scope) return;
+  writeStoredSharePassword(scope, password);
+}
 
 type ShareLinkSectionProps = {
   atPath: DriveShareAtPath;
@@ -31,7 +41,11 @@ type ShareLinkSectionProps = {
   disabled?: boolean;
 };
 
-type ConfirmAction = "disable-public" | "disable-password" | "regenerate-link";
+type ConfirmAction =
+  | "disable-public"
+  | "disable-password"
+  | "regenerate-link"
+  | "regenerate-password";
 
 const confirmDialogCopy: Record<ConfirmAction, { title: string; description: string }> = {
   "disable-public": {
@@ -46,6 +60,10 @@ const confirmDialogCopy: Record<ConfirmAction, { title: string; description: str
     title: shareLabels.regenerateLinkTitle,
     description: shareLabels.regenerateLinkConfirm,
   },
+  "regenerate-password": {
+    title: shareLabels.regeneratePasswordTitle,
+    description: shareLabels.regeneratePasswordConfirm,
+  },
 };
 
 export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareLinkSectionProps) {
@@ -54,14 +72,30 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
   const shareRecord = directPublic ? findShareRecord(atPath, directPublic.shareId) : undefined;
   const token = shareRecord?.publicToken ?? null;
   const url = token ? buildPublicShareUrl(token) : "—";
-  const [passwordRequired, setPasswordRequired] = useState(directPublic?.hasPassword ?? false);
-  const [passwordDraft, setPasswordDraft] = useState("");
-  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const passwordBusy = Boolean(mutations.busyKey?.startsWith("public-password-"));
+  const passwordScope = atPath.path;
+
+  const [passwordRequired, setPasswordRequired] = useState(directPublic?.hasPassword ?? false);
+  const [passwordDraft, setPasswordDraft] = useState(() =>
+    directPublic?.hasPassword ? readStoredSharePassword(passwordScope) : "",
+  );
+
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   useEffect(() => {
-    setPasswordRequired(directPublic?.hasPassword ?? false);
-  }, [directPublic?.hasPassword, directPublic?.shareId]);
+    const hasPassword = directPublic?.hasPassword ?? false;
+    setPasswordRequired(hasPassword);
+    if (!passwordScope) {
+      setPasswordDraft("");
+      return;
+    }
+    if (hasPassword) {
+      setPasswordDraft((current) => readStoredSharePassword(passwordScope) || current);
+      return;
+    }
+    clearStoredSharePassword(passwordScope);
+    setPasswordDraft("");
+  }, [directPublic?.hasPassword, passwordScope]);
 
   useEffect(() => {
     if (!enabled) {
@@ -82,11 +116,13 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
 
     switch (confirmAction) {
       case "disable-public":
+        clearStoredSharePassword(passwordScope);
         void mutations.setPublicEnabled(false);
         break;
       case "disable-password":
         setPasswordRequired(false);
         setPasswordDraft("");
+        clearStoredSharePassword(passwordScope);
         void mutations.updatePublicPassword(false, "");
         break;
       case "regenerate-link":
@@ -95,6 +131,17 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
           if (generatedPassword) {
             setPasswordRequired(true);
             setPasswordDraft(generatedPassword);
+            rememberSharePassword(passwordScope, generatedPassword);
+          }
+        })();
+        break;
+      case "regenerate-password":
+        void (async () => {
+          const password = await mutations.updatePublicPassword(true, "");
+          if (password) {
+            setPasswordRequired(true);
+            setPasswordDraft(password);
+            rememberSharePassword(passwordScope, password);
           }
         })();
         break;
@@ -125,6 +172,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                 if (generatedPassword) {
                   setPasswordRequired(true);
                   setPasswordDraft(generatedPassword);
+                  rememberSharePassword(passwordScope, generatedPassword);
                 }
               })();
             }}
@@ -155,7 +203,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               label={shareLabels.regenerateLink}
               icon={<RefreshCw className="size-3.5" aria-hidden />}
               size="sm"
-              variant="ghost"
+              variant="outline"
               title={shareLabels.regenerateLinkHint}
               disabled={disabled}
               onClick={() => setConfirmAction("regenerate-link")}
@@ -181,6 +229,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                       const password = await mutations.updatePublicPassword(true, passwordDraft);
                       if (password) {
                         setPasswordDraft(password);
+                        rememberSharePassword(passwordScope, password);
                       }
                     })();
                     return;
@@ -189,19 +238,32 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                 }}
               />
             </span>
-            <ShareDialogInput
-              type="text"
-              value={passwordDraft}
-              readOnly
-              mono
-              disabled={!passwordRequired || disabled || passwordBusy}
-              aria-label={shareLabels.passwordPlaceholder}
-              placeholder={
-                passwordRequired
-                  ? shareLabels.passwordPlaceholder
-                  : shareLabels.passwordDisabledPlaceholder
-              }
-            />
+            <div className="share-dialog__password-field">
+              <ShareDialogInput
+                type="text"
+                value={passwordDraft}
+                readOnly
+                mono
+                disabled={!passwordRequired || disabled || passwordBusy}
+                aria-label={shareLabels.requirePassword}
+                placeholder={
+                  passwordRequired
+                    ? passwordDraft
+                      ? undefined
+                      : shareLabels.passwordSavedPlaceholder
+                    : shareLabels.passwordDisabledPlaceholder
+                }
+              />
+              <IconButton
+                label={shareLabels.regeneratePassword}
+                icon={<RefreshCw className="size-3.5" aria-hidden />}
+                size="sm"
+                variant="outline"
+                title={shareLabels.regeneratePasswordHint}
+                disabled={!passwordRequired || disabled || passwordBusy}
+                onClick={() => setConfirmAction("regenerate-password")}
+              />
+            </div>
           </div>
         </div>
       ) : null}
