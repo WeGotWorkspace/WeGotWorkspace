@@ -23,17 +23,10 @@ import {
   findDirectPublicShare,
   findShareRecord,
 } from "@/share-ui/share-path-utils";
-import {
-  clearStoredSharePassword,
-  readStoredSharePassword,
-  writeStoredSharePassword,
-} from "@/share-ui/share-password-storage";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";
 
-function rememberSharePassword(scope: string | undefined, password: string) {
-  if (!scope) return;
-  writeStoredSharePassword(scope, password);
-}
+/** Inert mask — never the real secret. Shown when password is set but not freshly revealed. */
+export const SHARE_PASSWORD_MASK = "••••••••";
 
 type ShareLinkSectionProps = {
   atPath: DriveShareAtPath;
@@ -73,40 +66,51 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
   const token = shareRecord?.publicToken ?? null;
   const url = token ? buildPublicShareUrl(token) : "—";
   const passwordBusy = Boolean(mutations.busyKey?.startsWith("public-password-"));
-  // Must match useShareMutations path scope (normalized in share-password-storage).
-  const passwordScope = atPath.path;
   const hasPassword = directPublic?.hasPassword ?? false;
 
   const [passwordRequired, setPasswordRequired] = useState(hasPassword);
-  const [passwordDraft, setPasswordDraft] = useState(() =>
-    hasPassword ? readStoredSharePassword(passwordScope) : "",
-  );
-
+  /** Fresh plaintext only for this mount after enable/regenerate — never persisted. */
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
-  // sessionStorage is SSOT for plaintext — restore whenever protection is active.
-  // Do NOT clear storage here on hasPassword=false; transient refetch gaps would wipe it.
   useEffect(() => {
     setPasswordRequired(hasPassword);
-    if (!enabled) {
-      setPasswordDraft("");
-      return;
-    }
     if (!hasPassword) {
-      setPasswordDraft("");
-      return;
+      setRevealedPassword(null);
     }
-    setPasswordDraft((current) => readStoredSharePassword(passwordScope) || current);
-  }, [enabled, hasPassword, passwordScope]);
+  }, [hasPassword]);
 
-  const visiblePassword =
-    passwordRequired && enabled ? passwordDraft || readStoredSharePassword(passwordScope) : "";
+  useEffect(() => {
+    if (!enabled) {
+      setRevealedPassword(null);
+    }
+  }, [enabled]);
 
-  const handleCopy = async () => {
+  const passwordRevealed = Boolean(passwordRequired && revealedPassword);
+  const passwordFieldValue = !passwordRequired
+    ? ""
+    : passwordRevealed
+      ? revealedPassword!
+      : SHARE_PASSWORD_MASK;
+
+  const revealPassword = (password: string) => {
+    setPasswordRequired(true);
+    setRevealedPassword(password);
+  };
+
+  const handleCopyLink = async () => {
     if (!token) return;
     const copied = await copyShareText(url);
     if (copied) {
       await mutations.copyPublicLink();
+    }
+  };
+
+  const handleCopyPassword = async () => {
+    if (!revealedPassword) return;
+    const copied = await copyShareText(revealedPassword);
+    if (copied) {
+      await mutations.copySharePassword();
     }
   };
 
@@ -115,23 +119,21 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
 
     switch (confirmAction) {
       case "disable-public":
-        clearStoredSharePassword(passwordScope);
-        setPasswordDraft("");
+        setRevealedPassword(null);
         void mutations.setPublicEnabled(false);
         break;
       case "disable-password":
         setPasswordRequired(false);
-        setPasswordDraft("");
-        clearStoredSharePassword(passwordScope);
+        setRevealedPassword(null);
         void mutations.updatePublicPassword(false, "");
         break;
       case "regenerate-link":
         void (async () => {
           const generatedPassword = await mutations.regeneratePublicLink();
           if (generatedPassword) {
-            setPasswordRequired(true);
-            setPasswordDraft(generatedPassword);
-            rememberSharePassword(passwordScope, generatedPassword);
+            revealPassword(generatedPassword);
+          } else {
+            setRevealedPassword(null);
           }
         })();
         break;
@@ -139,9 +141,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
         void (async () => {
           const password = await mutations.updatePublicPassword(true, "");
           if (password) {
-            setPasswordRequired(true);
-            setPasswordDraft(password);
-            rememberSharePassword(passwordScope, password);
+            revealPassword(password);
           }
         })();
         break;
@@ -170,9 +170,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               void (async () => {
                 const generatedPassword = await mutations.setPublicEnabled(next);
                 if (generatedPassword) {
-                  setPasswordRequired(true);
-                  setPasswordDraft(generatedPassword);
-                  rememberSharePassword(passwordScope, generatedPassword);
+                  revealPassword(generatedPassword);
                 }
               })();
             }}
@@ -197,7 +195,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               size="sm"
               variant="outline"
               disabled={!token}
-              onClick={() => void handleCopy()}
+              onClick={() => void handleCopyLink()}
             />
             <IconButton
               label={shareLabels.regenerateLink}
@@ -226,10 +224,9 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                   if (next) {
                     setPasswordRequired(true);
                     void (async () => {
-                      const password = await mutations.updatePublicPassword(true, passwordDraft);
+                      const password = await mutations.updatePublicPassword(true, "");
                       if (password) {
-                        setPasswordDraft(password);
-                        rememberSharePassword(passwordScope, password);
+                        revealPassword(password);
                       }
                     })();
                     return;
@@ -241,25 +238,39 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
             <div className="share-dialog__password-field">
               <ShareDialogInput
                 type="text"
-                value={visiblePassword}
+                value={passwordFieldValue}
                 readOnly
                 mono
                 disabled={!passwordRequired || disabled || passwordBusy}
-                aria-label={shareLabels.requirePassword}
-                placeholder={
-                  passwordRequired
-                    ? visiblePassword
-                      ? undefined
-                      : shareLabels.passwordSavedPlaceholder
-                    : shareLabels.passwordDisabledPlaceholder
+                aria-label={
+                  passwordRevealed
+                    ? shareLabels.requirePassword
+                    : passwordRequired
+                      ? shareLabels.passwordHiddenLabel
+                      : shareLabels.passwordDisabledPlaceholder
                 }
+                placeholder={passwordRequired ? undefined : shareLabels.passwordDisabledPlaceholder}
               />
+              {passwordRevealed ? (
+                <IconButton
+                  label={shareLabels.copyPassword}
+                  icon={<Copy className="size-3.5" aria-hidden />}
+                  size="sm"
+                  variant="outline"
+                  disabled={disabled || passwordBusy}
+                  onClick={() => void handleCopyPassword()}
+                />
+              ) : null}
               <IconButton
                 label={shareLabels.regeneratePassword}
                 icon={<RefreshCw className="size-3.5" aria-hidden />}
                 size="sm"
                 variant="outline"
-                title={shareLabels.regeneratePasswordHint}
+                title={
+                  passwordRequired && !passwordRevealed
+                    ? shareLabels.regeneratePasswordToViewHint
+                    : shareLabels.regeneratePasswordHint
+                }
                 disabled={!passwordRequired || disabled || passwordBusy}
                 onClick={() => setConfirmAction("regenerate-password")}
               />
