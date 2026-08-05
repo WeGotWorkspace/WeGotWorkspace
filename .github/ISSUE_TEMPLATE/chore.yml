@@ -1,0 +1,41 @@
+name: "[Maintainers only] Chore"
+description: Maintainers only — eng chore, debt, or tracker. Externals: use Discussions or Bug report.
+title: "[Chore] "
+labels:
+  - type:chore
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
+        Use for eng debt, trackers, and maintainer chores that are **not** a product Goal.
+        Prefer **Task** when work needs implementable AC under an Epic/Goal and a `feat/` spec.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What needs doing and why (brief).
+    validations:
+      required: true
+
+  - type: textarea
+    id: done_when
+    attributes:
+      label: Done when
+      description: Optional checklist or exit criteria.
+      placeholder: |
+        - [ ] …
+    validations:
+      required: false
+
+  - type: input
+    id: area
+    attributes:
+      label: Area (optional)
+      description: Product area hint (mail, drive, docs, …).
+      placeholder: e.g. ci
+    validations:
+      required: false

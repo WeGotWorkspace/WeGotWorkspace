@@ -1,0 +1,58 @@
+name: "[Maintainers only] Epic"
+description: Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report.
+title: "[Epic] "
+labels:
+  - type:epic
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
+        Epics are **engineering** work under a product Goal. Link the parent Goal.
+        Do not put epics on the Product roadmap Project.
+
+  - type: textarea
+    id: parent_goal
+    attributes:
+      label: Parent goal
+      description: Link to the `type:goal` issue this epic delivers.
+      placeholder: "#123 — Share Docs and Drive files with guests via a link"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What this epic covers in eng terms (packages, surfaces, protocols OK here).
+    validations:
+      required: true
+
+  - type: textarea
+    id: slices
+    attributes:
+      label: Slices
+      description: Checklist of delivery slices / child tasks.
+      placeholder: |
+        - [ ] Slice A
+        - [ ] Slice B
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Explicit exclusions for this epic.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done_when
+    attributes:
+      label: Done when
+      description: Maps to the parent Goal’s success signals; implementer DoD.
+    validations:
+      required: true

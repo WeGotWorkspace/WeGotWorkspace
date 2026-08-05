@@ -10,7 +10,8 @@ body:
         Thanks for taking the time to report this.
         Use this form to describe incorrect or broken behavior.
 
-        For feature requests or general questions, please use Discussions.
+        For **ideas and exploration**, use [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) instead —
+        do not use this form to propose Goals or features. See CONTRIBUTING.md.
 
   - type: textarea
     id: problem

@@ -1,6 +1,12 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: Propose an idea or improvement
+  - name: Discussions — ideas and exploration
     url: https://github.com/WeGotWorkspace/wegotworkspace/discussions
-    about: Use Discussions for feature requests, improvements, and other project ideas.
+    about: Share ideas and explore outcomes. Maintainers may promote promising threads to Goals later. Do not file Goal/Epic/Task/Chore issues for this.
+  - name: Bug report
+    url: https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml
+    about: Something broken or incorrect? Use the Bug report template.
+  - name: Contributing guidelines
+    url: https://github.com/WeGotWorkspace/wegotworkspace/blob/main/CONTRIBUTING.md
+    about: What externals can file (Discussions + bugs) vs maintainer-only delivery issues. External code PRs remain closed until CLA.

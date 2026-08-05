@@ -1,0 +1,57 @@
+name: "[Maintainers only] Task"
+description: Maintainers only — delivery task with implementable AC. Externals: use Discussions or Bug report.
+title: "[Task] "
+labels:
+  - type:task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
+        Tasks are **implementable** delivery work. Link a parent Epic or Goal.
+        Acceptance criteria should be checkbox-ready (`- [ ]`) so agents and PRs can verify done.
+
+        Do not put tasks on the Product roadmap Project.
+
+  - type: textarea
+    id: parent
+    attributes:
+      label: Parent Epic or Goal
+      description: Link to the `type:epic` or `type:goal` issue this task delivers.
+      placeholder: "#123 — Epic or Goal title"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: >
+        Implementable checklist. Each item should be objectively verifiable
+        (tests, UI behavior, API contract). Prefer `- [ ]` lines.
+      placeholder: |
+        - [ ] …
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: Explicit exclusions for this task (scope fence).
+      placeholder: Out of scope for this task — …
+    validations:
+      required: true
+
+  - type: input
+    id: area
+    attributes:
+      label: Area (optional)
+      description: Product area hint (mail, drive, docs, calendar, …). May also set an `area:*` label.
+      placeholder: e.g. drive
+    validations:
+      required: false

@@ -5,12 +5,36 @@ description: Verify GitHub issue acceptance criteria before handoff or PR — fe
 
 # Verify GitHub issue acceptance criteria
 
-Issue-linked work needs **two** gates:
+Issue-linked work needs **three** gates:
 
-1. **Issue AC** — this skill: each acceptance criterion verified with evidence.
-2. **Repo quality** — [developer/done-checklist.md](../developer/done-checklist.md) + [code-review](../code-review/SKILL.md): tests, done gates, policy, smells.
+1. **Spec sync** — body-hash drift check (below); issue remains authoritative, `spec.md` is derived reference.
+2. **Issue AC** — this skill: each acceptance criterion verified with evidence.
+3. **Repo quality** — [developer/done-checklist.md](../developer/done-checklist.md) + [code-review](../code-review/SKILL.md): tests, done gates, policy, smells.
 
-Do not skip (2) after (1). Do not declare an issue done based on green CI alone if AC were never mapped.
+Do not skip (2) or (3) after (1). Do not declare an issue done based on green CI alone if AC were never mapped.
+
+## Goal vs Task / Epic modes
+
+Product governance splits GitHub issues into layers. Detect mode from labels (`type:goal` | `type:epic` | `type:task`) or body sections.
+
+| Mode | Labels | What to verify | Spec `Source:`? |
+|------|--------|----------------|-----------------|
+| **Goal** | `type:goal` | Outcome / **Success looks like** + child delivery issues | **Never** — Goals are never `Source:` |
+| **Epic / Task** | `type:epic`, `type:task`, or default eng issue | Implementer AC (`- [ ]`, Done when) + body-hash | **Yes** — `Source: #<task-or-epic>` |
+| **Bug / chore** | `bug`, `type:chore` | Bug expected behavior / chore checklist | Usually no `feat/` spec |
+
+**Goal mode rules:**
+
+- Do **not** invent eng AC from Outcome prose.
+- Check **Success looks like** as observable product outcomes; map children (sub-issues / Delivery links) and verify those with Task/Epic mode (or note them as open).
+- **Fulfilled** (Product Project Status) is a **product judgment** against success signals — **not** “all children closed,” not green CI on an unrelated PR, and not automatic from delivery issue state.
+- Moving a Goal to Fulfilled / closing it for the intended slice requires those success signals met — child progress is evidence, not the definition of done.
+- `feat/` work that closes delivery must link a **Task or Epic**, never a Goal as the sole closing issue.
+- Goal Status while building stays **Adopted**; eng progress lives on Epics/Tasks.
+
+**Task / Epic mode:** keep the AC + body-hash workflow below.
+
+Product intent: [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md). Spec layers: [specs/README.md](../../specs/README.md).
 
 ## When to use
 
@@ -20,12 +44,39 @@ Do not skip (2) after (1). Do not declare an issue done based on green CI alone 
 | Before handoff: "is this done?", "verify the issue" | Pure refactor with no AC |
 | Before PR when PR fixes/closes an issue | Docs-only typo with obvious scope |
 | Parent after multitask merge for issue-scoped feature | Issue has no criteria and user did not ask for verification |
+| Goal issue: success signals + children status | Treating a Goal as `Source:` for `spec.md` |
 
 ## Prerequisites
 
 - Issue number or URL (e.g. `#80`, `https://github.com/ORG/REPO/issues/80`)
 - Local branch or diff containing the implementation
 - `gh` authenticated for the repo ([git-workflow](../git-workflow/SKILL.md) — use `gh` for GitHub tasks)
+
+## Spec drift check (body-hash)
+
+Before AC verification on `feat/` work (or when `.agents/specs/<N>-*/spec.md` exists):
+
+**Do not use `issue.updatedAt`** — labels, assignees, comments, and bots change it without scope changes.
+
+```bash
+# Current body hash (full output; compare first 8 hex chars)
+gh issue view <N> --json body --jq .body | shasum -a 256
+
+# Stored hash from spec header
+grep '^Source:' .agents/specs/<N>-<slug>/spec.md
+```
+
+**Interpretation:**
+
+| Condition | Result |
+|-----------|--------|
+| No `spec.md` on `feat/` branch | `DRIFT: spec missing` — create spec from issue before handoff |
+| First 8 chars of current hash ≠ hash in `Source:` line | `DRIFT: re-sync spec from issue` — read issue body, update spec/plan/tasks, new body-hash |
+| Hashes match | `SYNC OK` |
+
+On `DRIFT`: stop and re-sync from issue (issue first, then spec/plan/tasks). Callable MCP drift tool is a follow-up — these commands are the source of truth in PR 2.
+
+Details: [specs/README.md](../../specs/README.md).
 
 ## Workflow (one pass)
 
@@ -49,7 +100,9 @@ Read title + body + relevant comments. Note **state** (`OPEN`/`CLOSED`) but veri
 
 ### 2. Extract acceptance criteria
 
-Pull every **testable** requirement into a numbered list. Sources, in order:
+**If Goal mode** (`type:goal`): extract **Success looks like** bullets and list linked children under Delivery / sub-issues. Do not treat Outcome/Who/Non-goals as eng AC. Report child status separately. Verdict for Fulfilled / Goal satisfaction is product judgment on those success signals — closing every child is neither necessary nor sufficient by itself.
+
+**If Task / Epic / Bug mode:** pull every **testable** requirement into a numbered list. Sources, in order:
 
 | Source | How to extract |
 |--------|----------------|
@@ -64,6 +117,7 @@ Pull every **testable** requirement into a numbered list. Sources, in order:
 - One row per criterion — split compound bullets ("add X and Y") into separate rows when they verify independently.
 - Mark inferred criteria with `(inferred)` when there is no explicit AC section.
 - If the issue is vague, list assumptions you are verifying and flag gaps in the report — do not silently invent scope.
+- Never invent REST/package AC from a Goal’s Outcome section.
 
 ### 3. Map each criterion to verification
 
@@ -80,7 +134,7 @@ For every criterion, pick one primary method and record the planned check:
 
 Load domain depth when mapping: [testing](../testing/SKILL.md), [api](../api/SKILL.md), [apps-ui](../apps-ui/SKILL.md), [storybook](../storybook/SKILL.md).
 
-**Planning:** If work was planned with [plan-feature](../plan-feature/SKILL.md), align chunk `done-when` / `Verify with` rows to these criterion IDs.
+**Planning:** If work was planned with [plan-feature](../plan-feature/SKILL.md), align chunk `done-when` / `Verify with` rows to these criterion IDs. Map AC to the **issue**, not to `spec.md` — spec is technical scope reference only.
 
 ### 4. Run checks and collect evidence
 
@@ -140,8 +194,10 @@ Do not close the issue or claim "fixes #N" unless the user asked and verdict is 
 
 | Phase | Skill |
 |-------|-------|
-| Plan chunks from issue AC | [plan-feature](../plan-feature/SKILL.md) — copy AC into chunk `done-when` |
+| Issue → spec → plan → tasks | [plan-feature](../plan-feature/SKILL.md) + [specs/README.md](../../specs/README.md) |
+| Plan chunks from issue AC | Copy AC into chunk `done-when`; engineering rows in `tasks.md` |
 | Implement | Domain skills (`api`, `apps-ui`, …) |
+| Spec sync gate | **verify-issue** — body-hash drift (this doc) |
 | Issue AC gate | **verify-issue** (this doc) |
 | Technical gate | [code-review](../code-review/SKILL.md) → [done-checklist](../developer/done-checklist.md) |
 | Multitask merge | [multitask-verifier](../developer/multitask-verifier.md) for cross-chunk; then verify-issue for the parent issue |

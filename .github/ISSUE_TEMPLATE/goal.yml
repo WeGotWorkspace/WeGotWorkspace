@@ -1,0 +1,96 @@
+name: "[Maintainers only] Goal"
+description: Maintainers only — product Goal (user outcome) for the Product roadmap. Externals: use Discussions.
+title: "[Goal] "
+labels:
+  - type:goal
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Maintainers only.** External contributors: please open a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions)
+        for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
+
+        Use this template for **one fulfillable user-facing outcome** (Goals), not engineering tasks.
+        Titles should be verb outcomes — e.g. “Share Docs and Drive files with guests via a link”.
+        **One Goal = one outcome** (fulfillable independently). Do not bundle multiple outcomes; do not parent a Goal under another Goal — group with `area:*` + milestone. Design language / suite consistency belongs in Non-goals (constraint), not as its own Goal.
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: Exactly one fulfillable user outcome. Plain language; no REST endpoints or package paths. If you need “and” for a second independent capability, file a sibling Goal instead.
+      placeholder: Users can share a Drive file or Doc with a guest via a link, without creating an account.
+    validations:
+      required: true
+
+  - type: textarea
+    id: who
+    attributes:
+      label: Who it's for
+      description: Persona / context (self-hosted admin, end user, guest, etc.).
+      placeholder: End users on a self-hosted instance; guests who receive a share link.
+    validations:
+      required: true
+
+  - type: textarea
+    id: success
+    attributes:
+      label: Success looks like
+      description: Observable success signals a non-technical reader can check. Not implementer AC checkboxes.
+      placeholder: |
+        - A signed-in user can create a share link for a file or doc
+        - A guest can open the link and view (or edit, if allowed) without logging in
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What this Goal explicitly does not include. Put design language / suite consistency here as a constraint when relevant — not as a separate Goal. List sibling Goals that own related outcomes.
+      placeholder: |
+        Full public wiki hosting; anonymous upload into arbitrary folders.
+        Design language / suite consistency is a constraint on this Goal, not a separate Goal.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      description: Soft product status (also set on the Product roadmap Project). Identified = recognized (often after Discussion); Adopted = committed to pursue (stays Adopted while building — eng progress is on child issues); Fulfilled = product judges outcome met (not auto from closed children). Explore earlier work in Discussions — not on the board.
+      options:
+        - Identified
+        - Adopted
+        - Fulfilled
+    validations:
+      required: true
+
+  - type: input
+    id: target_release
+    attributes:
+      label: Soft target release (optional)
+      description: Optional soft release target — set the matching GitHub milestone on this Goal (milestone ≠ Fulfilled Status). Child Epics/Tasks may also use milestones for eng packing.
+      placeholder: e.g. v0.9
+    validations:
+      required: false
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions (optional)
+      description: Contested or easy-to-re-litigate product decisions. Skip if none.
+      placeholder: Guest sharing is a must-have for v0.9; password-protected links are in scope.
+    validations:
+      required: false
+
+  - type: textarea
+    id: delivery
+    attributes:
+      label: Delivery (maintainers)
+      description: Links to child epics/tasks only — no eng detail here.
+      placeholder: |
+        - Epic: #…
+        - Task: #…
+    validations:
+      required: false

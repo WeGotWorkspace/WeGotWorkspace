@@ -42,6 +42,7 @@ git push -u origin HEAD
 ## Multitask / parallel agents
 
 - Prefer **one branch per independent chunk** when parallel agents work on separate worktrees.
+- Create worktrees with [`tools/worktree-agent.sh`](../../../tools/worktree-agent.sh) — branch `<type>/<chunk-id>`, path `../<repo-name>-<chunk-id>`, per-worktree ports in `.env.local` (see [dev-layout.md](../../../docs/dev-layout.md#multiple-worktrees-port-conflicts)).
 - Do not have two agents commit to the same branch without coordination.
 - Merge order: respect dependencies from the plan (OpenAPI before UI consumers, etc.) — see [developer/multitask.md](../developer/multitask.md).
 

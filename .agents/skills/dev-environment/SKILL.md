@@ -7,6 +7,17 @@ description: Local dev setup, Docker, Storybook proxy, HTTPS/WebDAV, and trouble
 
 Canonical layout: [`docs/dev-layout.md`](../../../docs/dev-layout.md). Env files: [`docs/env.md`](../../../docs/env.md). Docker detail: [`docker/README.md`](../../../docker/README.md).
 
+## Multiple worktrees (parallel agents)
+
+When several chunks run `pnpm dev` on one machine, each worktree needs distinct Vite ports. Prefer [`tools/worktree-agent.sh`](../../../tools/worktree-agent.sh):
+
+```bash
+tools/worktree-agent.sh create <chunk-id> --port-offset 1   # second worktree → :5174 / :4174
+tools/worktree-agent.sh list
+```
+
+Manual alternative: copy `packages/apps/.env.example` → `.env.local` and set `WGW_VITE_DEV_PORT` / `WGW_VITE_PREVIEW_PORT`. Details: [dev-layout.md](../../../docs/dev-layout.md#multiple-worktrees-port-conflicts).
+
 ## Default workflow (Docker-free)
 
 ```bash

@@ -19,15 +19,18 @@ Policies agents should follow for **new work**. Backlog gaps are tracked on GitH
 | **Chromatic** | Optional visual regression; **dormant** until maintainers opt in ([#85](https://github.com/WeGotWorkspace/wegotworkspace/issues/85)) | CI publishes when `CHROMATIC_ENABLED=true` + `CHROMATIC_PROJECT_TOKEN`; **`exitZeroOnChanges`** — review-only, does not fail CI | [storybook/chromatic.md](skills/storybook/chromatic.md), [testing/apps-done-gate.md](skills/testing/apps-done-gate.md) |
 | **No auto-commits / PRs** | Always | User instruction | [git-workflow/SKILL.md](skills/git-workflow/SKILL.md) |
 | **Signed commits on `main`** | Required for merge | Branch protection | [git-workflow/pull-requests.md](skills/git-workflow/pull-requests.md) |
+| **Agent verification** | Run done gates before handoff | MCP `wgw-verify` tools (`run_*_done_gate`, `run_ci_quality`); bash fallback | [developer/mcp-verification.md](skills/developer/mcp-verification.md) |
+| **Product intent** | User outcomes live in Goal issues (`type:goal`) and [docs/product/](../docs/product/); `feat/` `Source:` / `fixes #` is Task/Epic only (never Goal alone) | Review + [verify-issue](skills/verify-issue/SKILL.md) Goal vs Task modes | [GOVERNANCE.md](../GOVERNANCE.md), [issue-filing.md](skills/developer/issue-filing.md), [specs/README.md](specs/README.md) |
 
 **Domain skills override** generic rows when more specific ([clean-code](skills/clean-code/SKILL.md), [api/layers.md](skills/api/layers.md), etc.).
 
 Before handoff, run [developer/done-checklist.md](skills/developer/done-checklist.md).
 
-## Enforcement layers (pre-commit → pre-push → CI)
+## Enforcement layers (agent → pre-commit → pre-push → CI)
 
 | Layer | When | What runs | Scope |
 |-------|------|-----------|--------|
+| **MCP** (`wgw-verify`) | During development / handoff | `run_apps_done_gate`, `run_api_done_gate`, `run_ci_quality`, quick checks | Callable by any MCP-enabled agent — wraps same scripts as bash |
 | **pre-commit** (Husky) | Every commit | lint-staged: Prettier + ESLint on staged `@wgw/apps`; Pint on staged API PHP | Staged files only |
 | **pre-push** (Husky) | Every push | `pnpm test:apps-done-gate` when `packages/apps/**` changed in the push range; else `@wgw/apps` typecheck | Commits being pushed vs remote tip |
 | **CI** (`apps-quality`, `api-quality`) | PR / push to `main` | `pnpm run ci:quality:apps` / `ci:quality:api` on **checkout HEAD** | Branch tip only — not every commit in PR history |

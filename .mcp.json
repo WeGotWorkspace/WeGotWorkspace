@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "wgw-verify": {
+      "command": "node",
+      "args": ["tools/mcp-server/dist/index.js"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

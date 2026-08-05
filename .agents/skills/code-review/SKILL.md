@@ -9,7 +9,8 @@ Lightweight gate before handoff or PR — not a second copy of domain skills.
 
 ## Order
 
-0. **Issue-linked work:** [verify-issue](../verify-issue/SKILL.md) — acceptance criteria report (`ISSUE_SATISFIED` or documented partial) before technical gates below.
+0. **Issue-linked work:** [verify-issue](../verify-issue/SKILL.md) — Goal vs Task/Epic mode, spec body-hash drift (`SYNC OK` or re-sync), then acceptance criteria report (`ISSUE_SATISFIED` or documented partial) before technical gates below. `feat/` must not close a Goal as the sole `fixes #` issue.
+0b. **Technical scope:** when `.agents/specs/<N>-*/spec.md` exists, confirm implementation matches spec goal, non-goals, affected packages, and edge cases — **AC still comes from the issue**, not spec.
 1. **[clean-code/smells.md](../clean-code/smells.md)** — scan touched files (required).
 2. **[developer/done-checklist.md](../developer/done-checklist.md)** — run commands for packages you changed.
 3. **[POLICY.md](../../POLICY.md)** — new work must meet policy rows; do not treat baseline/backlog gaps as excuses for new violations.
@@ -26,7 +27,7 @@ Lightweight gate before handoff or PR — not a second copy of domain skills.
 
 ## Blockers vs nits
 
-- **Block:** unmet issue acceptance criteria ([verify-issue](../verify-issue/SKILL.md)), policy violation in new code, missing tests for new behavior, secrets, legacy API PHP, live HTTP in panes.
+- **Block:** spec drift unresolved (`DRIFT:` from [verify-issue](../verify-issue/SKILL.md)), unmet issue acceptance criteria, implementation outside spec non-goals, policy violation in new code, missing tests for new behavior, secrets, legacy API PHP, live HTTP in panes.
 - **Block (apps hooks):** structural smells in **new or changed** hook files per [clean-code/smells.md](../clean-code/smells.md) React hooks section:
   - Hook body > ~200 lines, or > 4 `useEffect`s, or > 2 unrelated concerns (Yjs, TipTap, DOM, draft UI, etc.) → must split or document an exception in the PR/handoff (link a follow-up issue only with explicit user approval).
   - State + ref mirror for the same value without an explanatory comment → refactor before handoff.
