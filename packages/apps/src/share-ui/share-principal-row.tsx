@@ -83,7 +83,7 @@ export function SharePrincipalRow({
           label={shareLabels.removeGrant}
           icon={<Trash2 className="size-3.5" aria-hidden />}
           size="sm"
-          variant="ghost"
+          variant="outline"
           disabled={!canRemove}
           title={inherited ? (editHint ?? inheritedRemoveHint) : undefined}
           onClick={canRemove ? onRemove : undefined}

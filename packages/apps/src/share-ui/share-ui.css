@@ -23,6 +23,8 @@
   );
   max-width: 36rem;
   --input-height: 2.25rem;
+  /* Match outline IconButtons to Input/Select (--control-border-color). */
+  --button-outline-border-color: var(--control-border-color);
 }
 
 /* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
@@ -144,7 +146,7 @@
 }
 
 .share-dialog__permission-select {
-  @apply w-[8.125rem] shrink-0 border-border/60 bg-transparent text-xs;
+  @apply w-[8.125rem] shrink-0 bg-transparent text-xs;
   height: var(--input-height);
   min-height: var(--input-height);
 }
@@ -206,7 +208,8 @@
 }
 
 .share-dialog__link-field {
-  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg border border-border/60 bg-card/80 px-2.5 py-1.5;
+  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg bg-card/80 px-2.5 py-1.5;
+  border: 1px solid var(--control-border-color);
 }
 
 .share-dialog__link-field-icon {

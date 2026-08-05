@@ -77,7 +77,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
                   label={shareLabels.removeGuest}
                   icon={<Trash2 className="size-3.5" aria-hidden />}
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   disabled={disabled}
                   onClick={() => {
                     if (grant.inviteId) {
