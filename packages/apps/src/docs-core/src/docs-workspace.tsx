@@ -17,7 +17,7 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
-import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
@@ -43,12 +43,26 @@ export function DocsWorkspace({
   className,
 }: DocsWorkspaceProps) {
   const isGuestSession = wgwIsGuestSession();
+  const apiPath = filePath ?? data.document?.apiPath ?? "";
+  const shareFetchEnabled = Boolean(shareOperations && apiPath.trim() && !isGuestSession);
+  const {
+    myRights,
+    mayShare,
+    loading: shareRightsLoading,
+  } = useDriveShareMyRights({
+    path: apiPath,
+    operations: shareOperations,
+    enabled: shareFetchEnabled,
+  });
+  const readOnlyFromShare =
+    isGuestSession ||
+    (myRights != null ? myRights.mayEditContent !== true : shareFetchEnabled && shareRightsLoading);
   const controller = useDocsController({
     filePath,
     labels,
     operations,
     initialDocument: data.document,
-    readOnly: isGuestSession,
+    readOnly: readOnlyFromShare,
     onFileRenamed,
   });
 
@@ -58,17 +72,9 @@ export function DocsWorkspace({
     wgwRedirectGuestShareReauth();
   }, [controller.loadError, isGuestSession]);
 
-  const apiPath = filePath ?? data.document?.apiPath ?? "";
-
   const shareDialog = useDriveShareDialog({
     shareOperations,
     username: session.user.username ?? "",
-  });
-
-  const { mayShare } = useDriveShareMayShare({
-    path: apiPath,
-    operations: shareOperations,
-    enabled: Boolean(shareOperations && apiPath.trim() && controller.hasFile && !isGuestSession),
   });
 
   const fileKey = filePath ?? data.document?.apiPath ?? "mock";

@@ -21,6 +21,7 @@ type UseDocsCommentsMutationsOptions = {
   setDraftThread: Dispatch<SetStateAction<DocsCommentThread | null>>;
   setActiveThreadId: Dispatch<SetStateAction<string | null>>;
   cancelDraft: () => void;
+  canMutateComments?: boolean;
 };
 
 export function useDocsCommentsMutations({
@@ -32,10 +33,11 @@ export function useDocsCommentsMutations({
   setDraftThread,
   setActiveThreadId,
   cancelDraft,
+  canMutateComments = true,
 }: UseDocsCommentsMutationsOptions) {
   const addReply = useCallback(
     (threadId: string, body: string) => {
-      if (!ydoc) return;
+      if (!canMutateComments || !ydoc) return;
 
       const message = createCommentMessage(body, currentUser);
       if (!message) return;
@@ -50,30 +52,31 @@ export function useDocsCommentsMutations({
 
       appendCommentReply(ydoc, threadId, message);
     },
-    [currentUser, draftThreadRef, setDraftThread, ydoc],
+    [canMutateComments, currentUser, draftThreadRef, setDraftThread, ydoc],
   );
 
   const toggleReaction = useCallback(
     (threadId: string, emoji: string) => {
-      if (!ydoc) return;
+      if (!canMutateComments || !ydoc) return;
       toggleCommentThreadReaction(ydoc, threadId, currentUser.id, emoji);
     },
-    [currentUser.id, ydoc],
+    [canMutateComments, currentUser.id, ydoc],
   );
 
   const resolveThread = useCallback(
     (threadId: string) => {
-      if (!ydoc) return;
+      if (!canMutateComments || !ydoc) return;
       if (!resolveCommentThread(ydoc, threadId)) return;
 
       editor?.commands.unsetComment(threadId);
       if (activeThreadId === threadId) setActiveThreadId(null);
     },
-    [activeThreadId, editor, setActiveThreadId, ydoc],
+    [activeThreadId, canMutateComments, editor, setActiveThreadId, ydoc],
   );
 
   const deleteThread = useCallback(
     (threadId: string) => {
+      if (!canMutateComments) return;
       if (draftThreadRef.current?.id === threadId) {
         cancelDraft();
         return;
@@ -84,7 +87,15 @@ export function useDocsCommentsMutations({
       editor?.commands.unsetComment(threadId);
       if (activeThreadId === threadId) setActiveThreadId(null);
     },
-    [activeThreadId, cancelDraft, draftThreadRef, editor, setActiveThreadId, ydoc],
+    [
+      activeThreadId,
+      canMutateComments,
+      cancelDraft,
+      draftThreadRef,
+      editor,
+      setActiveThreadId,
+      ydoc,
+    ],
   );
 
   const submitDraftComment = useCallback(

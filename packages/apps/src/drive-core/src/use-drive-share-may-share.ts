@@ -1,6 +1,5 @@
-import { useMemo } from "react";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
-import { useShareAtPath } from "@/share-ui/use-share-at-path";
 
 export type UseDriveShareMayShareArgs = {
   path: string;
@@ -14,20 +13,6 @@ export function useDriveShareMayShare({
   operations,
   enabled = true,
 }: UseDriveShareMayShareArgs) {
-  const canFetch = enabled && Boolean(operations && path.trim());
-
-  const { data, loading } = useShareAtPath({
-    path,
-    operations: operations!,
-    enabled: canFetch,
-  });
-
-  const mayShare = useMemo(() => {
-    if (!canFetch) return undefined;
-    if (!data && loading) return undefined;
-    if (!data) return false;
-    return data.myRights.mayShare;
-  }, [canFetch, data, loading]);
-
+  const { mayShare, loading } = useDriveShareMyRights({ path, operations, enabled });
   return { mayShare, loading };
 }

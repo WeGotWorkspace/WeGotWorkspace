@@ -33,7 +33,8 @@ import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
-import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
+import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
 import { ShareDialog } from "@/share-ui/share-dialog";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
@@ -90,11 +91,25 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   });
 
   const showCollab = isDocsCollabEditablePath(filePath) && !wgwIsGuestSession();
-  const { mayShare: collabMayShare } = useDriveShareMayShare({
+  const {
+    myRights: collabMyRights,
+    mayShare: collabMayShare,
+    loading: collabRightsLoading,
+  } = useDriveShareMyRights({
     path: filePath ?? "",
     operations: shareOperations,
     enabled: Boolean(shareOperations && filePath?.trim() && showCollab),
   });
+  const collabPermissions = resolveDocsCollabPermissionsWhileLoading(
+    collabMyRights
+      ? {
+          mayEditContent: collabMyRights.mayEditContent,
+          mayComment: collabMyRights.mayComment,
+          mayReview: collabMyRights.mayReview,
+        }
+      : null,
+    Boolean(shareOperations && filePath?.trim() && showCollab) && collabRightsLoading,
+  );
 
   const handleCreateHomeDocument = useCallback(
     (apiPath: string) => {
@@ -206,6 +221,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                 onLogout={handleLogout}
                 showShare={collabMayShare === true}
                 shareLabel={docsLabels.share}
+                permissions={collabPermissions}
                 onShare={
                   filePath
                     ? () =>
@@ -222,7 +238,6 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                   title={collabShareDialog.shareDialog.title}
                   open={collabShareDialog.shareDialog.open}
                   onOpenChange={collabShareDialog.handleShareDialogOpenChange}
-                  onOpenAccess={collabShareDialog.handleShareDialogOpenAccess}
                   shareOperations={shareOperations}
                   dialogSurfaceClassName="docs-dialog-surface"
                 />

@@ -1495,4 +1495,60 @@ describe("useDocsComments", () => {
 
     editor.destroy();
   });
+
+  it("blocks comment mutations when canMutateComments is false (view-only)", () => {
+    const ydoc = new Y.Doc();
+    const map = getDocsCommentsMap(ydoc);
+    map.set("t-existing", {
+      id: "t-existing",
+      anchorText: "Hello",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      createdBy: { id: "u-1", name: "Alex" },
+      resolved: false,
+      messages: [
+        {
+          id: "m-1",
+          body: "Existing",
+          createdAt: "2026-01-01T00:01:00.000Z",
+          author: { id: "u-1", name: "Alex" },
+        },
+      ],
+    });
+
+    const editor = createEditor();
+    editor.commands.setTextSelection({ from: 1, to: 6 });
+
+    const { result } = renderHook(() =>
+      useDocsComments({
+        ydoc,
+        editor,
+        currentUser: { id: "u-2", name: "Viewer" },
+        commentsVisible: true,
+        canMutateComments: false,
+      }),
+    );
+
+    expect(result.current.canAddComment).toBe(false);
+    expect(result.current.selectionQualifiesForComment).toBe(false);
+
+    let threadId: string | null = "sentinel";
+    act(() => {
+      threadId = result.current.createThreadFromSelection();
+    });
+    expect(threadId).toBeNull();
+    expect(result.current.draftThread).toBeNull();
+
+    act(() => {
+      result.current.addReply("t-existing", "should not persist");
+      result.current.resolveThread("t-existing");
+    });
+
+    expect(map.get("t-existing")).toMatchObject({
+      resolved: false,
+      messages: [expect.objectContaining({ body: "Existing" })],
+    });
+    expect(result.current.openThreads).toHaveLength(1);
+
+    editor.destroy();
+  });
 });

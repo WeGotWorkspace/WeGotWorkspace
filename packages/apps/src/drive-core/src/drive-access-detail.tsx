@@ -61,6 +61,7 @@ export function DriveAccessDetail({ controller }: DriveAccessDetailProps) {
           variant="primary"
           size="sm"
           onClick={manageShare}
+          disabled={atPath?.myRights.mayShare !== true}
         />
       </div>
 

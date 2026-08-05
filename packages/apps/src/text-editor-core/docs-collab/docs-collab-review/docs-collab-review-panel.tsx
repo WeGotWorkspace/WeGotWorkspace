@@ -24,6 +24,8 @@ export type DocsCollabReviewPanelProps = {
   currentUserId: string;
   activeThreadId: string | null;
   activeChangeId: string | null;
+  canMutateComments?: boolean;
+  canReviewSuggestions?: boolean;
   onSelectThread: (threadId: string) => void;
   onAddReply: (threadId: string, body: string) => void;
   onToggleReaction: (threadId: string, emoji: string) => void;
@@ -47,6 +49,8 @@ export function DocsCollabReviewPanel({
   currentUserId,
   activeThreadId,
   activeChangeId,
+  canMutateComments = true,
+  canReviewSuggestions = true,
   onSelectThread,
   onAddReply,
   onToggleReaction,
@@ -117,10 +121,18 @@ export function DocsCollabReviewPanel({
               currentUserId={currentUserId}
               active={activeChangeId === suggestion.changeId}
               onSelect={() => onSelectSuggestion(suggestion.changeId)}
-              onAccept={() => onAcceptSuggestion(suggestion.changeId)}
-              onReject={() => onRejectSuggestion(suggestion.changeId)}
-              onAddReply={(body) => onAddSuggestionReply(suggestion.changeId, body)}
-              onToggleReaction={(emoji) => onToggleSuggestionReaction(suggestion.changeId, emoji)}
+              onAccept={() => {
+                if (canReviewSuggestions) onAcceptSuggestion(suggestion.changeId);
+              }}
+              onReject={() => {
+                if (canReviewSuggestions) onRejectSuggestion(suggestion.changeId);
+              }}
+              onAddReply={(body) => {
+                if (canMutateComments) onAddSuggestionReply(suggestion.changeId, body);
+              }}
+              onToggleReaction={(emoji) => {
+                if (canMutateComments) onToggleSuggestionReaction(suggestion.changeId, emoji);
+              }}
             />
           );
         }
@@ -134,6 +146,7 @@ export function DocsCollabReviewPanel({
             labels={labels}
             currentUserId={currentUserId}
             active={activeThreadId === thread.id}
+            canMutate={canMutateComments}
             onSelect={() => onSelectThread(thread.id)}
             onAddReply={(body) => onAddReply(thread.id, body)}
             onToggleReaction={(emoji) => onToggleReaction(thread.id, emoji)}

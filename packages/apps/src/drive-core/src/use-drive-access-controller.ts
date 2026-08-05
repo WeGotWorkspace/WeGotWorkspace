@@ -225,8 +225,9 @@ export function useDriveAccessController({
   ]);
 
   const manageShare = useCallback(() => {
+    if (atPath?.myRights.mayShare !== true) return;
     onOpenShare?.(activeApiPath);
-  }, [activeApiPath, onOpenShare]);
+  }, [activeApiPath, atPath?.myRights.mayShare, onOpenShare]);
 
   const navigateScopeFromBreadcrumb = useCallback(
     (path: string) => {

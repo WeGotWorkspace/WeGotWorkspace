@@ -80,7 +80,7 @@ final class DriveSharesController
         }
 
         return response()->json([
-            'data' => $this->shares->atPath($principal['username'], $path),
+            'data' => $this->shares->atPath($principal, $path),
         ]);
     }
 

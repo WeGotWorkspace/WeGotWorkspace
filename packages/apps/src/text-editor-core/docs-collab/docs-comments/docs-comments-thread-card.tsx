@@ -17,6 +17,8 @@ export type DocsCommentsThreadCardProps = {
   labels: DocsUILabels;
   currentUserId: string;
   active: boolean;
+  /** When false, hide composer / resolve / reactions (view-only). */
+  canMutate?: boolean;
   onSelect: () => void;
   onAddReply: (body: string) => void;
   onToggleReaction: (emoji: string) => void;
@@ -31,6 +33,7 @@ export function DocsCommentsThreadCard({
   labels,
   currentUserId,
   active,
+  canMutate = true,
   onSelect,
   onAddReply,
   onToggleReaction,
@@ -83,7 +86,7 @@ export function DocsCommentsThreadCard({
         authorName={authorName}
         createdAt={authorCreatedAt}
         actions={
-          isDraft ? null : (
+          isDraft || !canMutate ? null : (
             <button
               type="button"
               className="docs-comments-thread-card__resolve"
@@ -113,7 +116,7 @@ export function DocsCommentsThreadCard({
 
       {firstMessage ? <p className="docs-comments-thread-card__body">{firstMessage.body}</p> : null}
 
-      {!isDraft ? (
+      {!isDraft && canMutate ? (
         <DocsCollabReactions
           className="docs-comments-thread-card__reactions"
           reactions={thread.reactions}
@@ -132,7 +135,7 @@ export function DocsCommentsThreadCard({
         </ul>
       ) : null}
 
-      {active ? (
+      {active && canMutate ? (
         <div
           className="docs-comments-thread-card__composer"
           onClick={(event) => event.stopPropagation()}

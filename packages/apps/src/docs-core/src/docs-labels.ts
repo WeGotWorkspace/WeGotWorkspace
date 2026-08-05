@@ -63,6 +63,7 @@ export const docsLabels = {
   commentsAddFromSelection: "Comment",
   commentsAddFromSelectionDisabledNoSelection: "Select text to comment",
   commentsAddFromSelectionDisabledViewSource: "Comments are disabled in source view",
+  commentsAddFromSelectionDisabledReadOnly: "View-only access cannot add comments",
   commentsCountOne: "1 open",
   commentsCountMany: (count: number) => `${count} open`,
   commentsComposePlaceholder: "Add a comment…",

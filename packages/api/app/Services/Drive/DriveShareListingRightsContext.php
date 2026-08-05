@@ -40,10 +40,12 @@ final class DriveShareListingRightsContext
             ];
         }
 
+        $mayShare = $this->base['mayShare'] && ! $this->scope->isTopLevelDrive($path);
+
         return DriveShareAccess::rightsFor(
             $this->base['access'],
             $this->collabDocFormats->isCollabDocPath($path),
-            $this->base['mayShare'],
+            $mayShare,
         );
     }
 }
