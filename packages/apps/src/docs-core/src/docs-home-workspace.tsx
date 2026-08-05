@@ -13,6 +13,7 @@ import {
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { cn } from "@/lib/utils";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -292,6 +293,7 @@ export function DocsHomeWorkspace({
           <AppSidebar
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
+            appSwitchDisabled={wgwIsGuestSession()}
             appSwitchSubtitle="Docs"
             primaryButton={
               onCreateDocument ? (

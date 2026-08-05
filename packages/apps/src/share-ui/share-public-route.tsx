@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { createDriveShareSession, ShareSessionError } from "@/lib/api/wgw/drive-share-sessions";
 import {
+  wgwClearGuestShareAccess,
   wgwEstablishGuestShareSession,
   wgwEstablishMockSession,
   wgwLiveApiEnabled,
+  wgwPersistGuestShareToken,
 } from "@/lib/api/wgw/http";
-import { shareDestinationHref, shareDestinationRoute } from "@/share-ui/share-destination";
+import { shareDestination, shareDestinationHref } from "@/share-ui/share-destination";
+import { downloadSharedDriveFile } from "@/share-ui/share-file-download";
 import { shareLabels } from "@/share-ui/share-labels";
 import { SharePublicView, type SharePublicViewPhase } from "@/share-ui/share-public-view";
 
@@ -32,6 +35,11 @@ export function SharePublicRoute() {
           return;
         }
 
+        // Always exchange a fresh share session. A prior guest JWT may still be in
+        // storage after the owner rotates the password (DB session revoked).
+        wgwClearGuestShareAccess();
+        wgwPersistGuestShareToken(shareToken);
+
         const session = await createDriveShareSession(shareToken, sharePassword, signal);
         if (signal?.aborted) return;
         wgwEstablishGuestShareSession(
@@ -40,15 +48,30 @@ export function SharePublicRoute() {
             expires_in: session.expires_in,
           },
           shareToken,
+          session.share.path,
         );
-        const destination = shareDestinationRoute(session.share.path);
-        await navigate({ to: destination.to, search: destination.search });
+        const destination = shareDestination(session.share.path);
+        if (destination.kind === "download") {
+          await downloadSharedDriveFile(destination.apiPath, signal);
+          if (signal?.aborted) return;
+          setPhase("downloaded");
+          return;
+        }
+        const route = destination.route;
+        await navigate({ to: route.to, search: route.search });
       } catch (cause) {
         if (signal?.aborted) return;
-        if (cause instanceof ShareSessionError && cause.status === 401) {
-          setPhase("password");
-          setErrorMessage(shareLabels.publicLinkPasswordRequired);
-          return;
+        if (cause instanceof ShareSessionError) {
+          if (cause.code === "share_password_required") {
+            setPhase("password");
+            setErrorMessage("");
+            return;
+          }
+          if (cause.code === "share_password_invalid") {
+            setPhase("password");
+            setErrorMessage(cause.message || shareLabels.publicLinkPasswordRequired);
+            return;
+          }
         }
         const message =
           cause instanceof Error && cause.message.trim()
@@ -72,7 +95,6 @@ export function SharePublicRoute() {
       setErrorMessage(shareLabels.publicLinkMissingToken);
       return;
     }
-
     const controller = new AbortController();
     void openShare(shareToken, undefined, controller.signal);
     return () => controller.abort();

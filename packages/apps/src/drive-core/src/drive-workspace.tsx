@@ -270,6 +270,7 @@ function DriveSidebar({
     <AppSidebar
       open={sidebarOpen}
       onCloseMobile={() => setSidebarOpen(false)}
+      appSwitchDisabled={wgwIsGuestSession()}
       footer={
         <WorkspaceUserFooter
           name={session.user.displayName}

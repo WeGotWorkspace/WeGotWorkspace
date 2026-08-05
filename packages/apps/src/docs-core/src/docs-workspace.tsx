@@ -12,7 +12,7 @@ import {
   workspaceUserInitials,
   type WorkspaceSession,
 } from "@/lib/workspace/workspace-session";
-import { wgwIsGuestSession } from "@/lib/api/wgw/http";
+import { wgwIsGuestSession, wgwRedirectGuestShareReauth } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,12 @@ export function DocsWorkspace({
     onFileRenamed,
   });
 
+  useEffect(() => {
+    if (!controller.loadError || !isGuestSession) return;
+    // Password rotation revokes the guest DB session; stale JWT still unlocks the shell.
+    wgwRedirectGuestShareReauth();
+  }, [controller.loadError, isGuestSession]);
+
   const apiPath = filePath ?? data.document?.apiPath ?? "";
 
   const shareDialog = useDriveShareDialog({
@@ -71,6 +77,10 @@ export function DocsWorkspace({
       ? fileNameToBrowserTitle(controller.title)
       : controller.labels.emptyTitle;
   useDocumentTitle(browserTitleContext);
+
+  if (controller.loadError && isGuestSession) {
+    return null;
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -190,6 +200,7 @@ function DocsSidebar({
     <AppSidebar
       open={controller.sidebarOpen}
       onCloseMobile={() => controller.setSidebarOpen(false)}
+      appSwitchDisabled={wgwIsGuestSession()}
       appSwitchSubtitle="Docs"
       footer={
         <WorkspaceUserFooter

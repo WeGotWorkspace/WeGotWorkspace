@@ -4,15 +4,18 @@ import { resetAuthRefreshLockForTests, withAuthRefreshLock } from "./auth-refres
 import {
   resetWgwSessionStateForTests,
   wgwAwaitSessionRefreshForReconnect,
+  wgwClearGuestShareAccess,
   wgwEnsureFreshAccessToken,
   wgwEnsureSession,
   wgwCompleteLogoutNavigation,
   wgwEstablishGuestShareSession,
   wgwFetchPrincipal,
+  wgwGuestSharePath,
   wgwGuestShareToken,
   wgwHasAuthenticatedSession,
   wgwIsGuestSession,
   wgwLoginWithCredentials,
+  wgwRedirectGuestShareReauth,
   wgwRefreshInFlight,
   WGW_GUEST_REFRESH_TOKEN,
 } from "./http";
@@ -355,12 +358,20 @@ describe("guest share session", () => {
       sub: "share:abc123",
       role: "guest",
     });
-    wgwEstablishGuestShareSession({ access_token: accessToken, expires_in: 3600 });
+    wgwEstablishGuestShareSession(
+      { access_token: accessToken, expires_in: 3600 },
+      "share-token-1",
+      "/users/bob/contacts.vcf",
+    );
 
     expect(wgwHasAuthenticatedSession()).toBe(true);
     expect(wgwIsGuestSession()).toBe(true);
     expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe(WGW_GUEST_REFRESH_TOKEN);
     expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBe(accessToken);
+    expect(window.sessionStorage.getItem("wgw.api.guest_share_token")).toBe("share-token-1");
+    expect(window.sessionStorage.getItem("wgw.api.guest_share_path")).toBe(
+      "/users/bob/contacts.vcf",
+    );
   });
 
   it("resolves guest principal without calling /me", async () => {
@@ -426,5 +437,47 @@ describe("guest share session", () => {
     await expect(wgwCompleteLogoutNavigation()).resolves.toBe("guest_share");
     expect(assign).toHaveBeenCalledWith("/share/share-token-1");
     expect(wgwHasAuthenticatedSession()).toBe(false);
+  });
+
+  it("clears guest access tokens while keeping the public share token", () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+      sub: "share:abc123",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession(
+      { access_token: accessToken, expires_in: 3600 },
+      "share-token-1",
+      "/users/bob/note.md",
+    );
+
+    wgwClearGuestShareAccess();
+
+    expect(wgwHasAuthenticatedSession()).toBe(false);
+    expect(wgwIsGuestSession()).toBe(false);
+    expect(wgwGuestShareToken()).toBe("share-token-1");
+    expect(wgwGuestSharePath()).toBeNull();
+  });
+
+  it("redirects revoked guests back to the public share password gate", () => {
+    const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+      sub: "share:abc123",
+      role: "guest",
+    });
+    wgwEstablishGuestShareSession(
+      { access_token: accessToken, expires_in: 3600 },
+      "share-token-1",
+      "/users/bob/note.md",
+    );
+
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { assign },
+    });
+
+    expect(wgwRedirectGuestShareReauth()).toBe(true);
+    expect(assign).toHaveBeenCalledWith("/share/share-token-1");
+    expect(wgwHasAuthenticatedSession()).toBe(false);
+    expect(wgwGuestShareToken()).toBe("share-token-1");
   });
 });

@@ -60,6 +60,7 @@ const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
 const LOGGED_OUT_KEY = "wgw.api.logged_out";
 const GUEST_SHARE_TOKEN_KEY = "wgw.api.guest_share_token";
+const GUEST_SHARE_PATH_KEY = "wgw.api.guest_share_path";
 const SESSION_DEBUG_RING_KEY = "wgw.api.session_debug";
 const SESSION_DEBUG_RING_MAX = 20;
 const REFRESH_RETRY_CAP = 3;
@@ -301,7 +302,7 @@ function applyTokens(tokens: TokenResponse): void {
   refreshRejectedByAuth = false;
   setLoggedOutMarker(false);
   if (tokens.refresh_token !== WGW_GUEST_REFRESH_TOKEN) {
-    wgwClearGuestShareToken();
+    wgwClearGuestShareContext();
   }
 }
 
@@ -339,6 +340,27 @@ export function wgwGuestShareToken(): string | null {
   }
 }
 
+export function wgwPersistGuestSharePath(apiPath: string): void {
+  const normalized = apiPath.trim();
+  if (!normalized || !hasSessionStorage()) return;
+  try {
+    window.sessionStorage.setItem(GUEST_SHARE_PATH_KEY, normalized);
+  } catch {
+    // Ignore storage failures (private mode/quota).
+  }
+}
+
+export function wgwGuestSharePath(): string | null {
+  if (!hasSessionStorage()) return null;
+  try {
+    const raw = window.sessionStorage.getItem(GUEST_SHARE_PATH_KEY);
+    const normalized = raw?.trim();
+    return normalized || null;
+  } catch {
+    return null;
+  }
+}
+
 export function wgwClearGuestShareToken(): void {
   if (!hasSessionStorage()) return;
   try {
@@ -348,6 +370,48 @@ export function wgwClearGuestShareToken(): void {
   }
 }
 
+export function wgwClearGuestSharePath(): void {
+  if (!hasSessionStorage()) return;
+  try {
+    window.sessionStorage.removeItem(GUEST_SHARE_PATH_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export function wgwClearGuestShareContext(): void {
+  wgwClearGuestShareToken();
+  wgwClearGuestSharePath();
+}
+
+/**
+ * Drop a guest access JWT (and share path) before re-exchanging a public share session.
+ * Keeps `wgw.api.guest_share_token` so logout / re-auth can return to `/share/:token`.
+ */
+export function wgwClearGuestShareAccess(): void {
+  if (!wgwIsGuestSession()) return;
+  clearWgwSession("user_initiated");
+  wgwClearGuestSharePath();
+}
+
+/**
+ * Public-share password rotation (and share revoke) invalidate the DB session while the
+ * guest JWT may still be in localStorage. Send the visitor back to `/share/:token`.
+ */
+export function wgwRedirectGuestShareReauth(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!wgwIsGuestSession()) return false;
+  const shareToken = wgwGuestShareToken();
+  clearWgwSession("401_online");
+  wgwClearGuestSharePath();
+  if (!shareToken) {
+    wgwClearGuestShareToken();
+    return false;
+  }
+  window.location.assign(`/share/${encodeURIComponent(shareToken)}`);
+  return true;
+}
+
 /** Store a guest JWT from POST /files/share-sessions (no refresh flow in v1). */
 export function wgwEstablishGuestShareSession(
   response: {
@@ -355,6 +419,7 @@ export function wgwEstablishGuestShareSession(
     expires_in?: number;
   },
   shareToken?: string,
+  sharePath?: string,
 ): void {
   const expiresIn =
     typeof response.expires_in === "number" && Number.isFinite(response.expires_in)
@@ -362,6 +427,9 @@ export function wgwEstablishGuestShareSession(
       : 3600;
   if (shareToken?.trim()) {
     wgwPersistGuestShareToken(shareToken);
+  }
+  if (sharePath?.trim()) {
+    wgwPersistGuestSharePath(sharePath);
   }
   applyTokens({
     access_token: response.access_token,

@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import type { ReactElement } from "react";
-import { clearWgwSession } from "@/lib/api/wgw/http";
+import {
+  clearWgwSession,
+  wgwIsGuestSession,
+  wgwRedirectGuestShareReauth,
+} from "@/lib/api/wgw/http";
 import {
   buildWgwLoginHref,
   isWgwAuthRoutePathname,
@@ -34,9 +38,19 @@ export function WorkspaceLiveAppShell({
     normalized.includes("invalid refresh token") ||
     normalized.includes("missing auth session") ||
     normalized.includes("missing or invalid bearer token");
+  const isGuestShareAccessError =
+    wgwIsGuestSession() &&
+    (isDefinitiveAuthError ||
+      normalized.includes("access denied") ||
+      normalized.includes("(400)") ||
+      normalized.includes("share session") ||
+      normalized.includes("open the link again"));
 
   useEffect(() => {
     if (phase !== "error" || typeof window === "undefined") return;
+    if (isGuestShareAccessError && wgwRedirectGuestShareReauth()) {
+      return;
+    }
     if (!isDefinitiveAuthError) return;
     // Storybook and local Vite dev: stay on the page and show the error panel instead of a blank
     // iframe / broken `/login` navigation. Production keeps the redirect to the real login route.
@@ -47,9 +61,12 @@ export function WorkspaceLiveAppShell({
       `${window.location.pathname}${window.location.search}${window.location.hash}`,
     );
     window.location.assign(buildWgwLoginHref(returnPath));
-  }, [isDefinitiveAuthError, phase]);
+  }, [isDefinitiveAuthError, isGuestShareAccessError, phase]);
 
   if (phase === "error") {
+    if (isGuestShareAccessError) {
+      return null;
+    }
     if (isDefinitiveAuthError && !import.meta.env.DEV) {
       return null;
     }
