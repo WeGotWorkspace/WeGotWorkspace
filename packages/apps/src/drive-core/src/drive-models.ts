@@ -15,6 +15,10 @@ export type DriveFile = Note & {
   mayShare?: boolean;
   /** True when the item has outgoing share grants (member, guest, or public). */
   isShared?: boolean;
+  /** Active public link on this path. */
+  hasPublicShare?: boolean;
+  /** Active team grants (users or groups) on this path. */
+  hasTeamShare?: boolean;
   /** Top-level drive location label (e.g. `My Drive`, shared drive name) for cross-drive listings. */
   location?: string;
 };

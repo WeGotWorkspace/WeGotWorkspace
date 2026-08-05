@@ -1,7 +1,7 @@
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import type { DriveUnifiedSearchResult } from "@/drive-core/src/drive-types";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
-import { formatBytesCompact } from "@/drive-core/src/drive-file-utils";
+import { formatBytesCompact, driveShareFlagsFromListing } from "@/drive-core/src/drive-file-utils";
 
 export function parentVirtualPath(path: string): string {
   const normalized = path.trim().replace(/\/+$/, "");
@@ -74,7 +74,11 @@ export function driveFileFromSearchResult(
     size: result.size > 0 ? formatBytesCompact(result.size) : "—",
     apiPath: apiPath || undefined,
     location: driveLocationLabel(result.sourceKey) ?? undefined,
-    ...(result.metadata?.hasShares === true ? { isShared: true } : {}),
+    ...driveShareFlagsFromListing({
+      hasShares: result.metadata?.hasShares === true,
+      hasPublicShare: result.metadata?.hasPublicShare === true,
+      hasTeamShare: result.metadata?.hasTeamShare === true,
+    }),
   };
 }
 

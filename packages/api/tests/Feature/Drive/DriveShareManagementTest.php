@@ -125,7 +125,40 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $response = $this->withBearer($aliceToken)->getJson('/api/v1/files/shared-with-me');
         $response->assertOk()
             ->assertJsonPath('data.0.share.path', '/users/bob/shared.md')
-            ->assertJsonPath('data.0.share.defaultAccess', 'edit');
+            ->assertJsonPath('data.0.share.defaultAccess', 'edit')
+            ->assertJsonPath('data.0.entry.path', '/users/bob/shared.md')
+            ->assertJsonPath('data.0.entry.name', 'shared.md')
+            ->assertJsonPath('data.0.entry.type', 'file');
+    }
+
+    public function test_shared_with_me_includes_single_file_grant_without_parent_listing(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $granteeToken = $this->carolBearerToken();
+
+        $this->createDriveFile($ownerToken, '/users/bob', 'Jaap.md');
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/Jaap.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($granteeToken)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertStatus(400);
+
+        $this->withBearer($granteeToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/Jaap.md'))
+            ->assertOk();
+
+        $this->withBearer($granteeToken)->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->assertJsonPath('data.0.share.path', '/users/bob/Jaap.md')
+            ->assertJsonPath('data.0.share.defaultAccess', 'view')
+            ->assertJsonPath('data.0.entry.name', 'Jaap.md')
+            ->assertJsonPath('data.0.entry.type', 'file')
+            ->assertJsonPath('data.0.entry.myRights.mayView', true)
+            ->assertJsonMissingPath('data.0.viaGroup');
     }
 
     public function test_share_with_email_key_creates_pending_email_grant(): void

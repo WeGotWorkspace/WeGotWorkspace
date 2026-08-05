@@ -137,4 +137,109 @@ describe("useDriveShell folder listing sync", () => {
 
     unmount();
   });
+
+  it("loads Shared with me entries when the shared view is selected", async () => {
+    const changeDir = vi.fn().mockResolvedValue(driveData(["old.txt"]));
+    const listEntriesByPaths = vi.fn().mockResolvedValue([]);
+    const operations = {
+      ...createOperations(changeDir),
+      listEntriesByPaths,
+    };
+    const listSharedWithMe = vi.fn().mockResolvedValue([
+      {
+        share: {
+          id: "share-1",
+          path: "/users/bob/Client Deck",
+          kind: "member",
+          defaultAccess: "edit",
+          publicToken: null,
+          hasPassword: false,
+          expiresAt: null,
+          updatedAt: null,
+          shareWith: null,
+          myRights: fullDriveMyRights,
+        },
+        entry: {
+          name: "Client Deck",
+          path: "/users/bob/Client Deck",
+          type: "dir" as const,
+          size: 0,
+          time: 1,
+          permissions: 755,
+          myRights: fullDriveMyRights,
+        },
+      },
+    ]);
+
+    const { result, unmount } = renderHook(() =>
+      useDriveShell({
+        data: driveData(["old.txt"]),
+        session,
+        operations,
+        shareOperations: {
+          listSharedWithMe,
+        } as never,
+        view: { type: "shared" },
+        onViewChange: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(listSharedWithMe).toHaveBeenCalled();
+      expect(listEntriesByPaths).not.toHaveBeenCalled();
+      expect(result.current.sharedItems?.map((file) => file.title)).toEqual(["Client Deck"]);
+      expect(result.current.sharedItems?.[0]?.parent).toBe("Shared with me");
+      expect(result.current.sharedItems?.[0]?.kind).toBe("folder");
+    });
+
+    unmount();
+  });
+
+  it("shows a single-file member share without parent listing", async () => {
+    const listSharedWithMe = vi.fn().mockResolvedValue([
+      {
+        share: {
+          id: "share-file",
+          path: "/users/admin/Jaap.md",
+          kind: "member",
+          defaultAccess: "view",
+          publicToken: null,
+          hasPassword: false,
+          expiresAt: null,
+          updatedAt: "2026-08-05T10:00:00.000Z",
+          shareWith: null,
+          myRights: fullDriveMyRights,
+        },
+        entry: {
+          name: "Jaap.md",
+          path: "/users/admin/Jaap.md",
+          type: "file" as const,
+          size: 42,
+          time: 1,
+          permissions: 0,
+          myRights: fullDriveMyRights,
+        },
+      },
+    ]);
+
+    const { result, unmount } = renderHook(() =>
+      useDriveShell({
+        data: driveData(["old.txt"]),
+        session,
+        shareOperations: {
+          listSharedWithMe,
+        } as never,
+        view: { type: "shared" },
+        onViewChange: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.sharedItems?.map((file) => file.title)).toEqual(["Jaap.md"]);
+      expect(result.current.sharedItems?.[0]?.apiPath).toBe("/users/admin/Jaap.md");
+      expect(result.current.sharedItems?.[0]?.parent).toBe("Shared with me");
+    });
+
+    unmount();
+  });
 });

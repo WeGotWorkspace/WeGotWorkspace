@@ -1,9 +1,9 @@
 export const driveLabels = {
   sidebarMyDrive: "My Drive",
+  sidebarSharedWithMe: "Shared with me",
   sidebarRecent: "Recent",
   sidebarStarred: "Starred",
   sidebarTrash: "Trash",
-  sidebarAccess: "Access",
   sidebarSharedDrives: "Shared drives",
   searchPlaceholder: "Search in Drive...",
   searchViewTitle: "Search",
@@ -80,6 +80,8 @@ export const driveLabels = {
   accessLoading: "Loading access…",
   accessRevokeSuccess: "Public links revoked",
   sharedIndicator: "Shared",
+  publicShareIndicator: "Public link",
+  teamShareIndicator: "Shared with team",
 } as const;
 
 export type DriveUILabels = typeof driveLabels;

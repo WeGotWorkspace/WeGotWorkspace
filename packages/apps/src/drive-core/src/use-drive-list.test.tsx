@@ -151,6 +151,24 @@ describe("useDriveList openFile", () => {
     expect(result.current.detailOpen).toBe(false);
   });
 
+  it("opens shared folders via apiPath so foreign owners round-trip", () => {
+    const shell = createShell();
+    const { result } = renderHook(() => useDriveList({ shell }));
+    const sharedFolder: DriveFile = {
+      ...FOLDER,
+      id: "/users/bob/Client Deck",
+      title: "Client Deck",
+      parent: "Shared with me",
+      apiPath: "/users/bob/Client Deck",
+    };
+
+    act(() => {
+      result.current.openFile(sharedFolder);
+    });
+
+    expect(selectView).toHaveBeenCalledWith({ type: "folder", path: "Users/bob/Client Deck" });
+  });
+
   it("opens Docs editor for markdown files on double-click", () => {
     const onOpenDocsFile = vi.fn();
     const shell = createShell();

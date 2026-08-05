@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   driveHrefFromView,
   driveSearchFromView,
+  driveViewFromSearch,
   openDriveAccessInNewWindow,
 } from "@/drive-core/src/drive-route-search";
 
@@ -23,6 +24,17 @@ describe("drive-route-search open helpers", () => {
     });
   });
 
+  it("driveViewFromSearch ignores access deep links until the manager is product-ready", () => {
+    expect(driveViewFromSearch({ view: "access" })).toEqual({
+      type: "folder",
+      path: "My Drive",
+    });
+    expect(driveViewFromSearch({ view: "access", path: "My Drive/Projects" })).toEqual({
+      type: "folder",
+      path: "My Drive",
+    });
+  });
+
   it("openDriveAccessInNewWindow opens the access manager href in a new tab", () => {
     const popup = { closed: false } as Window;
     const open = vi.spyOn(window, "open").mockReturnValue(popup);
@@ -35,5 +47,13 @@ describe("drive-route-search open helpers", () => {
       "_blank",
       "noopener,noreferrer",
     );
+  });
+});
+
+describe("drive-route-search shared view", () => {
+  it("round-trips the Shared with me view via ?view=shared", () => {
+    expect(driveViewFromSearch({ view: "shared" })).toEqual({ type: "shared" });
+    expect(driveSearchFromView({ type: "shared" })).toEqual({ view: "shared" });
+    expect(driveHrefFromView({ type: "shared" })).toBe("/drive?view=shared");
   });
 });

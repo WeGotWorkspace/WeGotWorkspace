@@ -7104,6 +7104,10 @@ export interface components {
             myRights: components["schemas"]["DriveRights"];
             /** @description True when this path has direct outgoing share grants (member, guest, or public). */
             hasShares?: boolean;
+            /** @description True when this path has an active public link share. */
+            hasPublicShare?: boolean;
+            /** @description True when this path has active team grants (users or groups) on a member share. */
+            hasTeamShare?: boolean;
         };
         DriveDirectoryEntryList: components["schemas"]["DriveDirectoryEntry"][];
         DriveDirectoryData: {
@@ -9293,6 +9297,8 @@ export interface components {
         };
         DriveSharedWithMeEntry: {
             share: components["schemas"]["DriveShare"];
+            /** @description Resolved filesystem metadata for the share path when it still exists. Clients should prefer this over listing the parent directory — grantees often cannot list ancestors outside the share root. */
+            entry?: components["schemas"]["DriveDirectoryEntry"];
             /** @description Present when access is group-only (groups/{slug} grant). Omitted when the caller has a direct user grant on the same share. */
             viaGroup?: string;
         };

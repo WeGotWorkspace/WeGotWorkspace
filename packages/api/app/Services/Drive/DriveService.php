@@ -21,6 +21,7 @@ final class DriveService
         private StoragePaths $paths,
         private DriveGroupResolver $groups,
         private DriveShareAuthorizer $authorizer,
+        private DriveShareService $shares,
         private DriveSessionStore $session,
         private DriveStarService $stars,
         private AdminRoleResolver $adminRoles,
@@ -359,7 +360,7 @@ final class DriveService
                 $out[] = $this->serializeEntry($root, true, 0, (int) ($disk->lastModified($key) ?? time()), $principal);
             }
 
-            return $this->sortEntries($out);
+            return $this->annotateHasShares($principal, $this->sortEntries($out));
         }
 
         $prefix = $this->paths->virtualToStorageKey($virtualDir);
@@ -402,7 +403,45 @@ final class DriveService
             );
         }
 
-        return $this->sortEntries($out);
+        return $this->annotateHasShares($principal, $this->sortEntries($out));
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @param  list<array<string, mixed>>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private function annotateHasShares(array $principal, array $entries): array
+    {
+        if (($principal['role'] ?? '') === 'guest' || $entries === []) {
+            return $entries;
+        }
+
+        $paths = array_map(static fn (array $entry): string => (string) $entry['path'], $entries);
+        $indicators = $this->shares->shareIndicatorsForPaths($principal['username'], $paths);
+        if ($indicators === []) {
+            return $entries;
+        }
+
+        foreach ($entries as &$entry) {
+            $path = $this->paths->normalizeVirtualPath((string) $entry['path']);
+            $flags = $indicators[$path] ?? null;
+            if ($flags === null) {
+                continue;
+            }
+            if ($flags['hasPublicShare']) {
+                $entry['hasPublicShare'] = true;
+            }
+            if ($flags['hasTeamShare']) {
+                $entry['hasTeamShare'] = true;
+            }
+            if ($flags['hasPublicShare'] || $flags['hasTeamShare']) {
+                $entry['hasShares'] = true;
+            }
+        }
+        unset($entry);
+
+        return $entries;
     }
 
     /**

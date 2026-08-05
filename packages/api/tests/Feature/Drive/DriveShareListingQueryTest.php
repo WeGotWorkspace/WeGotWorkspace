@@ -19,8 +19,11 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $this->ownerToken = $this->userBearerToken();
+        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/directories?path=/users/bob', [
+            'name' => 'bulk',
+        ])->assertOk();
         for ($i = 0; $i < 25; $i++) {
-            $this->createDriveFile($this->ownerToken, '/users/bob', 'bulk-'.$i.'.md');
+            $this->createDriveFile($this->ownerToken, '/users/bob/bulk', 'bulk-'.$i.'.md');
         }
     }
 
@@ -35,7 +38,7 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
     public function test_listing_shared_directory_does_not_query_grants_per_entry(): void
     {
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => '/users/bob',
+            'path' => '/users/bob/bulk',
             'kind' => 'member',
             'defaultAccess' => 'view',
             'shareWith' => ['carol' => ['access' => 'view']],
@@ -46,7 +49,7 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
         DB::connection('wgw')->flushQueryLog();
         DB::connection('wgw')->enableQueryLog();
 
-        $this->withBearer($memberToken)->getJson('/api/v1/files/children?path=/users/bob')
+        $this->withBearer($memberToken)->getJson('/api/v1/files/children?path=/users/bob/bulk')
             ->assertOk();
 
         $grantQueries = 0;
@@ -58,5 +61,46 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
         }
 
         $this->assertLessThanOrEqual(1, $grantQueries, 'Expected at most one drive_share_grants query for listing');
+    }
+
+    public function test_children_listing_marks_paths_with_outgoing_shares(): void
+    {
+        $this->createDriveFile($this->ownerToken, '/users/bob', 'shared.md');
+        $this->createDriveFile($this->ownerToken, '/users/bob', 'private.md');
+
+        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk();
+
+        $response = $this->withBearer($this->ownerToken)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertOk();
+
+        $files = collect($response->json('data.files'))->keyBy('name');
+        $this->assertTrue($files->get('shared.md')['hasShares'] ?? false);
+        $this->assertTrue($files->get('shared.md')['hasPublicShare'] ?? false);
+        $this->assertFalse($files->get('shared.md')['hasTeamShare'] ?? false);
+        $this->assertFalse($files->get('private.md')['hasShares'] ?? false);
+    }
+
+    public function test_children_listing_marks_team_grants_separately_from_public_link(): void
+    {
+        $this->createDriveFile($this->ownerToken, '/users/bob', 'team.md');
+
+        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/team.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol' => ['access' => 'view']],
+        ])->assertOk();
+
+        $response = $this->withBearer($this->ownerToken)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertOk();
+
+        $entry = collect($response->json('data.files'))->firstWhere('name', 'team.md');
+        $this->assertTrue($entry['hasShares'] ?? false);
+        $this->assertTrue($entry['hasTeamShare'] ?? false);
+        $this->assertFalse($entry['hasPublicShare'] ?? false);
     }
 }

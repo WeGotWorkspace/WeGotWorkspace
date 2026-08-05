@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { isKeyboardFieldTarget } from "@/lib/keyboard/is-keyboard-field-target";
 import type { ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type {
+  DriveAPIOperations,
+  DriveShareOperations,
+  DriveUIData,
+} from "@/drive-core/src/drive-types";
 import { useDriveList } from "@/drive-core/src/use-drive-list";
 import { useDriveMutations } from "@/drive-core/src/use-drive-mutations";
 import { useDriveShell } from "@/drive-core/src/use-drive-shell";
@@ -12,6 +16,7 @@ export type UseDriveControllerArgs = {
   data: DriveUIData;
   session: WorkspaceSession;
   operations?: DriveAPIOperations;
+  shareOperations?: DriveShareOperations;
   listLoading?: boolean;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
@@ -27,6 +32,7 @@ export function useDriveController({
   data,
   session,
   operations,
+  shareOperations,
   listLoading = false,
   view,
   onViewChange,
@@ -37,6 +43,7 @@ export function useDriveController({
     data,
     session,
     operations,
+    shareOperations,
     listLoading,
     view,
     onViewChange,

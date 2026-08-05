@@ -34,3 +34,23 @@ export const Default: Story = {
     },
   },
 };
+
+export const SharedWithMe: Story = {
+  args: {
+    ...createDriveAppBootstrap(),
+    shareOperations: createMockDriveShareOperations(),
+    view: { type: "shared" },
+    onViewChange: STORY_NOOP,
+    onLogout: () => {},
+    onOpenDocsFile: STORY_NOOP,
+    onNavigate: STORY_NOOP,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Sidebar **Shared with me** (`?view=shared`) lists member-shared files and folders from other users.",
+      },
+    },
+  },
+};

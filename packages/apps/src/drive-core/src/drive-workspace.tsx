@@ -20,7 +20,6 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
-import { DriveAccessPane } from "@/drive-core/src/drive-access-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
 import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
@@ -65,6 +64,7 @@ export function DriveWorkspace({
     data,
     session,
     operations,
+    shareOperations,
     listLoading,
     view,
     onViewChange,
@@ -155,14 +155,8 @@ export function DriveWorkspace({
   }, [searchEnabled, searchQuery, setSearchQuery]);
 
   const browserTitleContext =
-    controller.view.type === "access"
-      ? controller.labels.accessTitle
-      : searchEnabled && searchQuery.trim()
-        ? controller.labels.searchViewTitle
-        : controller.viewLabel;
+    searchEnabled && searchQuery.trim() ? controller.labels.searchViewTitle : controller.viewLabel;
   useDocumentTitle(browserTitleContext);
-
-  const isAccessView = controller.view.type === "access";
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -179,44 +173,27 @@ export function DriveWorkspace({
           />
         }
         mainHeader={
-          isAccessView ? undefined : (
-            <DriveMainHeader
-              controller={controller}
-              unifiedSearchEnabled={Boolean(operations)}
-              searchEnabled={searchEnabled}
-            />
-          )
+          <DriveMainHeader
+            controller={controller}
+            unifiedSearchEnabled={Boolean(operations)}
+            searchEnabled={searchEnabled}
+          />
         }
         main={
-          isAccessView && shareOperations ? (
-            <DriveAccessPane
-              shareOperations={shareOperations}
-              operations={operations}
-              username={controller.currentUsername}
-              sidebarGroupPaths={controller.sidebarGroupPaths}
-              groupRootNames={controller.groupRootNames}
-              view={controller.view}
-              onViewChange={controller.selectView}
-              onOpenShare={shareDialog.openShareDialog}
-              sidebarOpen={controller.sidebarOpen}
-              onToggleSidebar={() => controller.setSidebarOpen((v) => !v)}
-            />
-          ) : (
-            <DriveMainPane
-              controller={controller}
-              operations={operations}
-              openFile={guardedOpenFile}
-              offlineEnabled={offlineEnabled}
-              offlineAvailableIds={rowOfflineAvailableIds}
-              offlinePendingSyncIds={rowOfflinePendingSyncIds}
-              onMakeOfflineAvailable={handleMakeOfflineAvailable}
-              pinLoadingId={pinLoadingId}
-              extraFileActions={offlineEnabled ? extraFileActions : undefined}
-              shareEnabled={Boolean(shareOperations)}
-              onOpenShare={handleOpenShareForFile}
-              activeMayShare={activeMayShare}
-            />
-          )
+          <DriveMainPane
+            controller={controller}
+            operations={operations}
+            openFile={guardedOpenFile}
+            offlineEnabled={offlineEnabled}
+            offlineAvailableIds={rowOfflineAvailableIds}
+            offlinePendingSyncIds={rowOfflinePendingSyncIds}
+            onMakeOfflineAvailable={handleMakeOfflineAvailable}
+            pinLoadingId={pinLoadingId}
+            extraFileActions={offlineEnabled ? extraFileActions : undefined}
+            shareEnabled={Boolean(shareOperations)}
+            onOpenShare={handleOpenShareForFile}
+            activeMayShare={activeMayShare}
+          />
         }
       />
       <DriveWorkspaceModals

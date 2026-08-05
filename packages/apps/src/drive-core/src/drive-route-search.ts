@@ -23,12 +23,9 @@ export function driveViewFromSearch(search: DriveRouteSearch): ViewKey {
   if (viewType === "recent") return { type: "recent" };
   if (viewType === "starred") return { type: "starred" };
   if (viewType === "shared") return { type: "shared" };
+  // Access manager is Storybook-only until product-ready; ignore deep links.
   if (viewType === "access") {
-    const path = search.path?.trim();
-    return {
-      type: "access",
-      scopePath: path ? normalizeDriveFolderUiPath(path) : undefined,
-    };
+    return { type: "folder", path: "My Drive" };
   }
   const path = search.path?.trim();
   if (path) return { type: "folder", path: normalizeDriveFolderUiPath(path) };

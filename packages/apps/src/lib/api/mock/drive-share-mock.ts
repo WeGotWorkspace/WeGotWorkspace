@@ -7,6 +7,7 @@ import type {
   DriveSharePrincipalEntry,
   DriveShareRevokeAllPublicResult,
   DriveShareUpdateRequest,
+  DriveSharedWithMeEntry,
 } from "@wgw-api-generated/drive-types";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
@@ -17,6 +18,55 @@ import {
 } from "@/lib/api/mock/drive-share-fixtures";
 
 const SHARED_FIXTURE_PATH = mockDriveShareAtPath.path;
+
+const mockSharedWithMe: DriveSharedWithMeEntry[] = [
+  {
+    share: {
+      id: "d4444444-4444-4444-8444-444444444444",
+      path: "/users/hana/Bindery-Walkthrough.mov",
+      kind: "member",
+      defaultAccess: "view",
+      publicToken: null,
+      hasPassword: false,
+      expiresAt: null,
+      updatedAt: "2026-07-01T10:00:00.000Z",
+      shareWith: null,
+      myRights: fullDriveMyRights,
+    },
+    entry: {
+      type: "file",
+      path: "/users/hana/Bindery-Walkthrough.mov",
+      name: "Bindery-Walkthrough.mov",
+      size: 1024,
+      time: 1_720_000_000,
+      permissions: 0,
+      myRights: fullDriveMyRights,
+    },
+  },
+  {
+    share: {
+      id: "e5555555-5555-4555-8555-555555555555",
+      path: "/users/hana/Client Deck",
+      kind: "member",
+      defaultAccess: "edit",
+      publicToken: null,
+      hasPassword: false,
+      expiresAt: null,
+      updatedAt: "2026-07-01T10:00:00.000Z",
+      shareWith: null,
+      myRights: fullDriveMyRights,
+    },
+    entry: {
+      type: "dir",
+      path: "/users/hana/Client Deck",
+      name: "Client Deck",
+      size: 0,
+      time: 1_720_000_000,
+      permissions: 0,
+      myRights: fullDriveMyRights,
+    },
+  },
+];
 
 function cloneAtPath(path: string): DriveShareAtPath {
   if (path !== SHARED_FIXTURE_PATH) {
@@ -76,6 +126,13 @@ export function createMockDriveShareOperations(): DriveShareOperations {
     },
     async searchPrincipals(query) {
       return filterPrincipals(query);
+    },
+    async listSharedWithMe() {
+      return mockSharedWithMe.map((entry) => ({
+        share: { ...entry.share },
+        ...(entry.entry ? { entry: { ...entry.entry } } : {}),
+        ...(entry.viaGroup ? { viaGroup: entry.viaGroup } : {}),
+      }));
     },
     async createShare(body: DriveShareCreateRequest) {
       if (body.kind === "public" && body.defaultAccess !== "view") {

@@ -16,6 +16,7 @@ import type {
   DriveSharePrincipalEntry,
   DriveShareRevokeAllPublicResult,
   DriveShareUpdateRequest,
+  DriveSharedWithMeEntry,
 } from "@wgw-api-generated/drive-types";
 
 export type DriveUIData = {
@@ -51,6 +52,8 @@ export type DriveShareOperations = {
     query: string,
     opts?: { signal?: AbortSignal },
   ) => Promise<DriveSharePrincipalEntry[]>;
+  /** Paths shared with the current user via active member grants. */
+  listSharedWithMe: (opts?: { signal?: AbortSignal }) => Promise<DriveSharedWithMeEntry[]>;
   createShare: (
     body: DriveShareCreateRequest,
     opts?: DriveShareMutationOpts,

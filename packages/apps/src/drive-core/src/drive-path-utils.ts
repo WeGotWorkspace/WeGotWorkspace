@@ -1,9 +1,13 @@
 /** Sidebar / UI virtual path for the user trash location. */
 export const DRIVE_TRASH_UI_PATH = "Trash";
 
+/** Virtual root for the Shared with me browse view (not a filesystem directory). */
+export const SHARED_WITH_ME_UI_ROOT = "Shared with me";
+
 const GROUPS_UI_ROOT = "Groups";
 const MY_DRIVE_UI_ROOT = "My Drive";
-const SHARED_WITH_ME_UI_ROOT = "Shared with me";
+/** Foreign personal drives opened from Shared with me (`/users/{other}/…`). */
+const USERS_UI_ROOT = "Users";
 
 /** Ensure folder UI paths use a known top-level prefix (relative paths default to My Drive). */
 export function normalizeDriveFolderUiPath(path: string): string {
@@ -14,6 +18,8 @@ export function normalizeDriveFolderUiPath(path: string): string {
     trimmed.startsWith(`${MY_DRIVE_UI_ROOT}/`) ||
     trimmed === GROUPS_UI_ROOT ||
     trimmed.startsWith(`${GROUPS_UI_ROOT}/`) ||
+    trimmed === USERS_UI_ROOT ||
+    trimmed.startsWith(`${USERS_UI_ROOT}/`) ||
     trimmed === DRIVE_TRASH_UI_PATH ||
     trimmed.startsWith(`${DRIVE_TRASH_UI_PATH}/`) ||
     trimmed === SHARED_WITH_ME_UI_ROOT ||
@@ -54,6 +60,12 @@ export function normalizeApiVirtualPath(path: string): string {
   return withLeading.replace(/\/+$/, "");
 }
 
+/** Personal or group drive roots (`/users/{username}`, `/groups/{slug}`) — not share targets. */
+export function isTopLevelDriveApiPath(path: string | undefined): boolean {
+  if (!path?.trim()) return false;
+  return /^\/(users|groups)\/[^/]+$/.test(normalizeApiVirtualPath(path));
+}
+
 export function uiPathFromApiPath(path: string, username: string): string {
   const normalized = normalizeApiVirtualPath(path);
   const userRoot = `/users/${username}`;
@@ -80,6 +92,10 @@ export function uiPathFromApiPath(path: string, username: string): string {
   if (normalized.startsWith(`${userRoot}/`)) {
     return `My Drive${normalized.slice(userRoot.length)}`;
   }
+  // Foreign personal paths (e.g. Shared with me → open another user's folder).
+  if (normalized.startsWith("/users/")) {
+    return `${USERS_UI_ROOT}${normalized.slice("/users".length)}`;
+  }
   return "My Drive";
 }
 
@@ -95,6 +111,11 @@ export function apiPathFromUiPath(path: string, username: string, groupRoots: Se
   if (normalized.startsWith("Groups/")) {
     const relative = normalized.slice("Groups/".length);
     return `/groups/${relative}`;
+  }
+  if (normalized === USERS_UI_ROOT || normalized.startsWith(`${USERS_UI_ROOT}/`)) {
+    const relative =
+      normalized === USERS_UI_ROOT ? "" : normalized.slice(`${USERS_UI_ROOT}/`.length);
+    return relative ? `/users/${relative}` : "/users";
   }
   if (normalized.startsWith("My Drive/")) {
     const relative = normalized.slice("My Drive/".length);

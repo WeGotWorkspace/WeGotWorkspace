@@ -2012,6 +2012,14 @@
                     "hasShares": {
                         "type": "boolean",
                         "description": "True when this path has direct outgoing share grants (member, guest, or public)."
+                    },
+                    "hasPublicShare": {
+                        "type": "boolean",
+                        "description": "True when this path has an active public link share."
+                    },
+                    "hasTeamShare": {
+                        "type": "boolean",
+                        "description": "True when this path has active team grants (users or groups) on a member share."
                     }
                 },
                 "required": [
@@ -8148,6 +8156,10 @@
                 "properties": {
                     "share": {
                         "$ref": "#/components/schemas/DriveShare"
+                    },
+                    "entry": {
+                        "$ref": "#/components/schemas/DriveDirectoryEntry",
+                        "description": "Resolved filesystem metadata for the share path when it still exists. Clients should prefer this over listing the parent directory — grantees often cannot list ancestors outside the share root."
                     },
                     "viaGroup": {
                         "type": "string",

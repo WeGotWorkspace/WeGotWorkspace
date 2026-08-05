@@ -14,4 +14,8 @@ describe("driveLabels", () => {
     expect(driveLabels.newMarkdown).toBe("New document");
     expect(driveLabels.createMarkdownDialogTitle).toBe("New document");
   });
+
+  it("labels Shared with me in the sidebar", () => {
+    expect(driveLabels.sidebarSharedWithMe).toBe("Shared with me");
+  });
 });

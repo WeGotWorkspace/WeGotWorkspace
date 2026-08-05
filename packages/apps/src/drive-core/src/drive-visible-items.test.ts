@@ -58,4 +58,51 @@ describe("filterDriveVisibleItems", () => {
 
     expect(visible.map((file) => file.id)).toEqual(["b"]);
   });
+
+  it("lists Shared with me mock files when operations are absent", () => {
+    const files = [
+      sampleFile({ id: "mine", title: "Mine.md", parent: "My Drive" }),
+      sampleFile({ id: "shared", title: "Shared.md", parent: "Shared with me" }),
+    ];
+
+    const visible = filterDriveVisibleItems({
+      files,
+      liveSearchResults: null,
+      starredItems: null,
+      starred: {},
+      view: { type: "shared" },
+      searchQuery: "",
+      currentUsername: "demo",
+      operations: undefined,
+    });
+
+    expect(visible.map((file) => file.id)).toEqual(["shared"]);
+  });
+
+  it("uses sharedItems for the live Shared with me view", () => {
+    const files = [sampleFile({ id: "mine", title: "Mine.md", parent: "My Drive" })];
+    const sharedItems = [
+      sampleFile({
+        id: "/users/bob/deck",
+        title: "Client Deck",
+        parent: "Shared with me",
+        kind: "folder",
+        apiPath: "/users/bob/Client Deck",
+      }),
+    ];
+
+    const visible = filterDriveVisibleItems({
+      files,
+      liveSearchResults: null,
+      starredItems: null,
+      sharedItems,
+      starred: {},
+      view: { type: "shared" },
+      searchQuery: "",
+      currentUsername: "demo",
+      operations: {},
+    });
+
+    expect(visible.map((file) => file.id)).toEqual(["/users/bob/deck"]);
+  });
 });

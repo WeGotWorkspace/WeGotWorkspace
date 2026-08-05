@@ -1,5 +1,6 @@
 import {
   DRIVE_TRASH_UI_PATH,
+  SHARED_WITH_ME_UI_ROOT,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
 } from "@/drive-core/src/drive-path-utils";
@@ -9,10 +10,17 @@ export function isDriveUnderTrash(parent: string) {
   return parent === DRIVE_TRASH_UI_PATH || parent.startsWith(`${DRIVE_TRASH_UI_PATH}/`);
 }
 
+function matchesLocalSearch(file: DriveFile, query: string): boolean {
+  if (!query) return true;
+  const hay = `${file.title} ${file.excerpt}`.toLowerCase();
+  return hay.includes(query);
+}
+
 export function filterDriveVisibleItems({
   files,
   liveSearchResults,
   starredItems,
+  sharedItems,
   starred,
   view,
   searchQuery,
@@ -22,6 +30,7 @@ export function filterDriveVisibleItems({
   files: DriveFile[];
   liveSearchResults: DriveFile[] | null;
   starredItems: DriveFile[] | null;
+  sharedItems?: DriveFile[] | null;
   starred: Record<string, boolean>;
   view: ViewKey;
   searchQuery: string;
@@ -49,23 +58,26 @@ export function filterDriveVisibleItems({
     else if (view.type === "starred") {
       if (operations) return false;
       inView = !!starred[f.id] && !isDriveUnderTrash(f.parent);
-    } else if (view.type === "shared")
-      inView = f.parent === "Shared with me" || f.parent.startsWith("Shared with me/");
+    } else if (view.type === "shared") {
+      if (operations) return false;
+      inView =
+        f.parent === SHARED_WITH_ME_UI_ROOT || f.parent.startsWith(`${SHARED_WITH_ME_UI_ROOT}/`);
+    }
     if (!inView) return false;
-    if (!q) return true;
-    const hay = `${f.title} ${f.excerpt}`.toLowerCase();
-    return hay.includes(q);
+    return matchesLocalSearch(f, q);
   });
   const starredFiltered =
     view.type === "starred" && operations
       ? starredSourceFiles.filter((f) => {
           if (!starred[f.id] || isDriveUnderTrash(f.parent)) return false;
-          if (!q) return true;
-          const hay = `${f.title} ${f.excerpt}`.toLowerCase();
-          return hay.includes(q);
+          return matchesLocalSearch(f, q);
         })
       : null;
-  const items = starredFiltered ?? filtered;
+  const sharedFiltered =
+    view.type === "shared" && operations
+      ? (sharedItems ?? []).filter((f) => matchesLocalSearch(f, q))
+      : null;
+  const items = sharedFiltered ?? starredFiltered ?? filtered;
   return items.sort((a, b) => {
     if (a.kind === "folder" && b.kind !== "folder") return -1;
     if (b.kind === "folder" && a.kind !== "folder") return 1;

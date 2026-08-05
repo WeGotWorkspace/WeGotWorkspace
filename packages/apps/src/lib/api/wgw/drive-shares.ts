@@ -16,6 +16,8 @@ import type {
   DriveShareRevokeAllPublicDataResponse,
   DriveShareRevokeAllPublicResult,
   DriveShareUpdateRequest,
+  DriveSharedWithMeDataResponse,
+  DriveSharedWithMeEntry,
 } from "@wgw-api-generated/drive-types";
 import type { DriveShareMutationOpts, DriveShareOperations } from "@/drive-core/src/drive-types";
 
@@ -123,6 +125,13 @@ export async function searchDriveSharePrincipals(
   return payload.data;
 }
 
+export async function fetchDriveSharedWithMe(opts?: {
+  signal?: AbortSignal;
+}): Promise<DriveSharedWithMeEntry[]> {
+  const payload = await getShareJson<DriveSharedWithMeDataResponse>("/files/shared-with-me", opts);
+  return payload.data;
+}
+
 export async function createDriveShare(
   body: DriveShareCreateRequest,
   opts?: DriveShareMutationOpts,
@@ -187,6 +196,7 @@ export function createWgwDriveShareOperations(): DriveShareOperations {
     getAtPath: fetchDriveShareAtPath,
     getByPrincipal: fetchDriveShareByPrincipal,
     searchPrincipals: searchDriveSharePrincipals,
+    listSharedWithMe: fetchDriveSharedWithMe,
     createShare: createDriveShare,
     patchShare: patchDriveShare,
     deleteShare: deleteDriveShare,

@@ -9,6 +9,7 @@ import { findDrivePluginForExtension } from "@/drive-core/src/drive-plugin-utils
 import { filterDriveVisibleItems } from "@/drive-core/src/drive-visible-items";
 import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
@@ -27,6 +28,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     setFiles,
     liveSearchResults,
     starredItems,
+    sharedItems,
     starred,
     view,
     searchQuery,
@@ -57,6 +59,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
         files,
         liveSearchResults,
         starredItems,
+        sharedItems,
         starred,
         view,
         searchQuery,
@@ -69,6 +72,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
       liveSearchResults,
       operations,
       searchQuery,
+      sharedItems,
       starred,
       starredItems,
       view,
@@ -140,8 +144,12 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     recentOpenRef.current = { key: openKey, at: now };
 
     if (f.kind === "folder") {
-      const next = f.parent === "" ? f.title : `${f.parent}/${f.title}`;
-      selectView({ type: "folder", path: next });
+      if (f.apiPath) {
+        selectView({ type: "folder", path: uiPathFromApiPath(f.apiPath, currentUsername) });
+      } else {
+        const next = f.parent === "" ? f.title : `${f.parent}/${f.title}`;
+        selectView({ type: "folder", path: next });
+      }
       return;
     }
 

@@ -1,7 +1,7 @@
 import { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";
 import type { DriveUIData } from "@/drive-core/src/drive-types";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import { SHARED_WITH_ME_UI_ROOT, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 
 const BROWSER_PREVIEW_IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i;
 
@@ -39,6 +39,26 @@ export function formatBytesCompact(bytes: number): string {
   return `${value.toFixed(precision)} ${units[unit]}`;
 }
 
+type DriveShareListingFlags = {
+  hasShares?: boolean;
+  hasPublicShare?: boolean;
+  hasTeamShare?: boolean;
+};
+
+/** Map directory/search listing share flags onto `DriveFile` fields. */
+export function driveShareFlagsFromListing(
+  source: DriveShareListingFlags,
+): Pick<DriveFile, "isShared" | "hasPublicShare" | "hasTeamShare"> {
+  const hasPublicShare = source.hasPublicShare === true;
+  const hasTeamShare = source.hasTeamShare === true;
+  const isShared = source.hasShares === true || hasPublicShare || hasTeamShare;
+  return {
+    ...(hasPublicShare ? { hasPublicShare: true } : {}),
+    ...(hasTeamShare ? { hasTeamShare: true } : {}),
+    ...(isShared ? { isShared: true } : {}),
+  };
+}
+
 export function driveFileFromEntry(
   entry: DriveUIData["directory"]["files"][number],
   username: string,
@@ -64,8 +84,66 @@ export function driveFileFromEntry(
     size,
     apiPath,
     mayShare: entry.myRights?.mayShare,
-    ...(entry.hasShares === true ? { isShared: true } : {}),
+    ...driveShareFlagsFromListing(entry),
   };
+}
+
+/** Map a resolved directory entry into the Shared with me virtual root. */
+export function driveFileForSharedWithMeListing(
+  entry: DriveUIData["directory"]["files"][number],
+  username: string,
+): DriveFile {
+  return {
+    ...driveFileFromEntry(entry, username),
+    parent: SHARED_WITH_ME_UI_ROOT,
+  };
+}
+
+/**
+ * Build a Shared with me row from a `shared-with-me` API item.
+ * Prefer the resolved `entry` (grantees often cannot list the parent directory).
+ */
+export function driveFileFromSharedWithMeEntry(
+  item: {
+    share: {
+      path: string;
+      myRights?: DriveUIData["directory"]["files"][number]["myRights"];
+      updatedAt?: string | null;
+    };
+    entry?: DriveUIData["directory"]["files"][number] | null;
+  },
+  username: string,
+): DriveFile | null {
+  if (item.entry) {
+    return driveFileForSharedWithMeListing(item.entry, username);
+  }
+
+  const apiPath = item.share.path.trim();
+  if (!apiPath || apiPath === "/") return null;
+
+  const name = apiPath.includes("/") ? (apiPath.split("/").pop() ?? apiPath) : apiPath;
+  const updatedMs = item.share.updatedAt ? Date.parse(item.share.updatedAt) : Number.NaN;
+  const time = Number.isFinite(updatedMs) ? Math.floor(updatedMs / 1000) : 0;
+
+  return driveFileForSharedWithMeListing(
+    {
+      type: "file",
+      path: apiPath,
+      name,
+      size: 0,
+      time,
+      permissions: 0,
+      myRights: item.share.myRights ?? {
+        mayView: true,
+        mayComment: false,
+        mayReview: false,
+        mayEditContent: false,
+        mayManageStructure: false,
+        mayShare: false,
+      },
+    },
+    username,
+  );
 }
 
 /** Pick a unique `Untitled.md` name against existing file titles in the current listing. */
