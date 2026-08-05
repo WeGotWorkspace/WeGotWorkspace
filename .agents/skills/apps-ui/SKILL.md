@@ -84,3 +84,7 @@ Implementation checklist:
 - Shared component owns dropdown trigger rendering and menu item mapping.
 - Consumer components pass action descriptors and labels, not ad-hoc dropdown trees.
 - Dropdown item icon sizing is normalized by shared CSS.
+
+## Top-level SPA routes
+
+When adding a **new first path segment** in `packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx` (e.g. `/share`, `/tasks`), you MUST also allowlist that prefix on API `UiStaticServer` and extend `FrontRoutingTest`. Otherwise production GETs fall through to SabreDAV. See [api/SKILL.md](../api/SKILL.md) § SPA shell routes; Architecture `SpaShellRouteAllowlistTest` is the mechanical guard. Playwright e2e remains out of done-gate scope ([POLICY.md](../../POLICY.md)).

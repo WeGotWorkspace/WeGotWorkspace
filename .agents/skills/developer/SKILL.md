@@ -44,6 +44,7 @@ See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troub
 3. **UI styling: BEM classes + `@apply` in CSS** — not long Tailwind in TSX or raw CSS properties; primitives stay context-agnostic → [apps-ui](../apps-ui/SKILL.md)
 4. **File I/O via Flysystem** — single storage layer for REST and WebDAV → [storage-flysystem.md](../api/storage-flysystem.md)
 5. **Hook structure is a handoff gate** — when a feature adds multiple concerns to one hook, run a structure pass before handoff (split per [clean-code/smells.md](../clean-code/smells.md) React hooks section; collab layout in [collab-hooks.md](../workspace/collab-hooks.md)). Not optional nit — [code-review](../code-review/SKILL.md) blocks merge-ready work that violates thresholds without a documented exception.
+6. **New top-level SPA routes need API allowlist** — adding `/share`, `/tasks`, or any new first path segment in `wegotworkspace-routes.tsx` requires the same prefix on `UiStaticServer` + `FrontRoutingTest` (otherwise production falls through to SabreDAV). Architecture test `SpaShellRouteAllowlistTest` enforces the contract; Playwright e2e stays out of done gates.
 
 ## Multitask
 
