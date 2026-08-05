@@ -83,14 +83,16 @@ export const DocsEditorFiles: Story = {
   args: { preset: "docsEditor" },
 };
 
-export const GridViewTextPreviews: Story = {
-  name: "Grid view (text previews)",
+export const GridView: Story = {
+  name: "Grid view",
   tags: ["vitest-ci"],
   args: { preset: "docsEditor", viewMode: "grid" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("Project Brief.md")).toBeInTheDocument();
-    await expect(canvas.getByText(/Opens in Docs with formatting toolbar/i)).toBeInTheDocument();
+    await expect(
+      canvas.queryByText(/Opens in Docs with formatting toolbar/i),
+    ).not.toBeInTheDocument();
   },
 };
 

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
+import { DocsHomePane, resolveDocsHomeFileCanShare } from "@/docs-core/src/docs-home-pane";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
@@ -165,12 +165,12 @@ describe("DocsHomePane offline badges", () => {
 });
 
 describe("DocsHomePane shared indicator", () => {
-  it("shows shared indicator when file isShared", () => {
+  it("shows public link indicator when file hasPublicShare", () => {
     render(
       <TooltipProvider>
         <DocsHomePane
           labels={docsLabels}
-          files={[{ ...FILE, isShared: true }]}
+          files={[{ ...FILE, hasPublicShare: true, isShared: true }]}
           loading={false}
           loadingMore={false}
           hasMore={false}
@@ -188,9 +188,36 @@ describe("DocsHomePane shared indicator", () => {
     );
 
     const row = screen.getByText(FILE.title).closest("tr")!;
-    const indicator = row.querySelector(".drive-shared-indicator");
+    const indicator = row.querySelector('.drive-shared-indicator[aria-label="Public link"]');
     expect(indicator).toBeTruthy();
-    expect(indicator!.textContent).toContain(driveLabels.sharedIndicator);
+  });
+
+  it("shows team indicator when file hasTeamShare", () => {
+    render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={[{ ...FILE, hasTeamShare: true, isShared: true }]}
+          loading={false}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+        />
+      </TooltipProvider>,
+    );
+
+    const row = screen.getByText(FILE.title).closest("tr")!;
+    expect(
+      row.querySelector('.drive-shared-indicator[aria-label="Shared with team"]'),
+    ).toBeTruthy();
   });
 
   it("hides shared indicator when file is not shared", () => {
@@ -288,12 +315,33 @@ describe("DocsHomePane multi-select batch bar", () => {
 });
 
 describe("DocsHomePane share actions", () => {
-  it("renders with shareOperations when mayShare is true", () => {
+  it("allows Share for search rows with unknown mayShare when shareOperations is wired", () => {
+    expect(
+      resolveDocsHomeFileCanShare({
+        shareEnabled: true,
+        apiPath: FILE.apiPath,
+        isActive: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides Share for the active row while mayShare is still loading", () => {
+    expect(
+      resolveDocsHomeFileCanShare({
+        shareEnabled: true,
+        apiPath: FILE.apiPath,
+        isActive: true,
+        activeMayShare: undefined,
+      }),
+    ).toBe(false);
+  });
+
+  it("renders row overflow when shareOperations is wired", () => {
     render(
       <TooltipProvider>
         <DocsHomePane
           labels={docsLabels}
-          files={[{ ...FILE, mayShare: true }]}
+          files={[FILE]}
           loading={false}
           loadingMore={false}
           hasMore={false}

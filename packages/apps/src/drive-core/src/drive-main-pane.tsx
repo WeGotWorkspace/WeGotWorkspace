@@ -158,8 +158,7 @@ export function DriveMainPane({
   };
 
   const gridFilePreviews = useMemo(() => {
-    if (Object.keys(richPreviews).length === 0) return filePreviews;
-    const merged: Record<string, FilePreviewPayload> = { ...filePreviews };
+    const merged: Record<string, FilePreviewPayload> = {};
     for (const file of visibleItems) {
       const resolved = resolveGridFilePreview(filePreviews, richPreviews, file.id);
       if (resolved) merged[file.id] = resolved;
@@ -340,6 +339,7 @@ export function DriveMainPane({
                 shareEnabled &&
                 !inTrashView &&
                 Boolean(active.apiPath?.trim()) &&
+                !isTopLevelDriveApiPath(active.apiPath) &&
                 activeMayShare === true,
               onShare:
                 shareEnabled && active.apiPath && onOpenShare

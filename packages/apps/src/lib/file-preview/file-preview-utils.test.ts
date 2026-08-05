@@ -89,13 +89,19 @@ describe("file preview text helpers", () => {
     expect(resolved).toEqual({ kind: "docs", content: "# Full body" });
   });
 
-  it("prefers rich grid preview over tile text preview", () => {
-    const resolved = resolveGridFilePreview(
-      { "doc-1": { kind: "text", content: "tile excerpt" } },
-      { "doc-1": { kind: "docs", content: "# Full body" } },
-      "doc-1",
-    );
-    expect(resolved).toEqual({ kind: "docs", content: "# Full body" });
+  it("omits text and docs payloads from grid tiles", () => {
+    expect(
+      resolveGridFilePreview(
+        { "doc-1": { kind: "text", content: "tile excerpt" } },
+        { "doc-1": { kind: "docs", content: "# Full body" } },
+        "doc-1",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("keeps media blob previews for grid tiles", () => {
+    const media = { kind: "blob-url" as const, url: "blob:photo" };
+    expect(resolveGridFilePreview({ "img-1": media }, {}, "img-1")).toEqual(media);
   });
 
   it("derives media aspect ratio from blob preview dimensions", () => {

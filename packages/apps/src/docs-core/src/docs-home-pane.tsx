@@ -17,6 +17,7 @@ import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMayShare } from "@/drive-core/src/use-drive-share-may-share";
 import { resolveGridFilePreview } from "@/lib/file-preview/file-preview-utils";
+import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { ShareDialog } from "@/share-ui/share-dialog";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 
@@ -66,6 +67,28 @@ export type DocsHomePaneProps = {
   /** Current user handle — used for ShareDialog "Manage access" navigation. */
   username?: string;
 };
+
+/** Docs home search rows omit `mayShare`; resolve Share visibility for row overflow menus. */
+export function resolveDocsHomeFileCanShare({
+  shareEnabled,
+  apiPath,
+  isActive,
+  fileMayShare,
+  activeMayShare,
+}: {
+  shareEnabled: boolean;
+  apiPath?: string;
+  isActive: boolean;
+  fileMayShare?: boolean;
+  activeMayShare?: boolean;
+}): boolean {
+  if (!shareEnabled || !apiPath?.trim()) return false;
+  const resolvedMayShare = isActive ? activeMayShare : fileMayShare;
+  if (resolvedMayShare === false) return false;
+  if (resolvedMayShare === true) return true;
+  if (isActive) return false;
+  return true;
+}
 
 export function DocsHomePane({
   labels,
@@ -119,8 +142,7 @@ export function DocsHomePane({
   });
 
   const gridFilePreviews = useMemo(() => {
-    if (Object.keys(richPreviews).length === 0) return filePreviews;
-    const merged = { ...filePreviews };
+    const merged: Record<string, FilePreviewPayload> = {};
     for (const file of files) {
       const resolved = resolveGridFilePreview(filePreviews, richPreviews, file.id);
       if (resolved) merged[file.id] = resolved;
@@ -225,11 +247,14 @@ export function DocsHomePane({
   );
 
   const fileCanShare = useCallback(
-    (file: DriveFile) => {
-      if (!shareEnabled || !file.apiPath?.trim()) return false;
-      const resolvedMayShare = file.id === activeFile?.id ? activeMayShare : file.mayShare;
-      return resolvedMayShare === true;
-    },
+    (file: DriveFile) =>
+      resolveDocsHomeFileCanShare({
+        shareEnabled,
+        apiPath: file.apiPath,
+        isActive: file.id === activeFile?.id,
+        fileMayShare: file.mayShare,
+        activeMayShare,
+      }),
     [activeFile?.id, activeMayShare, shareEnabled],
   );
 
