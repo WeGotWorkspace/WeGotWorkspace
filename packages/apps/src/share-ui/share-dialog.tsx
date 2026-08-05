@@ -50,6 +50,13 @@ export function ShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn("share-dialog", dialogSurfaceClassName, "share-dialog__content")}
+        onPointerDownOutside={(event) => {
+          // Portaled Popover/Select layers sit outside this node in the DOM.
+          const target = event.target as Element | null;
+          if (target?.closest("[data-radix-popper-content-wrapper]")) {
+            event.preventDefault();
+          }
+        }}
       >
         <DialogHeader className="share-dialog__header">
           <DialogTitle>Share {title}</DialogTitle>

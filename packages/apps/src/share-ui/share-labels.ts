@@ -37,6 +37,8 @@ export const shareLabels = {
   inviteGuest: "Invite guest",
   removeGuest: "Remove guest",
   removeGrant: "Remove access",
+  removeGrantTitle: "Remove access?",
+  removeGrantConfirm: "This person or group will lose access to this item. Continue?",
   enablePublicAccess: "Enable public access",
   noAccess: "No access",
   addTeamGrantPlaceholder: "Add people or groups…",

@@ -2,6 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
 import { Card } from "@/card/src/card";
+import { buttonVariants } from "@/button/src/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { SharePrincipalSearchDropdown } from "@/share-ui/share-principal-search-dropdown";
 import { accessToUIPermission } from "@/share-ui/share-access-map";
@@ -16,6 +27,11 @@ type ShareTeamSectionProps = {
   disabled?: boolean;
 };
 
+type PendingRemoval = {
+  shareId: string;
+  principal: string;
+};
+
 export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareTeamSectionProps) {
   const groupGrants = useMemo(
     () => atPath.effectiveGrants.filter((grant) => grant.principalType === "group"),
@@ -28,6 +44,7 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<DriveSharePrincipalEntry[]>([]);
   const [searching, setSearching] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -96,11 +113,10 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
               onRemove={
                 grant.removal && !inherited
                   ? () => {
-                      void mutations.updateGrantAccess(
-                        grant.removal!.shareId,
-                        grant.removal!.principal ?? grant.principal,
-                        null,
-                      );
+                      setPendingRemoval({
+                        shareId: grant.removal!.shareId,
+                        principal: grant.removal!.principal ?? grant.principal,
+                      });
                     }
                   : undefined
               }
@@ -150,11 +166,10 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
               onRemove={
                 member.removal?.principal && member.editable && !inherited
                   ? () => {
-                      void mutations.updateGrantAccess(
-                        member.removal!.shareId,
-                        member.removal!.principal!,
-                        null,
-                      );
+                      setPendingRemoval({
+                        shareId: member.removal!.shareId,
+                        principal: member.removal!.principal!,
+                      });
                     }
                   : undefined
               }
@@ -163,7 +178,14 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
         })}
 
         <div className="share-dialog__add-grant">
-          <div className="share-dialog__add-grant-field anchored-dropdown-anchor">
+          <SharePrincipalSearchDropdown
+            query={query}
+            searching={searching}
+            results={selectableResults}
+            onSelect={(entry) => {
+              void mutations.addTeamGrant(entry, "view").then(() => setQuery(""));
+            }}
+          >
             <ShareDialogInput
               value={query}
               disabled={disabled}
@@ -171,18 +193,38 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
               className="share-dialog__add-grant-input"
               onChange={(event) => setQuery(event.target.value)}
             />
-            <SharePrincipalSearchDropdown
-              className="share-dialog__principal-search-dropdown"
-              query={query}
-              searching={searching}
-              results={selectableResults}
-              onSelect={(entry) => {
-                void mutations.addTeamGrant(entry, "view").then(() => setQuery(""));
-              }}
-            />
-          </div>
+          </SharePrincipalSearchDropdown>
         </div>
       </div>
+
+      <AlertDialog
+        open={!!pendingRemoval}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{shareLabels.removeGrantTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{shareLabels.removeGrantConfirm}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{shareLabels.confirmCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={() => {
+                if (!pendingRemoval) return;
+                void mutations.updateGrantAccess(
+                  pendingRemoval.shareId,
+                  pendingRemoval.principal,
+                  null,
+                );
+                setPendingRemoval(null);
+              }}
+            >
+              {shareLabels.confirmContinue}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

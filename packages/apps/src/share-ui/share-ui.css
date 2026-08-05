@@ -1,5 +1,4 @@
 @import "../styles.css" reference;
-@import "../ui/anchored-dropdown.css";
 
 .share-dialog {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
@@ -265,10 +264,17 @@
   @apply min-w-0;
 }
 
+/* Portaled via Popover — keep tokens when rendered outside `.share-dialog` content. */
 .share-dialog__principal-search-dropdown {
-  top: 100%;
   max-height: min(40dvh, 280px);
+  overflow: auto;
   --unified-search-dropdown-width: 100%;
+  --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-muted: var(
+    --muted-foreground,
+    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+  );
+  --input-height: 2.25rem;
 }
 
 .share-principal-search-dropdown__list {
