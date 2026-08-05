@@ -10,7 +10,6 @@ export const shareLabels = {
   guestSectionTitle: "Invite guests by email",
   guestSectionHint: "Each guest gets their own permission — invite once, control per person.",
   footerHint: "Access can also be granted on parent folders.",
-  footerOpenAccess: "Open access manager",
   copyLink: "Copy link",
   regenerateLink: "Generate new link",
   regenerateLinkHint: "Generate a new link (invalidates the current one)",

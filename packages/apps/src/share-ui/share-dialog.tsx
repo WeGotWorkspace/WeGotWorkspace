@@ -13,7 +13,6 @@ export type ShareDialogProps = {
   title: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onOpenAccess?: (path: string) => void;
   shareOperations: DriveShareOperations;
   /** Portaled dialog surface tokens — drive green by default; pass `docs-dialog-surface` from Docs. */
   dialogSurfaceClassName?: string;
@@ -24,7 +23,6 @@ export function ShareDialog({
   title,
   open = false,
   onOpenChange,
-  onOpenAccess,
   shareOperations,
   dialogSurfaceClassName = "drive-dialog-surface",
 }: ShareDialogProps) {
@@ -41,10 +39,6 @@ export function ShareDialog({
   });
 
   const canManage = data?.myRights.mayShare ?? true;
-  const handleOpenAccess = (scopePath: string) => {
-    onOpenChange?.(false);
-    onOpenAccess?.(scopePath);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -77,16 +71,6 @@ export function ShareDialog({
 
             <footer className="share-dialog__footer">
               <span>{shareLabels.footerHint}</span>
-              {onOpenAccess ? (
-                <button
-                  type="button"
-                  className="share-dialog__footer-link"
-                  onClick={() => handleOpenAccess(path)}
-                >
-                  {shareLabels.footerOpenAccess}
-                  <span aria-hidden>→</span>
-                </button>
-              ) : null}
             </footer>
           </>
         ) : null}

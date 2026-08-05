@@ -242,16 +242,10 @@
 }
 
 .share-dialog__footer {
-  @apply flex items-center justify-between border-t px-6 py-3 text-xs;
+  @apply flex items-center border-t px-6 py-3 text-xs;
   border-color: var(--share-dialog-panel-border);
   background: color-mix(in oklab, var(--color-ink, #111) 4%, transparent);
   color: var(--share-dialog-muted);
-}
-
-.share-dialog__footer-link {
-  @apply inline-flex items-center gap-1 font-medium text-foreground hover:text-primary;
-  min-height: var(--input-height);
-  padding-inline: 0.25rem;
 }
 
 .share-dialog__add-grant {

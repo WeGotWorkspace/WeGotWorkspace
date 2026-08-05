@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
-import { openDriveAccessInNewWindow } from "@/drive-core/src/drive-route-search";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
-import { isTopLevelDriveApiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 
 export type DriveShareDialogState = {
   open: boolean;
@@ -21,7 +20,7 @@ export type UseDriveShareDialogArgs = {
 
 export function useDriveShareDialog({
   shareOperations: _shareOperations,
-  username,
+  username: _username,
 }: UseDriveShareDialogArgs) {
   const [shareDialog, setShareDialog] = useState<DriveShareDialogState>({
     open: false,
@@ -44,21 +43,9 @@ export function useDriveShareDialog({
     setShareDialog((prev) => ({ ...prev, open }));
   }, []);
 
-  const handleShareDialogOpenAccess = useCallback(
-    (apiPath: string) => {
-      const path = apiPath.trim();
-      if (!path) return;
-      setShareDialog((prev) => ({ ...prev, open: false }));
-      const scopePath = uiPathFromApiPath(path, username);
-      openDriveAccessInNewWindow(scopePath);
-    },
-    [username],
-  );
-
   return {
     shareDialog,
     openShareDialog,
     handleShareDialogOpenChange,
-    handleShareDialogOpenAccess,
   };
 }

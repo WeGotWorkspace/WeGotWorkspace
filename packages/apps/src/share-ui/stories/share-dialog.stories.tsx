@@ -30,7 +30,6 @@ function ShareDialogHarness({
         title={title}
         shareOperations={createShareStoryOperations(fixture)}
         onOpenChange={setOpen}
-        onOpenAccess={() => setOpen(false)}
       />
     </DriveStoryScope>
   );

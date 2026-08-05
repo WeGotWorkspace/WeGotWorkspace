@@ -229,7 +229,6 @@ export function DriveWorkspaceModals({
           title={shareDialog.shareDialog.title}
           open={shareDialog.shareDialog.open}
           onOpenChange={shareDialog.handleShareDialogOpenChange}
-          onOpenAccess={shareDialog.handleShareDialogOpenAccess}
           shareOperations={shareOperations}
         />
       ) : null}
