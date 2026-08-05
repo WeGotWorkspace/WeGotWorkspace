@@ -293,29 +293,3 @@
   min-height: var(--input-height);
   color: var(--share-dialog-muted);
 }
-
-.share-public-route {
-  @apply bg-background text-foreground;
-}
-
-.share-public-route__title {
-  @apply text-3xl font-semibold tracking-tight;
-}
-
-.share-public-route__hint {
-  @apply mt-3 text-sm;
-  color: var(--share-dialog-muted);
-}
-
-.share-public-route__error {
-  @apply mt-4 text-sm text-destructive;
-}
-
-.share-public-route__form {
-  @apply mt-6 space-y-4 text-left;
-}
-
-.share-public-route__inline-link {
-  @apply font-medium underline underline-offset-2;
-  color: var(--share-dialog-accent, var(--primary));
-}
