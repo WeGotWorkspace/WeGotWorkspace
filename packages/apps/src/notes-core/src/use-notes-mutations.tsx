@@ -36,6 +36,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     view,
     setView,
     notebooks,
+    setNotebooks,
     tags,
     starred,
     applyStarToggle,
@@ -210,6 +211,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         ids,
         updater: (note) => ({ ...note, notebook }),
       });
+      setNotebooks((prev) => (prev.includes(notebook) ? prev : [...prev, notebook]));
       show(`Moved ${ids.length} item${ids.length === 1 ? "" : "s"} to “${notebook}”`, {
         icon: <BookOpen className="size-4" />,
       });
@@ -227,7 +229,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: "Move undone.",
       });
     },
-    [beginOptimisticUpdate, notes, operations, queueMutation, setNotes, show],
+    [beginOptimisticUpdate, notes, operations, queueMutation, setNotebooks, setNotes, show],
   );
 
   const assignTagToNotes = useCallback(
@@ -291,11 +293,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       setNotes((prev) =>
         prev.map((note) => (note.notebook === oldName ? { ...note, notebook: value } : note)),
       );
+      setNotebooks((prev) => [
+        ...new Set(prev.map((notebook) => (notebook === oldName ? value : notebook))),
+      ]);
       if (view === `nb:${oldName}`) setView(`nb:${value}`);
       if (operations) persistBestEffort(operations.renameNotebook(oldName, value));
       show(`Renamed to “${value}”`, { icon: <Tag className="size-4" /> });
     },
-    [notebooks, operations, setNotes, setView, show, view],
+    [notebooks, operations, setNotebooks, setNotes, setView, show, view],
   );
 
   const renameTag = useCallback(
@@ -353,10 +358,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       } else if (operations) {
         persistBestEffort(operations.deleteNotebook(name, { kind: "purge" }));
       }
+      // Drop from sidebar even when empty / Dexie-only (API omits empty personal dirs).
+      setNotebooks((prev) => prev.filter((notebook) => notebook !== name));
       if (view === `nb:${name}`) setView("all");
       show(`Notebook “${name}” deleted`, { icon: <Trash2 className="size-4" /> });
     },
-    [notebooks, notes, operations, setArchived, setNotes, setView, show, view],
+    [notebooks, notes, operations, setArchived, setNotebooks, setNotes, setView, show, view],
   );
 
   const deleteTag = useCallback(

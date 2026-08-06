@@ -30,6 +30,19 @@ export type UseNotesShellArgs = {
   onViewChange?: (view: string) => void;
 };
 
+/** Personal notebook names from bootstrap rows + owned notes (excludes shared/group). */
+export function collectPersonalNotebookNames(
+  dataNotebooks: readonly string[] | undefined,
+  noteList: readonly Pick<Note, "notebook" | "sharedInbox" | "sharedNotebookGrant" | "scope">[],
+): string[] {
+  const fromData = dataNotebooks ?? [];
+  const fromNotes = noteList
+    .filter((note) => !note.sharedInbox && !note.sharedNotebookGrant && note.scope !== "group")
+    .map((note) => note.notebook)
+    .filter((name) => name.trim().length > 0);
+  return [...new Set([...fromData, ...fromNotes])];
+}
+
 export function useNotesShell({
   data,
   labels,
@@ -69,6 +82,13 @@ export function useNotesShell({
     return map;
   });
 
+  // Mutable so delete/rename/move can drop emptied personal leftovers immediately.
+  // Re-synced from bootstrap `data` (Dexie + live); mutations own incremental updates
+  // so emptied names in stale `data.notebooks` do not resurrect after every edit.
+  const [notebooks, setNotebooks] = useState(() =>
+    collectPersonalNotebookNames(data.notebooks, data.notes),
+  );
+
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
     (fallback = "Could not sync this change. Please try again.") => showError(fallback),
@@ -101,6 +121,7 @@ export function useNotesShell({
 
   useEffect(() => {
     setNotes(data.notes.map(enrichNote));
+    setNotebooks(collectPersonalNotebookNames(data.notebooks, data.notes));
   }, [bootstrapRevision, data]);
 
   useEffect(() => {
@@ -108,14 +129,6 @@ export function useNotesShell({
     setView(initialView);
   }, [initialView]);
 
-  const notebooks = useMemo(() => {
-    const fromData = data.notebooks ?? [];
-    const fromNotes = notes
-      .filter((note) => !note.sharedInbox && !note.sharedNotebookGrant && note.scope !== "group")
-      .map((note) => note.notebook)
-      .filter((name) => name.trim().length > 0);
-    return [...new Set([...fromData, ...fromNotes])];
-  }, [data.notebooks, notes]);
   const notebooksWithShares = useMemo(
     () => new Set(data.notebooksWithShares ?? []),
     [data.notebooksWithShares],
@@ -206,6 +219,7 @@ export function useNotesShell({
     archived,
     setArchived,
     notebooks,
+    setNotebooks,
     notebooksWithShares,
     sharedNotebooks,
     tags,

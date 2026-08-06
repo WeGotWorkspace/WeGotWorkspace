@@ -169,6 +169,29 @@ describe("useNotesController bootstrap sync", () => {
 
     expect(result.current.view).toBe("nb:Journal");
     expect(result.current.notes[0]?.notebook).toBe("Journal");
+    expect(result.current.notebooks).toEqual(["Journal"]);
+  });
+
+  it("removes emptied personal notebooks from the sidebar on delete", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", notebook: "Drafts" }],
+      // Stale leftover after notes were moved away — still listed from Dexie/bootstrap.
+      notebooks: ["Drafts", "EmptyGhost"],
+      tags: [],
+    };
+
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, initialView: "nb:EmptyGhost" }),
+    );
+
+    expect(result.current.notebooks).toEqual(expect.arrayContaining(["Drafts", "EmptyGhost"]));
+
+    act(() => {
+      result.current.deleteNotebook("EmptyGhost", {});
+    });
+
+    expect(result.current.notebooks).toEqual(["Drafts"]);
+    expect(result.current.view).toBe("all");
   });
 
   it("refreshes the active note when bootstrap syncs updated server content", () => {

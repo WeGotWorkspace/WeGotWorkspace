@@ -51,6 +51,16 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (!isFetchNetworkError(error)) throw error;
 }
 
+async function patchCachedNotebooks(
+  username: string,
+  patch: (notebooks: string[]) => string[],
+): Promise<void> {
+  const cached = await readNotesBootstrapFromCache(username);
+  if (!cached) return;
+  cached.data.notebooks = patch(cached.data.notebooks);
+  await writeNotesBootstrapToCache(username, cached);
+}
+
 function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
   mode: "archive" | "move" | "purge";
   target?: string;
@@ -341,11 +351,9 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     createNotebook: async (name, opts) => {
       if (!readBrowserOnline()) {
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached && !cached.data.notebooks.includes(name)) {
-          cached.data.notebooks.push(name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.includes(name) ? notebooks : [...notebooks, name],
+        );
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -356,14 +364,15 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await createNotebookApi(name, opts);
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.includes(name) ? notebooks : [...notebooks, name],
+        );
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached && !cached.data.notebooks.includes(name)) {
-          cached.data.notebooks.push(name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.includes(name) ? notebooks : [...notebooks, name],
+        );
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -374,9 +383,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     renameNotebook: async (from, to, opts) => {
       if (!readBrowserOnline()) {
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.map((n) => (n === from ? to : n)),
+        );
         const cached = await readNotesBootstrapFromCache(username);
         if (cached) {
-          cached.data.notebooks = cached.data.notebooks.map((n) => (n === from ? to : n));
           cached.data.notes = cached.data.notes.map((n) =>
             n.notebook === from ? { ...n, notebook: to } : n,
           );
@@ -392,6 +403,14 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await renameNotebookApi(from, to, opts);
+        const cached = await readNotesBootstrapFromCache(username);
+        if (cached) {
+          cached.data.notebooks = cached.data.notebooks.map((n) => (n === from ? to : n));
+          cached.data.notes = cached.data.notes.map((n) =>
+            n.notebook === from ? { ...n, notebook: to } : n,
+          );
+          await writeNotesBootstrapToCache(username, cached);
+        }
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -413,11 +432,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     deleteNotebook: async (name, action, opts) => {
       if (!readBrowserOnline()) {
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notebooks = cached.data.notebooks.filter((n) => n !== name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -428,14 +443,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await deleteNotebookApi(name, notebookDeleteBodyForAction(action), opts);
+        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notebooks = cached.data.notebooks.filter((n) => n !== name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -462,9 +474,9 @@ export async function fetchNotesHybridBootstrap(): Promise<
   const cached = await readNotesBootstrapFromCache(username);
   if (cached) {
     cached.session = bootstrap.session;
-    if (bootstrap.data.notebooks.length > 0) {
-      cached.data.notebooks = bootstrap.data.notebooks;
-    }
+    // Always take the live personal notebook list — including empty. The previous
+    // `length > 0` guard left Dexie ghosts (emptied / deleted dirs the API omits).
+    cached.data.notebooks = bootstrap.data.notebooks;
     cached.data.sharedNotebooks = bootstrap.data.sharedNotebooks ?? [];
     if (!hadOutbox) {
       // Server is source of truth for membership/metadata, but body lives in
