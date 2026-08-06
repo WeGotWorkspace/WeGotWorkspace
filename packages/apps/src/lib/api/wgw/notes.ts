@@ -70,6 +70,8 @@ export type NotesNotebookRow = {
   name: string;
   scope?: "personal" | "group";
   groupSlug?: string | null;
+  /** Owner outgoing shares on this personal notebook directory. */
+  hasShares?: boolean;
 };
 
 export type NotesSharedNoteListRights = {
@@ -112,6 +114,7 @@ export function coerceNotebookRow(raw: unknown): NotesNotebookRow | null {
     scope,
     groupSlug:
       typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : undefined,
+    ...(r.hasShares === true ? { hasShares: true } : {}),
   };
 }
 
@@ -537,6 +540,13 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   const notebooks = [...new Set([...personalFromApi, ...personalFromNotes])].filter((name) =>
     name.trim(),
   );
+  const notebooksWithShares = [
+    ...new Set(
+      notebookRows
+        .filter((row) => row.scope !== "group" && row.hasShares === true)
+        .map((row) => row.name),
+    ),
+  ];
 
   const groupRowsFromNotes = ownedNotes
     .filter((n) => n.scope === "group" && n.groupSlug?.trim())
@@ -555,7 +565,7 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   const tags = [...new Set(ownedNotes.flatMap((n) => n.tags))];
 
   return {
-    data: { notes, notebooks, tags, sharedNotebooks },
+    data: { notes, notebooks, tags, sharedNotebooks, notebooksWithShares },
     session,
   };
 }

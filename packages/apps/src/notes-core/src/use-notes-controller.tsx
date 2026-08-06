@@ -67,6 +67,7 @@ export function useNotesController({
     notes: shell.notes,
     setNotes: shell.setNotes,
     notebooks: shell.notebooks,
+    notebooksWithShares: shell.notebooksWithShares,
     sharedNotebooks: shell.sharedNotebooks,
     tags: shell.tags,
     active: list.active,

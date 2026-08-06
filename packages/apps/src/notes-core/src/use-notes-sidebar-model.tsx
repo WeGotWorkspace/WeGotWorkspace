@@ -21,6 +21,8 @@ type UseNotesSidebarModelArgs = {
   view: string;
   /** Owned personal notebook names. */
   notebooks: string[];
+  /** Personal notebooks with outgoing directory shares (owner share pip). */
+  notebooksWithShares?: ReadonlySet<string> | readonly string[];
   /** ACL + group notebooks for the Shared notebooks section. */
   sharedNotebooks?: NotesSharedNotebook[];
   tags: string[];
@@ -36,10 +38,18 @@ export function sharedNotebookViewKey(path: string): string {
 
 export { sharedNotebookLabel };
 
+function notebooksWithSharesSet(
+  notebooksWithShares: UseNotesSidebarModelArgs["notebooksWithShares"],
+): ReadonlySet<string> {
+  if (!notebooksWithShares) return new Set();
+  return notebooksWithShares instanceof Set ? notebooksWithShares : new Set(notebooksWithShares);
+}
+
 export function useNotesSidebarModel({
   labels,
   view,
   notebooks,
+  notebooksWithShares,
   sharedNotebooks = [],
   tags,
   selectView,
@@ -47,6 +57,11 @@ export function useNotesSidebarModel({
   moveToNotebook,
   assignTagToNotes,
 }: UseNotesSidebarModelArgs) {
+  const sharedOwned = useMemo(
+    () => notebooksWithSharesSet(notebooksWithShares),
+    [notebooksWithShares],
+  );
+
   const primarySidebarItems = useMemo(
     (): MenuItemProps[] => [
       {
@@ -88,14 +103,27 @@ export function useNotesSidebarModel({
     (): MenuItemProps[] =>
       [...notebooks]
         .sort((a, b) => a.localeCompare(b))
-        .map((nb) => ({
-          label: nb,
-          icon: <BookOpen className="size-3.5" />,
-          selected: view === `nb:${nb}`,
-          onClick: () => selectView(`nb:${nb}`),
-          ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
-        })),
-    [moveToNotebook, notebooks, selectView, sidebarDropZoneProps, view],
+        .map((nb) => {
+          const hasShares = sharedOwned.has(nb);
+          return {
+            label: nb,
+            icon: <BookOpen className="size-3.5" />,
+            selected: view === `nb:${nb}`,
+            onClick: () => selectView(`nb:${nb}`),
+            className: hasShares ? "notes-sidebar-notebook--shared" : undefined,
+            badge: hasShares ? (
+              <span
+                className="notes-sidebar-notebook__shared-pip"
+                role="img"
+                aria-label={labels.shared}
+              >
+                <Share2 className="size-3 notes-sidebar-notebook__shared-icon" aria-hidden />
+              </span>
+            ) : undefined,
+            ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
+          };
+        }),
+    [labels.shared, moveToNotebook, notebooks, selectView, sharedOwned, sidebarDropZoneProps, view],
   );
 
   const sharedNotebookSidebarItems = useMemo((): MenuItemProps[] => {

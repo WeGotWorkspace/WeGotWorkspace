@@ -503,6 +503,11 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonMissingPath('items.0.hasShares');
 
+        // Notebook listing: only directory shares mark hasShares (not note-file shares).
+        $notebooks = $this->withBearer($ownerToken)->getJson('/api/v1/notes/notebooks')->assertOk();
+        $byName = collect($notebooks->json('items'))->keyBy('name');
+        $this->assertTrue($byName->get('SharedPad')['hasShares'] ?? false);
+        $this->assertFalse($byName->get('Drafts')['hasShares'] ?? false);
     }
 
     public function test_renaming_notebook_migrates_notebook_and_note_share_paths(): void

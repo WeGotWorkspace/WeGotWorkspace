@@ -7369,6 +7369,15 @@ export interface components {
             name: string;
             activeCount: number;
             archivedCount: number;
+            /**
+             * @description personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes.
+             * @enum {string}
+             */
+            scope?: "personal" | "group";
+            /** @description Group slug when scope is group; null/omitted for personal notebooks. */
+            groupSlug?: string | null;
+            /** @description True when this personal notebook directory has direct outgoing share grants (member/team or public). Omitted or false when unshared; never set on group-membership rows. */
+            hasShares?: boolean;
         };
         NotebookListItemList: components["schemas"]["NotebookListItem"][];
         NotebookListResponse: {

@@ -2544,6 +2544,25 @@
                     },
                     "archivedCount": {
                         "type": "integer"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ],
+                        "description": "personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes."
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Group slug when scope is group; null/omitted for personal notebooks."
+                    },
+                    "hasShares": {
+                        "type": "boolean",
+                        "description": "True when this personal notebook directory has direct outgoing share grants (member/team or public). Omitted or false when unshared; never set on group-membership rows."
                     }
                 },
                 "required": [

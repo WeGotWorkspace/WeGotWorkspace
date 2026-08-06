@@ -172,3 +172,23 @@
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
   background-color: var(--color-cream, #ffffff);
 }
+
+/* Owner outgoing-share pip on personal notebook rows (not a count badge). */
+.notes-workspace .notes-sidebar-notebook--shared .menu-item__badge {
+  @apply h-auto min-w-0 px-0;
+  background-color: transparent;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.notes-workspace .notes-sidebar-notebook--shared.menu-item--selected .menu-item__badge {
+  background-color: transparent;
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+}
+
+.notes-workspace .notes-sidebar-notebook__shared-pip {
+  @apply inline-flex size-3 shrink-0 items-center justify-center;
+}
+
+.notes-workspace .notes-sidebar-notebook__shared-icon {
+  @apply size-3 shrink-0 block;
+}

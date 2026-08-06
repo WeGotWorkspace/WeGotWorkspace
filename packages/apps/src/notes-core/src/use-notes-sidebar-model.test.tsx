@@ -46,6 +46,7 @@ describe("useNotesSidebarModel", () => {
         labels: defaultNotesLabels,
         view: "all",
         notebooks: ["Drafts", "Journal"],
+        notebooksWithShares: ["Journal"],
         sharedNotebooks: [
           {
             path: "/groups/eng/.notes/Specs",
@@ -110,6 +111,13 @@ describe("useNotesSidebarModel", () => {
     )?.icon;
     expect(isValidElement(personalIcon) && personalIcon.type).toBe(Share2);
     expect(isValidElement(groupIcon) && groupIcon.type).toBe(Users);
+
+    const drafts = result.current.notebookSidebarItems.find((item) => item.label === "Drafts");
+    const journal = result.current.notebookSidebarItems.find((item) => item.label === "Journal");
+    expect(drafts?.badge).toBeUndefined();
+    expect(drafts?.className).toBeUndefined();
+    expect(journal?.className).toBe("notes-sidebar-notebook--shared");
+    expect(isValidElement(journal?.badge)).toBe(true);
 
     result.current.primarySidebarItems[3]?.onClick?.();
     expect(selectView).toHaveBeenCalledWith("shared-with-me");

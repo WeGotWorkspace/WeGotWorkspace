@@ -211,6 +211,27 @@ describe("shared notes listing parsers", () => {
     ).toBeUndefined();
   });
 
+  it("maps hasShares from owned notebook list rows", async () => {
+    const { coerceNotebookRow } = await import("@/lib/api/wgw/notes");
+    expect(
+      coerceNotebookRow({
+        name: "SharedPad",
+        scope: "personal",
+        activeCount: 1,
+        archivedCount: 0,
+        hasShares: true,
+      })?.hasShares,
+    ).toBe(true);
+    expect(
+      coerceNotebookRow({
+        name: "Drafts",
+        scope: "personal",
+        activeCount: 2,
+        archivedCount: 0,
+      })?.hasShares,
+    ).toBeUndefined();
+  });
+
   it("keeps tags on group shared-notebook stubs; strips them on personal ACL shares", async () => {
     const { noteFromSharedNotebookEntry } = await import("@/lib/api/wgw/notes");
     expect(

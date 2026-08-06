@@ -17,6 +17,8 @@ export type NotesUIData = {
   tags: string[];
   /** Shared notebooks section: ACL dir grants + group-scoped notebooks. */
   sharedNotebooks?: NotesSharedNotebook[];
+  /** Personal notebook names with outgoing directory shares (owner sidebar pip). */
+  notebooksWithShares?: string[];
 };
 
 export type DeleteNotebookAction =

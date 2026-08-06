@@ -222,7 +222,7 @@ final class NoteRepository
         }
         ksort($byName);
 
-        return ['items' => array_values($byName)];
+        return ['items' => $this->annotateNotebookHasShares($username, array_values($byName))];
     }
 
     /**
@@ -455,6 +455,61 @@ final class NoteRepository
             'contentUpdatedAt' => date('c', $mtime),
             '_searchTitle' => $title,
         ];
+    }
+
+    /**
+     * Marks personal notebooks that have direct outgoing share grants on the
+     * notebook directory (owner sidebar pip). Group rows are left unmarked.
+     * One batch query — no N+1.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function annotateNotebookHasShares(string $username, array $items): array
+    {
+        if ($items === []) {
+            return $items;
+        }
+
+        /** @var array<int, string> $pathByIndex */
+        $pathByIndex = [];
+        foreach ($items as $index => $row) {
+            if (($row['scope'] ?? '') === 'group') {
+                continue;
+            }
+            $name = (string) ($row['name'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $pathByIndex[$index] = '/'.$this->notePaths->notebookKey(
+                NoteScope::personal($username),
+                $name,
+                false,
+            );
+        }
+        if ($pathByIndex === []) {
+            return $items;
+        }
+
+        $indicators = $this->shares->shareIndicatorsForPaths(
+            $username,
+            array_values(array_unique(array_values($pathByIndex))),
+        );
+        if ($indicators === []) {
+            return $items;
+        }
+
+        foreach ($pathByIndex as $index => $path) {
+            $flags = $indicators[$path] ?? null;
+            if ($flags === null) {
+                continue;
+            }
+            if (($flags['hasPublicShare'] ?? false) || ($flags['hasTeamShare'] ?? false)) {
+                $items[$index]['hasShares'] = true;
+            }
+        }
+
+        return $items;
     }
 
     /**

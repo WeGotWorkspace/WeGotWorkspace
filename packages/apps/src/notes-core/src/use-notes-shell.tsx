@@ -116,6 +116,10 @@ export function useNotesShell({
       .filter((name) => name.trim().length > 0);
     return [...new Set([...fromData, ...fromNotes])];
   }, [data.notebooks, notes]);
+  const notebooksWithShares = useMemo(
+    () => new Set(data.notebooksWithShares ?? []),
+    [data.notebooksWithShares],
+  );
   const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
   const tags = useMemo(
     () => [
@@ -202,6 +206,7 @@ export function useNotesShell({
     archived,
     setArchived,
     notebooks,
+    notebooksWithShares,
     sharedNotebooks,
     tags,
     viewLabel,
