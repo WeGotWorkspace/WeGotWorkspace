@@ -8729,6 +8729,7 @@
                     "id",
                     "notebook",
                     "title",
+                    "tags",
                     "owner",
                     "scope",
                     "groupSlug",
@@ -8749,6 +8750,10 @@
                     "title": {
                         "type": "string",
                         "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled."
+                    },
+                    "tags": {
+                        "$ref": "#/components/schemas/NoteTagList",
+                        "description": "Tags from the note markdown frontmatter. Empty when the file is missing or has no tags."
                     },
                     "owner": {
                         "type": "string",

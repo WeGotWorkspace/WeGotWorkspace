@@ -535,11 +535,13 @@ final class DriveShareService
             if (is_array($entry) && ($entry['type'] ?? '') === 'dir') {
                 continue;
             }
+            $listFields = $this->noteListFieldsFromPath($path, (string) $meta['id']);
             $item = [
                 'path' => $path,
                 'id' => $meta['id'],
                 'notebook' => $meta['notebook'],
-                'title' => $this->noteTitleFromPath($path, (string) $meta['id']),
+                'title' => $listFields['title'],
+                'tags' => $listFields['tags'],
                 'owner' => $meta['owner'],
                 'scope' => $meta['scope'],
                 'groupSlug' => $meta['groupSlug'],
@@ -1290,20 +1292,33 @@ final class DriveShareService
         ];
     }
 
-    private function noteTitleFromPath(string $path, string $fallbackId): string
+    /**
+     * List preview + tags from on-disk note frontmatter (one read).
+     *
+     * Shared-with-me stubs must surface tags the same way owned notes do —
+     * collab only syncs the body section, so metadata lives in frontmatter.
+     *
+     * @return array{title: string, tags: list<string>}
+     */
+    private function noteListFieldsFromPath(string $path, string $fallbackId): array
     {
         $disk = $this->filesDisk();
         $key = $this->paths->virtualToStorageKey($path);
         if (! $disk->fileExists($key)) {
-            return $fallbackId;
+            return ['title' => $fallbackId, 'tags' => []];
         }
         $contents = $disk->get($key);
         if (! is_string($contents)) {
-            return $fallbackId;
+            return ['title' => $fallbackId, 'tags' => []];
         }
 
         // Notes list preview is body-first (frontmatter title is often "Untitled").
-        return $this->noteCodec->listPreview($contents, $fallbackId);
+        [, $tags] = $this->noteCodec->parse($contents, $fallbackId);
+
+        return [
+            'title' => $this->noteCodec->listPreview($contents, $fallbackId),
+            'tags' => $tags,
+        ];
     }
 
     private function generatePublicToken(): string

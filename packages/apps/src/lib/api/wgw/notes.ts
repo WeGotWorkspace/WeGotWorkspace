@@ -74,6 +74,8 @@ export type NotesSharedNoteEntry = {
   id: string;
   notebook: string;
   title: string;
+  /** Frontmatter tags from the shared `.md` (same source of truth as owned notes). */
+  tags: string[];
   owner: string;
   scope: "personal" | "group";
   groupSlug: string | null;
@@ -132,11 +134,14 @@ export function coerceSharedNoteEntry(raw: unknown): NotesSharedNoteEntry | null
   const notebook = r.notebook;
   if (!path || id == null || notebook == null) return null;
   const scope = r.scope === "group" ? "group" : "personal";
+  const tagsRaw = r.tags;
+  const tags = Array.isArray(tagsRaw) ? tagsRaw.map((t) => String(t)).filter(Boolean) : [];
   return {
     path,
     id: String(id),
     notebook: String(notebook),
     title: r.title != null ? String(r.title) : String(id),
+    tags,
     owner: r.owner != null ? String(r.owner) : "",
     scope,
     groupSlug: typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : null,
@@ -214,7 +219,7 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
     notebook: entry.notebook,
     excerpt: title,
     body: [title],
-    tags: [],
+    tags: entry.tags.map((tag) => tag.trim()).filter(Boolean),
     wordCount: wordCountFromText(title),
     category: "Note",
     date: "—",

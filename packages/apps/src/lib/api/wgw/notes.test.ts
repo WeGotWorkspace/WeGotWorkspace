@@ -113,6 +113,7 @@ describe("shared notes listing parsers", () => {
           id: "n1",
           notebook: "TeamPad",
           title: "Hello",
+          tags: ["planning", "shared"],
           owner: "bob",
           scope: "personal",
           groupSlug: null,
@@ -122,10 +123,12 @@ describe("shared notes listing parsers", () => {
       ],
     });
     expect(notes).toHaveLength(1);
+    expect(notes[0]?.tags).toEqual(["planning", "shared"]);
     expect(noteFromSharedEntry(notes[0]!).sharedInbox).toBe(true);
     expect(noteFromSharedEntry(notes[0]!).apiPath).toBe("/users/bob/.notes/TeamPad/n1.md");
     expect(noteFromSharedEntry(notes[0]!).sharedBy).toBe("bob");
     expect(noteFromSharedEntry(notes[0]!).notebook).toBe("TeamPad");
+    expect(noteFromSharedEntry(notes[0]!).tags).toEqual(["planning", "shared"]);
 
     const notebooks = parseSharedNotebooksPayload({
       items: [
@@ -170,6 +173,7 @@ describe("shared notes listing parsers", () => {
         id: sharedId,
         notebook: "Drafts",
         title: "Shared local",
+        tags: [],
         owner: "admin",
         scope: "personal" as const,
         groupSlug: null,
@@ -180,6 +184,7 @@ describe("shared notes listing parsers", () => {
         id: sharedId,
         notebook: "Test",
         title: "Shared local test",
+        tags: [],
         owner: "admin",
         scope: "personal" as const,
         groupSlug: null,
@@ -190,6 +195,7 @@ describe("shared notes listing parsers", () => {
         id: "n1781784157",
         notebook: "Drafts",
         title: "E2E seed",
+        tags: [],
         owner: "admin",
         scope: "personal" as const,
         groupSlug: null,

@@ -169,7 +169,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         ]);
         Storage::disk('wgw_notes')->put(
             'users/bob/.notes/TeamPad/'.$created['id'].'.md',
-            "title: Shared Title\ntags:\nstarred: false\n----\nshared body"
+            "title: Shared Title\ntags: planning, shared\nstarred: false\n----\nshared body"
         );
 
         $notePath = '/users/bob/.notes/TeamPad/'.$created['id'].'.md';
@@ -195,6 +195,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('items.0.id', $created['id'])
             ->assertJsonPath('items.0.notebook', 'TeamPad')
             ->assertJsonPath('items.0.title', 'shared body')
+            ->assertJsonPath('items.0.tags', ['planning', 'shared'])
             ->assertJsonPath('items.0.owner', 'bob')
             ->assertJsonPath('items.0.access', 'view')
             ->assertJsonPath('items.0.myRights.mayView', true)
@@ -270,6 +271,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('items.0.path', $notePath)
             ->assertJsonPath('items.0.id', 'n1781784157')
             ->assertJsonPath('items.0.notebook', 'Drafts')
+            ->assertJsonPath('items.0.tags', [])
             ->assertJsonPath('items.0.owner', 'bob')
             ->assertJsonPath('items.0.access', 'edit');
     }

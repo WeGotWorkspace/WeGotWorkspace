@@ -6429,6 +6429,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notes/shared-with-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List note files shared with the current user via path grants
+         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Shared notes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotesSharedWithMeResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/shared-notebooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List notebook directories shared with the current user via path grants
+         * @description Returns directory grants under `.notes` (shared notebooks). Group-membership notebooks continue via `GET /notes/notebooks`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Shared notebooks */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotesSharedNotebooksResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9184,7 +9262,7 @@ export interface components {
             list: components["schemas"]["SearchDocumentSyncDto"][];
         };
         /**
-         * @description Share access level for a grant or default access.
+         * @description Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit|full only; comment and legacy review are rejected.
          * @enum {string}
          */
         DriveShareAccess: "view" | "comment" | "review" | "edit" | "full";
@@ -9468,6 +9546,45 @@ export interface components {
         };
         DriveShareByPrincipalDataResponse: {
             data: components["schemas"]["DriveShareByPrincipal"];
+        };
+        NotesSharedNoteEntry: {
+            /** @description Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md). */
+            path: string;
+            id: string;
+            notebook: string;
+            /** @description List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled. */
+            title: string;
+            /** @description Tags from the note markdown frontmatter. Empty when the file is missing or has no tags. */
+            tags: components["schemas"]["NoteTagList"];
+            /** @description Username or group slug that owns the note tree. */
+            owner: string;
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            access: components["schemas"]["DriveShareAccess"];
+            myRights: components["schemas"]["DriveRights"];
+            /** @description Present when access is via a group grant (groups/{slug}). */
+            viaGroup?: string;
+        };
+        NotesSharedWithMeResponse: {
+            items: components["schemas"]["NotesSharedNoteEntry"][];
+        };
+        NotesSharedNotebookEntry: {
+            /** @description Virtual drive path of the shared notebook directory (…/.notes/{notebook}). */
+            path: string;
+            notebook: string;
+            /** @description Username or group slug that owns the notebook tree. */
+            owner: string;
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            access: components["schemas"]["DriveShareAccess"];
+            myRights: components["schemas"]["DriveRights"];
+            /** @description Present when access is via a group grant (groups/{slug}). */
+            viaGroup?: string;
+        };
+        NotesSharedNotebooksResponse: {
+            items: components["schemas"]["NotesSharedNotebookEntry"][];
         };
     };
     responses: {
