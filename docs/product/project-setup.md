@@ -11,7 +11,7 @@ Identified → Adopted → Fulfilled
 | Status | Meaning | Goals (snapshot) |
 |--------|---------|------------------|
 | Identified | Recognized as a user goal (often after Discussion) | — (new Goals as filed) |
-| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building** | #385 #402 #403 #388 #389 #390 #391 #392 #395 #398 #400 |
+| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building** | #385 #402 #403 #412 #388 #389 #390 #391 #392 #395 #398 #400 |
 | Fulfilled | Product judges outcome met — **not** auto from closed children | #378 #379 #380 #381 #382 #383 #384 #386 #387 |
 
 New Goals start as **Identified** (recognized) or **Adopted** (already committed). Eng progress lives on child Epics/Tasks — the Goal Status does **not** move to a separate “Building” column. Early research stays in Discussions — not on this board.
