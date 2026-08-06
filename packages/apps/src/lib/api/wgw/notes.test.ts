@@ -85,4 +85,129 @@ describe("noteFromWgwItem", () => {
     expect(mapped.excerpt).toMatch(/Donec ullamcorper/);
     expect(mapped.body[0]).toContain("Donec ullamcorper");
   });
+
+  it("preserves group scope and groupSlug on mapped notes", () => {
+    const row = coerceNoteItem({
+      id: "n-g",
+      notebook: "Specs",
+      body: "Hello",
+      scope: "group",
+      groupSlug: "eng",
+    });
+    expect(row).not.toBeNull();
+    const mapped = noteFromWgwItem(row!);
+    expect(mapped.scope).toBe("group");
+    expect(mapped.groupSlug).toBe("eng");
+  });
+});
+
+describe("shared notes listing parsers", () => {
+  it("parses shared-with-me and shared-notebooks payloads", async () => {
+    const { parseSharedNotesPayload, parseSharedNotebooksPayload, noteFromSharedEntry } =
+      await import("@/lib/api/wgw/notes");
+
+    const notes = parseSharedNotesPayload({
+      items: [
+        {
+          path: "/users/bob/.notes/TeamPad/n1.md",
+          id: "n1",
+          notebook: "TeamPad",
+          title: "Hello",
+          owner: "bob",
+          scope: "personal",
+          groupSlug: null,
+          access: "view",
+          myRights: { mayView: true },
+        },
+      ],
+    });
+    expect(notes).toHaveLength(1);
+    expect(noteFromSharedEntry(notes[0]!).sharedInbox).toBe(true);
+    expect(noteFromSharedEntry(notes[0]!).apiPath).toBe("/users/bob/.notes/TeamPad/n1.md");
+
+    const notebooks = parseSharedNotebooksPayload({
+      items: [
+        {
+          path: "/users/bob/.notes/TeamPad",
+          notebook: "TeamPad",
+          owner: "bob",
+          scope: "personal",
+          groupSlug: null,
+          access: "edit",
+          myRights: { mayEditContent: true },
+        },
+      ],
+    });
+    expect(notebooks[0]?.path).toBe("/users/bob/.notes/TeamPad");
+  });
+
+  it("keeps shared inbox notes when owned ids collide (local-* leak / duplicate grants)", async () => {
+    const { mergeOwnedAndSharedInboxNotes, sharedInboxFallbackId } =
+      await import("@/lib/api/wgw/notes");
+    const { filterVisibleNotes } = await import("@/notes-core/src/notes-note-utils");
+
+    const sharedId = "local-0ee49942b3c448658dc9a8f79202220a";
+    const sharedPath = `/users/admin/.notes/Drafts/${sharedId}.md`;
+    const serverNotePath = "/users/admin/.notes/Drafts/n1781784157.md";
+    const owned = [
+      {
+        id: sharedId,
+        notebook: "Drafts",
+        excerpt: "mine",
+        body: ["mine"],
+        tags: [],
+        wordCount: 1,
+        category: "Note",
+        date: "—",
+        archived: true,
+      },
+    ];
+    const sharedWithMe = [
+      {
+        path: sharedPath,
+        id: sharedId,
+        notebook: "Drafts",
+        title: "Shared local",
+        owner: "admin",
+        scope: "personal" as const,
+        groupSlug: null,
+        access: "edit",
+      },
+      {
+        path: `/users/admin/.notes/Test/${sharedId}.md`,
+        id: sharedId,
+        notebook: "Test",
+        title: "Shared local test",
+        owner: "admin",
+        scope: "personal" as const,
+        groupSlug: null,
+        access: "edit",
+      },
+      {
+        path: serverNotePath,
+        id: "n1781784157",
+        notebook: "Drafts",
+        title: "E2E seed",
+        owner: "admin",
+        scope: "personal" as const,
+        groupSlug: null,
+        access: "edit",
+      },
+    ];
+
+    const merged = mergeOwnedAndSharedInboxNotes(owned, sharedWithMe);
+    const inbox = filterVisibleNotes(merged, {
+      view: "shared-with-me",
+      archived: { [sharedId]: true },
+      starred: {},
+      searchQuery: "",
+    });
+
+    expect(inbox.map((n) => n.apiPath).sort()).toEqual(
+      [sharedPath, `/users/admin/.notes/Test/${sharedId}.md`, serverNotePath].sort(),
+    );
+    expect(inbox.every((n) => n.sharedInbox)).toBe(true);
+    expect(inbox.find((n) => n.apiPath === sharedPath)?.id).toBe(sharedInboxFallbackId(sharedPath));
+    expect(inbox.find((n) => n.id === "n1781784157")?.apiPath).toBe(serverNotePath);
+  });
 });
