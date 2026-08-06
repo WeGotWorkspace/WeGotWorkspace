@@ -412,4 +412,57 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('data.myRights.mayComment', false)
             ->assertJsonPath('data.myRights.mayReview', false);
     }
+
+    public function test_owner_notes_list_marks_outgoing_shares_without_n_plus_one(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+
+        $shared = $this->createNoteFor($ownerToken, [
+            'id' => 'shared-note',
+            'notebook' => 'Drafts',
+            'body' => 'shared with alice',
+        ]);
+        $private = $this->createNoteFor($ownerToken, [
+            'id' => 'private-note',
+            'notebook' => 'Drafts',
+            'body' => 'private only',
+        ]);
+        $pad = $this->createNoteFor($ownerToken, [
+            'id' => 'pad-note',
+            'notebook' => 'SharedPad',
+            'body' => 'via notebook share',
+        ]);
+
+        $notePath = '/users/bob/.notes/Drafts/'.$shared['id'].'.md';
+        $notebookPath = '/users/bob/.notes/SharedPad';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notePath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notebookPath,
+            'kind' => 'member',
+            'defaultAccess' => 'edit',
+            'shareWith' => ['alice' => ['access' => 'edit']],
+        ])->assertOk();
+
+        $list = $this->withBearer($ownerToken)->getJson('/api/v1/notes/items')->assertOk();
+        $byId = collect($list->json('items'))->keyBy('id');
+
+        $this->assertTrue($byId->get($shared['id'])['hasShares'] ?? false);
+        $this->assertTrue($byId->get($shared['id'])['hasTeamShare'] ?? false);
+        $this->assertTrue($byId->get($pad['id'])['hasShares'] ?? false);
+        $this->assertTrue($byId->get($pad['id'])['hasTeamShare'] ?? false);
+        $this->assertFalse($byId->get($private['id'])['hasShares'] ?? false);
+
+        // Recipient list stays free of owner hasShares noise.
+        $this->withBearer($aliceToken)->getJson('/api/v1/notes/items')
+            ->assertOk()
+            ->assertJsonMissingPath('items.0.hasShares');
+    }
 }

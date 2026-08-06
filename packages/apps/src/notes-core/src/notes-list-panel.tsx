@@ -3,6 +3,7 @@ import {
   Archive,
   BookOpen,
   Circle,
+  Eye,
   Pencil,
   RefreshCw,
   Share2,
@@ -22,8 +23,10 @@ import {
   noteListTagOverflow,
   noteListTitle,
   noteListLocationLabel,
+  noteShowsSharedBadge,
   noteShowsStarControls,
   noteShowsTags,
+  noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
@@ -35,11 +38,31 @@ function notesListItemTags(tags: string[]): ReactNode {
   const { visible, overflow } = noteListTagOverflow(tags);
   if (visible.length === 0) return null;
   return (
-    <span className="list-item__tags">
+    <>
       {visible.map((tag) => (
         <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
       ))}
       {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
+    </>
+  );
+}
+
+function notesListItemSecondary(note: Note, labels: NotesUILabels, showTags: boolean): ReactNode {
+  const viewOnly = noteShowsViewOnlyBadge(note) ? (
+    <Tag
+      key="view-only"
+      label={labels.viewOnly}
+      size="md"
+      icon={<Eye aria-hidden />}
+      className="notes-list-panel__access-chip"
+    />
+  ) : null;
+  const tags = showTags ? notesListItemTags(note.tags) : null;
+  if (!viewOnly && !tags) return null;
+  return (
+    <span className="list-item__tags">
+      {viewOnly}
+      {tags}
     </span>
   );
 }
@@ -243,6 +266,7 @@ export function NotesListPanel({
               : note.id === activeId && selectedIds.includes(note.id);
             const showTags = noteShowsTags(note);
             const showStar = noteShowsStarControls(note);
+            const showShared = noteShowsSharedBadge(note);
             return (
               <ListItem
                 key={note.id}
@@ -250,7 +274,7 @@ export function NotesListPanel({
                 title={noteListTitle(note)}
                 subtitle={<NotesListLocation note={note} labels={L} />}
                 date={formatNoteDateForList(note.date)}
-                text={showTags ? notesListItemTags(note.tags) : null}
+                text={notesListItemSecondary(note, L, showTags)}
                 icons={[
                   isPendingSync ? (
                     <span
@@ -260,6 +284,16 @@ export function NotesListPanel({
                       aria-label={L.pendingSync}
                     >
                       <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+                    </span>
+                  ) : null,
+                  showShared ? (
+                    <span
+                      key="shared"
+                      className="notes-list-panel__shared-pip"
+                      role="img"
+                      aria-label={L.shared}
+                    >
+                      <Share2 className="notes-list-panel__shared-icon" />
                     </span>
                   ) : null,
                   showStar ? (

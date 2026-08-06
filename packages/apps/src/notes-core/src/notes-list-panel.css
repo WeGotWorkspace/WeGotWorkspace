@@ -23,6 +23,15 @@
   opacity: 1;
 }
 
+.notes-workspace .notes-list-panel__shared-pip {
+  @apply inline-flex;
+}
+
+.notes-workspace .notes-list-panel__shared-icon {
+  @apply size-3 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
 .notes-workspace .notes-list-panel__loading {
   display: flex;
   justify-content: center;
@@ -44,6 +53,10 @@
 
 .notes-list-panel__notebook-name {
   @apply truncate min-w-0;
+}
+
+.notes-list-panel__access-chip {
+  @apply shrink-0;
 }
 
 .notes-list-panel__list {

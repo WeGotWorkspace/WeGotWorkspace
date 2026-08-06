@@ -6,6 +6,7 @@ namespace App\Services\Notes;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Drive\DriveShareService;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\NoteScope;
 use App\Storage\NoteStoragePaths;
@@ -21,6 +22,7 @@ final class NoteRepository
         private NoteMarkdownCodec $codec,
         private SearchIndexerService $searchIndexer,
         private DriveGroupResolver $groups,
+        private DriveShareService $shares,
     ) {}
 
     /**
@@ -62,7 +64,7 @@ final class NoteRepository
             static fn (array $a, array $b): int => strcmp((string) ($b['updatedAt'] ?? ''), (string) ($a['updatedAt'] ?? ''))
         );
 
-        return ['items' => array_values($items)];
+        return ['items' => $this->annotateHasShares($username, array_values($items))];
     }
 
     /**
@@ -454,6 +456,102 @@ final class NoteRepository
     }
 
     /**
+     * Batch-annotate owned list rows with outgoing share indicators (note file
+     * and parent notebook directory). One query for the whole list — no N+1.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function annotateHasShares(string $username, array $items): array
+    {
+        if ($items === []) {
+            return $items;
+        }
+
+        $notePaths = [];
+        $notebookPaths = [];
+        /** @var list<array{note: string, notebook: string}> $pathByIndex */
+        $pathByIndex = [];
+        foreach ($items as $index => $note) {
+            $paths = $this->virtualSharePathsForNote($username, $note);
+            $notePaths[] = $paths['note'];
+            $notebookPaths[] = $paths['notebook'];
+            $pathByIndex[$index] = $paths;
+        }
+
+        $indicators = $this->shares->shareIndicatorsForPaths(
+            $username,
+            array_values(array_unique([...$notePaths, ...$notebookPaths])),
+        );
+        if ($indicators === []) {
+            return $items;
+        }
+
+        foreach ($items as $index => &$note) {
+            $paths = $pathByIndex[$index];
+            $flags = $this->mergeShareIndicators(
+                $indicators[$paths['note']] ?? null,
+                $indicators[$paths['notebook']] ?? null,
+            );
+            if ($flags === null) {
+                continue;
+            }
+            if ($flags['hasPublicShare']) {
+                $note['hasPublicShare'] = true;
+            }
+            if ($flags['hasTeamShare']) {
+                $note['hasTeamShare'] = true;
+            }
+            if ($flags['hasPublicShare'] || $flags['hasTeamShare']) {
+                $note['hasShares'] = true;
+            }
+        }
+        unset($note);
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $note
+     * @return array{note: string, notebook: string}
+     */
+    private function virtualSharePathsForNote(string $username, array $note): array
+    {
+        $scope = (($note['scope'] ?? '') === 'group' && is_string($note['groupSlug'] ?? null) && $note['groupSlug'] !== '')
+            ? NoteScope::group((string) $note['groupSlug'])
+            : NoteScope::personal(is_string($note['username'] ?? null) && $note['username'] !== ''
+                ? (string) $note['username']
+                : $username);
+        $archived = ($note['archived'] ?? false) === true;
+        $notebook = (string) ($note['notebook'] ?? 'General');
+        $id = (string) ($note['id'] ?? '');
+        $noteKey = $this->notePaths->noteKey($scope, $notebook, $id, $archived);
+        $notebookKey = $this->notePaths->notebookKey($scope, $notebook, $archived);
+
+        return [
+            'note' => '/'.$noteKey,
+            'notebook' => '/'.$notebookKey,
+        ];
+    }
+
+    /**
+     * @param  array{hasPublicShare: bool, hasTeamShare: bool}|null  $a
+     * @param  array{hasPublicShare: bool, hasTeamShare: bool}|null  $b
+     * @return array{hasPublicShare: bool, hasTeamShare: bool}|null
+     */
+    private function mergeShareIndicators(?array $a, ?array $b): ?array
+    {
+        if ($a === null && $b === null) {
+            return null;
+        }
+
+        return [
+            'hasPublicShare' => ($a['hasPublicShare'] ?? false) || ($b['hasPublicShare'] ?? false),
+            'hasTeamShare' => ($a['hasTeamShare'] ?? false) || ($b['hasTeamShare'] ?? false),
+        ];
+    }
+
+    /**
      * Scopes to enumerate for a list/notebooks call: a single requested group,
      * or the caller's personal tree plus every group they belong to.
      *
@@ -501,6 +599,54 @@ final class NoteRepository
         $slug = trim($source['groupSlug']);
 
         return $slug === '' ? null : $slug;
+    }
+
+    /**
+     * @param  array<string, mixed>  $source
+     */
+    private function requestedPath(array $source): ?string
+    {
+        if (! isset($source['path']) || ! is_string($source['path'])) {
+            return null;
+        }
+        $path = trim($source['path']);
+
+        return $path === '' ? null : $path;
+    }
+
+    /**
+     * Authorize a shared-note structure mutation (archive / delete) and resolve
+     * the owner's note scope. Requires full path ACL (`mayManageStructure`).
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    private function resolveSharedMutationScope(string $path, string $noteId, array $principal): NoteScope
+    {
+        $normalized = $this->storage->paths()->normalizeVirtualPath($path);
+        if (preg_match(
+            '#^/(users|groups)/([^/]+)/\.notes/(?:\.archive/)?([^/]+)/([^/]+)\.md$#i',
+            $normalized,
+            $matches
+        ) !== 1) {
+            throw new ApiHttpException(400, 'Invalid shared note path.', 'bad_request');
+        }
+        if (strcasecmp((string) $matches[4], $noteId) !== 0) {
+            throw new ApiHttpException(400, 'Note path does not match id.', 'bad_request');
+        }
+
+        try {
+            $this->authorizer->assertMayManageStructure($normalized, $principal);
+        } catch (\InvalidArgumentException) {
+            throw new ApiHttpException(403, 'Forbidden.', 'forbidden');
+        }
+
+        $root = strtolower((string) $matches[1]);
+        $owner = (string) $matches[2];
+        if ($root === 'groups') {
+            return NoteScope::group($owner);
+        }
+
+        return NoteScope::personal($owner);
     }
 
     private function groupScopeOrFail(string $username, string $slug): NoteScope
