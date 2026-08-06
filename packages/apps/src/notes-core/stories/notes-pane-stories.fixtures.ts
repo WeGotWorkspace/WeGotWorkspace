@@ -29,7 +29,7 @@ export function getNotesDetailStoryProps(opts?: { pullQuote?: string; extraBody?
     noteId: n.id,
     notebook: n.notebook,
     lastEdited: formatNoteDateForList(n.date),
-    editedLabel: "Edited ",
+    editedLabel: "Last edited ",
     tags: n.tags,
     pullQuote: opts?.pullQuote ?? n.pullQuote,
     body,

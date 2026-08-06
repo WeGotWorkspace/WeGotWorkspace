@@ -91,12 +91,12 @@ export const CollabChromePreview: Story = {
       <div className="workspace-detail-pane__scroll flex-1">
         <article className="note-detail-view max-w-[680px] mx-auto">
           <p className="text-muted-foreground text-sm">
-            Collab session chrome preview — presence sits in the action bar; notebook and edited
-            meta pin in the footer.
+            Collab session chrome preview — presence sits in the action bar; edited meta pins in the
+            footer.
           </p>
         </article>
       </div>
-      <NotesDetailFooter notebook="Personal" lastEdited="6 May 2026" />
+      <NotesDetailFooter lastEdited="6 May 2026" />
     </div>
   ),
 };

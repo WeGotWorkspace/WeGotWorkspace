@@ -32,11 +32,7 @@ function NotesDetailPaneHarness({
             body={base.body}
           />
         </div>
-        <NotesDetailFooter
-          notebook={base.notebook}
-          lastEdited={base.lastEdited}
-          editedLabel={base.editedLabel}
-        />
+        <NotesDetailFooter lastEdited={base.lastEdited} editedLabel={base.editedLabel} />
       </div>
     </NotesStoryScope>
   );
