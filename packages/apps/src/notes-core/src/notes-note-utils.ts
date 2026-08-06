@@ -156,7 +156,7 @@ export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
 
 /**
  * List-row “View only” chip — only when list payload says the current user
- * cannot edit content (shared view grant). Owned / edit / full omit the chip.
+ * cannot edit content (shared view grant). Owned / edit omit the icon.
  */
 export function noteShowsViewOnlyBadge(note: Pick<Note, "myRights">): boolean {
   return note.myRights?.mayEditContent === false;
@@ -435,7 +435,7 @@ export function noteBelongsToSharedNotebook(note: Note, notebookPath: string): b
 
 /**
  * Sidebar / chrome label for a shared notebook entry.
- * Personal ACL shares: notebook name only (not “Shared by …” — that is for file grants).
+ * Personal ACL shares: notebook name only (grantor username is for file grants).
  * Groups: group name only (not “General” + slug).
  */
 export function sharedNotebookLabel(entry: {
@@ -453,8 +453,7 @@ export function sharedNotebookLabel(entry: {
 
 /**
  * List/detail location line: notebook name for owned notes, group name for
- * group-scoped notes, “Shared by …” for Shared-with-me file grants (mirrors
- * Drive/Docs shared location labeling).
+ * group-scoped notes, grantor username for Shared-with-me file grants.
  */
 export function noteListLocationLabel(
   note: Pick<Note, "notebook" | "sharedInbox" | "sharedBy" | "scope" | "groupSlug">,

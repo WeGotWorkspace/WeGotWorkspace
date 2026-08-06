@@ -16,6 +16,7 @@ import {
   persistBestEffort,
   resolveNotesCreateTarget,
 } from "./notes-note-utils";
+import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
@@ -536,6 +537,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     starableSelected.length > 0 && starableSelected.every((note) => !!starred[note.id]);
   const allSelectedArchived =
     selectedRows.length > 0 && selectedRows.every((note) => !!archived[note.id]);
+  const allSelectedAllowStructure =
+    selectedRows.length > 0 && selectedRows.every((note) => noteAllowsStructureManage(note));
+  const showSelectionArchive = allSelectedAllowStructure;
+  const showSelectionDelete = allSelectedAllowStructure && view === "archive";
 
   const selectionActionButtons = useMemo(
     () => [
@@ -549,22 +554,26 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             },
           ]
         : []),
-      {
-        label: allSelectedArchived ? L.swipeUnarchive : L.selectionArchive,
-        icon: allSelectedArchived ? (
-          <ArchiveRestore className="size-4" />
-        ) : (
-          <Archive className="size-4" />
-        ),
-        onClick: batchArchive,
-        active: allSelectedArchived,
-      },
+      ...(showSelectionArchive
+        ? [
+            {
+              label: allSelectedArchived ? L.swipeUnarchive : L.selectionArchive,
+              icon: allSelectedArchived ? (
+                <ArchiveRestore className="size-4" />
+              ) : (
+                <Archive className="size-4" />
+              ),
+              onClick: batchArchive,
+              active: allSelectedArchived,
+            },
+          ]
+        : []),
       {
         label: L.selectionMoveToNotebook,
         icon: <BookOpen className="size-4" />,
         onClick: () => setMoveDialog({ ids: selectedIds }),
       },
-      ...(view === "archive"
+      ...(showSelectionDelete
         ? [
             {
               label: L.selectionDeletePermanently,
@@ -581,6 +590,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       batchStar,
       requestDeleteSelected,
       selectedIds,
+      showSelectionArchive,
+      showSelectionDelete,
       starableSelected.length,
       L.swipeUnstar,
       L.selectionStar,
@@ -588,7 +599,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       L.selectionArchive,
       L.selectionMoveToNotebook,
       L.selectionDeletePermanently,
-      view,
     ],
   );
   const { selectionBarButtons, selectionBar } = useWorkspaceSelectionPresentation({

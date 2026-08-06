@@ -535,6 +535,11 @@ final class DriveShareService
             if (is_array($entry) && ($entry['type'] ?? '') === 'dir') {
                 continue;
             }
+            // Skip grants whose file was archived/deleted — avoids ghost Shared-with-me rows.
+            $storageKey = $this->paths->virtualToStorageKey($path);
+            if (! $this->filesDisk()->fileExists($storageKey)) {
+                continue;
+            }
             $listFields = $this->noteListFieldsFromPath($path, (string) $meta['id']);
             $item = [
                 'path' => $path,
@@ -972,7 +977,7 @@ final class DriveShareService
     }
 
     /**
-     * Note paths only accept member shares with view|edit|full (reject comment/review before normalize).
+     * Note paths only accept member shares with view|edit (reject comment/review/full before normalize).
      */
     private function assertNotePathShareCreate(string $path, string $kind, string $rawAccess): void
     {
@@ -991,10 +996,14 @@ final class DriveShareService
     private function assertNotePathAccessAllowed(string $rawAccess): void
     {
         $access = strtolower(trim($rawAccess));
-        if ($access === DriveShareAccess::COMMENT || $access === DriveShareAccess::REVIEW) {
+        if (
+            $access === DriveShareAccess::COMMENT
+            || $access === DriveShareAccess::REVIEW
+            || $access === DriveShareAccess::FULL
+        ) {
             throw new ApiHttpException(400, 'Access level is not applicable for note paths.', 'comment_not_applicable');
         }
-        if (! in_array($access, [DriveShareAccess::VIEW, DriveShareAccess::EDIT, DriveShareAccess::FULL], true)) {
+        if (! in_array($access, [DriveShareAccess::VIEW, DriveShareAccess::EDIT], true)) {
             throw new ApiHttpException(400, 'Invalid access.', 'bad_request');
         }
     }

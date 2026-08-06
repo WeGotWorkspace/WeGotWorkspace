@@ -12,9 +12,9 @@ export type NotesUILabels = {
   sidebarStarred: string;
   sidebarArchive: string;
   sidebarSharedWithMe: string;
-  /** Location label for a single shared note (`Shared by {username}`). */
+  /** Grantor username for Shared-with-me file grants (list/detail location). */
   sharedBy: (username: string) => string;
-  /** List-row chip when the current user has view-only rights on a shared note. */
+  /** Accessible name for the list-row view-only eye icon. */
   viewOnly: string;
   /** Accessible name for the list-row share icon (owner outgoing shares). */
   shared: string;
@@ -79,7 +79,7 @@ export const defaultNotesLabels: NotesUILabels = {
   sidebarStarred: "Starred",
   sidebarArchive: "Archived",
   sidebarSharedWithMe: "Shared with me",
-  sharedBy: (username) => `Shared by ${username}`,
+  sharedBy: (username) => username,
   viewOnly: "View only",
   shared: "Shared",
   sectionNotebooks: "Notebooks",

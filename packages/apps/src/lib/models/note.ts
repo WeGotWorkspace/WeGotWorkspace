@@ -43,7 +43,7 @@ export type Note = {
   sharedNotebookGrant?: boolean;
   /**
    * Grantor display name for Shared-with-me file grants (API `owner`).
-   * Used for list/detail “Shared by …” location labeling.
+   * Used for list/detail username location labeling.
    */
   sharedBy?: string;
   /**

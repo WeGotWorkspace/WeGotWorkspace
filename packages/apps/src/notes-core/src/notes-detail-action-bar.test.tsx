@@ -53,9 +53,9 @@ describe("NotesDetailActionBar", () => {
     expect(openMoveDialog).toHaveBeenCalledWith(["n-1"]);
   });
 
-  it("shows Shared by and disables notebook switch for shared-inbox notes", () => {
+  it("shows grantor username tag and disables notebook switch for shared-inbox notes", () => {
     const openMoveDialog = vi.fn();
-    renderBar(
+    const { container } = renderBar(
       <NotesDetailActionBar
         active={shared}
         labels={defaultNotesLabels}
@@ -68,11 +68,14 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    const move = screen.getByRole("button", { name: "Shared by bob" });
-    expect(move.textContent).toContain("Shared by bob");
+    const move = screen.getByRole("button", { name: "bob" });
+    expect(move.querySelector(".notes-detail-action-bar__shared-by")).toBeTruthy();
+    expect(move.textContent).toContain("bob");
+    expect(move.textContent).not.toContain("Shared by");
     expect(move.hasAttribute("disabled")).toBe(true);
     move.click();
     expect(openMoveDialog).not.toHaveBeenCalled();
+    expect(container.querySelector(".notes-detail-action-bar__shared-by")).toBeTruthy();
   });
 
   it("disables star and archive when readOnly (view-only share)", () => {
@@ -89,6 +92,7 @@ describe("NotesDetailActionBar", () => {
         toggleStar={toggleStar}
         toggleArchive={toggleArchive}
         readOnly
+        canArchive={false}
       />,
     );
 
@@ -102,6 +106,50 @@ describe("NotesDetailActionBar", () => {
     archive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(toggleStar).not.toHaveBeenCalled();
     expect(toggleArchive).not.toHaveBeenCalled();
+  });
+
+  it("disables archive for personal shared notes", () => {
+    const toggleArchive = vi.fn();
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={shared}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={vi.fn()}
+        toggleStar={vi.fn()}
+        toggleArchive={toggleArchive}
+        canArchive={false}
+      />,
+    );
+
+    const archive = container.querySelector('button[aria-label="Archive"]');
+    expect(archive?.hasAttribute("disabled")).toBe(true);
+    archive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(toggleArchive).not.toHaveBeenCalled();
+  });
+
+  it("keeps archive enabled for owned notes", () => {
+    const toggleArchive = vi.fn();
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={owned}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={vi.fn()}
+        toggleStar={vi.fn()}
+        toggleArchive={toggleArchive}
+        canArchive
+      />,
+    );
+
+    const archive = container.querySelector('button[aria-label="Archive"]');
+    expect(archive?.hasAttribute("disabled")).toBe(false);
+    archive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(toggleArchive).toHaveBeenCalledWith("n-1");
   });
 
   it("omits star for personal shared-with-me notes", () => {

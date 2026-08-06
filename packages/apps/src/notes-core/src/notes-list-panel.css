@@ -32,6 +32,15 @@
   color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
+.notes-workspace .notes-list-panel__view-only-pip {
+  @apply inline-flex;
+}
+
+.notes-workspace .notes-list-panel__view-only-icon {
+  @apply size-3 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
 .notes-workspace .notes-list-panel__loading {
   display: flex;
   justify-content: center;
@@ -55,8 +64,8 @@
   @apply truncate min-w-0;
 }
 
-.notes-list-panel__access-chip {
-  @apply shrink-0;
+.notes-list-panel__shared-by-chip {
+  @apply shrink-0 max-w-full;
 }
 
 .notes-list-panel__list {

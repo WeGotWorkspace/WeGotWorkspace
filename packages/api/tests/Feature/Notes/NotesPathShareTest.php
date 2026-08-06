@@ -79,7 +79,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'bad_request');
     }
 
-    public function test_allows_view_edit_full_on_note_and_notebook_paths(): void
+    public function test_allows_view_edit_and_rejects_full_on_note_and_notebook_paths(): void
     {
         $ownerToken = $this->userBearerToken();
         $this->withBearer($ownerToken)
@@ -93,7 +93,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         $notePath = '/users/bob/.notes/SharedNB/'.$created['id'].'.md';
         $notebookPath = '/users/bob/.notes/SharedNB';
 
-        foreach (['view', 'edit', 'full'] as $access) {
+        foreach (['view', 'edit'] as $access) {
             $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
                 'path' => $notePath,
                 'kind' => 'member',
@@ -105,6 +105,15 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
                 ->assertJsonPath('data.defaultAccess', $access)
                 ->assertJsonPath('data.kind', 'member');
         }
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notePath,
+            'kind' => 'member',
+            'defaultAccess' => 'full',
+            'shareWith' => ['alice' => ['access' => 'full']],
+        ])
+            ->assertStatus(400)
+            ->assertJsonPath('error.code', 'comment_not_applicable');
 
         $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
             'path' => $notebookPath,
@@ -388,6 +397,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->getJson('/api/v1/files/shares/at-path?path='.urlencode($path))
             ->assertOk()
             ->assertJsonPath('data.myRights.mayEditContent', true)
+            ->assertJsonPath('data.myRights.mayManageStructure', false)
             ->assertJsonPath('data.myRights.mayComment', false)
             ->assertJsonPath('data.myRights.mayReview', false);
 
@@ -397,20 +407,48 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         $this->withBearer($ownerToken)->patchJson('/api/v1/files/shares/'.$shareId, [
             'updatedAt' => $updatedAt,
             'shareWith' => ['alice' => ['access' => 'full']],
+        ])
+            ->assertStatus(400)
+            ->assertJsonPath('error.code', 'comment_not_applicable');
+    }
+
+    public function test_personal_share_recipient_cannot_archive_or_delete_shared_note(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+
+        $created = $this->createNoteFor($ownerToken, [
+            'id' => 'edit-share-note',
+            'notebook' => 'Drafts',
+            'body' => 'edit only',
+        ]);
+        $path = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $path,
+            'kind' => 'member',
+            'defaultAccess' => 'edit',
+            'shareWith' => ['alice' => ['access' => 'edit']],
         ])->assertOk();
 
+        // Notes shares are view|edit only — archive/delete stay on the owner's tree.
+        // Path body is ignored; recipient scope cannot resolve the owner's note.
         $this->withBearer($aliceToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
-                'markdown' => 'full edit body',
+            ->patchJson('/api/v1/notes/items/'.$created['id'], [
+                'archived' => true,
+                'path' => $path,
             ])
-            ->assertOk();
+            ->assertStatus(400);
 
         $this->withBearer($aliceToken)
-            ->getJson('/api/v1/files/shares/at-path?path='.urlencode($path))
-            ->assertOk()
-            ->assertJsonPath('data.myRights.mayManageStructure', true)
-            ->assertJsonPath('data.myRights.mayComment', false)
-            ->assertJsonPath('data.myRights.mayReview', false);
+            ->deleteJson('/api/v1/notes/items/'.$created['id'], [
+                'notebook' => 'Drafts',
+                'archived' => false,
+                'path' => $path,
+            ])
+            ->assertStatus(400);
+
+        $this->assertTrue(Storage::disk('wgw_notes')->exists('users/bob/.notes/Drafts/'.$created['id'].'.md'));
     }
 
     public function test_owner_notes_list_marks_outgoing_shares_without_n_plus_one(): void

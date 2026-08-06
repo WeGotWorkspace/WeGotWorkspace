@@ -26,6 +26,8 @@ import {
   noteListTitle,
   noteShowsTags,
 } from "@/notes-core/src/notes-note-utils";
+import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
+import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
@@ -44,7 +46,6 @@ import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { ShareDialog } from "@/share-ui/share-dialog";
-import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
 import "@/notes-core/src/notes-workspace.css";
 
 export function NotesWorkspace({
@@ -169,6 +170,7 @@ export function NotesWorkspace({
     shareRightsEnabled && noteShareRightsLoading,
   );
   const noteReadOnly = !noteEditable;
+  const noteCanArchive = active ? noteAllowsStructureManage(active) : true;
   const activeShowsTags = active ? noteShowsTags(active) : true;
   const activeAllowsTagAssignment = active ? noteAllowsTagAssignment(active, noteEditable) : false;
 
@@ -396,6 +398,7 @@ export function NotesWorkspace({
               showCollabChrome={collabSessionActive}
               onShare={shareOperations && noteMayShare === true ? openShareActiveNote : undefined}
               readOnly={noteReadOnly}
+              canArchive={noteCanArchive}
             />
           )
         }

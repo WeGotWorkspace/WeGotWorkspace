@@ -28,6 +28,7 @@ import {
   noteShowsTags,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
+import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
@@ -38,31 +39,11 @@ function notesListItemTags(tags: string[]): ReactNode {
   const { visible, overflow } = noteListTagOverflow(tags);
   if (visible.length === 0) return null;
   return (
-    <>
+    <span className="list-item__tags">
       {visible.map((tag) => (
         <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
       ))}
       {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
-    </>
-  );
-}
-
-function notesListItemSecondary(note: Note, labels: NotesUILabels, showTags: boolean): ReactNode {
-  const viewOnly = noteShowsViewOnlyBadge(note) ? (
-    <Tag
-      key="view-only"
-      label={labels.viewOnly}
-      size="md"
-      icon={<Eye aria-hidden />}
-      className="notes-list-panel__access-chip"
-    />
-  ) : null;
-  const tags = showTags ? notesListItemTags(note.tags) : null;
-  if (!viewOnly && !tags) return null;
-  return (
-    <span className="list-item__tags">
-      {viewOnly}
-      {tags}
     </span>
   );
 }
@@ -71,8 +52,20 @@ function NotesListLocation({ note, labels }: { note: Note; labels: NotesUILabels
   const location = noteListLocationLabel(note, labels);
   if (!location) return null;
   const shared = !!note.sharedInbox;
-  const group = !shared && note.scope === "group";
-  const Icon = shared ? Share2 : group ? Users : BookOpen;
+  if (shared) {
+    return (
+      <span className="notes-list-panel__notebook">
+        <Tag
+          label={location}
+          size="md"
+          icon={<Share2 aria-hidden />}
+          className="notes-list-panel__shared-by-chip"
+        />
+      </span>
+    );
+  }
+  const group = note.scope === "group";
+  const Icon = group ? Users : BookOpen;
   return (
     <span className="notes-list-panel__notebook">
       <Icon className="notes-list-panel__notebook-icon" aria-hidden />
@@ -267,6 +260,8 @@ export function NotesListPanel({
             const showTags = noteShowsTags(note);
             const showStar = noteShowsStarControls(note);
             const showShared = noteShowsSharedBadge(note);
+            const showViewOnly = noteShowsViewOnlyBadge(note);
+            const canArchive = noteAllowsStructureManage(note);
             return (
               <ListItem
                 key={note.id}
@@ -274,7 +269,7 @@ export function NotesListPanel({
                 title={noteListTitle(note)}
                 subtitle={<NotesListLocation note={note} labels={L} />}
                 date={formatNoteDateForList(note.date)}
-                text={notesListItemSecondary(note, L, showTags)}
+                text={showTags ? notesListItemTags(note.tags) : null}
                 icons={[
                   isPendingSync ? (
                     <span
@@ -284,6 +279,16 @@ export function NotesListPanel({
                       aria-label={L.pendingSync}
                     >
                       <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+                    </span>
+                  ) : null,
+                  showViewOnly ? (
+                    <span
+                      key="view-only"
+                      className="notes-list-panel__view-only-pip"
+                      role="img"
+                      aria-label={L.viewOnly}
+                    >
+                      <Eye className="notes-list-panel__view-only-icon" />
                     </span>
                   ) : null,
                   showShared ? (
@@ -333,13 +338,17 @@ export function NotesListPanel({
                             },
                           }
                         : {}),
-                      swipeRightAction: {
-                        icon: <Archive className="size-5" />,
-                        color: "var(--color-ink)",
-                        label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
-                        destructive: true,
-                        onActivate: () => toggleArchive(note.id),
-                      },
+                      ...(canArchive
+                        ? {
+                            swipeRightAction: {
+                              icon: <Archive className="size-5" />,
+                              color: "var(--color-ink)",
+                              label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
+                              destructive: true,
+                              onActivate: () => toggleArchive(note.id),
+                            },
+                          }
+                        : {}),
                     }
                   : {})}
               />

@@ -575,7 +575,7 @@ describe("noteListLocationLabel", () => {
     expect(noteListLocationLabel(sampleNote, defaultNotesLabels)).toBe("Drafts");
   });
 
-  it("returns Shared by {user} for shared-inbox notes", () => {
+  it("returns grantor username for shared-inbox notes", () => {
     expect(
       noteListLocationLabel(
         {
@@ -586,7 +586,7 @@ describe("noteListLocationLabel", () => {
         },
         defaultNotesLabels,
       ),
-    ).toBe("Shared by bob");
+    ).toBe("bob");
   });
 
   it("falls back to Shared with me when grantor is missing", () => {

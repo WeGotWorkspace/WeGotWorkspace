@@ -56,8 +56,8 @@ function ListHarness({ notes }: { notes: Note[] }) {
 }
 
 describe("NotesListPanel access chips", () => {
-  it("shows View only when mayEditContent is false", () => {
-    render(
+  it("shows a view-only eye icon when mayEditContent is false", () => {
+    const { container } = render(
       <ListHarness
         notes={[
           {
@@ -70,12 +70,15 @@ describe("NotesListPanel access chips", () => {
         ]}
       />,
     );
-    expect(screen.getByText(defaultNotesLabels.viewOnly)).toBeTruthy();
+    const eye = container.querySelector(".notes-list-panel__view-only-pip");
+    expect(eye).toBeTruthy();
+    expect(eye!.getAttribute("aria-label")).toBe(defaultNotesLabels.viewOnly);
+    expect(screen.queryByText(defaultNotesLabels.viewOnly)).toBeNull();
     expect(screen.queryByRole("img", { name: defaultNotesLabels.shared })).toBeNull();
   });
 
-  it("hides View only for edit access and owned notes", () => {
-    render(
+  it("hides view-only eye for edit access and owned notes", () => {
+    const { container } = render(
       <ListHarness
         notes={[
           baseNote,
@@ -89,7 +92,27 @@ describe("NotesListPanel access chips", () => {
         ]}
       />,
     );
-    expect(screen.queryByText(defaultNotesLabels.viewOnly)).toBeNull();
+    expect(container.querySelector(".notes-list-panel__view-only-pip")).toBeNull();
+  });
+
+  it("shows grantor username as a tag chip on shared-inbox rows", () => {
+    const { container } = render(
+      <ListHarness
+        notes={[
+          {
+            ...baseNote,
+            id: "swm-1",
+            sharedInbox: true,
+            sharedBy: "bob",
+            myRights: { mayEditContent: true },
+          },
+        ]}
+      />,
+    );
+    const chip = container.querySelector(".notes-list-panel__shared-by-chip.tag");
+    expect(chip).toBeTruthy();
+    expect(chip!.textContent).toContain("bob");
+    expect(chip!.textContent).not.toContain("Shared by");
   });
 
   it("shows a share icon next to the star cluster for owned outgoing shares", () => {
@@ -97,11 +120,8 @@ describe("NotesListPanel access chips", () => {
     const sharedPip = container.querySelector(".notes-list-panel__shared-pip");
     expect(sharedPip).toBeTruthy();
     expect(sharedPip!.getAttribute("aria-label")).toBe(defaultNotesLabels.shared);
-    expect(
-      container.querySelector(".notes-list-panel__notebook .notes-list-panel__access-chip"),
-    ).toBeNull();
     expect(screen.queryByText(defaultNotesLabels.shared)).toBeNull();
-    expect(screen.queryByText(defaultNotesLabels.viewOnly)).toBeNull();
+    expect(container.querySelector(".notes-list-panel__view-only-pip")).toBeNull();
   });
 
   it("hides share icon on incoming share stubs even when isShared is set", () => {
@@ -120,24 +140,5 @@ describe("NotesListPanel access chips", () => {
       />,
     );
     expect(container.querySelector(".notes-list-panel__shared-pip")).toBeNull();
-  });
-
-  it("renders View only as a tag chip", () => {
-    const { container } = render(
-      <ListHarness
-        notes={[
-          {
-            ...baseNote,
-            id: "swm-1",
-            sharedInbox: true,
-            sharedBy: "bob",
-            myRights: { mayEditContent: false },
-          },
-        ]}
-      />,
-    );
-    const viewOnlyChip = container.querySelector(".notes-list-panel__access-chip.tag");
-    expect(viewOnlyChip).toBeTruthy();
-    expect(viewOnlyChip!.textContent).toContain(defaultNotesLabels.viewOnly);
   });
 });
