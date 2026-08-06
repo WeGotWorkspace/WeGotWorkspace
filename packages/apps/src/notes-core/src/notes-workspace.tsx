@@ -197,7 +197,11 @@ export function NotesWorkspace({
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
-          onBodyMarkdownChange={(markdown) => applyLocalBodyMarkdown(active.id, markdown)}
+          onBodyMarkdownChange={(markdown, source) =>
+            applyLocalBodyMarkdown(active.id, markdown, {
+              bumpDate: source !== "hydrate",
+            })
+          }
         >
           {children}
         </NoteCollabSession>

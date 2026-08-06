@@ -410,16 +410,19 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   /**
    * Optimistic list/footer sync when the collab body changes. Updates local
-   * body/excerpt/date (+ Dexie mirror) without enqueueing a metadata upsert —
+   * body/excerpt (+ Dexie mirror) without enqueueing a metadata upsert —
    * the body still persists only through the collab document.
+   *
+   * Pass `bumpDate: false` when hydrating from a loaded doc so refresh/open
+   * fills the list preview without rewriting “Last edited”.
    */
   const applyLocalBodyMarkdown = useCallback(
-    (id: string, markdown: string) => {
+    (id: string, markdown: string, options?: { bumpDate?: boolean }) => {
       let updated: Note | undefined;
       setNotes((prev) =>
         prev.map((note) => {
           if (note.id !== id) return note;
-          const next = applyNoteBodyMarkdown(note, markdown);
+          const next = applyNoteBodyMarkdown(note, markdown, options);
           if (next !== note) updated = next;
           return next;
         }),

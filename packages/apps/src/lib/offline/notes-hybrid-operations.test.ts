@@ -293,4 +293,48 @@ describe("fetchNotesHybridBootstrap", () => {
     expect(result.data.notes[0]?.body[0]).toContain("Donec ullamcorper");
     expect(result.data.notes[0]?.excerpt).toMatch(/Donec ullamcorper/);
   });
+
+  it("keeps cached list preview when server body is empty and outbox is idle", async () => {
+    const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notes: [
+          {
+            ...note,
+            excerpt: "Typed preview still in Dexie",
+            body: ["Typed preview still in Dexie"],
+            wordCount: 5,
+            tags: ["local"],
+          },
+        ],
+      },
+    });
+
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notes: [
+          {
+            ...note,
+            excerpt: "",
+            body: [""],
+            wordCount: 0,
+            tags: ["from-server"],
+            starred: true,
+          },
+        ],
+      },
+    });
+
+    const result = await fetchNotesHybridBootstrap();
+
+    expect(result.data.notes[0]?.tags).toEqual(["from-server"]);
+    expect(result.data.notes[0]?.starred).toBe(true);
+    expect(result.data.notes[0]?.excerpt).toMatch(/Typed preview still in Dexie/);
+    expect(result.data.notes[0]?.body[0]).toContain("Typed preview still in Dexie");
+  });
 });

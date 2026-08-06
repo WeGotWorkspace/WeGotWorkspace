@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import type { Editor } from "@tiptap/react";
 import { cn } from "@/lib/utils";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -19,6 +27,9 @@ import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/do
 
 import "@/text-editor-core/src/text-editor.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
+
+/** Debounce Yjs hydrate/remote bursts before pushing list preview. */
+const BODY_PREVIEW_SYNC_DEBOUNCE_MS = 50;
 
 /**
  * Configures the body as a live + offline Yjs collab document (Docs #230 stack).
@@ -67,10 +78,17 @@ export type NoteCollabSessionProps = {
   initialMarkdown: string;
   localDisplayName: string;
   /**
-   * Fired on local accepted-content edits so Notes can refresh list preview +
+   * Fired when accepted body markdown changes so Notes can refresh list preview +
    * “Edited” time without routing body bytes through the metadata API.
+   *
+   * TipTap’s collab `onUpdate` skips Yjs-origin transactions (`isChangeOrigin`),
+   * so callers must also invoke this on editor bind / remote document updates —
+   * otherwise previews stay “Untitled note” until the first keystroke.
+   *
+   * `source: "hydrate"` fills body/excerpt without bumping display date;
+   * `"local-edit"` (default) bumps “Last edited” for real typing.
    */
-  onBodyMarkdownChange?: (markdown: string) => void;
+  onBodyMarkdownChange?: (markdown: string, source?: "local-edit" | "hydrate") => void;
   children: ReactNode;
 };
 
@@ -91,18 +109,55 @@ export function NoteCollabSession({
     wire,
     seedContent: initialMarkdown,
   });
+  const getMarkdownRef = useRef<(() => string) | null>(null);
+  const onBodyMarkdownChangeRef = useRef(onBodyMarkdownChange);
+  onBodyMarkdownChangeRef.current = onBodyMarkdownChange;
+
+  const syncBodyPreview = useCallback((source: "local-edit" | "hydrate") => {
+    const getMarkdown = getMarkdownRef.current;
+    const notify = onBodyMarkdownChangeRef.current;
+    if (!getMarkdown || !notify) return;
+    notify(getMarkdown(), source);
+  }, []);
 
   const onMarkdownChange = useCallback(
     (getMarkdown: () => string) => {
+      getMarkdownRef.current = getMarkdown;
       collab.onMarkdownChange(getMarkdown);
-      onBodyMarkdownChange?.(getMarkdown());
+      onBodyMarkdownChangeRef.current?.(getMarkdown(), "local-edit");
     },
-    [collab.onMarkdownChange, onBodyMarkdownChange],
+    [collab.onMarkdownChange],
   );
 
+  const registerMarkdownGetter = useCallback(
+    (getMarkdown: () => string) => {
+      getMarkdownRef.current = getMarkdown;
+      collab.registerMarkdownGetter(getMarkdown);
+      // Editor just bound to the loaded Yjs doc — push preview without waiting
+      // for a local keystroke (Yjs-origin updates are filtered in TipTap).
+      syncBodyPreview("hydrate");
+    },
+    [collab.registerMarkdownGetter, syncBodyPreview],
+  );
+
+  useEffect(() => {
+    const ydoc = collab.session?.ydoc;
+    if (!ydoc || !onBodyMarkdownChange) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onUpdate = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => syncBodyPreview("hydrate"), BODY_PREVIEW_SYNC_DEBOUNCE_MS);
+    };
+    ydoc.on("update", onUpdate);
+    return () => {
+      ydoc.off("update", onUpdate);
+      window.clearTimeout(timer);
+    };
+  }, [collab.session?.ydoc, onBodyMarkdownChange, syncBodyPreview]);
+
   const value = useMemo(
-    () => ({ ...collab, localDisplayName, onMarkdownChange }),
-    [collab, localDisplayName, onMarkdownChange],
+    () => ({ ...collab, localDisplayName, onMarkdownChange, registerMarkdownGetter }),
+    [collab, localDisplayName, onMarkdownChange, registerMarkdownGetter],
   );
 
   return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;

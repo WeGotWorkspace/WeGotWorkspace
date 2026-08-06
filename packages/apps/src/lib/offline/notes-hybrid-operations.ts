@@ -1,6 +1,9 @@
 import type { Note } from "@/lib/models/note";
 import type { DeleteNotebookAction, NotesAPIOperations } from "@/notes-core/src/notes-types";
-import { backfillNotesContentFromServer } from "@/notes-core/src/notes-note-utils";
+import {
+  backfillNotesContentFromServer,
+  preserveLocalListableBodiesOnServerNotes,
+} from "@/notes-core/src/notes-note-utils";
 import {
   archiveNoteItem,
   createNoteItem,
@@ -427,13 +430,26 @@ export async function fetchNotesHybridBootstrap(): Promise<
     if (bootstrap.data.notebooks.length > 0) {
       cached.data.notebooks = bootstrap.data.notebooks;
     }
+    cached.data.sharedNotebooks = bootstrap.data.sharedNotebooks ?? [];
     if (!hadOutbox) {
-      cached.data.notes = bootstrap.data.notes;
+      // Server is source of truth for membership/metadata, but body lives in
+      // collab — keep a non-empty cached preview when the API body is still empty.
+      cached.data.notes = preserveLocalListableBodiesOnServerNotes(
+        bootstrap.data.notes,
+        cached.data.notes,
+      );
       cached.data.tags = bootstrap.data.tags;
     } else {
       // Keep local/outbox rows, but backfill empty body/excerpt from the server
       // so historical list previews are not stuck on “Untitled note”.
       cached.data.notes = backfillNotesContentFromServer(cached.data.notes, bootstrap.data.notes);
+      const localIds = new Set(cached.data.notes.map((n) => n.id));
+      for (const note of bootstrap.data.notes) {
+        if (note.sharedInbox && !localIds.has(note.id)) {
+          cached.data.notes.push(note);
+          localIds.add(note.id);
+        }
+      }
       cached.data.tags = [
         ...new Set([
           ...cached.data.tags,

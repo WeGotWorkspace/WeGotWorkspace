@@ -14,6 +14,7 @@ import {
   noteListTagOverflow,
   noteListTitle,
   plainTextFromBody,
+  preserveLocalListableBodiesOnServerNotes,
 } from "./notes-note-utils";
 import type { Note } from "@/lib/models/note";
 
@@ -121,6 +122,50 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.body).toEqual(["Local draft"]);
   });
 
+  it("preserves cached listable body when server body is still empty after refresh", () => {
+    const server: Note = {
+      ...sampleNote,
+      id: "n-pending-collab",
+      excerpt: "",
+      body: [""],
+      tags: ["server-tag"],
+      starred: false,
+      wordCount: 0,
+      date: "2026-01-01T00:00:00.000Z",
+    };
+    const local: Note = {
+      ...sampleNote,
+      id: "n-pending-collab",
+      excerpt: "Optimistic preview from typing",
+      body: ["Optimistic preview from typing"],
+      tags: ["stale-tag"],
+      starred: true,
+      wordCount: 4,
+      date: "2026-08-06T12:00:00.000Z",
+    };
+    const merged = preserveLocalListableBodiesOnServerNotes([server], [local]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.tags).toEqual(["server-tag"]);
+    expect(merged[0]?.starred).toBe(false);
+    expect(noteListTitle(merged[0]!)).toBe("Optimistic preview from typing");
+    expect(merged[0]?.date).toBe("2026-08-06T12:00:00.000Z");
+  });
+
+  it("prefers non-empty server body over cached body on refresh merge", () => {
+    const server: Note = {
+      ...sampleNote,
+      body: ["Server wins"],
+      excerpt: "Server wins",
+    };
+    const local: Note = {
+      ...sampleNote,
+      body: ["Stale cache"],
+      excerpt: "Stale cache",
+    };
+    const merged = preserveLocalListableBodiesOnServerNotes([server], [local]);
+    expect(merged[0]?.body).toEqual(["Server wins"]);
+  });
+
   it("applies collab markdown to body/excerpt/date without bumping updatedAt", () => {
     const withToken = {
       ...sampleNote,
@@ -128,16 +173,29 @@ describe("notes-note-utils", () => {
       excerpt: "stale preview",
       body: ["Old body"],
     };
-    const next = applyNoteBodyMarkdown(
-      withToken,
-      "Fresh **preview** line\n\nSecond paragraph",
-      "2026-06-15T12:00:00.000Z",
-    );
+    const next = applyNoteBodyMarkdown(withToken, "Fresh **preview** line\n\nSecond paragraph", {
+      editedAt: "2026-06-15T12:00:00.000Z",
+    });
     expect(next.body[0]).toContain("Fresh");
     expect(next.excerpt).toMatch(/Fresh preview line/i);
     expect(next.date).toBe("2026-06-15T12:00:00.000Z");
     expect(next.updatedAt).toBe("2026-01-01T00:00:00.000Z");
     expect(next.wordCount).toBeGreaterThan(0);
+  });
+
+  it("hydrates body/excerpt without bumping display date", () => {
+    const emptyPreview = {
+      ...sampleNote,
+      date: "2026-01-01T00:00:00.000Z",
+      excerpt: "",
+      body: [""],
+      wordCount: 0,
+    };
+    const next = applyNoteBodyMarkdown(emptyPreview, "Loaded from Yjs after refresh", {
+      bumpDate: false,
+    });
+    expect(noteListTitle(next)).toBe("Loaded from Yjs after refresh");
+    expect(next.date).toBe("2026-01-01T00:00:00.000Z");
   });
 
   it("returns the same note reference when collab markdown is unchanged", () => {
@@ -161,6 +219,25 @@ describe("notes-note-utils", () => {
         starred: false,
         archived: true,
       },
+      {
+        ...sampleNote,
+        id: "shared-1",
+        excerpt: "Shared title",
+        body: ["Shared title"],
+        notebook: "TeamPad",
+        sharedInbox: true,
+        apiPath: "/users/bob/.notes/TeamPad/shared-1.md",
+        scope: "personal",
+      },
+      {
+        ...sampleNote,
+        id: "group-1",
+        notebook: "Specs",
+        scope: "group",
+        groupSlug: "eng",
+        body: ["Group note"],
+        excerpt: "Group note",
+      },
     ];
     const starredOnly = filterVisibleNotes(notes, {
       view: "starred",
@@ -177,6 +254,30 @@ describe("notes-note-utils", () => {
       searchQuery: "other",
     });
     expect(searchMatch).toHaveLength(0);
+
+    const sharedWithMe = filterVisibleNotes(notes, {
+      view: "shared-with-me",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(sharedWithMe.map((note) => note.id)).toEqual(["shared-1"]);
+
+    const personalNb = filterVisibleNotes(notes, {
+      view: "nb:Drafts",
+      archived: { "n-2": true },
+      starred: {},
+      searchQuery: "",
+    });
+    expect(personalNb.map((note) => note.id)).toEqual(["n-1"]);
+
+    const sharedNb = filterVisibleNotes(notes, {
+      view: "shared-nb:/groups/eng/.notes/Specs",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(sharedNb.map((note) => note.id)).toEqual(["group-1"]);
   });
 
   it("orders visible notes newest-edited first", () => {
@@ -244,7 +345,9 @@ describe("notes-note-utils", () => {
     });
     expect(before.map((note) => note.id)).toEqual(["n-new", "n-old"]);
 
-    const bumped = applyNoteBodyMarkdown(older, "Edited older note", "2026-07-01T00:00:00.000Z");
+    const bumped = applyNoteBodyMarkdown(older, "Edited older note", {
+      editedAt: "2026-07-01T00:00:00.000Z",
+    });
     const after = filterVisibleNotes([bumped, newer], {
       view: "all",
       archived: {},

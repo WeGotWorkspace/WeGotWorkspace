@@ -160,22 +160,54 @@ export function backfillNotesContentFromServer(localNotes: Note[], serverNotes: 
 }
 
 /**
+ * Server membership/metadata wins, but an empty server body must not wipe a
+ * non-empty local/cache body.
+ *
+ * Body edits persist through collab (not the notes outbox), so a silent
+ * bootstrap refresh can briefly see an empty API body while Dexie still holds
+ * the optimistic list preview — replacing wholesale caused “Untitled note”
+ * until the next keystroke.
+ */
+export function preserveLocalListableBodiesOnServerNotes(
+  serverNotes: Note[],
+  localNotes: Note[],
+): Note[] {
+  const localById = new Map(localNotes.map((note) => [note.id, note]));
+  return serverNotes.map((server) => {
+    if (noteHasListableBody(server)) return enrichNote(server);
+    const local = localById.get(server.id);
+    if (!local || !noteHasListableBody(local)) return enrichNote(server);
+    return enrichNote({
+      ...server,
+      body: local.body,
+      excerpt: local.excerpt,
+      wordCount: local.wordCount,
+      date: local.date !== "—" ? local.date : server.date,
+    });
+  });
+}
+
+/**
  * Apply collab markdown to local list/detail state (body, excerpt, word count,
- * display date). Does **not** bump {@link Note.updatedAt} — that token stays
- * metadata-invariant for offline `ifInState` guards.
+ * and optionally display date). Does **not** bump {@link Note.updatedAt} — that
+ * token stays metadata-invariant for offline `ifInState` guards.
+ *
+ * Pass `bumpDate: false` when hydrating from a loaded document so opening a note
+ * after refresh fills the list preview without pretending the user just edited.
  */
 export function applyNoteBodyMarkdown(
   note: Note,
   markdown: string,
-  editedAt: string = new Date().toISOString(),
+  options?: { editedAt?: string; bumpDate?: boolean },
 ): Note {
   if (noteBodyToMarkdown(note.body) === markdown) {
     return note;
   }
+  const bumpDate = options?.bumpDate !== false;
   return enrichNote({
     ...note,
     body: markdownToNoteBody(markdown),
-    date: editedAt,
+    ...(bumpDate ? { date: options?.editedAt ?? new Date().toISOString() } : {}),
   });
 }
 
@@ -212,16 +244,23 @@ export function filterVisibleNotes(
   const q = searchQuery.trim().toLowerCase();
   const filtered = dedupeNotesById(notes).filter((note) => {
     let inView = true;
-    if (view === "all") inView = !archived[note.id];
-    else if (view === "starred") inView = !!starred[note.id] && !archived[note.id];
-    else if (view === "archive") inView = !!archived[note.id];
-    else if (view.startsWith("nb:")) {
+    if (view === "all") inView = !note.sharedInbox && !archived[note.id];
+    else if (view === "starred") {
+      inView = !note.sharedInbox && !!starred[note.id] && !archived[note.id];
+    } else if (view === "archive") inView = !note.sharedInbox && !!archived[note.id];
+    else if (view === "shared-with-me") inView = !!note.sharedInbox && !archived[note.id];
+    else if (view.startsWith("shared-nb:")) {
+      const notebookPath = view.slice("shared-nb:".length);
+      inView = noteBelongsToSharedNotebook(note, notebookPath) && !archived[note.id];
+    } else if (view.startsWith("nb:")) {
       const target = view.slice(3);
       inView =
+        !note.sharedInbox &&
+        note.scope !== "group" &&
         (note.notebook === target || note.notebook.toLowerCase() === target.toLowerCase()) &&
         !archived[note.id];
     } else if (view.startsWith("tag:")) {
-      inView = note.tags.includes(view.slice(4)) && !archived[note.id];
+      inView = !note.sharedInbox && note.tags.includes(view.slice(4)) && !archived[note.id];
     }
     if (!inView) return false;
     if (!q) return true;
@@ -230,4 +269,19 @@ export function filterVisibleNotes(
     return haystack.includes(q);
   });
   return filtered.sort(compareNotesDesc);
+}
+
+/** Whether a note lives under a shared notebook directory path. */
+export function noteBelongsToSharedNotebook(note: Note, notebookPath: string): boolean {
+  const dir = notebookPath.replace(/\/+$/, "").replace(/^\//, "");
+  if (!dir) return false;
+  if (note.apiPath?.trim()) {
+    const file = note.apiPath.replace(/^\//, "").replace(/\/+$/, "");
+    return file === dir || file.startsWith(`${dir}/`);
+  }
+  if (note.scope === "group" && note.groupSlug?.trim()) {
+    const expected = `groups/${note.groupSlug.trim()}/.notes/${note.notebook}`;
+    return expected === dir;
+  }
+  return false;
 }
