@@ -1,0 +1,28 @@
+@import "../../styles.css" reference;
+
+.workspace-chrome-footer {
+  @apply relative z-30 flex shrink-0 flex-nowrap items-center gap-x-3;
+  box-sizing: border-box;
+  padding-block: var(--workspace-chrome-footer-padding-y, 0.5rem);
+  padding-inline: var(--workspace-chrome-footer-padding-x, 1rem);
+  min-height: 3rem;
+  background-color: var(
+    --workspace-chrome-footer-bg,
+    color-mix(in oklab, #ffffff 88%, transparent)
+  );
+  backdrop-filter: blur(8px);
+  border-top: 1px solid
+    var(--workspace-chrome-footer-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+}
+
+.workspace-chrome-footer__group {
+  @apply flex shrink-0 items-center gap-1.5;
+}
+
+.workspace-chrome-footer__group--end {
+  @apply ml-auto min-w-0 shrink;
+}
+
+.workspace-chrome-footer .tag {
+  font-variant-numeric: tabular-nums;
+}
