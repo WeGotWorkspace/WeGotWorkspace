@@ -91,7 +91,7 @@ export function NoteCollabSession({
   return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;
 }
 
-/** Docs-style peer avatars + pending-sync spinner for the note detail meta row. */
+/** Docs-style peer avatars + pending-sync spinner for the notes detail action bar. */
 export function NoteCollabChrome({ className }: { className?: string }) {
   const { session, peers, connectingPeers, warningPeers, pendingSync, failedSync } =
     useNoteCollabContext();

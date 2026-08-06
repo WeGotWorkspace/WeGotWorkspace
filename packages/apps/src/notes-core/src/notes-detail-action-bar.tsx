@@ -2,6 +2,7 @@ import { Archive, ArchiveRestore, BookOpen, MoreHorizontal, Star } from "lucide-
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
 
 type NotesDetailActionBarProps = {
   active: Note | undefined;
@@ -12,6 +13,8 @@ type NotesDetailActionBarProps = {
   openMoveDialog: (ids: string[]) => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
+  /** When true, renders collab presence ahead of note actions (requires NoteCollabSession). */
+  showCollabChrome?: boolean;
 };
 
 export function NotesDetailActionBar({
@@ -23,6 +26,7 @@ export function NotesDetailActionBar({
   openMoveDialog,
   toggleStar,
   toggleArchive,
+  showCollabChrome = false,
 }: NotesDetailActionBarProps) {
   if (!active) {
     return <ActionBar onBack={closeMobileDetail} />;
@@ -54,6 +58,7 @@ export function NotesDetailActionBar({
   return (
     <ActionBar
       onBack={closeMobileDetail}
+      rightLeading={showCollabChrome ? <NoteCollabChrome /> : undefined}
       rightActions={rightActions}
       rightMenuLabel="More actions"
       rightMenuIcon={<MoreHorizontal />}

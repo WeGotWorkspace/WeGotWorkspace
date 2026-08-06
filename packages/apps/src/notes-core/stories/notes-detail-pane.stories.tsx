@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor } from "storybook/test";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
+import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
 
@@ -20,16 +21,23 @@ function NotesDetailPaneHarness({
 
   return (
     <NotesStoryScope variant="detail">
-      <NoteDetailView
-        noteId={base.noteId}
-        notebook={base.notebook}
-        lastEdited={base.lastEdited}
-        editedLabel={base.editedLabel}
-        tags={base.tags}
-        readOnly={readOnly}
-        pullQuote={base.pullQuote}
-        body={base.body}
-      />
+      <div className="notes-workspace flex min-h-dvh flex-col">
+        <div className="workspace-detail-pane__scroll flex-1">
+          <NoteDetailView
+            noteId={base.noteId}
+            contentRevision={base.lastEdited}
+            tags={base.tags}
+            readOnly={readOnly}
+            pullQuote={base.pullQuote}
+            body={base.body}
+          />
+        </div>
+        <NotesDetailFooter
+          notebook={base.notebook}
+          lastEdited={base.lastEdited}
+          editedLabel={base.editedLabel}
+        />
+      </div>
     </NotesStoryScope>
   );
 }

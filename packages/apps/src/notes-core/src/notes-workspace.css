@@ -1,4 +1,5 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
  * Notes product shell: cream main pane + warm gold sidebar accent.
@@ -31,6 +32,15 @@
   --note-detail-tag-bg: color-mix(in oklab, var(--notes-accent) 62%, transparent);
   --note-detail-tag-fg: var(--color-ink);
   --note-detail-title-font-family: var(--font-serif);
+  --workspace-chrome-footer-padding-x: 1rem;
+  --workspace-chrome-footer-padding-y: 0.5rem;
+  --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+
+@media (min-width: 768px) {
+  .notes-workspace {
+    --workspace-chrome-footer-padding-x: 3rem;
+  }
 }
 
 .notes-workspace .app-sidebar__scroll {
@@ -61,12 +71,16 @@
   color: var(--color-ink);
 }
 
-.notes-workspace .note-detail-view__meta-tag .tag {
+.notes-workspace .notes-detail-footer__meta-tag--notebook {
+  @apply max-w-[260px];
+}
+
+.notes-workspace .notes-detail-footer__meta-tag--notebook .tag {
   background-color: var(--note-detail-tag-bg);
   color: var(--note-detail-tag-fg);
 }
 
-.notes-workspace .note-detail-view__meta-tag--edited .tag {
+.notes-workspace .notes-detail-footer__meta-tag--edited .tag {
   background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
   color: color-mix(in oklab, var(--color-ink) 58%, transparent);
 }

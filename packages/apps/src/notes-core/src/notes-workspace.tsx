@@ -1,19 +1,22 @@
 import { Pencil } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MoveToDialog, EditDialog, DeleteDialog, TagPickerDialog } from "@/dialogs/src/dialogs";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
+import { NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
+import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
@@ -180,6 +183,28 @@ export function NotesWorkspace({
     };
   }, [active, noteCollabUrls, notesCollabWire, session.user.displayName, session.user.username]);
 
+  const showSingleNoteDetail = selectedIds.length <= 1 && !!active;
+  const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
+
+  const wrapDetailWithCollab = useCallback(
+    (children: ReactNode) => {
+      if (!collabSessionActive || !active || !noteBodyCollab) return children;
+      return (
+        <NoteCollabSession
+          key={noteBodyCollab.urls.room ?? active.id}
+          initialMarkdown={noteBodyToMarkdown(active.body)}
+          userName={noteBodyCollab.userName}
+          urls={noteBodyCollab.urls}
+          wire={noteBodyCollab.wire}
+          localDisplayName={noteBodyCollab.userName}
+        >
+          {children}
+        </NoteCollabSession>
+      );
+    },
+    [active, collabSessionActive, noteBodyCollab],
+  );
+
   const handleRetrySync = useCallback(() => {
     if (!offlineUsername) return;
     void getNotesSyncRunner(offlineUsername)
@@ -273,6 +298,7 @@ export function NotesWorkspace({
             pendingNoteIds,
           })
         }
+        detailWrapper={(children) => wrapDetailWithCollab(children)}
         actionBar={(c) =>
           selectedIds.length > 1 ? null : (
             <NotesDetailActionBar
@@ -284,6 +310,7 @@ export function NotesWorkspace({
               openMoveDialog={(ids) => setMoveDialog({ ids })}
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
+              showCollabChrome={collabSessionActive}
             />
           )
         }
@@ -302,15 +329,23 @@ export function NotesWorkspace({
           return (
             <NoteDetailView
               noteId={active.id}
-              notebook={active.notebook}
-              lastEdited={formatNoteDateForList(active.date)}
-              editedLabel="Edited "
+              contentRevision={formatNoteDateForList(active.date)}
               tags={active.tags}
               onTagAdd={() => setTagDialog({ noteId: active.id })}
               onTagRemove={(tag) => toggleNoteTag(active.id, tag)}
               pullQuote={active.pullQuote}
               body={active.body}
               collab={noteBodyCollab}
+            />
+          );
+        }}
+        detailFooter={() => {
+          if (!showSingleNoteDetail || !active) return null;
+          return (
+            <NotesDetailFooter
+              notebook={active.notebook}
+              lastEdited={formatNoteDateForList(active.date)}
+              editedLabel="Edited "
             />
           );
         }}

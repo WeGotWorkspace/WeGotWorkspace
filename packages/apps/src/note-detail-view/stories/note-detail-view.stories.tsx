@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { BookOpen, CalendarDays } from "lucide-react";
+import { Star } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
-import { Tag, TagGroup } from "@/tag/src/tag";
+import { ActionBar } from "@/action-bar/src/action-bar";
 import { DocsCollabPresence } from "@/text-editor-core/docs-collab/docs-collab-presence";
 import { TooltipProvider } from "@/ui/tooltip";
 import { NoteDetailView } from "../src/note-detail-view";
+import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 
 import "@/notes-core/src/notes-workspace.css";
 
@@ -29,8 +30,7 @@ type Story = StoryObj<typeof NoteDetailView>;
 
 const base = {
   noteId: "demo-1",
-  notebook: "Personal",
-  lastEdited: "6 May 2026",
+  contentRevision: "6 May 2026",
   tags: ["ideas", "draft"],
   body: ["First paragraph of the note.", "Second paragraph with more detail."],
   onTagAdd: () => {},
@@ -53,45 +53,50 @@ export const ReadOnly: Story = {
   },
 };
 
-/** Static layout preview of Docs-style collab chrome in the meta row (live collab needs API). */
+/** Static layout preview: presence in the action bar, meta in the pinned footer. */
 export const CollabChromePreview: Story = {
   render: () => (
-    <article className="note-detail-view max-w-[680px] mx-auto">
-      <div className="note-detail-view__meta-row flex items-center gap-2 md:gap-3 mb-5">
-        <div className="note-detail-view__meta-tag max-w-[260px]">
-          <Tag label="Personal" icon={<BookOpen className="size-3.5 opacity-70" />} />
-        </div>
-        <div className="note-detail-view__meta-tag note-detail-view__meta-tag--edited">
-          <Tag label="Edited 6 May 2026" icon={<CalendarDays className="size-3.5 opacity-70" />} />
-        </div>
-        <div className="note-detail-view__collab-chrome ml-auto">
-          <span
-            className="note-detail-view__pending-sync"
-            role="status"
-            aria-live="polite"
-            aria-label="Unsaved changes"
-          >
-            <LoadingSpinner size="sm" />
-          </span>
-          <DocsCollabPresence
-            localUser={{ displayName: "Alex Example" }}
-            peers={[
-              { id: "peer-1", name: "Sam Lee" },
-              { id: "peer-2", name: "Jordan Kim" },
-            ]}
-            connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
-          />
-        </div>
-      </div>
-      <TagGroup
-        className="note-detail-view__tag-group py-6 border-y mb-6"
-        tags={["ideas", "draft"]}
-        onAdd={() => {}}
-        onRemoveTag={() => {}}
+    <div className="notes-workspace flex min-h-[24rem] flex-col">
+      <ActionBar
+        onBack={() => {}}
+        rightLeading={
+          <div className="note-detail-view__collab-chrome">
+            <span
+              className="note-detail-view__pending-sync"
+              role="status"
+              aria-live="polite"
+              aria-label="Unsaved changes"
+            >
+              <LoadingSpinner size="sm" />
+            </span>
+            <DocsCollabPresence
+              localUser={{ displayName: "Alex Example" }}
+              peers={[
+                { id: "peer-1", name: "Sam Lee" },
+                { id: "peer-2", name: "Jordan Kim" },
+              ]}
+              connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
+            />
+          </div>
+        }
+        rightActions={[
+          {
+            id: "star",
+            label: "Star",
+            icon: <Star />,
+            onClick: () => {},
+          },
+        ]}
       />
-      <p className="text-muted-foreground text-sm">
-        Collab session chrome preview — spinner + peer avatars mirror Docs detail header placement.
-      </p>
-    </article>
+      <div className="workspace-detail-pane__scroll flex-1">
+        <article className="note-detail-view max-w-[680px] mx-auto">
+          <p className="text-muted-foreground text-sm">
+            Collab session chrome preview — presence sits in the action bar; notebook and edited
+            meta pin in the footer.
+          </p>
+        </article>
+      </div>
+      <NotesDetailFooter notebook="Personal" lastEdited="6 May 2026" />
+    </div>
   ),
 };

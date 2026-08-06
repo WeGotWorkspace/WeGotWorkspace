@@ -25,6 +25,10 @@
   @apply flex items-center gap-2 shrink-0;
 }
 
+.action-bar__right-leading {
+  @apply flex items-center gap-2 shrink-0;
+}
+
 .action-bar__row {
   @apply flex items-center gap-2;
 }

@@ -55,6 +55,13 @@ export type WorkspaceAppProps = {
   /** Fixed toolbar above the scrollable detail body (e.g. back + item actions). */
   actionBar?: (chrome: WorkspaceAppChrome) => ReactNode;
   detail: (chrome: WorkspaceAppChrome) => ReactNode;
+  /** Pinned below the scrollable detail body (e.g. stats / meta footer). */
+  detailFooter?: (chrome: WorkspaceAppChrome) => ReactNode;
+  /**
+   * Optional wrapper around action bar + scroll body + footer (e.g. collab session
+   * provider that must span the action bar and editor).
+   */
+  detailWrapper?: (children: ReactNode, chrome: WorkspaceAppChrome) => ReactNode;
   detailClassName?: string;
   /** Applied to the scroll container around `detail` (padding, overflow). */
   detailScrollClassName?: string;
@@ -73,6 +80,8 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
     list,
     actionBar,
     detail,
+    detailFooter,
+    detailWrapper,
     detailClassName,
     detailScrollClassName,
   },
@@ -117,6 +126,16 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
 
   const listProps = list(chrome);
 
+  const detailChrome = (
+    <>
+      {actionBar?.(chrome)}
+      <div className={cn("workspace-detail-pane__scroll", detailScrollClassName)}>
+        {detail(chrome)}
+      </div>
+      {detailFooter?.(chrome)}
+    </>
+  );
+
   return (
     <TooltipProvider delayDuration={tooltipDelayDuration}>
       <WorkspaceAppLayout style={workspaceRoot.style} className={workspaceRoot.className}>
@@ -137,10 +156,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
             detailClassName,
           )}
         >
-          {actionBar?.(chrome)}
-          <div className={cn("workspace-detail-pane__scroll", detailScrollClassName)}>
-            {detail(chrome)}
-          </div>
+          {detailWrapper ? detailWrapper(detailChrome, chrome) : detailChrome}
         </main>
       </WorkspaceAppLayout>
     </TooltipProvider>

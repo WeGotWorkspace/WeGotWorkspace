@@ -26,6 +26,11 @@ export type ActionBarProps = {
   leftActions?: ActionBarAction[];
   /** Preferred API: action descriptors rendered by ActionBar with compact dropdown behavior. */
   rightActions?: ActionBarAction[];
+  /**
+   * Optional leading content before right actions (e.g. collab presence), matching
+   * docs header `leading` slot order: presence then actions.
+   */
+  rightLeading?: ReactNode;
   leftMenuLabel?: string;
   rightMenuLabel?: string;
   leftMenuIcon?: ReactNode;
@@ -92,6 +97,7 @@ export function ActionBar({
   collapseActions = true,
   leftActions,
   rightActions,
+  rightLeading,
   leftMenuLabel = "More actions",
   rightMenuLabel = "More actions",
   leftMenuIcon = <MoreHorizontal />,
@@ -102,6 +108,7 @@ export function ActionBar({
 }: ActionBarProps) {
   const hasLeftActions = (leftActions?.length ?? 0) > 0;
   const hasRightActions = (rightActions?.length ?? 0) > 0;
+  const hasRightChrome = hasRightActions || right != null || rightLeading != null;
 
   return (
     <nav className={cn("action-bar", !collapseActions && "action-bar--expanded", className)}>
@@ -129,19 +136,26 @@ export function ActionBar({
         <div className="action-bar__left">{left}</div>
       ) : null}
       <div className="action-bar__spacer" />
-      {hasRightActions ? (
+      {hasRightChrome ? (
         <div className="action-bar__right">
-          <div className="action-bar__row">{renderActionItems(rightActions!)}</div>
-          {renderCompactDropdown(
-            rightActions!,
-            rightMenuLabel,
-            rightMenuIcon,
-            "end",
-            "action-bar__menu",
-          )}
+          {rightLeading != null ? (
+            <div className="action-bar__right-leading">{rightLeading}</div>
+          ) : null}
+          {hasRightActions ? (
+            <>
+              <div className="action-bar__row">{renderActionItems(rightActions!)}</div>
+              {renderCompactDropdown(
+                rightActions!,
+                rightMenuLabel,
+                rightMenuIcon,
+                "end",
+                "action-bar__menu",
+              )}
+            </>
+          ) : right != null ? (
+            right
+          ) : null}
         </div>
-      ) : right != null ? (
-        <div className="action-bar__right">{right}</div>
       ) : null}
     </nav>
   );
