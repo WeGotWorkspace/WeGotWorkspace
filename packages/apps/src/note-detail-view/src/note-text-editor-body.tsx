@@ -66,6 +66,11 @@ export type NoteCollabSessionProps = {
   wire?: DocsCollabWireOperations;
   initialMarkdown: string;
   localDisplayName: string;
+  /**
+   * Fired on local accepted-content edits so Notes can refresh list preview +
+   * “Edited” time without routing body bytes through the metadata API.
+   */
+  onBodyMarkdownChange?: (markdown: string) => void;
   children: ReactNode;
 };
 
@@ -76,6 +81,7 @@ export function NoteCollabSession({
   wire,
   initialMarkdown,
   localDisplayName,
+  onBodyMarkdownChange,
   children,
 }: NoteCollabSessionProps) {
   const collab = useDocsCollab({
@@ -86,7 +92,18 @@ export function NoteCollabSession({
     seedContent: initialMarkdown,
   });
 
-  const value = { ...collab, localDisplayName };
+  const onMarkdownChange = useCallback(
+    (getMarkdown: () => string) => {
+      collab.onMarkdownChange(getMarkdown);
+      onBodyMarkdownChange?.(getMarkdown());
+    },
+    [collab.onMarkdownChange, onBodyMarkdownChange],
+  );
+
+  const value = useMemo(
+    () => ({ ...collab, localDisplayName, onMarkdownChange }),
+    [collab, localDisplayName, onMarkdownChange],
+  );
 
   return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;
 }

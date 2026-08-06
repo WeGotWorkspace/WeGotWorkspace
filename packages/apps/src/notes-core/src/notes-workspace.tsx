@@ -105,6 +105,7 @@ export function NotesWorkspace({
     deleteNotebook,
     deleteTag,
     toggleNoteTag,
+    applyLocalBodyMarkdown,
   } = useNotesController({
     data,
     labels,
@@ -197,12 +198,13 @@ export function NotesWorkspace({
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
+          onBodyMarkdownChange={(markdown) => applyLocalBodyMarkdown(active.id, markdown)}
         >
           {children}
         </NoteCollabSession>
       );
     },
-    [active, collabSessionActive, noteBodyCollab],
+    [active, applyLocalBodyMarkdown, collabSessionActive, noteBodyCollab],
   );
 
   const handleRetrySync = useCallback(() => {
