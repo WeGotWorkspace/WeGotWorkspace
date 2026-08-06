@@ -4029,6 +4029,60 @@
         "x-wgw-access": "user"
       }
     },
+    "/notes/shared-with-me": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "List note files shared with the current user via path grants",
+        "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotesSharedWithMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/notes/shared-notebooks": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "List notebook directories shared with the current user via path grants",
+        "description": "Returns directory grants under `.notes` (shared notebooks). Group-membership notebooks continue via `GET /notes/notebooks`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared notebooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotesSharedNotebooksResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/calendars/events": {
       "get": {
         "tags": [

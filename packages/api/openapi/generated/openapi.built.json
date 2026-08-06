@@ -7724,7 +7724,7 @@
                     "edit",
                     "full"
                 ],
-                "description": "Share access level for a grant or default access."
+                "description": "Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit|full only; comment and legacy review are rejected."
             },
             "DriveRights": {
                 "type": "object",
@@ -8718,6 +8718,143 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/DriveShareByPrincipal"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedNoteEntry": {
+                "type": "object",
+                "required": [
+                    "path",
+                    "id",
+                    "notebook",
+                    "title",
+                    "owner",
+                    "scope",
+                    "groupSlug",
+                    "access",
+                    "myRights"
+                ],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md)."
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled."
+                    },
+                    "owner": {
+                        "type": "string",
+                        "description": "Username or group slug that owns the note tree."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "access": {
+                        "$ref": "#/components/schemas/DriveShareAccess"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/DriveRights"
+                    },
+                    "viaGroup": {
+                        "type": "string",
+                        "description": "Present when access is via a group grant (groups/{slug})."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedWithMeResponse": {
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotesSharedNoteEntry"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedNotebookEntry": {
+                "type": "object",
+                "required": [
+                    "path",
+                    "notebook",
+                    "owner",
+                    "scope",
+                    "groupSlug",
+                    "access",
+                    "myRights"
+                ],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Virtual drive path of the shared notebook directory (…/.notes/{notebook})."
+                    },
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "owner": {
+                        "type": "string",
+                        "description": "Username or group slug that owns the notebook tree."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "access": {
+                        "$ref": "#/components/schemas/DriveShareAccess"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/DriveRights"
+                    },
+                    "viaGroup": {
+                        "type": "string",
+                        "description": "Present when access is via a group grant (groups/{slug})."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedNotebooksResponse": {
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotesSharedNotebookEntry"
+                        }
                     }
                 },
                 "additionalProperties": false
@@ -14810,6 +14947,60 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DriveShareByPrincipalDataResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/shared-with-me": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "List note files shared with the current user via path grants",
+                "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shared notes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotesSharedWithMeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/shared-notebooks": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "List notebook directories shared with the current user via path grants",
+                "description": "Returns directory grants under `.notes` (shared notebooks). Group-membership notebooks continue via `GET /notes/notebooks`.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shared notebooks",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotesSharedNotebooksResponse"
                                 }
                             }
                         }

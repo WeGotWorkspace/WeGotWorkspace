@@ -103,6 +103,49 @@ final class NoteMarkdownCodec
     }
 
     /**
+     * List-row preview for Notes UI (no separate title field).
+     *
+     * Prefer the body section; frontmatter often stays `Untitled` after collab
+     * body edits. Empty/Untitled titles fall through to body, then `$fallbackId`.
+     */
+    public function listPreview(string $markdown, string $fallbackId, int $maxLen = 180): string
+    {
+        [$title, , , $body] = $this->parse($markdown, $fallbackId);
+        $fromBody = $this->plainPreviewText($body);
+        if ($fromBody !== '') {
+            return $this->truncatePreview($fromBody, $maxLen);
+        }
+        $fromTitle = trim($title);
+        if ($fromTitle !== '' && strcasecmp($fromTitle, 'Untitled') !== 0) {
+            return $this->truncatePreview($fromTitle, $maxLen);
+        }
+
+        return $fallbackId;
+    }
+
+    private function plainPreviewText(string $markdown): string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", $markdown);
+        // Light markdown strip so list rows match client noteListTitle / plain text.
+        $text = preg_replace('/^#{1,6}\s+/m', '', $text) ?? $text;
+        $text = preg_replace('/(\*\*|__)(.*?)\1/', '$2', $text) ?? $text;
+        $text = preg_replace('/(\*|_)(.*?)\1/', '$2', $text) ?? $text;
+        $text = preg_replace('/`([^`]+)`/', '$1', $text) ?? $text;
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function truncatePreview(string $text, int $maxLen): string
+    {
+        if ($maxLen < 1 || mb_strlen($text) <= $maxLen) {
+            return $text;
+        }
+
+        return mb_substr($text, 0, $maxLen - 1).'…';
+    }
+
+    /**
      * Re-serialize with new frontmatter while preserving the existing body bytes.
      *
      * Used by metadata-only mutations so updating title/tags/starred never

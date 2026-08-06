@@ -84,6 +84,27 @@ final class NoteMarkdownCodecTest extends TestCase
         $this->assertSame('new body', $body);
     }
 
+    public function test_list_preview_prefers_body_over_untitled_frontmatter(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $raw = $codec->serialize('Untitled', [], false, 'Wouter naar Admin');
+        $this->assertSame('Wouter naar Admin', $codec->listPreview($raw, 'fallback-id'));
+    }
+
+    public function test_list_preview_uses_real_title_when_body_empty(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $raw = $codec->serialize('Meeting notes', [], false, '');
+        $this->assertSame('Meeting notes', $codec->listPreview($raw, 'fallback-id'));
+    }
+
+    public function test_list_preview_falls_back_when_untitled_and_empty_body(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $raw = $codec->serialize('Untitled', [], false, '');
+        $this->assertSame('fallback-id', $codec->listPreview($raw, 'fallback-id'));
+    }
+
     public function test_serialize_stamps_and_parse_reads_explicit_updated_marker(): void
     {
         $codec = new NoteMarkdownCodec;

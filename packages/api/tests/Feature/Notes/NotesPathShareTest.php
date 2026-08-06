@@ -194,7 +194,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('items.0.path', $notePath)
             ->assertJsonPath('items.0.id', $created['id'])
             ->assertJsonPath('items.0.notebook', 'TeamPad')
-            ->assertJsonPath('items.0.title', 'Shared Title')
+            ->assertJsonPath('items.0.title', 'shared body')
             ->assertJsonPath('items.0.owner', 'bob')
             ->assertJsonPath('items.0.access', 'view')
             ->assertJsonPath('items.0.myRights.mayView', true)
@@ -211,6 +211,35 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('items.0.myRights.mayEditContent', true)
             ->assertJsonPath('items.0.myRights.mayComment', false);
         $this->assertCount(1, $notebooks->json('items'));
+    }
+
+    public function test_notes_shared_with_me_preview_uses_body_when_frontmatter_title_is_untitled(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+
+        $created = $this->createNoteFor($ownerToken, [
+            'id' => 'shared-untitled-body',
+            'notebook' => 'Drafts',
+            'body' => 'Wouter naar Admin',
+        ]);
+        Storage::disk('wgw_notes')->put(
+            'users/bob/.notes/Drafts/'.$created['id'].'.md',
+            "title: Untitled\ntags:\nstarred: false\n----\nWouter naar Admin"
+        );
+        $notePath = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notePath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-with-me')
+            ->assertOk()
+            ->assertJsonPath('items.0.path', $notePath)
+            ->assertJsonPath('items.0.title', 'Wouter naar Admin');
     }
 
     public function test_notes_shared_with_me_lists_grant_when_entry_lookup_misses(): void

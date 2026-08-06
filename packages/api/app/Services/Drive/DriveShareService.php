@@ -1302,7 +1302,8 @@ final class DriveShareService
             return $fallbackId;
         }
 
-        return $this->noteCodec->parse($contents, $fallbackId)[0];
+        // Notes list preview is body-first (frontmatter title is often "Untitled").
+        return $this->noteCodec->listPreview($contents, $fallbackId);
     }
 
     private function generatePublicToken(): string
