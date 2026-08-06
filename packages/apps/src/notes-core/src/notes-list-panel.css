@@ -33,6 +33,19 @@
   color: var(--color-emerald);
 }
 
+/* Match tag chip icon weight (0.75rem / opacity-70) on the same list row. */
+.notes-list-panel__notebook {
+  @apply inline-flex max-w-full min-w-0 items-center gap-1.5;
+}
+
+.notes-list-panel__notebook-icon {
+  @apply size-3 shrink-0 opacity-70;
+}
+
+.notes-list-panel__notebook-name {
+  @apply truncate min-w-0;
+}
+
 .notes-list-panel__list {
   min-height: 0;
 }

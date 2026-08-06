@@ -1,5 +1,14 @@
 import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
-import { Archive, Circle, Pencil, RefreshCw, Star, Tag as TagIcon, Trash2 } from "lucide-react";
+import {
+  Archive,
+  BookOpen,
+  Circle,
+  Pencil,
+  RefreshCw,
+  Star,
+  Tag as TagIcon,
+  Trash2,
+} from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { Tag } from "@/tag/src/tag";
@@ -203,7 +212,16 @@ export function NotesListPanel({
                 key={note.id}
                 id={note.id}
                 title={noteListTitle(note)}
-                subtitle={note.notebook}
+                subtitle={
+                  note.notebook ? (
+                    <span className="notes-list-panel__notebook">
+                      <BookOpen className="notes-list-panel__notebook-icon" aria-hidden />
+                      <span className="notes-list-panel__notebook-name">{note.notebook}</span>
+                    </span>
+                  ) : (
+                    ""
+                  )
+                }
                 date={formatNoteDateForList(note.date)}
                 text={notesListItemTags(note.tags)}
                 icons={[

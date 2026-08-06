@@ -32,7 +32,8 @@ type ListItemMetaPosition = "above" | "below";
 type ListItemProps = {
   id: string;
   title: string;
-  subtitle: string;
+  /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
+  subtitle: ReactNode;
   /** Subtitle/meta line placement. Mail and notes keep the default `above`; contacts pass `below`. */
   metaPosition?: ListItemMetaPosition;
   date: string;
