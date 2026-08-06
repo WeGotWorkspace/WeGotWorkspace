@@ -74,6 +74,8 @@
  */
 
 @theme inline {
+  /* Left app sidebar docks at ≥1160px (`sidebar:` utilities). Not for list/detail (`md`). */
+  --breakpoint-sidebar: 72.5rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

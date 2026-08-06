@@ -4,6 +4,7 @@ import type { SettingsSection } from "@/settings-core/src/settings-types";
 import { useSettingsMailForm } from "@/settings-core/src/use-settings-mail-form";
 import { useSettingsProfileForm } from "@/settings-core/src/use-settings-profile-form";
 import { useSettingsSidebarModel } from "@/settings-core/src/use-settings-sidebar-model";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 /**
  * Settings workspace: section nav + sidebar visibility, plus independent profile and mail form
@@ -23,7 +24,7 @@ export function useSettingsController({
 
   const selectSection = (nextSection: SettingsSection) => {
     setSection(nextSection);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (isSidebarOverlayViewport()) {
       setSidebarOpen(false);
     }
   };

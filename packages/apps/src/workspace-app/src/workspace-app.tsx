@@ -13,6 +13,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "@/workspace-app/src/workspace-app.css";
 
 export type WorkspaceAppChrome = {
@@ -77,10 +78,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
   },
   ref,
 ) {
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return !window.matchMedia("(max-width: 767px)").matches;
-  });
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [detailOpenMobile, setDetailOpenMobile] = useState(false);
 
   const openMobileDetail = useCallback(() => setDetailOpenMobile(true), []);

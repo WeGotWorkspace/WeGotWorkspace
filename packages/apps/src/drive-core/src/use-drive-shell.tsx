@@ -25,6 +25,7 @@ import type {
   WgwPluginDescriptor,
 } from "@/drive-core/src/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   apiPathFromSearchSourceKey,
   driveFileFromSearchResult,
@@ -236,7 +237,7 @@ export function useDriveShell({
       }
       commitView(v);
       setLiveSearchResults(null);
-      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      if (isSidebarOverlayViewport()) {
         setSidebarOpen(false);
       }
     },

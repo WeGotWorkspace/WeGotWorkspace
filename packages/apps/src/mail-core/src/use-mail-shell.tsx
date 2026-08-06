@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import type { Mail } from "@/types/mail";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type {
@@ -305,7 +306,7 @@ export function useMailShell({
   const selectView = useCallback((v: string) => {
     setView(v);
     workspaceLayoutRef.current?.closeMobileDetail();
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (isSidebarOverlayViewport()) {
       workspaceLayoutRef.current?.closeSidebar();
     }
   }, []);

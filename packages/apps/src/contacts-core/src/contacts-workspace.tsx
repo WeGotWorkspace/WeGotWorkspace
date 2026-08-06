@@ -4,6 +4,7 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
@@ -39,8 +40,7 @@ export function ContactsWorkspace({
   onContactChange,
 }: ContactsWorkspaceProps) {
   const closeSidebarOnMobile = (closeSidebar: () => void) => {
-    if (typeof window === "undefined") return;
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    if (!isSidebarOverlayViewport()) return;
     closeSidebar();
   };
 

@@ -7,6 +7,7 @@ import {
   type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
 import { useAdminSidebarModel } from "@/admin-core/src/use-admin-sidebar-model";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export type UseAdminShellArgs = Pick<AdminWorkspaceProps, "data" | "operations">;
 
@@ -147,7 +148,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
 
   const selectSection = (nextSection: AdminSection) => {
     setSection(nextSection);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (isSidebarOverlayViewport()) {
       setSidebarOpen(false);
     }
   };

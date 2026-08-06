@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
 import {
@@ -31,10 +32,7 @@ export function useTasksShell({
   const [tasks, setTasks] = useState<Task[]>(() => data.tasks);
   const [taskLists, setTaskLists] = useState(() => data.taskLists);
   const [view, setView] = useState<string>(() => initialView ?? DEFAULT_TASKS_VIEW);
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return !window.matchMedia("(max-width: 767px)").matches;
-  });
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
   const { show, showError } = useAppToast();
@@ -99,7 +97,7 @@ export function useTasksShell({
       const normalized = normalizeTasksView(nextView, taskLists);
       pendingViewRef.current = normalized;
       setView(normalized);
-      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      if (isSidebarOverlayViewport()) {
         setSidebarOpen(false);
       }
     },
