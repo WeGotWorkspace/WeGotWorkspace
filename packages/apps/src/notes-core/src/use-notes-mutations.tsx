@@ -85,7 +85,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     kind: "notebook" | "tag";
     name: string;
   }>(null);
-  const [tagDialog, setTagDialog] = useState<null | { noteId: string }>(null);
 
   const { confirmDialog, requestConfirm } = useConfirmDialog({
     contentClassName: "notes-dialog-surface",
@@ -585,8 +584,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setEditDialog,
     deleteDialog,
     setDeleteDialog,
-    tagDialog,
-    setTagDialog,
     confirmDialog,
     toggleStar,
     toggleArchive,

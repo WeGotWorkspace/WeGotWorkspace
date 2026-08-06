@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { MoveToDialog, EditDialog, DeleteDialog, TagPickerDialog } from "@/dialogs/src/dialogs";
+import { Tag } from "@/tag/src/tag";
+import { MoveToDialog, EditDialog, DeleteDialog } from "@/dialogs/src/dialogs";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -76,7 +77,6 @@ export function NotesWorkspace({
     moveDialog,
     editDialog,
     deleteDialog,
-    tagDialog,
     visibleNotes,
     workspaceLayoutRef,
     isTouch,
@@ -93,7 +93,6 @@ export function NotesWorkspace({
     setMoveDialog,
     setEditDialog,
     setDeleteDialog,
-    setTagDialog,
     moveToNotebook,
     assignTagToNotes,
     createNote,
@@ -118,7 +117,7 @@ export function NotesWorkspace({
     onNoteChange,
   });
 
-  const { primarySidebarItems, notebookSidebarItems, tagSidebarItems } = useNotesSidebarModel({
+  const { primarySidebarItems, notebookSidebarItems, tagSidebarTags } = useNotesSidebarModel({
     labels: L,
     view,
     notebooks,
@@ -262,7 +261,25 @@ export function NotesWorkspace({
           >
             <SidebarSection items={primarySidebarItems} />
             <SidebarSection title={L.sectionNotebooks} items={notebookSidebarItems} />
-            <SidebarSection title={L.sectionTags} items={tagSidebarItems} />
+            <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
+              {tagSidebarTags.map(({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
+                <li key={tag}>
+                  <button
+                    type="button"
+                    className={cn(
+                      "notes-sidebar-tags__item",
+                      selected && "notes-sidebar-tags__item--selected",
+                      isDropTarget && "notes-sidebar-tags__item--drop-target",
+                    )}
+                    onClick={onSelect}
+                    aria-pressed={selected}
+                    {...dropHandlers}
+                  >
+                    <Tag label={tag} size="md" />
+                  </button>
+                </li>
+              ))}
+            </SidebarSection>
           </AppSidebar>
         )}
         list={(c) =>
@@ -333,7 +350,8 @@ export function NotesWorkspace({
               noteId={active.id}
               contentRevision={formatNoteDateForList(active.date)}
               tags={active.tags}
-              onTagAdd={() => setTagDialog({ noteId: active.id })}
+              availableTags={tags}
+              onTagAdd={(tag) => toggleNoteTag(active.id, tag)}
               onTagRemove={(tag) => toggleNoteTag(active.id, tag)}
               pullQuote={active.pullQuote}
               body={active.body}
@@ -400,20 +418,6 @@ export function NotesWorkspace({
           if (deleteDialog.kind === "notebook") deleteNotebook(deleteDialog.name, opts);
           else deleteTag(deleteDialog.name);
           setDeleteDialog(null);
-        }}
-        contentClassName="notes-dialog-surface"
-      />
-
-      <TagPickerDialog
-        open={!!tagDialog}
-        allTags={tags}
-        selected={tagDialog ? (notes.find((note) => note.id === tagDialog.noteId)?.tags ?? []) : []}
-        onClose={() => setTagDialog(null)}
-        onToggle={(tag) => {
-          if (tagDialog) toggleNoteTag(tagDialog.noteId, tag);
-        }}
-        onCreate={(tag) => {
-          if (tagDialog) toggleNoteTag(tagDialog.noteId, tag);
         }}
         contentClassName="notes-dialog-surface"
       />

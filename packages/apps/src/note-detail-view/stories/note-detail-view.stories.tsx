@@ -32,6 +32,7 @@ const base = {
   noteId: "demo-1",
   contentRevision: "6 May 2026",
   tags: ["ideas", "draft"],
+  availableTags: ["ideas", "draft", "focus", "shipping"],
   body: ["First paragraph of the note.", "Second paragraph with more detail."],
   onTagAdd: () => {},
   onTagRemove: () => {},

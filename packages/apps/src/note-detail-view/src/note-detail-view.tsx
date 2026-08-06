@@ -16,7 +16,10 @@ export type NoteDetailViewProps = {
    */
   contentRevision?: string;
   tags: string[];
-  onTagAdd?: () => void;
+  /** Existing note tags offered as autocomplete when adding. */
+  availableTags?: string[];
+  /** Confirm a tag from the inline add field (existing or newly typed). */
+  onTagAdd?: (label: string) => void;
   onTagRemove?: (label: string) => void;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
@@ -39,6 +42,7 @@ export function NoteDetailView({
   noteId,
   contentRevision = "",
   tags,
+  availableTags,
   onTagAdd,
   onTagRemove,
   pullQuote,
@@ -53,10 +57,12 @@ export function NoteDetailView({
   return (
     <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
       <TagGroup
-        className="note-detail-view__tag-group py-6 border-y mb-6"
+        className="note-detail-view__tag-group py-6 mb-6"
+        size="lg"
         tags={tags}
         readonly={readOnly}
-        onAdd={readOnly ? undefined : onTagAdd}
+        suggestions={availableTags}
+        onAddTag={readOnly ? undefined : onTagAdd}
         onRemoveTag={readOnly ? undefined : onTagRemove}
       />
 
