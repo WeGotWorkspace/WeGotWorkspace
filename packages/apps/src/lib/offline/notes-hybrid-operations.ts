@@ -4,6 +4,7 @@ import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,
 } from "@/notes-core/src/notes-note-utils";
+import { enrichNotesListPreviewsFromCollabOffline } from "@/lib/offline/notes/notes-list-preview-enrich";
 import {
   archiveNoteItem,
   createNoteItem,
@@ -458,9 +459,14 @@ export async function fetchNotesHybridBootstrap(): Promise<
         ]),
       ];
     }
+    cached.data.notes = await enrichNotesListPreviewsFromCollabOffline(username, cached.data.notes);
     await writeNotesBootstrapToCache(username, cached);
     return cached;
   }
+  bootstrap.data.notes = await enrichNotesListPreviewsFromCollabOffline(
+    username,
+    bootstrap.data.notes,
+  );
   await writeNotesBootstrapToCache(username, bootstrap);
   return bootstrap;
 }
@@ -472,7 +478,13 @@ export async function loadNotesBootstrapHybrid(): Promise<
     const username = readOfflineNotesUsername();
     if (username) {
       const cached = await readNotesBootstrapFromCache(username);
-      if (cached) return cached;
+      if (cached) {
+        cached.data.notes = await enrichNotesListPreviewsFromCollabOffline(
+          username,
+          cached.data.notes,
+        );
+        return cached;
+      }
     }
     throw new Error("No cached notes available offline");
   }
