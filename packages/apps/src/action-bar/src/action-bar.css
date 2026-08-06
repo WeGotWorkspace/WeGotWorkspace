@@ -46,6 +46,14 @@
   height: 1rem;
 }
 
+.action-bar__action--labeled {
+  @apply max-w-[12rem] shrink min-w-0;
+}
+
+.action-bar__action--labeled > span:last-child {
+  @apply truncate;
+}
+
 .action-bar__spacer {
   @apply flex-1 min-w-0;
 }

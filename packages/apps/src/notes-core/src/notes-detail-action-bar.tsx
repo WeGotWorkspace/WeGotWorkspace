@@ -32,12 +32,16 @@ export function NotesDetailActionBar({
     return <ActionBar onBack={closeMobileDetail} />;
   }
 
+  const notebookName = active.notebook.trim();
   const rightActions = [
     {
       id: "move-to-notebook",
-      label: labels.toolbarMoveToNotebook,
+      label: notebookName || labels.toolbarMoveToNotebook,
+      tooltip: labels.toolbarMoveToNotebook,
       onClick: () => openMoveDialog([active.id]),
       icon: <BookOpen />,
+      active: true,
+      showLabel: true,
     },
     {
       id: "toggle-star",

@@ -24,10 +24,11 @@
   --button-icon-size: 1.25rem;
 }
 
-.icon-button--active {
+/* Beat `.button--variant-*` color (equal single-class specificity / unstable CSS order). */
+.button.icon-button--active {
   color: var(--button-active-color, var(--color-emerald));
 }
 
-.icon-button--active .button__icon > svg {
+.button.icon-button--active .button__icon > svg {
   fill: currentColor;
 }

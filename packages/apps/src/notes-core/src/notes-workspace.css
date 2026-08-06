@@ -85,6 +85,21 @@
   color: color-mix(in oklab, var(--color-ink) 58%, transparent);
 }
 
+/*
+ * Labeled move-notebook only (showLabel + active): filled yellow chip, dark text/icon.
+ * Star/archive keep generic icon-button--active (accent-colored glyphs, no fill bg).
+ * Parent sets button tokens; Button/IconButton consume them.
+ */
+.notes-workspace .action-bar__action--labeled.button.icon-button--active {
+  --button-active-color: var(--color-ink);
+  --button-subtle-background: var(--notes-accent);
+  --button-subtle-hover-background: color-mix(in oklab, var(--notes-accent) 86%, var(--color-ink));
+}
+
+.notes-workspace .action-bar__action--labeled.button.icon-button--active .button__icon > svg {
+  fill: none;
+}
+
 .notes-workspace .note-detail-view__tag-group {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
 }
