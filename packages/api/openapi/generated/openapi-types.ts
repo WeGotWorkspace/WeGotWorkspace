@@ -6477,7 +6477,7 @@ export interface paths {
         };
         /**
          * List notebook directories shared with the current user via path grants
-         * @description Returns directory grants under `.notes` (shared notebooks). Group-membership notebooks continue via `GET /notes/notebooks`.
+         * @description Returns directory grants under `.notes` (shared notebooks) plus the note files inside those directories (`notes`). Group-membership notebooks continue via `GET /notes/notebooks` / `GET /notes/items`.
          */
         get: {
             parameters: {
@@ -9585,6 +9585,8 @@ export interface components {
         };
         NotesSharedNotebooksResponse: {
             items: components["schemas"]["NotesSharedNotebookEntry"][];
+            /** @description Note files under ACL-shared notebook directories (not group-membership notebooks). Same shape as shared-with-me file grants so clients can merge list rows with apiPath. */
+            notes?: components["schemas"]["NotesSharedNoteEntry"][];
         };
     };
     responses: {

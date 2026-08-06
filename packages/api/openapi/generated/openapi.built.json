@@ -8860,6 +8860,13 @@
                         "items": {
                             "$ref": "#/components/schemas/NotesSharedNotebookEntry"
                         }
+                    },
+                    "notes": {
+                        "type": "array",
+                        "description": "Note files under ACL-shared notebook directories (not group-membership notebooks). Same shape as shared-with-me file grants so clients can merge list rows with apiPath.",
+                        "items": {
+                            "$ref": "#/components/schemas/NotesSharedNoteEntry"
+                        }
                     }
                 },
                 "additionalProperties": false
@@ -14993,7 +15000,7 @@
                     "Notes"
                 ],
                 "summary": "List notebook directories shared with the current user via path grants",
-                "description": "Returns directory grants under `.notes` (shared notebooks). Group-membership notebooks continue via `GET /notes/notebooks`.",
+                "description": "Returns directory grants under `.notes` (shared notebooks) plus the note files inside those directories (`notes`). Group-membership notebooks continue via `GET /notes/notebooks` / `GET /notes/items`.",
                 "security": [
                     {
                         "bearerAuth": []

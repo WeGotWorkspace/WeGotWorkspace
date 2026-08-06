@@ -272,11 +272,14 @@ export function filterVisibleNotes(
   const q = searchQuery.trim().toLowerCase();
   const filtered = dedupeNotesById(notes).filter((note) => {
     let inView = true;
-    if (view === "all") inView = !note.sharedInbox && !archived[note.id];
-    else if (view === "starred") {
-      inView = !note.sharedInbox && !!starred[note.id] && !archived[note.id];
-    } else if (view === "archive") inView = !note.sharedInbox && !!archived[note.id];
-    else if (view === "shared-with-me") inView = !!note.sharedInbox && !archived[note.id];
+    if (view === "all") {
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && !archived[note.id];
+    } else if (view === "starred") {
+      inView =
+        !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !archived[note.id];
+    } else if (view === "archive") {
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!archived[note.id];
+    } else if (view === "shared-with-me") inView = !!note.sharedInbox && !archived[note.id];
     else if (view.startsWith("shared-nb:")) {
       const notebookPath = view.slice("shared-nb:".length);
       inView = noteBelongsToSharedNotebook(note, notebookPath) && !archived[note.id];
@@ -284,11 +287,16 @@ export function filterVisibleNotes(
       const target = view.slice(3);
       inView =
         !note.sharedInbox &&
+        !note.sharedNotebookGrant &&
         note.scope !== "group" &&
         (note.notebook === target || note.notebook.toLowerCase() === target.toLowerCase()) &&
         !archived[note.id];
     } else if (view.startsWith("tag:")) {
-      inView = !note.sharedInbox && note.tags.includes(view.slice(4)) && !archived[note.id];
+      inView =
+        !note.sharedInbox &&
+        !note.sharedNotebookGrant &&
+        note.tags.includes(view.slice(4)) &&
+        !archived[note.id];
     }
     if (!inView) return false;
     if (!q) return true;
@@ -316,7 +324,8 @@ export function noteBelongsToSharedNotebook(note: Note, notebookPath: string): b
 
 /**
  * Sidebar / chrome label for a shared notebook entry.
- * Groups have a single notebook — show the group name only (not “General” + slug).
+ * Personal ACL shares: notebook name only (not “Shared by …” — that is for file grants).
+ * Groups: group name only (not “General” + slug).
  */
 export function sharedNotebookLabel(entry: {
   notebook: string;

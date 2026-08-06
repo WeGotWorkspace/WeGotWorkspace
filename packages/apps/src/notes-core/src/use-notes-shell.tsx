@@ -105,7 +105,7 @@ export function useNotesShell({
   const notebooks = useMemo(() => {
     const fromData = data.notebooks ?? [];
     const fromNotes = notes
-      .filter((note) => !note.sharedInbox && note.scope !== "group")
+      .filter((note) => !note.sharedInbox && !note.sharedNotebookGrant && note.scope !== "group")
       .map((note) => note.notebook)
       .filter((name) => name.trim().length > 0);
     return [...new Set([...fromData, ...fromNotes])];
@@ -115,7 +115,7 @@ export function useNotesShell({
     () => [
       ...new Set(
         notes
-          .filter((note) => !note.sharedInbox)
+          .filter((note) => !note.sharedInbox && !note.sharedNotebookGrant)
           .flatMap((note) => note.tags.map((tag) => normalizeTag(tag)))
           .filter(Boolean),
       ),

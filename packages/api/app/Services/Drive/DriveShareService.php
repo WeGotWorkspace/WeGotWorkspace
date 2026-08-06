@@ -607,6 +607,72 @@ final class DriveShareService
     }
 
     /**
+     * Note files living under ACL-shared notebook directories.
+     *
+     * Used so grantees can list notebook contents when opening a Shared notebook.
+     * Group-membership notebooks are listed via Notes items/scopes instead.
+     *
+     * @param  list<array<string, mixed>>|null  $notebooks  Precomputed {@see notesSharedNotebooks()} rows (optional).
+     * @return list<array<string, mixed>>
+     */
+    public function notesUnderSharedNotebooks(string $username, ?array $notebooks = null): array
+    {
+        $notebooks ??= $this->notesSharedNotebooks($username);
+        $items = [];
+        $seen = [];
+        $disk = $this->filesDisk();
+
+        foreach ($notebooks as $nb) {
+            $notebookPath = $this->scope->normalize((string) ($nb['path'] ?? ''));
+            if ($notebookPath === '' || $notebookPath === '/') {
+                continue;
+            }
+            $key = $this->paths->virtualToStorageKey($notebookPath);
+            if (! $disk->directoryExists($key)) {
+                continue;
+            }
+            $access = (string) ($nb['access'] ?? DriveShareAccess::VIEW);
+            $myRights = $nb['myRights'] ?? DriveShareAccess::rightsFor($access, true, false, true);
+            $viaGroup = $nb['viaGroup'] ?? null;
+
+            foreach ($disk->files($key) as $fileKey) {
+                $filename = basename((string) $fileKey);
+                if (! $this->noteCodec->isNoteFilename($filename)) {
+                    continue;
+                }
+                $id = substr($filename, 0, -3);
+                if ($id === '') {
+                    continue;
+                }
+                $path = rtrim($notebookPath, '/').'/'.$filename;
+                if (isset($seen[$path])) {
+                    continue;
+                }
+                $seen[$path] = true;
+                $listFields = $this->noteListFieldsFromPath($path, $id);
+                $item = [
+                    'path' => $path,
+                    'id' => $id,
+                    'notebook' => (string) ($nb['notebook'] ?? ''),
+                    'title' => $listFields['title'],
+                    'tags' => $listFields['tags'],
+                    'owner' => (string) ($nb['owner'] ?? ''),
+                    'scope' => (string) ($nb['scope'] ?? 'personal'),
+                    'groupSlug' => $nb['groupSlug'] ?? null,
+                    'access' => $access,
+                    'myRights' => $myRights,
+                ];
+                if (is_string($viaGroup) && $viaGroup !== '') {
+                    $item['viaGroup'] = $viaGroup;
+                }
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function memberGrantRows(string $username): array

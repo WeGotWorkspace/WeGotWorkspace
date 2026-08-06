@@ -1,5 +1,7 @@
+import { isValidElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { Share2, Users } from "lucide-react";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import {
   sharedNotebookLabel,
@@ -98,7 +100,16 @@ describe("useNotesSidebarModel", () => {
     expect(
       result.current.sharedNotebookSidebarItems.find((item) => item.label === "TeamPad")
         ?.description,
-    ).toBe("bob");
+    ).toBeUndefined();
+
+    const personalIcon = result.current.sharedNotebookSidebarItems.find(
+      (item) => item.label === "TeamPad",
+    )?.icon;
+    const groupIcon = result.current.sharedNotebookSidebarItems.find(
+      (item) => item.label === "administrators",
+    )?.icon;
+    expect(isValidElement(personalIcon) && personalIcon.type).toBe(Share2);
+    expect(isValidElement(groupIcon) && groupIcon.type).toBe(Users);
 
     result.current.primarySidebarItems[3]?.onClick?.();
     expect(selectView).toHaveBeenCalledWith("shared-with-me");

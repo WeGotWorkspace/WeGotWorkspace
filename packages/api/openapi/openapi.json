@@ -4062,7 +4062,7 @@
           "Notes"
         ],
         "summary": "List notebook directories shared with the current user via path grants",
-        "description": "Returns directory grants under `.notes` (shared notebooks). Group-membership notebooks continue via `GET /notes/notebooks`.",
+        "description": "Returns directory grants under `.notes` (shared notebooks) plus the note files inside those directories (`notes`). Group-membership notebooks continue via `GET /notes/notebooks` / `GET /notes/items`.",
         "security": [
           {
             "bearerAuth": []

@@ -212,6 +212,54 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('items.0.myRights.mayEditContent', true)
             ->assertJsonPath('items.0.myRights.mayComment', false);
         $this->assertCount(1, $notebooks->json('items'));
+        $this->assertCount(1, $notebooks->json('notes'));
+        $notebooks->assertJsonPath('notes.0.path', $notePath)
+            ->assertJsonPath('notes.0.id', $created['id'])
+            ->assertJsonPath('notes.0.notebook', 'TeamPad')
+            ->assertJsonPath('notes.0.owner', 'bob')
+            ->assertJsonPath('notes.0.access', 'edit');
+    }
+
+    public function test_shared_notebook_lists_notes_without_per_file_grant(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+
+        $this->withBearer($ownerToken)
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'SharedPad'])
+            ->assertCreated();
+
+        $first = $this->createNoteFor($ownerToken, [
+            'id' => 'pad-note-1',
+            'notebook' => 'SharedPad',
+            'body' => 'first in pad',
+        ]);
+        $second = $this->createNoteFor($ownerToken, [
+            'id' => 'pad-note-2',
+            'notebook' => 'SharedPad',
+            'body' => 'second in pad',
+        ]);
+        $notebookPath = '/users/bob/.notes/SharedPad';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notebookPath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-with-me')
+            ->assertOk()
+            ->assertJsonCount(0, 'items');
+
+        $notebooks = $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-notebooks');
+        $notebooks->assertOk()
+            ->assertJsonPath('items.0.path', $notebookPath)
+            ->assertJsonCount(1, 'items');
+        $noteIds = collect($notebooks->json('notes'))->pluck('id')->all();
+        $this->assertContains($first['id'], $noteIds);
+        $this->assertContains($second['id'], $noteIds);
+        $this->assertCount(2, $noteIds);
     }
 
     public function test_notes_shared_with_me_preview_uses_body_when_frontmatter_title_is_untitled(): void

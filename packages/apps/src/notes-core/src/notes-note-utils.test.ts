@@ -518,4 +518,15 @@ describe("noteListLocationLabel", () => {
       }),
     ).toBe("administrators");
   });
+
+  it("sharedNotebookLabel keeps notebook name for personal ACL shares", () => {
+    expect(
+      sharedNotebookLabel({
+        notebook: "TeamPad",
+        owner: "bob",
+        scope: "personal",
+        groupSlug: null,
+      }),
+    ).toBe("TeamPad");
+  });
 });

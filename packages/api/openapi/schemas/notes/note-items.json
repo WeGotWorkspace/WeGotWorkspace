@@ -137,6 +137,11 @@
       "items": {
         "type": "array",
         "items": { "$ref": "#/components/schemas/NotesSharedNotebookEntry" }
+      },
+      "notes": {
+        "type": "array",
+        "description": "Note files under ACL-shared notebook directories (not group-membership notebooks). Same shape as shared-with-me file grants so clients can merge list rows with apiPath.",
+        "items": { "$ref": "#/components/schemas/NotesSharedNoteEntry" }
       }
     },
     "additionalProperties": false

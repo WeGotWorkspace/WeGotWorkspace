@@ -27,9 +27,12 @@ final class SharedController
     {
         /** @var array{username: string, role: string} $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $username = $principal['username'];
+        $items = $this->shares->notesSharedNotebooks($username);
 
         return response()->json([
-            'items' => $this->shares->notesSharedNotebooks($principal['username']),
+            'items' => $items,
+            'notes' => $this->shares->notesUnderSharedNotebooks($username, $items),
         ]);
     }
 }

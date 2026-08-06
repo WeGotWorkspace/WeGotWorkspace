@@ -107,9 +107,8 @@ export function useNotesSidebarModel({
       const isGroup = entry.scope === "group";
       return {
         label: sharedNotebookLabel(entry),
-        // ACL personal notebooks keep grantor as subtitle; groups are label-only.
-        ...(isGroup ? {} : { description: entry.owner }),
-        icon: isGroup ? <Users className="size-3.5" /> : <BookOpen className="size-3.5" />,
+        // ACL personal: notebook name + Share2. Groups: group name + Users. No owner subtitle.
+        icon: isGroup ? <Users className="size-3.5" /> : <Share2 className="size-3.5" />,
         selected: view === viewKey,
         onClick: () => selectView(viewKey),
       };

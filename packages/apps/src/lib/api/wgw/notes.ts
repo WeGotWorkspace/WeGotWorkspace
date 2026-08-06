@@ -174,14 +174,26 @@ export function parseSharedNotesPayload(json: unknown): NotesSharedNoteEntry[] {
   return raw.map(coerceSharedNoteEntry).filter((x): x is NotesSharedNoteEntry => x !== null);
 }
 
-export function parseSharedNotebooksPayload(json: unknown): NotesSharedNotebookEntry[] {
-  if (!json || typeof json !== "object") return [];
+export type NotesSharedNotebooksPayload = {
+  items: NotesSharedNotebookEntry[];
+  /** Notes under ACL-shared notebook dirs (from `notes` on the same response). */
+  notes: NotesSharedNoteEntry[];
+};
+
+export function parseSharedNotebooksPayload(json: unknown): NotesSharedNotebooksPayload {
+  if (!json || typeof json !== "object") {
+    return { items: [], notes: [] };
+  }
   const o = json as Record<string, unknown>;
   const raw = o.items ?? o.data;
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map(coerceSharedNotebookEntry)
-    .filter((x): x is NotesSharedNotebookEntry => x !== null);
+  const items = Array.isArray(raw)
+    ? raw.map(coerceSharedNotebookEntry).filter((x): x is NotesSharedNotebookEntry => x !== null)
+    : [];
+  const notesRaw = o.notes;
+  const notes = Array.isArray(notesRaw)
+    ? notesRaw.map(coerceSharedNoteEntry).filter((x): x is NotesSharedNoteEntry => x !== null)
+    : [];
+  return { items, notes };
 }
 
 /** List note-file grants under `.notes` (Shared with me). */
@@ -194,10 +206,10 @@ export async function fetchNotesSharedWithMe(opts?: {
   return parseSharedNotesPayload(await wgwReadJson(res));
 }
 
-/** List notebook-dir grants under `.notes` (Shared notebooks ACL rows). */
+/** List notebook-dir grants under `.notes` (Shared notebooks ACL rows + contained notes). */
 export async function fetchNotesSharedNotebooks(opts?: {
   signal?: AbortSignal;
-}): Promise<NotesSharedNotebookEntry[]> {
+}): Promise<NotesSharedNotebooksPayload> {
   const res = await wgwFetch("/notes/shared-notebooks", { signal: opts?.signal });
   if (!res.ok) {
     throw new NotesRequestError(`GET /notes/shared-notebooks failed (${res.status})`, res.status);
@@ -231,6 +243,25 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
   };
 }
 
+/** Note rows under an ACL-shared notebook (not Shared-with-me file grants). */
+export function noteFromSharedNotebookEntry(entry: NotesSharedNoteEntry): Note {
+  const title = entry.title.trim() || entry.id;
+  return {
+    id: entry.id,
+    notebook: entry.notebook,
+    excerpt: title,
+    body: [title],
+    tags: entry.tags.map((tag) => tag.trim()).filter(Boolean),
+    wordCount: wordCountFromText(title),
+    category: "Note",
+    date: "—",
+    scope: entry.scope,
+    groupSlug: entry.groupSlug,
+    apiPath: entry.path,
+    sharedNotebookGrant: true,
+  };
+}
+
 /**
  * Merge Shared-with-me file grants into the owned note list.
  *
@@ -255,6 +286,33 @@ export function mergeOwnedAndSharedInboxNotes(
     inboxNotes.push(note);
   }
   return [...ownedNotes, ...inboxNotes];
+}
+
+/**
+ * Merge notes discovered under ACL-shared notebook directories.
+ * Skips paths already present (e.g. overlapping file grants) and remaps id collisions.
+ */
+export function mergeSharedNotebookGrantNotes(
+  notes: Note[],
+  underSharedNotebooks: NotesSharedNoteEntry[],
+): Note[] {
+  const usedIds = new Set(notes.map((note) => note.id));
+  const usedPaths = new Set(
+    notes.map((note) => note.apiPath?.replace(/^\//, "")).filter((p): p is string => !!p),
+  );
+  const extra: Note[] = [];
+  for (const entry of underSharedNotebooks) {
+    const pathKey = normalizeNotesPath(entry.path).replace(/^\//, "");
+    if (pathKey && usedPaths.has(pathKey)) continue;
+    const note = noteFromSharedNotebookEntry(entry);
+    if (usedIds.has(note.id)) {
+      note.id = sharedInboxFallbackId(entry.path);
+    }
+    usedIds.add(note.id);
+    if (pathKey) usedPaths.add(pathKey);
+    extra.push(note);
+  }
+  return extra.length === 0 ? notes : [...notes, ...extra];
 }
 
 function sharedNotebookFromGroupRow(row: NotesNotebookRow): NotesSharedNotebookEntry | null {
@@ -389,18 +447,23 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
 
   let sharedWithMe: NotesSharedNoteEntry[] = [];
   let aclSharedNotebooks: NotesSharedNotebookEntry[] = [];
+  let sharedNotebookNotes: NotesSharedNoteEntry[] = [];
   try {
     const [swm, sharedNbs] = await Promise.all([
       fetchNotesSharedWithMe(),
       fetchNotesSharedNotebooks(),
     ]);
     sharedWithMe = swm;
-    aclSharedNotebooks = sharedNbs;
+    aclSharedNotebooks = sharedNbs.items;
+    sharedNotebookNotes = sharedNbs.notes;
   } catch {
     // Shared listings are best-effort — owned notes still load if these fail.
   }
 
-  const notes = mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe);
+  const notes = mergeSharedNotebookGrantNotes(
+    mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe),
+    sharedNotebookNotes,
+  );
 
   const personalFromApi = notebookRows
     .filter((row) => row.scope !== "group")

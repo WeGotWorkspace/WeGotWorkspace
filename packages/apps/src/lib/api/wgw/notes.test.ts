@@ -142,8 +142,91 @@ describe("shared notes listing parsers", () => {
           myRights: { mayEditContent: true },
         },
       ],
+      notes: [
+        {
+          path: "/users/bob/.notes/TeamPad/n1.md",
+          id: "n1",
+          notebook: "TeamPad",
+          title: "Inside shared nb",
+          tags: [],
+          owner: "bob",
+          scope: "personal",
+          groupSlug: null,
+          access: "edit",
+          myRights: { mayEditContent: true },
+        },
+      ],
     });
-    expect(notebooks[0]?.path).toBe("/users/bob/.notes/TeamPad");
+    expect(notebooks.items[0]?.path).toBe("/users/bob/.notes/TeamPad");
+    expect(notebooks.notes).toHaveLength(1);
+    expect(notebooks.notes[0]?.id).toBe("n1");
+  });
+
+  it("merges ACL shared-notebook notes for shared-nb views without Shared-with-me", async () => {
+    const {
+      mergeOwnedAndSharedInboxNotes,
+      mergeSharedNotebookGrantNotes,
+      noteFromSharedNotebookEntry,
+    } = await import("@/lib/api/wgw/notes");
+    const { filterVisibleNotes } = await import("@/notes-core/src/notes-note-utils");
+
+    const owned: Note[] = [
+      {
+        id: "mine",
+        notebook: "Drafts",
+        excerpt: "mine",
+        body: ["mine"],
+        tags: [],
+        wordCount: 1,
+        category: "Note",
+        date: "—",
+      },
+    ];
+    const underNb = [
+      {
+        path: "/users/bob/.notes/TeamPad/shared-nb-1.md",
+        id: "shared-nb-1",
+        notebook: "TeamPad",
+        title: "From shared notebook",
+        tags: ["team"],
+        owner: "bob",
+        scope: "personal" as const,
+        groupSlug: null,
+        access: "edit",
+      },
+    ];
+    const merged = mergeSharedNotebookGrantNotes(mergeOwnedAndSharedInboxNotes(owned, []), underNb);
+    const grantNote = merged.find((n) => n.apiPath === "/users/bob/.notes/TeamPad/shared-nb-1.md");
+    expect(grantNote?.sharedNotebookGrant).toBe(true);
+    expect(grantNote?.sharedInbox).toBeUndefined();
+    expect(noteFromSharedNotebookEntry(underNb[0]!).sharedBy).toBeUndefined();
+
+    expect(
+      filterVisibleNotes(merged, {
+        view: "all",
+        archived: {},
+        starred: {},
+        searchQuery: "",
+      }).map((n) => n.id),
+    ).toEqual(["mine"]);
+
+    expect(
+      filterVisibleNotes(merged, {
+        view: "shared-with-me",
+        archived: {},
+        starred: {},
+        searchQuery: "",
+      }),
+    ).toHaveLength(0);
+
+    expect(
+      filterVisibleNotes(merged, {
+        view: "shared-nb:/users/bob/.notes/TeamPad",
+        archived: {},
+        starred: {},
+        searchQuery: "",
+      }).map((n) => n.id),
+    ).toEqual(["shared-nb-1"]);
   });
 
   it("keeps shared inbox notes when owned ids collide (local-* leak / duplicate grants)", async () => {
