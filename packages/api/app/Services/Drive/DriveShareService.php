@@ -61,6 +61,52 @@ final class DriveShareService
     }
 
     /**
+     * Rewrite share rows whose path equals or is nested under $fromPath so they
+     * follow a rename/move to $toPath (directory prefix rewrite).
+     *
+     * Grants stay on share_id; only drive_shares.path is updated.
+     *
+     * @return int number of share rows rewritten
+     */
+    public function rewritePathPrefix(string $fromPath, string $toPath): int
+    {
+        $from = $this->scope->normalize($fromPath);
+        $to = $this->scope->normalize($toPath);
+        if ($from === '' || $from === '/' || $from === $to) {
+            return 0;
+        }
+
+        return (int) DB::connection('wgw')->transaction(function () use ($from, $to): int {
+            // LIKE is a coarse filter (_ / % are wildcards); str_starts_with is authoritative.
+            /** @var Collection<int, DriveShare> $shares */
+            $shares = DriveShare::query()
+                ->where(function ($query) use ($from): void {
+                    $query->where('path', $from)
+                        ->orWhere('path', 'like', $from.'/%');
+                })
+                ->lockForUpdate()
+                ->get();
+
+            $count = 0;
+            $now = Carbon::now();
+            foreach ($shares as $share) {
+                $old = $this->scope->normalize((string) $share->path);
+                if ($old !== $from && ! str_starts_with($old, $from.'/')) {
+                    continue;
+                }
+                $share->path = $old === $from ? $to : $to.substr($old, strlen($from));
+                $share->timestamps = false;
+                $share->updated_at = $now;
+                $share->save();
+                $share->timestamps = true;
+                $count++;
+            }
+
+            return $count;
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */

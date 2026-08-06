@@ -502,5 +502,74 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         $this->withBearer($aliceToken)->getJson('/api/v1/notes/items')
             ->assertOk()
             ->assertJsonMissingPath('items.0.hasShares');
+
+    }
+
+    public function test_renaming_notebook_migrates_notebook_and_note_share_paths(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+
+        $this->withBearer($ownerToken)
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'OldPad'])
+            ->assertCreated();
+
+        $created = $this->createNoteFor($ownerToken, [
+            'id' => 'shared-in-pad',
+            'notebook' => 'OldPad',
+            'body' => 'keep sharing after rename',
+        ]);
+
+        $oldNotebookPath = '/users/bob/.notes/OldPad';
+        $oldNotePath = $oldNotebookPath.'/'.$created['id'].'.md';
+        $newNotebookPath = '/users/bob/.notes/NewPad';
+        $newNotePath = $newNotebookPath.'/'.$created['id'].'.md';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $oldNotebookPath,
+            'kind' => 'member',
+            'defaultAccess' => 'edit',
+            'shareWith' => ['alice' => ['access' => 'edit']],
+        ])->assertOk();
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $oldNotePath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($ownerToken)
+            ->patchJson('/api/v1/notes/notebooks/'.rawurlencode('OldPad'), ['name' => 'NewPad'])
+            ->assertOk()
+            ->assertJsonPath('from', 'OldPad')
+            ->assertJsonPath('to', 'NewPad');
+
+        $this->withBearer($ownerToken)
+            ->getJson('/api/v1/files/shares?path='.urlencode($newNotebookPath))
+            ->assertOk()
+            ->assertJsonPath('data.0.path', $newNotebookPath)
+            ->assertJsonPath('data.0.shareWith.alice.access', 'edit');
+
+        $this->withBearer($ownerToken)
+            ->getJson('/api/v1/files/shares?path='.urlencode($newNotePath))
+            ->assertOk()
+            ->assertJsonPath('data.0.path', $newNotePath)
+            ->assertJsonPath('data.0.shareWith.alice.access', 'view');
+
+        $this->withBearer($ownerToken)
+            ->getJson('/api/v1/files/shares?path='.urlencode($oldNotebookPath))
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/files/shares/at-path?path='.urlencode($newNotebookPath))
+            ->assertOk()
+            ->assertJsonPath('data.myRights.mayEditContent', true);
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/notes/shared-notebooks')
+            ->assertOk()
+            ->assertJsonFragment(['path' => $newNotebookPath]);
     }
 }

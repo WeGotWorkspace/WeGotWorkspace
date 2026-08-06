@@ -153,6 +153,7 @@ final class NoteRepository
         if (! $disk->move($from['key'], $toKey)) {
             throw new ApiHttpException(500, 'Could not move note.', 'server_error');
         }
+        $this->shares->rewritePathPrefix('/'.$from['key'], '/'.$toKey);
         $this->syncSearchIndex(fn () => $this->searchIndexer->deleteDavPath('files/'.$from['key']));
         $this->syncSearchIndex(fn () => $this->searchIndexer->indexFileStorageKey($toKey));
 
@@ -292,6 +293,7 @@ final class NoteRepository
             if (! $this->disk()->move($source, $target)) {
                 throw new ApiHttpException(500, 'Could not rename notebook.', 'server_error');
             }
+            $this->shares->rewritePathPrefix('/'.$source, '/'.$target);
         }
 
         return ['ok' => true, 'from' => $from, 'to' => $to];
@@ -679,6 +681,7 @@ final class NoteRepository
             if (! $this->disk()->move($from, $to)) {
                 throw new ApiHttpException(500, 'Could not move notebook notes.', 'server_error');
             }
+            $this->shares->rewritePathPrefix('/'.$from, '/'.$to);
             $this->syncSearchIndex(fn () => $this->searchIndexer->deleteDavPath('files/'.$from));
             $this->syncSearchIndex(fn () => $this->searchIndexer->indexFileStorageKey($to));
         }

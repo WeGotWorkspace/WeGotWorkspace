@@ -275,4 +275,54 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'share_conflict')
             ->assertJsonPath('error', 'Guest already has access.');
     }
+
+    public function test_renaming_folder_rewrites_share_path_prefix(): void
+    {
+        $token = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+
+        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
+            'name' => 'SharedFolder',
+        ])->assertOk();
+        $this->createDriveFile($token, '/users/bob/SharedFolder', 'nested.md');
+
+        $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/SharedFolder',
+            'kind' => 'member',
+            'defaultAccess' => 'edit',
+            'shareWith' => ['alice' => ['access' => 'edit']],
+        ])->assertOk();
+
+        $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/SharedFolder/nested.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $this->withBearer($token)->patchJson('/api/v1/files?path=/users/bob/SharedFolder', [
+            'name' => 'RenamedFolder',
+        ])->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/files/shares?path=/users/bob/RenamedFolder')
+            ->assertOk()
+            ->assertJsonPath('data.0.path', '/users/bob/RenamedFolder')
+            ->assertJsonPath('data.0.shareWith.alice.access', 'edit');
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/files/shares?path=/users/bob/RenamedFolder/nested.md')
+            ->assertOk()
+            ->assertJsonPath('data.0.path', '/users/bob/RenamedFolder/nested.md');
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/files/shares?path=/users/bob/SharedFolder')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/files/shares/at-path?path=/users/bob/RenamedFolder')
+            ->assertOk()
+            ->assertJsonPath('data.myRights.mayEditContent', true);
+    }
 }
