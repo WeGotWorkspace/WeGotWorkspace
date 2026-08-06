@@ -34,7 +34,8 @@ describe("noteAllowsStructureManage", () => {
   });
 
   it("allows group notebook notes by default", () => {
-    expect(noteAllowsStructureManage({ ...owned, scope: "group", groupSlug: "eng" })).toBe(true);
+    const groupNote: Note = { ...owned, scope: "group", groupSlug: "eng" };
+    expect(noteAllowsStructureManage(groupNote)).toBe(true);
   });
 
   it("denies all personal share recipients", () => {

@@ -157,7 +157,7 @@ export function NoteCollabSession({
   useEffect(() => {
     const ydoc = collab.session?.ydoc;
     if (!ydoc) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
     const onUpdate = () => {
       if (!onBodyMarkdownChangeRef.current) return;
       window.clearTimeout(timer);

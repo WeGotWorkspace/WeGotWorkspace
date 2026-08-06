@@ -21,7 +21,6 @@ describe("useNotesSidebarModel", () => {
   it("labels group notebooks with the group name only", () => {
     expect(
       sharedNotebookLabel({
-        path: "/groups/administrators/.notes/General",
         notebook: "General",
         owner: "administrators",
         scope: "group",
@@ -30,7 +29,6 @@ describe("useNotesSidebarModel", () => {
     ).toBe("administrators");
     expect(
       sharedNotebookLabel({
-        path: "/users/bob/.notes/TeamPad",
         notebook: "TeamPad",
         owner: "bob",
         scope: "personal",

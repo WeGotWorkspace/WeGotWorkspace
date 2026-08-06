@@ -136,14 +136,6 @@ describe("notes-note-utils", () => {
     expect(
       noteShowsViewOnlyBadge({
         ...sampleNote,
-        sharedInbox: true,
-        myRights: { mayEditContent: false },
-      }),
-    ).toBe(true);
-    expect(
-      noteShowsViewOnlyBadge({
-        ...sampleNote,
-        sharedNotebookGrant: true,
         myRights: { mayEditContent: false },
       }),
     ).toBe(true);
