@@ -127,7 +127,12 @@ final class NoteMarkdownCodec
     {
         $text = str_replace(["\r\n", "\r"], "\n", $markdown);
         // Light markdown strip so list rows match client noteListTitle / plain text.
+        // GFM task lists: drop `- [ ]` / `- [x]` (and bare `[ ]`) so previews read as prose.
+        $text = preg_replace('/^\s*[-*+]\s+\[[ xX]\]\s*/m', '', $text) ?? $text;
+        $text = preg_replace('/\[[ xX]\]\s*/', '', $text) ?? $text;
         $text = preg_replace('/^#{1,6}\s+/m', '', $text) ?? $text;
+        $text = preg_replace('/^\s*[-*+]\s+/m', '', $text) ?? $text;
+        $text = preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $text) ?? $text;
         $text = preg_replace('/(\*\*|__)(.*?)\1/', '$2', $text) ?? $text;
         $text = preg_replace('/(\*|_)(.*?)\1/', '$2', $text) ?? $text;
         $text = preg_replace('/`([^`]+)`/', '$1', $text) ?? $text;

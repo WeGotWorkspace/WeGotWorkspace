@@ -63,6 +63,19 @@ describe("notes-note-utils", () => {
     expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
   });
 
+  it("strips checkbox markdown from list titles and excerpts", () => {
+    const body = ["Boodschappen Aug", "- [ ] Bananen", "- [ ] Fruit", "- [ ] Pasta"];
+    expect(noteListTitle({ excerpt: "", body })).toBe("Boodschappen Aug Bananen Fruit Pasta");
+    expect(computeExcerpt(body)).toBe("Boodschappen Aug Bananen Fruit Pasta");
+    // Stale excerpt that still has raw `[ ]` markers must not leak into the list row.
+    expect(
+      noteListTitle({
+        excerpt: "Boodschappen Aug [ ] Bananen [ ] Fruit [ ] Past…",
+        body: [""],
+      }),
+    ).toBe("Boodschappen Aug Bananen Fruit Past");
+  });
+
   it("caps visible list tags and reports overflow", () => {
     expect(noteListTagOverflow(["a", "b"])).toEqual({ visible: ["a", "b"], overflow: 0 });
     expect(noteListTagOverflow(["a", "b", "c", "d"])).toEqual({

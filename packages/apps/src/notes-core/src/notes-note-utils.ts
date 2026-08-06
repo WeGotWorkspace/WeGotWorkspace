@@ -79,7 +79,8 @@ const NOTE_LIST_TITLE_MAX = 80;
 
 /** Derives the list-row heading from excerpt or body (notes have no separate title field). */
 export function noteListTitle(note: Pick<Note, "excerpt" | "body">): string {
-  const excerpt = (note.excerpt ?? "").trim();
+  // Re-strip so stale excerpts (or server listPreview) never leak raw markdown.
+  const excerpt = markdownToPlainText(note.excerpt ?? "");
   if (excerpt) {
     const withoutEllipsis = excerpt.endsWith("…") ? excerpt.slice(0, -1).trim() : excerpt;
     return withoutEllipsis.length <= NOTE_LIST_TITLE_MAX

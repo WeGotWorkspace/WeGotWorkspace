@@ -105,6 +105,17 @@ final class NoteMarkdownCodecTest extends TestCase
         $this->assertSame('fallback-id', $codec->listPreview($raw, 'fallback-id'));
     }
 
+    public function test_list_preview_strips_task_list_and_common_markdown(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $body = "Boodschappen Aug\n\n- [ ] Bananen\n- [ ] Fruit\n- [x] Pasta\n\n**bold** and [link](https://example.com)";
+        $raw = $codec->serialize('Untitled', [], false, $body);
+        $this->assertSame(
+            'Boodschappen Aug Bananen Fruit Pasta bold and link',
+            $codec->listPreview($raw, 'fallback-id'),
+        );
+    }
+
     public function test_serialize_stamps_and_parse_reads_explicit_updated_marker(): void
     {
         $codec = new NoteMarkdownCodec;
