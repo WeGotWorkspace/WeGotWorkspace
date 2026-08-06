@@ -1,17 +1,31 @@
 import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
-import { Archive, Circle, Pencil, RefreshCw, Star, Trash2 } from "lucide-react";
+import { Archive, Circle, Pencil, RefreshCw, Star, Tag as TagIcon, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
+import { Tag } from "@/tag/src/tag";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
-import { noteListTitle } from "@/notes-core/src/notes-note-utils";
+import { noteListTagOverflow, noteListTitle } from "@/notes-core/src/notes-note-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-list-panel.css";
+
+function notesListItemTags(tags: string[]): ReactNode {
+  const { visible, overflow } = noteListTagOverflow(tags);
+  if (visible.length === 0) return null;
+  return (
+    <span className="list-item__tags">
+      {visible.map((tag) => (
+        <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
+      ))}
+      {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
+    </span>
+  );
+}
 
 type NotesListPanelProps = {
   L: NotesUILabels;
@@ -183,7 +197,7 @@ export function NotesListPanel({
                 title={noteListTitle(note)}
                 subtitle={note.notebook}
                 date={formatNoteDateForList(note.date)}
-                text={note.excerpt}
+                text={notesListItemTags(note.tags)}
                 icons={[
                   isPendingSync ? (
                     <span

@@ -133,9 +133,11 @@
   background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
 }
 
-.notes-workspace .notes-sidebar-tags__item--selected .tag {
-  background-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
-  border-color: color-mix(in oklab, var(--color-ink) 28%, transparent);
+.notes-workspace .notes-sidebar-tags__item--selected .tag,
+.notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
+  background-color: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--notes-accent);
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {

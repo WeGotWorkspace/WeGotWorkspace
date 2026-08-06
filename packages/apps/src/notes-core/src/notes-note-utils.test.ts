@@ -10,6 +10,7 @@ import {
   filterVisibleNotes,
   normalizeTag,
   noteHasListableBody,
+  noteListTagOverflow,
   noteListTitle,
   plainTextFromBody,
 } from "./notes-note-utils";
@@ -45,6 +46,15 @@ describe("notes-note-utils", () => {
     expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
     expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
     expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
+  });
+
+  it("caps visible list tags and reports overflow", () => {
+    expect(noteListTagOverflow(["a", "b"])).toEqual({ visible: ["a", "b"], overflow: 0 });
+    expect(noteListTagOverflow(["a", "b", "c", "d"])).toEqual({
+      visible: ["a", "b"],
+      overflow: 2,
+    });
+    expect(noteListTagOverflow(["  focus  ", ""])).toEqual({ visible: ["focus"], overflow: 0 });
   });
 
   it("does not render Untitled when title/excerpt are empty but body has text", () => {

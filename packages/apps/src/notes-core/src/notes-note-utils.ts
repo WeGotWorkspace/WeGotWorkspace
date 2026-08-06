@@ -92,6 +92,24 @@ export function noteListTitle(note: Pick<Note, "excerpt" | "body">): string {
   return "Untitled note";
 }
 
+/** Max tag chips shown on a notes list row before “+N more”. */
+export const NOTE_LIST_MAX_VISIBLE_TAGS = 2;
+
+/** Splits note tags into chips that fit the list row and an overflow count. */
+export function noteListTagOverflow(
+  tags: string[],
+  maxVisible: number = NOTE_LIST_MAX_VISIBLE_TAGS,
+): { visible: string[]; overflow: number } {
+  const normalized = tags.map(normalizeTag).filter(Boolean);
+  if (normalized.length <= maxVisible) {
+    return { visible: normalized, overflow: 0 };
+  }
+  return {
+    visible: normalized.slice(0, maxVisible),
+    overflow: normalized.length - maxVisible,
+  };
+}
+
 export function normalizeTag(value: string): string {
   return value.trim();
 }

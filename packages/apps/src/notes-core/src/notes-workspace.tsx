@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { Pencil, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -275,7 +275,7 @@ export function NotesWorkspace({
                     aria-pressed={selected}
                     {...dropHandlers}
                   >
-                    <Tag label={tag} size="md" />
+                    <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
                   </button>
                 </li>
               ))}
