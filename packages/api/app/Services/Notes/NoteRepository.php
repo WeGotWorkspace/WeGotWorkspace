@@ -601,54 +601,6 @@ final class NoteRepository
         return $slug === '' ? null : $slug;
     }
 
-    /**
-     * @param  array<string, mixed>  $source
-     */
-    private function requestedPath(array $source): ?string
-    {
-        if (! isset($source['path']) || ! is_string($source['path'])) {
-            return null;
-        }
-        $path = trim($source['path']);
-
-        return $path === '' ? null : $path;
-    }
-
-    /**
-     * Authorize a shared-note structure mutation (archive / delete) and resolve
-     * the owner's note scope. Requires full path ACL (`mayManageStructure`).
-     *
-     * @param  array{username: string, role: string}  $principal
-     */
-    private function resolveSharedMutationScope(string $path, string $noteId, array $principal): NoteScope
-    {
-        $normalized = $this->storage->paths()->normalizeVirtualPath($path);
-        if (preg_match(
-            '#^/(users|groups)/([^/]+)/\.notes/(?:\.archive/)?([^/]+)/([^/]+)\.md$#i',
-            $normalized,
-            $matches
-        ) !== 1) {
-            throw new ApiHttpException(400, 'Invalid shared note path.', 'bad_request');
-        }
-        if (strcasecmp((string) $matches[4], $noteId) !== 0) {
-            throw new ApiHttpException(400, 'Note path does not match id.', 'bad_request');
-        }
-
-        try {
-            $this->authorizer->assertMayManageStructure($normalized, $principal);
-        } catch (\InvalidArgumentException) {
-            throw new ApiHttpException(403, 'Forbidden.', 'forbidden');
-        }
-
-        $root = strtolower((string) $matches[1]);
-        $owner = (string) $matches[2];
-        if ($root === 'groups') {
-            return NoteScope::group($owner);
-        }
-
-        return NoteScope::personal($owner);
-    }
-
     private function groupScopeOrFail(string $username, string $slug): NoteScope
     {
         if (preg_match('/^[A-Za-z0-9._-]{1,190}$/', $slug) !== 1) {
