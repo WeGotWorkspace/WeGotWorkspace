@@ -51,21 +51,7 @@ function notesListItemTags(tags: string[]): ReactNode {
 function NotesListLocation({ note, labels }: { note: Note; labels: NotesUILabels }) {
   const location = noteListLocationLabel(note, labels);
   if (!location) return null;
-  const shared = !!note.sharedInbox;
-  if (shared) {
-    return (
-      <span className="notes-list-panel__notebook">
-        <Tag
-          label={location}
-          size="md"
-          icon={<Share2 aria-hidden />}
-          className="notes-list-panel__shared-by-chip"
-        />
-      </span>
-    );
-  }
-  const group = note.scope === "group";
-  const Icon = group ? Users : BookOpen;
+  const Icon = note.sharedInbox ? Share2 : note.scope === "group" ? Users : BookOpen;
   return (
     <span className="notes-list-panel__notebook">
       <Icon className="notes-list-panel__notebook-icon" aria-hidden />

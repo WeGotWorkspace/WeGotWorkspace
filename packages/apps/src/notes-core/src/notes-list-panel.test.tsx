@@ -95,7 +95,7 @@ describe("NotesListPanel access chips", () => {
     expect(container.querySelector(".notes-list-panel__view-only-pip")).toBeNull();
   });
 
-  it("shows grantor username as a tag chip on shared-inbox rows", () => {
+  it("shows grantor username with Share2 meta like notebook rows", () => {
     const { container } = render(
       <ListHarness
         notes={[
@@ -109,10 +109,12 @@ describe("NotesListPanel access chips", () => {
         ]}
       />,
     );
-    const chip = container.querySelector(".notes-list-panel__shared-by-chip.tag");
-    expect(chip).toBeTruthy();
-    expect(chip!.textContent).toContain("bob");
-    expect(chip!.textContent).not.toContain("Shared by");
+    const meta = container.querySelector(".notes-list-panel__notebook");
+    expect(meta).toBeTruthy();
+    expect(meta!.querySelector(".notes-list-panel__notebook-icon")).toBeTruthy();
+    expect(meta!.querySelector(".notes-list-panel__notebook-name")?.textContent).toBe("bob");
+    expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
+    expect(container.querySelector(".tag")).toBeNull();
   });
 
   it("shows a share icon next to the star cluster for owned outgoing shares", () => {
