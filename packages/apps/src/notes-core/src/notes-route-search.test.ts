@@ -50,5 +50,25 @@ describe("notes-route-search", () => {
       to: "/notes/tags/$tagSlug",
       params: { tagSlug: "work" },
     });
+    expect(notesNavigateTarget("shared-with-me")).toEqual({
+      to: "/notes/shared-with-me",
+      params: {},
+    });
+    expect(notesNavigateTarget("shared-nb:/users/bob/.notes/TeamPad", "n-9")).toEqual({
+      to: "/notes/shared-nb/$sharedNbSlug/$noteId",
+      params: {
+        sharedNbSlug: encodeURIComponent("/users/bob/.notes/TeamPad"),
+        noteId: "n-9",
+      },
+    });
+  });
+
+  it("maps shared-with-me and shared notebook paths", () => {
+    expect(notesViewFromLocation("/notes/shared-with-me", {})).toBe("shared-with-me");
+    expect(
+      notesViewFromLocation("/notes/shared-nb/%2Fusers%2Fbob%2F.notes%2FTeamPad", {
+        sharedNbSlug: encodeURIComponent("/users/bob/.notes/TeamPad"),
+      }),
+    ).toBe("shared-nb:/users/bob/.notes/TeamPad");
   });
 });

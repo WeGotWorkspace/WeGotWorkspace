@@ -43,7 +43,9 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       noteSyncedRef.current = true;
       return;
     }
-    if (isLocalTempNoteId(activeId)) return;
+    // Include local-* temp ids: offline creates often keep that prefix until
+    // (or after) sync, and skipping them left All/Starred selection without a
+    // path update. Remap still fires onNoteChange again with the server id.
     onNoteChange?.(activeId);
   }, [activeId, onNoteChange]);
 

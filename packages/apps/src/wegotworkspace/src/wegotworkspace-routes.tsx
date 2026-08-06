@@ -30,6 +30,7 @@ import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
+import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
@@ -127,12 +128,14 @@ function MockDocsRoute() {
 function MockNotesRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createNotesAppBootstrap(), []);
+  const shareOperations = useMemo(() => createMockDriveShareOperations(), []);
   const { initialView, initialNoteId, handleViewChange, handleNoteChange } = useNotesRouteSync();
   return (
     <NotesWorkspace
       data={bootstrap.data}
       session={bootstrap.session}
       listLoading={false}
+      shareOperations={shareOperations}
       onLogout={onLogout}
       initialView={initialView}
       initialNoteId={initialNoteId}
@@ -309,6 +312,34 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
   const notesArchiveNoteRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/notes/archive/$noteId",
+    head: notesPwaHead,
+    component: NotesComponent,
+  });
+
+  const notesSharedWithMeRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/notes/shared-with-me",
+    head: notesPwaHead,
+    component: NotesComponent,
+  });
+
+  const notesSharedWithMeNoteRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/notes/shared-with-me/$noteId",
+    head: notesPwaHead,
+    component: NotesComponent,
+  });
+
+  const notesSharedNbRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/notes/shared-nb/$sharedNbSlug",
+    head: notesPwaHead,
+    component: NotesComponent,
+  });
+
+  const notesSharedNbNoteRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/notes/shared-nb/$sharedNbSlug/$noteId",
     head: notesPwaHead,
     component: NotesComponent,
   });
@@ -510,6 +541,10 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     notesStarredNoteRoute,
     notesArchiveRoute,
     notesArchiveNoteRoute,
+    notesSharedWithMeRoute,
+    notesSharedWithMeNoteRoute,
+    notesSharedNbRoute,
+    notesSharedNbNoteRoute,
     notesTagRoute,
     notesTagNoteRoute,
     notesNotebookRoute,

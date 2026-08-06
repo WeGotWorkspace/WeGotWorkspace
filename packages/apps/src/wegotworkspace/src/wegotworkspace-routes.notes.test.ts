@@ -32,6 +32,56 @@ describe("wegotworkspace notes routes", () => {
     expect(noteMatch?.params).toMatchObject({ noteId: "n-1" });
   });
 
+  it("navigates filter views from list path to note path", async () => {
+    for (const view of ["all", "starred", "archive", "shared-with-me"] as const) {
+      const history = createMemoryHistory({
+        initialEntries: [`/notes/${view}`],
+      });
+      const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+      await router.load();
+      expect(router.state.location.pathname).toBe(`/notes/${view}`);
+
+      await router.navigate({
+        to: `/notes/${view}/$noteId`,
+        params: { noteId: "n-1" },
+      });
+      expect(router.state.location.pathname).toBe(`/notes/${view}/n-1`);
+    }
+  });
+
+  it("round-trips shared-with-me note ids that contain path separators", async () => {
+    const noteId = "swm:users/bob/.notes/Drafts/n-1.md";
+    const history = createMemoryHistory({
+      initialEntries: ["/notes/shared-with-me"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    await router.navigate({
+      to: "/notes/shared-with-me/$noteId",
+      params: { noteId },
+    });
+
+    // TanStack encodes the param; decoded params.noteId stays the original id.
+    expect(router.state.location.pathname).toBe(
+      `/notes/shared-with-me/${encodeURIComponent(noteId)}`,
+    );
+    const noteMatch = router.state.matches.find((match) => match.params.noteId);
+    expect(noteMatch?.params.noteId).toBe(noteId);
+  });
+
+  it("matches local temp note ids on All notes deep links", async () => {
+    const noteId = "local-9a8c070a270341c394678504240799ee";
+    const history = createMemoryHistory({
+      initialEntries: [`/notes/all/${noteId}`],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    const noteMatch = router.state.matches.find((match) => match.params.noteId);
+    expect(noteMatch?.params).toMatchObject({ noteId });
+  });
+
   it("matches archive and notebook params on deep links", async () => {
     const archiveHistory = createMemoryHistory({
       initialEntries: ["/notes/archive/n-456"],

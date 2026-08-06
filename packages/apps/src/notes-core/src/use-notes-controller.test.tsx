@@ -290,6 +290,22 @@ describe("useNotesController URL routing", () => {
     expect(onNoteChange).toHaveBeenCalledWith("note-1");
   });
 
+  it("onNoteChange is called for local-* temp ids so offline rows update the route", () => {
+    const onNoteChange = vi.fn();
+    const offlineData: NotesUIData = {
+      notes: [localNote],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result } = renderHook(() =>
+      useNotesController({ data: offlineData, listLoading: false, onNoteChange }),
+    );
+
+    clickSelect(result, localNote.id);
+
+    expect(onNoteChange).toHaveBeenCalledWith("local-offline-create");
+  });
+
   it("onNoteChange is called with empty string when view changes (note cleared)", () => {
     const onNoteChange = vi.fn();
     const { result } = renderHook(() =>
