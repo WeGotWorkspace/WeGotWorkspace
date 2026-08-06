@@ -8,7 +8,8 @@
     0 6px 20px -6px color-mix(in oklab, var(--notes-accent, #f0b422) 42%, transparent),
     0 14px 36px -12px color-mix(in oklab, var(--color-ink) 22%, transparent);
   --text-editor-sheet-padding: 1.75rem;
-  --text-editor-sheet-margin-block: 1.25rem;
+  /* Outer top/side inset comes from `.workspace-detail-pane__scroll`; no extra block margin. */
+  --text-editor-sheet-margin-block: 0;
   --text-editor-sheet-shadow-gutter: 1rem;
 }
 

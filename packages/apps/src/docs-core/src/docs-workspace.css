@@ -16,7 +16,10 @@
   --docs-canvas: oklch(95% 0.006 100);
   --docs-sheet-width: 210mm;
   --docs-sheet-min-height: 297mm;
-  --docs-sheet-canvas-padding-block: 2.5rem;
+  /* Outer canvas inset around the sheet — top matches inline; bottom stays roomier. */
+  --docs-sheet-canvas-padding-inline: 1.25rem;
+  --docs-sheet-canvas-padding-block-start: var(--docs-sheet-canvas-padding-inline);
+  --docs-sheet-canvas-padding-block-end: 2.5rem;
   --docs-comments-column-width: 20rem;
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
@@ -354,8 +357,9 @@
   min-height: 0;
   align-items: flex-start;
   overflow-y: auto;
-  padding-block: var(--docs-sheet-canvas-padding-block);
-  padding-inline: 1.25rem;
+  padding-block-start: var(--docs-sheet-canvas-padding-block-start);
+  padding-block-end: var(--docs-sheet-canvas-padding-block-end);
+  padding-inline: var(--docs-sheet-canvas-padding-inline);
   background-color: var(--docs-canvas);
 }
 
