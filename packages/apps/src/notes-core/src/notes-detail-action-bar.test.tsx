@@ -53,7 +53,7 @@ describe("NotesDetailActionBar", () => {
     expect(openMoveDialog).toHaveBeenCalledWith(["n-1"]);
   });
 
-  it("shows grantor username tag and disables notebook switch for shared-inbox notes", () => {
+  it("disables notebook switch for shared-inbox notes without a username chip", () => {
     const openMoveDialog = vi.fn();
     const { container } = renderBar(
       <NotesDetailActionBar
@@ -68,14 +68,14 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    const move = screen.getByRole("button", { name: "bob" });
-    expect(move.querySelector(".notes-detail-action-bar__shared-by")).toBeTruthy();
-    expect(move.textContent).toContain("bob");
+    const move = screen.getByRole("button", { name: "TeamPad" });
+    expect(move.textContent).toContain("TeamPad");
+    expect(move.textContent).not.toContain("bob");
     expect(move.textContent).not.toContain("Shared by");
+    expect(container.querySelector(".notes-detail-action-bar__shared-by")).toBeNull();
     expect(move.hasAttribute("disabled")).toBe(true);
     move.click();
     expect(openMoveDialog).not.toHaveBeenCalled();
-    expect(container.querySelector(".notes-detail-action-bar__shared-by")).toBeTruthy();
   });
 
   it("disables star and archive when readOnly (view-only share)", () => {

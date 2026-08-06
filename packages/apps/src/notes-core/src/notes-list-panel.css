@@ -6,12 +6,24 @@
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
 }
 
-.notes-workspace .notes-list-panel__star-pip {
-  display: inline-flex;
+.notes-workspace .notes-list-panel__star-pip,
+.notes-workspace .notes-list-panel__shared-pip,
+.notes-workspace .notes-list-panel__view-only-pip {
+  @apply inline-flex size-3 shrink-0 items-center justify-center;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.notes-workspace .notes-list-panel__star-icon,
+.notes-workspace .notes-list-panel__shared-icon,
+.notes-workspace .notes-list-panel__view-only-icon {
+  /* block avoids inline-SVG baseline hairlines next to the glyph */
+  @apply size-3 shrink-0 block;
 }
 
 .notes-workspace .notes-list-panel__star-icon {
-  @apply size-3 transition-opacity;
+  @apply transition-opacity;
   color: var(--notes-list-star-color, var(--color-emerald));
 }
 
@@ -23,21 +35,8 @@
   opacity: 1;
 }
 
-.notes-workspace .notes-list-panel__shared-pip {
-  @apply inline-flex;
-}
-
-.notes-workspace .notes-list-panel__shared-icon {
-  @apply size-3 shrink-0;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-}
-
-.notes-workspace .notes-list-panel__view-only-pip {
-  @apply inline-flex;
-}
-
+.notes-workspace .notes-list-panel__shared-icon,
 .notes-workspace .notes-list-panel__view-only-icon {
-  @apply size-3 shrink-0;
   color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 

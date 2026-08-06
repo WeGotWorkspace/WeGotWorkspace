@@ -288,7 +288,7 @@ export function NotesListPanel({
                       role="img"
                       aria-label={L.viewOnly}
                     >
-                      <Eye className="notes-list-panel__view-only-icon" />
+                      <Eye className="size-3 notes-list-panel__view-only-icon" aria-hidden />
                     </span>
                   ) : null,
                   showShared ? (
@@ -298,7 +298,7 @@ export function NotesListPanel({
                       role="img"
                       aria-label={L.shared}
                     >
-                      <Share2 className="notes-list-panel__shared-icon" />
+                      <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
                     </span>
                   ) : null,
                   showStar ? (
@@ -307,7 +307,11 @@ export function NotesListPanel({
                       className="notes-list-panel__star-pip"
                       data-active={starred[note.id] ? "true" : "false"}
                     >
-                      <Star className="notes-list-panel__star-icon" fill="currentColor" />
+                      <Star
+                        className="size-3 notes-list-panel__star-icon"
+                        fill="currentColor"
+                        aria-hidden
+                      />
                     </span>
                   ) : null,
                 ].filter(Boolean)}

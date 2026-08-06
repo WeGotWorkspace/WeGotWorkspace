@@ -8,12 +8,10 @@ import {
   Users,
 } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
-import { Tag } from "@/tag/src/tag";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { noteListLocationLabel, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
 import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
-import "@/notes-core/src/notes-detail-action-bar.css";
 
 type NotesDetailActionBarProps = {
   active: Note | undefined;
@@ -63,21 +61,15 @@ export function NotesDetailActionBar({
   const notebookLocked = sharedInbox || groupNotebook || readOnly;
   const showStar = noteShowsStarControls(active);
   const archiveLocked = !canArchive;
-  const locationLabel =
-    noteListLocationLabel(active, labels) || active.notebook.trim() || labels.toolbarMoveToNotebook;
+  // Personal shares: keep grantor username on the list row only — detail switcher
+  // shows notebook / Shared with me, not the username chip.
+  const locationLabel = sharedInbox
+    ? active.notebook.trim() || labels.sidebarSharedWithMe
+    : noteListLocationLabel(active, labels) ||
+      active.notebook.trim() ||
+      labels.toolbarMoveToNotebook;
 
-  const notebookIcon = sharedInbox ? (
-    <Tag
-      label={locationLabel}
-      size="md"
-      icon={<Share2 aria-hidden />}
-      className="notes-detail-action-bar__shared-by"
-    />
-  ) : groupNotebook ? (
-    <Users />
-  ) : (
-    <BookOpen />
-  );
+  const notebookIcon = sharedInbox ? <Share2 /> : groupNotebook ? <Users /> : <BookOpen />;
 
   const rightActions = [
     ...(onShare
@@ -97,8 +89,7 @@ export function NotesDetailActionBar({
       onClick: notebookLocked ? undefined : () => openMoveDialog([active.id]),
       icon: notebookIcon,
       active: true,
-      // Shared-with-me: Tag chip is the icon; hide duplicate text label.
-      showLabel: !sharedInbox,
+      showLabel: true,
       disabled: notebookLocked,
     },
     ...(showStar
