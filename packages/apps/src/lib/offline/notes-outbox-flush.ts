@@ -126,7 +126,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           await removeNoteFromCache(username, tempId);
         }
         await upsertNoteInCache(username, saved, false);
-        serverNotes.set(saved.id, { updatedAt: saved.date });
+        serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
         await deleteNoteItem(noteId, {
@@ -138,12 +138,12 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
         const noteId = String(payload.noteId ?? "");
         const saved = await archiveNoteItem(noteId);
         await upsertNoteInCache(username, saved, false);
-        serverNotes.set(saved.id, { updatedAt: saved.date });
+        serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "restore") {
         const noteId = String(payload.noteId ?? "");
         const saved = await restoreNoteItem(noteId);
         await upsertNoteInCache(username, saved, false);
-        serverNotes.set(saved.id, { updatedAt: saved.date });
+        serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "createNotebook") {
         await createNotebook(String(payload.name ?? ""));
       } else if (row.op === "renameNotebook") {

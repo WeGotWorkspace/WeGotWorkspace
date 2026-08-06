@@ -1,5 +1,6 @@
 import type { Note } from "@/lib/models/note";
 import type { DeleteNotebookAction, NotesAPIOperations } from "@/notes-core/src/notes-types";
+import { backfillNotesContentFromServer } from "@/notes-core/src/notes-note-utils";
 import {
   archiveNoteItem,
   createNoteItem,
@@ -56,6 +57,8 @@ function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
 }
 
 function baseUpdatedAt(note: Note): string | undefined {
+  // Prefer the metadata concurrency token; fall back to date for legacy cached rows.
+  if (note.updatedAt) return note.updatedAt;
   return note.date !== "—" ? note.date : undefined;
 }
 
@@ -427,6 +430,17 @@ export async function fetchNotesHybridBootstrap(): Promise<
     if (!hadOutbox) {
       cached.data.notes = bootstrap.data.notes;
       cached.data.tags = bootstrap.data.tags;
+    } else {
+      // Keep local/outbox rows, but backfill empty body/excerpt from the server
+      // so historical list previews are not stuck on “Untitled note”.
+      cached.data.notes = backfillNotesContentFromServer(cached.data.notes, bootstrap.data.notes);
+      cached.data.tags = [
+        ...new Set([
+          ...cached.data.tags,
+          ...bootstrap.data.tags,
+          ...cached.data.notes.flatMap((n) => n.tags),
+        ]),
+      ];
     }
     await writeNotesBootstrapToCache(username, cached);
     return cached;

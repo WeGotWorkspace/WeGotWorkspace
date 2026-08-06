@@ -258,4 +258,39 @@ describe("fetchNotesHybridBootstrap", () => {
     expect(result.data.notes[0]?.body).toEqual(["Flushed local body"]);
     expect(await listOutboxMutations(username)).toHaveLength(0);
   });
+
+  it("backfills empty cached body from server while outbox is pending", async () => {
+    const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notes: [{ ...note, excerpt: "", body: [""], wordCount: 0 }],
+      },
+    });
+    await enqueueCoalescedNoteUpdate(username, note.id, { ...note, tags: ["queued"] }, note.date);
+
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notes: [
+          {
+            ...note,
+            excerpt: "Donec ullamcorper nulla non metus auctor fringilla.",
+            body: ["Donec ullamcorper nulla non metus auctor fringilla."],
+            wordCount: 7,
+          },
+        ],
+      },
+    });
+    // Leave the outbox unflushed so hadOutbox stays true.
+    vi.mocked(updateNoteItem).mockRejectedValue(new Error("offline during flush"));
+
+    const result = await fetchNotesHybridBootstrap();
+
+    expect(result.data.notes[0]?.body[0]).toContain("Donec ullamcorper");
+    expect(result.data.notes[0]?.excerpt).toMatch(/Donec ullamcorper/);
+  });
 });
