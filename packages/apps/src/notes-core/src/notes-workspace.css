@@ -2,11 +2,12 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream main pane + warm gold sidebar accent.
+ * Notes product shell: cream main pane + soft gold sidebar accent
+ * (matches detail-view tag tone; former bright #f0b422 was too loud).
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --notes-accent: #f0b422;
+  --notes-accent: #f6d176;
   --notes-sidebar: var(--notes-accent);
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
@@ -29,7 +30,7 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
-  --note-detail-tag-bg: color-mix(in oklab, var(--notes-accent) 62%, transparent);
+  --note-detail-tag-bg: var(--notes-accent);
   --note-detail-tag-fg: var(--color-ink);
   --note-detail-title-font-family: var(--font-serif);
   --workspace-chrome-footer-padding-x: 1rem;
@@ -56,7 +57,7 @@
  * {@link Button} and {@link buttonVariants} match the notes shell.
  */
 .notes-dialog-surface {
-  --notes-accent: #f0b422;
+  --notes-accent: #f6d176;
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink);
@@ -77,7 +78,7 @@
 }
 
 /*
- * Labeled move-notebook only (showLabel + active): filled yellow chip, dark text/icon.
+ * Labeled move-notebook only (showLabel + active): filled soft-gold chip, dark text/icon.
  * Star/archive keep generic icon-button--active (accent-colored glyphs, no fill bg).
  * Parent sets button tokens; Button/IconButton consume them.
  */

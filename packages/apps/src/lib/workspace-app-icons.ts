@@ -21,7 +21,7 @@ export const WORKSPACE_FUTURE_APP_ICON_IDS = ["calendar", "reminders"] as const;
 
 /** Sampled from icon artwork — keep in sync with webmanifest theme colors. */
 export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
-  notes: "#f0b422",
+  notes: "#f6d176",
   mail: "#ef4444",
   contacts: "#7360c8",
   tasks: "#ea8c72",

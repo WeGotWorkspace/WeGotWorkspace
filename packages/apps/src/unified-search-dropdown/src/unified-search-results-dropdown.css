@@ -64,7 +64,7 @@
 }
 
 .unified-search-results-dropdown__menu-item--note {
-  --unified-search-row-accent: var(--unified-search-accent-notes, #f0b422);
+  --unified-search-row-accent: var(--unified-search-accent-notes, #f6d176);
 }
 
 .unified-search-results-dropdown__menu-item--caldav {
