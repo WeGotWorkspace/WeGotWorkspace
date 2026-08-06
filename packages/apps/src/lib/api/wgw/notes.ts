@@ -208,6 +208,7 @@ export function sharedInboxFallbackId(path: string): string {
 
 export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
   const title = entry.title.trim() || entry.id;
+  const sharedBy = entry.owner.trim();
   return {
     id: entry.id,
     notebook: entry.notebook,
@@ -221,6 +222,7 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
     groupSlug: entry.groupSlug,
     apiPath: entry.path,
     sharedInbox: true,
+    ...(sharedBy ? { sharedBy } : {}),
   };
 }
 

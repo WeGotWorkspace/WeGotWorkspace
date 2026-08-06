@@ -124,6 +124,8 @@ describe("shared notes listing parsers", () => {
     expect(notes).toHaveLength(1);
     expect(noteFromSharedEntry(notes[0]!).sharedInbox).toBe(true);
     expect(noteFromSharedEntry(notes[0]!).apiPath).toBe("/users/bob/.notes/TeamPad/n1.md");
+    expect(noteFromSharedEntry(notes[0]!).sharedBy).toBe("bob");
+    expect(noteFromSharedEntry(notes[0]!).notebook).toBe("TeamPad");
 
     const notebooks = parseSharedNotebooksPayload({
       items: [

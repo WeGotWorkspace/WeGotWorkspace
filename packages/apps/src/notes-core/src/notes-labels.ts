@@ -11,8 +11,13 @@ export type NotesUILabels = {
   sidebarAllItems: string;
   sidebarStarred: string;
   sidebarArchive: string;
+  sidebarSharedWithMe: string;
+  /** Location label for a single shared note (`Shared by {username}`). */
+  sharedBy: (username: string) => string;
   sectionNotebooks: string;
+  sectionSharedNotebooks: string;
   sectionTags: string;
+  share: string;
   addNotebook: string;
   addTag: string;
   listSelected: (count: number) => string;
@@ -69,8 +74,12 @@ export const defaultNotesLabels: NotesUILabels = {
   sidebarAllItems: "All Items",
   sidebarStarred: "Starred",
   sidebarArchive: "Archived",
+  sidebarSharedWithMe: "Shared with me",
+  sharedBy: (username) => `Shared by ${username}`,
   sectionNotebooks: "Notebooks",
+  sectionSharedNotebooks: "Shared notebooks",
   sectionTags: "Tags",
+  share: "Share",
   addNotebook: "New notebook",
   addTag: "New tag",
   listSelected: (count) => `${count} Selected`,

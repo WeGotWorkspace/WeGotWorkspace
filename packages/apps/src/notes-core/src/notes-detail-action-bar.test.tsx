@@ -1,0 +1,77 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import type { Note } from "@/lib/models/note";
+import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
+import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
+import { TooltipProvider } from "@/ui/tooltip";
+
+function renderBar(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
+
+const owned: Note = {
+  id: "n-1",
+  category: "Note",
+  date: "2026-01-01T00:00:00.000Z",
+  excerpt: "Hello",
+  body: ["Hello"],
+  notebook: "Drafts",
+  tags: [],
+  wordCount: 1,
+};
+
+const shared: Note = {
+  ...owned,
+  id: "swm-1",
+  notebook: "TeamPad",
+  sharedInbox: true,
+  sharedBy: "bob",
+  apiPath: "/users/bob/.notes/TeamPad/swm-1.md",
+};
+
+describe("NotesDetailActionBar", () => {
+  it("shows notebook name and keeps move enabled for owned notes", () => {
+    const openMoveDialog = vi.fn();
+    renderBar(
+      <NotesDetailActionBar
+        active={owned}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={openMoveDialog}
+        toggleStar={() => {}}
+        toggleArchive={() => {}}
+      />,
+    );
+
+    const move = screen.getByRole("button", { name: defaultNotesLabels.toolbarMoveToNotebook });
+    expect(move.textContent).toContain("Drafts");
+    expect(move.hasAttribute("disabled")).toBe(false);
+    move.click();
+    expect(openMoveDialog).toHaveBeenCalledWith(["n-1"]);
+  });
+
+  it("shows Shared by and disables notebook switch for shared-inbox notes", () => {
+    const openMoveDialog = vi.fn();
+    renderBar(
+      <NotesDetailActionBar
+        active={shared}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={openMoveDialog}
+        toggleStar={() => {}}
+        toggleArchive={() => {}}
+      />,
+    );
+
+    const move = screen.getByRole("button", { name: "Shared by bob" });
+    expect(move.textContent).toContain("Shared by bob");
+    expect(move.hasAttribute("disabled")).toBe(true);
+    move.click();
+    expect(openMoveDialog).not.toHaveBeenCalled();
+  });
+});

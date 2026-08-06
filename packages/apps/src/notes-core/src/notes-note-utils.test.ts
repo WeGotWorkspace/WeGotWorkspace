@@ -15,10 +15,13 @@ import {
   noteHasListableBody,
   noteListTagOverflow,
   noteListTitle,
+  noteListLocationLabel,
+  sharedNotebookLabel,
   plainTextFromBody,
   preserveLocalListableBodiesOnServerNotes,
 } from "./notes-note-utils";
 import type { Note } from "@/lib/models/note";
+import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 
 const sampleNote: Note = {
   id: "n-1",
@@ -460,5 +463,59 @@ describe("createNoteSaveDebouncer", () => {
     const { flushAll } = createNoteSaveDebouncer(500);
     flushAll(persist);
     expect(persist).not.toHaveBeenCalled();
+  });
+});
+
+describe("noteListLocationLabel", () => {
+  it("returns notebook name for owned notes", () => {
+    expect(noteListLocationLabel(sampleNote, defaultNotesLabels)).toBe("Drafts");
+  });
+
+  it("returns Shared by {user} for shared-inbox notes", () => {
+    expect(
+      noteListLocationLabel(
+        {
+          ...sampleNote,
+          sharedInbox: true,
+          sharedBy: "bob",
+          notebook: "TeamPad",
+        },
+        defaultNotesLabels,
+      ),
+    ).toBe("Shared by bob");
+  });
+
+  it("falls back to Shared with me when grantor is missing", () => {
+    expect(
+      noteListLocationLabel(
+        { ...sampleNote, sharedInbox: true, notebook: "TeamPad" },
+        defaultNotesLabels,
+      ),
+    ).toBe("Shared with me");
+  });
+
+  it("returns group slug for group-scoped notes (single notebook per group)", () => {
+    expect(
+      noteListLocationLabel(
+        {
+          ...sampleNote,
+          notebook: "General",
+          scope: "group",
+          groupSlug: "administrators",
+        },
+        defaultNotesLabels,
+      ),
+    ).toBe("administrators");
+  });
+
+  it("sharedNotebookLabel uses group name for membership notebooks", () => {
+    expect(
+      sharedNotebookLabel({
+        notebook: "General",
+        owner: "administrators",
+        scope: "group",
+        groupSlug: "administrators",
+      }),
+    ).toBe("administrators");
   });
 });

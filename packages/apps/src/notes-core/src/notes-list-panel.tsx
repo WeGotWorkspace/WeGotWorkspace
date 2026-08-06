@@ -5,9 +5,11 @@ import {
   Circle,
   Pencil,
   RefreshCw,
+  Share2,
   Star,
   Tag as TagIcon,
   Trash2,
+  Users,
 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
@@ -16,7 +18,11 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
-import { noteListTagOverflow, noteListTitle } from "@/notes-core/src/notes-note-utils";
+import {
+  noteListTagOverflow,
+  noteListTitle,
+  noteListLocationLabel,
+} from "@/notes-core/src/notes-note-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
@@ -32,6 +38,20 @@ function notesListItemTags(tags: string[]): ReactNode {
         <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
       ))}
       {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
+    </span>
+  );
+}
+
+function NotesListLocation({ note, labels }: { note: Note; labels: NotesUILabels }) {
+  const location = noteListLocationLabel(note, labels);
+  if (!location) return null;
+  const shared = !!note.sharedInbox;
+  const group = !shared && note.scope === "group";
+  const Icon = shared ? Share2 : group ? Users : BookOpen;
+  return (
+    <span className="notes-list-panel__notebook">
+      <Icon className="notes-list-panel__notebook-icon" aria-hidden />
+      <span className="notes-list-panel__notebook-name">{location}</span>
     </span>
   );
 }
@@ -68,6 +88,8 @@ type NotesListPanelProps = {
   selectionBar: ReactNode;
   onRefreshList?: () => void;
   pendingNoteIds?: ReadonlySet<string>;
+  /** Share the selected personal notebook directory (ACL grant on `…/.notes/{notebook}`). */
+  onShareNotebook?: () => void;
 };
 
 export function NotesListPanel({
@@ -102,6 +124,7 @@ export function NotesListPanel({
   selectionBar,
   onRefreshList,
   pendingNoteIds,
+  onShareNotebook,
 }: NotesListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   useListReorderAnimation(
@@ -130,6 +153,15 @@ export function NotesListPanel({
                 icon={
                   <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
                 }
+                size="sm"
+                variant="subtle"
+              />
+            ) : null}
+            {canEditDelete && selectedNotebook && onShareNotebook ? (
+              <IconButton
+                label={L.share}
+                onClick={onShareNotebook}
+                icon={<Share2 />}
                 size="sm"
                 variant="subtle"
               />
@@ -212,16 +244,7 @@ export function NotesListPanel({
                 key={note.id}
                 id={note.id}
                 title={noteListTitle(note)}
-                subtitle={
-                  note.notebook ? (
-                    <span className="notes-list-panel__notebook">
-                      <BookOpen className="notes-list-panel__notebook-icon" aria-hidden />
-                      <span className="notes-list-panel__notebook-name">{note.notebook}</span>
-                    </span>
-                  ) : (
-                    ""
-                  )
-                }
+                subtitle={<NotesListLocation note={note} labels={L} />}
                 date={formatNoteDateForList(note.date)}
                 text={notesListItemTags(note.tags)}
                 icons={[

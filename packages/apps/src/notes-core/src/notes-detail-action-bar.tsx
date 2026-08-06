@@ -1,7 +1,16 @@
-import { Archive, ArchiveRestore, BookOpen, MoreHorizontal, Star } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  BookOpen,
+  MoreHorizontal,
+  Share2,
+  Star,
+  Users,
+} from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { noteListLocationLabel } from "@/notes-core/src/notes-note-utils";
 import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
 
 type NotesDetailActionBarProps = {
@@ -15,6 +24,8 @@ type NotesDetailActionBarProps = {
   toggleArchive: (id: string) => void;
   /** When true, renders collab presence ahead of note actions (requires NoteCollabSession). */
   showCollabChrome?: boolean;
+  /** Opens Notes-mode ShareDialog for the active note. */
+  onShare?: () => void;
 };
 
 export function NotesDetailActionBar({
@@ -27,21 +38,40 @@ export function NotesDetailActionBar({
   toggleStar,
   toggleArchive,
   showCollabChrome = false,
+  onShare,
 }: NotesDetailActionBarProps) {
   if (!active) {
     return <ActionBar onBack={closeMobileDetail} />;
   }
 
-  const notebookName = active.notebook.trim();
+  const sharedInbox = !!active.sharedInbox;
+  const groupNotebook = !sharedInbox && active.scope === "group";
+  const notebookLocked = sharedInbox || groupNotebook;
+  const locationLabel =
+    noteListLocationLabel(active, labels) || active.notebook.trim() || labels.toolbarMoveToNotebook;
+
+  const notebookIcon = sharedInbox ? <Share2 /> : groupNotebook ? <Users /> : <BookOpen />;
+
   const rightActions = [
+    ...(onShare
+      ? [
+          {
+            id: "share",
+            label: labels.share,
+            onClick: onShare,
+            icon: <Share2 />,
+          },
+        ]
+      : []),
     {
       id: "move-to-notebook",
-      label: notebookName || labels.toolbarMoveToNotebook,
-      tooltip: labels.toolbarMoveToNotebook,
-      onClick: () => openMoveDialog([active.id]),
-      icon: <BookOpen />,
+      label: locationLabel,
+      tooltip: notebookLocked ? locationLabel : labels.toolbarMoveToNotebook,
+      onClick: notebookLocked ? undefined : () => openMoveDialog([active.id]),
+      icon: notebookIcon,
       active: true,
       showLabel: true,
+      disabled: notebookLocked,
     },
     {
       id: "toggle-star",

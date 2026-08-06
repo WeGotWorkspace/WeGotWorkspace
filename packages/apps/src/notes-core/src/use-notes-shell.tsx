@@ -6,7 +6,7 @@ import type { Note } from "@/lib/models/note";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
-import { enrichNote, normalizeTag } from "./notes-note-utils";
+import { enrichNote, normalizeTag, sharedNotebookLabel } from "./notes-note-utils";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
 
 /** Debounce bursts of edits before showing a save toast. */
@@ -102,14 +102,22 @@ export function useNotesShell({
     setView(initialView);
   }, [initialView]);
 
-  const notebooks = useMemo(
-    () => [...new Set(notes.map((note) => note.notebook).filter((name) => name.trim().length > 0))],
-    [notes],
-  );
+  const notebooks = useMemo(() => {
+    const fromData = data.notebooks ?? [];
+    const fromNotes = notes
+      .filter((note) => !note.sharedInbox && note.scope !== "group")
+      .map((note) => note.notebook)
+      .filter((name) => name.trim().length > 0);
+    return [...new Set([...fromData, ...fromNotes])];
+  }, [data.notebooks, notes]);
+  const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
   const tags = useMemo(
     () => [
       ...new Set(
-        notes.flatMap((note) => note.tags.map((tag) => normalizeTag(tag))).filter(Boolean),
+        notes
+          .filter((note) => !note.sharedInbox)
+          .flatMap((note) => note.tags.map((tag) => normalizeTag(tag)))
+          .filter(Boolean),
       ),
     ],
     [notes],
@@ -135,12 +143,26 @@ export function useNotesShell({
     if (view === "all") return L.sidebarAllItems;
     if (view === "starred") return L.sidebarStarred;
     if (view === "archive") return L.sidebarArchive;
+    if (view === "shared-with-me") return L.sidebarSharedWithMe;
+    if (view.startsWith("shared-nb:")) {
+      const path = view.slice("shared-nb:".length);
+      const match = sharedNotebooks.find(
+        (entry) => entry.path === path || entry.path === `/${path.replace(/^\//, "")}`,
+      );
+      if (match) return sharedNotebookLabel(match);
+      return path.split("/").pop() ?? L.sectionSharedNotebooks;
+    }
     if (view.startsWith("nb:")) return view.slice(3);
     if (view.startsWith("tag:")) return L.tagViewTitle(view.slice(4));
     return L.fallbackViewTitle;
-  }, [L, view]);
+  }, [L, sharedNotebooks, view]);
 
-  const canCreateNote = !(view === "starred" || view === "archive");
+  const canCreateNote = !(
+    view === "starred" ||
+    view === "archive" ||
+    view === "shared-with-me" ||
+    view.startsWith("shared-nb:")
+  );
   const selectedNotebook = view.startsWith("nb:") ? view.slice(3) : null;
   const selectedTag = view.startsWith("tag:") ? view.slice(4) : null;
   const canEditDelete = !!(selectedNotebook || selectedTag);
@@ -179,6 +201,7 @@ export function useNotesShell({
     archived,
     setArchived,
     notebooks,
+    sharedNotebooks,
     tags,
     viewLabel,
     canCreateNote,

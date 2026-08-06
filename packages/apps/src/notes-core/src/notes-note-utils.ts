@@ -5,6 +5,7 @@ import {
 } from "@/lib/models/note-body-markdown";
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
+import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 
 export function persistBestEffort(promise: Promise<unknown>) {
   promise.catch(() => {});
@@ -311,4 +312,42 @@ export function noteBelongsToSharedNotebook(note: Note, notebookPath: string): b
     return expected === dir;
   }
   return false;
+}
+
+/**
+ * Sidebar / chrome label for a shared notebook entry.
+ * Groups have a single notebook — show the group name only (not “General” + slug).
+ */
+export function sharedNotebookLabel(entry: {
+  notebook: string;
+  owner: string;
+  scope: "personal" | "group";
+  groupSlug: string | null;
+}): string {
+  if (entry.scope === "group") {
+    const group = (entry.groupSlug ?? entry.owner).trim();
+    return group || entry.notebook;
+  }
+  return entry.notebook;
+}
+
+/**
+ * List/detail location line: notebook name for owned notes, group name for
+ * group-scoped notes, “Shared by …” for Shared-with-me file grants (mirrors
+ * Drive/Docs shared location labeling).
+ */
+export function noteListLocationLabel(
+  note: Pick<Note, "notebook" | "sharedInbox" | "sharedBy" | "scope" | "groupSlug">,
+  labels: Pick<NotesUILabels, "sharedBy" | "sidebarSharedWithMe">,
+): string | null {
+  if (note.sharedInbox) {
+    const who = note.sharedBy?.trim();
+    return who ? labels.sharedBy(who) : labels.sidebarSharedWithMe;
+  }
+  if (note.scope === "group") {
+    const group = note.groupSlug?.trim();
+    if (group) return group;
+  }
+  const notebook = note.notebook.trim();
+  return notebook || null;
 }
