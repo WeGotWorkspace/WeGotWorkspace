@@ -9271,7 +9271,7 @@ export interface components {
             list: components["schemas"]["SearchDocumentSyncDto"][];
         };
         /**
-         * @description Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit|full only; comment and legacy review are rejected.
+         * @description Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit only; comment, legacy review, and full are rejected.
          * @enum {string}
          */
         DriveShareAccess: "view" | "comment" | "review" | "edit" | "full";

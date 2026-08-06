@@ -18,7 +18,7 @@ describe("resolveNotesEditorEditable", () => {
     expect(resolveNotesEditorEditable({ mayEditContent: false }, true)).toBe(false);
   });
 
-  it("maps edit/full access (mayEditContent true) to editable", () => {
+  it("maps edit access (mayEditContent true) to editable", () => {
     expect(resolveNotesEditorEditable({ mayEditContent: true })).toBe(true);
     expect(resolveNotesEditorEditable({ mayEditContent: true }, true)).toBe(true);
   });

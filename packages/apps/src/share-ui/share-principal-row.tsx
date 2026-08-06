@@ -3,8 +3,8 @@ import { Trash2 } from "lucide-react";
 import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
 import { IconButton } from "@/button/src/icon-button";
 import {
-  accessToUIPermission,
-  isDialogEditableAccess,
+  SHARE_UI_PERMISSIONS,
+  accessToSelectableUIPermission,
   type ShareUIPermission,
 } from "@/share-ui/share-access-map";
 import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
@@ -40,12 +40,11 @@ export function SharePrincipalRow({
   removeDisabled = false,
   onAccessChange,
   onRemove,
-  permissions,
+  permissions = SHARE_UI_PERMISSIONS,
 }: SharePrincipalRowProps) {
   const inherited = Boolean(inheritedFromPath);
-  const uiPermission = accessToUIPermission(access);
-  const canEdit =
-    editable && !inherited && Boolean(onAccessChange) && isDialogEditableAccess(access);
+  const uiPermission = accessToSelectableUIPermission(access, permissions);
+  const canEdit = editable && !inherited && Boolean(onAccessChange) && uiPermission !== null;
   const showRemove = inherited || Boolean(onRemove);
   const canRemove = Boolean(onRemove) && !inherited && !removeDisabled;
   const inheritedRemoveHint = inheritedFromPath

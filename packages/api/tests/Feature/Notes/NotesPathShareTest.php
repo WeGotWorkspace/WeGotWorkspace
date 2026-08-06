@@ -113,7 +113,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'shareWith' => ['alice' => ['access' => 'full']],
         ])
             ->assertStatus(400)
-            ->assertJsonPath('error.code', 'comment_not_applicable');
+            ->assertJsonPath('code', 'comment_not_applicable');
 
         $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
             'path' => $notebookPath,
@@ -409,7 +409,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'shareWith' => ['alice' => ['access' => 'full']],
         ])
             ->assertStatus(400)
-            ->assertJsonPath('error.code', 'comment_not_applicable');
+            ->assertJsonPath('code', 'comment_not_applicable');
     }
 
     public function test_personal_share_recipient_cannot_archive_or_delete_shared_note(): void

@@ -6,7 +6,7 @@ export type NotesCollabShareRights = {
 /**
  * Whether the note body TipTap surface should accept typing.
  *
- * Notes has no comment ACL tier (view | edit | full only) — view means
+ * Notes has no comment/full ACL tiers (view | edit only) — view means
  * read-only body + no metadata mutations in the UI.
  *
  * - `undefined`/`null` rights and not loading → editable (Storybook / no share fetch)

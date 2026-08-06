@@ -73,6 +73,7 @@ final class DriveShareAccess
         string $access,
         bool $isCollabDoc,
         bool $mayShare = false,
+        bool $isNotePath = false,
     ): array {
         // Legacy review grants get the same effective rights as edit (including mayEditContent)
         // so existing shares are not stranded as a half-broken suggest middle tier.
@@ -83,6 +84,13 @@ final class DriveShareAccess
         $full = $rank >= self::rank(self::FULL);
         // Suggest/review mode in Docs is included with edit; keep mayReview for API compat.
         $review = $isCollabDoc && $edit;
+        // Notes has no comment/review UX — force both false even if a bad grant row exists.
+        // Notes personal shares are view|edit only — never structure-manage (legacy full → edit rights).
+        if ($isNotePath) {
+            $comment = false;
+            $review = false;
+            $full = false;
+        }
 
         return [
             'mayView' => $rank >= self::rank(self::VIEW),

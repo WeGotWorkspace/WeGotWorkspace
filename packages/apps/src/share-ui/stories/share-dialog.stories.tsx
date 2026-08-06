@@ -81,7 +81,7 @@ function NotesShareDialogHarness() {
   );
 }
 
-/** Notes mode: team ACL only, view/edit/full — no public link section. */
+/** Notes mode: team ACL only, view/edit — no public link section. */
 export const NotesMode: Story = {
   render: () => <NotesShareDialogHarness />,
 };

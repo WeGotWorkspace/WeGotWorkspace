@@ -2,7 +2,7 @@
   "DriveShareAccess": {
     "type": "string",
     "enum": ["view", "comment", "review", "edit", "full"],
-    "description": "Share access level for a grant or default access."
+    "description": "Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit only; comment, legacy review, and full are rejected."
   },
   "DriveRights": {
     "type": "object",

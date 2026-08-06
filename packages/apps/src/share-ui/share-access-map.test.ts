@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accessToSelectableUIPermission,
   accessToUIPermission,
   isDialogEditableAccess,
   NOTES_SHARE_UI_PERMISSIONS,
@@ -31,8 +32,14 @@ describe("share-access-map", () => {
     expect(SHARE_UI_PERMISSIONS).toEqual(["view", "comment", "edit", "full"]);
   });
 
-  it("exposes view, edit, and full for Notes mode (no comment)", () => {
-    expect(NOTES_SHARE_UI_PERMISSIONS).toEqual(["view", "edit", "full"]);
+  it("exposes view and edit for Notes mode (no comment, no full)", () => {
+    expect(NOTES_SHARE_UI_PERMISSIONS).toEqual(["view", "edit"]);
+  });
+
+  it("folds legacy Notes full grants to edit when Full is not selectable", () => {
+    expect(accessToSelectableUIPermission("full", NOTES_SHARE_UI_PERMISSIONS)).toBe("edit");
+    expect(accessToSelectableUIPermission("edit", NOTES_SHARE_UI_PERMISSIONS)).toBe("edit");
+    expect(accessToSelectableUIPermission("full", SHARE_UI_PERMISSIONS)).toBe("full");
   });
 
   it("treats full access as dialog-editable", () => {

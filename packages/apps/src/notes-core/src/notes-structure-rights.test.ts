@@ -19,19 +19,13 @@ const sharedView: Note = {
   sharedInbox: true,
   sharedBy: "bob",
   apiPath: "/users/bob/.notes/Drafts/swm-1.md",
-  myRights: { mayEditContent: false, mayManageStructure: false },
+  myRights: { mayEditContent: false },
 };
 
 const sharedEdit: Note = {
   ...sharedView,
   id: "swm-edit",
-  myRights: { mayEditContent: true, mayManageStructure: false },
-};
-
-const sharedLegacyFull: Note = {
-  ...sharedView,
-  id: "swm-full",
-  myRights: { mayEditContent: true, mayManageStructure: true },
+  myRights: { mayEditContent: true },
 };
 
 describe("noteAllowsStructureManage", () => {
@@ -43,10 +37,9 @@ describe("noteAllowsStructureManage", () => {
     expect(noteAllowsStructureManage({ ...owned, scope: "group", groupSlug: "eng" })).toBe(true);
   });
 
-  it("denies all personal share recipients including legacy full", () => {
+  it("denies all personal share recipients", () => {
     expect(noteAllowsStructureManage(sharedView)).toBe(false);
     expect(noteAllowsStructureManage(sharedEdit)).toBe(false);
-    expect(noteAllowsStructureManage(sharedLegacyFull)).toBe(false);
     expect(noteAllowsStructureManage(sharedEdit, { mayManageStructure: true })).toBe(false);
   });
 

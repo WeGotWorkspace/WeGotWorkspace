@@ -20,7 +20,7 @@ export type ShareDialogProps = {
   /** Portaled dialog surface tokens — drive green by default; pass `docs-dialog-surface` from Docs. */
   dialogSurfaceClassName?: string;
   /**
-   * `notes` — team ACL only (no public link / guest); permissions view|edit|full.
+   * `notes` — team ACL only (no public link / guest); permissions view|edit.
    * `drive` — full Drive share UX (default).
    */
   mode?: ShareDialogMode;
