@@ -34,6 +34,10 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             ])
             ->assertOk();
 
+        $groupNotes = $this->adminDataDirectory().'/files/groups/support-team/.notes';
+        $this->assertTrue(is_dir($groupNotes));
+        $this->assertTrue(is_dir($groupNotes.'/General'));
+
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/groups/support-team', [
                 'displayName' => 'Support',
@@ -59,6 +63,7 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             'id',
         );
         $this->assertNotContains('principals/groups/support-team', $groupIdsAfter);
+        $this->assertFalse(is_dir($this->adminDataDirectory().'/files/groups/support-team'));
     }
 
     public function test_administrators_group_cannot_be_deleted(): void

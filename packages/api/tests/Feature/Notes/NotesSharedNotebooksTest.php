@@ -99,6 +99,45 @@ final class NotesSharedNotebooksTest extends WgwDatabaseTestCase
         $this->assertSame(self::TEAM, $roadmap['groupSlug']);
     }
 
+    public function test_notebooks_listing_includes_empty_group_membership_notebook(): void
+    {
+        $token = $this->userBearerToken();
+        // Provision an empty notebook dir under the group home (no notes yet).
+        $this->assertTrue(
+            Storage::disk('wgw_notes')->makeDirectory('groups/'.self::TEAM.'/.notes/EmptyPad')
+        );
+
+        $notebooks = $this->withBearer($token)->getJson('/api/v1/notes/notebooks');
+        $notebooks->assertOk();
+        $items = collect($notebooks->json('items'));
+
+        $empty = $items->first(
+            static fn (array $row): bool => ($row['name'] ?? '') === 'EmptyPad'
+                && ($row['scope'] ?? '') === 'group'
+                && ($row['groupSlug'] ?? null) === self::TEAM
+        );
+        $this->assertIsArray($empty);
+        $this->assertSame(0, $empty['activeCount']);
+        $this->assertSame(0, $empty['archivedCount']);
+    }
+
+    public function test_notebooks_listing_surfaces_default_when_group_notes_home_is_empty(): void
+    {
+        $token = $this->userBearerToken();
+        Storage::disk('wgw_notes')->makeDirectory('groups/'.self::TEAM.'/.notes');
+
+        $notebooks = $this->withBearer($token)->getJson('/api/v1/notes/notebooks');
+        $notebooks->assertOk();
+        $items = collect($notebooks->json('items'));
+
+        $general = $items->first(
+            static fn (array $row): bool => ($row['name'] ?? '') === 'General'
+                && ($row['scope'] ?? '') === 'group'
+                && ($row['groupSlug'] ?? null) === self::TEAM
+        );
+        $this->assertIsArray($general);
+    }
+
     public function test_member_can_update_delete_and_archive_shared_note(): void
     {
         $token = $this->userBearerToken();

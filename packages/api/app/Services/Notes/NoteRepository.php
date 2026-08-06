@@ -189,10 +189,61 @@ final class NoteRepository
                     $byName[$scopeKey]['activeCount']++;
                 }
             }
+
+            // Group membership notebooks must appear even when empty (Shared notebooks
+            // sidebar). Personal empty dirs stay omitted to match historical listing.
+            // When `.notes` exists but has no notebook dirs yet (pre-default provision),
+            // still surface the default notebook name so members can open it.
+            if ($scope->isGroup()) {
+                $dirs = $this->listNotebookDirectories($scope);
+                if ($dirs === []) {
+                    $base = $this->notePaths->baseKey($scope, false);
+                    if ($this->disk()->directoryExists($base)) {
+                        $dirs = [GroupNotesHomesProvisioner::DEFAULT_NOTEBOOK];
+                    }
+                }
+                foreach ($dirs as $name) {
+                    $scopeKey = $scope->type().':'.((string) $scope->groupSlug()).':'.$name;
+                    if (isset($byName[$scopeKey])) {
+                        continue;
+                    }
+                    $byName[$scopeKey] = [
+                        'name' => $name,
+                        'activeCount' => 0,
+                        'archivedCount' => 0,
+                        'scope' => 'group',
+                        'groupSlug' => $scope->groupSlug(),
+                    ];
+                }
+            }
         }
         ksort($byName);
 
         return ['items' => array_values($byName)];
+    }
+
+    /**
+     * Notebook directory names under a scope’s active `.notes` tree (excludes `.archive`).
+     *
+     * @return list<string>
+     */
+    private function listNotebookDirectories(NoteScope $scope): array
+    {
+        $base = $this->notePaths->baseKey($scope, false);
+        if (! $this->disk()->directoryExists($base)) {
+            return [];
+        }
+        $names = [];
+        foreach ($this->disk()->directories($base) as $notebookDir) {
+            $notebook = basename($notebookDir);
+            if ($notebook === '' || $notebook === '.archive' || str_starts_with($notebook, '.')) {
+                continue;
+            }
+            $names[] = $notebook;
+        }
+        sort($names);
+
+        return $names;
     }
 
     /**
