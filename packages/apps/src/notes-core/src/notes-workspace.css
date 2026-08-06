@@ -2,13 +2,16 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream main pane + soft gold sidebar accent
- * (matches detail-view tag tone; former bright #f0b422 was too loud).
+ * Notes product shell: cream main pane + gold sidebar.
+ * Chip/button accent (`--notes-accent`) stays soft `#f6d176` (detail tags /
+ * change-notebook). Full-bleed `--notes-sidebar` is a richer gold — same hex as
+ * the chip reads washed on a large surface (no cream frame), so the sidebar
+ * token is decoupled and stepped up toward former `#f0b422`.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
   --notes-accent: #f6d176;
-  --notes-sidebar: var(--notes-accent);
+  --notes-sidebar: #f3c450;
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
