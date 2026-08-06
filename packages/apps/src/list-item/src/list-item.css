@@ -119,8 +119,21 @@
 }
 
 .list-item__body {
-  @apply text-sm leading-relaxed line-clamp-1;
+  @apply text-sm leading-relaxed line-clamp-1 min-w-0;
   color: var(--list-item-body-color, color-mix(in oklab, var(--color-ink) 60%, transparent));
+}
+
+.list-item__body:has(.list-item__tags) {
+  @apply line-clamp-none;
+}
+
+.list-item__tags {
+  @apply flex items-center gap-1.5 min-w-0 overflow-hidden;
+}
+
+.list-item__tags-more {
+  @apply shrink-0 text-xs tabular-nums;
+  color: var(--list-item-muted-color, color-mix(in oklab, var(--color-ink) 45%, transparent));
 }
 
 .list-item__swipe-action {
