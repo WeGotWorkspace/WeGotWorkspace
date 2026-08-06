@@ -56,13 +56,15 @@ export function useNotesSidebarModel({
 
   const notebookSidebarItems = useMemo(
     () =>
-      notebooks.map((nb) => ({
-        label: nb,
-        icon: <BookOpen className="size-3.5" />,
-        selected: view === `nb:${nb}`,
-        onClick: () => selectView(`nb:${nb}`),
-        ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
-      })),
+      [...notebooks]
+        .sort((a, b) => a.localeCompare(b))
+        .map((nb) => ({
+          label: nb,
+          icon: <BookOpen className="size-3.5" />,
+          selected: view === `nb:${nb}`,
+          onClick: () => selectView(`nb:${nb}`),
+          ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
+        })),
     [moveToNotebook, notebooks, selectView, sidebarDropZoneProps, view],
   );
 
