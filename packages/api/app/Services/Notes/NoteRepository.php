@@ -383,6 +383,9 @@ final class NoteRepository
         // preserves the marker, so body saves do not advance `updatedAt` and
         // therefore never trip the offline metadata `ifInState` conflict guard.
         // Legacy notes without a marker fall back to the file mtime.
+        //
+        // `contentUpdatedAt` is the file mtime so clients can show “last edited”
+        // (and list previews after refresh) when only the body changed.
         return [
             'id' => $id,
             'username' => $username,
@@ -394,6 +397,7 @@ final class NoteRepository
             'scope' => $scope->isGroup() ? 'group' : 'personal',
             'groupSlug' => $scope->groupSlug(),
             'updatedAt' => $updated ?? date('c', $mtime),
+            'contentUpdatedAt' => date('c', $mtime),
             '_searchTitle' => $title,
         ];
     }
