@@ -32,3 +32,15 @@
 .notes-list-panel__pending-dot {
   color: var(--color-emerald);
 }
+
+.notes-list-panel__list {
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-list-panel__list [data-list-item-id],
+  .notes-list-panel__list .swipeable-list-item {
+    transition: none !important;
+    transform: none !important;
+  }
+}

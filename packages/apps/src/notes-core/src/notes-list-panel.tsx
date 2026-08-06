@@ -1,8 +1,9 @@
-import type { MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
+import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
 import { Archive, Circle, Pencil, RefreshCw, Star, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import { noteListTitle } from "@/notes-core/src/notes-note-utils";
@@ -79,6 +80,12 @@ export function NotesListPanel({
   onRefreshList,
   pendingNoteIds,
 }: NotesListPanelProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  useListReorderAnimation(
+    listRef,
+    visibleNotes.map((note) => note.id),
+  );
+
   return {
     header: (
       <ViewHeader
@@ -161,7 +168,7 @@ export function NotesListPanel({
         <LoadingSpinner size="lg" label={L.listLoading} />
       </div>
     ) : (
-      <>
+      <div ref={listRef} className="notes-list-panel__list">
         <WorkspaceSwipeList isTouch={isTouch}>
           {visibleNotes.map((note) => {
             const dragHandlers = itemDragHandlers(note.id) as {
@@ -232,7 +239,7 @@ export function NotesListPanel({
             );
           })}
         </WorkspaceSwipeList>
-      </>
+      </div>
     ),
     hasItems: listLoading || visibleNotes.length > 0,
     emptyLabel: L.emptyList,
