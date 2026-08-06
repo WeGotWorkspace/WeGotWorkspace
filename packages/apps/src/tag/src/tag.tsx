@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 
 import "./tag.css";
 
-/** `md` matches the compact chip used in footers/stats; `lg` is for interactive editors. */
+/** `md` matches the compact chip used in footers/stats; `lg` is 28px for interactive editors. */
 export type TagSize = "md" | "lg";
 
 export type TagProps = {
