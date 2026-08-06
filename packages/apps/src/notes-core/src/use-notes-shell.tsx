@@ -6,7 +6,13 @@ import type { Note } from "@/lib/models/note";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
-import { enrichNote, normalizeTag, noteShowsTags, sharedNotebookLabel } from "./notes-note-utils";
+import {
+  enrichNote,
+  normalizeTag,
+  notesCanCreateInView,
+  noteShowsTags,
+  sharedNotebookLabel,
+} from "./notes-note-utils";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
 
 /** Debounce bursts of edits before showing a save toast. */
@@ -157,12 +163,7 @@ export function useNotesShell({
     return L.fallbackViewTitle;
   }, [L, sharedNotebooks, view]);
 
-  const canCreateNote = !(
-    view === "starred" ||
-    view === "archive" ||
-    view === "shared-with-me" ||
-    view.startsWith("shared-nb:")
-  );
+  const canCreateNote = notesCanCreateInView(view);
   const selectedNotebook = view.startsWith("nb:") ? view.slice(3) : null;
   const selectedTag = view.startsWith("tag:") ? view.slice(4) : null;
   const canEditDelete = !!(selectedNotebook || selectedTag);

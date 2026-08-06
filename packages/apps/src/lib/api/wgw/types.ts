@@ -195,6 +195,10 @@ export type WgwNoteItem = Omit<
   contentUpdatedAt?: string;
   scope?: "personal" | "group";
   groupSlug?: string | null;
+  /** Outgoing share indicators from list annotation (optional). */
+  hasShares?: boolean;
+  hasPublicShare?: boolean;
+  hasTeamShare?: boolean;
 };
 
 export type WgwNotesItemsResponse = NotesItemsResponse;

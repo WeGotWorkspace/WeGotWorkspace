@@ -7314,6 +7314,12 @@ export interface components {
             updatedAt: string;
             /** @description File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards. */
             contentUpdatedAt?: string;
+            /** @description True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note. */
+            hasShares?: boolean;
+            /** @description True when this note file or its notebook directory has an active public link share. */
+            hasPublicShare?: boolean;
+            /** @description True when this note file or its notebook directory has active team grants (users or groups). */
+            hasTeamShare?: boolean;
         };
         NoteItemList: components["schemas"]["NoteItem"][];
         NotesItemsResponse: {
@@ -7349,12 +7355,15 @@ export interface components {
         /**
          * @example {
          *       "notebook": "General",
-         *       "archived": false
+         *       "archived": false,
+         *       "groupSlug": "team"
          *     }
          */
         NoteDeleteRequest: {
             notebook: string;
             archived: boolean;
+            /** @description Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes. */
+            groupSlug?: string | null;
         };
         NotebookListItem: {
             name: string;

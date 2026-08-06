@@ -125,7 +125,7 @@ async function queueOfflineUpsert(
 
 async function queueOfflineDelete(
   username: string,
-  note: Pick<Note, "id" | "notebook" | "archived">,
+  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
 ): Promise<void> {
   await removeOutboxMutationsForNote(username, note.id);
   await removeNoteFromCache(username, note.id);
@@ -137,26 +137,46 @@ async function queueOfflineDelete(
       noteId: note.id,
       notebook: note.notebook,
       archived: !!note.archived,
+      ...(note.scope === "group" && note.groupSlug?.trim()
+        ? { groupSlug: note.groupSlug.trim() }
+        : {}),
     }),
   });
 }
 
 async function resolveDeleteTarget(
   username: string,
-  note: Pick<Note, "id" | "notebook" | "archived">,
-): Promise<Pick<Note, "id" | "notebook" | "archived">> {
+  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
+): Promise<Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">> {
   const cached = note.id ? await resolveCachedNote(username, note.id) : undefined;
   if (cached) {
     return {
       id: note.id,
       notebook: cached.notebook,
       archived: cached.archived ?? note.archived ?? false,
+      scope: cached.scope ?? note.scope,
+      groupSlug: cached.groupSlug ?? note.groupSlug,
     };
   }
   return {
     id: note.id,
     notebook: note.notebook,
     archived: !!note.archived,
+    scope: note.scope,
+    groupSlug: note.groupSlug,
+  };
+}
+
+function groupSlugOpts(
+  note: Pick<Note, "scope" | "groupSlug"> | undefined,
+  opts?: { signal?: AbortSignal },
+): { signal?: AbortSignal; groupSlug?: string } | undefined {
+  const slug =
+    note?.scope === "group" && note.groupSlug?.trim() ? note.groupSlug.trim() : undefined;
+  if (!slug && !opts?.signal) return undefined;
+  return {
+    ...(opts?.signal !== undefined ? { signal: opts.signal } : {}),
+    ...(slug ? { groupSlug: slug } : {}),
   };
 }
 
@@ -223,7 +243,13 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       try {
         await deleteNoteItem(
           target.id,
-          { notebook: target.notebook, archived: !!target.archived },
+          {
+            notebook: target.notebook,
+            archived: !!target.archived,
+            ...(target.scope === "group" && target.groupSlug?.trim()
+              ? { groupSlug: target.groupSlug.trim() }
+              : {}),
+          },
           opts,
         );
         await removeNoteFromCache(username, target.id);
@@ -240,6 +266,10 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           !readBrowserOnline() ? "Note not found in cache while offline" : "Note not found",
         );
       }
+      const groupSlug =
+        existing.scope === "group" && existing.groupSlug?.trim()
+          ? existing.groupSlug.trim()
+          : undefined;
       if (!readBrowserOnline()) {
         const optimistic = { ...existing, archived: true };
         await upsertNoteInCache(username, optimistic, true);
@@ -247,12 +277,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "archive",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
       try {
-        const saved = await archiveNoteItem(id, opts);
+        const saved = await archiveNoteItem(id, groupSlugOpts(existing, opts));
         await upsertNoteInCache(username, saved, false);
         await runner.flush();
         return saved;
@@ -264,7 +294,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "archive",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
@@ -276,6 +306,10 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           !readBrowserOnline() ? "Note not found in cache while offline" : "Note not found",
         );
       }
+      const groupSlug =
+        existing.scope === "group" && existing.groupSlug?.trim()
+          ? existing.groupSlug.trim()
+          : undefined;
       if (!readBrowserOnline()) {
         const optimistic = { ...existing, archived: false };
         await upsertNoteInCache(username, optimistic, true);
@@ -283,12 +317,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "restore",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
       try {
-        const saved = await restoreNoteItem(id, opts);
+        const saved = await restoreNoteItem(id, groupSlugOpts(existing, opts));
         await upsertNoteInCache(username, saved, false);
         await runner.flush();
         return saved;
@@ -300,7 +334,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "restore",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }

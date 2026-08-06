@@ -53,6 +53,18 @@ describe("wgwNoteUpsertFromNote", () => {
 
     expect(request.body).toBe("Body text\n\nSecond paragraph");
   });
+
+  it("includes groupSlug for group-scoped create/update", () => {
+    const groupNote: Note = {
+      ...note,
+      scope: "group",
+      groupSlug: "eng",
+      notebook: "Specs",
+    };
+    expect(wgwNoteUpsertFromNote(groupNote).groupSlug).toBe("eng");
+    expect(wgwNoteMetadataFromNote(groupNote).groupSlug).toBe("eng");
+    expect(wgwNoteUpsertFromNote(note)).not.toHaveProperty("groupSlug");
+  });
 });
 
 describe("noteFromWgwItem", () => {
@@ -130,6 +142,8 @@ describe("shared notes listing parsers", () => {
     expect(noteFromSharedEntry(notes[0]!).notebook).toBe("TeamPad");
     // Recipients never surface tags on Shared-with-me stubs.
     expect(noteFromSharedEntry(notes[0]!).tags).toEqual([]);
+    expect(noteFromSharedEntry(notes[0]!).myRights).toEqual({ mayEditContent: false });
+    expect(notes[0]?.myRights).toEqual({ mayEditContent: false });
 
     const notebooks = parseSharedNotebooksPayload({
       items: [
@@ -159,8 +173,42 @@ describe("shared notes listing parsers", () => {
       ],
     });
     expect(notebooks.items[0]?.path).toBe("/users/bob/.notes/TeamPad");
+    expect(notebooks.items[0]?.myRights).toEqual({ mayEditContent: true });
     expect(notebooks.notes).toHaveLength(1);
     expect(notebooks.notes[0]?.id).toBe("n1");
+    expect(notebooks.notes[0]?.myRights).toEqual({ mayEditContent: true });
+  });
+
+  it("maps hasShares from owned notes list items to isShared", async () => {
+    const { noteFromWgwItem, coerceNoteItem } = await import("@/lib/api/wgw/notes");
+    const row = coerceNoteItem({
+      id: "n1",
+      notebook: "Drafts",
+      body: "hello",
+      tags: [],
+      archived: false,
+      scope: "personal",
+      groupSlug: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      hasShares: true,
+      hasTeamShare: true,
+    });
+    expect(row?.hasShares).toBe(true);
+    expect(noteFromWgwItem(row!).isShared).toBe(true);
+    expect(
+      noteFromWgwItem(
+        coerceNoteItem({
+          id: "n2",
+          notebook: "Drafts",
+          body: "private",
+          tags: [],
+          archived: false,
+          scope: "personal",
+          groupSlug: null,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        })!,
+      ).isShared,
+    ).toBeUndefined();
   });
 
   it("keeps tags on group shared-notebook stubs; strips them on personal ACL shares", async () => {

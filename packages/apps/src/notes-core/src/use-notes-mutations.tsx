@@ -14,6 +14,7 @@ import {
   noteAllowsTagAssignment,
   noteShowsStarControls,
   persistBestEffort,
+  resolveNotesCreateTarget,
 } from "./notes-note-utils";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
@@ -445,7 +446,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
-    const targetNotebook = view.startsWith("nb:") ? view.slice(3) : (notebooks[0] ?? "Drafts");
+    const target = resolveNotesCreateTarget(view, notebooks);
     const targetTag = view.startsWith("tag:") ? view.slice(4) : null;
     const id = createTempNoteId();
     const date = new Date().toISOString();
@@ -456,9 +457,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       updatedAt: date,
       excerpt: "",
       body: [""],
-      notebook: targetNotebook,
+      notebook: target.notebook,
       tags: targetTag ? [normalizeTag(targetTag)] : [],
       wordCount: 0,
+      ...(target.scope === "group" && target.groupSlug
+        ? { scope: "group" as const, groupSlug: target.groupSlug }
+        : {}),
     };
     setNotes((prev) => [note, ...prev]);
     setActiveId(id);

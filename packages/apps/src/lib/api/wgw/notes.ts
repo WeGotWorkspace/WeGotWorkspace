@@ -47,6 +47,9 @@ export function coerceNoteItem(raw: unknown): WgwNoteItem | null {
         : r.content_updated_at != null
           ? String(r.content_updated_at)
           : undefined,
+    ...(r.hasShares === true ? { hasShares: true } : {}),
+    ...(r.hasPublicShare === true ? { hasPublicShare: true } : {}),
+    ...(r.hasTeamShare === true ? { hasTeamShare: true } : {}),
   };
 }
 
@@ -69,6 +72,10 @@ export type NotesNotebookRow = {
   groupSlug?: string | null;
 };
 
+export type NotesSharedNoteListRights = {
+  mayEditContent: boolean;
+};
+
 export type NotesSharedNoteEntry = {
   path: string;
   id: string;
@@ -80,6 +87,8 @@ export type NotesSharedNoteEntry = {
   scope: "personal" | "group";
   groupSlug: string | null;
   access?: string;
+  /** From list API `myRights` (or derived from `access` when rights are omitted). */
+  myRights?: NotesSharedNoteListRights;
 };
 
 export type NotesSharedNotebookEntry = {
@@ -89,6 +98,7 @@ export type NotesSharedNotebookEntry = {
   scope: "personal" | "group";
   groupSlug: string | null;
   access?: string;
+  myRights?: NotesSharedNoteListRights;
 };
 
 export function coerceNotebookRow(raw: unknown): NotesNotebookRow | null {
@@ -126,6 +136,39 @@ function normalizeNotesPath(path: string): string {
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
+/**
+ * Prefer explicit list `myRights.mayEditContent`; fall back to share `access`
+ * so view-only rows still badge when rights are omitted from a payload.
+ */
+export function resolveSharedNoteMayEditContent(entry: {
+  access?: string;
+  myRights?: NotesSharedNoteListRights | { mayEditContent?: unknown };
+}): boolean | undefined {
+  const fromRights = entry.myRights?.mayEditContent;
+  if (typeof fromRights === "boolean") return fromRights;
+  if (entry.access === "view" || entry.access === "comment") return false;
+  if (entry.access === "edit" || entry.access === "full" || entry.access === "review") return true;
+  return undefined;
+}
+
+function coerceSharedListRights(
+  raw: unknown,
+  access?: string,
+): NotesSharedNoteListRights | undefined {
+  const mayEditContent = resolveSharedNoteMayEditContent({
+    access,
+    myRights: raw && typeof raw === "object" ? (raw as { mayEditContent?: unknown }) : undefined,
+  });
+  return mayEditContent === undefined ? undefined : { mayEditContent };
+}
+
+function noteMyRightsFromSharedEntry(
+  entry: Pick<NotesSharedNoteEntry, "access" | "myRights">,
+): Note["myRights"] | undefined {
+  const mayEditContent = resolveSharedNoteMayEditContent(entry);
+  return mayEditContent === undefined ? undefined : { mayEditContent };
+}
+
 export function coerceSharedNoteEntry(raw: unknown): NotesSharedNoteEntry | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -136,6 +179,8 @@ export function coerceSharedNoteEntry(raw: unknown): NotesSharedNoteEntry | null
   const scope = r.scope === "group" ? "group" : "personal";
   const tagsRaw = r.tags;
   const tags = Array.isArray(tagsRaw) ? tagsRaw.map((t) => String(t)).filter(Boolean) : [];
+  const access = typeof r.access === "string" ? r.access : undefined;
+  const myRights = coerceSharedListRights(r.myRights, access);
   return {
     path,
     id: String(id),
@@ -145,7 +190,8 @@ export function coerceSharedNoteEntry(raw: unknown): NotesSharedNoteEntry | null
     owner: r.owner != null ? String(r.owner) : "",
     scope,
     groupSlug: typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : null,
-    access: typeof r.access === "string" ? r.access : undefined,
+    access,
+    ...(myRights ? { myRights } : {}),
   };
 }
 
@@ -156,13 +202,16 @@ export function coerceSharedNotebookEntry(raw: unknown): NotesSharedNotebookEntr
   const notebook = r.notebook;
   if (!path || notebook == null) return null;
   const scope = r.scope === "group" ? "group" : "personal";
+  const access = typeof r.access === "string" ? r.access : undefined;
+  const myRights = coerceSharedListRights(r.myRights, access);
   return {
     path,
     notebook: String(notebook),
     owner: r.owner != null ? String(r.owner) : "",
     scope,
     groupSlug: typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : null,
-    access: typeof r.access === "string" ? r.access : undefined,
+    access,
+    ...(myRights ? { myRights } : {}),
   };
 }
 
@@ -226,6 +275,7 @@ export function sharedInboxFallbackId(path: string): string {
 export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
   const title = entry.title.trim() || entry.id;
   const sharedBy = entry.owner.trim();
+  const myRights = noteMyRightsFromSharedEntry(entry);
   return {
     id: entry.id,
     notebook: entry.notebook,
@@ -241,6 +291,7 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
     apiPath: entry.path,
     sharedInbox: true,
     ...(sharedBy ? { sharedBy } : {}),
+    ...(myRights ? { myRights } : {}),
   };
 }
 
@@ -248,6 +299,7 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
 export function noteFromSharedNotebookEntry(entry: NotesSharedNoteEntry): Note {
   const title = entry.title.trim() || entry.id;
   const isGroup = entry.scope === "group";
+  const myRights = noteMyRightsFromSharedEntry(entry);
   return {
     id: entry.id,
     notebook: entry.notebook,
@@ -262,6 +314,7 @@ export function noteFromSharedNotebookEntry(entry: NotesSharedNoteEntry): Note {
     groupSlug: entry.groupSlug,
     apiPath: entry.path,
     sharedNotebookGrant: true,
+    ...(myRights ? { myRights } : {}),
   };
 }
 
@@ -393,6 +446,9 @@ export function noteFromWgwItem(row: WgwNoteItem): Note {
     archived: row.archived,
     ...(row.scope !== undefined ? { scope: row.scope } : {}),
     ...(row.groupSlug !== undefined ? { groupSlug: row.groupSlug } : {}),
+    ...(row.hasShares === true || row.hasPublicShare === true || row.hasTeamShare === true
+      ? { isShared: true }
+      : {}),
   };
 }
 
@@ -408,6 +464,9 @@ export function wgwNoteUpsertFromNote(
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
+    ...(note.scope === "group" && note.groupSlug?.trim()
+      ? { groupSlug: note.groupSlug.trim() }
+      : {}),
   };
 }
 
@@ -426,6 +485,9 @@ export function wgwNoteMetadataFromNote(
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
+    ...(note.scope === "group" && note.groupSlug?.trim()
+      ? { groupSlug: note.groupSlug.trim() }
+      : {}),
   };
 }
 
@@ -543,30 +605,42 @@ export async function updateNoteItem(
 
 export async function deleteNoteItem(
   id: string,
-  body: { notebook: string; archived: boolean },
+  body: { notebook: string; archived: boolean; groupSlug?: string | null },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
   await requestNotesJson(`/notes/items/${encodeURIComponent(id)}`, "DELETE", body, opts);
 }
 
-export async function archiveNoteItem(id: string, opts?: { signal?: AbortSignal }): Promise<Note> {
+export async function archiveNoteItem(
+  id: string,
+  opts?: { signal?: AbortSignal; groupSlug?: string | null },
+): Promise<Note> {
   const json = await requestNotesJson(
     `/notes/items/${encodeURIComponent(id)}`,
     "PATCH",
-    { archived: true },
-    opts,
+    {
+      archived: true,
+      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
+    },
+    opts?.signal !== undefined ? { signal: opts.signal } : undefined,
   );
   const row = parseNoteMutationPayload(json);
   if (!row) throw new Error(`PATCH /notes/items/${id} archive returned no note payload`);
   return noteFromWgwItem(row);
 }
 
-export async function restoreNoteItem(id: string, opts?: { signal?: AbortSignal }): Promise<Note> {
+export async function restoreNoteItem(
+  id: string,
+  opts?: { signal?: AbortSignal; groupSlug?: string | null },
+): Promise<Note> {
   const json = await requestNotesJson(
     `/notes/items/${encodeURIComponent(id)}`,
     "PATCH",
-    { archived: false },
-    opts,
+    {
+      archived: false,
+      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
+    },
+    opts?.signal !== undefined ? { signal: opts.signal } : undefined,
   );
   const row = parseNoteMutationPayload(json);
   if (!row) throw new Error(`PATCH /notes/items/${id} restore returned no note payload`);

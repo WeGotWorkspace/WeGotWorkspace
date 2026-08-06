@@ -154,6 +154,25 @@ export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
 }
 
 /**
+ * List-row “View only” chip — only when list payload says the current user
+ * cannot edit content (shared view grant). Owned / edit / full omit the chip.
+ */
+export function noteShowsViewOnlyBadge(note: Pick<Note, "myRights">): boolean {
+  return note.myRights?.mayEditContent === false;
+}
+
+/**
+ * Owner “Shared” chip — outgoing grants on an owned note (not incoming
+ * Shared-with-me / shared-notebook recipient stubs).
+ */
+export function noteShowsSharedBadge(
+  note: Pick<Note, "isShared" | "sharedInbox" | "sharedNotebookGrant">,
+): boolean {
+  if (note.sharedInbox || note.sharedNotebookGrant) return false;
+  return note.isShared === true;
+}
+
+/**
  * Recomputes excerpt + word count from body. Call on every hydrate/read path so
  * historical rows with empty excerpt still preview correctly when body exists.
  */
@@ -343,6 +362,59 @@ export function filterVisibleNotes(
     return haystack.includes(q);
   });
   return filtered.sort(compareNotesDesc);
+}
+
+/**
+ * Parse `groups/{slug}/.notes/{notebook}` (with optional leading slash).
+ * Used for Shared notebooks membership paths — not personal ACL shares.
+ */
+export function parseGroupNotebookPath(
+  path: string,
+): { groupSlug: string; notebook: string } | null {
+  const normalized = path.replace(/\/+$/, "").replace(/^\//, "");
+  const match = /^groups\/([^/]+)\/\.notes\/([^/]+)$/i.exec(normalized);
+  if (!match) return null;
+  return { groupSlug: match[1]!, notebook: match[2]! };
+}
+
+/** Whether New note is allowed for the current sidebar/list view. */
+export function notesCanCreateInView(view: string): boolean {
+  if (view === "starred" || view === "archive" || view === "shared-with-me") {
+    return false;
+  }
+  if (view.startsWith("shared-nb:")) {
+    // Group membership notebooks: members can create. Personal ACL shares: no
+    // (API create is owner home or groupSlug only).
+    return parseGroupNotebookPath(view.slice("shared-nb:".length)) !== null;
+  }
+  return true;
+}
+
+export type NotesCreateTarget = {
+  notebook: string;
+  scope?: "group";
+  groupSlug?: string;
+};
+
+/** Resolve notebook (+ optional group scope) for a new note from the active view. */
+export function resolveNotesCreateTarget(
+  view: string,
+  personalNotebooks: string[],
+): NotesCreateTarget {
+  if (view.startsWith("shared-nb:")) {
+    const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
+    if (parsed) {
+      return {
+        notebook: parsed.notebook,
+        scope: "group",
+        groupSlug: parsed.groupSlug,
+      };
+    }
+  }
+  if (view.startsWith("nb:")) {
+    return { notebook: view.slice(3) };
+  }
+  return { notebook: personalNotebooks[0] ?? "Drafts" };
 }
 
 /** Whether a note lives under a shared notebook directory path. */

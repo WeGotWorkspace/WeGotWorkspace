@@ -19,6 +19,11 @@ import {
   noteListLocationLabel,
   noteShowsStarControls,
   noteShowsTags,
+  noteShowsSharedBadge,
+  noteShowsViewOnlyBadge,
+  notesCanCreateInView,
+  parseGroupNotebookPath,
+  resolveNotesCreateTarget,
   sharedNotebookLabel,
   plainTextFromBody,
   preserveLocalListableBodiesOnServerNotes,
@@ -108,6 +113,46 @@ describe("notes-note-utils", () => {
     expect(noteShowsStarControls(groupNote)).toBe(true);
     expect(noteAllowsTagAssignment(groupNote, true)).toBe(true);
     expect(noteAllowsTagAssignment(groupNote, false)).toBe(false);
+  });
+
+  it("shows view-only badge only when mayEditContent is false", () => {
+    expect(noteShowsViewOnlyBadge(sampleNote)).toBe(false);
+    expect(noteShowsViewOnlyBadge({ ...sampleNote, myRights: { mayEditContent: true } })).toBe(
+      false,
+    );
+    expect(
+      noteShowsViewOnlyBadge({
+        ...sampleNote,
+        sharedInbox: true,
+        myRights: { mayEditContent: false },
+      }),
+    ).toBe(true);
+    expect(
+      noteShowsViewOnlyBadge({
+        ...sampleNote,
+        sharedNotebookGrant: true,
+        myRights: { mayEditContent: false },
+      }),
+    ).toBe(true);
+  });
+
+  it("shows Shared badge for owned outgoing shares only", () => {
+    expect(noteShowsSharedBadge(sampleNote)).toBe(false);
+    expect(noteShowsSharedBadge({ ...sampleNote, isShared: true })).toBe(true);
+    expect(
+      noteShowsSharedBadge({
+        ...sampleNote,
+        isShared: true,
+        sharedInbox: true,
+      }),
+    ).toBe(false);
+    expect(
+      noteShowsSharedBadge({
+        ...sampleNote,
+        isShared: true,
+        sharedNotebookGrant: true,
+      }),
+    ).toBe(false);
   });
 
   it("does not render Untitled when title/excerpt are empty but body has text", () => {
@@ -574,5 +619,38 @@ describe("noteListLocationLabel", () => {
         groupSlug: null,
       }),
     ).toBe("TeamPad");
+  });
+});
+
+describe("group notebook create targets", () => {
+  it("parses groups/{slug}/.notes/{notebook} paths", () => {
+    expect(parseGroupNotebookPath("/groups/eng/.notes/Specs")).toEqual({
+      groupSlug: "eng",
+      notebook: "Specs",
+    });
+    expect(parseGroupNotebookPath("groups/eng/.notes/Specs/")).toEqual({
+      groupSlug: "eng",
+      notebook: "Specs",
+    });
+    expect(parseGroupNotebookPath("/users/bob/.notes/TeamPad")).toBeNull();
+  });
+
+  it("allows New note in group membership shared notebooks only", () => {
+    expect(notesCanCreateInView("all")).toBe(true);
+    expect(notesCanCreateInView("nb:Drafts")).toBe(true);
+    expect(notesCanCreateInView("shared-nb:/groups/eng/.notes/General")).toBe(true);
+    expect(notesCanCreateInView("shared-nb:/users/bob/.notes/TeamPad")).toBe(false);
+    expect(notesCanCreateInView("shared-with-me")).toBe(false);
+    expect(notesCanCreateInView("archive")).toBe(false);
+  });
+
+  it("resolves create target notebook + groupSlug from shared-nb view", () => {
+    expect(resolveNotesCreateTarget("shared-nb:/groups/eng/.notes/Specs", ["Drafts"])).toEqual({
+      notebook: "Specs",
+      scope: "group",
+      groupSlug: "eng",
+    });
+    expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({ notebook: "Ideas" });
+    expect(resolveNotesCreateTarget("all", ["Drafts"])).toEqual({ notebook: "Drafts" });
   });
 });

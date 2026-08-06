@@ -31,7 +31,7 @@ export type DeleteNotebookAction =
 export type NotesAPIOperations = {
   upsertNote: (note: Note, opts?: { signal?: AbortSignal }) => Promise<Note>;
   deleteNote: (
-    note: Pick<Note, "id" | "notebook" | "archived">,
+    note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
   archiveNote: (id: string, opts?: { signal?: AbortSignal }) => Promise<Note>;

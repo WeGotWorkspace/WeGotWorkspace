@@ -2401,6 +2401,18 @@
                     "contentUpdatedAt": {
                         "type": "string",
                         "description": "File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards."
+                    },
+                    "hasShares": {
+                        "type": "boolean",
+                        "description": "True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note."
+                    },
+                    "hasPublicShare": {
+                        "type": "boolean",
+                        "description": "True when this note file or its notebook directory has an active public link share."
+                    },
+                    "hasTeamShare": {
+                        "type": "boolean",
+                        "description": "True when this note file or its notebook directory has active team grants (users or groups)."
                     }
                 },
                 "required": [
@@ -2502,6 +2514,13 @@
                     },
                     "archived": {
                         "type": "boolean"
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes."
                     }
                 },
                 "required": [
@@ -2510,7 +2529,8 @@
                 ],
                 "example": {
                     "notebook": "General",
-                    "archived": false
+                    "archived": false,
+                    "groupSlug": "team"
                 }
             },
             "NotebookListItem": {

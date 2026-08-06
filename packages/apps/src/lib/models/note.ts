@@ -46,4 +46,16 @@ export type Note = {
    * Used for list/detail “Shared by …” location labeling.
    */
   sharedBy?: string;
+  /**
+   * Effective share rights for the current user when known from list payloads
+   * (shared-with-me / shared-notebook notes). Owned notes omit this.
+   */
+  myRights?: {
+    mayEditContent: boolean;
+  };
+  /**
+   * True when the current user has outgoing share grants on this note file or
+   * its notebook (from `GET /notes/items` `hasShares`). Owner affordance only.
+   */
+  isShared?: boolean;
 };
