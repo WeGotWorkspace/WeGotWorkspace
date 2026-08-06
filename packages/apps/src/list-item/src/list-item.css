@@ -128,7 +128,7 @@
 }
 
 .list-item__tags {
-  @apply flex items-center gap-1.5 min-w-0 overflow-hidden;
+  @apply mt-1 flex items-center gap-1.5 min-w-0 overflow-hidden;
 }
 
 .list-item__tags-more {
