@@ -60,7 +60,7 @@
 }
 
 .notes-list-panel__notebook-name {
-  @apply truncate min-w-0;
+  @apply truncate min-w-0 font-medium;
 }
 
 .notes-list-panel__shared-by-chip {
