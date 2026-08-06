@@ -1,11 +1,8 @@
-import { BookOpen, CalendarDays } from "lucide-react";
-import { Tag, TagGroup } from "@/tag/src/tag";
+import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import {
-  NoteCollabChrome,
   NoteCollabEditorSurface,
-  NoteCollabSession,
   NoteTextEditorBody,
   type NoteCollabConfig,
 } from "@/note-detail-view/src/note-text-editor-body";
@@ -13,13 +10,16 @@ import {
 export type NoteDetailViewProps = {
   /** Used for React keys on editors when switching notes. */
   noteId: string;
-  notebook?: string;
-  /** Shown in the meta row (e.g. note’s edited date string). */
-  lastEdited?: string;
-  /** Prepended before `lastEdited` in the meta row; default `Edited `. */
-  editedLabel?: string;
+  /**
+   * Revision token for the solo editor remount key (e.g. last-edited stamp).
+   * Not displayed — notebook / edited meta live in the pinned detail footer.
+   */
+  contentRevision?: string;
   tags: string[];
-  onTagAdd?: () => void;
+  /** Existing note tags offered as autocomplete when adding. */
+  availableTags?: string[];
+  /** Confirm a tag from the inline add field (existing or newly typed). */
+  onTagAdd?: (label: string) => void;
   onTagRemove?: (label: string) => void;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
@@ -28,6 +28,9 @@ export type NoteDetailViewProps = {
    * Collab config for the body. When provided (and not read-only), the body is
    * edited via the Docs Yjs stack and persists through the collab document — the
    * body never flows through the Notes metadata API. Omit for read-only/solo.
+   *
+   * Requires a parent {@link NoteCollabSession} (typically via WorkspaceApp
+   * `detailWrapper`) so action-bar presence and the editor share one session.
    */
   collab?: NoteCollabConfig;
   /** When `true`, body and tags are display-only. Default `false` (editing on). */
@@ -37,10 +40,9 @@ export type NoteDetailViewProps = {
 
 export function NoteDetailView({
   noteId,
-  notebook,
-  lastEdited,
-  editedLabel = "Edited ",
+  contentRevision = "",
   tags,
+  availableTags,
   onTagAdd,
   onTagRemove,
   pullQuote,
@@ -50,51 +52,17 @@ export function NoteDetailView({
   className,
 }: NoteDetailViewProps) {
   const markdown = noteBodyToMarkdown(body);
-  const metaTags = [
-    ...(notebook != null && notebook !== ""
-      ? [
-          {
-            key: "notebook",
-            label: notebook,
-            icon: <BookOpen className="size-3.5 opacity-70" />,
-            wrapperClassName: "note-detail-view__meta-tag max-w-[260px]",
-          },
-        ]
-      : []),
-    ...(lastEdited != null && lastEdited !== ""
-      ? [
-          {
-            key: "edited",
-            label: `${editedLabel}${lastEdited}`,
-            icon: <CalendarDays className="size-3.5 opacity-70" />,
-            wrapperClassName: "note-detail-view__meta-tag note-detail-view__meta-tag--edited",
-          },
-        ]
-      : []),
-  ];
-  const showCollabChrome = !readOnly && collab != null;
+  const useCollabSurface = !readOnly && collab != null;
 
-  const metaRow =
-    metaTags.length > 0 || showCollabChrome ? (
-      <div className="note-detail-view__meta-row flex items-center gap-2 md:gap-3 mb-5">
-        {metaTags.map((tag) => (
-          <div key={tag.key} className={tag.wrapperClassName}>
-            <Tag label={tag.label} icon={tag.icon} />
-          </div>
-        ))}
-        {showCollabChrome ? <NoteCollabChrome className="ml-auto" /> : null}
-      </div>
-    ) : null;
-
-  const detailBody = (
-    <>
-      {metaRow}
-
+  return (
+    <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
       <TagGroup
-        className="note-detail-view__tag-group py-6 border-y mb-6"
+        className="note-detail-view__tag-group py-6 mb-6"
+        size="lg"
         tags={tags}
         readonly={readOnly}
-        onAdd={readOnly ? undefined : onTagAdd}
+        suggestions={availableTags}
+        onAddTag={readOnly ? undefined : onTagAdd}
         onRemoveTag={readOnly ? undefined : onTagRemove}
       />
 
@@ -104,34 +72,15 @@ export function NoteDetailView({
         </p>
       ) : null}
 
-      {showCollabChrome ? (
+      {useCollabSurface ? (
         <NoteCollabEditorSurface />
       ) : (
         <NoteTextEditorBody
           noteId={noteId}
-          contentRevision={lastEdited ?? ""}
+          contentRevision={contentRevision}
           initialMarkdown={markdown}
           readOnly={readOnly}
         />
-      )}
-    </>
-  );
-
-  return (
-    <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
-      {showCollabChrome && collab ? (
-        <NoteCollabSession
-          key={collab.urls.room ?? noteId}
-          initialMarkdown={markdown}
-          userName={collab.userName}
-          urls={collab.urls}
-          wire={collab.wire}
-          localDisplayName={collab.userName}
-        >
-          {detailBody}
-        </NoteCollabSession>
-      ) : (
-        detailBody
       )}
     </article>
   );

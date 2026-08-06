@@ -11,7 +11,8 @@
 }
 
 .workspace-detail-pane__scroll {
-  @apply min-h-0 flex-1 overflow-y-auto px-6 md:px-12 py-10 md:py-16;
+  /* Top matches inline; bottom stays roomier for footer clearance. */
+  @apply min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-10 md:px-12 md:pt-12 md:pb-16;
 }
 
 /* Matches Tailwind `md:` / list+detail split (48rem). Query the workspace row, not the detail pane width. */

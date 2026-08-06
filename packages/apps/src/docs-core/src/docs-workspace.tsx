@@ -7,6 +7,7 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   workspaceUserFooterDetailLine,
   workspaceUserInitials,
@@ -142,7 +143,7 @@ function DocsWorkspaceShell({
     (index: number) => {
       setActiveOutlineIndex(index);
       if (editor) focusOutlineHeading(editor, index);
-      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      if (isSidebarOverlayViewport()) {
         controller.setSidebarOpen(false);
       }
     },

@@ -1,5 +1,6 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
+import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import type { WgwNoteItem, WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 
@@ -39,6 +40,12 @@ export function coerceNoteItem(raw: unknown): WgwNoteItem | null {
         ? String(r.updatedAt)
         : r.updated_at != null
           ? String(r.updated_at)
+          : undefined,
+    contentUpdatedAt:
+      r.contentUpdatedAt != null
+        ? String(r.contentUpdatedAt)
+        : r.content_updated_at != null
+          ? String(r.content_updated_at)
           : undefined,
   };
 }
@@ -94,23 +101,30 @@ function splitBodyParagraphs(body: string): string[] {
 }
 
 function excerptFromBody(body: string, max = 180): string {
-  const first = splitBodyParagraphs(body)[0] ?? "";
-  if (first.length <= max) return first;
-  return `${first.slice(0, max - 1)}…`;
+  // Strip markdown so list titles/previews match enrichNote / noteListTitle.
+  const text = markdownToPlainText(body);
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}…`;
 }
 
 export function noteFromWgwItem(row: WgwNoteItem): Note {
   const body = splitBodyParagraphs(row.body ?? "");
   const flat = body.join("\n\n");
+  const metadataUpdatedAt = row.updatedAt;
+  // Prefer content mtime for display so body-only collab saves show as “Edited”.
+  // Keep metadataUpdatedAt on the note for offline ifInState guards.
+  const displayDate = row.contentUpdatedAt ?? metadataUpdatedAt ?? "—";
+  const excerpt = excerptFromBody(row.body ?? "");
   return {
     id: row.id,
     notebook: row.notebook,
-    excerpt: excerptFromBody(row.body ?? ""),
+    excerpt,
     body,
     tags: row.tags ?? [],
     wordCount: wordCountFromText(flat),
     category: "Note",
-    date: row.updatedAt ?? "—",
+    date: displayDate,
+    ...(metadataUpdatedAt !== undefined ? { updatedAt: metadataUpdatedAt } : {}),
     starred: row.starred,
     archived: row.archived,
   };

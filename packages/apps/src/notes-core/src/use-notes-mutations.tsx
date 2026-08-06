@@ -7,11 +7,14 @@ import type { Note } from "@/lib/models/note";
 import { createTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
+  applyNoteBodyMarkdown,
   createNoteSaveDebouncer,
   enrichNote,
   normalizeTag,
   persistBestEffort,
 } from "./notes-note-utils";
+import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
@@ -82,7 +85,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     kind: "notebook" | "tag";
     name: string;
   }>(null);
-  const [tagDialog, setTagDialog] = useState<null | { noteId: string }>(null);
 
   const { confirmDialog, requestConfirm } = useConfirmDialog({
     contentClassName: "notes-dialog-surface",
@@ -406,6 +408,31 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [updateAndPersistNote],
   );
 
+  /**
+   * Optimistic list/footer sync when the collab body changes. Updates local
+   * body/excerpt/date (+ Dexie mirror) without enqueueing a metadata upsert —
+   * the body still persists only through the collab document.
+   */
+  const applyLocalBodyMarkdown = useCallback(
+    (id: string, markdown: string) => {
+      let updated: Note | undefined;
+      setNotes((prev) =>
+        prev.map((note) => {
+          if (note.id !== id) return note;
+          const next = applyNoteBodyMarkdown(note, markdown);
+          if (next !== note) updated = next;
+          return next;
+        }),
+      );
+      if (!updated) return;
+      const username = readOfflineNotesUsername();
+      if (username) {
+        persistBestEffort(upsertNoteInCache(username, updated, false));
+      }
+    },
+    [setNotes],
+  );
+
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const targetNotebook = view.startsWith("nb:") ? view.slice(3) : (notebooks[0] ?? "Drafts");
@@ -416,6 +443,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       id,
       category: L.newNoteCategory,
       date,
+      updatedAt: date,
       excerpt: "",
       body: [""],
       notebook: targetNotebook,
@@ -556,8 +584,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setEditDialog,
     deleteDialog,
     setDeleteDialog,
-    tagDialog,
-    setTagDialog,
     confirmDialog,
     toggleStar,
     toggleArchive,
@@ -569,6 +595,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     deleteTag,
     toggleNoteTag,
     updateNote,
+    applyLocalBodyMarkdown,
     createNote,
     requestDeleteSelected,
     openDeleteConfirm,

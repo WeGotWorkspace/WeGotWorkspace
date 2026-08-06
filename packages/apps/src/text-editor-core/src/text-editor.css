@@ -918,6 +918,7 @@
       .workspace-app-layout__main-header,
       .view-header,
       .action-bar,
+      .workspace-chrome-footer,
       .docs-workspace__stats-footer
     ) {
     display: none !important;

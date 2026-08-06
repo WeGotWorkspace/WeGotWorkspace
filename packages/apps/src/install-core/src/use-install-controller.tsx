@@ -24,6 +24,7 @@ import {
   toInstallServerChecks,
 } from "@/install-core/src/install-models";
 import { DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rtc/default-stun";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export function useInstallController({
   data,
@@ -358,7 +359,7 @@ export function useInstallController({
 
   const goToStep = useCallback((index: number) => {
     setStepIdx(index);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (isSidebarOverlayViewport()) {
       setSidebarOpen(false);
     }
   }, []);

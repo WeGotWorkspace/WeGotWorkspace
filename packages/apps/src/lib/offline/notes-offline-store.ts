@@ -15,6 +15,7 @@ import {
   notesNotesTable,
   type OfflineNoteRow,
 } from "@/lib/offline/notes/notes-schema";
+import { enrichNote, noteHasListableBody } from "@/notes-core/src/notes-note-utils";
 
 export {
   enqueueOutboxMutation,
@@ -114,9 +115,35 @@ export async function writeNotesBootstrapToCache(
     })),
   );
   await notes.clear();
-  await notes.bulkPut(bootstrap.data.notes.map((note) => noteRow(note, false)));
+  const serverNotes = bootstrap.data.notes.map((note) => enrichNote(note));
+  await notes.bulkPut(serverNotes.map((note) => noteRow(note, false)));
   if (pendingRows.length > 0) {
-    await notes.bulkPut(pendingRows);
+    const serverById = new Map(serverNotes.map((note) => [note.id, note]));
+    // Pending metadata must not wipe a server body that the local row never got
+    // (common for pre-optimistic-sync historical notes → “Untitled note” in list).
+    const mergedPending = pendingRows.map((row) => {
+      let pending: Note;
+      try {
+        pending = JSON.parse(row.data) as Note;
+      } catch {
+        return row;
+      }
+      const server = serverById.get(row.id);
+      if (server && !noteHasListableBody(pending) && noteHasListableBody(server)) {
+        return noteRow(
+          enrichNote({
+            ...pending,
+            body: server.body,
+            excerpt: server.excerpt,
+            wordCount: server.wordCount,
+            date: server.date !== "—" ? server.date : pending.date,
+          }),
+          true,
+        );
+      }
+      return noteRow(enrichNote(pending), true);
+    });
+    await notes.bulkPut(mergedPending);
   }
 }
 

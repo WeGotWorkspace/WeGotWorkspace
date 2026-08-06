@@ -64,6 +64,32 @@ describe("notes offline store", () => {
     expect(cached?.data.notes[0]?.body).toEqual(["Local body"]);
   });
 
+  it("backfills empty pending body from server so list previews are not Untitled", async () => {
+    const emptyLocal = { ...note, excerpt: "", body: [""], wordCount: 0, tags: ["pending"] };
+    await upsertNoteInCache(username, emptyLocal, true);
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notes: [
+          {
+            ...note,
+            excerpt: "Donec ullamcorper nulla non metus auctor fringilla.",
+            body: ["Donec ullamcorper nulla non metus auctor fringilla."],
+            tags: ["server"],
+            wordCount: 7,
+          },
+        ],
+      },
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notes[0]?.tags).toEqual(["pending"]);
+    expect(cached?.data.notes[0]?.body[0]).toContain("Donec ullamcorper");
+    expect(cached?.data.notes[0]?.excerpt).toMatch(/Donec ullamcorper/);
+  });
+
   it("coalesces pending upsert rows for the same note", async () => {
     await enqueueCoalescedNoteUpdate(username, note.id, note, note.date);
     await enqueueCoalescedNoteUpdate(

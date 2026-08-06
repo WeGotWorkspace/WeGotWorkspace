@@ -115,6 +115,8 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: /Endless scroll/i })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Refresh notes" })).toBeInTheDocument();
+    await expect(canvas.getByText("architecture")).toBeInTheDocument();
+    await expect(canvas.getByText("essay")).toBeInTheDocument();
     const input = canvas.getByPlaceholderText("Search notes...");
     await userEvent.type(input, "Nordic");
     await expect(input).toHaveValue("Nordic");

@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { Archive, Check } from "lucide-react";
 import {
   SwipeableListItem,
@@ -32,12 +32,14 @@ type ListItemMetaPosition = "above" | "below";
 type ListItemProps = {
   id: string;
   title: string;
-  subtitle: string;
+  /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
+  subtitle: ReactNode;
   /** Subtitle/meta line placement. Mail and notes keep the default `above`; contacts pass `below`. */
   metaPosition?: ListItemMetaPosition;
   date: string;
-  icons?: React.ReactNode[];
-  text: string;
+  icons?: ReactNode[];
+  /** Secondary body line (excerpt, tags row, etc.). Omitted when empty and a title is present. */
+  text?: ReactNode;
   isActive: boolean;
   isSelected: boolean;
   selectionMode: boolean;
@@ -112,6 +114,7 @@ export function ListItem({
 }: ListItemProps) {
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
+  const bodyContent = text || (!title ? emptyText : null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const longPressBlockedBySwipeRef = useRef(false);
@@ -237,7 +240,7 @@ export function ListItem({
           <p className="list-item__subtitle list-item__subtitle--below">{subtitle}</p>
         ) : null}
 
-        <p className="list-item__body">{text || (!title ? emptyText : "")}</p>
+        {bodyContent ? <div className="list-item__body">{bodyContent}</div> : null}
       </div>
     </button>
   );

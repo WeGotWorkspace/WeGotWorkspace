@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Note } from "@/lib/models/note";
-import { wgwNoteMetadataFromNote, wgwNoteUpsertFromNote } from "@/lib/api/wgw/notes";
+import {
+  coerceNoteItem,
+  noteFromWgwItem,
+  wgwNoteMetadataFromNote,
+  wgwNoteUpsertFromNote,
+} from "@/lib/api/wgw/notes";
 
 const note: Note = {
   id: "note-1",
@@ -47,5 +52,37 @@ describe("wgwNoteUpsertFromNote", () => {
     const request = wgwNoteUpsertFromNote(note);
 
     expect(request.body).toBe("Body text\n\nSecond paragraph");
+  });
+});
+
+describe("noteFromWgwItem", () => {
+  it("prefers contentUpdatedAt for display date and keeps metadata updatedAt", () => {
+    const row = coerceNoteItem({
+      id: "n-1",
+      notebook: "Drafts",
+      body: "Hello from collab",
+      tags: [],
+      updatedAt: "2024-01-01T00:00:00.000Z",
+      contentUpdatedAt: "2026-06-01T12:00:00.000Z",
+    });
+    expect(row).not.toBeNull();
+    const mapped = noteFromWgwItem(row!);
+    expect(mapped.date).toBe("2026-06-01T12:00:00.000Z");
+    expect(mapped.updatedAt).toBe("2024-01-01T00:00:00.000Z");
+    expect(mapped.excerpt).toContain("Hello from collab");
+  });
+
+  it("derives excerpt from body so empty-title historical notes are not Untitled", () => {
+    const row = coerceNoteItem({
+      id: "n1781784184",
+      notebook: "Drafts",
+      body: "Donec ullamcorper nulla non metus auctor fringilla.",
+      tags: [],
+      updatedAt: "2026-06-18T12:02:37+00:00",
+    });
+    expect(row).not.toBeNull();
+    const mapped = noteFromWgwItem(row!);
+    expect(mapped.excerpt).toMatch(/Donec ullamcorper/);
+    expect(mapped.body[0]).toContain("Donec ullamcorper");
   });
 });

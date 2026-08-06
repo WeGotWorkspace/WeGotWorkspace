@@ -12,6 +12,7 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { cn } from "@/lib/utils";
@@ -262,7 +263,7 @@ export function DocsHomeWorkspace({
 
   const selectView = useCallback((next: DocsHomeView) => {
     setView(next);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (isSidebarOverlayViewport()) {
       setSidebarOpen(false);
     }
   }, []);

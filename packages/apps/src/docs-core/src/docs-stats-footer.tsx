@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Tag } from "@/tag/src/tag";
+import { WorkspaceChromeFooter } from "@/workspace-shell/src/workspace-chrome-footer";
 import type { useDocsController } from "@/docs-core/src/use-docs-controller";
 
 type DocsController = ReturnType<typeof useDocsController>;
@@ -25,31 +26,24 @@ export function DocsEditorStatsFooter({
   status,
 }: DocsEditorStatsFooterProps) {
   return (
-    <footer className="docs-workspace__stats-footer" aria-live="polite">
-      <div className="docs-workspace__stats-footer-group">
+    <WorkspaceChromeFooter className="docs-workspace__stats-footer" end={status}>
+      <Tag
+        label={statsWordsLabel(wordCount)}
+        colors={{
+          backgroundColor: "var(--docs-stat-tag-bg)",
+          color: "var(--docs-stat-tag-color)",
+        }}
+      />
+      <span className="docs-workspace__stats-footer-tag--characters">
         <Tag
-          label={statsWordsLabel(wordCount)}
+          label={statsCharactersLabel(characterCount)}
           colors={{
             backgroundColor: "var(--docs-stat-tag-bg)",
             color: "var(--docs-stat-tag-color)",
           }}
         />
-        <span className="docs-workspace__stats-footer-tag--characters">
-          <Tag
-            label={statsCharactersLabel(characterCount)}
-            colors={{
-              backgroundColor: "var(--docs-stat-tag-bg)",
-              color: "var(--docs-stat-tag-color)",
-            }}
-          />
-        </span>
-      </div>
-      {status ? (
-        <div className="docs-workspace__stats-footer-group docs-workspace__stats-footer-group--end">
-          {status}
-        </div>
-      ) : null}
-    </footer>
+      </span>
+    </WorkspaceChromeFooter>
   );
 }
 

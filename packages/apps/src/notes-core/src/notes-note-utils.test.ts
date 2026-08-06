@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
+  applyNoteBodyMarkdown,
+  backfillNotesContentFromServer,
   computeExcerpt,
   computeWordCount,
   createNoteSaveDebouncer,
   enrichNote,
   filterVisibleNotes,
+  dedupeNotesById,
   normalizeTag,
+  noteHasListableBody,
+  noteListTagOverflow,
   noteListTitle,
   plainTextFromBody,
 } from "./notes-note-utils";
@@ -44,10 +49,100 @@ describe("notes-note-utils", () => {
     expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
   });
 
+  it("caps visible list tags and reports overflow", () => {
+    expect(noteListTagOverflow(["a", "b"])).toEqual({ visible: ["a", "b"], overflow: 0 });
+    expect(noteListTagOverflow(["a", "b", "c", "d"])).toEqual({
+      visible: ["a", "b"],
+      overflow: 2,
+    });
+    expect(noteListTagOverflow(["  focus  ", ""])).toEqual({ visible: ["focus"], overflow: 0 });
+  });
+
+  it("does not render Untitled when title/excerpt are empty but body has text", () => {
+    // Historical rows: frontmatter title was "Untitled", excerpt never backfilled,
+    // but the markdown body already has content (e.g. n1781784157-style).
+    const stale: Pick<Note, "excerpt" | "body"> = {
+      excerpt: "",
+      body: [
+        "Donec ullamcorper nulla non metus auctor fringilla. Donec ullamcorper nulla non metus auctor fringilla.",
+      ],
+    };
+    expect(noteListTitle(stale)).toMatch(/^Donec ullamcorper/);
+    expect(noteListTitle(stale)).not.toBe("Untitled note");
+
+    const enriched = enrichNote({
+      ...sampleNote,
+      excerpt: "",
+      body: stale.body,
+      wordCount: 0,
+    });
+    expect(enriched.excerpt).toMatch(/Donec ullamcorper/);
+    expect(noteListTitle(enriched)).toMatch(/^Donec ullamcorper/);
+  });
+
   it("enriches notes with excerpt and word count", () => {
     const enriched = enrichNote({ ...sampleNote, excerpt: "", wordCount: 0 });
     expect(enriched.excerpt.length).toBeGreaterThan(0);
     expect(enriched.wordCount).toBeGreaterThan(0);
+  });
+
+  it("backfills empty local body/excerpt from server without dropping local metadata", () => {
+    const local: Note = {
+      ...sampleNote,
+      id: "n1781784184",
+      excerpt: "",
+      body: [""],
+      tags: ["local-tag"],
+      starred: true,
+      wordCount: 0,
+    };
+    const server: Note = {
+      ...sampleNote,
+      id: "n1781784184",
+      excerpt: "Donec ullamcorper nulla non metus auctor fringilla.",
+      body: ["Donec ullamcorper nulla non metus auctor fringilla."],
+      tags: ["server-tag"],
+      starred: false,
+      wordCount: 7,
+    };
+    const merged = backfillNotesContentFromServer([local], [server]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.tags).toEqual(["local-tag"]);
+    expect(merged[0]?.starred).toBe(true);
+    expect(noteHasListableBody(merged[0]!)).toBe(true);
+    expect(noteListTitle(merged[0]!)).toMatch(/^Donec ullamcorper/);
+    expect(merged[0]?.excerpt).toMatch(/Donec ullamcorper/);
+  });
+
+  it("keeps a non-empty local body when backfilling from server", () => {
+    const local: Note = { ...sampleNote, body: ["Local draft"], excerpt: "Local draft" };
+    const server: Note = { ...sampleNote, body: ["Server body"], excerpt: "Server body" };
+    const merged = backfillNotesContentFromServer([local], [server]);
+    expect(merged[0]?.body).toEqual(["Local draft"]);
+  });
+
+  it("applies collab markdown to body/excerpt/date without bumping updatedAt", () => {
+    const withToken = {
+      ...sampleNote,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      excerpt: "stale preview",
+      body: ["Old body"],
+    };
+    const next = applyNoteBodyMarkdown(
+      withToken,
+      "Fresh **preview** line\n\nSecond paragraph",
+      "2026-06-15T12:00:00.000Z",
+    );
+    expect(next.body[0]).toContain("Fresh");
+    expect(next.excerpt).toMatch(/Fresh preview line/i);
+    expect(next.date).toBe("2026-06-15T12:00:00.000Z");
+    expect(next.updatedAt).toBe("2026-01-01T00:00:00.000Z");
+    expect(next.wordCount).toBeGreaterThan(0);
+  });
+
+  it("returns the same note reference when collab markdown is unchanged", () => {
+    const note = { ...sampleNote, body: ["Same body"] };
+    expect(applyNoteBodyMarkdown(note, "Same body")).toBe(note);
   });
 
   it("AUTOSAVE_WRITE_DEBOUNCE_MS is at least 500ms and at most 3000ms", () => {
@@ -82,6 +177,81 @@ describe("notes-note-utils", () => {
       searchQuery: "other",
     });
     expect(searchMatch).toHaveLength(0);
+  });
+
+  it("orders visible notes newest-edited first", () => {
+    const notes: Note[] = [
+      { ...sampleNote, id: "older", date: "2026-01-01T00:00:00.000Z" },
+      { ...sampleNote, id: "newer", date: "2026-06-15T12:00:00.000Z" },
+      { ...sampleNote, id: "mid", date: "2026-03-01T00:00:00.000Z" },
+    ];
+    const visible = filterVisibleNotes(notes, {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["newer", "mid", "older"]);
+  });
+
+  it("dedupes duplicate note ids before listing (keeps first occurrence)", () => {
+    const first: Note = {
+      ...sampleNote,
+      id: "dup",
+      excerpt: "First",
+      body: ["First"],
+      notebook: "Test",
+      date: "2026-08-06T11:55:00.000Z",
+    };
+    const second: Note = {
+      ...sampleNote,
+      id: "dup",
+      excerpt: "Second",
+      body: ["Second"],
+      notebook: "Drafts",
+      date: "2026-08-06T11:54:00.000Z",
+    };
+    expect(dedupeNotesById([first, second]).map((note) => note.excerpt)).toEqual(["First"]);
+
+    const visible = filterVisibleNotes([first, second, { ...sampleNote, id: "other" }], {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["dup", "other"]);
+    expect(visible.filter((note) => note.id === "dup")).toHaveLength(1);
+  });
+
+  it("reorders after a collab body date bump", () => {
+    const older: Note = {
+      ...sampleNote,
+      id: "n-old",
+      date: "2026-01-01T00:00:00.000Z",
+      body: ["Old body"],
+    };
+    const newer: Note = {
+      ...sampleNote,
+      id: "n-new",
+      date: "2026-06-01T00:00:00.000Z",
+      body: ["New body"],
+    };
+    const before = filterVisibleNotes([older, newer], {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(before.map((note) => note.id)).toEqual(["n-new", "n-old"]);
+
+    const bumped = applyNoteBodyMarkdown(older, "Edited older note", "2026-07-01T00:00:00.000Z");
+    const after = filterVisibleNotes([bumped, newer], {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(after.map((note) => note.id)).toEqual(["n-old", "n-new"]);
   });
 });
 

@@ -85,7 +85,6 @@ export function useNotesController({
     moveDialog: mutations.moveDialog,
     editDialog: mutations.editDialog,
     deleteDialog: mutations.deleteDialog,
-    tagDialog: mutations.tagDialog,
     visibleNotes: list.visibleNotes,
     workspaceLayoutRef: shell.workspaceLayoutRef,
     isTouch: list.isTouch,
@@ -103,7 +102,6 @@ export function useNotesController({
     setMoveDialog: mutations.setMoveDialog,
     setEditDialog: mutations.setEditDialog,
     setDeleteDialog: mutations.setDeleteDialog,
-    setTagDialog: mutations.setTagDialog,
     moveToNotebook: mutations.moveToNotebook,
     assignTagToNotes: mutations.assignTagToNotes,
     createNote: mutations.createNote,
@@ -117,6 +115,7 @@ export function useNotesController({
     deleteTag: mutations.deleteTag,
     toggleNoteTag: mutations.toggleNoteTag,
     updateNote: mutations.updateNote,
+    applyLocalBodyMarkdown: mutations.applyLocalBodyMarkdown,
   };
 }
 

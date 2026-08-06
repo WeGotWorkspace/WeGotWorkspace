@@ -9,7 +9,7 @@ import { measureFloatingLayerContainerMaxHeight } from "../docs-comments/docs-co
 
 const CARD_MARGIN_GAP_PX = 16;
 const CARD_BOTTOM_INSET_PX = 16;
-const WORKSPACE_FOOTER_SELECTOR = ".docs-workspace__stats-footer";
+const WORKSPACE_FOOTER_SELECTOR = ".workspace-chrome-footer, .docs-workspace__stats-footer";
 const EDITOR_FORMAT_BAR_SELECTOR = ".text-editor-format-bar";
 
 export type DocsCollabFloatingLayerLayout = {

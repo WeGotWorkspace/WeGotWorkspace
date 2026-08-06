@@ -2395,7 +2395,12 @@
                         "description": "Group slug when scope is group, null for personal notes."
                     },
                     "updatedAt": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value."
+                    },
+                    "contentUpdatedAt": {
+                        "type": "string",
+                        "description": "File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards."
                     }
                 },
                 "required": [

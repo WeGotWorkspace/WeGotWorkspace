@@ -9,6 +9,20 @@ export function noteBodyToMarkdown(body: string[]): string {
   return body.join("\n\n");
 }
 
+/**
+ * Inverse of {@link noteBodyToMarkdown}: split a collab markdown document into
+ * `Note.body` paragraphs (blank-line separated).
+ */
+export function markdownToNoteBody(markdown: string): string[] {
+  const trimmed = markdown.trim();
+  if (!trimmed) return [""];
+  const parts = trimmed
+    .split(/\n\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : [trimmed];
+}
+
 /** Strips markdown / inline HTML for list previews, search, and excerpts. */
 export function markdownToPlainText(markdown: string): string {
   return removeMd(markdown).replace(/\s+/g, " ").trim();

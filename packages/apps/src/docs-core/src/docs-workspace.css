@@ -1,5 +1,6 @@
 @import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 .docs-workspace {
   @apply min-w-0 overflow-x-hidden;
@@ -15,7 +16,10 @@
   --docs-canvas: oklch(95% 0.006 100);
   --docs-sheet-width: 210mm;
   --docs-sheet-min-height: 297mm;
-  --docs-sheet-canvas-padding-block: 2.5rem;
+  /* Outer canvas inset around the sheet — top matches inline; bottom stays roomier. */
+  --docs-sheet-canvas-padding-inline: 1.25rem;
+  --docs-sheet-canvas-padding-block-start: var(--docs-sheet-canvas-padding-inline);
+  --docs-sheet-canvas-padding-block-end: 2.5rem;
   --docs-comments-column-width: 20rem;
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
@@ -26,6 +30,9 @@
   --docs-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --docs-format-chrome-padding-x: 1rem;
   --docs-format-chrome-padding-y: 0.5rem;
+  --workspace-chrome-footer-padding-x: var(--docs-format-chrome-padding-x);
+  --workspace-chrome-footer-padding-y: var(--docs-format-chrome-padding-y);
+  --workspace-chrome-footer-border: var(--docs-border);
 
   --app-sidebar-bg: var(--docs-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
@@ -243,25 +250,6 @@
   display: none;
 }
 
-.docs-workspace__stats-footer {
-  @apply relative z-30 flex shrink-0 flex-nowrap items-center gap-x-3;
-  box-sizing: border-box;
-  padding-block: var(--docs-format-chrome-padding-y);
-  padding-inline: var(--docs-format-chrome-padding-x);
-  min-height: 3rem;
-  background-color: color-mix(in oklab, #ffffff 88%, transparent);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid var(--docs-border);
-}
-
-.docs-workspace__stats-footer-group {
-  @apply flex shrink-0 items-center gap-1.5;
-}
-
-.docs-workspace__stats-footer-group--end {
-  @apply ml-auto min-w-0 shrink;
-}
-
 @media (max-width: 767px) {
   .docs-workspace__stats-footer-tag--characters {
     display: none;
@@ -276,10 +264,6 @@
   --button-primary-fg: #ffffff;
   --primary: var(--docs-accent);
   --primary-foreground: #ffffff;
-}
-
-.docs-workspace__stats-footer .tag {
-  font-variant-numeric: tabular-nums;
 }
 
 .docs-workspace__editor {
@@ -373,8 +357,9 @@
   min-height: 0;
   align-items: flex-start;
   overflow-y: auto;
-  padding-block: var(--docs-sheet-canvas-padding-block);
-  padding-inline: 1.25rem;
+  padding-block-start: var(--docs-sheet-canvas-padding-block-start);
+  padding-block-end: var(--docs-sheet-canvas-padding-block-end);
+  padding-inline: var(--docs-sheet-canvas-padding-inline);
   background-color: var(--docs-canvas);
 }
 

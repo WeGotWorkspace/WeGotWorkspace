@@ -150,6 +150,27 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.active?.tags).toEqual([]);
   });
 
+  it("renames the active notebook view when renameNotebook runs", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", notebook: "Drafts" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, initialView: "nb:Drafts" }),
+    );
+
+    expect(result.current.view).toBe("nb:Drafts");
+
+    act(() => {
+      result.current.renameNotebook("Drafts", "Journal");
+    });
+
+    expect(result.current.view).toBe("nb:Journal");
+    expect(result.current.notes[0]?.notebook).toBe("Journal");
+  });
+
   it("refreshes the active note when bootstrap syncs updated server content", () => {
     const initialData: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", excerpt: "Before sync", body: ["Before body"] }],
@@ -216,6 +237,27 @@ describe("useNotesController URL routing", () => {
     rerender({ initialNoteId: "note-1" });
 
     expect(result.current.activeId).toBe("note-1");
+    expect(result.current.selectedIds).toEqual(["note-1"]);
+  });
+
+  it("keeps selectedIds aligned with activeId after a primary click then URL note change", () => {
+    const { result, rerender } = renderHook(
+      ({ initialNoteId }: { initialNoteId: string }) =>
+        useNotesController({ data, listLoading: false, initialNoteId }),
+      { initialProps: { initialNoteId: "note-1" } },
+    );
+
+    clickSelect(result, "note-2");
+    // Route sync catches up after onNoteChange (same as production).
+    rerender({ initialNoteId: "note-2" });
+    expect(result.current.activeId).toBe("note-2");
+    expect(result.current.selectedIds).toEqual(["note-2"]);
+
+    // Browser back / deep link to another note must not leave selectedIds on the old row.
+    rerender({ initialNoteId: "note-1" });
+
+    expect(result.current.activeId).toBe("note-1");
+    expect(result.current.selectedIds).toEqual(["note-1"]);
   });
 
   it("onViewChange is called when selectView is invoked (not on mount)", () => {

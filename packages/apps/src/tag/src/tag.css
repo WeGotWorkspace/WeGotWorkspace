@@ -2,14 +2,29 @@
 
 .tag-group {
   --tag-height: 1.5rem;
+  --tag-font-size: 0.75rem;
+  --tag-icon-size: 0.75rem;
+  --tag-padding-inline: 0.5rem;
+  --tag-gap: 0.375rem;
+  @apply relative flex flex-wrap items-center gap-1.5;
+}
+
+/* Interactive editors (notes detail): fixed 36px — not --input-height (grows at md+). */
+.tag-group--size-lg {
+  --tag-height: 2.25rem;
+  --tag-font-size: 0.875rem;
+  --tag-icon-size: 1rem;
+  --tag-padding-inline: 0.75rem;
+  --tag-gap: 0.5rem;
+  @apply gap-2;
 }
 
 .tag {
   @apply inline-flex min-w-0 items-center font-medium normal-case tracking-normal;
-  gap: 0.375rem;
-  padding-inline: 0.5rem;
+  gap: var(--tag-gap, 0.375rem);
+  padding-inline: var(--tag-padding-inline, 0.5rem);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--tag-font-size, 0.75rem);
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
@@ -18,18 +33,148 @@
   color: var(--tag-fg, var(--color-ink));
 }
 
+.tag--size-lg {
+  --tag-height: 2.25rem;
+  --tag-font-size: 0.875rem;
+  --tag-icon-size: 1rem;
+  --tag-padding-inline: 0.75rem;
+  --tag-gap: 0.5rem;
+}
+
 .tag__icon {
   @apply shrink-0 opacity-70;
 }
 
 .tag__icon svg {
-  @apply size-3;
+  width: var(--tag-icon-size, 0.75rem);
+  height: var(--tag-icon-size, 0.75rem);
 }
 
 .tag__remove {
-  @apply shrink-0 opacity-50 transition-opacity hover:opacity-100;
+  @apply inline-flex shrink-0 items-center justify-center opacity-50 transition-opacity hover:opacity-100;
+  /* Expand hit area without changing chip layout much */
+  margin-inline-end: -0.25rem;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+}
+
+.tag--size-lg .tag__remove,
+.tag-group--size-lg .tag__remove {
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin-inline-end: -0.375rem;
 }
 
 .tag__remove svg {
-  @apply size-3;
+  width: var(--tag-icon-size, 0.75rem);
+  height: var(--tag-icon-size, 0.75rem);
+}
+
+.tag-group__add {
+  @apply relative inline-flex min-w-0 items-center;
+}
+
+.tag-group__add-button {
+  @apply inline-flex shrink-0 items-center font-medium outline-none;
+  gap: var(--tag-gap, 0.375rem);
+  padding-inline: var(--tag-padding-inline, 0.5rem);
+  font-family: var(--font-mono);
+  font-size: var(--tag-font-size, 0.75rem);
+  line-height: 1;
+  min-height: var(--tag-height, 1.5rem);
+  height: var(--tag-height, 1.5rem);
+  border-radius: var(--control-radius-button-pill);
+  background-color: var(--tag-group-add-bg, color-mix(in oklab, var(--color-ink) 6%, transparent));
+  color: var(--tag-group-add-fg, var(--color-ink));
+}
+
+.tag-group__add-button:hover {
+  background-color: var(
+    --tag-group-add-bg-hover,
+    color-mix(in oklab, var(--color-ink) 10%, transparent)
+  );
+}
+
+.tag-group__add-button:focus-visible {
+  box-shadow: 0 0 0 1px var(--ring, var(--color-ring, currentColor));
+}
+
+.tag-group__add-button svg {
+  @apply shrink-0 opacity-70;
+  width: var(--tag-icon-size, 0.75rem);
+  height: var(--tag-icon-size, 0.75rem);
+}
+
+.tag-group__input {
+  @apply border px-2 font-medium outline-none;
+  font-family: var(--font-mono);
+  font-size: var(--tag-font-size, 0.75rem);
+  line-height: 1;
+  min-height: var(--tag-height, 1.5rem);
+  height: var(--tag-height, 1.5rem);
+  min-width: 7rem;
+  max-width: 12rem;
+  width: 8rem;
+  border-radius: var(--control-radius-button-pill);
+  border-color: var(--tag-group-input-border, var(--control-border-color));
+  background-color: var(
+    --tag-group-input-bg,
+    color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
+  );
+  color: var(--tag-group-input-fg, var(--color-ink));
+}
+
+.tag-group--size-lg .tag-group__input {
+  min-width: 8rem;
+  max-width: 14rem;
+  width: 10rem;
+  padding-inline: 0.75rem;
+}
+
+.tag-group__input:focus,
+.tag-group__input:focus-visible {
+  background-color: var(--tag-group-input-bg-focus, #ffffff);
+  box-shadow: 0 0 0 1px var(--ring, var(--color-ring, currentColor));
+}
+
+.tag-group__input::placeholder {
+  opacity: 1;
+  color: var(
+    --tag-group-input-placeholder,
+    color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
+  );
+}
+
+.tag-group__suggestions {
+  @apply absolute left-0 top-full z-20 mt-1 max-h-48 min-w-full overflow-y-auto border py-1;
+  border-color: var(--tag-group-suggestions-border, var(--control-border-color));
+  border-radius: var(--control-radius);
+  background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
+  box-shadow: var(
+    --tag-group-suggestions-shadow,
+    0 4px 16px color-mix(in oklab, var(--color-ink) 12%, transparent)
+  );
+  min-width: 10rem;
+}
+
+.tag-group__suggestion {
+  @apply flex w-full items-center px-2.5 py-1.5 text-left font-medium;
+  font-family: var(--font-mono);
+  font-size: var(--tag-font-size, 0.75rem);
+  line-height: 1.25;
+  color: var(--tag-group-suggestion-fg, var(--color-ink));
+  background-color: transparent;
+}
+
+.tag-group--size-lg .tag-group__suggestion {
+  @apply px-3 py-2;
+  min-height: 2.25rem;
+}
+
+.tag-group__suggestion:hover,
+.tag-group__suggestion--active {
+  background-color: var(
+    --tag-group-suggestion-bg-active,
+    color-mix(in oklab, var(--color-ink) 6%, transparent)
+  );
 }

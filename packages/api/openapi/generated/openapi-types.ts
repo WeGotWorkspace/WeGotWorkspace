@@ -7232,7 +7232,10 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group, null for personal notes. */
             groupSlug: string | null;
+            /** @description Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value. */
             updatedAt: string;
+            /** @description File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards. */
+            contentUpdatedAt?: string;
         };
         NoteItemList: components["schemas"]["NoteItem"][];
         NotesItemsResponse: {

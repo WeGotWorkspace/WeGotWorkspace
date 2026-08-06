@@ -1,6 +1,23 @@
+import type { Note } from "@/lib/models/note";
+
 export function parseNoteTimestamp(value: string): number | null {
   const ts = Date.parse(value);
   return Number.isNaN(ts) ? null : ts;
+}
+
+/** Newest-edited first; invalid dates sort last; ties break on id descending. */
+export function compareNotesDesc(
+  a: Pick<Note, "id" | "date">,
+  b: Pick<Note, "id" | "date">,
+): number {
+  const da = parseNoteTimestamp(a.date);
+  const db = parseNoteTimestamp(b.date);
+  const aValid = da !== null;
+  const bValid = db !== null;
+  if (aValid && bValid && da !== db) return db - da;
+  if (aValid && !bValid) return -1;
+  if (!aValid && bValid) return 1;
+  return b.id.localeCompare(a.id);
 }
 
 export function formatNoteDateForList(raw: string): string {

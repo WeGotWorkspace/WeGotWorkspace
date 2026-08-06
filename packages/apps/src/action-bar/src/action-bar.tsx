@@ -1,17 +1,26 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, MoreHorizontal, X } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
+import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "@/action-bar/src/action-bar.css";
 
 export type ActionBarAction = {
   id?: string;
   label: string;
+  /**
+   * Tooltip / accessible name when it should differ from the visible `label`
+   * (e.g. notebook name visible, “Change notebook” in the tooltip).
+   */
+  tooltip?: string;
   icon: ReactNode;
   onClick?: () => void;
   active?: boolean;
   disabled?: boolean;
+  /** When true, render icon + visible label (Button) instead of icon-only IconButton. */
+  showLabel?: boolean;
 };
 
 export type ActionBarProps = {
@@ -26,6 +35,11 @@ export type ActionBarProps = {
   leftActions?: ActionBarAction[];
   /** Preferred API: action descriptors rendered by ActionBar with compact dropdown behavior. */
   rightActions?: ActionBarAction[];
+  /**
+   * Optional leading content before right actions (e.g. collab presence), matching
+   * docs header `leading` slot order: presence then actions.
+   */
+  rightLeading?: ReactNode;
   leftMenuLabel?: string;
   rightMenuLabel?: string;
   leftMenuIcon?: ReactNode;
@@ -38,17 +52,42 @@ export type ActionBarProps = {
 };
 
 function renderActionItems(actions: ActionBarAction[]) {
-  return actions.map((action) => (
-    <IconButton
-      key={action.id ?? action.label}
-      label={action.label}
-      onClick={action.onClick}
-      active={action.active}
-      disabled={action.disabled}
-      icon={action.icon}
-      variant="subtle"
-    />
-  ));
+  return actions.map((action) => {
+    const tooltipLabel = action.tooltip ?? action.label;
+    if (action.showLabel) {
+      return (
+        <Tooltip key={action.id ?? action.label}>
+          <TooltipTrigger asChild>
+            <Button
+              label={action.label}
+              onClick={action.onClick}
+              disabled={action.disabled}
+              icon={action.icon}
+              variant="subtle"
+              aria-label={tooltipLabel}
+              aria-pressed={action.active}
+              className={cn(
+                "action-bar__action--labeled",
+                action.active && ICON_BUTTON_ACTIVE_CLASSNAME,
+              )}
+            />
+          </TooltipTrigger>
+          <TooltipContent>{tooltipLabel}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return (
+      <IconButton
+        key={action.id ?? action.label}
+        label={tooltipLabel}
+        onClick={action.onClick}
+        active={action.active}
+        disabled={action.disabled}
+        icon={action.icon}
+        variant="subtle"
+      />
+    );
+  });
 }
 
 function renderCompactDropdown(
@@ -92,6 +131,7 @@ export function ActionBar({
   collapseActions = true,
   leftActions,
   rightActions,
+  rightLeading,
   leftMenuLabel = "More actions",
   rightMenuLabel = "More actions",
   leftMenuIcon = <MoreHorizontal />,
@@ -102,6 +142,7 @@ export function ActionBar({
 }: ActionBarProps) {
   const hasLeftActions = (leftActions?.length ?? 0) > 0;
   const hasRightActions = (rightActions?.length ?? 0) > 0;
+  const hasRightChrome = hasRightActions || right != null || rightLeading != null;
 
   return (
     <nav className={cn("action-bar", !collapseActions && "action-bar--expanded", className)}>
@@ -129,19 +170,26 @@ export function ActionBar({
         <div className="action-bar__left">{left}</div>
       ) : null}
       <div className="action-bar__spacer" />
-      {hasRightActions ? (
+      {hasRightChrome ? (
         <div className="action-bar__right">
-          <div className="action-bar__row">{renderActionItems(rightActions!)}</div>
-          {renderCompactDropdown(
-            rightActions!,
-            rightMenuLabel,
-            rightMenuIcon,
-            "end",
-            "action-bar__menu",
-          )}
+          {rightLeading != null ? (
+            <div className="action-bar__right-leading">{rightLeading}</div>
+          ) : null}
+          {hasRightActions ? (
+            <>
+              <div className="action-bar__row">{renderActionItems(rightActions!)}</div>
+              {renderCompactDropdown(
+                rightActions!,
+                rightMenuLabel,
+                rightMenuIcon,
+                "end",
+                "action-bar__menu",
+              )}
+            </>
+          ) : right != null ? (
+            right
+          ) : null}
         </div>
-      ) : right != null ? (
-        <div className="action-bar__right">{right}</div>
       ) : null}
     </nav>
   );

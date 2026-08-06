@@ -33,11 +33,6 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   const isTouch = useIsTouch();
 
   useEffect(() => {
-    if (initialNoteId === undefined) return;
-    setActiveId(initialNoteId);
-  }, [initialNoteId]);
-
-  useEffect(() => {
     if (!initialNoteId) return;
     workspaceLayoutRef.current?.openMobileDetail();
   }, [initialNoteId, workspaceLayoutRef]);
@@ -79,6 +74,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     visibleIds: visibleNotes.map((n) => n.id),
     activeId,
     setActiveId,
+    initialId: initialNoteId,
     onPrimarySelect: (id) => {
       blurWorkspaceDetailEditor();
       setActiveId(id);
@@ -91,6 +87,19 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     onMutationError: showMutationError,
     queueDelayMs: WRITE_QUEUE_DELAY_MS,
   });
+
+  // URL / deep-link changes update activeId — keep selectedIds aligned so
+  // isActive and isSelected never paint two different rows in single-select UI.
+  useEffect(() => {
+    if (initialNoteId === undefined) return;
+    setActiveId(initialNoteId);
+    if (initialNoteId) {
+      selectSingle(initialNoteId);
+    } else {
+      setSelectedIds([]);
+      setSelectionMode(false);
+    }
+  }, [initialNoteId, selectSingle, setActiveId, setSelectedIds, setSelectionMode]);
 
   useSelectionResetOnKeyChange({
     resetKey: view,

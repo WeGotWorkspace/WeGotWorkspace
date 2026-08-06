@@ -1,6 +1,13 @@
 import { useMemo } from "react";
-import { Archive, BookOpen, Files, Star, Tag } from "lucide-react";
+import { Archive, BookOpen, Files, Star } from "lucide-react";
+import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+
+export type NotesSidebarTagEntry = {
+  tag: string;
+  selected: boolean;
+  onSelect: () => void;
+} & ListDropZoneProps;
 
 type UseNotesSidebarModelArgs = {
   labels: NotesUILabels;
@@ -8,10 +15,7 @@ type UseNotesSidebarModelArgs = {
   notebooks: string[];
   tags: string[];
   selectView: (view: string) => void;
-  sidebarDropZoneProps: (
-    target: string,
-    onDrop: (ids: string[]) => void,
-  ) => Record<string, unknown>;
+  sidebarDropZoneProps: (target: string, onDrop: (ids: string[]) => void) => ListDropZoneProps;
   moveToNotebook: (ids: string[], notebook: string) => void;
   assignTagToNotes: (ids: string[], tag: string) => void;
 };
@@ -52,31 +56,34 @@ export function useNotesSidebarModel({
 
   const notebookSidebarItems = useMemo(
     () =>
-      notebooks.map((nb) => ({
-        label: nb,
-        icon: <BookOpen className="size-3.5" />,
-        selected: view === `nb:${nb}`,
-        onClick: () => selectView(`nb:${nb}`),
-        ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
-      })),
+      [...notebooks]
+        .sort((a, b) => a.localeCompare(b))
+        .map((nb) => ({
+          label: nb,
+          icon: <BookOpen className="size-3.5" />,
+          selected: view === `nb:${nb}`,
+          onClick: () => selectView(`nb:${nb}`),
+          ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
+        })),
     [moveToNotebook, notebooks, selectView, sidebarDropZoneProps, view],
   );
 
-  const tagSidebarItems = useMemo(
-    () =>
-      tags.map((tag) => ({
-        label: tag,
-        icon: <Tag className="size-3.5" />,
-        selected: view === `tag:${tag}`,
-        onClick: () => selectView(`tag:${tag}`),
-        ...sidebarDropZoneProps(`tag:${tag}`, (ids) => assignTagToNotes(ids, tag)),
-      })),
+  const tagSidebarTags = useMemo(
+    (): NotesSidebarTagEntry[] =>
+      [...tags]
+        .sort((a, b) => a.localeCompare(b))
+        .map((tag) => ({
+          tag,
+          selected: view === `tag:${tag}`,
+          onSelect: () => selectView(`tag:${tag}`),
+          ...sidebarDropZoneProps(`tag:${tag}`, (ids) => assignTagToNotes(ids, tag)),
+        })),
     [assignTagToNotes, selectView, sidebarDropZoneProps, tags, view],
   );
 
   return {
     primarySidebarItems,
     notebookSidebarItems,
-    tagSidebarItems,
+    tagSidebarTags,
   };
 }

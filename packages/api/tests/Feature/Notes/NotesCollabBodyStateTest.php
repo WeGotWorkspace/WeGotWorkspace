@@ -72,6 +72,14 @@ final class NotesCollabBodyStateTest extends WgwDatabaseTestCase
         $this->assertSame($beforeUpdatedAt, $afterUpdatedAt);
         $this->assertSame('rewritten body from collab', $list->json('items.0.body'));
 
+        // Display clock advances with the file rewrite even though metadata state does not.
+        $contentUpdatedAt = (string) $list->json('items.0.contentUpdatedAt');
+        $this->assertNotSame('', $contentUpdatedAt);
+        $this->assertGreaterThanOrEqual(
+            (int) (strtotime($beforeUpdatedAt) * 1000),
+            (int) (strtotime($contentUpdatedAt) * 1000),
+        );
+
         // Simulate the client guard: pre-body-edit base vs current server state.
         $baseMs = (int) (strtotime($beforeUpdatedAt) * 1000);
         $serverMs = (int) (strtotime($afterUpdatedAt) * 1000);

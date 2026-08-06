@@ -9,6 +9,7 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { MailDetailView } from "@/mail-core/src/mail-detail-view";
 import { MailComposeView } from "@/mail-core/src/mail-compose-view";
@@ -49,8 +50,7 @@ export function MailWorkspace({
   className,
 }: MailWorkspaceProps) {
   const closeSidebarOnMobile = (closeSidebar: () => void) => {
-    if (typeof window === "undefined") return;
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    if (!isSidebarOverlayViewport()) return;
     closeSidebar();
   };
 

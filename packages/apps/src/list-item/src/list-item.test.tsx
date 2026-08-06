@@ -47,4 +47,28 @@ describe("ListItem metaPosition", () => {
       title!.compareDocumentPosition(subtitle!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  it("omits the body row when text is empty and a title is present", () => {
+    const { container } = render(<ListItem {...baseProps} text="" />);
+    expect(container.querySelector(".list-item__body")).toBeNull();
+  });
+
+  it("renders ReactNode body content such as tags", () => {
+    const { container } = render(
+      <ListItem
+        {...baseProps}
+        text={
+          <span className="list-item__tags">
+            <span>architecture</span>
+            <span className="list-item__tags-more">+1 more</span>
+          </span>
+        }
+      />,
+    );
+    const body = container.querySelector(".list-item__body");
+    expect(body).not.toBeNull();
+    expect(body!.querySelector(".list-item__tags")).not.toBeNull();
+    expect(body!.textContent).toContain("architecture");
+    expect(body!.textContent).toContain("+1 more");
+  });
 });

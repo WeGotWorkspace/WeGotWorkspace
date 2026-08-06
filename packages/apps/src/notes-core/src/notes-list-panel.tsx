@@ -1,16 +1,40 @@
-import type { MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
-import { Archive, Circle, Pencil, RefreshCw, Star, Trash2 } from "lucide-react";
+import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
+import {
+  Archive,
+  BookOpen,
+  Circle,
+  Pencil,
+  RefreshCw,
+  Star,
+  Tag as TagIcon,
+  Trash2,
+} from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
+import { Tag } from "@/tag/src/tag";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
-import { noteListTitle } from "@/notes-core/src/notes-note-utils";
+import { noteListTagOverflow, noteListTitle } from "@/notes-core/src/notes-note-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-list-panel.css";
+
+function notesListItemTags(tags: string[]): ReactNode {
+  const { visible, overflow } = noteListTagOverflow(tags);
+  if (visible.length === 0) return null;
+  return (
+    <span className="list-item__tags">
+      {visible.map((tag) => (
+        <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
+      ))}
+      {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
+    </span>
+  );
+}
 
 type NotesListPanelProps = {
   L: NotesUILabels;
@@ -79,6 +103,12 @@ export function NotesListPanel({
   onRefreshList,
   pendingNoteIds,
 }: NotesListPanelProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  useListReorderAnimation(
+    listRef,
+    visibleNotes.map((note) => note.id),
+  );
+
   return {
     header: (
       <ViewHeader
@@ -161,7 +191,7 @@ export function NotesListPanel({
         <LoadingSpinner size="lg" label={L.listLoading} />
       </div>
     ) : (
-      <>
+      <div ref={listRef} className="notes-list-panel__list">
         <WorkspaceSwipeList isTouch={isTouch}>
           {visibleNotes.map((note) => {
             const dragHandlers = itemDragHandlers(note.id) as {
@@ -169,14 +199,31 @@ export function NotesListPanel({
               onDragEnd?: () => void;
             };
             const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
+            const multiSelect = selectionMode || selectedIds.length > 1;
+            // Single-select UI: only the open row may look highlighted. Multi-select:
+            // selected rows only (suppress active paint so a leftover activeId cannot
+            // light a second beige row).
+            const rowActive = !multiSelect && note.id === activeId;
+            const rowSelected = multiSelect
+              ? selectedIds.includes(note.id)
+              : note.id === activeId && selectedIds.includes(note.id);
             return (
               <ListItem
                 key={note.id}
                 id={note.id}
                 title={noteListTitle(note)}
-                subtitle={note.notebook}
+                subtitle={
+                  note.notebook ? (
+                    <span className="notes-list-panel__notebook">
+                      <BookOpen className="notes-list-panel__notebook-icon" aria-hidden />
+                      <span className="notes-list-panel__notebook-name">{note.notebook}</span>
+                    </span>
+                  ) : (
+                    ""
+                  )
+                }
                 date={formatNoteDateForList(note.date)}
-                text={note.excerpt}
+                text={notesListItemTags(note.tags)}
                 icons={[
                   isPendingSync ? (
                     <span
@@ -196,8 +243,8 @@ export function NotesListPanel({
                     <Star className="notes-list-panel__star-icon" fill="currentColor" />
                   </span>,
                 ].filter(Boolean)}
-                isActive={note.id === activeId}
-                isSelected={selectedIds.includes(note.id)}
+                isActive={rowActive}
+                isSelected={rowSelected}
                 selectionMode={selectionMode}
                 isTouch={isTouch}
                 isDragging={isItemDragging(note.id)}
@@ -232,7 +279,7 @@ export function NotesListPanel({
             );
           })}
         </WorkspaceSwipeList>
-      </>
+      </div>
     ),
     hasItems: listLoading || visibleNotes.length > 0,
     emptyLabel: L.emptyList,

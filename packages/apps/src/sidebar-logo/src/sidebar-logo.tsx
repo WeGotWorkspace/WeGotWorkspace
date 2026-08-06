@@ -22,7 +22,7 @@ export function SidebarLogo({
       <button
         aria-label="Close menu"
         onClick={onCloseMobile}
-        className={`size-8 rounded-full flex items-center justify-center transition-colors md:hidden ${closeButtonHoverClassName}`}
+        className={`size-8 rounded-full flex items-center justify-center transition-colors sidebar:hidden ${closeButtonHoverClassName}`}
         style={{ color: "var(--sidebar-logo-close-button-color, var(--color-ink))" }}
       >
         <X className="size-4" />
