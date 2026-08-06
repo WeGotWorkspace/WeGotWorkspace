@@ -58,6 +58,8 @@ export type NotesUILabels = {
   syncFailedTitle: string;
   syncFailedMessage: string;
   retrySync: string;
+  /** Prefix for the detail-footer last-edited chip (`Last edited {time}`). */
+  editedLabel: string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -116,6 +118,7 @@ export const defaultNotesLabels: NotesUILabels = {
   syncFailedTitle: "Some changes could not sync",
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: "Retry",
+  editedLabel: "Last edited ",
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {

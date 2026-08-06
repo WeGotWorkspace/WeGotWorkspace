@@ -1,38 +1,31 @@
-import { BookOpen, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { Tag } from "@/tag/src/tag";
 import { WorkspaceChromeFooter } from "@/workspace-shell/src/workspace-chrome-footer";
 
 export type NotesDetailFooterProps = {
-  notebook?: string;
   lastEdited?: string;
   editedLabel?: string;
 };
 
-/** Pinned notes detail footer: notebook + last-edited meta chips. */
+/** Pinned notes detail footer: last-edited meta chip (trailing status slot). */
 export function NotesDetailFooter({
-  notebook,
   lastEdited,
-  editedLabel = "Edited ",
+  editedLabel = "Last edited ",
 }: NotesDetailFooterProps) {
-  const hasNotebook = notebook != null && notebook !== "";
   const hasEdited = lastEdited != null && lastEdited !== "";
-  if (!hasNotebook && !hasEdited) return null;
+  if (!hasEdited) return null;
 
   return (
-    <WorkspaceChromeFooter className="notes-detail-footer">
-      {hasNotebook ? (
-        <div className="notes-detail-footer__meta-tag notes-detail-footer__meta-tag--notebook">
-          <Tag label={notebook} icon={<BookOpen className="size-3.5 opacity-70" />} />
-        </div>
-      ) : null}
-      {hasEdited ? (
+    <WorkspaceChromeFooter
+      className="notes-detail-footer"
+      end={
         <div className="notes-detail-footer__meta-tag notes-detail-footer__meta-tag--edited">
           <Tag
             label={`${editedLabel}${lastEdited}`}
             icon={<CalendarDays className="size-3.5 opacity-70" />}
           />
         </div>
-      ) : null}
-    </WorkspaceChromeFooter>
+      }
+    />
   );
 }

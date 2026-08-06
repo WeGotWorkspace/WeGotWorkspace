@@ -345,9 +345,8 @@ export function NotesWorkspace({
           if (!showSingleNoteDetail || !active) return null;
           return (
             <NotesDetailFooter
-              notebook={active.notebook}
               lastEdited={formatNoteDateForList(active.date)}
-              editedLabel="Edited "
+              editedLabel={L.editedLabel}
             />
           );
         }}

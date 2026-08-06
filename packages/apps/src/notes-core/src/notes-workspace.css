@@ -71,15 +71,6 @@
   color: var(--color-ink);
 }
 
-.notes-workspace .notes-detail-footer__meta-tag--notebook {
-  @apply max-w-[260px];
-}
-
-.notes-workspace .notes-detail-footer__meta-tag--notebook .tag {
-  background-color: var(--note-detail-tag-bg);
-  color: var(--note-detail-tag-fg);
-}
-
 .notes-workspace .notes-detail-footer__meta-tag--edited .tag {
   background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
   color: color-mix(in oklab, var(--color-ink) 58%, transparent);
