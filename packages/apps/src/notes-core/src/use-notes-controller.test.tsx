@@ -150,6 +150,27 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.active?.tags).toEqual([]);
   });
 
+  it("renames the active notebook view when renameNotebook runs", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", notebook: "Drafts" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, initialView: "nb:Drafts" }),
+    );
+
+    expect(result.current.view).toBe("nb:Drafts");
+
+    act(() => {
+      result.current.renameNotebook("Drafts", "Journal");
+    });
+
+    expect(result.current.view).toBe("nb:Journal");
+    expect(result.current.notes[0]?.notebook).toBe("Journal");
+  });
+
   it("refreshes the active note when bootstrap syncs updated server content", () => {
     const initialData: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", excerpt: "Before sync", body: ["Before body"] }],
