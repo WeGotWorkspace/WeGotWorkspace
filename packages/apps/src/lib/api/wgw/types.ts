@@ -191,6 +191,8 @@ export type WgwNoteItem = Omit<
   starred?: boolean;
   archived?: boolean;
   updatedAt?: string;
+  /** File mtime; advances on body collab saves. Optional on older payloads. */
+  contentUpdatedAt?: string;
   scope?: "personal" | "group";
   groupSlug?: string | null;
 };
