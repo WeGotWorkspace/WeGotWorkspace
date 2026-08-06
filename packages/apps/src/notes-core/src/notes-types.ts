@@ -1,9 +1,22 @@
 import type { Note } from "@/lib/models/note";
 
+/** Notebook-dir grant or group-membership notebook shown under Shared notebooks. */
+export type NotesSharedNotebook = {
+  path: string;
+  notebook: string;
+  owner: string;
+  scope: "personal" | "group";
+  groupSlug: string | null;
+  access?: string;
+};
+
 export type NotesUIData = {
   notes: Note[];
+  /** Owned personal notebook names only (not group / ACL shared). */
   notebooks: string[];
   tags: string[];
+  /** Shared notebooks section: ACL dir grants + group-scoped notebooks. */
+  sharedNotebooks?: NotesSharedNotebook[];
 };
 
 export type DeleteNotebookAction =

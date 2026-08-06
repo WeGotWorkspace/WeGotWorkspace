@@ -64,7 +64,14 @@ export const Editable: Story = {
 };
 
 export const ReadOnly: Story = {
+  tags: ["vitest-ci"],
   args: { readOnly: true },
+  play: async ({ canvasElement }) => {
+    const editable = canvasElement.querySelector('[contenteditable="true"]');
+    expect(editable).toBeNull();
+    const locked = canvasElement.querySelector('[contenteditable="false"]');
+    expect(locked).toBeTruthy();
+  },
 };
 
 export const WithPullQuote: Story = {

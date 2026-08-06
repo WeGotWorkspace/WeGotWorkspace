@@ -223,7 +223,14 @@ export function NoteCollabChrome({ className }: { className?: string }) {
   );
 }
 
-export function NoteCollabEditorSurface({ className }: { className?: string }) {
+export function NoteCollabEditorSurface({
+  className,
+  editable = true,
+}: {
+  className?: string;
+  /** When false, TipTap rejects typing (view-only share). */
+  editable?: boolean;
+}) {
   const { session, onMarkdownChange, registerMarkdownGetter } = useNoteCollabContext();
 
   const handleEditorReady = useCallback(
@@ -244,6 +251,7 @@ export function NoteCollabEditorSurface({ className }: { className?: string }) {
       user={session.user}
       format="markdown"
       formatBar={false}
+      editable={editable}
       className={cn("note-text-editor-body", className)}
       onContentChange={onMarkdownChange}
       onEditorReady={handleEditorReady}

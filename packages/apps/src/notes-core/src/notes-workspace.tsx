@@ -31,8 +31,16 @@ import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
-import { buildNoteCollabUrls, noteCollabPath } from "@/notes-core/src/note-collab-path";
+import {
+  buildNoteCollabUrls,
+  notebookCollabPath,
+  resolveNoteSharePath,
+} from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
+import { ShareDialog } from "@/share-ui/share-dialog";
+import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
 import "@/notes-core/src/notes-workspace.css";
 
 export function NotesWorkspace({
@@ -40,6 +48,7 @@ export function NotesWorkspace({
   session,
   labels,
   operations,
+  shareOperations,
   listLoading = false,
   bootstrapRevision = 0,
   onRefreshList,
@@ -59,6 +68,7 @@ export function NotesWorkspace({
     L,
     notes,
     notebooks,
+    sharedNotebooks,
     tags,
     active,
     activeId,
@@ -117,16 +127,44 @@ export function NotesWorkspace({
     onNoteChange,
   });
 
-  const { primarySidebarItems, notebookSidebarItems, tagSidebarTags } = useNotesSidebarModel({
-    labels: L,
-    view,
-    notebooks,
-    tags,
-    selectView,
-    sidebarDropZoneProps,
-    moveToNotebook,
-    assignTagToNotes,
+  const { primarySidebarItems, notebookSidebarItems, sharedNotebookSidebarItems, tagSidebarTags } =
+    useNotesSidebarModel({
+      labels: L,
+      view,
+      notebooks,
+      sharedNotebooks,
+      tags,
+      selectView,
+      sidebarDropZoneProps,
+      moveToNotebook,
+      assignTagToNotes,
+    });
+
+  const shareDialog = useDriveShareDialog({
+    shareOperations,
+    username: session.user.username ?? "",
   });
+
+  const activeSharePath = useMemo(() => {
+    if (!active || !session.user.username) return "";
+    return resolveNoteSharePath(active, session.user.username, !!archived[active.id]);
+  }, [active, archived, session.user.username]);
+
+  const shareRightsEnabled = Boolean(shareOperations && activeSharePath);
+  const {
+    myRights: noteMyRights,
+    mayShare: noteMayShare,
+    loading: noteShareRightsLoading,
+  } = useDriveShareMyRights({
+    path: activeSharePath,
+    operations: shareOperations,
+    enabled: shareRightsEnabled,
+  });
+  const noteEditable = resolveNotesEditorEditable(
+    noteMyRights ? { mayEditContent: noteMyRights.mayEditContent } : null,
+    shareRightsEnabled && noteShareRightsLoading,
+  );
+  const noteReadOnly = !noteEditable;
 
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
@@ -145,12 +183,7 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
-    const path = noteCollabPath({
-      scope: { kind: "personal", username },
-      notebook: active.notebook,
-      noteId: active.id,
-      archived: !!archived[active.id],
-    });
+    const path = resolveNoteSharePath(active, username, !!archived[active.id]);
     let cancelled = false;
     void buildNoteCollabUrls(path)
       .then((urls) => {
@@ -185,6 +218,22 @@ export function NotesWorkspace({
 
   const showSingleNoteDetail = selectedIds.length <= 1 && !!active;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
+
+  const openShareActiveNote = useCallback(() => {
+    if (!active || !shareOperations) return;
+    const username = session.user.username;
+    if (!username) return;
+    const path = resolveNoteSharePath(active, username, !!archived[active.id]);
+    shareDialog.openShareDialog(path, noteListTitle(active));
+  }, [active, archived, session.user.username, shareDialog, shareOperations]);
+
+  const openShareSelectedNotebook = useCallback(() => {
+    if (!selectedNotebook || !shareOperations) return;
+    const username = session.user.username;
+    if (!username) return;
+    const path = `/${notebookCollabPath({ kind: "personal", username }, selectedNotebook)}`;
+    shareDialog.openShareDialog(path, selectedNotebook);
+  }, [selectedNotebook, session.user.username, shareDialog, shareOperations]);
 
   const wrapDetailWithCollab = useCallback(
     (children: ReactNode) => {
@@ -265,6 +314,9 @@ export function NotesWorkspace({
           >
             <SidebarSection items={primarySidebarItems} />
             <SidebarSection title={L.sectionNotebooks} items={notebookSidebarItems} />
+            {sharedNotebookSidebarItems.length > 0 ? (
+              <SidebarSection title={L.sectionSharedNotebooks} items={sharedNotebookSidebarItems} />
+            ) : null}
             <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
               {tagSidebarTags.map(({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
                 <li key={tag}>
@@ -319,6 +371,8 @@ export function NotesWorkspace({
             selectionBar,
             onRefreshList,
             pendingNoteIds,
+            onShareNotebook:
+              shareOperations && selectedNotebook ? openShareSelectedNotebook : undefined,
           })
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}
@@ -334,6 +388,8 @@ export function NotesWorkspace({
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
               showCollabChrome={collabSessionActive}
+              onShare={shareOperations && noteMayShare === true ? openShareActiveNote : undefined}
+              readOnly={noteReadOnly}
             />
           )
         }
@@ -355,11 +411,12 @@ export function NotesWorkspace({
               contentRevision={formatNoteDateForList(active.date)}
               tags={active.tags}
               availableTags={tags}
-              onTagAdd={(tag) => toggleNoteTag(active.id, tag)}
-              onTagRemove={(tag) => toggleNoteTag(active.id, tag)}
+              onTagAdd={noteReadOnly ? undefined : (tag) => toggleNoteTag(active.id, tag)}
+              onTagRemove={noteReadOnly ? undefined : (tag) => toggleNoteTag(active.id, tag)}
               pullQuote={active.pullQuote}
               body={active.body}
               collab={noteBodyCollab}
+              readOnly={noteReadOnly}
             />
           );
         }}
@@ -425,6 +482,18 @@ export function NotesWorkspace({
         }}
         contentClassName="notes-dialog-surface"
       />
+
+      {shareOperations ? (
+        <ShareDialog
+          path={shareDialog.shareDialog.path}
+          title={shareDialog.shareDialog.title}
+          open={shareDialog.shareDialog.open}
+          onOpenChange={shareDialog.handleShareDialogOpenChange}
+          shareOperations={shareOperations}
+          mode="notes"
+          dialogSurfaceClassName="notes-dialog-surface"
+        />
+      ) : null}
 
       {confirmDialog}
     </>

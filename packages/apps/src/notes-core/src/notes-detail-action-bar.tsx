@@ -26,6 +26,11 @@ type NotesDetailActionBarProps = {
   showCollabChrome?: boolean;
   /** Opens Notes-mode ShareDialog for the active note. */
   onShare?: () => void;
+  /**
+   * View-only share: disable move / star / archive (body+tags gated separately
+   * via NoteDetailView `readOnly`).
+   */
+  readOnly?: boolean;
 };
 
 export function NotesDetailActionBar({
@@ -39,6 +44,7 @@ export function NotesDetailActionBar({
   toggleArchive,
   showCollabChrome = false,
   onShare,
+  readOnly = false,
 }: NotesDetailActionBarProps) {
   if (!active) {
     return <ActionBar onBack={closeMobileDetail} />;
@@ -46,7 +52,7 @@ export function NotesDetailActionBar({
 
   const sharedInbox = !!active.sharedInbox;
   const groupNotebook = !sharedInbox && active.scope === "group";
-  const notebookLocked = sharedInbox || groupNotebook;
+  const notebookLocked = sharedInbox || groupNotebook || readOnly;
   const locationLabel =
     noteListLocationLabel(active, labels) || active.notebook.trim() || labels.toolbarMoveToNotebook;
 
@@ -76,16 +82,18 @@ export function NotesDetailActionBar({
     {
       id: "toggle-star",
       label: labels.toolbarStar,
-      onClick: () => toggleStar(active.id),
+      onClick: readOnly ? undefined : () => toggleStar(active.id),
       active: !!starred[active.id],
       icon: <Star />,
+      disabled: readOnly,
     },
     {
       id: "toggle-archive",
       label: archived[active.id] ? labels.toolbarUnarchive : labels.toolbarArchive,
-      onClick: () => toggleArchive(active.id),
+      onClick: readOnly ? undefined : () => toggleArchive(active.id),
       active: !!archived[active.id],
       icon: archived[active.id] ? <ArchiveRestore /> : <Archive />,
+      disabled: readOnly,
     },
   ];
 

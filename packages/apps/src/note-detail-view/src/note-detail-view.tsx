@@ -25,12 +25,9 @@ export type NoteDetailViewProps = {
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
   body: string[];
   /**
-   * Collab config for the body. When provided (and not read-only), the body is
-   * edited via the Docs Yjs stack and persists through the collab document — the
-   * body never flows through the Notes metadata API. Omit for read-only/solo.
-   *
-   * Requires a parent {@link NoteCollabSession} (typically via WorkspaceApp
-   * `detailWrapper`) so action-bar presence and the editor share one session.
+   * Collab config for the body. When provided, the body uses the Docs Yjs stack
+   * (parent {@link NoteCollabSession}). View-only shares keep the surface with
+   * TipTap `editable={false}`. Omit for Storybook / solo editors.
    */
   collab?: NoteCollabConfig;
   /** When `true`, body and tags are display-only. Default `false` (editing on). */
@@ -52,7 +49,9 @@ export function NoteDetailView({
   className,
 }: NoteDetailViewProps) {
   const markdown = noteBodyToMarkdown(body);
-  const useCollabSurface = !readOnly && collab != null;
+  // Keep the shared Yjs surface for view-only (presence + live body); TipTap
+  // `editable` enforces read-only. Solo editor is for Storybook / no collab.
+  const useCollabSurface = collab != null;
 
   return (
     <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
@@ -73,7 +72,7 @@ export function NoteDetailView({
       ) : null}
 
       {useCollabSurface ? (
-        <NoteCollabEditorSurface />
+        <NoteCollabEditorSurface editable={!readOnly} />
       ) : (
         <NoteTextEditorBody
           noteId={noteId}

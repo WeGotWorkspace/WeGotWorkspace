@@ -74,4 +74,33 @@ describe("NotesDetailActionBar", () => {
     move.click();
     expect(openMoveDialog).not.toHaveBeenCalled();
   });
+
+  it("disables star and archive when readOnly (view-only share)", () => {
+    const toggleStar = vi.fn();
+    const toggleArchive = vi.fn();
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={owned}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={vi.fn()}
+        toggleStar={toggleStar}
+        toggleArchive={toggleArchive}
+        readOnly
+      />,
+    );
+
+    const row = container.querySelector(".action-bar__row");
+    expect(row).toBeTruthy();
+    const star = row!.querySelector('button[aria-label="Star"]');
+    const archive = row!.querySelector('button[aria-label="Archive"]');
+    expect(star?.hasAttribute("disabled")).toBe(true);
+    expect(archive?.hasAttribute("disabled")).toBe(true);
+    star?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    archive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(toggleStar).not.toHaveBeenCalled();
+    expect(toggleArchive).not.toHaveBeenCalled();
+  });
 });

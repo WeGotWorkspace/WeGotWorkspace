@@ -293,6 +293,13 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'shareWith' => ['alice' => ['access' => 'view']],
         ])->assertOk();
 
+        // Owner retains write after granting view-only to a teammate.
+        $this->withBearer($ownerToken)
+            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
+                'markdown' => 'owner still writes',
+            ])
+            ->assertOk();
+
         $this->withBearer($aliceToken)
             ->get('/api/v1/files/collaboration?path='.urlencode($path))
             ->assertOk();

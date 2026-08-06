@@ -35,3 +35,6 @@ export function isDialogEditableAccess(access: DriveShareAccess): boolean {
 }
 
 export const SHARE_UI_PERMISSIONS: ShareUIPermission[] = ["view", "comment", "edit", "full"];
+
+/** Notes has no comment UX — team ACL is view / edit / full only. */
+export const NOTES_SHARE_UI_PERMISSIONS: ShareUIPermission[] = ["view", "edit", "full"];

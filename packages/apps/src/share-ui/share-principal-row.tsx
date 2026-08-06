@@ -25,6 +25,7 @@ type SharePrincipalRowProps = {
   removeDisabled?: boolean;
   onAccessChange?: (permission: ShareUIPermission) => void;
   onRemove?: () => void;
+  permissions?: readonly ShareUIPermission[];
 };
 
 export function SharePrincipalRow({
@@ -39,6 +40,7 @@ export function SharePrincipalRow({
   removeDisabled = false,
   onAccessChange,
   onRemove,
+  permissions,
 }: SharePrincipalRowProps) {
   const inherited = Boolean(inheritedFromPath);
   const uiPermission = accessToUIPermission(access);
@@ -67,12 +69,19 @@ export function SharePrincipalRow({
         <SharePermissionSelect
           value={uiPermission}
           title={editHint}
+          permissions={permissions}
           onChange={(next) => {
             if (next !== "none") onAccessChange?.(next);
           }}
         />
       ) : uiPermission ? (
-        <SharePermissionSelect value={uiPermission} disabled title={editHint} onChange={() => {}} />
+        <SharePermissionSelect
+          value={uiPermission}
+          disabled
+          title={editHint}
+          permissions={permissions}
+          onChange={() => {}}
+        />
       ) : (
         <span className="share-dialog__read-only-access" title={editHint}>
           {accessLabelForReadOnly(access)}

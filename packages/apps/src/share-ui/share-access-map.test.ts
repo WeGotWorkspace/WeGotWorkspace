@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   accessToUIPermission,
   isDialogEditableAccess,
+  NOTES_SHARE_UI_PERMISSIONS,
   SHARE_UI_PERMISSIONS,
   uiPermissionToAccess,
 } from "@/share-ui/share-access-map";
@@ -28,6 +29,10 @@ describe("share-access-map", () => {
 
   it("exposes view, comment, edit, and full as selectable levels", () => {
     expect(SHARE_UI_PERMISSIONS).toEqual(["view", "comment", "edit", "full"]);
+  });
+
+  it("exposes view, edit, and full for Notes mode (no comment)", () => {
+    expect(NOTES_SHARE_UI_PERMISSIONS).toEqual(["view", "edit", "full"]);
   });
 
   it("treats full access as dialog-editable", () => {

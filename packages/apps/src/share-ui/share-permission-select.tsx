@@ -17,6 +17,8 @@ type SharePermissionSelectProps = {
   allowNone?: boolean;
   title?: string;
   className?: string;
+  /** Defaults to Drive levels (includes comment). Pass Notes subset for Notes mode. */
+  permissions?: readonly ShareUIPermission[];
 };
 
 export function SharePermissionSelect({
@@ -26,6 +28,7 @@ export function SharePermissionSelect({
   allowNone = false,
   title,
   className,
+  permissions = SHARE_UI_PERMISSIONS,
 }: SharePermissionSelectProps) {
   return (
     <Select
@@ -45,7 +48,7 @@ export function SharePermissionSelect({
             </span>
           </SelectItem>
         ) : null}
-        {SHARE_UI_PERMISSIONS.map((permission) => {
+        {permissions.map((permission) => {
           const Icon = PERMISSION_ICONS[permission];
           return (
             <SelectItem key={permission} value={permission}>
