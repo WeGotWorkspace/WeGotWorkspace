@@ -9,6 +9,8 @@ import {
   enrichNote,
   filterVisibleNotes,
   dedupeNotesById,
+  mapNotesWithBodyMarkdown,
+  normalizeNoteBodyMarkdown,
   normalizeTag,
   noteHasListableBody,
   noteListTagOverflow,
@@ -196,6 +198,24 @@ describe("notes-note-utils", () => {
     });
     expect(noteListTitle(next)).toBe("Loaded from Yjs after refresh");
     expect(next.date).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("treats TipTap trailing newlines as unchanged (avoids hydrate setState loops)", () => {
+    const note = { ...sampleNote, body: ["Hello world"], excerpt: "Hello world" };
+    expect(normalizeNoteBodyMarkdown("Hello world\n\n")).toBe("Hello world");
+    expect(applyNoteBodyMarkdown(note, "Hello world\n")).toBe(note);
+    expect(applyNoteBodyMarkdown(note, "Hello world\r\n")).toBe(note);
+  });
+
+  it("returns the same notes array when hydrate markdown is unchanged", () => {
+    const notes = [{ ...sampleNote, body: ["Stable body"], excerpt: "Stable body" }];
+    const first = mapNotesWithBodyMarkdown(notes, "n-1", "Stable body\n", { bumpDate: false });
+    expect(first.notes).toBe(notes);
+    expect(first.updated).toBeUndefined();
+
+    const second = mapNotesWithBodyMarkdown(notes, "n-1", "Changed body", { bumpDate: false });
+    expect(second.notes).not.toBe(notes);
+    expect(second.updated?.excerpt).toMatch(/Changed body/);
   });
 
   it("returns the same note reference when collab markdown is unchanged", () => {

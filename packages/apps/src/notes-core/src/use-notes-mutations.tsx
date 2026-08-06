@@ -7,9 +7,9 @@ import type { Note } from "@/lib/models/note";
 import { createTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
-  applyNoteBodyMarkdown,
   createNoteSaveDebouncer,
   enrichNote,
+  mapNotesWithBodyMarkdown,
   normalizeTag,
   persistBestEffort,
 } from "./notes-note-utils";
@@ -419,14 +419,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const applyLocalBodyMarkdown = useCallback(
     (id: string, markdown: string, options?: { bumpDate?: boolean }) => {
       let updated: Note | undefined;
-      setNotes((prev) =>
-        prev.map((note) => {
-          if (note.id !== id) return note;
-          const next = applyNoteBodyMarkdown(note, markdown, options);
-          if (next !== note) updated = next;
-          return next;
-        }),
-      );
+      setNotes((prev) => {
+        const result = mapNotesWithBodyMarkdown(prev, id, markdown, options);
+        updated = result.updated;
+        return result.notes;
+      });
       if (!updated) return;
       const username = readOfflineNotesUsername();
       if (username) {

@@ -112,19 +112,28 @@ export function NoteCollabSession({
   const getMarkdownRef = useRef<(() => string) | null>(null);
   const onBodyMarkdownChangeRef = useRef(onBodyMarkdownChange);
   onBodyMarkdownChangeRef.current = onBodyMarkdownChange;
+  const lastNotifiedMarkdownRef = useRef<string | null>(null);
 
   const syncBodyPreview = useCallback((source: "local-edit" | "hydrate") => {
     const getMarkdown = getMarkdownRef.current;
     const notify = onBodyMarkdownChangeRef.current;
     if (!getMarkdown || !notify) return;
-    notify(getMarkdown(), source);
+    const markdown = getMarkdown();
+    // TipTap/Yjs can emit many updates for the same document; skip duplicates so
+    // list setState does not loop (Maximum update depth exceeded).
+    if (lastNotifiedMarkdownRef.current === markdown) return;
+    lastNotifiedMarkdownRef.current = markdown;
+    notify(markdown, source);
   }, []);
 
   const onMarkdownChange = useCallback(
     (getMarkdown: () => string) => {
       getMarkdownRef.current = getMarkdown;
       collab.onMarkdownChange(getMarkdown);
-      onBodyMarkdownChangeRef.current?.(getMarkdown(), "local-edit");
+      const markdown = getMarkdown();
+      if (lastNotifiedMarkdownRef.current === markdown) return;
+      lastNotifiedMarkdownRef.current = markdown;
+      onBodyMarkdownChangeRef.current?.(markdown, "local-edit");
     },
     [collab.onMarkdownChange],
   );
@@ -141,10 +150,16 @@ export function NoteCollabSession({
   );
 
   useEffect(() => {
+    // New collab session → allow one hydrate notify for the freshly loaded doc.
+    lastNotifiedMarkdownRef.current = null;
+  }, [collab.session?.ydoc]);
+
+  useEffect(() => {
     const ydoc = collab.session?.ydoc;
-    if (!ydoc || !onBodyMarkdownChange) return;
+    if (!ydoc) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onUpdate = () => {
+      if (!onBodyMarkdownChangeRef.current) return;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => syncBodyPreview("hydrate"), BODY_PREVIEW_SYNC_DEBOUNCE_MS);
     };
@@ -153,7 +168,9 @@ export function NoteCollabSession({
       ydoc.off("update", onUpdate);
       window.clearTimeout(timer);
     };
-  }, [collab.session?.ydoc, onBodyMarkdownChange, syncBodyPreview]);
+    // Intentionally omit onBodyMarkdownChange identity — use the ref so parent
+    // inline callbacks do not re-subscribe every render.
+  }, [collab.session?.ydoc, syncBodyPreview]);
 
   const value = useMemo(
     () => ({ ...collab, localDisplayName, onMarkdownChange, registerMarkdownGetter }),

@@ -195,20 +195,47 @@ export function preserveLocalListableBodiesOnServerNotes(
  * Pass `bumpDate: false` when hydrating from a loaded document so opening a note
  * after refresh fills the list preview without pretending the user just edited.
  */
+export function normalizeNoteBodyMarkdown(markdown: string): string {
+  return markdown.replace(/\r\n/g, "\n").replace(/\n+$/u, "");
+}
+
 export function applyNoteBodyMarkdown(
   note: Note,
   markdown: string,
   options?: { editedAt?: string; bumpDate?: boolean },
 ): Note {
-  if (noteBodyToMarkdown(note.body) === markdown) {
+  const normalized = normalizeNoteBodyMarkdown(markdown);
+  // Compare normalized forms so TipTap trailing newlines do not look like edits
+  // (that retriggered hydrate → setNotes → “Maximum update depth exceeded”).
+  if (normalizeNoteBodyMarkdown(noteBodyToMarkdown(note.body)) === normalized) {
     return note;
   }
   const bumpDate = options?.bumpDate !== false;
   return enrichNote({
     ...note,
-    body: markdownToNoteBody(markdown),
+    body: markdownToNoteBody(normalized),
     ...(bumpDate ? { date: options?.editedAt ?? new Date().toISOString() } : {}),
   });
+}
+
+/**
+ * Update one note’s body in a list, returning the **same array reference** when
+ * markdown is unchanged — required so hydrate/Yjs notify loops do not setState.
+ */
+export function mapNotesWithBodyMarkdown(
+  notes: Note[],
+  id: string,
+  markdown: string,
+  options?: { editedAt?: string; bumpDate?: boolean },
+): { notes: Note[]; updated: Note | undefined } {
+  let updated: Note | undefined;
+  const nextNotes = notes.map((note) => {
+    if (note.id !== id) return note;
+    const next = applyNoteBodyMarkdown(note, markdown, options);
+    if (next !== note) updated = next;
+    return next;
+  });
+  return { notes: updated ? nextNotes : notes, updated };
 }
 
 /**
