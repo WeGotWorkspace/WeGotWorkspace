@@ -8,6 +8,7 @@ use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Installer\InstallerSeeder;
+use App\Services\Notes\GroupNotesHomesProvisioner;
 use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
 
@@ -17,6 +18,7 @@ final class AdminGroupManagementService
         private GroupDirectoryService $groups,
         private InstallerSeeder $installerSeeder,
         private UserCalendarCollectionsProvisioner $calendarCollections,
+        private GroupNotesHomesProvisioner $notesHomes,
         private AppPaths $paths,
     ) {}
 
@@ -37,7 +39,7 @@ final class AdminGroupManagementService
             'displayname' => $displayName !== '' ? $displayName : $slug,
         ]);
 
-        $this->ensureGroupFilesDirectory($slug);
+        $this->notesHomes->ensureForSlug($slug);
         $this->calendarCollections->ensureForGroupPrincipal($uri, $displayName !== '' ? $displayName : $slug);
 
         return $uri;
@@ -111,17 +113,6 @@ final class AdminGroupManagementService
         }
 
         return AdminConstants::GROUP_PREFIX.$this->normalizeSlug($groupSlug);
-    }
-
-    private function ensureGroupFilesDirectory(string $slug): void
-    {
-        $path = rtrim($this->paths->dataDir(), '/').'/files/groups/'.$slug;
-        if (is_dir($path)) {
-            return;
-        }
-        if (! @mkdir($path, 0775, true) && ! is_dir($path)) {
-            throw new \RuntimeException('Could not create group files directory for '.$slug.'.');
-        }
     }
 
     private function deleteDirectory(string $path): void
