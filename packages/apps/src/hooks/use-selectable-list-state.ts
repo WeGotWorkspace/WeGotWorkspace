@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 type UseSelectableListStateOptions = {
   initialId?: string;
@@ -17,8 +17,14 @@ export function useSelectableListState({
 
   const handleSelect = (id: string, e: React.MouseEvent) => {
     if (selectionMode) {
-      setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+      const next = selectedIds.includes(id)
+        ? selectedIds.filter((x) => x !== id)
+        : [...selectedIds, id];
+      setSelectedIds(next);
       setLastClickedId(id);
+      if (next.length === 1) {
+        onPrimarySelect?.(next[0]!);
+      }
       return;
     }
 
@@ -35,8 +41,16 @@ export function useSelectableListState({
     }
 
     if (e.metaKey || e.ctrlKey) {
-      setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+      const next = selectedIds.includes(id)
+        ? selectedIds.filter((x) => x !== id)
+        : [...selectedIds, id];
+      setSelectedIds(next);
       setLastClickedId(id);
+      // Single leftover selection must drive the open/active row — otherwise
+      // isActive and isSelected highlight two different rows in single-select UI.
+      if (next.length === 1) {
+        onPrimarySelect?.(next[0]!);
+      }
       return;
     }
 
@@ -45,25 +59,25 @@ export function useSelectableListState({
     onPrimarySelect?.(id);
   };
 
-  const enterSelectionFor = (id: string) => {
+  const enterSelectionFor = useCallback((id: string) => {
     setSelectionMode(true);
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  };
+  }, []);
 
-  const exitSelection = (activeId?: string) => {
+  const exitSelection = useCallback((activeId?: string) => {
     setSelectionMode(false);
     setSelectedIds(activeId ? [activeId] : []);
-  };
+  }, []);
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectionMode(false);
     setSelectedIds([]);
-  };
+  }, []);
 
-  const selectSingle = (id: string) => {
+  const selectSingle = useCallback((id: string) => {
     setSelectedIds([id]);
     setLastClickedId(id);
-  };
+  }, []);
 
   return {
     selectedIds,

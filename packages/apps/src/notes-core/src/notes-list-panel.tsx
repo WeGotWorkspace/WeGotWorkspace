@@ -190,6 +190,14 @@ export function NotesListPanel({
               onDragEnd?: () => void;
             };
             const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
+            const multiSelect = selectionMode || selectedIds.length > 1;
+            // Single-select UI: only the open row may look highlighted. Multi-select:
+            // selected rows only (suppress active paint so a leftover activeId cannot
+            // light a second beige row).
+            const rowActive = !multiSelect && note.id === activeId;
+            const rowSelected = multiSelect
+              ? selectedIds.includes(note.id)
+              : note.id === activeId && selectedIds.includes(note.id);
             return (
               <ListItem
                 key={note.id}
@@ -217,8 +225,8 @@ export function NotesListPanel({
                     <Star className="notes-list-panel__star-icon" fill="currentColor" />
                   </span>,
                 ].filter(Boolean)}
-                isActive={note.id === activeId}
-                isSelected={selectedIds.includes(note.id)}
+                isActive={rowActive}
+                isSelected={rowSelected}
                 selectionMode={selectionMode}
                 isTouch={isTouch}
                 isDragging={isItemDragging(note.id)}

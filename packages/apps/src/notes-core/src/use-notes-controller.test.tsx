@@ -237,6 +237,27 @@ describe("useNotesController URL routing", () => {
     rerender({ initialNoteId: "note-1" });
 
     expect(result.current.activeId).toBe("note-1");
+    expect(result.current.selectedIds).toEqual(["note-1"]);
+  });
+
+  it("keeps selectedIds aligned with activeId after a primary click then URL note change", () => {
+    const { result, rerender } = renderHook(
+      ({ initialNoteId }: { initialNoteId: string }) =>
+        useNotesController({ data, listLoading: false, initialNoteId }),
+      { initialProps: { initialNoteId: "note-1" } },
+    );
+
+    clickSelect(result, "note-2");
+    // Route sync catches up after onNoteChange (same as production).
+    rerender({ initialNoteId: "note-2" });
+    expect(result.current.activeId).toBe("note-2");
+    expect(result.current.selectedIds).toEqual(["note-2"]);
+
+    // Browser back / deep link to another note must not leave selectedIds on the old row.
+    rerender({ initialNoteId: "note-1" });
+
+    expect(result.current.activeId).toBe("note-1");
+    expect(result.current.selectedIds).toEqual(["note-1"]);
   });
 
   it("onViewChange is called when selectView is invoked (not on mount)", () => {

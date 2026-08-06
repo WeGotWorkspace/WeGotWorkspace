@@ -8,6 +8,7 @@ import {
   createNoteSaveDebouncer,
   enrichNote,
   filterVisibleNotes,
+  dedupeNotesById,
   normalizeTag,
   noteHasListableBody,
   noteListTagOverflow,
@@ -191,6 +192,35 @@ describe("notes-note-utils", () => {
       searchQuery: "",
     });
     expect(visible.map((note) => note.id)).toEqual(["newer", "mid", "older"]);
+  });
+
+  it("dedupes duplicate note ids before listing (keeps first occurrence)", () => {
+    const first: Note = {
+      ...sampleNote,
+      id: "dup",
+      excerpt: "First",
+      body: ["First"],
+      notebook: "Test",
+      date: "2026-08-06T11:55:00.000Z",
+    };
+    const second: Note = {
+      ...sampleNote,
+      id: "dup",
+      excerpt: "Second",
+      body: ["Second"],
+      notebook: "Drafts",
+      date: "2026-08-06T11:54:00.000Z",
+    };
+    expect(dedupeNotesById([first, second]).map((note) => note.excerpt)).toEqual(["First"]);
+
+    const visible = filterVisibleNotes([first, second, { ...sampleNote, id: "other" }], {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["dup", "other"]);
+    expect(visible.filter((note) => note.id === "dup")).toHaveLength(1);
   });
 
   it("reorders after a collab body date bump", () => {

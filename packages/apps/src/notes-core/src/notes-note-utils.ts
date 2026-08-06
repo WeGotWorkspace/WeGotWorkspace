@@ -179,6 +179,22 @@ export function applyNoteBodyMarkdown(
   });
 }
 
+/**
+ * Keep the first occurrence when `notes` accidentally contains duplicate ids
+ * (React list keys + selection would otherwise treat both rows as one id).
+ */
+export function dedupeNotesById(notes: Note[]): Note[] {
+  if (notes.length <= 1) return notes;
+  const seen = new Set<string>();
+  const result: Note[] = [];
+  for (const note of notes) {
+    if (seen.has(note.id)) continue;
+    seen.add(note.id);
+    result.push(note);
+  }
+  return result.length === notes.length ? notes : result;
+}
+
 export function filterVisibleNotes(
   notes: Note[],
   {
@@ -194,7 +210,7 @@ export function filterVisibleNotes(
   },
 ): Note[] {
   const q = searchQuery.trim().toLowerCase();
-  const filtered = notes.filter((note) => {
+  const filtered = dedupeNotesById(notes).filter((note) => {
     let inView = true;
     if (view === "all") inView = !archived[note.id];
     else if (view === "starred") inView = !!starred[note.id] && !archived[note.id];
