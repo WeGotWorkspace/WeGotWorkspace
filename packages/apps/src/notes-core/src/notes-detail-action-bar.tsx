@@ -10,7 +10,7 @@ import {
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import { noteListLocationLabel } from "@/notes-core/src/notes-note-utils";
+import { noteListLocationLabel, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
 import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
 
 type NotesDetailActionBarProps = {
@@ -53,6 +53,7 @@ export function NotesDetailActionBar({
   const sharedInbox = !!active.sharedInbox;
   const groupNotebook = !sharedInbox && active.scope === "group";
   const notebookLocked = sharedInbox || groupNotebook || readOnly;
+  const showStar = noteShowsStarControls(active);
   const locationLabel =
     noteListLocationLabel(active, labels) || active.notebook.trim() || labels.toolbarMoveToNotebook;
 
@@ -79,14 +80,18 @@ export function NotesDetailActionBar({
       showLabel: true,
       disabled: notebookLocked,
     },
-    {
-      id: "toggle-star",
-      label: labels.toolbarStar,
-      onClick: readOnly ? undefined : () => toggleStar(active.id),
-      active: !!starred[active.id],
-      icon: <Star />,
-      disabled: readOnly,
-    },
+    ...(showStar
+      ? [
+          {
+            id: "toggle-star",
+            label: labels.toolbarStar,
+            onClick: readOnly ? undefined : () => toggleStar(active.id),
+            active: !!starred[active.id],
+            icon: <Star />,
+            disabled: readOnly,
+          },
+        ]
+      : []),
     {
       id: "toggle-archive",
       label: archived[active.id] ? labels.toolbarUnarchive : labels.toolbarArchive,

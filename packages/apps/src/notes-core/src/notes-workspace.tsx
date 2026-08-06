@@ -21,7 +21,11 @@ import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
-import { noteListTitle } from "@/notes-core/src/notes-note-utils";
+import {
+  noteAllowsTagAssignment,
+  noteListTitle,
+  noteShowsTags,
+} from "@/notes-core/src/notes-note-utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
@@ -165,6 +169,8 @@ export function NotesWorkspace({
     shareRightsEnabled && noteShareRightsLoading,
   );
   const noteReadOnly = !noteEditable;
+  const activeShowsTags = active ? noteShowsTags(active) : true;
+  const activeAllowsTagAssignment = active ? noteAllowsTagAssignment(active, noteEditable) : false;
 
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
@@ -411,8 +417,13 @@ export function NotesWorkspace({
               contentRevision={formatNoteDateForList(active.date)}
               tags={active.tags}
               availableTags={tags}
-              onTagAdd={noteReadOnly ? undefined : (tag) => toggleNoteTag(active.id, tag)}
-              onTagRemove={noteReadOnly ? undefined : (tag) => toggleNoteTag(active.id, tag)}
+              showTags={activeShowsTags}
+              onTagAdd={
+                activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+              }
+              onTagRemove={
+                activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+              }
               pullQuote={active.pullQuote}
               body={active.body}
               collab={noteBodyCollab}

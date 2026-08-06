@@ -115,6 +115,44 @@ export function normalizeTag(value: string): string {
   return value.trim();
 }
 
+type NoteShareAudienceFields = Pick<
+  Note,
+  "sharedInbox" | "sharedNotebookGrant" | "sharedBy" | "scope"
+>;
+
+/**
+ * Personal share recipient: Shared-with-me file grant, or a note under a
+ * personally shared notebook (ACL dir grant from another user). Group notebooks
+ * are not personal shares — members keep tags/stars.
+ */
+export function isPersonalShareRecipient(note: NoteShareAudienceFields): boolean {
+  if (note.sharedInbox) return true;
+  if (note.sharedBy?.trim()) return true;
+  if (note.sharedNotebookGrant && note.scope !== "group") return true;
+  return false;
+}
+
+/** Tag chips + add-tag UI — hidden for personal share recipients. */
+export function noteShowsTags(note: NoteShareAudienceFields): boolean {
+  return !isPersonalShareRecipient(note);
+}
+
+/**
+ * Tag assignment: never for personal share recipients; otherwise when the note
+ * body/metadata is editable (owner, or group collab with edit rights).
+ */
+export function noteAllowsTagAssignment(
+  note: NoteShareAudienceFields,
+  mayEditContent: boolean,
+): boolean {
+  return noteShowsTags(note) && mayEditContent;
+}
+
+/** Star/unstar controls — same personal-share audience as hidden tags. */
+export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
+  return !isPersonalShareRecipient(note);
+}
+
 /**
  * Recomputes excerpt + word count from body. Call on every hydrate/read path so
  * historical rows with empty excerpt still preview correctly when body exists.

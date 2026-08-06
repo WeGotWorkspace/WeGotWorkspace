@@ -12,10 +12,13 @@ import {
   mapNotesWithBodyMarkdown,
   normalizeNoteBodyMarkdown,
   normalizeTag,
+  noteAllowsTagAssignment,
   noteHasListableBody,
   noteListTagOverflow,
   noteListTitle,
   noteListLocationLabel,
+  noteShowsStarControls,
+  noteShowsTags,
   sharedNotebookLabel,
   plainTextFromBody,
   preserveLocalListableBodiesOnServerNotes,
@@ -62,6 +65,49 @@ describe("notes-note-utils", () => {
       overflow: 2,
     });
     expect(noteListTagOverflow(["  focus  ", ""])).toEqual({ visible: ["focus"], overflow: 0 });
+  });
+
+  it("hides tags and stars for personal share recipients; shows for owned and group", () => {
+    const owned = sampleNote;
+    const sharedInbox: Note = {
+      ...sampleNote,
+      id: "swm",
+      sharedInbox: true,
+      sharedBy: "bob",
+      tags: ["secret"],
+    };
+    const personalSharedNb: Note = {
+      ...sampleNote,
+      id: "psn",
+      sharedNotebookGrant: true,
+      scope: "personal",
+      tags: ["team"],
+    };
+    const groupNote: Note = {
+      ...sampleNote,
+      id: "grp",
+      scope: "group",
+      groupSlug: "eng",
+      tags: ["roadmap"],
+    };
+
+    expect(noteShowsTags(owned)).toBe(true);
+    expect(noteShowsStarControls(owned)).toBe(true);
+    expect(noteAllowsTagAssignment(owned, true)).toBe(true);
+    expect(noteAllowsTagAssignment(owned, false)).toBe(false);
+
+    expect(noteShowsTags(sharedInbox)).toBe(false);
+    expect(noteShowsStarControls(sharedInbox)).toBe(false);
+    expect(noteAllowsTagAssignment(sharedInbox, true)).toBe(false);
+
+    expect(noteShowsTags(personalSharedNb)).toBe(false);
+    expect(noteShowsStarControls(personalSharedNb)).toBe(false);
+    expect(noteAllowsTagAssignment(personalSharedNb, true)).toBe(false);
+
+    expect(noteShowsTags(groupNote)).toBe(true);
+    expect(noteShowsStarControls(groupNote)).toBe(true);
+    expect(noteAllowsTagAssignment(groupNote, true)).toBe(true);
+    expect(noteAllowsTagAssignment(groupNote, false)).toBe(false);
   });
 
   it("does not render Untitled when title/excerpt are empty but body has text", () => {

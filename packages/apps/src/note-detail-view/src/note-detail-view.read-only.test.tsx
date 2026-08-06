@@ -33,4 +33,19 @@ describe("NoteDetailView readOnly", () => {
 
     expect(container.querySelector('[contenteditable="true"]')).toBeTruthy();
   });
+
+  it("omits the tag group when showTags is false", () => {
+    const { container } = render(
+      <NoteDetailView
+        noteId="n-shared"
+        contentRevision="rev-1"
+        tags={["hidden"]}
+        body={["Shared body"]}
+        showTags={false}
+      />,
+    );
+
+    expect(container.querySelector(".note-detail-view__tag-group")).toBeNull();
+    expect(container.querySelector(".tag-group")).toBeNull();
+  });
 });

@@ -22,6 +22,8 @@ import {
   noteListTagOverflow,
   noteListTitle,
   noteListLocationLabel,
+  noteShowsStarControls,
+  noteShowsTags,
 } from "@/notes-core/src/notes-note-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
@@ -239,6 +241,8 @@ export function NotesListPanel({
             const rowSelected = multiSelect
               ? selectedIds.includes(note.id)
               : note.id === activeId && selectedIds.includes(note.id);
+            const showTags = noteShowsTags(note);
+            const showStar = noteShowsStarControls(note);
             return (
               <ListItem
                 key={note.id}
@@ -246,7 +250,7 @@ export function NotesListPanel({
                 title={noteListTitle(note)}
                 subtitle={<NotesListLocation note={note} labels={L} />}
                 date={formatNoteDateForList(note.date)}
-                text={notesListItemTags(note.tags)}
+                text={showTags ? notesListItemTags(note.tags) : null}
                 icons={[
                   isPendingSync ? (
                     <span
@@ -258,13 +262,15 @@ export function NotesListPanel({
                       <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
                     </span>
                   ) : null,
-                  <span
-                    key="star"
-                    className="notes-list-panel__star-pip"
-                    data-active={starred[note.id] ? "true" : "false"}
-                  >
-                    <Star className="notes-list-panel__star-icon" fill="currentColor" />
-                  </span>,
+                  showStar ? (
+                    <span
+                      key="star"
+                      className="notes-list-panel__star-pip"
+                      data-active={starred[note.id] ? "true" : "false"}
+                    >
+                      <Star className="notes-list-panel__star-icon" fill="currentColor" />
+                    </span>
+                  ) : null,
                 ].filter(Boolean)}
                 isActive={rowActive}
                 isSelected={rowSelected}
@@ -278,17 +284,21 @@ export function NotesListPanel({
                 onDragEnd={dragHandlers.onDragEnd ?? (() => {})}
                 {...(isTouch
                   ? {
-                      swipeLeftAction: {
-                        icon: (
-                          <Star
-                            className="size-5"
-                            fill={starred[note.id] ? "currentColor" : "none"}
-                          />
-                        ),
-                        color: "var(--color-emerald)",
-                        label: starred[note.id] ? L.swipeUnstar : L.swipeStar,
-                        onActivate: () => toggleStar(note.id),
-                      },
+                      ...(showStar
+                        ? {
+                            swipeLeftAction: {
+                              icon: (
+                                <Star
+                                  className="size-5"
+                                  fill={starred[note.id] ? "currentColor" : "none"}
+                                />
+                              ),
+                              color: "var(--color-emerald)",
+                              label: starred[note.id] ? L.swipeUnstar : L.swipeStar,
+                              onActivate: () => toggleStar(note.id),
+                            },
+                          }
+                        : {}),
                       swipeRightAction: {
                         icon: <Archive className="size-5" />,
                         color: "var(--color-ink)",

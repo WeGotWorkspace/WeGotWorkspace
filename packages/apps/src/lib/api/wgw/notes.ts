@@ -231,7 +231,8 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
     notebook: entry.notebook,
     excerpt: title,
     body: [title],
-    tags: entry.tags.map((tag) => tag.trim()).filter(Boolean),
+    // Personal Shared-with-me recipients never see tags — omit from the stub.
+    tags: [],
     wordCount: wordCountFromText(title),
     category: "Note",
     date: "—",
@@ -246,12 +247,14 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
 /** Note rows under an ACL-shared notebook (not Shared-with-me file grants). */
 export function noteFromSharedNotebookEntry(entry: NotesSharedNoteEntry): Note {
   const title = entry.title.trim() || entry.id;
+  const isGroup = entry.scope === "group";
   return {
     id: entry.id,
     notebook: entry.notebook,
     excerpt: title,
     body: [title],
-    tags: entry.tags.map((tag) => tag.trim()).filter(Boolean),
+    // Personal ACL notebook shares hide tags; group notebooks keep frontmatter tags.
+    tags: isGroup ? entry.tags.map((tag) => tag.trim()).filter(Boolean) : [],
     wordCount: wordCountFromText(title),
     category: "Note",
     date: "—",

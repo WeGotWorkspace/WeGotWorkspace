@@ -128,7 +128,8 @@ describe("shared notes listing parsers", () => {
     expect(noteFromSharedEntry(notes[0]!).apiPath).toBe("/users/bob/.notes/TeamPad/n1.md");
     expect(noteFromSharedEntry(notes[0]!).sharedBy).toBe("bob");
     expect(noteFromSharedEntry(notes[0]!).notebook).toBe("TeamPad");
-    expect(noteFromSharedEntry(notes[0]!).tags).toEqual(["planning", "shared"]);
+    // Recipients never surface tags on Shared-with-me stubs.
+    expect(noteFromSharedEntry(notes[0]!).tags).toEqual([]);
 
     const notebooks = parseSharedNotebooksPayload({
       items: [
@@ -160,6 +161,34 @@ describe("shared notes listing parsers", () => {
     expect(notebooks.items[0]?.path).toBe("/users/bob/.notes/TeamPad");
     expect(notebooks.notes).toHaveLength(1);
     expect(notebooks.notes[0]?.id).toBe("n1");
+  });
+
+  it("keeps tags on group shared-notebook stubs; strips them on personal ACL shares", async () => {
+    const { noteFromSharedNotebookEntry } = await import("@/lib/api/wgw/notes");
+    expect(
+      noteFromSharedNotebookEntry({
+        path: "/groups/eng/.notes/General/n1.md",
+        id: "n1",
+        notebook: "General",
+        title: "Team note",
+        tags: ["roadmap"],
+        owner: "eng",
+        scope: "group",
+        groupSlug: "eng",
+      }).tags,
+    ).toEqual(["roadmap"]);
+    expect(
+      noteFromSharedNotebookEntry({
+        path: "/users/bob/.notes/TeamPad/n1.md",
+        id: "n1",
+        notebook: "TeamPad",
+        title: "Shared nb note",
+        tags: ["secret"],
+        owner: "bob",
+        scope: "personal",
+        groupSlug: null,
+      }).tags,
+    ).toEqual([]);
   });
 
   it("merges ACL shared-notebook notes for shared-nb views without Shared-with-me", async () => {
@@ -200,6 +229,9 @@ describe("shared notes listing parsers", () => {
     expect(grantNote?.sharedNotebookGrant).toBe(true);
     expect(grantNote?.sharedInbox).toBeUndefined();
     expect(noteFromSharedNotebookEntry(underNb[0]!).sharedBy).toBeUndefined();
+    // Personal ACL notebook shares strip tags for recipients.
+    expect(noteFromSharedNotebookEntry(underNb[0]!).tags).toEqual([]);
+    expect(grantNote?.tags).toEqual([]);
 
     expect(
       filterVisibleNotes(merged, {

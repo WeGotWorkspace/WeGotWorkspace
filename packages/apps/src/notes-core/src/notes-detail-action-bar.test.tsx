@@ -103,4 +103,46 @@ describe("NotesDetailActionBar", () => {
     expect(toggleStar).not.toHaveBeenCalled();
     expect(toggleArchive).not.toHaveBeenCalled();
   });
+
+  it("omits star for personal shared-with-me notes", () => {
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={shared}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={vi.fn()}
+        toggleStar={vi.fn()}
+        toggleArchive={vi.fn()}
+      />,
+    );
+
+    const row = container.querySelector(".action-bar__row");
+    expect(row!.querySelector('button[aria-label="Star"]')).toBeNull();
+    expect(row!.querySelector('button[aria-label="Archive"]')).toBeTruthy();
+  });
+
+  it("keeps star for group notebook notes", () => {
+    const group: Note = {
+      ...owned,
+      id: "g-1",
+      scope: "group",
+      groupSlug: "eng",
+    };
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={group}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={vi.fn()}
+        toggleStar={vi.fn()}
+        toggleArchive={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('button[aria-label="Star"]')).toBeTruthy();
+  });
 });

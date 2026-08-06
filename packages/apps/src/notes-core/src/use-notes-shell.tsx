@@ -6,7 +6,7 @@ import type { Note } from "@/lib/models/note";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
-import { enrichNote, normalizeTag, sharedNotebookLabel } from "./notes-note-utils";
+import { enrichNote, normalizeTag, noteShowsTags, sharedNotebookLabel } from "./notes-note-utils";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
 
 /** Debounce bursts of edits before showing a save toast. */
@@ -115,7 +115,7 @@ export function useNotesShell({
     () => [
       ...new Set(
         notes
-          .filter((note) => !note.sharedInbox && !note.sharedNotebookGrant)
+          .filter((note) => noteShowsTags(note))
           .flatMap((note) => note.tags.map((tag) => normalizeTag(tag)))
           .filter(Boolean),
       ),

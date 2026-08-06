@@ -11,6 +11,8 @@ import {
   enrichNote,
   mapNotesWithBodyMarkdown,
   normalizeTag,
+  noteAllowsTagAssignment,
+  noteShowsStarControls,
   persistBestEffort,
 } from "./notes-note-utils";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
@@ -121,7 +123,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const toggleStar = useCallback(
     (id: string) => {
       const current = notes.find((note) => note.id === id);
-      if (!current) return;
+      if (!current || !noteShowsStarControls(current)) return;
       const beforeStarred = !!starred[id];
       const nowStarred = applyStarToggle(id);
       setNotes((prev) =>
@@ -230,24 +232,32 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     (ids: string[], rawTag: string) => {
       const tag = normalizeTag(rawTag);
       if (!tag) return;
-      const before = notes.filter((note) => ids.includes(note.id));
+      const assignableIds = ids.filter((id) => {
+        const note = notes.find((row) => row.id === id);
+        return note ? noteAllowsTagAssignment(note, true) : false;
+      });
+      if (assignableIds.length === 0) return;
+      const before = notes.filter((note) => assignableIds.includes(note.id));
       setNotes((prev) =>
         prev.map((note) =>
-          ids.includes(note.id) && !note.tags.includes(tag)
+          assignableIds.includes(note.id) && !note.tags.includes(tag)
             ? { ...note, tags: [...note.tags, tag] }
             : note,
         ),
       );
-      show(`Tagged ${ids.length} item${ids.length === 1 ? "" : "s"} with ${tag}`, {
-        icon: <Tag className="size-4" />,
-      });
+      show(
+        `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
+        {
+          icon: <Tag className="size-4" />,
+        },
+      );
       if (!operations) return;
       const updatedRows = before.map((note) =>
         note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag] },
       );
       queueMutation({
-        key: `notes:tag:${tag}:${ids.slice().sort().join(",")}`,
-        toastMessage: `Tagged ${ids.length} item${ids.length === 1 ? "" : "s"} with ${tag}`,
+        key: `notes:tag:${tag}:${assignableIds.slice().sort().join(",")}`,
+        toastMessage: `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
         execute: () =>
           Promise.all(updatedRows.map((row) => operations.upsertNote(row))).then(() => {}),
         undo: () => {
@@ -372,7 +382,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const tag = normalizeTag(rawTag);
       if (!tag) return;
       const before = notes.find((note) => note.id === noteId);
-      if (!before) return;
+      if (!before || !noteAllowsTagAssignment(before, true)) return;
       const has = before.tags.includes(tag);
       const added = !has;
       const updated = {
@@ -514,19 +524,27 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     () => notes.filter((note) => selectedIds.includes(note.id)),
     [notes, selectedIds],
   );
+  const starableSelected = useMemo(
+    () => selectedRows.filter((note) => noteShowsStarControls(note)),
+    [selectedRows],
+  );
   const allSelectedStarred =
-    selectedRows.length > 0 && selectedRows.every((note) => !!starred[note.id]);
+    starableSelected.length > 0 && starableSelected.every((note) => !!starred[note.id]);
   const allSelectedArchived =
     selectedRows.length > 0 && selectedRows.every((note) => !!archived[note.id]);
 
   const selectionActionButtons = useMemo(
     () => [
-      {
-        label: allSelectedStarred ? L.swipeUnstar : L.selectionStar,
-        icon: <Star className="size-4" fill={allSelectedStarred ? "currentColor" : "none"} />,
-        onClick: batchStar,
-        active: allSelectedStarred,
-      },
+      ...(starableSelected.length > 0
+        ? [
+            {
+              label: allSelectedStarred ? L.swipeUnstar : L.selectionStar,
+              icon: <Star className="size-4" fill={allSelectedStarred ? "currentColor" : "none"} />,
+              onClick: batchStar,
+              active: allSelectedStarred,
+            },
+          ]
+        : []),
       {
         label: allSelectedArchived ? L.swipeUnarchive : L.selectionArchive,
         icon: allSelectedArchived ? (
@@ -559,12 +577,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       batchStar,
       requestDeleteSelected,
       selectedIds,
+      starableSelected.length,
       L.swipeUnstar,
       L.selectionStar,
       L.swipeUnarchive,
       L.selectionArchive,
       L.selectionMoveToNotebook,
       L.selectionDeletePermanently,
+      view,
     ],
   );
   const { selectionBarButtons, selectionBar } = useWorkspaceSelectionPresentation({
