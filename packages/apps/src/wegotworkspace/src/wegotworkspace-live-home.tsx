@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import { AppsHomeScreen, type AppsHomeScreenItem } from "@/apps-home-screen/src/apps-home-screen";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { wgwEnsurePluginSession } from "@/lib/api/wgw/http";
 import { WORKSPACE_APP_ACCENT, type WorkspaceAppId } from "@/lib/workspace-app-icons";
 import {
   fetchWeGotWorkspaceHomeState,
@@ -29,6 +31,7 @@ function homeAppTile(
 export function WeGotWorkspaceLiveHome() {
   const navigate = useNavigate();
   const onLogout = useWeGotWorkspaceLogout();
+  const { showError } = useAppToast();
   const [homeState, setHomeState] = useState<WeGotWorkspaceHomeState>(MOCK_HOME_STATE);
 
   useEffect(() => {
@@ -62,7 +65,17 @@ export function WeGotWorkspaceLiveHome() {
       accent: WORKSPACE_APP_ACCENT.drive,
       fg: "#ffffff",
       onSelect: () => {
-        window.location.assign(tile.route);
+        void (async () => {
+          try {
+            if (tile.sessionApiPath) {
+              await wgwEnsurePluginSession(tile.sessionApiPath);
+            }
+            window.location.assign(tile.route);
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : undefined;
+            showError("Could not open app", { description: detail });
+          }
+        })();
       },
     })),
   ];
