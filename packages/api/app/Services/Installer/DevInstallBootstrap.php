@@ -52,41 +52,36 @@ final class DevInstallBootstrap
 
         @mkdir(rtrim($this->paths->dataDir(), '/').'/files', 0775, true);
 
-        // Match the web installer: an existing SQLite with users is a recoverable
-        // half-install (e.g. missing packages/api/.env / .installed). Do not reseed.
-        $fresh = ! $this->database->hasUsers($db);
-        if ($fresh) {
-            $this->database->installFresh(
-                $db,
-                $username,
-                $password,
-                'Admin',
-                $username.'@localhost',
-                true,
-                true,
-                [
-                    SettingKeys::TIMEZONE => 'UTC',
-                    SettingKeys::BASE_URI => '/',
-                    SettingKeys::AUTH_REALM => 'SabreDAV',
-                    SettingKeys::BROWSER_PLUGIN => true,
-                    SettingKeys::FILES_ENABLED => true,
-                    SettingKeys::CALENDAR_ENABLED => true,
-                    SettingKeys::CONTACTS_ENABLED => true,
-                    SettingKeys::TASKS_ENABLED => true,
-                    SettingKeys::MAIL_ENABLED => false,
-                    SettingKeys::MAIL_IMAP_HOST => '',
-                    SettingKeys::MAIL_IMAP_PORT => 993,
-                    SettingKeys::MAIL_IMAP_SECURITY => '',
-                    SettingKeys::MAIL_SMTP_HOST => '',
-                    SettingKeys::MAIL_SMTP_PORT => 587,
-                    SettingKeys::MAIL_SMTP_SECURITY => '',
-                    SettingKeys::RTC_STUN_URL => '',
-                    SettingKeys::RTC_TURN_URL => '',
-                    SettingKeys::RTC_TURN_USERNAME => '',
-                    SettingKeys::RTC_TURN_CREDENTIAL => '',
-                ],
-            );
-        }
+        $this->database->installFresh(
+            $db,
+            $username,
+            $password,
+            'Admin',
+            $username.'@localhost',
+            true,
+            true,
+            [
+                SettingKeys::TIMEZONE => 'UTC',
+                SettingKeys::BASE_URI => '/',
+                SettingKeys::AUTH_REALM => 'SabreDAV',
+                SettingKeys::BROWSER_PLUGIN => true,
+                SettingKeys::FILES_ENABLED => true,
+                SettingKeys::CALENDAR_ENABLED => true,
+                SettingKeys::CONTACTS_ENABLED => true,
+                SettingKeys::TASKS_ENABLED => true,
+                SettingKeys::MAIL_ENABLED => false,
+                SettingKeys::MAIL_IMAP_HOST => '',
+                SettingKeys::MAIL_IMAP_PORT => 993,
+                SettingKeys::MAIL_IMAP_SECURITY => '',
+                SettingKeys::MAIL_SMTP_HOST => '',
+                SettingKeys::MAIL_SMTP_PORT => 587,
+                SettingKeys::MAIL_SMTP_SECURITY => '',
+                SettingKeys::RTC_STUN_URL => '',
+                SettingKeys::RTC_TURN_URL => '',
+                SettingKeys::RTC_TURN_USERNAME => '',
+                SettingKeys::RTC_TURN_CREDENTIAL => '',
+            ],
+        );
 
         $this->jwtKeys->ensureKeys();
 
@@ -106,6 +101,6 @@ final class DevInstallBootstrap
 
         $this->apiEnv->ensure($this->paths->installRoot(), 'http://127.0.0.1:9080');
 
-        return $fresh;
+        return true;
     }
 }

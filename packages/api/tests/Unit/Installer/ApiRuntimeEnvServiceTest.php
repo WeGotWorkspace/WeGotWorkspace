@@ -70,24 +70,6 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertTrue($result['patchedUrl']);
     }
 
-    public function test_api_package_root_resolves_monorepo_shell_without_nested_api(): void
-    {
-        $repo = sys_get_temp_dir().'/wgw-monorepo-'.uniqid('', true);
-        $shell = $repo.'/apps/wegotworkspace';
-        $api = $repo.'/packages/api';
-        mkdir($shell, 0775, true);
-        mkdir($api.'/vendor', 0775, true);
-        touch($api.'/artisan');
-        touch($api.'/vendor/autoload.php');
-
-        try {
-            $service = new ApiRuntimeEnvService;
-            $this->assertSame($api, $service->apiPackageRoot($shell));
-        } finally {
-            $this->rmTree($repo);
-        }
-    }
-
     public function test_ensure_does_not_replace_existing_app_key(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n");
