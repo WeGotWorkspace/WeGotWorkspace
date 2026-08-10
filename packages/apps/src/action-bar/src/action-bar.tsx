@@ -148,18 +148,14 @@ export function ActionBar({
   return (
     <nav className={cn("action-bar", !collapseActions && "action-bar--expanded", className)}>
       {onBack ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              label={backLabel}
-              onClick={onBack}
-              icon={backIcon === "close" ? <X /> : <ArrowLeft />}
-              variant="ghost"
-              className="action-bar__back"
-            />
-          </TooltipTrigger>
-          <TooltipContent>{backLabel}</TooltipContent>
-        </Tooltip>
+        <Button
+          label={backLabel}
+          onClick={onBack}
+          icon={backIcon === "close" ? <X /> : <ArrowLeft />}
+          variant="ghost"
+          className="action-bar__back"
+          title={backLabel}
+        />
       ) : null}
       {hasLeftActions ? (
         <div className="action-bar__left">
