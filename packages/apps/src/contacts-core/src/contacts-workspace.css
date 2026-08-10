@@ -1,110 +1,69 @@
+@import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
 
 /**
- * Contacts product shell: cream main pane + cyan sidebar accent.
+ * Contacts product shell: cream main pane + soft gold / beige accent.
+ * Sidebar uses a light beige-gold tint (12% accent on cream), matching tasks/notes.
+ * Solid accent keeps white glyphs readable on avatars, CTAs, and app-switch tiles.
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --contacts-accent: #7360c8;
-  --contacts-sidebar: #6250af;
+  --contacts-accent: #a8895e;
+  --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 12%, var(--color-cream, #ffffff));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
   --workspace-detail-bg: var(--color-cream, #ffffff);
   --app-sidebar-bg: var(--contacts-sidebar);
-  --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --app-sidebar-color: #ffffff;
-  --sidebar-logo-close-button-color: #ffffff;
-  --sidebar-badge-fg: var(--contacts-sidebar);
+  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --app-sidebar-color: var(--color-ink);
+  --sidebar-logo-close-button-color: var(--color-ink);
+  --sidebar-badge-fg: var(--contacts-accent);
   --workspace-sidebar-toggle-color: var(--color-ink);
   --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 10%, transparent);
+  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
 
-  --workspace-user-footer-text-color: #ffffff;
-  --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 15%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 15%, transparent);
-  --workspace-user-footer-avatar-color: #ffffff;
-  --workspace-user-footer-link-color: #ffffff;
-  --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --workspace-user-footer-avatar-color: var(--color-ink);
+  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
-  --contacts-list-avatar-bg: var(--contacts-sidebar);
+  --contacts-list-avatar-bg: var(--contacts-accent);
   --contacts-list-avatar-color: #ffffff;
   --contacts-pending-sync-color: #c98a1f;
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--contacts-accent);
   --contacts-detail-title-font-family: var(--font-serif);
   --loading-spinner-color: color-mix(in oklab, var(--color-ink) 45%, transparent);
-}
-
-.contacts-workspace .app-sidebar,
-.contacts-workspace .app-sidebar__header,
-.contacts-workspace .app-sidebar__scroll-surface {
-  background-color: var(--contacts-sidebar);
-  color: #ffffff;
-}
-
-.contacts-workspace .app-sidebar .app-switch-button__trigger {
-  background-color: var(--contacts-sidebar);
-}
-
-.contacts-workspace .app-sidebar .app-switch-button__trigger:hover {
-  background-color: color-mix(in oklab, #ffffff 10%, var(--contacts-sidebar));
-}
-
-.contacts-workspace .sidebar-section .menu-item--surface-idle {
-  color: #ffffff;
-  background-color: var(--contacts-sidebar);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --button-primary-bg: var(--contacts-accent);
+  --button-primary-fg: #ffffff;
 }
 
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: #ffffff;
-  --button-subtle-color: var(--contacts-sidebar);
-}
-
-.contacts-workspace .app-sidebar {
-  --field-label-color: #ffffff;
+  --button-subtle-color: var(--contacts-accent);
 }
 
 .contacts-workspace .app-sidebar__scroll {
-  --color-ink: #ffffff;
-  --button-primary-bg: #ffffff;
-  --button-primary-fg: var(--contacts-sidebar);
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 12%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
+  --button-primary-bg: var(--contacts-accent);
+  --button-primary-fg: #ffffff;
+  --button-subtle-color: var(--color-ink);
+  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
-.contacts-workspace .sidebar-section .menu-item--surface-selected {
-  background-color: color-mix(in oklab, #ffffff 14%, var(--contacts-sidebar));
-  color: #ffffff;
-}
-
-.contacts-workspace .sidebar-section .menu-item--interactive:hover {
-  background-color: color-mix(in oklab, #ffffff 12%, var(--contacts-sidebar));
-}
-
-.contacts-workspace .sidebar-section .menu-item:not(.menu-item--selected) .menu-item__icon-slot,
-.contacts-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
-  color: #ffffff;
-  opacity: 1;
-}
-
-.contacts-workspace .sidebar-section__title {
-  color: #ffffff;
-}
-
-.contacts-workspace .app-sidebar__footer {
-  --workspace-user-footer-text-color: #ffffff;
-  --workspace-user-footer-subtitle-color: #ffffff;
-  --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 22%, transparent);
-  --workspace-user-footer-avatar-color: var(--app-sidebar-color);
-  --workspace-user-footer-link-color: #ffffff;
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 18%, transparent);
+/** App switcher lockup: solid accent tile + white glyph. */
+.contacts-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--contacts-accent);
+  --app-switch-icon-fg: #ffffff;
+  background-color: var(--app-switch-icon-bg);
 }
 
 .contacts-list-panel__loading {
@@ -152,6 +111,10 @@
   margin-bottom: 2rem;
 }
 
+.contacts-detail-view__heading {
+  @apply flex flex-col gap-1;
+}
+
 .contacts-detail-view__title {
   font-family: var(--contacts-detail-title-font-family);
   font-size: 1.75rem;
@@ -159,6 +122,15 @@
   line-height: 1.2;
   color: var(--color-ink);
   margin: 0;
+}
+
+.contacts-detail-view__subtitle {
+  @apply m-0 text-[0.9375rem] leading-snug;
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+}
+
+.contacts-detail-view__notes {
+  @apply min-h-32 w-full;
 }
 
 .contacts-detail-view__section + .contacts-detail-view__section {
@@ -186,6 +158,30 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.contacts-detail-view__name-row,
+.contacts-detail-view__job-row {
+  @apply grid grid-cols-1 gap-3 md:grid-cols-2;
+  min-width: 0;
+}
+
+.contacts-detail-view__name-row > *,
+.contacts-detail-view__job-row > * {
+  min-width: 0;
+}
+
+.contacts-detail-view__name-row > .field-label-row,
+.contacts-detail-view__job-row > .field-label-row {
+  @apply mb-0;
+}
+
+.contacts-detail-view__add-row.button {
+  @apply self-start gap-1.5 px-2;
+  min-height: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.75rem;
+  --button-icon-size: 0.75rem;
 }
 
 .contacts-detail-view__editable-list {
@@ -284,8 +280,13 @@
 .contacts-detail-view__address-fields {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
   min-width: 0;
+}
+
+.contacts-detail-view__address-fields > .field-label-row,
+.contacts-detail-view__address-locality-row > .field-label-row {
+  @apply mb-0;
 }
 
 .contacts-detail-view__address-locality-row {
@@ -342,7 +343,7 @@
 }
 
 .contacts-detail-view__link {
-  color: var(--contacts-accent, #7360c8);
+  color: var(--contacts-accent, #a8895e);
   text-decoration: none;
 }
 
@@ -358,7 +359,7 @@
 }
 
 .contacts-dialog-surface {
-  --contacts-accent: #7360c8;
+  --contacts-accent: #a8895e;
   --color-emerald: var(--contacts-accent);
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: #ffffff;

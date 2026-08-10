@@ -15,6 +15,13 @@ export const CONTACTS_CREATE_ID = "__contacts_create__";
 export const CONTACT_CHANNEL_CONTEXTS = ["", "home", "work", "school"] as const;
 export type ContactChannelContext = (typeof CONTACT_CHANNEL_CONTEXTS)[number];
 
+/**
+ * Phone type select values. Contexts (`home`/`work`/`school`) map to JSContact `contexts`
+ * (vCard TYPE=HOME/WORK/…). `mobile` maps to JSContact `features.mobile` (vCard TYPE=CELL).
+ */
+export const CONTACT_PHONE_TYPES = ["", "mobile", "home", "work", "school"] as const;
+export type ContactPhoneType = (typeof CONTACT_PHONE_TYPES)[number];
+
 export type ContactAddressDraft = {
   id: string;
   street: string;
@@ -31,10 +38,15 @@ export type ContactEditDraft = {
   nameSurname: string;
   showGiven2: boolean;
   showAsCompany: boolean;
-  phones: Array<{ id: string; number: string; contextType: ContactChannelContext }>;
+  phones: Array<{ id: string; number: string; phoneType: ContactPhoneType }>;
   emails: Array<{ id: string; address: string; contextType: ContactChannelContext }>;
   addresses: ContactAddressDraft[];
   urls: Array<{ id: string; uri: string; contextType: ContactChannelContext }>;
+  /** JSContact `titles` entry with kind "title" (vCard TITLE). */
+  title: string;
+  titleId?: string;
+  /** JSContact `organizations[].units[0].name` (vCard ORG unit / department). */
+  department: string;
   organization: string;
   notes: string;
   organizationId?: string;
@@ -97,6 +109,8 @@ export function emptyContactEditDraft(): ContactEditDraft {
     emails: [],
     addresses: [],
     urls: [],
+    title: "",
+    department: "",
     organization: "",
     notes: "",
   };
@@ -118,6 +132,34 @@ export function contactContextToPatch(
   if (contextType === "home") return { private: true };
   if (contextType === "school") return { school: true };
   return undefined;
+}
+
+/** Prefer `features.mobile` (vCard CELL); otherwise fall back to channel contexts. */
+export function readPhoneType(
+  phone:
+    | {
+        contexts?: Record<string, boolean | undefined>;
+        features?: Record<string, boolean | undefined>;
+      }
+    | null
+    | undefined,
+): ContactPhoneType {
+  if (phone?.features?.mobile) return "mobile";
+  return readContactContext(phone?.contexts);
+}
+
+export function phoneTypeToPatch(phoneType: ContactPhoneType): {
+  contexts?: Record<string, true> | null;
+  features?: Record<string, true> | null;
+} {
+  if (phoneType === "mobile") {
+    return { features: { mobile: true }, contexts: null };
+  }
+  const contexts = contactContextToPatch(phoneType);
+  return {
+    contexts: contexts ?? null,
+    features: null,
+  };
 }
 
 function readPhoneNumber(phone: NonNullable<ContactCard["phones"]>[string]): string {
@@ -159,7 +201,7 @@ function addressDraftHasContent(row: ContactAddressDraft): boolean {
 /** True when the draft has at least one non-empty create field (any section). */
 export function contactEditDraftHasContent(draft: ContactEditDraft): boolean {
   if (draft.nameGiven.trim() || draft.nameGiven2.trim() || draft.nameSurname.trim()) return true;
-  if (draft.organization.trim()) return true;
+  if (draft.title.trim() || draft.department.trim() || draft.organization.trim()) return true;
   if (draft.notes.trim()) return true;
   if (draft.phones.some((row) => row.number.trim())) return true;
   if (draft.emails.some((row) => row.address.trim())) return true;
@@ -220,12 +262,12 @@ function splitFullName(fullName: string): { given: string; surname: string } {
 function phoneValue(
   card: ContactCard,
   id: string,
-): { number: string; contextType: ContactChannelContext } {
+): { number: string; phoneType: ContactPhoneType } {
   const phone = card.phones?.[id];
-  if (!phone) return { number: "", contextType: "" };
+  if (!phone) return { number: "", phoneType: "" };
   return {
     number: readPhoneNumber(phone),
-    contextType: readContactContext(phone.contexts),
+    phoneType: readPhoneType(phone),
   };
 }
 
@@ -280,6 +322,10 @@ export function contactCardToEditDraft(card: ContactCard): ContactEditDraft {
 
   const [organizationId, organizationEntry] = mapEntriesSorted(card.organizations)[0] ?? [];
   const [notesId, notesEntry] = mapEntriesSorted(card.notes)[0] ?? [];
+  const titleEntry =
+    mapEntriesSorted(card.titles).find(([, entry]) => (entry.kind ?? "title") === "title") ??
+    mapEntriesSorted(card.titles)[0];
+  const [titleId, titleValue] = titleEntry ?? [];
 
   return {
     nameGiven,
@@ -289,7 +335,7 @@ export function contactCardToEditDraft(card: ContactCard): ContactEditDraft {
     phones: mapEntriesSorted(card.phones).map(([id, phone]) => ({
       id,
       number: readPhoneNumber(phone),
-      contextType: readContactContext(phone.contexts),
+      phoneType: readPhoneType(phone),
     })),
     emails: mapEntriesSorted(card.emails).map(([id, email]) => ({
       id,
@@ -307,6 +353,9 @@ export function contactCardToEditDraft(card: ContactCard): ContactEditDraft {
         contextType: readContactContext(link.contexts),
       })),
     showAsCompany: card.kind === "org",
+    title: titleValue?.name?.trim() ?? "",
+    titleId,
+    department: organizationEntry?.units?.[0]?.name?.trim() ?? "",
     organization: organizationEntry?.name?.trim() ?? "",
     organizationId,
     notes: notesEntry?.note?.trim() ?? "",
@@ -343,8 +392,9 @@ function buildPhonesFromDraft(
     const number = row.number.trim();
     if (!number) continue;
     const entry: Record<string, unknown> = { number };
-    const contexts = contactContextToPatch(row.contextType);
-    if (contexts) entry.contexts = contexts;
+    const typed = phoneTypeToPatch(row.phoneType);
+    if (typed.features) entry.features = typed.features;
+    if (typed.contexts) entry.contexts = typed.contexts;
     phones[row.id] = entry as NonNullable<ContactCardCreate["phones"]>[string];
   }
   return phones;
@@ -417,10 +467,22 @@ export function editDraftToCreateBody(
   const links = buildLinksFromDraft(draft.urls);
   if (Object.keys(links).length > 0) body.links = links;
 
-  if (draft.organization.trim()) {
+  const orgName = draft.organization.trim();
+  const department = draft.department.trim();
+  if (orgName || department) {
+    const orgEntry: Record<string, unknown> = {};
+    if (orgName) orgEntry.name = orgName;
+    if (department) orgEntry.units = [{ name: department }];
     body.organizations = {
-      [draft.organizationId ?? newContactMapId()]: { name: draft.organization.trim() },
+      [draft.organizationId ?? newContactMapId()]: orgEntry,
     } as ContactCardCreate["organizations"];
+  }
+
+  const titleName = draft.title.trim();
+  if (titleName) {
+    body.titles = {
+      [draft.titleId ?? newContactMapId()]: { name: titleName, kind: "title" },
+    } as ContactCardCreate["titles"];
   }
 
   if (draft.notes.trim()) {
@@ -481,14 +543,12 @@ function patchName(
   return { isOrdered: false, components: [] } as unknown as ContactCardPatch["name"];
 }
 
-function patchChannelMapField<
-  T extends Record<string, unknown | null>,
-  Row extends { id: string; contextType: ContactChannelContext },
->(
+function patchChannelMapField<T extends Record<string, unknown | null>, Row extends { id: string }>(
   activeIds: Set<string>,
   draftRows: Row[],
-  readRow: (id: string) => { value: string; contextType: ContactChannelContext },
+  readRow: (id: string) => { value: string; type: string },
   getValue: (row: Row) => string,
+  getType: (row: Row) => string,
   toPatchValue: (row: Row) => unknown,
 ): T | undefined {
   const patch = {} as T;
@@ -511,7 +571,7 @@ function patchChannelMapField<
       continue;
     }
     const current = readRow(row.id);
-    if (current.value !== value || current.contextType !== row.contextType) {
+    if (current.value !== value || current.type !== getType(row)) {
       (patch as Record<string, unknown>)[row.id] = toPatchValue(row);
       changed = true;
     }
@@ -535,13 +595,15 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
     draft.phones,
     (id) => {
       const phone = phoneValue(active, id);
-      return { value: phone.number, contextType: phone.contextType };
+      return { value: phone.number, type: phone.phoneType };
     },
     (row) => row.number,
+    (row) => row.phoneType,
     (row) => {
       const entry: Record<string, unknown> = { number: row.number.trim() };
-      const contexts = contactContextToPatch(row.contextType);
-      if (contexts) entry.contexts = contexts;
+      const typed = phoneTypeToPatch(row.phoneType);
+      entry.contexts = typed.contexts;
+      entry.features = typed.features;
       return entry;
     },
   );
@@ -556,9 +618,10 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
     draft.emails,
     (id) => {
       const email = emailValue(active, id);
-      return { value: email.address, contextType: email.contextType };
+      return { value: email.address, type: email.contextType };
     },
     (row) => row.address,
+    (row) => row.contextType,
     (row) => {
       const entry: Record<string, unknown> = { address: row.address.trim() };
       const contexts = contactContextToPatch(row.contextType);
@@ -588,7 +651,7 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
           .map((part) => part.trim())
           .filter(Boolean)
           .join("\0"),
-        contextType: address.contextType,
+        type: address.contextType,
       };
     },
     (row) =>
@@ -596,6 +659,7 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
         .map((part) => part.trim())
         .filter(Boolean)
         .join("\0"),
+    (row) => row.contextType,
     (row) => addressDraftToPatchValue(row),
   );
   if (addresses) patch.addresses = addresses;
@@ -615,10 +679,11 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
       const link = active.links?.[id];
       return {
         value: link?.uri?.trim() ?? "",
-        contextType: readContactContext(link?.contexts),
+        type: readContactContext(link?.contexts),
       };
     },
     (row) => row.uri,
+    (row) => row.contextType,
     (row) => {
       const entry: Record<string, unknown> = { uri: row.uri.trim() };
       const contexts = contactContextToPatch(row.contextType);
@@ -640,14 +705,49 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
 
   const [activeOrgId, activeOrg] = mapEntriesSorted(active.organizations)[0] ?? [];
   const orgName = draft.organization.trim();
+  const department = draft.department.trim();
   const currentOrgName = activeOrg?.name?.trim() ?? "";
-  if (orgName !== currentOrgName) {
-    if (!orgName && activeOrgId) {
+  const currentDepartment = activeOrg?.units?.[0]?.name?.trim() ?? "";
+  if (orgName !== currentOrgName || department !== currentDepartment) {
+    if (!orgName && !department && activeOrgId) {
       patch.organizations = { [activeOrgId]: null } as unknown as ContactCardPatch["organizations"];
-    } else if (orgName) {
+    } else if (orgName || department) {
+      const orgId = draft.organizationId ?? activeOrgId ?? newContactMapId();
+      const remainingUnits = (activeOrg?.units ?? []).slice(1);
+      const orgEntry: Record<string, unknown> = {};
+      if (orgName) orgEntry.name = orgName;
+      if (department) {
+        orgEntry.units = [{ name: department }, ...remainingUnits];
+      } else if (remainingUnits.length > 0) {
+        orgEntry.units = remainingUnits;
+      } else if (currentDepartment) {
+        orgEntry.units = null;
+      }
+      if (!orgName && currentOrgName) {
+        orgEntry.name = null;
+      }
       patch.organizations = {
-        [draft.organizationId ?? activeOrgId ?? newContactMapId()]: { name: orgName },
+        [orgId]: orgEntry,
       } as ContactCardPatch["organizations"];
+    }
+  }
+
+  const titleEntry =
+    mapEntriesSorted(active.titles).find(([, entry]) => (entry.kind ?? "title") === "title") ??
+    mapEntriesSorted(active.titles)[0];
+  const [activeTitleId, activeTitle] = titleEntry ?? [];
+  const titleName = draft.title.trim();
+  const currentTitleName = activeTitle?.name?.trim() ?? "";
+  if (titleName !== currentTitleName) {
+    if (!titleName && activeTitleId) {
+      patch.titles = { [activeTitleId]: null } as unknown as ContactCardPatch["titles"];
+    } else if (titleName) {
+      patch.titles = {
+        [draft.titleId ?? activeTitleId ?? newContactMapId()]: {
+          name: titleName,
+          kind: "title",
+        },
+      } as ContactCardPatch["titles"];
     }
   }
 

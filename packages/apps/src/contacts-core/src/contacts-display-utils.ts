@@ -27,9 +27,9 @@ const ALLOWED_EXTERNAL_CONTACT_LINK_PROTOCOLS = new Set(["http:", "https:", "mai
 
 type PhoneFeatureKey = (typeof PHONE_FEATURE_KEYS)[number];
 
-/** vCard TYPE names for JSContact `Phone.features` keys (RFC 9555 TEL table). */
-function phoneFeatureDisplayLabel(featureKey: PhoneFeatureKey): string {
-  if (featureKey === "mobile") return "cell";
+/** Human-readable labels for JSContact `Phone.features` (mobile → UI “Mobile”, vCard CELL). */
+function phoneFeatureDisplayLabel(featureKey: PhoneFeatureKey, labels: ContactsUILabels): string {
+  if (featureKey === "mobile") return labels.channelTypeMobile;
   return featureKey;
 }
 
@@ -59,9 +59,9 @@ function normalizeCustomLabelToken(token: string, labels: ContactsUILabels): str
   if (key === "home") return labels.channelTypeHome;
   if (key === "work") return labels.channelTypeWork;
   if (key === "school") return labels.channelTypeSchool;
-  if (key === "cell" || key === "mobile") return "cell";
+  if (key === "cell" || key === "mobile") return labels.channelTypeMobile;
   if ((PHONE_FEATURE_KEYS as readonly string[]).includes(key)) {
-    return phoneFeatureDisplayLabel(key as PhoneFeatureKey);
+    return phoneFeatureDisplayLabel(key as PhoneFeatureKey, labels);
   }
   return token.trim();
 }
@@ -90,8 +90,8 @@ export function channelDisplayLabels(
   labels: ContactsUILabels,
   options?: ChannelDisplayLabelOptions,
 ): string[] {
-  const featureLabels = collectPhoneFeatureLabels(options?.features, contexts).map(
-    phoneFeatureDisplayLabel,
+  const featureLabels = collectPhoneFeatureLabels(options?.features, contexts).map((key) =>
+    phoneFeatureDisplayLabel(key, labels),
   );
 
   const contextType = readContactContext(contexts);

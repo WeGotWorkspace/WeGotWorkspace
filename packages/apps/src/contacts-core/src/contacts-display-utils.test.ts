@@ -285,12 +285,12 @@ describe("contacts-display-utils", () => {
       channelDisplayLabels(undefined, labels, {
         features: { mobile: true, voice: true },
       }),
-    ).toEqual(["cell", "voice"]);
+    ).toEqual(["Mobile", "voice"]);
     expect(
       channelDisplayLabels(undefined, labels, {
         features: { mobile: true },
       }),
-    ).toEqual(["cell"]);
+    ).toEqual(["Mobile"]);
     expect(
       channelDisplayLabels({ work: true }, labels, {
         features: { fax: true, voice: true },
@@ -333,7 +333,7 @@ describe("contacts-display-utils", () => {
       }),
     ).toEqual(["voice", "Home"]);
     expect(channelDisplayLabels(undefined, labels, { customLabel: "cell,voice" })).toEqual([
-      "cell",
+      "Mobile",
       "voice",
     ]);
     expect(
@@ -341,7 +341,7 @@ describe("contacts-display-utils", () => {
         features: { mobile: true, voice: true },
         customLabel: "cell,voice",
       }),
-    ).toEqual(["cell", "voice"]);
+    ).toEqual(["Mobile", "voice"]);
   });
 
   describe("contactBirthdayDisplay", () => {

@@ -59,7 +59,7 @@ describe("contacts-edit-utils", () => {
       ...emptyContactEditDraft(),
       nameGiven: "New",
       nameSurname: "Person",
-      phones: [{ id: "phone-new", number: "+1-555-9999", contextType: "work" as const }],
+      phones: [{ id: "phone-new", number: "+1-555-9999", phoneType: "work" as const }],
       emails: [{ id: "email-new", address: "new@example.com", contextType: "" as const }],
     };
     const body = editDraftToCreateBody(draft, { default: true });
@@ -80,24 +80,67 @@ describe("contacts-edit-utils", () => {
     });
   });
 
+  it("maps mobile phone type to JSContact features.mobile", () => {
+    const draft = {
+      ...emptyContactEditDraft(),
+      phones: [{ id: "phone-m", number: "+31612345678", phoneType: "mobile" as const }],
+    };
+    const body = editDraftToCreateBody(draft, { default: true });
+    expect(body.phones).toEqual({
+      "phone-m": { number: "+31612345678", features: { mobile: true } },
+    });
+  });
+
+  it("round-trips job title and department through draft create/patch", () => {
+    const card = {
+      ...janeCard,
+      titles: {
+        "title-1": { "@type": "Title" as const, kind: "title" as const, name: "Engineer" },
+      },
+      organizations: {
+        "org-1": {
+          "@type": "Organization" as const,
+          name: "Acme Corp",
+          units: [{ "@type": "OrgUnit" as const, name: "Platform" }],
+        },
+      },
+    } as unknown as ContactCard;
+    const draft = contactCardToEditDraft(card);
+    expect(draft.title).toBe("Engineer");
+    expect(draft.department).toBe("Platform");
+    expect(draft.organization).toBe("Acme Corp");
+    draft.title = "Staff Engineer";
+    draft.department = "Infrastructure";
+    const patch = editDraftToPatch(draft, card);
+    expect(patch.titles).toEqual({
+      "title-1": { name: "Staff Engineer", kind: "title" },
+    });
+    expect(patch.organizations).toEqual({
+      "org-1": {
+        name: "Acme Corp",
+        units: [{ name: "Infrastructure" }],
+      },
+    });
+  });
+
   it("round-trips card to draft and builds patch for changed phone", () => {
     const draft = contactCardToEditDraft(janeCard);
     expect(draft.nameGiven).toBe("Jane");
     expect(draft.nameSurname).toBe("Doe");
-    draft.phones = [{ id: "phone-1", number: "+1-555-0199", contextType: "work" }];
+    draft.phones = [{ id: "phone-1", number: "+1-555-0199", phoneType: "work" }];
     const patch = editDraftToPatch(draft, janeCard);
     expect(patch.phones).toEqual({
-      "phone-1": { number: "+1-555-0199", contexts: { work: true } },
+      "phone-1": { number: "+1-555-0199", contexts: { work: true }, features: null },
     });
     expect(patch).not.toHaveProperty("@type");
   });
 
   it("maps school context in patch", () => {
     const draft = contactCardToEditDraft(janeCard);
-    draft.phones = [{ id: "phone-1", number: "+1-555-0101", contextType: "school" }];
+    draft.phones = [{ id: "phone-1", number: "+1-555-0101", phoneType: "school" }];
     const patch = editDraftToPatch(draft, janeCard);
     expect(patch.phones).toEqual({
-      "phone-1": { number: "+1-555-0101", contexts: { school: true } },
+      "phone-1": { number: "+1-555-0101", contexts: { school: true }, features: null },
     });
   });
 
@@ -300,7 +343,7 @@ describe("contacts-edit-utils", () => {
     expect(
       contactEditDraftHasContent({
         ...emptyContactEditDraft(),
-        phones: [{ id: "p1", number: "+1-555-0100", contextType: "" }],
+        phones: [{ id: "p1", number: "+1-555-0100", phoneType: "" }],
       }),
     ).toBe(true);
   });
@@ -320,7 +363,7 @@ describe("contacts-edit-utils", () => {
   it("builds sparse create body with phone only", () => {
     const draft = {
       ...emptyContactEditDraft(),
-      phones: [{ id: "phone-only", number: "+31-6-12345678", contextType: "" as const }],
+      phones: [{ id: "phone-only", number: "+31-6-12345678", phoneType: "" as const }],
     };
     const body = editDraftToCreateBody(draft, { default: true });
     expect(body).not.toHaveProperty("name");

@@ -25,7 +25,7 @@ function ContactsDetailPaneHarness({ readOnly = false }: { readOnly?: boolean })
         onAddPhone={() =>
           setEditDraft((prev) => ({
             ...prev,
-            phones: [...prev.phones, { id: "phone-new", number: "", contextType: "" }],
+            phones: [...prev.phones, { id: "phone-new", number: "", phoneType: "" }],
           }))
         }
         onAddEmail={() =>
@@ -69,10 +69,10 @@ function ContactsDetailPaneHarness({ readOnly = false }: { readOnly?: boolean })
             emails: prev.emails.map((row) => (row.id === id ? { ...row, address } : row)),
           }))
         }
-        onUpdatePhoneContext={(id, contextType) =>
+        onUpdatePhoneContext={(id, phoneType) =>
           setEditDraft((prev) => ({
             ...prev,
-            phones: prev.phones.map((row) => (row.id === id ? { ...row, contextType } : row)),
+            phones: prev.phones.map((row) => (row.id === id ? { ...row, phoneType } : row)),
           }))
         }
         onUpdateEmailContext={(id, contextType) =>

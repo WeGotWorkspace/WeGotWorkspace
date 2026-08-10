@@ -62,5 +62,9 @@ export {
   newContactMapId,
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
+  CONTACT_CHANNEL_CONTEXTS,
+  CONTACT_PHONE_TYPES,
+  type ContactChannelContext,
   type ContactEditDraft,
+  type ContactPhoneType,
 } from "./contacts-edit-utils";

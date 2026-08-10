@@ -35,6 +35,7 @@ import {
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
   type ContactChannelContext,
+  type ContactPhoneType,
   type ContactEditDraft,
 } from "@/contacts-core/src/contacts-edit-utils";
 import type {
@@ -511,7 +512,7 @@ export function useContactsController({
       prev
         ? {
             ...prev,
-            phones: [...prev.phones, { id: newContactMapId(), number: "", contextType: "" }],
+            phones: [...prev.phones, { id: newContactMapId(), number: "", phoneType: "" }],
           }
         : prev,
     );
@@ -572,12 +573,12 @@ export function useContactsController({
     );
   }, []);
 
-  const updatePhoneContext = useCallback((id: string, contextType: ContactChannelContext) => {
+  const updatePhoneContext = useCallback((id: string, phoneType: ContactPhoneType) => {
     setEditDraft((prev) =>
       prev
         ? {
             ...prev,
-            phones: prev.phones.map((row) => (row.id === id ? { ...row, contextType } : row)),
+            phones: prev.phones.map((row) => (row.id === id ? { ...row, phoneType } : row)),
           }
         : prev,
     );

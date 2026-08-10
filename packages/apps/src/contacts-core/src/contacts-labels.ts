@@ -53,9 +53,15 @@ export type ContactsUILabels = {
   channelTypeHome: string;
   channelTypeWork: string;
   channelTypeSchool: string;
+  /** JSContact `features.mobile` / vCard TYPE=CELL */
+  channelTypeMobile: string;
   phoneNumber: string;
   emailAddress: string;
   organizationName: string;
+  /** JSContact `titles` (kind title) / vCard TITLE */
+  jobTitle: string;
+  /** JSContact `organizations[].units[0]` / vCard ORG unit */
+  jobDepartment: string;
   notesText: string;
   addPhone: string;
   addEmail: string;
@@ -156,9 +162,12 @@ export const defaultContactsLabels: ContactsUILabels = {
   channelTypeHome: "Home",
   channelTypeWork: "Work",
   channelTypeSchool: "School",
+  channelTypeMobile: "Mobile",
   phoneNumber: "Phone number",
   emailAddress: "Email address",
   organizationName: "Organization",
+  jobTitle: "Job title",
+  jobDepartment: "Department",
   notesText: "Notes",
   addPhone: "Add phone",
   addEmail: "Add email",
@@ -166,7 +175,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   addUrl: "Add URL",
   urlAddress: "URL",
   addressStreet: "Street",
-  addressLocality: "City / locality",
+  addressLocality: "City",
   addressRegion: "State / region",
   addressPostalCode: "Postal code",
   addressCountry: "Country",
