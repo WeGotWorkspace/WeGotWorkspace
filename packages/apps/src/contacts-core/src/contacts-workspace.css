@@ -8,7 +8,7 @@
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --contacts-accent: #a8895e;
+  --contacts-accent: #8b6f45;
   --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 12%, var(--color-cream, #ffffff));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
@@ -343,7 +343,7 @@
 }
 
 .contacts-detail-view__link {
-  color: var(--contacts-accent, #a8895e);
+  color: var(--contacts-accent, #8b6f45);
   text-decoration: none;
 }
 
@@ -359,7 +359,7 @@
 }
 
 .contacts-dialog-surface {
-  --contacts-accent: #a8895e;
+  --contacts-accent: #8b6f45;
   --color-emerald: var(--contacts-accent);
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: #ffffff;

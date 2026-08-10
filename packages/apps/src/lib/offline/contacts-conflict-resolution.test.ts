@@ -193,6 +193,7 @@ describe("contacts conflict resolution", () => {
       urls: "server",
       organization: "server",
       notes: "server",
+      title: "server",
       kind: "server",
     });
 
