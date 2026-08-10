@@ -11,7 +11,6 @@ import {
   sanitizeWgwReturnPath,
 } from "@/lib/api/wgw/route-guard";
 import { LiveBootstrapErrorPanel } from "@/lib/live/live-bootstrap-error-panel";
-import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 
 type WorkspaceLiveAppShellProps = {
   phase: "loading" | "ready" | "error";
@@ -73,13 +72,7 @@ export function WorkspaceLiveAppShell({
     return <LiveBootstrapErrorPanel title={errorTitle} error={message || null} onRetry={retry} />;
   }
 
-  if (phase === "loading") {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingSpinner size="lg" label="Loading workspace…" />
-      </div>
-    );
-  }
-
+  // Offline-first: mount workspace chrome immediately while hybrid bootstrap / sync runs.
+  // Apps already expose placeholder data + `listLoading` for in-pane pending state.
   return render(successVersion);
 }

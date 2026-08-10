@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { wgwEnsureSession } from "@/lib/api/wgw/http";
 import { normalizeWgwApiBaseUrl, pushWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { startWgwSessionKeeper } from "@/lib/api/wgw/session-keeper";
@@ -13,7 +12,6 @@ type WgwApiRuntimeProviderProps = {
 /** Scope live API base URL and mode to a React subtree (Storybook, embedded shell, etc.). */
 export function WgwApiRuntimeProvider({ apiBaseUrl, children }: WgwApiRuntimeProviderProps) {
   const normalizedBaseUrl = useMemo(() => normalizeWgwApiBaseUrl(apiBaseUrl), [apiBaseUrl]);
-  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     return pushWgwApiRuntime({
@@ -24,33 +22,23 @@ export function WgwApiRuntimeProvider({ apiBaseUrl, children }: WgwApiRuntimePro
 
   useEffect(() => {
     let cancelled = false;
-    setSessionReady(false);
+    let stopKeeper: (() => void) | undefined;
     void (async () => {
       try {
         await wgwEnsureSession();
       } catch {
         // No stored session and no dev auto-login — login route will handle sign-in.
       } finally {
-        if (!cancelled) setSessionReady(true);
+        if (!cancelled) {
+          stopKeeper = startWgwSessionKeeper();
+        }
       }
     })();
     return () => {
       cancelled = true;
+      stopKeeper?.();
     };
   }, [normalizedBaseUrl]);
-
-  useEffect(() => {
-    if (!sessionReady) return;
-    return startWgwSessionKeeper();
-  }, [sessionReady]);
-
-  if (!sessionReady) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center p-8">
-        <LoadingSpinner size="lg" label="Restoring session…" />
-      </div>
-    );
-  }
 
   return children;
 }
