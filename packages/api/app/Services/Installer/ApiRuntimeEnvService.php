@@ -28,7 +28,8 @@ final class ApiRuntimeEnvService
         }
 
         // Monorepo dev: install shell at apps/wegotworkspace without packages/api subtree.
-        $runtime = dirname(__DIR__, 4);
+        // This file lives at app/Services/Installer/ → three levels up is packages/api.
+        $runtime = dirname(__DIR__, 3);
         if (! is_dir($root) && is_file($runtime.'/vendor/autoload.php')) {
             return $runtime;
         }

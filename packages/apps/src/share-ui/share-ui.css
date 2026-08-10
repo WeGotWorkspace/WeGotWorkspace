@@ -183,7 +183,6 @@
 }
 
 .share-dialog__input--mono {
-  --input-font-size: 0.75rem;
   @apply truncate font-mono;
 }
 
