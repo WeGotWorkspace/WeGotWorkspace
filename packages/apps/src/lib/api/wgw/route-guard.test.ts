@@ -38,6 +38,9 @@ describe("sanitizeWgwReturnPath", () => {
   it("allows product routes and preserves query/hash", () => {
     expect(sanitizeWgwReturnPath("/mail?folder=inbox#top")).toBe("/mail?folder=inbox#top");
     expect(sanitizeWgwReturnPath("/drive/My%20Drive")).toBe("/drive/My%20Drive");
+    expect(sanitizeWgwReturnPath("/apps/office/")).toBe("/apps/office");
+    expect(sanitizeWgwReturnPath("/contacts")).toBe("/contacts");
+    expect(sanitizeWgwReturnPath("/tasks/inbox")).toBe("/tasks/inbox");
   });
 
   it("rejects external and unknown paths", () => {
@@ -49,6 +52,12 @@ describe("sanitizeWgwReturnPath", () => {
   it("unwraps nested login return chains", () => {
     const nested = "/login?return=" + encodeURIComponent("/login?return=%2Fmail");
     expect(sanitizeWgwReturnPath(nested)).toBe("/mail");
+  });
+
+  it("preserves plugin app return paths after unwrap", () => {
+    const nested =
+      "/login?return=" + encodeURIComponent("/login?return=" + encodeURIComponent("/apps/office"));
+    expect(sanitizeWgwReturnPath(nested)).toBe("/apps/office");
   });
 });
 

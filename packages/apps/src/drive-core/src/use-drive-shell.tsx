@@ -69,9 +69,16 @@ export function useDriveShell({
         sessionPath && operations?.ensurePluginSession
           ? operations.ensurePluginSession(sessionPath)
           : Promise.resolve();
-      void ensureSession.catch(() => {}).finally(navigate);
+      void ensureSession
+        .then(() => {
+          navigate();
+        })
+        .catch((error: unknown) => {
+          const detail = error instanceof Error ? error.message : undefined;
+          showError("Could not open app", { description: detail });
+        });
     },
-    [operations],
+    [operations, showError],
   );
 
   const launchPluginEditor = useCallback(

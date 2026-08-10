@@ -63,7 +63,7 @@ export default defineConfig(({ mode }) => {
           // Control the page on first SW activation so Chrome can offer install without a manual reload.
           clientsClaim: true,
           navigateFallback: "index.html",
-          navigateFallbackDenylist: [/^\/api\//],
+          navigateFallbackDenylist: [/^\/api\//, /^\/apps\//],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
         },
         manifest: false,
