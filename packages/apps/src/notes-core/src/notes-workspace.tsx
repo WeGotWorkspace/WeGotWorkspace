@@ -1,9 +1,10 @@
-import { Pencil, Tag as TagIcon } from "lucide-react";
+import { Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
+import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
 import { MoveToDialog, EditDialog, DeleteDialog } from "@/dialogs/src/dialogs";
@@ -372,7 +373,7 @@ export function NotesWorkspace({
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}
         actionBar={(c) =>
-          selectedIds.length > 1 ? null : (
+          !showSingleNoteDetail ? null : (
             <NotesDetailActionBar
               active={active}
               labels={L}
@@ -400,7 +401,13 @@ export function NotesWorkspace({
               />
             );
           }
-          if (!active) return null;
+          if (!active) {
+            return (
+              <CollectionState icon={<StickyNote className="size-12" />}>
+                {L.emptyDetail}
+              </CollectionState>
+            );
+          }
           return (
             <NoteDetailView
               noteId={active.id}
