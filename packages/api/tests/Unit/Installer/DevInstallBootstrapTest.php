@@ -74,6 +74,41 @@ final class DevInstallBootstrapTest extends TestCase
         $this->assertStringEndsWith('/wgw-content/db.sqlite', $dsn);
     }
 
+    public function test_ensure_recovers_half_install_without_reseeding_admin(): void
+    {
+        $dataDir = $this->installRoot.'/wgw-content';
+        WgwInstallFixture::markInstalled($this->installRoot, $dataDir);
+        @unlink($dataDir.'/.installed');
+        @unlink($this->installRoot.'/packages/api/.env');
+
+        // Simulate a cold artisan process: sqlite+keys exist, but no runtime env yet.
+        foreach (['WGW_DATA_DIR', 'WGW_DB_CONNECTION', 'WGW_DB_DATABASE', 'WGW_UPDATE_FEED_URL'] as $key) {
+            putenv($key);
+            unset($_ENV[$key], $_SERVER[$key]);
+        }
+        config([
+            'database.connections.wgw' => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+            ],
+        ]);
+        DB::purge('wgw');
+        WgwInstallFixture::forgetInstallBindings();
+
+        $this->assertFalse(app(AppPaths::class)->isInstalled());
+
+        $bootstrap = app(DevInstallBootstrap::class);
+        $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
+
+        $this->assertFileExists($this->installRoot.'/packages/api/.env');
+        $this->assertFileExists($dataDir.'/.installed');
+        $this->assertTrue(app(AppPaths::class)->isInstalled());
+
+        WgwInstallFixture::syncDatabaseConnection();
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'admin')->count());
+    }
+
     private function removeTree(string $dir): void
     {
         $items = scandir($dir);

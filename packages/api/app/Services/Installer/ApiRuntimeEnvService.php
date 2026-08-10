@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Support\InstallLayout;
 use App\Support\WgwApiEnvFile;
 
 /**
@@ -22,18 +23,32 @@ final class ApiRuntimeEnvService
 
     public function apiPackageRoot(string $installRoot): ?string
     {
-        $root = rtrim(str_replace('\\', '/', $installRoot), '/').'/packages/api';
-        if (is_file($root.'/vendor/autoload.php') || is_file($root.'/artisan')) {
-            return $root;
+        $nested = rtrim(str_replace('\\', '/', $installRoot), '/').'/packages/api';
+        if ($this->looksLikeApiPackage($nested)) {
+            return $nested;
         }
 
-        // Monorepo dev: install shell at apps/wegotworkspace without packages/api subtree.
-        $runtime = dirname(__DIR__, 4);
-        if (! is_dir($root) && is_file($runtime.'/vendor/autoload.php')) {
+        // Monorepo dev: install shell at apps/wegotworkspace; API lives at repo packages/api.
+        $repo = InstallLayout::monorepoRoot($installRoot);
+        if ($repo !== null) {
+            $monorepoApi = $repo.'/packages/api';
+            if ($this->looksLikeApiPackage($monorepoApi)) {
+                return $monorepoApi;
+            }
+        }
+
+        // Running from this package tree (dirname: Installer → Services → app → packages/api).
+        $runtime = dirname(__DIR__, 3);
+        if ($this->looksLikeApiPackage($runtime)) {
             return $runtime;
         }
 
         return null;
+    }
+
+    private function looksLikeApiPackage(string $root): bool
+    {
+        return is_file($root.'/vendor/autoload.php') || is_file($root.'/artisan');
     }
 
     /**

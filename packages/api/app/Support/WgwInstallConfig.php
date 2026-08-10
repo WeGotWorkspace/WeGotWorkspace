@@ -30,14 +30,16 @@ final class WgwInstallConfig
             return $this->installRoot = $this->normalize($fromEnv);
         }
 
-        $cwd = getcwd();
-        if (is_string($cwd) && $this->looksLikeInstallRoot($cwd)) {
-            return $this->installRoot = $this->normalize($cwd);
-        }
-
+        // Prefer the monorepo install shell before cwd — repo root also has packages/api/.env
+        // after wgw:dev-install, which must not win over apps/wegotworkspace.
         $monorepo = dirname(__DIR__, 4).'/apps/wegotworkspace';
         if (is_dir($monorepo) && $this->looksLikeInstallRoot($monorepo)) {
             return $this->installRoot = $this->normalize($monorepo);
+        }
+
+        $cwd = getcwd();
+        if (is_string($cwd) && $this->looksLikeInstallRoot($cwd)) {
+            return $this->installRoot = $this->normalize($cwd);
         }
 
         return $this->installRoot = dirname(__DIR__, 2);
@@ -165,8 +167,16 @@ final class WgwInstallConfig
     {
         $dir = rtrim(str_replace('\\', '/', $dir), '/');
 
-        return is_file($dir.'/index.php')
-            || is_file($dir.'/packages/api/.env');
+        // Front controller marks the install shell (release ZIP or apps/wegotworkspace).
+        if (is_file($dir.'/index.php')) {
+            return true;
+        }
+
+        // Release-style tree: packages/api under the install root.
+        // Do not treat the monorepo git root as an install — it also gains packages/api/.env
+        // after wgw:dev-install while real data lives under apps/wegotworkspace/.
+        return is_file($dir.'/packages/api/.env')
+            && ! is_dir($dir.'/apps/wegotworkspace');
     }
 
     private function normalize(string $path): string
