@@ -5,6 +5,7 @@ import {
 } from "@/lib/models/note-body-markdown";
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
+import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 
 export function persistBestEffort(promise: Promise<unknown>) {
   promise.catch(() => {});
@@ -78,7 +79,8 @@ const NOTE_LIST_TITLE_MAX = 80;
 
 /** Derives the list-row heading from excerpt or body (notes have no separate title field). */
 export function noteListTitle(note: Pick<Note, "excerpt" | "body">): string {
-  const excerpt = (note.excerpt ?? "").trim();
+  // Re-strip so stale excerpts (or server listPreview) never leak raw markdown.
+  const excerpt = markdownToPlainText(note.excerpt ?? "");
   if (excerpt) {
     const withoutEllipsis = excerpt.endsWith("…") ? excerpt.slice(0, -1).trim() : excerpt;
     return withoutEllipsis.length <= NOTE_LIST_TITLE_MAX
@@ -114,6 +116,63 @@ export function normalizeTag(value: string): string {
   return value.trim();
 }
 
+type NoteShareAudienceFields = Pick<
+  Note,
+  "sharedInbox" | "sharedNotebookGrant" | "sharedBy" | "scope"
+>;
+
+/**
+ * Personal share recipient: Shared-with-me file grant, or a note under a
+ * personally shared notebook (ACL dir grant from another user). Group notebooks
+ * are not personal shares — members keep tags/stars.
+ */
+export function isPersonalShareRecipient(note: NoteShareAudienceFields): boolean {
+  if (note.sharedInbox) return true;
+  if (note.sharedBy?.trim()) return true;
+  if (note.sharedNotebookGrant && note.scope !== "group") return true;
+  return false;
+}
+
+/** Tag chips + add-tag UI — hidden for personal share recipients. */
+export function noteShowsTags(note: NoteShareAudienceFields): boolean {
+  return !isPersonalShareRecipient(note);
+}
+
+/**
+ * Tag assignment: never for personal share recipients; otherwise when the note
+ * body/metadata is editable (owner, or group collab with edit rights).
+ */
+export function noteAllowsTagAssignment(
+  note: NoteShareAudienceFields,
+  mayEditContent: boolean,
+): boolean {
+  return noteShowsTags(note) && mayEditContent;
+}
+
+/** Star/unstar controls — same personal-share audience as hidden tags. */
+export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
+  return !isPersonalShareRecipient(note);
+}
+
+/**
+ * List-row “View only” chip — only when list payload says the current user
+ * cannot edit content (shared view grant). Owned / edit omit the icon.
+ */
+export function noteShowsViewOnlyBadge(note: Pick<Note, "myRights">): boolean {
+  return note.myRights?.mayEditContent === false;
+}
+
+/**
+ * Owner “Shared” chip — outgoing grants on an owned note (not incoming
+ * Shared-with-me / shared-notebook recipient stubs).
+ */
+export function noteShowsSharedBadge(
+  note: Pick<Note, "isShared" | "sharedInbox" | "sharedNotebookGrant">,
+): boolean {
+  if (note.sharedInbox || note.sharedNotebookGrant) return false;
+  return note.isShared === true;
+}
+
 /**
  * Recomputes excerpt + word count from body. Call on every hydrate/read path so
  * historical rows with empty excerpt still preview correctly when body exists.
@@ -126,6 +185,91 @@ export function enrichNote(note: Note): Note {
     excerpt: computeExcerpt(body),
     wordCount: computeWordCount(body),
   };
+}
+
+function noteDisplayTimestampMs(note: Pick<Note, "date" | "updatedAt">): number {
+  const raw = note.date !== "—" ? note.date : note.updatedAt;
+  if (!raw || raw === "—") return 0;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/** Order-independent tag list equality after normalize. */
+export function noteTagsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = [...a].map(normalizeTag).filter(Boolean).sort();
+  const right = [...b].map(normalizeTag).filter(Boolean).sort();
+  return left.every((tag, i) => tag === right[i]);
+}
+
+/**
+ * Apply a create/upsert server row onto the in-memory note, keeping optimistic
+ * tags/starred (and listable body) that landed while the request was in flight.
+ *
+ * Tag upserts ride the workspace write queue (~2.5s), so create remap often
+ * returns first with an empty `tags` array — replacing wholesale made chips
+ * vanish until the delayed upsert / a later refresh.
+ */
+export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: Note): Note {
+  const tagsDiffer = !noteTagsEqual(local.tags, saved.tags);
+  const starredDiffer = local.starred !== saved.starred;
+  const preserveBody = noteHasListableBody(local) && !noteHasListableBody(saved);
+  // When keeping optimistic metadata, ensure display date is at least the
+  // server row's so a follow-up bootstrap merge (local date >= server) keeps
+  // the same tags — even if the create response clock is ahead of the client.
+  const date =
+    tagsDiffer || starredDiffer
+      ? noteDisplayTimestampMs(local) >= noteDisplayTimestampMs(saved)
+        ? local.date
+        : saved.date
+      : preserveBody && local.date !== "—"
+        ? local.date
+        : saved.date;
+  return enrichNote({
+    ...saved,
+    tags: local.tags,
+    starred: local.starred ?? saved.starred,
+    notebook: local.notebook || saved.notebook,
+    date,
+    ...(preserveBody
+      ? { body: local.body, excerpt: local.excerpt, wordCount: local.wordCount }
+      : {}),
+  });
+}
+
+/**
+ * Merge bootstrap/server notes into current UI notes without dropping optimistic
+ * tags/starred that are still ahead of a stale list payload (same id).
+ */
+export function mergeBootstrapNotesPreservingOptimistic(
+  serverNotes: Note[],
+  localNotes: Note[],
+): Note[] {
+  const localById = new Map(localNotes.map((note) => [note.id, note]));
+  return serverNotes.map((server) => {
+    const local = localById.get(server.id);
+    if (!local) return enrichNote(server);
+
+    const localNewerOrEqual = noteDisplayTimestampMs(local) >= noteDisplayTimestampMs(server);
+    const preserveTags = localNewerOrEqual && !noteTagsEqual(local.tags, server.tags);
+    const preserveStarred =
+      localNewerOrEqual && local.starred !== undefined && local.starred !== server.starred;
+    const preserveBody = !noteHasListableBody(server) && noteHasListableBody(local);
+
+    return enrichNote({
+      ...server,
+      ...(preserveTags ? { tags: local.tags } : {}),
+      ...(preserveStarred ? { starred: local.starred } : {}),
+      ...(preserveBody
+        ? {
+            body: local.body,
+            excerpt: local.excerpt,
+            wordCount: local.wordCount,
+            date: local.date !== "—" ? local.date : server.date,
+          }
+        : {}),
+    });
+  });
 }
 
 /**
@@ -160,23 +304,82 @@ export function backfillNotesContentFromServer(localNotes: Note[], serverNotes: 
 }
 
 /**
- * Apply collab markdown to local list/detail state (body, excerpt, word count,
- * display date). Does **not** bump {@link Note.updatedAt} — that token stays
- * metadata-invariant for offline `ifInState` guards.
+ * Server membership/metadata wins, but an empty server body must not wipe a
+ * non-empty local/cache body.
+ *
+ * Body edits persist through collab (not the notes outbox), so a silent
+ * bootstrap refresh can briefly see an empty API body while Dexie still holds
+ * the optimistic list preview — replacing wholesale caused “Untitled note”
+ * until the next keystroke.
  */
+export function preserveLocalListableBodiesOnServerNotes(
+  serverNotes: Note[],
+  localNotes: Note[],
+): Note[] {
+  const localById = new Map(localNotes.map((note) => [note.id, note]));
+  return serverNotes.map((server) => {
+    if (noteHasListableBody(server)) return enrichNote(server);
+    const local = localById.get(server.id);
+    if (!local || !noteHasListableBody(local)) return enrichNote(server);
+    return enrichNote({
+      ...server,
+      body: local.body,
+      excerpt: local.excerpt,
+      wordCount: local.wordCount,
+      date: local.date !== "—" ? local.date : server.date,
+    });
+  });
+}
+
+/**
+ * Apply collab markdown to local list/detail state (body, excerpt, word count,
+ * and optionally display date). Does **not** bump {@link Note.updatedAt} — that
+ * token stays metadata-invariant for offline `ifInState` guards.
+ *
+ * Pass `bumpDate: false` when hydrating from a loaded document so opening a note
+ * after refresh fills the list preview without pretending the user just edited.
+ */
+export function normalizeNoteBodyMarkdown(markdown: string): string {
+  return markdown.replace(/\r\n/g, "\n").replace(/\n+$/u, "");
+}
+
 export function applyNoteBodyMarkdown(
   note: Note,
   markdown: string,
-  editedAt: string = new Date().toISOString(),
+  options?: { editedAt?: string; bumpDate?: boolean },
 ): Note {
-  if (noteBodyToMarkdown(note.body) === markdown) {
+  const normalized = normalizeNoteBodyMarkdown(markdown);
+  // Compare normalized forms so TipTap trailing newlines do not look like edits
+  // (that retriggered hydrate → setNotes → “Maximum update depth exceeded”).
+  if (normalizeNoteBodyMarkdown(noteBodyToMarkdown(note.body)) === normalized) {
     return note;
   }
+  const bumpDate = options?.bumpDate !== false;
   return enrichNote({
     ...note,
-    body: markdownToNoteBody(markdown),
-    date: editedAt,
+    body: markdownToNoteBody(normalized),
+    ...(bumpDate ? { date: options?.editedAt ?? new Date().toISOString() } : {}),
   });
+}
+
+/**
+ * Update one note’s body in a list, returning the **same array reference** when
+ * markdown is unchanged — required so hydrate/Yjs notify loops do not setState.
+ */
+export function mapNotesWithBodyMarkdown(
+  notes: Note[],
+  id: string,
+  markdown: string,
+  options?: { editedAt?: string; bumpDate?: boolean },
+): { notes: Note[]; updated: Note | undefined } {
+  let updated: Note | undefined;
+  const nextNotes = notes.map((note) => {
+    if (note.id !== id) return note;
+    const next = applyNoteBodyMarkdown(note, markdown, options);
+    if (next !== note) updated = next;
+    return next;
+  });
+  return { notes: updated ? nextNotes : notes, updated };
 }
 
 /**
@@ -212,16 +415,31 @@ export function filterVisibleNotes(
   const q = searchQuery.trim().toLowerCase();
   const filtered = dedupeNotesById(notes).filter((note) => {
     let inView = true;
-    if (view === "all") inView = !archived[note.id];
-    else if (view === "starred") inView = !!starred[note.id] && !archived[note.id];
-    else if (view === "archive") inView = !!archived[note.id];
-    else if (view.startsWith("nb:")) {
+    if (view === "all") {
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && !archived[note.id];
+    } else if (view === "starred") {
+      inView =
+        !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !archived[note.id];
+    } else if (view === "archive") {
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!archived[note.id];
+    } else if (view === "shared-with-me") inView = !!note.sharedInbox && !archived[note.id];
+    else if (view.startsWith("shared-nb:")) {
+      const notebookPath = view.slice("shared-nb:".length);
+      inView = noteBelongsToSharedNotebook(note, notebookPath) && !archived[note.id];
+    } else if (view.startsWith("nb:")) {
       const target = view.slice(3);
       inView =
+        !note.sharedInbox &&
+        !note.sharedNotebookGrant &&
+        note.scope !== "group" &&
         (note.notebook === target || note.notebook.toLowerCase() === target.toLowerCase()) &&
         !archived[note.id];
     } else if (view.startsWith("tag:")) {
-      inView = note.tags.includes(view.slice(4)) && !archived[note.id];
+      inView =
+        !note.sharedInbox &&
+        !note.sharedNotebookGrant &&
+        note.tags.includes(view.slice(4)) &&
+        !archived[note.id];
     }
     if (!inView) return false;
     if (!q) return true;
@@ -230,4 +448,110 @@ export function filterVisibleNotes(
     return haystack.includes(q);
   });
   return filtered.sort(compareNotesDesc);
+}
+
+/**
+ * Parse `groups/{slug}/.notes/{notebook}` (with optional leading slash).
+ * Used for group-membership notebook paths under the Notebooks sidebar.
+ */
+export function parseGroupNotebookPath(
+  path: string,
+): { groupSlug: string; notebook: string } | null {
+  const normalized = path.replace(/\/+$/, "").replace(/^\//, "");
+  const match = /^groups\/([^/]+)\/\.notes\/([^/]+)$/i.exec(normalized);
+  if (!match) return null;
+  return { groupSlug: match[1]!, notebook: match[2]! };
+}
+
+/** Whether New note is allowed for the current sidebar/list view. */
+export function notesCanCreateInView(view: string): boolean {
+  if (view === "starred" || view === "archive" || view === "shared-with-me") {
+    return false;
+  }
+  if (view.startsWith("shared-nb:")) {
+    // Group membership notebooks: members can create. Personal ACL shares: no
+    // (API create is owner home or groupSlug only).
+    return parseGroupNotebookPath(view.slice("shared-nb:".length)) !== null;
+  }
+  return true;
+}
+
+export type NotesCreateTarget = {
+  notebook: string;
+  scope?: "group";
+  groupSlug?: string;
+};
+
+/** Resolve notebook (+ optional group scope) for a new note from the active view. */
+export function resolveNotesCreateTarget(
+  view: string,
+  personalNotebooks: string[],
+): NotesCreateTarget {
+  if (view.startsWith("shared-nb:")) {
+    const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
+    if (parsed) {
+      return {
+        notebook: parsed.notebook,
+        scope: "group",
+        groupSlug: parsed.groupSlug,
+      };
+    }
+  }
+  if (view.startsWith("nb:")) {
+    return { notebook: view.slice(3) };
+  }
+  return { notebook: personalNotebooks[0] ?? "Drafts" };
+}
+
+/** Whether a note lives under a shared notebook directory path. */
+export function noteBelongsToSharedNotebook(note: Note, notebookPath: string): boolean {
+  const dir = notebookPath.replace(/\/+$/, "").replace(/^\//, "");
+  if (!dir) return false;
+  if (note.apiPath?.trim()) {
+    const file = note.apiPath.replace(/^\//, "").replace(/\/+$/, "");
+    return file === dir || file.startsWith(`${dir}/`);
+  }
+  if (note.scope === "group" && note.groupSlug?.trim()) {
+    const expected = `groups/${note.groupSlug.trim()}/.notes/${note.notebook}`;
+    return expected === dir;
+  }
+  return false;
+}
+
+/**
+ * Sidebar / chrome label for a shared notebook entry.
+ * Personal ACL shares: notebook name only (grantor username is for file grants).
+ * Groups: group name only (not “General” + slug).
+ */
+export function sharedNotebookLabel(entry: {
+  notebook: string;
+  owner: string;
+  scope: "personal" | "group";
+  groupSlug: string | null;
+}): string {
+  if (entry.scope === "group") {
+    const group = (entry.groupSlug ?? entry.owner).trim();
+    return group || entry.notebook;
+  }
+  return entry.notebook;
+}
+
+/**
+ * List/detail location line: notebook name for owned notes, group name for
+ * group-scoped notes, grantor username for Shared-with-me file grants.
+ */
+export function noteListLocationLabel(
+  note: Pick<Note, "notebook" | "sharedInbox" | "sharedBy" | "scope" | "groupSlug">,
+  labels: Pick<NotesUILabels, "sharedBy" | "sidebarSharedWithMe">,
+): string | null {
+  if (note.sharedInbox) {
+    const who = note.sharedBy?.trim();
+    return who ? labels.sharedBy(who) : labels.sidebarSharedWithMe;
+  }
+  if (note.scope === "group") {
+    const group = note.groupSlug?.trim();
+    if (group) return group;
+  }
+  const notebook = note.notebook.trim();
+  return notebook || null;
 }

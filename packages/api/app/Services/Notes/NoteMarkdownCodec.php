@@ -103,6 +103,60 @@ final class NoteMarkdownCodec
     }
 
     /**
+     * List-row preview for Notes UI (no separate title field).
+     *
+     * Prefer the body section; frontmatter often stays `Untitled` after collab
+     * body edits. Empty/Untitled titles (and titles that are only the note id)
+     * fall through to body, then an empty string — never surface raw note ids
+     * like `local-*` as the list title.
+     */
+    public function listPreview(string $markdown, string $fallbackId, int $maxLen = 180): string
+    {
+        [$title, , , $body] = $this->parse($markdown, $fallbackId);
+        $fromBody = $this->plainPreviewText($body);
+        if ($fromBody !== '') {
+            return $this->truncatePreview($fromBody, $maxLen);
+        }
+        $fromTitle = trim($title);
+        if (
+            $fromTitle !== ''
+            && strcasecmp($fromTitle, 'Untitled') !== 0
+            && $fromTitle !== $fallbackId
+        ) {
+            return $this->truncatePreview($fromTitle, $maxLen);
+        }
+
+        return '';
+    }
+
+    private function plainPreviewText(string $markdown): string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", $markdown);
+        // Light markdown strip so list rows match client noteListTitle / plain text.
+        // GFM task lists: drop `- [ ]` / `- [x]` (and bare `[ ]`) so previews read as prose.
+        $text = preg_replace('/^\s*[-*+]\s+\[[ xX]\]\s*/m', '', $text) ?? $text;
+        $text = preg_replace('/\[[ xX]\]\s*/', '', $text) ?? $text;
+        $text = preg_replace('/^#{1,6}\s+/m', '', $text) ?? $text;
+        $text = preg_replace('/^\s*[-*+]\s+/m', '', $text) ?? $text;
+        $text = preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $text) ?? $text;
+        $text = preg_replace('/(\*\*|__)(.*?)\1/', '$2', $text) ?? $text;
+        $text = preg_replace('/(\*|_)(.*?)\1/', '$2', $text) ?? $text;
+        $text = preg_replace('/`([^`]+)`/', '$1', $text) ?? $text;
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function truncatePreview(string $text, int $maxLen): string
+    {
+        if ($maxLen < 1 || mb_strlen($text) <= $maxLen) {
+            return $text;
+        }
+
+        return mb_substr($text, 0, $maxLen - 1).'…';
+    }
+
+    /**
      * Re-serialize with new frontmatter while preserving the existing body bytes.
      *
      * Used by metadata-only mutations so updating title/tags/starred never

@@ -10,6 +10,7 @@ use App\Models\DriveShareGrant;
 use App\Models\DriveShareSession;
 use App\Models\Principal;
 use App\Services\Auth\JwtTokenService;
+use App\Services\Notes\NoteMarkdownCodec;
 use App\Services\Settings\GroupDirectoryService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -35,6 +36,7 @@ final class DriveShareService
         private DriveShareSessionRateLimiter $rateLimiter,
         private CollabDocFormats $collabDocFormats,
         private DriveShareAuthorizer $authorizer,
+        private NoteMarkdownCodec $noteCodec,
     ) {}
 
     /**
@@ -59,6 +61,52 @@ final class DriveShareService
     }
 
     /**
+     * Rewrite share rows whose path equals or is nested under $fromPath so they
+     * follow a rename/move to $toPath (directory prefix rewrite).
+     *
+     * Grants stay on share_id; only drive_shares.path is updated.
+     *
+     * @return int number of share rows rewritten
+     */
+    public function rewritePathPrefix(string $fromPath, string $toPath): int
+    {
+        $from = $this->scope->normalize($fromPath);
+        $to = $this->scope->normalize($toPath);
+        if ($from === '' || $from === '/' || $from === $to) {
+            return 0;
+        }
+
+        return (int) DB::connection('wgw')->transaction(function () use ($from, $to): int {
+            // LIKE is a coarse filter (_ / % are wildcards); str_starts_with is authoritative.
+            /** @var Collection<int, DriveShare> $shares */
+            $shares = DriveShare::query()
+                ->where(function ($query) use ($from): void {
+                    $query->where('path', $from)
+                        ->orWhere('path', 'like', $from.'/%');
+                })
+                ->lockForUpdate()
+                ->get();
+
+            $count = 0;
+            $now = Carbon::now();
+            foreach ($shares as $share) {
+                $old = $this->scope->normalize((string) $share->path);
+                if ($old !== $from && ! str_starts_with($old, $from.'/')) {
+                    continue;
+                }
+                $share->path = $old === $from ? $to : $to.substr($old, strlen($from));
+                $share->timestamps = false;
+                $share->updated_at = $now;
+                $share->save();
+                $share->timestamps = true;
+                $count++;
+            }
+
+            return $count;
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
@@ -67,15 +115,19 @@ final class DriveShareService
         $owner = strtolower(trim($username));
         $path = $this->requiredPath($input['path'] ?? null);
         $kind = $this->normalizeKind($input['kind'] ?? 'member');
-        $defaultAccess = $this->normalizeAccess($input['defaultAccess'] ?? DriveShareAccess::VIEW);
+        $rawDefaultAccess = strtolower(trim((string) ($input['defaultAccess'] ?? DriveShareAccess::VIEW)));
+        $this->assertSharePathOwnedBy($owner, $path);
+        $this->assertSharePathNotTopLevelDrive($path);
+        $this->assertNotePathShareCreate($path, $kind, $rawDefaultAccess);
+        $defaultAccess = $this->normalizeAccess($rawDefaultAccess);
         $expiresAt = $this->parseOptionalDate($input['expiresAt'] ?? null);
         $password = $this->normalizeNullableString($input['password'] ?? null);
         /** @var array<string, mixed>|null $shareWith */
         $shareWith = is_array($input['shareWith'] ?? null) ? $input['shareWith'] : null;
 
-        $this->assertSharePathOwnedBy($owner, $path);
-        $this->assertSharePathNotTopLevelDrive($path);
-        $this->assertCommentReviewApplicable($path, $defaultAccess);
+        if (! $this->paths->isNotePath($path)) {
+            $this->assertCommentReviewApplicable($path, $defaultAccess);
+        }
         $this->assertPublicAccessCap($kind, $defaultAccess);
 
         $publicToken = $kind === 'public' ? $this->generatePublicToken() : null;
@@ -133,8 +185,14 @@ final class DriveShareService
             $this->assertUpdatedAtMatches($share, $input['updatedAt'] ?? null);
 
             if (array_key_exists('defaultAccess', $input)) {
-                $share->default_access = $this->normalizeAccess((string) $input['defaultAccess']);
-                $this->assertCommentReviewApplicable($share->path, $share->default_access);
+                $rawAccess = strtolower(trim((string) $input['defaultAccess']));
+                if ($this->paths->isNotePath((string) $share->path)) {
+                    $this->assertNotePathAccessAllowed($rawAccess);
+                }
+                $share->default_access = $this->normalizeAccess($rawAccess);
+                if (! $this->paths->isNotePath((string) $share->path)) {
+                    $this->assertCommentReviewApplicable($share->path, $share->default_access);
+                }
                 $this->assertPublicAccessCap((string) $share->kind, $share->default_access);
             }
             if (array_key_exists('expiresAt', $input)) {
@@ -304,6 +362,9 @@ final class DriveShareService
 
         return DB::connection('wgw')->transaction(function () use ($username, $shareId, $email, $access): array {
             $share = $this->ownerShareOrFail($username, $shareId, lockForUpdate: true);
+            if ($this->paths->isNotePath((string) $share->path)) {
+                throw new ApiHttpException(400, 'Email invites are not supported for note paths.', 'bad_request');
+            }
             $this->assertCommentReviewApplicable($share->path, $access);
 
             $grant = $this->upsertEmailInviteGrant($share, $email, $access);
@@ -475,6 +536,7 @@ final class DriveShareService
                 DriveShareAccess::FULL,
                 true,
                 ! $this->scope->isTopLevelDrive($path),
+                $this->paths->isNotePath($path),
             ),
         ];
     }
@@ -483,6 +545,108 @@ final class DriveShareService
      * @return list<array<string, mixed>>
      */
     public function sharedWithMe(string $username): array
+    {
+        $rows = [];
+        foreach ($this->memberGrantRows($username) as $row) {
+            $path = (string) ($row['share']['path'] ?? '');
+            if ($this->paths->isNotePath($path)) {
+                continue;
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Note-file grants shared with the current user (`.md` under `.notes`).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function notesSharedWithMe(string $username): array
+    {
+        $items = [];
+        foreach ($this->memberGrantRows($username) as $row) {
+            $path = (string) ($row['share']['path'] ?? '');
+            if (! $this->paths->isNotePath($path)) {
+                continue;
+            }
+            $meta = $this->noteListingMetaFromPath($path);
+            if ($meta === null || ($meta['kind'] ?? '') !== 'note') {
+                continue;
+            }
+            // Prefer live entry type when present; path meta is enough for note files
+            // (listing must not depend on directoryEntry succeeding).
+            $entry = $row['entry'] ?? null;
+            if (is_array($entry) && ($entry['type'] ?? '') === 'dir') {
+                continue;
+            }
+            // Skip grants whose file was archived/deleted — avoids ghost Shared-with-me rows.
+            $storageKey = $this->paths->virtualToStorageKey($path);
+            if (! $this->filesDisk()->fileExists($storageKey)) {
+                continue;
+            }
+            $listFields = $this->noteListFieldsFromPath($path, (string) $meta['id']);
+            $item = [
+                'path' => $path,
+                'id' => $meta['id'],
+                'notebook' => $meta['notebook'],
+                'title' => $listFields['title'],
+                'tags' => $listFields['tags'],
+                'owner' => $meta['owner'],
+                'scope' => $meta['scope'],
+                'groupSlug' => $meta['groupSlug'],
+                'access' => (string) ($row['share']['defaultAccess'] ?? DriveShareAccess::VIEW),
+                'myRights' => $row['share']['myRights'] ?? DriveShareAccess::rightsFor(
+                    (string) ($row['share']['defaultAccess'] ?? DriveShareAccess::VIEW),
+                    true,
+                    false,
+                    true,
+                ),
+            ];
+            if (isset($row['viaGroup'])) {
+                $item['viaGroup'] = $row['viaGroup'];
+            }
+            $items[] = $item;
+        }
+
+        return $items;
+    }
+
+    /**
+     * Personal notebook-directory ACL shares are not a product feature.
+     *
+     * Group membership notebooks are listed via Notes notebooks/items (not path
+     * grants). This endpoint remains for contract compatibility and always
+     * returns an empty list.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function notesSharedNotebooks(string $username): array
+    {
+        unset($username);
+
+        return [];
+    }
+
+    /**
+     * Notes under personal ACL-shared notebook directories — removed; always empty.
+     * Group-membership notebook notes come from GET /notes/items instead.
+     *
+     * @param  list<array<string, mixed>>|null  $notebooks  Ignored (compat).
+     * @return list<array<string, mixed>>
+     */
+    public function notesUnderSharedNotebooks(string $username, ?array $notebooks = null): array
+    {
+        unset($username, $notebooks);
+
+        return [];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function memberGrantRows(string $username): array
     {
         $user = strtolower(trim($username));
         $groupSlugs = $this->groups->allowedGroupSlugs($user);
@@ -779,10 +943,64 @@ final class DriveShareService
     }
 
     /**
+     * Note paths only accept member shares with view|edit (reject comment/review/full before normalize).
+     */
+    private function assertNotePathShareCreate(string $path, string $kind, string $rawAccess): void
+    {
+        if (! $this->paths->isNotePath($path)) {
+            return;
+        }
+
+        if ($kind !== 'member') {
+            throw new ApiHttpException(400, 'Note paths only support member shares.', 'bad_request');
+        }
+
+        $this->assertNotePathShareTarget($path);
+        $this->assertNotePathAccessAllowed($rawAccess);
+    }
+
+    private function assertNotePathAccessAllowed(string $rawAccess): void
+    {
+        $access = strtolower(trim($rawAccess));
+        if (
+            $access === DriveShareAccess::COMMENT
+            || $access === DriveShareAccess::REVIEW
+            || $access === DriveShareAccess::FULL
+        ) {
+            throw new ApiHttpException(400, 'Access level is not applicable for note paths.', 'comment_not_applicable');
+        }
+        if (! in_array($access, [DriveShareAccess::VIEW, DriveShareAccess::EDIT], true)) {
+            throw new ApiHttpException(400, 'Invalid access.', 'bad_request');
+        }
+    }
+
+    private function assertNotePathShareTarget(string $path): void
+    {
+        // Notes sharing is file-level only (…/.notes/{notebook}/{id}.md).
+        // Personal notebook-directory grants are rejected (product non-goal).
+        if (preg_match('#^/(?:users|groups)/[^/]+/\.notes/[^/]+/[^/]+\.md$#i', $path) === 1) {
+            return;
+        }
+
+        $meta = $this->noteListingMetaFromPath($path);
+        if ($meta !== null && ($meta['kind'] ?? '') === 'notebook') {
+            throw new ApiHttpException(
+                400,
+                'Notebook directories cannot be shared; share individual notes instead.',
+                'bad_request',
+            );
+        }
+
+        throw new ApiHttpException(400, 'Invalid note share path.', 'bad_request');
+    }
+
+    /**
      * @param  array<string, mixed>  $shareWith
      */
     private function mergeShareWith(DriveShare $share, array $shareWith): void
     {
+        $isNotePath = $this->paths->isNotePath((string) $share->path);
+
         foreach ($shareWith as $principalId => $grantValue) {
             $principalId = trim((string) $principalId);
             if ($principalId === '') {
@@ -818,8 +1036,19 @@ final class DriveShareService
             if (! is_array($grantValue)) {
                 throw new ApiHttpException(400, 'shareWith grant must be an object or null.', 'bad_request');
             }
-            $access = $this->normalizeAccess((string) ($grantValue['access'] ?? ''));
-            $this->assertCommentReviewApplicable($share->path, $access);
+
+            if ($isNotePath && $isEmail) {
+                throw new ApiHttpException(400, 'Email invites are not supported for note paths.', 'bad_request');
+            }
+
+            $rawAccess = strtolower(trim((string) ($grantValue['access'] ?? '')));
+            if ($isNotePath) {
+                $this->assertNotePathAccessAllowed($rawAccess);
+            }
+            $access = $this->normalizeAccess($rawAccess);
+            if (! $isNotePath) {
+                $this->assertCommentReviewApplicable($share->path, $access);
+            }
 
             if ($isEmail) {
                 $this->upsertEmailGrant($share, strtolower($principalId), $access);
@@ -1004,7 +1233,12 @@ final class DriveShareService
             'expiresAt' => $share->expires_at?->toISOString(),
             'updatedAt' => $share->updated_at?->toISOString(),
             'shareWith' => $shareWith === [] ? null : $shareWith,
-            'myRights' => DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, true),
+            'myRights' => DriveShareAccess::rightsFor(
+                DriveShareAccess::FULL,
+                true,
+                true,
+                $this->paths->isNotePath((string) $share->path),
+            ),
         ];
     }
 
@@ -1013,11 +1247,13 @@ final class DriveShareService
      */
     private function serializeShareForMember(DriveShare $share, string $grantAccess): array
     {
-        $isCollabDoc = $this->collabDocFormats->isCollabDocPath((string) $share->path);
+        $path = (string) $share->path;
+        $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
+        $isNotePath = $this->paths->isNotePath($path);
 
         return [
             'id' => (string) $share->id,
-            'path' => (string) $share->path,
+            'path' => $path,
             'kind' => (string) $share->kind,
             'defaultAccess' => (string) $grantAccess,
             'publicToken' => null,
@@ -1025,7 +1261,7 @@ final class DriveShareService
             'expiresAt' => $share->expires_at?->toISOString(),
             'updatedAt' => $share->updated_at?->toISOString(),
             'shareWith' => null,
-            'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false),
+            'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false, $isNotePath),
         ];
     }
 
@@ -1049,6 +1285,7 @@ final class DriveShareService
         }
 
         $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
+        $isNotePath = $this->paths->isNotePath($path);
 
         return [
             'type' => $isDir ? 'dir' : 'file',
@@ -1057,7 +1294,83 @@ final class DriveShareService
             'size' => $isDir ? 0 : max(0, (int) ($disk->size($key) ?? 0)),
             'time' => max(0, (int) ($disk->lastModified($key) ?? time())),
             'permissions' => 0,
-            'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false),
+            'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false, $isNotePath),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   kind: 'note'|'notebook',
+     *   owner: string,
+     *   scope: 'personal'|'group',
+     *   groupSlug: string|null,
+     *   notebook: string,
+     *   id?: string
+     * }|null
+     */
+    private function noteListingMetaFromPath(string $path): ?array
+    {
+        if (preg_match(
+            '#^/(users|groups)/([^/]+)/\.notes/([^/]+)(?:/([^/]+)\.md)?$#i',
+            $path,
+            $matches
+        ) !== 1) {
+            return null;
+        }
+
+        $root = strtolower($matches[1]);
+        $owner = $matches[2];
+        $notebook = $matches[3];
+        $noteId = $matches[4] ?? null;
+        $scope = $root === 'groups' ? 'group' : 'personal';
+        $groupSlug = $scope === 'group' ? $owner : null;
+
+        if ($noteId !== null && $noteId !== '') {
+            return [
+                'kind' => 'note',
+                'owner' => $owner,
+                'scope' => $scope,
+                'groupSlug' => $groupSlug,
+                'notebook' => $notebook,
+                'id' => $noteId,
+            ];
+        }
+
+        return [
+            'kind' => 'notebook',
+            'owner' => $owner,
+            'scope' => $scope,
+            'groupSlug' => $groupSlug,
+            'notebook' => $notebook,
+        ];
+    }
+
+    /**
+     * List preview + tags from on-disk note frontmatter (one read).
+     *
+     * Shared-with-me stubs must surface tags the same way owned notes do —
+     * collab only syncs the body section, so metadata lives in frontmatter.
+     *
+     * @return array{title: string, tags: list<string>}
+     */
+    private function noteListFieldsFromPath(string $path, string $fallbackId): array
+    {
+        $disk = $this->filesDisk();
+        $key = $this->paths->virtualToStorageKey($path);
+        if (! $disk->fileExists($key)) {
+            return ['title' => $fallbackId, 'tags' => []];
+        }
+        $contents = $disk->get($key);
+        if (! is_string($contents)) {
+            return ['title' => $fallbackId, 'tags' => []];
+        }
+
+        // Notes list preview is body-first (frontmatter title is often "Untitled").
+        [, $tags] = $this->noteCodec->parse($contents, $fallbackId);
+
+        return [
+            'title' => $this->noteCodec->listPreview($contents, $fallbackId),
+            'tags' => $tags,
         ];
     }
 

@@ -15,7 +15,11 @@ import {
 } from "@/ui/alert-dialog";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { SharePrincipalSearchDropdown } from "@/share-ui/share-principal-search-dropdown";
-import { accessToUIPermission } from "@/share-ui/share-access-map";
+import {
+  SHARE_UI_PERMISSIONS,
+  accessToUIPermission,
+  type ShareUIPermission,
+} from "@/share-ui/share-access-map";
 import { formatSharePathLabel, shareLabels } from "@/share-ui/share-labels";
 import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
@@ -25,6 +29,7 @@ type ShareTeamSectionProps = {
   atPath: DriveShareAtPath;
   mutations: ShareMutations;
   disabled?: boolean;
+  permissions?: readonly ShareUIPermission[];
 };
 
 type PendingRemoval = {
@@ -32,7 +37,12 @@ type PendingRemoval = {
   principal: string;
 };
 
-export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareTeamSectionProps) {
+export function ShareTeamSection({
+  atPath,
+  mutations,
+  disabled = false,
+  permissions = SHARE_UI_PERMISSIONS,
+}: ShareTeamSectionProps) {
   const groupGrants = useMemo(
     () => atPath.effectiveGrants.filter((grant) => grant.principalType === "group"),
     [atPath.effectiveGrants],
@@ -102,6 +112,7 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
               access={grant.access}
               editable={Boolean(grant.removal) && !inherited}
               removeDisabled={disabled}
+              permissions={permissions}
               onAccessChange={(next) => {
                 if (!grant.removal) return;
                 void mutations.updateGrantAccess(
@@ -155,6 +166,7 @@ export function ShareTeamSection({ atPath, mutations, disabled = false }: ShareT
               editable={member.editable && !inherited}
               editHint={member.editHint}
               removeDisabled={disabled}
+              permissions={permissions}
               onAccessChange={(next) => {
                 if (!member.removal?.principal) return;
                 void mutations.updateGrantAccess(

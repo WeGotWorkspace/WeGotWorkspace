@@ -128,7 +128,8 @@
 }
 
 .list-item__tags {
-  @apply mt-1 flex items-center gap-1.5 min-w-0 overflow-hidden;
+  /* mt-2 (8px) so it wins margin-collapse with title’s mb-1 */
+  @apply mt-2 flex items-center gap-1.5 min-w-0 overflow-hidden;
 }
 
 .list-item__tags-more {

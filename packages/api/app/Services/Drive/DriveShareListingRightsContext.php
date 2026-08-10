@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
+use App\Storage\StoragePaths;
+
 final class DriveShareListingRightsContext
 {
     /**
@@ -13,6 +15,7 @@ final class DriveShareListingRightsContext
         private array $base,
         private DriveSharePathScope $scope,
         private CollabDocFormats $collabDocFormats,
+        private StoragePaths $paths,
     ) {}
 
     /**
@@ -46,6 +49,7 @@ final class DriveShareListingRightsContext
             $this->base['access'],
             $this->collabDocFormats->isCollabDocPath($path),
             $mayShare,
+            $this->paths->isNotePath($path),
         );
     }
 }

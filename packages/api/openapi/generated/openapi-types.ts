@@ -6429,6 +6429,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notes/shared-with-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List note files shared with the current user via path grants
+         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Shared notes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotesSharedWithMeResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/shared-notebooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List shared notebook ACL rows (compat — always empty)
+         * @description Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Compat empty list (personal notebook-directory ACL shares removed). */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotesSharedNotebooksResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7236,6 +7314,12 @@ export interface components {
             updatedAt: string;
             /** @description File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards. */
             contentUpdatedAt?: string;
+            /** @description True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note. */
+            hasShares?: boolean;
+            /** @description True when this note file or its notebook directory has an active public link share. */
+            hasPublicShare?: boolean;
+            /** @description True when this note file or its notebook directory has active team grants (users or groups). */
+            hasTeamShare?: boolean;
         };
         NoteItemList: components["schemas"]["NoteItem"][];
         NotesItemsResponse: {
@@ -7271,17 +7355,29 @@ export interface components {
         /**
          * @example {
          *       "notebook": "General",
-         *       "archived": false
+         *       "archived": false,
+         *       "groupSlug": "team"
          *     }
          */
         NoteDeleteRequest: {
             notebook: string;
             archived: boolean;
+            /** @description Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes. */
+            groupSlug?: string | null;
         };
         NotebookListItem: {
             name: string;
             activeCount: number;
             archivedCount: number;
+            /**
+             * @description personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes.
+             * @enum {string}
+             */
+            scope?: "personal" | "group";
+            /** @description Group slug when scope is group; null/omitted for personal notebooks. */
+            groupSlug?: string | null;
+            /** @description Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows. */
+            hasShares?: boolean;
         };
         NotebookListItemList: components["schemas"]["NotebookListItem"][];
         NotebookListResponse: {
@@ -9184,7 +9280,7 @@ export interface components {
             list: components["schemas"]["SearchDocumentSyncDto"][];
         };
         /**
-         * @description Share access level for a grant or default access.
+         * @description Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit only; comment, legacy review, and full are rejected.
          * @enum {string}
          */
         DriveShareAccess: "view" | "comment" | "review" | "edit" | "full";
@@ -9468,6 +9564,47 @@ export interface components {
         };
         DriveShareByPrincipalDataResponse: {
             data: components["schemas"]["DriveShareByPrincipal"];
+        };
+        NotesSharedNoteEntry: {
+            /** @description Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md). */
+            path: string;
+            id: string;
+            notebook: string;
+            /** @description List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*. */
+            title: string;
+            /** @description Tags from the note markdown frontmatter. Empty when the file is missing or has no tags. */
+            tags: components["schemas"]["NoteTagList"];
+            /** @description Username or group slug that owns the note tree. */
+            owner: string;
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            access: components["schemas"]["DriveShareAccess"];
+            myRights: components["schemas"]["DriveRights"];
+            /** @description Present when access is via a group grant (groups/{slug}). */
+            viaGroup?: string;
+        };
+        NotesSharedWithMeResponse: {
+            items: components["schemas"]["NotesSharedNoteEntry"][];
+        };
+        NotesSharedNotebookEntry: {
+            /** @description Virtual drive path of the shared notebook directory (…/.notes/{notebook}). */
+            path: string;
+            notebook: string;
+            /** @description Username or group slug that owns the notebook tree. */
+            owner: string;
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            access: components["schemas"]["DriveShareAccess"];
+            myRights: components["schemas"]["DriveRights"];
+            /** @description Present when access is via a group grant (groups/{slug}). */
+            viaGroup?: string;
+        };
+        NotesSharedNotebooksResponse: {
+            items: components["schemas"]["NotesSharedNotebookEntry"][];
+            /** @description Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items. */
+            notes?: components["schemas"]["NotesSharedNoteEntry"][];
         };
     };
     responses: {

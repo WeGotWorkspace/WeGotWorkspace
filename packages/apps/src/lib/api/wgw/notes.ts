@@ -47,6 +47,9 @@ export function coerceNoteItem(raw: unknown): WgwNoteItem | null {
         : r.content_updated_at != null
           ? String(r.content_updated_at)
           : undefined,
+    ...(r.hasShares === true ? { hasShares: true } : {}),
+    ...(r.hasPublicShare === true ? { hasPublicShare: true } : {}),
+    ...(r.hasTeamShare === true ? { hasTeamShare: true } : {}),
   };
 }
 
@@ -63,23 +66,298 @@ export function parseNotesItemsPayload(json: unknown): WgwNoteItem[] {
   return raw.map(coerceNoteItem).filter(Boolean) as WgwNoteItem[];
 }
 
-export function coerceNotebookRow(raw: unknown): { name: string } | null {
+export type NotesNotebookRow = {
+  name: string;
+  scope?: "personal" | "group";
+  groupSlug?: string | null;
+  /** Owner outgoing shares on this personal notebook directory. */
+  hasShares?: boolean;
+};
+
+export type NotesSharedNoteListRights = {
+  mayEditContent: boolean;
+};
+
+export type NotesSharedNoteEntry = {
+  path: string;
+  id: string;
+  notebook: string;
+  title: string;
+  /** Frontmatter tags from the shared `.md` (same source of truth as owned notes). */
+  tags: string[];
+  owner: string;
+  scope: "personal" | "group";
+  groupSlug: string | null;
+  access?: string;
+  /** From list API `myRights` (or derived from `access` when rights are omitted). */
+  myRights?: NotesSharedNoteListRights;
+};
+
+export type NotesSharedNotebookEntry = {
+  path: string;
+  notebook: string;
+  owner: string;
+  scope: "personal" | "group";
+  groupSlug: string | null;
+  access?: string;
+  myRights?: NotesSharedNoteListRights;
+};
+
+export function coerceNotebookRow(raw: unknown): NotesNotebookRow | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const name = r.name ?? r.title ?? r.notebook;
   if (name == null) return null;
-  return { name: String(name) };
+  const scope = r.scope === "group" ? "group" : r.scope === "personal" ? "personal" : undefined;
+  return {
+    name: String(name),
+    scope,
+    groupSlug:
+      typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : undefined,
+    ...(r.hasShares === true ? { hasShares: true } : {}),
+  };
 }
 
-export function parseNotebooksPayload(json: unknown): string[] {
+export function parseNotebookRowsPayload(json: unknown): NotesNotebookRow[] {
   if (!json || typeof json !== "object") return [];
   const o = json as Record<string, unknown>;
   const raw = o.items ?? o.notebooks ?? o.data;
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map(coerceNotebookRow)
-    .filter((x): x is { name: string } => x !== null)
-    .map((x) => x.name);
+  return raw.map(coerceNotebookRow).filter((x): x is NotesNotebookRow => x !== null);
+}
+
+/** Personal notebook names only (legacy string list for bootstrap / offline). */
+export function parseNotebooksPayload(json: unknown): string[] {
+  return parseNotebookRowsPayload(json)
+    .filter((row) => row.scope !== "group")
+    .map((row) => row.name);
+}
+
+function normalizeNotesPath(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+/**
+ * Prefer explicit list `myRights.mayEditContent`; fall back to share `access`
+ * so view-only rows still badge when rights are omitted from a payload.
+ */
+export function resolveSharedNoteMayEditContent(entry: {
+  access?: string;
+  myRights?: NotesSharedNoteListRights | { mayEditContent?: unknown };
+}): boolean | undefined {
+  const fromRights = entry.myRights?.mayEditContent;
+  if (typeof fromRights === "boolean") return fromRights;
+  if (entry.access === "view" || entry.access === "comment") return false;
+  if (entry.access === "edit" || entry.access === "full" || entry.access === "review") return true;
+  return undefined;
+}
+
+function coerceSharedListRights(
+  raw: unknown,
+  access?: string,
+): NotesSharedNoteListRights | undefined {
+  const mayEditContent = resolveSharedNoteMayEditContent({
+    access,
+    myRights: raw && typeof raw === "object" ? (raw as { mayEditContent?: unknown }) : undefined,
+  });
+  return mayEditContent === undefined ? undefined : { mayEditContent };
+}
+
+function noteMyRightsFromSharedEntry(
+  entry: Pick<NotesSharedNoteEntry, "access" | "myRights">,
+): Note["myRights"] | undefined {
+  const mayEditContent = resolveSharedNoteMayEditContent(entry);
+  return mayEditContent === undefined ? undefined : { mayEditContent };
+}
+
+export function coerceSharedNoteEntry(raw: unknown): NotesSharedNoteEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const path = typeof r.path === "string" ? normalizeNotesPath(r.path) : "";
+  const id = r.id;
+  const notebook = r.notebook;
+  if (!path || id == null || notebook == null) return null;
+  const scope = r.scope === "group" ? "group" : "personal";
+  const tagsRaw = r.tags;
+  const tags = Array.isArray(tagsRaw) ? tagsRaw.map((t) => String(t)).filter(Boolean) : [];
+  const access = typeof r.access === "string" ? r.access : undefined;
+  const myRights = coerceSharedListRights(r.myRights, access);
+  return {
+    path,
+    id: String(id),
+    notebook: String(notebook),
+    title: r.title != null ? String(r.title) : String(id),
+    tags,
+    owner: r.owner != null ? String(r.owner) : "",
+    scope,
+    groupSlug: typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : null,
+    access,
+    ...(myRights ? { myRights } : {}),
+  };
+}
+
+export function coerceSharedNotebookEntry(raw: unknown): NotesSharedNotebookEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const path = typeof r.path === "string" ? normalizeNotesPath(r.path) : "";
+  const notebook = r.notebook;
+  if (!path || notebook == null) return null;
+  const scope = r.scope === "group" ? "group" : "personal";
+  const access = typeof r.access === "string" ? r.access : undefined;
+  const myRights = coerceSharedListRights(r.myRights, access);
+  return {
+    path,
+    notebook: String(notebook),
+    owner: r.owner != null ? String(r.owner) : "",
+    scope,
+    groupSlug: typeof r.groupSlug === "string" ? r.groupSlug : r.groupSlug === null ? null : null,
+    access,
+    ...(myRights ? { myRights } : {}),
+  };
+}
+
+export function parseSharedNotesPayload(json: unknown): NotesSharedNoteEntry[] {
+  if (!json || typeof json !== "object") return [];
+  const o = json as Record<string, unknown>;
+  const raw = o.items ?? o.data;
+  if (!Array.isArray(raw)) return [];
+  return raw.map(coerceSharedNoteEntry).filter((x): x is NotesSharedNoteEntry => x !== null);
+}
+
+export type NotesSharedNotebooksPayload = {
+  items: NotesSharedNotebookEntry[];
+  /** Notes under ACL-shared notebook dirs (from `notes` on the same response). */
+  notes: NotesSharedNoteEntry[];
+};
+
+export function parseSharedNotebooksPayload(json: unknown): NotesSharedNotebooksPayload {
+  if (!json || typeof json !== "object") {
+    return { items: [], notes: [] };
+  }
+  const o = json as Record<string, unknown>;
+  const raw = o.items ?? o.data;
+  const items = Array.isArray(raw)
+    ? raw.map(coerceSharedNotebookEntry).filter((x): x is NotesSharedNotebookEntry => x !== null)
+    : [];
+  const notesRaw = o.notes;
+  const notes = Array.isArray(notesRaw)
+    ? notesRaw.map(coerceSharedNoteEntry).filter((x): x is NotesSharedNoteEntry => x !== null)
+    : [];
+  return { items, notes };
+}
+
+/** List note-file grants under `.notes` (Shared with me). */
+export async function fetchNotesSharedWithMe(opts?: {
+  signal?: AbortSignal;
+}): Promise<NotesSharedNoteEntry[]> {
+  const res = await wgwFetch("/notes/shared-with-me", { signal: opts?.signal });
+  if (!res.ok)
+    throw new NotesRequestError(`GET /notes/shared-with-me failed (${res.status})`, res.status);
+  return parseSharedNotesPayload(await wgwReadJson(res));
+}
+
+/** List shared notebook payload (compat — API returns empty ACL items/notes). */
+export async function fetchNotesSharedNotebooks(opts?: {
+  signal?: AbortSignal;
+}): Promise<NotesSharedNotebooksPayload> {
+  const res = await wgwFetch("/notes/shared-notebooks", { signal: opts?.signal });
+  if (!res.ok) {
+    throw new NotesRequestError(`GET /notes/shared-notebooks failed (${res.status})`, res.status);
+  }
+  return parseSharedNotebooksPayload(await wgwReadJson(res));
+}
+
+/** Path-stable list id when a shared grant collides with an owned (or sibling) note id. */
+export function sharedInboxFallbackId(path: string): string {
+  const normalized = normalizeNotesPath(path).replace(/^\//, "");
+  return `swm:${normalized}`;
+}
+
+/**
+ * Shared-list `title` is a body-first preview — never fall back to the note id.
+ * Empty / id-equal titles leave body blank so list rows show “Untitled note”
+ * (and collab IDB enrich can still fill a real preview without selecting).
+ */
+export function sharedEntryListPreview(entry: Pick<NotesSharedNoteEntry, "id" | "title">): string {
+  const title = entry.title.trim();
+  if (!title || title === entry.id) return "";
+  // Offline creates keep `local-*` ids; those must never appear as list titles.
+  if (/^local-[0-9a-f-]+$/i.test(title)) return "";
+  return title;
+}
+
+export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
+  const title = sharedEntryListPreview(entry);
+  const sharedBy = entry.owner.trim();
+  const myRights = noteMyRightsFromSharedEntry(entry);
+  return {
+    id: entry.id,
+    notebook: entry.notebook,
+    excerpt: title,
+    body: title ? [title] : [""],
+    // Personal Shared-with-me recipients never see tags — omit from the stub.
+    tags: [],
+    wordCount: wordCountFromText(title),
+    category: "Note",
+    date: "—",
+    scope: entry.scope,
+    groupSlug: entry.groupSlug,
+    apiPath: entry.path,
+    sharedInbox: true,
+    ...(sharedBy ? { sharedBy } : {}),
+    ...(myRights ? { myRights } : {}),
+  };
+}
+
+/**
+ * Merge Shared-with-me file grants into the owned note list.
+ *
+ * Do **not** drop grants that collide on note id with an owned row: offline
+ * `local-*` ids can leak across accounts, and the same id can appear under
+ * different owners/notebooks. When ids collide, keep both rows and give the
+ * inbox stub a path-stable id so list keys / Shared-with-me filtering work.
+ * Collab/share still use {@link Note.apiPath}.
+ */
+export function mergeOwnedAndSharedInboxNotes(
+  ownedNotes: Note[],
+  sharedWithMe: NotesSharedNoteEntry[],
+): Note[] {
+  const usedIds = new Set(ownedNotes.map((note) => note.id));
+  const inboxNotes: Note[] = [];
+  for (const entry of sharedWithMe) {
+    const note = noteFromSharedEntry(entry);
+    if (usedIds.has(note.id)) {
+      note.id = sharedInboxFallbackId(entry.path);
+    }
+    usedIds.add(note.id);
+    inboxNotes.push(note);
+  }
+  return [...ownedNotes, ...inboxNotes];
+}
+
+function sharedNotebookFromGroupRow(row: NotesNotebookRow): NotesSharedNotebookEntry | null {
+  if (row.scope !== "group" || !row.groupSlug?.trim()) return null;
+  const slug = row.groupSlug.trim();
+  return {
+    path: normalizeNotesPath(`/groups/${slug}/.notes/${row.name}`),
+    notebook: row.name,
+    owner: slug,
+    scope: "group",
+    groupSlug: slug,
+  };
+}
+
+/** Group-membership notebooks only (personal ACL notebook shares are not a product feature). */
+function mergeGroupSharedNotebooks(groupRows: NotesNotebookRow[]): NotesSharedNotebookEntry[] {
+  const byPath = new Map<string, NotesSharedNotebookEntry>();
+  for (const row of groupRows) {
+    const entry = sharedNotebookFromGroupRow(row);
+    if (!entry) continue;
+    if (!byPath.has(entry.path)) byPath.set(entry.path, entry);
+  }
+  return [...byPath.values()].sort((a, b) => a.notebook.localeCompare(b.notebook));
 }
 
 // --- WGW note shapes → app `Note` + request helpers ----------------------------------------------
@@ -127,6 +405,11 @@ export function noteFromWgwItem(row: WgwNoteItem): Note {
     ...(metadataUpdatedAt !== undefined ? { updatedAt: metadataUpdatedAt } : {}),
     starred: row.starred,
     archived: row.archived,
+    ...(row.scope !== undefined ? { scope: row.scope } : {}),
+    ...(row.groupSlug !== undefined ? { groupSlug: row.groupSlug } : {}),
+    ...(row.hasShares === true || row.hasPublicShare === true || row.hasTeamShare === true
+      ? { isShared: true }
+      : {}),
   };
 }
 
@@ -142,6 +425,9 @@ export function wgwNoteUpsertFromNote(
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
+    ...(note.scope === "group" && note.groupSlug?.trim()
+      ? { groupSlug: note.groupSlug.trim() }
+      : {}),
   };
 }
 
@@ -160,6 +446,9 @@ export function wgwNoteMetadataFromNote(
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
+    ...(note.scope === "group" && note.groupSlug?.trim()
+      ? { groupSlug: note.groupSlug.trim() }
+      : {}),
   };
 }
 
@@ -173,21 +462,47 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   if (!itemsRes.ok) throw new Error(`GET /notes/items failed (${itemsRes.status})`);
   const itemsJson = await wgwReadJson(itemsRes);
   const rawItems = parseNotesItemsPayload(itemsJson);
-  const notes = rawItems.map(noteFromWgwItem);
+  const ownedNotes = rawItems.map(noteFromWgwItem);
 
-  let notebookNames: string[] = [];
+  let notebookRows: NotesNotebookRow[] = [];
   const nbRes = await wgwFetch("/notes/notebooks");
   if (nbRes.ok) {
     const nbJson = await wgwReadJson(nbRes);
-    notebookNames = parseNotebooksPayload(nbJson);
+    notebookRows = parseNotebookRowsPayload(nbJson);
   }
 
-  const fromNotes = [...new Set(notes.map((n) => n.notebook))];
-  const notebooks = [...new Set([...notebookNames, ...fromNotes])];
-  const tags = [...new Set(notes.flatMap((n) => n.tags))];
+  let sharedWithMe: NotesSharedNoteEntry[] = [];
+  try {
+    sharedWithMe = await fetchNotesSharedWithMe();
+  } catch {
+    // Shared listings are best-effort — owned notes still load if these fail.
+  }
+
+  const notes = mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe);
+
+  const personalFromApi = notebookRows
+    .filter((row) => row.scope !== "group")
+    .map((row) => row.name);
+  const personalFromNotes = ownedNotes.filter((n) => n.scope !== "group").map((n) => n.notebook);
+  const notebooks = [...new Set([...personalFromApi, ...personalFromNotes])].filter((name) =>
+    name.trim(),
+  );
+
+  const groupRowsFromNotes = ownedNotes
+    .filter((n) => n.scope === "group" && n.groupSlug?.trim())
+    .map(
+      (n): NotesNotebookRow => ({
+        name: n.notebook,
+        scope: "group",
+        groupSlug: n.groupSlug ?? null,
+      }),
+    );
+  const sharedNotebooks = mergeGroupSharedNotebooks([...notebookRows, ...groupRowsFromNotes]);
+
+  const tags = [...new Set(ownedNotes.flatMap((n) => n.tags))];
 
   return {
-    data: { notes, notebooks, tags },
+    data: { notes, notebooks, tags, sharedNotebooks },
     session,
   };
 }
@@ -237,30 +552,42 @@ export async function updateNoteItem(
 
 export async function deleteNoteItem(
   id: string,
-  body: { notebook: string; archived: boolean },
+  body: { notebook: string; archived: boolean; groupSlug?: string | null },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
   await requestNotesJson(`/notes/items/${encodeURIComponent(id)}`, "DELETE", body, opts);
 }
 
-export async function archiveNoteItem(id: string, opts?: { signal?: AbortSignal }): Promise<Note> {
+export async function archiveNoteItem(
+  id: string,
+  opts?: { signal?: AbortSignal; groupSlug?: string | null },
+): Promise<Note> {
   const json = await requestNotesJson(
     `/notes/items/${encodeURIComponent(id)}`,
     "PATCH",
-    { archived: true },
-    opts,
+    {
+      archived: true,
+      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
+    },
+    opts?.signal !== undefined ? { signal: opts.signal } : undefined,
   );
   const row = parseNoteMutationPayload(json);
   if (!row) throw new Error(`PATCH /notes/items/${id} archive returned no note payload`);
   return noteFromWgwItem(row);
 }
 
-export async function restoreNoteItem(id: string, opts?: { signal?: AbortSignal }): Promise<Note> {
+export async function restoreNoteItem(
+  id: string,
+  opts?: { signal?: AbortSignal; groupSlug?: string | null },
+): Promise<Note> {
   const json = await requestNotesJson(
     `/notes/items/${encodeURIComponent(id)}`,
     "PATCH",
-    { archived: false },
-    opts,
+    {
+      archived: false,
+      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
+    },
+    opts?.signal !== undefined ? { signal: opts.signal } : undefined,
   );
   const row = parseNoteMutationPayload(json);
   if (!row) throw new Error(`PATCH /notes/items/${id} restore returned no note payload`);

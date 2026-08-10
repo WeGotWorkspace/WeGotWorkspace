@@ -1,9 +1,22 @@
 import type { Note } from "@/lib/models/note";
 
+/** Group-membership notebook shown under the Notebooks sidebar. */
+export type NotesSharedNotebook = {
+  path: string;
+  notebook: string;
+  owner: string;
+  scope: "personal" | "group";
+  groupSlug: string | null;
+  access?: string;
+};
+
 export type NotesUIData = {
   notes: Note[];
+  /** Owned personal notebook names only (not group notebooks). */
   notebooks: string[];
   tags: string[];
+  /** Group-membership notebooks (Users icon under Notebooks). */
+  sharedNotebooks?: NotesSharedNotebook[];
 };
 
 export type DeleteNotebookAction =
@@ -18,7 +31,7 @@ export type DeleteNotebookAction =
 export type NotesAPIOperations = {
   upsertNote: (note: Note, opts?: { signal?: AbortSignal }) => Promise<Note>;
   deleteNote: (
-    note: Pick<Note, "id" | "notebook" | "archived">,
+    note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
   archiveNote: (id: string, opts?: { signal?: AbortSignal }) => Promise<Note>;

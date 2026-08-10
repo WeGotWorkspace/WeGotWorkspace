@@ -2,12 +2,16 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream main pane + warm gold sidebar accent.
+ * Notes product shell: cream main pane + gold sidebar.
+ * Chip/button accent (`--notes-accent`) stays soft `#f6d176` (detail tags /
+ * change-notebook). Full-bleed `--notes-sidebar` is a richer gold — same hex as
+ * the chip reads washed on a large surface (no cream frame), so the sidebar
+ * token is decoupled and stepped up toward former `#f0b422`.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --notes-accent: #f0b422;
-  --notes-sidebar: var(--notes-accent);
+  --notes-accent: #f6d176;
+  --notes-sidebar: #f3c450;
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
@@ -29,7 +33,7 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
-  --note-detail-tag-bg: color-mix(in oklab, var(--notes-accent) 62%, transparent);
+  --note-detail-tag-bg: var(--notes-accent);
   --note-detail-tag-fg: var(--color-ink);
   --note-detail-title-font-family: var(--font-serif);
   --workspace-chrome-footer-padding-x: 1rem;
@@ -56,7 +60,7 @@
  * {@link Button} and {@link buttonVariants} match the notes shell.
  */
 .notes-dialog-surface {
-  --notes-accent: #f0b422;
+  --notes-accent: #f6d176;
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink);
@@ -77,7 +81,7 @@
 }
 
 /*
- * Labeled move-notebook only (showLabel + active): filled yellow chip, dark text/icon.
+ * Labeled move-notebook only (showLabel + active): filled soft-gold chip, dark text/icon.
  * Star/archive keep generic icon-button--active (accent-colored glyphs, no fill bg).
  * Parent sets button tokens; Button/IconButton consume them.
  */
@@ -171,4 +175,24 @@
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
   background-color: var(--color-cream, #ffffff);
+}
+
+/* Owner outgoing-share pip on personal notebook rows (not a count badge). */
+.notes-workspace .notes-sidebar-notebook--shared .menu-item__badge {
+  @apply h-auto min-w-0 px-0;
+  background-color: transparent;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.notes-workspace .notes-sidebar-notebook--shared.menu-item--selected .menu-item__badge {
+  background-color: transparent;
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+}
+
+.notes-workspace .notes-sidebar-notebook__shared-pip {
+  @apply inline-flex size-3 shrink-0 items-center justify-center;
+}
+
+.notes-workspace .notes-sidebar-notebook__shared-icon {
+  @apply size-3 shrink-0 block;
 }

@@ -3,11 +3,14 @@ import {
   Archive,
   BookOpen,
   Circle,
+  Eye,
   Pencil,
   RefreshCw,
+  Share2,
   Star,
   Tag as TagIcon,
   Trash2,
+  Users,
 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
@@ -16,7 +19,16 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
-import { noteListTagOverflow, noteListTitle } from "@/notes-core/src/notes-note-utils";
+import {
+  noteListTagOverflow,
+  noteListTitle,
+  noteListLocationLabel,
+  noteShowsSharedBadge,
+  noteShowsStarControls,
+  noteShowsTags,
+  noteShowsViewOnlyBadge,
+} from "@/notes-core/src/notes-note-utils";
+import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
@@ -32,6 +44,18 @@ function notesListItemTags(tags: string[]): ReactNode {
         <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
       ))}
       {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
+    </span>
+  );
+}
+
+function NotesListLocation({ note, labels }: { note: Note; labels: NotesUILabels }) {
+  const location = noteListLocationLabel(note, labels);
+  if (!location) return null;
+  const Icon = note.sharedInbox ? Share2 : note.scope === "group" ? Users : BookOpen;
+  return (
+    <span className="notes-list-panel__notebook">
+      <Icon className="notes-list-panel__notebook-icon" aria-hidden />
+      <span className="notes-list-panel__notebook-name">{location}</span>
     </span>
   );
 }
@@ -207,23 +231,19 @@ export function NotesListPanel({
             const rowSelected = multiSelect
               ? selectedIds.includes(note.id)
               : note.id === activeId && selectedIds.includes(note.id);
+            const showTags = noteShowsTags(note);
+            const showStar = noteShowsStarControls(note);
+            const showShared = noteShowsSharedBadge(note);
+            const showViewOnly = noteShowsViewOnlyBadge(note);
+            const canArchive = noteAllowsStructureManage(note);
             return (
               <ListItem
                 key={note.id}
                 id={note.id}
                 title={noteListTitle(note)}
-                subtitle={
-                  note.notebook ? (
-                    <span className="notes-list-panel__notebook">
-                      <BookOpen className="notes-list-panel__notebook-icon" aria-hidden />
-                      <span className="notes-list-panel__notebook-name">{note.notebook}</span>
-                    </span>
-                  ) : (
-                    ""
-                  )
-                }
+                subtitle={<NotesListLocation note={note} labels={L} />}
                 date={formatNoteDateForList(note.date)}
-                text={notesListItemTags(note.tags)}
+                text={showTags ? notesListItemTags(note.tags) : null}
                 icons={[
                   isPendingSync ? (
                     <span
@@ -235,13 +255,39 @@ export function NotesListPanel({
                       <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
                     </span>
                   ) : null,
-                  <span
-                    key="star"
-                    className="notes-list-panel__star-pip"
-                    data-active={starred[note.id] ? "true" : "false"}
-                  >
-                    <Star className="notes-list-panel__star-icon" fill="currentColor" />
-                  </span>,
+                  showViewOnly ? (
+                    <span
+                      key="view-only"
+                      className="notes-list-panel__view-only-pip"
+                      role="img"
+                      aria-label={L.viewOnly}
+                    >
+                      <Eye className="size-3 notes-list-panel__view-only-icon" aria-hidden />
+                    </span>
+                  ) : null,
+                  showShared ? (
+                    <span
+                      key="shared"
+                      className="notes-list-panel__shared-pip"
+                      role="img"
+                      aria-label={L.shared}
+                    >
+                      <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
+                    </span>
+                  ) : null,
+                  showStar ? (
+                    <span
+                      key="star"
+                      className="notes-list-panel__star-pip"
+                      data-active={starred[note.id] ? "true" : "false"}
+                    >
+                      <Star
+                        className="size-3 notes-list-panel__star-icon"
+                        fill="currentColor"
+                        aria-hidden
+                      />
+                    </span>
+                  ) : null,
                 ].filter(Boolean)}
                 isActive={rowActive}
                 isSelected={rowSelected}
@@ -255,24 +301,32 @@ export function NotesListPanel({
                 onDragEnd={dragHandlers.onDragEnd ?? (() => {})}
                 {...(isTouch
                   ? {
-                      swipeLeftAction: {
-                        icon: (
-                          <Star
-                            className="size-5"
-                            fill={starred[note.id] ? "currentColor" : "none"}
-                          />
-                        ),
-                        color: "var(--color-emerald)",
-                        label: starred[note.id] ? L.swipeUnstar : L.swipeStar,
-                        onActivate: () => toggleStar(note.id),
-                      },
-                      swipeRightAction: {
-                        icon: <Archive className="size-5" />,
-                        color: "var(--color-ink)",
-                        label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
-                        destructive: true,
-                        onActivate: () => toggleArchive(note.id),
-                      },
+                      ...(showStar
+                        ? {
+                            swipeLeftAction: {
+                              icon: (
+                                <Star
+                                  className="size-5"
+                                  fill={starred[note.id] ? "currentColor" : "none"}
+                                />
+                              ),
+                              color: "var(--color-emerald)",
+                              label: starred[note.id] ? L.swipeUnstar : L.swipeStar,
+                              onActivate: () => toggleStar(note.id),
+                            },
+                          }
+                        : {}),
+                      ...(canArchive
+                        ? {
+                            swipeRightAction: {
+                              icon: <Archive className="size-5" />,
+                              color: "var(--color-ink)",
+                              label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
+                              destructive: true,
+                              onActivate: () => toggleArchive(note.id),
+                            },
+                          }
+                        : {}),
                     }
                   : {})}
               />

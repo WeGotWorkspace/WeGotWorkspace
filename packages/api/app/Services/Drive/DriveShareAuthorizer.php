@@ -103,6 +103,7 @@ final class DriveShareAuthorizer
             ],
             $this->scope,
             $this->collabDocFormats,
+            $this->paths,
         );
     }
 
@@ -131,22 +132,24 @@ final class DriveShareAuthorizer
             $groupSlugs = $this->groups->allowedGroupSlugs($username);
             if ($this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
                 $mayShare = ! $this->scope->isTopLevelDrive($path);
+                $isNotePath = $this->paths->isNotePath($path);
 
                 return [
                     'scopeRoot' => null,
                     'access' => DriveShareAccess::FULL,
-                    'rights' => DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, $mayShare),
+                    'rights' => DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, $mayShare, $isNotePath),
                 ];
             }
 
             $grant = $this->grantResolver->resolveMemberGrant($username, $path, $groupSlugs);
             if ($grant !== null) {
                 $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
+                $isNotePath = $this->paths->isNotePath($path);
 
                 return [
                     'scopeRoot' => $grant['rootPath'],
                     'access' => $grant['access'],
-                    'rights' => DriveShareAccess::rightsFor($grant['access'], $isCollabDoc, false),
+                    'rights' => DriveShareAccess::rightsFor($grant['access'], $isCollabDoc, false, $isNotePath),
                 ];
             }
         }
@@ -170,11 +173,12 @@ final class DriveShareAuthorizer
 
             $access = (string) $share->default_access;
             $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
+            $isNotePath = $this->paths->isNotePath($path);
 
             return [
                 'scopeRoot' => $rootPath,
                 'access' => $access,
-                'rights' => DriveShareAccess::rightsFor($access, $isCollabDoc, false),
+                'rights' => DriveShareAccess::rightsFor($access, $isCollabDoc, false, $isNotePath),
             ];
         }
 

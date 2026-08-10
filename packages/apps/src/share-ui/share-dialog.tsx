@@ -1,12 +1,15 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import { NOTES_SHARE_UI_PERMISSIONS, SHARE_UI_PERMISSIONS } from "@/share-ui/share-access-map";
 import { ShareLinkSection } from "@/share-ui/share-link-section";
 import { shareLabels } from "@/share-ui/share-labels";
 import { ShareTeamSection } from "@/share-ui/share-team-section";
 import { useShareAtPath } from "@/share-ui/use-share-at-path";
 import { useShareMutations } from "@/share-ui/use-share-mutations";
 import "@/share-ui/share-ui.css";
+
+export type ShareDialogMode = "drive" | "notes";
 
 export type ShareDialogProps = {
   path: string;
@@ -16,6 +19,11 @@ export type ShareDialogProps = {
   shareOperations: DriveShareOperations;
   /** Portaled dialog surface tokens — drive green by default; pass `docs-dialog-surface` from Docs. */
   dialogSurfaceClassName?: string;
+  /**
+   * `notes` — team ACL only (no public link / guest); permissions view|edit.
+   * `drive` — full Drive share UX (default).
+   */
+  mode?: ShareDialogMode;
 };
 
 export function ShareDialog({
@@ -25,6 +33,7 @@ export function ShareDialog({
   onOpenChange,
   shareOperations,
   dialogSurfaceClassName = "drive-dialog-surface",
+  mode = "drive",
 }: ShareDialogProps) {
   const { data, loading, error, refetch } = useShareAtPath({
     path,
@@ -39,6 +48,8 @@ export function ShareDialog({
   });
 
   const canManage = data?.myRights.mayShare ?? true;
+  const isNotesMode = mode === "notes";
+  const permissions = isNotesMode ? NOTES_SHARE_UI_PERMISSIONS : SHARE_UI_PERMISSIONS;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,8 +76,15 @@ export function ShareDialog({
         {data ? (
           <>
             <div className="share-dialog__body">
-              <ShareLinkSection atPath={data} mutations={mutations} disabled={!canManage} />
-              <ShareTeamSection atPath={data} mutations={mutations} disabled={!canManage} />
+              {isNotesMode ? null : (
+                <ShareLinkSection atPath={data} mutations={mutations} disabled={!canManage} />
+              )}
+              <ShareTeamSection
+                atPath={data}
+                mutations={mutations}
+                disabled={!canManage}
+                permissions={permissions}
+              />
             </div>
 
             <footer className="share-dialog__footer">

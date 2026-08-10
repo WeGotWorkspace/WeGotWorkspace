@@ -7,12 +7,16 @@ import type { Note } from "@/lib/models/note";
 import { createTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
-  applyNoteBodyMarkdown,
   createNoteSaveDebouncer,
-  enrichNote,
+  mapNotesWithBodyMarkdown,
+  mergeCreatedNotePreservingLocalOptimistic,
   normalizeTag,
+  noteAllowsTagAssignment,
+  noteShowsStarControls,
   persistBestEffort,
+  resolveNotesCreateTarget,
 } from "./notes-note-utils";
+import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
@@ -32,6 +36,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     view,
     setView,
     notebooks,
+    setNotebooks,
     tags,
     starred,
     applyStarToggle,
@@ -58,8 +63,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   } = list;
 
   const debouncerRef = useRef(createNoteSaveDebouncer(AUTOSAVE_WRITE_DEBOUNCE_MS));
+  /** local-* → server id after online create resolves (tag upserts may still be queued). */
+  const noteIdRemapRef = useRef(new Map<string, string>());
   const { online } = useConnectivity();
   const wasOnlineRef = useRef(online);
+
+  const resolveNoteId = useCallback((id: string) => noteIdRemapRef.current.get(id) ?? id, []);
 
   useEffect(() => {
     const debouncer = debouncerRef.current;
@@ -121,7 +130,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const toggleStar = useCallback(
     (id: string) => {
       const current = notes.find((note) => note.id === id);
-      if (!current) return;
+      if (!current || !noteShowsStarControls(current)) return;
       const beforeStarred = !!starred[id];
       const nowStarred = applyStarToggle(id);
       setNotes((prev) =>
@@ -206,6 +215,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         ids,
         updater: (note) => ({ ...note, notebook }),
       });
+      setNotebooks((prev) => (prev.includes(notebook) ? prev : [...prev, notebook]));
       show(`Moved ${ids.length} item${ids.length === 1 ? "" : "s"} to “${notebook}”`, {
         icon: <BookOpen className="size-4" />,
       });
@@ -223,33 +233,44 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: "Move undone.",
       });
     },
-    [beginOptimisticUpdate, notes, operations, queueMutation, setNotes, show],
+    [beginOptimisticUpdate, notes, operations, queueMutation, setNotebooks, setNotes, show],
   );
 
   const assignTagToNotes = useCallback(
     (ids: string[], rawTag: string) => {
       const tag = normalizeTag(rawTag);
       if (!tag) return;
-      const before = notes.filter((note) => ids.includes(note.id));
+      const assignableIds = ids.filter((id) => {
+        const note = notes.find((row) => row.id === id);
+        return note ? noteAllowsTagAssignment(note, true) : false;
+      });
+      if (assignableIds.length === 0) return;
+      const before = notes.filter((note) => assignableIds.includes(note.id));
+      const editedAt = new Date().toISOString();
       setNotes((prev) =>
         prev.map((note) =>
-          ids.includes(note.id) && !note.tags.includes(tag)
-            ? { ...note, tags: [...note.tags, tag] }
+          assignableIds.includes(note.id) && !note.tags.includes(tag)
+            ? { ...note, tags: [...note.tags, tag], date: editedAt }
             : note,
         ),
       );
-      show(`Tagged ${ids.length} item${ids.length === 1 ? "" : "s"} with ${tag}`, {
-        icon: <Tag className="size-4" />,
-      });
+      show(
+        `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
+        {
+          icon: <Tag className="size-4" />,
+        },
+      );
       if (!operations) return;
       const updatedRows = before.map((note) =>
-        note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag] },
+        note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag], date: editedAt },
       );
       queueMutation({
-        key: `notes:tag:${tag}:${ids.slice().sort().join(",")}`,
-        toastMessage: `Tagged ${ids.length} item${ids.length === 1 ? "" : "s"} with ${tag}`,
+        key: `notes:tag:${tag}:${assignableIds.slice().sort().join(",")}`,
+        toastMessage: `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
         execute: () =>
-          Promise.all(updatedRows.map((row) => operations.upsertNote(row))).then(() => {}),
+          Promise.all(
+            updatedRows.map((row) => operations.upsertNote({ ...row, id: resolveNoteId(row.id) })),
+          ).then(() => {}),
         undo: () => {
           setNotes((prev) =>
             prev.map((note) => {
@@ -269,7 +290,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: "Tag assignment undone.",
       });
     },
-    [notes, operations, queueMutation, setNotes, show],
+    [notes, operations, queueMutation, resolveNoteId, setNotes, show],
   );
 
   const renameNotebook = useCallback(
@@ -279,11 +300,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       setNotes((prev) =>
         prev.map((note) => (note.notebook === oldName ? { ...note, notebook: value } : note)),
       );
+      setNotebooks((prev) => [
+        ...new Set(prev.map((notebook) => (notebook === oldName ? value : notebook))),
+      ]);
       if (view === `nb:${oldName}`) setView(`nb:${value}`);
       if (operations) persistBestEffort(operations.renameNotebook(oldName, value));
       show(`Renamed to “${value}”`, { icon: <Tag className="size-4" /> });
     },
-    [notebooks, operations, setNotes, setView, show, view],
+    [notebooks, operations, setNotebooks, setNotes, setView, show, view],
   );
 
   const renameTag = useCallback(
@@ -341,10 +365,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       } else if (operations) {
         persistBestEffort(operations.deleteNotebook(name, { kind: "purge" }));
       }
+      // Drop from sidebar even when empty / Dexie-only (API omits empty personal dirs).
+      setNotebooks((prev) => prev.filter((notebook) => notebook !== name));
       if (view === `nb:${name}`) setView("all");
       show(`Notebook “${name}” deleted`, { icon: <Trash2 className="size-4" /> });
     },
-    [notebooks, notes, operations, setArchived, setNotes, setView, show, view],
+    [notebooks, notes, operations, setArchived, setNotebooks, setNotes, setView, show, view],
   );
 
   const deleteTag = useCallback(
@@ -372,12 +398,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const tag = normalizeTag(rawTag);
       if (!tag) return;
       const before = notes.find((note) => note.id === noteId);
-      if (!before) return;
+      if (!before || !noteAllowsTagAssignment(before, true)) return;
       const has = before.tags.includes(tag);
       const added = !has;
+      const editedAt = new Date().toISOString();
       const updated = {
         ...before,
         tags: has ? before.tags.filter((current) => current !== tag) : [...before.tags, tag],
+        date: editedAt,
       };
       setNotes((prev) => prev.map((note) => (note.id === noteId ? updated : note)));
       const toastMessage = added ? `Added ${tag}` : `Removed ${tag}`;
@@ -389,14 +417,16 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         toastMessage,
         icon: <Tag className="size-4" />,
         execute: async (signal) => {
-          if (operations) await operations.upsertNote(updated, { signal });
+          if (operations) {
+            await operations.upsertNote({ ...updated, id: resolveNoteId(noteId) }, { signal });
+          }
         },
         undo: rollback,
         onError: rollback,
         undoToastMessage: added ? "Tag assignment undone." : "Tag removal undone.",
       });
     },
-    [notes, operations, queueMutation, setNotes],
+    [notes, operations, queueMutation, resolveNoteId, setNotes],
   );
 
   const updateNote = useCallback(
@@ -410,20 +440,20 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   /**
    * Optimistic list/footer sync when the collab body changes. Updates local
-   * body/excerpt/date (+ Dexie mirror) without enqueueing a metadata upsert —
+   * body/excerpt (+ Dexie mirror) without enqueueing a metadata upsert —
    * the body still persists only through the collab document.
+   *
+   * Pass `bumpDate: false` when hydrating from a loaded doc so refresh/open
+   * fills the list preview without rewriting “Last edited”.
    */
   const applyLocalBodyMarkdown = useCallback(
-    (id: string, markdown: string) => {
+    (id: string, markdown: string, options?: { bumpDate?: boolean }) => {
       let updated: Note | undefined;
-      setNotes((prev) =>
-        prev.map((note) => {
-          if (note.id !== id) return note;
-          const next = applyNoteBodyMarkdown(note, markdown);
-          if (next !== note) updated = next;
-          return next;
-        }),
-      );
+      setNotes((prev) => {
+        const result = mapNotesWithBodyMarkdown(prev, id, markdown, options);
+        updated = result.updated;
+        return result.notes;
+      });
       if (!updated) return;
       const username = readOfflineNotesUsername();
       if (username) {
@@ -435,7 +465,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
-    const targetNotebook = view.startsWith("nb:") ? view.slice(3) : (notebooks[0] ?? "Drafts");
+    const target = resolveNotesCreateTarget(view, notebooks);
     const targetTag = view.startsWith("tag:") ? view.slice(4) : null;
     const id = createTempNoteId();
     const date = new Date().toISOString();
@@ -446,9 +476,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       updatedAt: date,
       excerpt: "",
       body: [""],
-      notebook: targetNotebook,
+      notebook: target.notebook,
       tags: targetTag ? [normalizeTag(targetTag)] : [],
       wordCount: 0,
+      ...(target.scope === "group" && target.groupSlug
+        ? { scope: "group" as const, groupSlug: target.groupSlug }
+        : {}),
     };
     setNotes((prev) => [note, ...prev]);
     setActiveId(id);
@@ -459,7 +492,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         .upsertNote(note)
         .then((saved) => {
           if (saved.id === id) return;
-          setNotes((prev) => prev.map((row) => (row.id === id ? enrichNote(saved) : row)));
+          noteIdRemapRef.current.set(id, saved.id);
+          setNotes((prev) =>
+            prev.map((row) =>
+              row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
+            ),
+          );
           setActiveId((current) => (current === id ? saved.id : current));
           if (selectedIds.includes(id)) {
             setSelectedIds((current) => current.map((rowId) => (rowId === id ? saved.id : rowId)));
@@ -514,35 +552,51 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     () => notes.filter((note) => selectedIds.includes(note.id)),
     [notes, selectedIds],
   );
+  const starableSelected = useMemo(
+    () => selectedRows.filter((note) => noteShowsStarControls(note)),
+    [selectedRows],
+  );
   const allSelectedStarred =
-    selectedRows.length > 0 && selectedRows.every((note) => !!starred[note.id]);
+    starableSelected.length > 0 && starableSelected.every((note) => !!starred[note.id]);
   const allSelectedArchived =
     selectedRows.length > 0 && selectedRows.every((note) => !!archived[note.id]);
+  const allSelectedAllowStructure =
+    selectedRows.length > 0 && selectedRows.every((note) => noteAllowsStructureManage(note));
+  const showSelectionArchive = allSelectedAllowStructure;
+  const showSelectionDelete = allSelectedAllowStructure && view === "archive";
 
   const selectionActionButtons = useMemo(
     () => [
-      {
-        label: allSelectedStarred ? L.swipeUnstar : L.selectionStar,
-        icon: <Star className="size-4" fill={allSelectedStarred ? "currentColor" : "none"} />,
-        onClick: batchStar,
-        active: allSelectedStarred,
-      },
-      {
-        label: allSelectedArchived ? L.swipeUnarchive : L.selectionArchive,
-        icon: allSelectedArchived ? (
-          <ArchiveRestore className="size-4" />
-        ) : (
-          <Archive className="size-4" />
-        ),
-        onClick: batchArchive,
-        active: allSelectedArchived,
-      },
+      ...(starableSelected.length > 0
+        ? [
+            {
+              label: allSelectedStarred ? L.swipeUnstar : L.selectionStar,
+              icon: <Star className="size-4" fill={allSelectedStarred ? "currentColor" : "none"} />,
+              onClick: batchStar,
+              active: allSelectedStarred,
+            },
+          ]
+        : []),
+      ...(showSelectionArchive
+        ? [
+            {
+              label: allSelectedArchived ? L.swipeUnarchive : L.selectionArchive,
+              icon: allSelectedArchived ? (
+                <ArchiveRestore className="size-4" />
+              ) : (
+                <Archive className="size-4" />
+              ),
+              onClick: batchArchive,
+              active: allSelectedArchived,
+            },
+          ]
+        : []),
       {
         label: L.selectionMoveToNotebook,
         icon: <BookOpen className="size-4" />,
         onClick: () => setMoveDialog({ ids: selectedIds }),
       },
-      ...(view === "archive"
+      ...(showSelectionDelete
         ? [
             {
               label: L.selectionDeletePermanently,
@@ -559,6 +613,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       batchStar,
       requestDeleteSelected,
       selectedIds,
+      showSelectionArchive,
+      showSelectionDelete,
+      starableSelected.length,
       L.swipeUnstar,
       L.selectionStar,
       L.swipeUnarchive,

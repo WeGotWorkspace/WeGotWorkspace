@@ -3,8 +3,8 @@ import { Trash2 } from "lucide-react";
 import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
 import { IconButton } from "@/button/src/icon-button";
 import {
-  accessToUIPermission,
-  isDialogEditableAccess,
+  SHARE_UI_PERMISSIONS,
+  accessToSelectableUIPermission,
   type ShareUIPermission,
 } from "@/share-ui/share-access-map";
 import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
@@ -25,6 +25,7 @@ type SharePrincipalRowProps = {
   removeDisabled?: boolean;
   onAccessChange?: (permission: ShareUIPermission) => void;
   onRemove?: () => void;
+  permissions?: readonly ShareUIPermission[];
 };
 
 export function SharePrincipalRow({
@@ -39,11 +40,11 @@ export function SharePrincipalRow({
   removeDisabled = false,
   onAccessChange,
   onRemove,
+  permissions = SHARE_UI_PERMISSIONS,
 }: SharePrincipalRowProps) {
   const inherited = Boolean(inheritedFromPath);
-  const uiPermission = accessToUIPermission(access);
-  const canEdit =
-    editable && !inherited && Boolean(onAccessChange) && isDialogEditableAccess(access);
+  const uiPermission = accessToSelectableUIPermission(access, permissions);
+  const canEdit = editable && !inherited && Boolean(onAccessChange) && uiPermission !== null;
   const showRemove = inherited || Boolean(onRemove);
   const canRemove = Boolean(onRemove) && !inherited && !removeDisabled;
   const inheritedRemoveHint = inheritedFromPath
@@ -67,12 +68,19 @@ export function SharePrincipalRow({
         <SharePermissionSelect
           value={uiPermission}
           title={editHint}
+          permissions={permissions}
           onChange={(next) => {
             if (next !== "none") onAccessChange?.(next);
           }}
         />
       ) : uiPermission ? (
-        <SharePermissionSelect value={uiPermission} disabled title={editHint} onChange={() => {}} />
+        <SharePermissionSelect
+          value={uiPermission}
+          disabled
+          title={editHint}
+          permissions={permissions}
+          onChange={() => {}}
+        />
       ) : (
         <span className="share-dialog__read-only-access" title={editHint}>
           {accessLabelForReadOnly(access)}

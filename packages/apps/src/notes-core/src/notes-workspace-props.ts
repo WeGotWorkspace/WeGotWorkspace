@@ -1,4 +1,5 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import type { NotesAPIOperations, NotesUIData } from "@/notes-core/src/notes-types";
 
@@ -8,9 +9,11 @@ export type NotesWorkspaceProps = {
   labels?: Partial<NotesUILabels>;
   /** Optional async backend operations for notes mutations. */
   operations?: NotesAPIOperations;
+  /** Optional Drive path-share ops (ShareDialog on notes / notebooks). */
+  shareOperations?: DriveShareOperations;
   /** Show list-column spinner while notes bootstrap (shell + sidebar visible). */
   listLoading?: boolean;
-  /** Bumps when bootstrap is patched after reconnect or manual refresh. */
+  /** Bumps when bootstrap is patched after reconnect or conflict resolution. */
   bootstrapRevision?: number;
   /** Refresh cached bootstrap after reconnect or conflict resolution. */
   onRefreshList?: () => void;

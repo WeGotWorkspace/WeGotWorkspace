@@ -3,6 +3,7 @@ import { Star, StarOff } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
+import { noteShowsStarControls } from "./notes-note-utils";
 import type { NotesAPIOperations } from "./notes-types";
 
 type QueueMutation = (args: {
@@ -127,14 +128,16 @@ export function useNotesBatchActions({
   );
 
   const batchStar = useCallback(() => {
-    const beforeRows = notes.filter((note) => selectedIds.includes(note.id));
-    const result = batchToggleStarForIds(selectedIds);
+    const beforeRows = notes.filter(
+      (note) => selectedIds.includes(note.id) && noteShowsStarControls(note),
+    );
+    const starIds = beforeRows.map((note) => note.id);
+    if (starIds.length === 0) return;
+    const result = batchToggleStarForIds(starIds);
     if (!result) return;
     const nextStarred = !result.allWereStarred;
     setNotes((prev) =>
-      prev.map((note) =>
-        selectedIds.includes(note.id) ? { ...note, starred: nextStarred } : note,
-      ),
+      prev.map((note) => (starIds.includes(note.id) ? { ...note, starred: nextStarred } : note)),
     );
     const toastMessage = `${result.allWereStarred ? "Unstarred" : "Starred"} ${result.count} item${result.count === 1 ? "" : "s"}`;
     const toastIcon = result.allWereStarred ? (
@@ -145,7 +148,7 @@ export function useNotesBatchActions({
     const updatedRows = beforeRows.map((note) => ({ ...note, starred: nextStarred }));
     runQueuedBatchAction({
       queueMutation,
-      key: `notes:batch-star:${selectedIds.slice().sort().join(",")}`,
+      key: `notes:batch-star:${starIds.slice().sort().join(",")}`,
       toastMessage,
       icon: toastIcon,
       execute: async () => {
@@ -153,7 +156,7 @@ export function useNotesBatchActions({
         await Promise.all(updatedRows.map((row) => operations.upsertNote(row)));
       },
       rollback: () => {
-        batchToggleStarForIds(selectedIds);
+        batchToggleStarForIds(starIds);
         setNotes((prev) =>
           prev.map((note) => {
             const snapshot = beforeRows.find((row) => row.id === note.id);

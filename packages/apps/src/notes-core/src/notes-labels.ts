@@ -11,8 +11,17 @@ export type NotesUILabels = {
   sidebarAllItems: string;
   sidebarStarred: string;
   sidebarArchive: string;
+  sidebarSharedWithMe: string;
+  /** Grantor username for Shared-with-me file grants (list/detail location). */
+  sharedBy: (username: string) => string;
+  /** Accessible name for the list-row view-only eye icon. */
+  viewOnly: string;
+  /** Accessible name for the list-row share icon (owner outgoing shares). */
+  shared: string;
   sectionNotebooks: string;
+  sectionSharedNotebooks: string;
   sectionTags: string;
+  share: string;
   addNotebook: string;
   addTag: string;
   listSelected: (count: number) => string;
@@ -69,8 +78,14 @@ export const defaultNotesLabels: NotesUILabels = {
   sidebarAllItems: "All Items",
   sidebarStarred: "Starred",
   sidebarArchive: "Archived",
+  sidebarSharedWithMe: "Shared with me",
+  sharedBy: (username) => username,
+  viewOnly: "View only",
+  shared: "Shared",
   sectionNotebooks: "Notebooks",
+  sectionSharedNotebooks: "Shared notebooks",
   sectionTags: "Tags",
+  share: "Share",
   addNotebook: "New notebook",
   addTag: "New tag",
   listSelected: (count) => `${count} Selected`,

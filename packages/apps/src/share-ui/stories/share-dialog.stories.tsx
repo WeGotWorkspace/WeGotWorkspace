@@ -63,3 +63,25 @@ export const InheritedRows: Story = {
 export const ReadOnlyMember: Story = {
   render: () => <ShareDialogHarness fixture={shareStoryAtPathReadOnlyMember} />,
 };
+
+function NotesShareDialogHarness() {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <DriveStoryScope className="max-w-xl p-6">
+      <ShareDialog
+        open={open}
+        path="/users/alice/.notes/Drafts/n1.md"
+        title="Meeting notes"
+        mode="notes"
+        shareOperations={createShareStoryOperations(shareStoryAtPathPublicOff)}
+        onOpenChange={setOpen}
+      />
+    </DriveStoryScope>
+  );
+}
+
+/** Notes mode: team ACL only, view/edit — no public link section. */
+export const NotesMode: Story = {
+  render: () => <NotesShareDialogHarness />,
+};

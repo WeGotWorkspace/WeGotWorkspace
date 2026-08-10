@@ -23,7 +23,15 @@ export function markdownToNoteBody(markdown: string): string[] {
   return parts.length > 0 ? parts : [trimmed];
 }
 
+/**
+ * Strips GFM task-list markers (`- [ ]` / `- [x]` / bare `[ ]`).
+ * `remove-markdown` drops the list bullet but leaves checkbox brackets behind.
+ */
+function stripTaskListMarkers(markdown: string): string {
+  return markdown.replace(/^\s*[-*+]\s+\[[ xX]\]\s*/gm, "").replace(/\[[ xX]\]\s*/g, "");
+}
+
 /** Strips markdown / inline HTML for list previews, search, and excerpts. */
 export function markdownToPlainText(markdown: string): string {
-  return removeMd(markdown).replace(/\s+/g, " ").trim();
+  return removeMd(stripTaskListMarkers(markdown)).replace(/\s+/g, " ").trim();
 }

@@ -1,17 +1,9 @@
-import { IndexeddbPersistence } from "y-indexeddb";
-import * as Y from "yjs";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import { normalizeDocsAvailabilityPath } from "@/lib/offline/docs/docs-availability-store";
-import { docsCollabRoomKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import {
-  collabDocumentFormat,
-  isYDocEmpty,
-} from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { readCollabOfflineContent } from "@/lib/offline/docs/docs-collab-offline-content";
 
 function parseOutboxPayload(payload: string): DocsOutboxPayload | null {
   try {
@@ -29,36 +21,6 @@ async function readOutboxCreateContent(username: string, apiPath: string): Promi
     if (payload?.op === "create" && normalizeDocsAvailabilityPath(payload.apiPath) === normalized) {
       return payload.content;
     }
-  }
-  return null;
-}
-
-async function readCollabRoomContent(roomKey: string, apiPath: string): Promise<string | null> {
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(roomKey, ydoc);
-  try {
-    await persistence.whenSynced;
-    if (isYDocEmpty(ydoc)) return null;
-    const format = collabDocumentFormat(apiPath);
-    return readContentFromYDoc(ydoc, format);
-  } catch {
-    return null;
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
-  }
-}
-
-async function readCollabOfflineContent(apiPath: string): Promise<string | null> {
-  const room = docsCollabRoomKey(apiPath);
-  if (!room || !isDocsCollabEditablePath(room)) return null;
-
-  const content = await readCollabRoomContent(room, apiPath);
-  if (content != null) return content;
-
-  const legacy = apiPath.trim().startsWith("/") ? room : `/${room}`;
-  if (legacy !== room) {
-    return readCollabRoomContent(legacy, apiPath);
   }
   return null;
 }

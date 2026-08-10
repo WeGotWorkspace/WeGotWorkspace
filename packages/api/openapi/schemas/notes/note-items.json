@@ -25,6 +25,18 @@
       "contentUpdatedAt": {
         "type": "string",
         "description": "File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards."
+      },
+      "hasShares": {
+        "type": "boolean",
+        "description": "True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note."
+      },
+      "hasPublicShare": {
+        "type": "boolean",
+        "description": "True when this note file or its notebook directory has an active public link share."
+      },
+      "hasTeamShare": {
+        "type": "boolean",
+        "description": "True when this note file or its notebook directory has active team grants (users or groups)."
       }
     },
     "required": ["id", "username", "notebook", "body", "tags", "archived", "scope", "groupSlug", "updatedAt"]
@@ -55,5 +67,134 @@
       "starred": true,
       "groupSlug": "team"
     }
+  },
+  "NoteDeleteRequest": {
+    "type": "object",
+    "properties": {
+      "notebook": { "type": "string" },
+      "archived": { "type": "boolean" },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes."
+      }
+    },
+    "required": ["notebook", "archived"],
+    "example": {
+      "notebook": "General",
+      "archived": false,
+      "groupSlug": "team"
+    }
+  },
+  "NotesSharedNoteEntry": {
+    "type": "object",
+    "required": ["path", "id", "notebook", "title", "tags", "owner", "scope", "groupSlug", "access", "myRights"],
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md)."
+      },
+      "id": { "type": "string" },
+      "notebook": { "type": "string" },
+      "title": {
+        "type": "string",
+        "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*."
+      },
+      "tags": {
+        "$ref": "#/components/schemas/NoteTagList",
+        "description": "Tags from the note markdown frontmatter. Empty when the file is missing or has no tags."
+      },
+      "owner": {
+        "type": "string",
+        "description": "Username or group slug that owns the note tree."
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["personal", "group"]
+      },
+      "groupSlug": { "type": ["string", "null"] },
+      "access": { "$ref": "#/components/schemas/DriveShareAccess" },
+      "myRights": { "$ref": "#/components/schemas/DriveRights" },
+      "viaGroup": {
+        "type": "string",
+        "description": "Present when access is via a group grant (groups/{slug})."
+      }
+    },
+    "additionalProperties": false
+  },
+  "NotesSharedWithMeResponse": {
+    "type": "object",
+    "required": ["items"],
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/NotesSharedNoteEntry" }
+      }
+    },
+    "additionalProperties": false
+  },
+  "NotesSharedNotebookEntry": {
+    "type": "object",
+    "required": ["path", "notebook", "owner", "scope", "groupSlug", "access", "myRights"],
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Virtual drive path of the shared notebook directory (…/.notes/{notebook})."
+      },
+      "notebook": { "type": "string" },
+      "owner": {
+        "type": "string",
+        "description": "Username or group slug that owns the notebook tree."
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["personal", "group"]
+      },
+      "groupSlug": { "type": ["string", "null"] },
+      "access": { "$ref": "#/components/schemas/DriveShareAccess" },
+      "myRights": { "$ref": "#/components/schemas/DriveRights" },
+      "viaGroup": {
+        "type": "string",
+        "description": "Present when access is via a group grant (groups/{slug})."
+      }
+    },
+    "additionalProperties": false
+  },
+  "NotesSharedNotebooksResponse": {
+    "type": "object",
+    "required": ["items"],
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/NotesSharedNotebookEntry" }
+      },
+      "notes": {
+        "type": "array",
+        "description": "Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items.",
+        "items": { "$ref": "#/components/schemas/NotesSharedNoteEntry" }
+      }
+    },
+    "additionalProperties": false
+  },
+  "NotebookListItem": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "activeCount": { "type": "integer" },
+      "archivedCount": { "type": "integer" },
+      "scope": {
+        "type": "string",
+        "enum": ["personal", "group"],
+        "description": "personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes."
+      },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "Group slug when scope is group; null/omitted for personal notebooks."
+      },
+      "hasShares": {
+        "type": "boolean",
+        "description": "Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows."
+      }
+    },
+    "required": ["name", "activeCount", "archivedCount"]
   }
 }

@@ -21,8 +21,14 @@ import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
-import { noteListTitle } from "@/notes-core/src/notes-note-utils";
-import { useDocumentTitle } from "@/lib/document-title";
+import {
+  noteAllowsTagAssignment,
+  noteListTitle,
+  noteShowsTags,
+} from "@/notes-core/src/notes-note-utils";
+import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
+import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
+import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-title";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
@@ -31,8 +37,11 @@ import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
-import { buildNoteCollabUrls, noteCollabPath } from "@/notes-core/src/note-collab-path";
+import { buildNoteCollabUrls, resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
+import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
+import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
+import { ShareDialog } from "@/share-ui/share-dialog";
 import "@/notes-core/src/notes-workspace.css";
 
 export function NotesWorkspace({
@@ -40,6 +49,7 @@ export function NotesWorkspace({
   session,
   labels,
   operations,
+  shareOperations,
   listLoading = false,
   bootstrapRevision = 0,
   onRefreshList,
@@ -59,6 +69,7 @@ export function NotesWorkspace({
     L,
     notes,
     notebooks,
+    sharedNotebooks,
     tags,
     active,
     activeId,
@@ -121,12 +132,42 @@ export function NotesWorkspace({
     labels: L,
     view,
     notebooks,
+    sharedNotebooks,
     tags,
     selectView,
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
   });
+
+  const shareDialog = useDriveShareDialog({
+    shareOperations,
+    username: session.user.username ?? "",
+  });
+
+  const activeSharePath = useMemo(() => {
+    if (!active || !session.user.username) return "";
+    return resolveNoteSharePath(active, session.user.username, !!archived[active.id]);
+  }, [active, archived, session.user.username]);
+
+  const shareRightsEnabled = Boolean(shareOperations && activeSharePath);
+  const {
+    myRights: noteMyRights,
+    mayShare: noteMayShare,
+    loading: noteShareRightsLoading,
+  } = useDriveShareMyRights({
+    path: activeSharePath,
+    operations: shareOperations,
+    enabled: shareRightsEnabled,
+  });
+  const noteEditable = resolveNotesEditorEditable(
+    noteMyRights ? { mayEditContent: noteMyRights.mayEditContent } : null,
+    shareRightsEnabled && noteShareRightsLoading,
+  );
+  const noteReadOnly = !noteEditable;
+  const noteCanArchive = active ? noteAllowsStructureManage(active) : true;
+  const activeShowsTags = active ? noteShowsTags(active) : true;
+  const activeAllowsTagAssignment = active ? noteAllowsTagAssignment(active, noteEditable) : false;
 
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
@@ -145,12 +186,7 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
-    const path = noteCollabPath({
-      scope: { kind: "personal", username },
-      notebook: active.notebook,
-      noteId: active.id,
-      archived: !!archived[active.id],
-    });
+    const path = resolveNoteSharePath(active, username, !!archived[active.id]);
     let cancelled = false;
     void buildNoteCollabUrls(path)
       .then((urls) => {
@@ -186,6 +222,14 @@ export function NotesWorkspace({
   const showSingleNoteDetail = selectedIds.length <= 1 && !!active;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
+  const openShareActiveNote = useCallback(() => {
+    if (!active || !shareOperations) return;
+    const username = session.user.username;
+    if (!username) return;
+    const path = resolveNoteSharePath(active, username, !!archived[active.id]);
+    shareDialog.openShareDialog(path, noteListTitle(active));
+  }, [active, archived, session.user.username, shareDialog, shareOperations]);
+
   const wrapDetailWithCollab = useCallback(
     (children: ReactNode) => {
       if (!collabSessionActive || !active || !noteBodyCollab) return children;
@@ -197,7 +241,11 @@ export function NotesWorkspace({
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
-          onBodyMarkdownChange={(markdown) => applyLocalBodyMarkdown(active.id, markdown)}
+          onBodyMarkdownChange={(markdown, source) =>
+            applyLocalBodyMarkdown(active.id, markdown, {
+              bumpDate: source !== "hydrate",
+            })
+          }
         >
           {children}
         </NoteCollabSession>
@@ -221,8 +269,13 @@ export function NotesWorkspace({
     onRetry: handleRetrySync,
   });
 
-  const browserTitleContext = active && selectedIds.length <= 1 ? noteListTitle(active) : viewLabel;
-  useDocumentTitle(browserTitleContext);
+  const noteTitleActive = Boolean(active && selectedIds.length <= 1);
+  const browserTitleContext = noteTitleActive && active ? noteListTitle(active) : viewLabel;
+  useDocumentTitle(browserTitleContext, {
+    // Body edits derive the list title; debounce tab updates while typing.
+    debounceMs: noteTitleActive ? DOCUMENT_TITLE_DEBOUNCE_MS : 0,
+    flushKey: activeId ?? view,
+  });
 
   return (
     <>
@@ -330,6 +383,9 @@ export function NotesWorkspace({
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
               showCollabChrome={collabSessionActive}
+              onShare={shareOperations && noteMayShare === true ? openShareActiveNote : undefined}
+              readOnly={noteReadOnly}
+              canArchive={noteCanArchive}
             />
           )
         }
@@ -351,11 +407,17 @@ export function NotesWorkspace({
               contentRevision={formatNoteDateForList(active.date)}
               tags={active.tags}
               availableTags={tags}
-              onTagAdd={(tag) => toggleNoteTag(active.id, tag)}
-              onTagRemove={(tag) => toggleNoteTag(active.id, tag)}
+              showTags={activeShowsTags}
+              onTagAdd={
+                activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+              }
+              onTagRemove={
+                activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+              }
               pullQuote={active.pullQuote}
               body={active.body}
               collab={noteBodyCollab}
+              readOnly={noteReadOnly}
             />
           );
         }}
@@ -421,6 +483,18 @@ export function NotesWorkspace({
         }}
         contentClassName="notes-dialog-surface"
       />
+
+      {shareOperations ? (
+        <ShareDialog
+          path={shareDialog.shareDialog.path}
+          title={shareDialog.shareDialog.title}
+          open={shareDialog.shareDialog.open}
+          onOpenChange={shareDialog.handleShareDialogOpenChange}
+          shareOperations={shareOperations}
+          mode="notes"
+          dialogSurfaceClassName="notes-dialog-surface"
+        />
+      ) : null}
 
       {confirmDialog}
     </>

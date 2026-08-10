@@ -8,6 +8,10 @@
  *   /notes/starred/:noteId
  *   /notes/archive
  *   /notes/archive/:noteId
+ *   /notes/shared-with-me
+ *   /notes/shared-with-me/:noteId
+ *   /notes/shared-nb/:sharedNbSlug
+ *   /notes/shared-nb/:sharedNbSlug/:noteId
  *   /notes/tags/:tagSlug
  *   /notes/tags/:tagSlug/:noteId
  *   /notes/:notebookSlug
@@ -17,6 +21,7 @@
 export type NotesRouteParams = {
   tagSlug?: string;
   notebookSlug?: string;
+  sharedNbSlug?: string;
   noteId?: string;
 };
 
@@ -26,8 +31,17 @@ export function notesViewFromLocation(pathname: string, params: NotesRouteParams
   if (parts[0] !== "notes") return "all";
 
   const segment = parts[1] ? decodeURIComponent(parts[1]) : "all";
-  if (segment === "all" || segment === "starred" || segment === "archive") {
+  if (
+    segment === "all" ||
+    segment === "starred" ||
+    segment === "archive" ||
+    segment === "shared-with-me"
+  ) {
     return segment;
+  }
+  if (segment === "shared-nb" && params.sharedNbSlug) {
+    const path = decodeURIComponent(params.sharedNbSlug);
+    return `shared-nb:${path.startsWith("/") ? path : `/${path}`}`;
   }
   if (segment === "tags" && params.tagSlug) {
     return `tag:${decodeURIComponent(params.tagSlug)}`;
@@ -51,6 +65,10 @@ export type NotesNavigateTarget = {
     | "/notes/starred/$noteId"
     | "/notes/archive"
     | "/notes/archive/$noteId"
+    | "/notes/shared-with-me"
+    | "/notes/shared-with-me/$noteId"
+    | "/notes/shared-nb/$sharedNbSlug"
+    | "/notes/shared-nb/$sharedNbSlug/$noteId"
     | "/notes/tags/$tagSlug"
     | "/notes/tags/$tagSlug/$noteId"
     | "/notes/$notebookSlug"
@@ -75,6 +93,17 @@ export function notesNavigateTarget(view: string, noteId = ""): NotesNavigateTar
       ? { to: "/notes/archive/$noteId", params: { noteId } }
       : { to: "/notes/archive", params: {} };
   }
+  if (view === "shared-with-me") {
+    return noteId
+      ? { to: "/notes/shared-with-me/$noteId", params: { noteId } }
+      : { to: "/notes/shared-with-me", params: {} };
+  }
+  if (view.startsWith("shared-nb:")) {
+    const sharedNbSlug = encodeURIComponent(view.slice("shared-nb:".length));
+    return noteId
+      ? { to: "/notes/shared-nb/$sharedNbSlug/$noteId", params: { sharedNbSlug, noteId } }
+      : { to: "/notes/shared-nb/$sharedNbSlug", params: { sharedNbSlug } };
+  }
   if (view.startsWith("tag:")) {
     const tagSlug = encodeURIComponent(view.slice(4));
     return noteId
@@ -87,5 +116,8 @@ export function notesNavigateTarget(view: string, noteId = ""): NotesNavigateTar
       ? { to: "/notes/$notebookSlug/$noteId", params: { notebookSlug, noteId } }
       : { to: "/notes/$notebookSlug", params: { notebookSlug } };
   }
-  return { to: "/notes/all", params: {} };
+  // Unknown view: keep an optional note id so selection never silently drops.
+  return noteId
+    ? { to: "/notes/all/$noteId", params: { noteId } }
+    : { to: "/notes/all", params: {} };
 }

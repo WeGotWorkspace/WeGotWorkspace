@@ -21,16 +21,18 @@ export type NoteDetailViewProps = {
   /** Confirm a tag from the inline add field (existing or newly typed). */
   onTagAdd?: (label: string) => void;
   onTagRemove?: (label: string) => void;
+  /**
+   * When `false`, omit the tag group entirely (personal share recipients).
+   * Default `true`.
+   */
+  showTags?: boolean;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
   body: string[];
   /**
-   * Collab config for the body. When provided (and not read-only), the body is
-   * edited via the Docs Yjs stack and persists through the collab document — the
-   * body never flows through the Notes metadata API. Omit for read-only/solo.
-   *
-   * Requires a parent {@link NoteCollabSession} (typically via WorkspaceApp
-   * `detailWrapper`) so action-bar presence and the editor share one session.
+   * Collab config for the body. When provided, the body uses the Docs Yjs stack
+   * (parent {@link NoteCollabSession}). View-only shares keep the surface with
+   * TipTap `editable={false}`. Omit for Storybook / solo editors.
    */
   collab?: NoteCollabConfig;
   /** When `true`, body and tags are display-only. Default `false` (editing on). */
@@ -45,6 +47,7 @@ export function NoteDetailView({
   availableTags,
   onTagAdd,
   onTagRemove,
+  showTags = true,
   pullQuote,
   body,
   collab,
@@ -52,19 +55,24 @@ export function NoteDetailView({
   className,
 }: NoteDetailViewProps) {
   const markdown = noteBodyToMarkdown(body);
-  const useCollabSurface = !readOnly && collab != null;
+  // Keep the shared Yjs surface for view-only (presence + live body); TipTap
+  // `editable` enforces read-only. Solo editor is for Storybook / no collab.
+  const useCollabSurface = collab != null;
+  const tagsReadOnly = readOnly || onTagAdd == null;
 
   return (
     <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
-      <TagGroup
-        className="note-detail-view__tag-group py-6 mb-6"
-        size="lg"
-        tags={tags}
-        readonly={readOnly}
-        suggestions={availableTags}
-        onAddTag={readOnly ? undefined : onTagAdd}
-        onRemoveTag={readOnly ? undefined : onTagRemove}
-      />
+      {showTags ? (
+        <TagGroup
+          className="note-detail-view__tag-group py-6 mb-6"
+          size="lg"
+          tags={tags}
+          readonly={tagsReadOnly}
+          suggestions={availableTags}
+          onAddTag={tagsReadOnly ? undefined : onTagAdd}
+          onRemoveTag={tagsReadOnly ? undefined : onTagRemove}
+        />
+      ) : null}
 
       {pullQuote ? (
         <p className="note-detail-view__pull-quote text-xl leading-snug mb-8 font-medium">
@@ -73,7 +81,7 @@ export function NoteDetailView({
       ) : null}
 
       {useCollabSurface ? (
-        <NoteCollabEditorSurface />
+        <NoteCollabEditorSurface editable={!readOnly} />
       ) : (
         <NoteTextEditorBody
           noteId={noteId}

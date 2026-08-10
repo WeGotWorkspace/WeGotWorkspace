@@ -35,3 +35,21 @@ export function isDialogEditableAccess(access: DriveShareAccess): boolean {
 }
 
 export const SHARE_UI_PERMISSIONS: ShareUIPermission[] = ["view", "comment", "edit", "full"];
+
+/** Notes team ACL is view / edit only (no comment, no full). */
+export const NOTES_SHARE_UI_PERMISSIONS: ShareUIPermission[] = ["view", "edit"];
+
+/**
+ * Map API access onto a selectable dialog option for the given permission list.
+ * Legacy Notes `full` grants fold to `edit` so they stay editable without offering Full.
+ */
+export function accessToSelectableUIPermission(
+  access: DriveShareAccess,
+  permissions: readonly ShareUIPermission[],
+): ShareUIPermission | null {
+  const mapped = accessToUIPermission(access);
+  if (mapped === null) return null;
+  if (permissions.includes(mapped)) return mapped;
+  if (mapped === "full" && permissions.includes("edit")) return "edit";
+  return null;
+}

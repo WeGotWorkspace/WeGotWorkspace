@@ -184,6 +184,7 @@ final class DriveService
         if (! $disk->move($fromKey, $toKey)) {
             throw new \RuntimeException('Rename failed.');
         }
+        $this->shares->rewritePathPrefix($fromPath, $toPath);
         $this->search->deleteDavPath('files/'.$fromKey);
         $this->search->indexFileStorageKey($toKey);
         if ($disk->directoryExists($toKey)) {

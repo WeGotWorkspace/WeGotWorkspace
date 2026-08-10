@@ -68,4 +68,31 @@ final class DriveShareRightsTest extends TestCase
         $this->assertSame(DriveShareAccess::EDIT, DriveShareAccess::normalize('REVIEW'));
         $this->assertSame(DriveShareAccess::COMMENT, DriveShareAccess::normalize('comment'));
     }
+
+    public function test_note_paths_force_may_comment_and_may_review_false(): void
+    {
+        foreach ([
+            DriveShareAccess::VIEW,
+            DriveShareAccess::COMMENT,
+            DriveShareAccess::REVIEW,
+            DriveShareAccess::EDIT,
+            DriveShareAccess::FULL,
+        ] as $access) {
+            $rights = DriveShareAccess::rightsFor($access, true, false, true);
+            $this->assertFalse($rights['mayComment'], $access);
+            $this->assertFalse($rights['mayReview'], $access);
+            $this->assertTrue($rights['mayView'], $access);
+            $this->assertFalse($rights['mayManageStructure'], $access);
+        }
+
+        $edit = DriveShareAccess::rightsFor(DriveShareAccess::EDIT, true, false, true);
+        $this->assertTrue($edit['mayEditContent']);
+        $this->assertFalse($edit['mayManageStructure']);
+
+        // Legacy full rows on note paths keep edit content but never structure-manage.
+        $full = DriveShareAccess::rightsFor(DriveShareAccess::FULL, true, true, true);
+        $this->assertTrue($full['mayEditContent']);
+        $this->assertFalse($full['mayManageStructure']);
+        $this->assertTrue($full['mayShare']);
+    }
 }

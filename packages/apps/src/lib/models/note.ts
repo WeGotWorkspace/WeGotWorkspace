@@ -25,4 +25,36 @@ export type Note = {
   starred?: boolean;
   /** From `GET /notes/items` — seeds archive view. */
   archived?: boolean;
+  /** Personal vs group home; from Notes API / shared listings. */
+  scope?: "personal" | "group";
+  /** Present when {@link scope} is `group`. */
+  groupSlug?: string | null;
+  /**
+   * Virtual drive path when known (collab / share). Shared-with-me stubs set this
+   * from the listing `path`; owned notes may omit it and rebuild via `noteCollabPath`.
+   */
+  apiPath?: string;
+  /** True for Shared-with-me file-grant stubs (excluded from All / personal notebooks). */
+  sharedInbox?: boolean;
+  /**
+   * @deprecated Personal ACL notebook-directory grants were removed. Unused.
+   */
+  sharedNotebookGrant?: boolean;
+  /**
+   * Grantor display name for Shared-with-me file grants (API `owner`).
+   * Used for list/detail username location labeling.
+   */
+  sharedBy?: string;
+  /**
+   * Effective share rights for the current user when known from list payloads
+   * (shared-with-me / shared-notebook notes). Owned notes omit this.
+   */
+  myRights?: {
+    mayEditContent: boolean;
+  };
+  /**
+   * True when the current user has outgoing share grants on this note file or
+   * its notebook (from `GET /notes/items` `hasShares`). Owner affordance only.
+   */
+  isShared?: boolean;
 };

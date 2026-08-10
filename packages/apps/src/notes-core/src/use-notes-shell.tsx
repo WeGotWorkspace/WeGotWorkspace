@@ -6,7 +6,14 @@ import type { Note } from "@/lib/models/note";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
-import { enrichNote, normalizeTag } from "./notes-note-utils";
+import {
+  enrichNote,
+  mergeBootstrapNotesPreservingOptimistic,
+  normalizeTag,
+  notesCanCreateInView,
+  noteShowsTags,
+  sharedNotebookLabel,
+} from "./notes-note-utils";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
 
 /** Debounce bursts of edits before showing a save toast. */
@@ -23,6 +30,19 @@ export type UseNotesShellArgs = {
   initialView?: string;
   onViewChange?: (view: string) => void;
 };
+
+/** Personal notebook names from bootstrap rows + owned notes (excludes shared/group). */
+export function collectPersonalNotebookNames(
+  dataNotebooks: readonly string[] | undefined,
+  noteList: readonly Pick<Note, "notebook" | "sharedInbox" | "sharedNotebookGrant" | "scope">[],
+): string[] {
+  const fromData = dataNotebooks ?? [];
+  const fromNotes = noteList
+    .filter((note) => !note.sharedInbox && !note.sharedNotebookGrant && note.scope !== "group")
+    .map((note) => note.notebook)
+    .filter((name) => name.trim().length > 0);
+  return [...new Set([...fromData, ...fromNotes])];
+}
 
 export function useNotesShell({
   data,
@@ -63,6 +83,13 @@ export function useNotesShell({
     return map;
   });
 
+  // Mutable so delete/rename/move can drop emptied personal leftovers immediately.
+  // Re-synced from bootstrap `data` (Dexie + live); mutations own incremental updates
+  // so emptied names in stale `data.notebooks` do not resurrect after every edit.
+  const [notebooks, setNotebooks] = useState(() =>
+    collectPersonalNotebookNames(data.notebooks, data.notes),
+  );
+
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
     (fallback = "Could not sync this change. Please try again.") => showError(fallback),
@@ -94,7 +121,10 @@ export function useNotesShell({
   );
 
   useEffect(() => {
-    setNotes(data.notes.map(enrichNote));
+    // Merge by id so optimistic tags/starred survive a stale bootstrap refresh
+    // (tag upserts are write-queue delayed; create/list often returns first).
+    setNotes((prev) => mergeBootstrapNotesPreservingOptimistic(data.notes.map(enrichNote), prev));
+    setNotebooks(collectPersonalNotebookNames(data.notebooks, data.notes));
   }, [bootstrapRevision, data]);
 
   useEffect(() => {
@@ -102,14 +132,14 @@ export function useNotesShell({
     setView(initialView);
   }, [initialView]);
 
-  const notebooks = useMemo(
-    () => [...new Set(notes.map((note) => note.notebook).filter((name) => name.trim().length > 0))],
-    [notes],
-  );
+  const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
   const tags = useMemo(
     () => [
       ...new Set(
-        notes.flatMap((note) => note.tags.map((tag) => normalizeTag(tag))).filter(Boolean),
+        notes
+          .filter((note) => noteShowsTags(note))
+          .flatMap((note) => note.tags.map((tag) => normalizeTag(tag)))
+          .filter(Boolean),
       ),
     ],
     [notes],
@@ -135,12 +165,21 @@ export function useNotesShell({
     if (view === "all") return L.sidebarAllItems;
     if (view === "starred") return L.sidebarStarred;
     if (view === "archive") return L.sidebarArchive;
+    if (view === "shared-with-me") return L.sidebarSharedWithMe;
+    if (view.startsWith("shared-nb:")) {
+      const path = view.slice("shared-nb:".length);
+      const match = sharedNotebooks.find(
+        (entry) => entry.path === path || entry.path === `/${path.replace(/^\//, "")}`,
+      );
+      if (match) return sharedNotebookLabel(match);
+      return path.split("/").pop() ?? L.sectionSharedNotebooks;
+    }
     if (view.startsWith("nb:")) return view.slice(3);
     if (view.startsWith("tag:")) return L.tagViewTitle(view.slice(4));
     return L.fallbackViewTitle;
-  }, [L, view]);
+  }, [L, sharedNotebooks, view]);
 
-  const canCreateNote = !(view === "starred" || view === "archive");
+  const canCreateNote = notesCanCreateInView(view);
   const selectedNotebook = view.startsWith("nb:") ? view.slice(3) : null;
   const selectedTag = view.startsWith("tag:") ? view.slice(4) : null;
   const canEditDelete = !!(selectedNotebook || selectedTag);
@@ -179,6 +218,8 @@ export function useNotesShell({
     archived,
     setArchived,
     notebooks,
+    setNotebooks,
+    sharedNotebooks,
     tags,
     viewLabel,
     canCreateNote,

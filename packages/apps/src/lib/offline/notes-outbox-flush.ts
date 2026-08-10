@@ -45,6 +45,7 @@ function noteMetadataUpsertRequest(
     tags: metadata.tags,
     ...(metadata.starred !== undefined ? { starred: metadata.starred } : {}),
     ...(metadata.archived !== undefined ? { archived: metadata.archived } : {}),
+    ...(metadata.groupSlug?.trim() ? { groupSlug: metadata.groupSlug.trim() } : {}),
   };
 }
 
@@ -129,19 +130,32 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
         serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
+        const groupSlug =
+          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
+            ? payload.groupSlug.trim()
+            : undefined;
         await deleteNoteItem(noteId, {
           notebook: String(payload.notebook ?? ""),
           archived: Boolean(payload.archived),
+          ...(groupSlug ? { groupSlug } : {}),
         });
         await removeNoteFromCache(username, noteId);
       } else if (row.op === "archive") {
         const noteId = String(payload.noteId ?? "");
-        const saved = await archiveNoteItem(noteId);
+        const groupSlug =
+          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
+            ? payload.groupSlug.trim()
+            : undefined;
+        const saved = await archiveNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
         await upsertNoteInCache(username, saved, false);
         serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "restore") {
         const noteId = String(payload.noteId ?? "");
-        const saved = await restoreNoteItem(noteId);
+        const groupSlug =
+          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
+            ? payload.groupSlug.trim()
+            : undefined;
+        const saved = await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
         await upsertNoteInCache(username, saved, false);
         serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "createNotebook") {

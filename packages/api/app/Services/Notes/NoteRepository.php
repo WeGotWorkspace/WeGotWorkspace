@@ -6,6 +6,7 @@ namespace App\Services\Notes;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Drive\DriveShareService;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\NoteScope;
 use App\Storage\NoteStoragePaths;
@@ -21,6 +22,7 @@ final class NoteRepository
         private NoteMarkdownCodec $codec,
         private SearchIndexerService $searchIndexer,
         private DriveGroupResolver $groups,
+        private DriveShareService $shares,
     ) {}
 
     /**
@@ -62,7 +64,7 @@ final class NoteRepository
             static fn (array $a, array $b): int => strcmp((string) ($b['updatedAt'] ?? ''), (string) ($a['updatedAt'] ?? ''))
         );
 
-        return ['items' => array_values($items)];
+        return ['items' => $this->annotateHasShares($username, array_values($items))];
     }
 
     /**
@@ -151,6 +153,7 @@ final class NoteRepository
         if (! $disk->move($from['key'], $toKey)) {
             throw new ApiHttpException(500, 'Could not move note.', 'server_error');
         }
+        $this->shares->rewritePathPrefix('/'.$from['key'], '/'.$toKey);
         $this->syncSearchIndex(fn () => $this->searchIndexer->deleteDavPath('files/'.$from['key']));
         $this->syncSearchIndex(fn () => $this->searchIndexer->indexFileStorageKey($toKey));
 
@@ -189,10 +192,61 @@ final class NoteRepository
                     $byName[$scopeKey]['activeCount']++;
                 }
             }
+
+            // Group membership notebooks must appear even when empty (Shared notebooks
+            // sidebar). Personal empty dirs stay omitted to match historical listing.
+            // When `.notes` exists but has no notebook dirs yet (pre-default provision),
+            // still surface the default notebook name so members can open it.
+            if ($scope->isGroup()) {
+                $dirs = $this->listNotebookDirectories($scope);
+                if ($dirs === []) {
+                    $base = $this->notePaths->baseKey($scope, false);
+                    if ($this->disk()->directoryExists($base)) {
+                        $dirs = [GroupNotesHomesProvisioner::DEFAULT_NOTEBOOK];
+                    }
+                }
+                foreach ($dirs as $name) {
+                    $scopeKey = $scope->type().':'.((string) $scope->groupSlug()).':'.$name;
+                    if (isset($byName[$scopeKey])) {
+                        continue;
+                    }
+                    $byName[$scopeKey] = [
+                        'name' => $name,
+                        'activeCount' => 0,
+                        'archivedCount' => 0,
+                        'scope' => 'group',
+                        'groupSlug' => $scope->groupSlug(),
+                    ];
+                }
+            }
         }
         ksort($byName);
 
-        return ['items' => array_values($byName)];
+        return ['items' => $this->annotateNotebookHasShares($username, array_values($byName))];
+    }
+
+    /**
+     * Notebook directory names under a scope’s active `.notes` tree (excludes `.archive`).
+     *
+     * @return list<string>
+     */
+    private function listNotebookDirectories(NoteScope $scope): array
+    {
+        $base = $this->notePaths->baseKey($scope, false);
+        if (! $this->disk()->directoryExists($base)) {
+            return [];
+        }
+        $names = [];
+        foreach ($this->disk()->directories($base) as $notebookDir) {
+            $notebook = basename($notebookDir);
+            if ($notebook === '' || $notebook === '.archive' || str_starts_with($notebook, '.')) {
+                continue;
+            }
+            $names[] = $notebook;
+        }
+        sort($names);
+
+        return $names;
     }
 
     /**
@@ -239,6 +293,7 @@ final class NoteRepository
             if (! $this->disk()->move($source, $target)) {
                 throw new ApiHttpException(500, 'Could not rename notebook.', 'server_error');
             }
+            $this->shares->rewritePathPrefix('/'.$source, '/'.$target);
         }
 
         return ['ok' => true, 'from' => $from, 'to' => $to];
@@ -403,6 +458,87 @@ final class NoteRepository
     }
 
     /**
+     * Notebook-directory ACL shares are not a product feature — never mark
+     * personal notebooks with hasShares from dir grants.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function annotateNotebookHasShares(string $username, array $items): array
+    {
+        unset($username);
+
+        return $items;
+    }
+
+    /**
+     * Batch-annotate owned list rows with outgoing share indicators on the note
+     * file only (notebook-directory shares are not supported). One query — no N+1.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function annotateHasShares(string $username, array $items): array
+    {
+        if ($items === []) {
+            return $items;
+        }
+
+        $notePaths = [];
+        /** @var array<int, string> $pathByIndex */
+        $pathByIndex = [];
+        foreach ($items as $index => $note) {
+            $path = $this->virtualNoteSharePath($username, $note);
+            $notePaths[] = $path;
+            $pathByIndex[$index] = $path;
+        }
+
+        $indicators = $this->shares->shareIndicatorsForPaths(
+            $username,
+            array_values(array_unique($notePaths)),
+        );
+        if ($indicators === []) {
+            return $items;
+        }
+
+        foreach ($items as $index => &$note) {
+            $flags = $indicators[$pathByIndex[$index]] ?? null;
+            if ($flags === null) {
+                continue;
+            }
+            if ($flags['hasPublicShare']) {
+                $note['hasPublicShare'] = true;
+            }
+            if ($flags['hasTeamShare']) {
+                $note['hasTeamShare'] = true;
+            }
+            if ($flags['hasPublicShare'] || $flags['hasTeamShare']) {
+                $note['hasShares'] = true;
+            }
+        }
+        unset($note);
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $note
+     */
+    private function virtualNoteSharePath(string $username, array $note): string
+    {
+        $scope = (($note['scope'] ?? '') === 'group' && is_string($note['groupSlug'] ?? null) && $note['groupSlug'] !== '')
+            ? NoteScope::group((string) $note['groupSlug'])
+            : NoteScope::personal(is_string($note['username'] ?? null) && $note['username'] !== ''
+                ? (string) $note['username']
+                : $username);
+        $archived = ($note['archived'] ?? false) === true;
+        $notebook = (string) ($note['notebook'] ?? 'General');
+        $id = (string) ($note['id'] ?? '');
+
+        return '/'.$this->notePaths->noteKey($scope, $notebook, $id, $archived);
+    }
+
+    /**
      * Scopes to enumerate for a list/notebooks call: a single requested group,
      * or the caller's personal tree plus every group they belong to.
      *
@@ -530,6 +666,7 @@ final class NoteRepository
             if (! $this->disk()->move($from, $to)) {
                 throw new ApiHttpException(500, 'Could not move notebook notes.', 'server_error');
             }
+            $this->shares->rewritePathPrefix('/'.$from, '/'.$to);
             $this->syncSearchIndex(fn () => $this->searchIndexer->deleteDavPath('files/'.$from));
             $this->syncSearchIndex(fn () => $this->searchIndexer->indexFileStorageKey($to));
         }

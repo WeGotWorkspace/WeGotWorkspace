@@ -36,6 +36,8 @@ export type NoteUpsertMetadata = {
   tags: string[];
   starred?: boolean;
   archived?: boolean;
+  /** Present when the note lives under a group notebook. */
+  groupSlug?: string | null;
 };
 
 export type NotesUpsertPayload = {
@@ -51,6 +53,9 @@ export function extractNoteMetadata(note: Note): NoteUpsertMetadata {
     tags: note.tags,
     ...(note.starred !== undefined ? { starred: note.starred } : {}),
     ...(note.archived !== undefined ? { archived: note.archived } : {}),
+    ...(note.scope === "group" && note.groupSlug?.trim()
+      ? { groupSlug: note.groupSlug.trim() }
+      : {}),
   };
 }
 

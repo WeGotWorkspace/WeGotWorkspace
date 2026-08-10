@@ -9,14 +9,14 @@
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive editors (notes detail): fixed 36px — not --input-height (grows at md+). */
+/* Interactive editors (notes detail): fixed 28px (h-7) — not --input-height (grows at md+). */
 .tag-group--size-lg {
-  --tag-height: 2.25rem;
-  --tag-font-size: 0.875rem;
-  --tag-icon-size: 1rem;
-  --tag-padding-inline: 0.75rem;
-  --tag-gap: 0.5rem;
-  @apply gap-2;
+  --tag-height: 1.75rem;
+  --tag-font-size: 0.8125rem;
+  --tag-icon-size: 0.875rem;
+  --tag-padding-inline: 0.625rem;
+  --tag-gap: 0.375rem;
+  @apply gap-1.5;
 }
 
 .tag {
@@ -34,11 +34,11 @@
 }
 
 .tag--size-lg {
-  --tag-height: 2.25rem;
-  --tag-font-size: 0.875rem;
-  --tag-icon-size: 1rem;
-  --tag-padding-inline: 0.75rem;
-  --tag-gap: 0.5rem;
+  --tag-height: 1.75rem;
+  --tag-font-size: 0.8125rem;
+  --tag-icon-size: 0.875rem;
+  --tag-padding-inline: 0.625rem;
+  --tag-gap: 0.375rem;
 }
 
 .tag__icon {
@@ -60,9 +60,9 @@
 
 .tag--size-lg .tag__remove,
 .tag-group--size-lg .tag__remove {
-  min-width: 1.75rem;
-  min-height: 1.75rem;
-  margin-inline-end: -0.375rem;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  margin-inline-end: -0.25rem;
 }
 
 .tag__remove svg {
@@ -128,7 +128,7 @@
   min-width: 8rem;
   max-width: 14rem;
   width: 10rem;
-  padding-inline: 0.75rem;
+  padding-inline: 0.625rem;
 }
 
 .tag-group__input:focus,
@@ -167,8 +167,8 @@
 }
 
 .tag-group--size-lg .tag-group__suggestion {
-  @apply px-3 py-2;
-  min-height: 2.25rem;
+  @apply px-2.5 py-1.5;
+  min-height: 1.75rem;
 }
 
 .tag-group__suggestion:hover,

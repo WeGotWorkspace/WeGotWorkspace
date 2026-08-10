@@ -1,6 +1,10 @@
 import type { Note } from "@/lib/models/note";
 import type { DeleteNotebookAction, NotesAPIOperations } from "@/notes-core/src/notes-types";
-import { backfillNotesContentFromServer } from "@/notes-core/src/notes-note-utils";
+import {
+  backfillNotesContentFromServer,
+  preserveLocalListableBodiesOnServerNotes,
+} from "@/notes-core/src/notes-note-utils";
+import { enrichNotesListPreviewsFromCollabOffline } from "@/lib/offline/notes/notes-list-preview-enrich";
 import {
   archiveNoteItem,
   createNoteItem,
@@ -45,6 +49,16 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
   if (!isFetchNetworkError(error)) throw error;
+}
+
+async function patchCachedNotebooks(
+  username: string,
+  patch: (notebooks: string[]) => string[],
+): Promise<void> {
+  const cached = await readNotesBootstrapFromCache(username);
+  if (!cached) return;
+  cached.data.notebooks = patch(cached.data.notebooks);
+  await writeNotesBootstrapToCache(username, cached);
 }
 
 function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
@@ -121,7 +135,7 @@ async function queueOfflineUpsert(
 
 async function queueOfflineDelete(
   username: string,
-  note: Pick<Note, "id" | "notebook" | "archived">,
+  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
 ): Promise<void> {
   await removeOutboxMutationsForNote(username, note.id);
   await removeNoteFromCache(username, note.id);
@@ -133,26 +147,46 @@ async function queueOfflineDelete(
       noteId: note.id,
       notebook: note.notebook,
       archived: !!note.archived,
+      ...(note.scope === "group" && note.groupSlug?.trim()
+        ? { groupSlug: note.groupSlug.trim() }
+        : {}),
     }),
   });
 }
 
 async function resolveDeleteTarget(
   username: string,
-  note: Pick<Note, "id" | "notebook" | "archived">,
-): Promise<Pick<Note, "id" | "notebook" | "archived">> {
+  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
+): Promise<Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">> {
   const cached = note.id ? await resolveCachedNote(username, note.id) : undefined;
   if (cached) {
     return {
       id: note.id,
       notebook: cached.notebook,
       archived: cached.archived ?? note.archived ?? false,
+      scope: cached.scope ?? note.scope,
+      groupSlug: cached.groupSlug ?? note.groupSlug,
     };
   }
   return {
     id: note.id,
     notebook: note.notebook,
     archived: !!note.archived,
+    scope: note.scope,
+    groupSlug: note.groupSlug,
+  };
+}
+
+function groupSlugOpts(
+  note: Pick<Note, "scope" | "groupSlug"> | undefined,
+  opts?: { signal?: AbortSignal },
+): { signal?: AbortSignal; groupSlug?: string } | undefined {
+  const slug =
+    note?.scope === "group" && note.groupSlug?.trim() ? note.groupSlug.trim() : undefined;
+  if (!slug && !opts?.signal) return undefined;
+  return {
+    ...(opts?.signal !== undefined ? { signal: opts.signal } : {}),
+    ...(slug ? { groupSlug: slug } : {}),
   };
 }
 
@@ -219,7 +253,13 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       try {
         await deleteNoteItem(
           target.id,
-          { notebook: target.notebook, archived: !!target.archived },
+          {
+            notebook: target.notebook,
+            archived: !!target.archived,
+            ...(target.scope === "group" && target.groupSlug?.trim()
+              ? { groupSlug: target.groupSlug.trim() }
+              : {}),
+          },
           opts,
         );
         await removeNoteFromCache(username, target.id);
@@ -236,6 +276,10 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           !readBrowserOnline() ? "Note not found in cache while offline" : "Note not found",
         );
       }
+      const groupSlug =
+        existing.scope === "group" && existing.groupSlug?.trim()
+          ? existing.groupSlug.trim()
+          : undefined;
       if (!readBrowserOnline()) {
         const optimistic = { ...existing, archived: true };
         await upsertNoteInCache(username, optimistic, true);
@@ -243,12 +287,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "archive",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
       try {
-        const saved = await archiveNoteItem(id, opts);
+        const saved = await archiveNoteItem(id, groupSlugOpts(existing, opts));
         await upsertNoteInCache(username, saved, false);
         await runner.flush();
         return saved;
@@ -260,7 +304,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "archive",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
@@ -272,6 +316,10 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           !readBrowserOnline() ? "Note not found in cache while offline" : "Note not found",
         );
       }
+      const groupSlug =
+        existing.scope === "group" && existing.groupSlug?.trim()
+          ? existing.groupSlug.trim()
+          : undefined;
       if (!readBrowserOnline()) {
         const optimistic = { ...existing, archived: false };
         await upsertNoteInCache(username, optimistic, true);
@@ -279,12 +327,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "restore",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
       try {
-        const saved = await restoreNoteItem(id, opts);
+        const saved = await restoreNoteItem(id, groupSlugOpts(existing, opts));
         await upsertNoteInCache(username, saved, false);
         await runner.flush();
         return saved;
@@ -296,18 +344,16 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "restore",
-          payload: JSON.stringify({ noteId: id }),
+          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
       }
     },
     createNotebook: async (name, opts) => {
       if (!readBrowserOnline()) {
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached && !cached.data.notebooks.includes(name)) {
-          cached.data.notebooks.push(name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.includes(name) ? notebooks : [...notebooks, name],
+        );
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -318,14 +364,15 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await createNotebookApi(name, opts);
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.includes(name) ? notebooks : [...notebooks, name],
+        );
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached && !cached.data.notebooks.includes(name)) {
-          cached.data.notebooks.push(name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.includes(name) ? notebooks : [...notebooks, name],
+        );
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -336,9 +383,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     renameNotebook: async (from, to, opts) => {
       if (!readBrowserOnline()) {
+        await patchCachedNotebooks(username, (notebooks) =>
+          notebooks.map((n) => (n === from ? to : n)),
+        );
         const cached = await readNotesBootstrapFromCache(username);
         if (cached) {
-          cached.data.notebooks = cached.data.notebooks.map((n) => (n === from ? to : n));
           cached.data.notes = cached.data.notes.map((n) =>
             n.notebook === from ? { ...n, notebook: to } : n,
           );
@@ -354,6 +403,14 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await renameNotebookApi(from, to, opts);
+        const cached = await readNotesBootstrapFromCache(username);
+        if (cached) {
+          cached.data.notebooks = cached.data.notebooks.map((n) => (n === from ? to : n));
+          cached.data.notes = cached.data.notes.map((n) =>
+            n.notebook === from ? { ...n, notebook: to } : n,
+          );
+          await writeNotesBootstrapToCache(username, cached);
+        }
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -375,11 +432,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     deleteNotebook: async (name, action, opts) => {
       if (!readBrowserOnline()) {
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notebooks = cached.data.notebooks.filter((n) => n !== name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -390,14 +443,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await deleteNotebookApi(name, notebookDeleteBodyForAction(action), opts);
+        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notebooks = cached.data.notebooks.filter((n) => n !== name);
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -424,16 +474,29 @@ export async function fetchNotesHybridBootstrap(): Promise<
   const cached = await readNotesBootstrapFromCache(username);
   if (cached) {
     cached.session = bootstrap.session;
-    if (bootstrap.data.notebooks.length > 0) {
-      cached.data.notebooks = bootstrap.data.notebooks;
-    }
+    // Always take the live personal notebook list — including empty. The previous
+    // `length > 0` guard left Dexie ghosts (emptied / deleted dirs the API omits).
+    cached.data.notebooks = bootstrap.data.notebooks;
+    cached.data.sharedNotebooks = bootstrap.data.sharedNotebooks ?? [];
     if (!hadOutbox) {
-      cached.data.notes = bootstrap.data.notes;
+      // Server is source of truth for membership/metadata, but body lives in
+      // collab — keep a non-empty cached preview when the API body is still empty.
+      cached.data.notes = preserveLocalListableBodiesOnServerNotes(
+        bootstrap.data.notes,
+        cached.data.notes,
+      );
       cached.data.tags = bootstrap.data.tags;
     } else {
       // Keep local/outbox rows, but backfill empty body/excerpt from the server
       // so historical list previews are not stuck on “Untitled note”.
       cached.data.notes = backfillNotesContentFromServer(cached.data.notes, bootstrap.data.notes);
+      const localIds = new Set(cached.data.notes.map((n) => n.id));
+      for (const note of bootstrap.data.notes) {
+        if (note.sharedInbox && !localIds.has(note.id)) {
+          cached.data.notes.push(note);
+          localIds.add(note.id);
+        }
+      }
       cached.data.tags = [
         ...new Set([
           ...cached.data.tags,
@@ -442,9 +505,14 @@ export async function fetchNotesHybridBootstrap(): Promise<
         ]),
       ];
     }
+    cached.data.notes = await enrichNotesListPreviewsFromCollabOffline(username, cached.data.notes);
     await writeNotesBootstrapToCache(username, cached);
     return cached;
   }
+  bootstrap.data.notes = await enrichNotesListPreviewsFromCollabOffline(
+    username,
+    bootstrap.data.notes,
+  );
   await writeNotesBootstrapToCache(username, bootstrap);
   return bootstrap;
 }
@@ -456,7 +524,13 @@ export async function loadNotesBootstrapHybrid(): Promise<
     const username = readOfflineNotesUsername();
     if (username) {
       const cached = await readNotesBootstrapFromCache(username);
-      if (cached) return cached;
+      if (cached) {
+        cached.data.notes = await enrichNotesListPreviewsFromCollabOffline(
+          username,
+          cached.data.notes,
+        );
+        return cached;
+      }
     }
     throw new Error("No cached notes available offline");
   }

@@ -4029,6 +4029,60 @@
         "x-wgw-access": "user"
       }
     },
+    "/notes/shared-with-me": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "List note files shared with the current user via path grants",
+        "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotesSharedWithMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/notes/shared-notebooks": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "List shared notebook ACL rows (compat — always empty)",
+        "description": "Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compat empty list (personal notebook-directory ACL shares removed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotesSharedNotebooksResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/calendars/events": {
       "get": {
         "tags": [
