@@ -28,7 +28,7 @@ import {
 } from "@/notes-core/src/notes-note-utils";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
-import { useDocumentTitle } from "@/lib/document-title";
+import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-title";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
@@ -269,8 +269,13 @@ export function NotesWorkspace({
     onRetry: handleRetrySync,
   });
 
-  const browserTitleContext = active && selectedIds.length <= 1 ? noteListTitle(active) : viewLabel;
-  useDocumentTitle(browserTitleContext);
+  const noteTitleActive = Boolean(active && selectedIds.length <= 1);
+  const browserTitleContext = noteTitleActive && active ? noteListTitle(active) : viewLabel;
+  useDocumentTitle(browserTitleContext, {
+    // Body edits derive the list title; debounce tab updates while typing.
+    debounceMs: noteTitleActive ? DOCUMENT_TITLE_DEBOUNCE_MS : 0,
+    flushKey: activeId ?? view,
+  });
 
   return (
     <>
