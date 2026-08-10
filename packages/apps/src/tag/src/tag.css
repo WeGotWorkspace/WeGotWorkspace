@@ -108,10 +108,10 @@
 .tag-group__input {
   @apply border px-2 font-medium outline-none;
   font-family: var(--font-mono);
-  font-size: var(--tag-font-size, 0.75rem);
+  font-size: 1rem;
   line-height: 1;
-  min-height: var(--tag-height, 1.5rem);
-  height: var(--tag-height, 1.5rem);
+  min-height: var(--input-height, 2.25rem);
+  height: var(--input-height, 2.25rem);
   min-width: 7rem;
   max-width: 12rem;
   width: 8rem;

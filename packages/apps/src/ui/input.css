@@ -15,7 +15,7 @@
   border-color: var(--control-border-color);
   border-radius: var(--control-radius);
   box-shadow: var(--input-shadow, none);
-  font-size: var(--input-font-size, 0.875rem);
+  font-size: var(--input-font-size, 1rem);
   background-color: var(
     --input-background,
     color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
@@ -35,7 +35,7 @@
 }
 
 .input::file-selector-button {
-  font-size: var(--input-font-size, 0.875rem);
+  font-size: var(--input-font-size, 1rem);
 }
 
 .textarea {

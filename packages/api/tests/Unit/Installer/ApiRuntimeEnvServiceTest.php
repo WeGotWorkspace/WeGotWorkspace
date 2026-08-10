@@ -70,6 +70,26 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertTrue($result['patchedUrl']);
     }
 
+    public function test_api_package_root_falls_back_to_runtime_when_install_shell_has_no_api(): void
+    {
+        $shellOnly = sys_get_temp_dir().'/wgw-shell-'.uniqid('', true);
+        mkdir($shellOnly, 0775, true);
+        file_put_contents($shellOnly.'/index.php', "<?php\n");
+
+        try {
+            $service = new ApiRuntimeEnvService;
+            $resolved = $service->apiPackageRoot($shellOnly);
+            $expected = dirname(__DIR__, 3);
+
+            $this->assertNotNull($resolved);
+            $this->assertSame(realpath($expected), realpath((string) $resolved));
+            $this->assertFileExists($resolved.'/vendor/autoload.php');
+        } finally {
+            @unlink($shellOnly.'/index.php');
+            @rmdir($shellOnly);
+        }
+    }
+
     public function test_ensure_does_not_replace_existing_app_key(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n");
