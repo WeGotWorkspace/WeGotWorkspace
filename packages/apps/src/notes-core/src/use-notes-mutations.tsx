@@ -8,8 +8,8 @@ import { createTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
   createNoteSaveDebouncer,
-  enrichNote,
   mapNotesWithBodyMarkdown,
+  mergeCreatedNotePreservingLocalOptimistic,
   normalizeTag,
   noteAllowsTagAssignment,
   noteShowsStarControls,
@@ -63,8 +63,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   } = list;
 
   const debouncerRef = useRef(createNoteSaveDebouncer(AUTOSAVE_WRITE_DEBOUNCE_MS));
+  /** local-* → server id after online create resolves (tag upserts may still be queued). */
+  const noteIdRemapRef = useRef(new Map<string, string>());
   const { online } = useConnectivity();
   const wasOnlineRef = useRef(online);
+
+  const resolveNoteId = useCallback((id: string) => noteIdRemapRef.current.get(id) ?? id, []);
 
   useEffect(() => {
     const debouncer = debouncerRef.current;
@@ -242,10 +246,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       });
       if (assignableIds.length === 0) return;
       const before = notes.filter((note) => assignableIds.includes(note.id));
+      const editedAt = new Date().toISOString();
       setNotes((prev) =>
         prev.map((note) =>
           assignableIds.includes(note.id) && !note.tags.includes(tag)
-            ? { ...note, tags: [...note.tags, tag] }
+            ? { ...note, tags: [...note.tags, tag], date: editedAt }
             : note,
         ),
       );
@@ -257,13 +262,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       );
       if (!operations) return;
       const updatedRows = before.map((note) =>
-        note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag] },
+        note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag], date: editedAt },
       );
       queueMutation({
         key: `notes:tag:${tag}:${assignableIds.slice().sort().join(",")}`,
         toastMessage: `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
         execute: () =>
-          Promise.all(updatedRows.map((row) => operations.upsertNote(row))).then(() => {}),
+          Promise.all(
+            updatedRows.map((row) => operations.upsertNote({ ...row, id: resolveNoteId(row.id) })),
+          ).then(() => {}),
         undo: () => {
           setNotes((prev) =>
             prev.map((note) => {
@@ -283,7 +290,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: "Tag assignment undone.",
       });
     },
-    [notes, operations, queueMutation, setNotes, show],
+    [notes, operations, queueMutation, resolveNoteId, setNotes, show],
   );
 
   const renameNotebook = useCallback(
@@ -394,9 +401,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (!before || !noteAllowsTagAssignment(before, true)) return;
       const has = before.tags.includes(tag);
       const added = !has;
+      const editedAt = new Date().toISOString();
       const updated = {
         ...before,
         tags: has ? before.tags.filter((current) => current !== tag) : [...before.tags, tag],
+        date: editedAt,
       };
       setNotes((prev) => prev.map((note) => (note.id === noteId ? updated : note)));
       const toastMessage = added ? `Added ${tag}` : `Removed ${tag}`;
@@ -408,14 +417,16 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         toastMessage,
         icon: <Tag className="size-4" />,
         execute: async (signal) => {
-          if (operations) await operations.upsertNote(updated, { signal });
+          if (operations) {
+            await operations.upsertNote({ ...updated, id: resolveNoteId(noteId) }, { signal });
+          }
         },
         undo: rollback,
         onError: rollback,
         undoToastMessage: added ? "Tag assignment undone." : "Tag removal undone.",
       });
     },
-    [notes, operations, queueMutation, setNotes],
+    [notes, operations, queueMutation, resolveNoteId, setNotes],
   );
 
   const updateNote = useCallback(
@@ -481,7 +492,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         .upsertNote(note)
         .then((saved) => {
           if (saved.id === id) return;
-          setNotes((prev) => prev.map((row) => (row.id === id ? enrichNote(saved) : row)));
+          noteIdRemapRef.current.set(id, saved.id);
+          setNotes((prev) =>
+            prev.map((row) =>
+              row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
+            ),
+          );
           setActiveId((current) => (current === id ? saved.id : current));
           if (selectedIds.includes(id)) {
             setSelectedIds((current) => current.map((rowId) => (rowId === id ? saved.id : rowId)));

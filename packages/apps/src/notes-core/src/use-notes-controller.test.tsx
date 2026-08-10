@@ -143,11 +143,111 @@ describe("useNotesController bootstrap sync", () => {
     });
     expect(result.current.active?.tags).toEqual(["focus"]);
 
+    // Same revision, new data object — must not wipe optimistic tags.
     rerender({ data: staleBootstrap, bootstrapRevision: 0 });
-    expect(result.current.active?.tags).toEqual([]);
+    expect(result.current.active?.tags).toEqual(["focus"]);
 
+    // Bumped revision with still-stale server tags — still keep local chips.
     rerender({ data: staleBootstrap, bootstrapRevision: 1 });
-    expect(result.current.active?.tags).toEqual([]);
+    expect(result.current.active?.tags).toEqual(["focus"]);
+  });
+
+  it("preserves tags when create remaps local-* id to server id", async () => {
+    let resolveCreate!: (note: Note) => void;
+    const operations = {
+      upsertNote: vi.fn(
+        () =>
+          new Promise<Note>((resolve) => {
+            resolveCreate = resolve;
+          }),
+      ),
+      deleteNote: vi.fn(),
+      archiveNote: vi.fn(),
+      restoreNote: vi.fn(),
+      createNotebook: vi.fn(),
+      renameNotebook: vi.fn(),
+      deleteNotebook: vi.fn(),
+    };
+
+    const data: NotesUIData = {
+      notes: [],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, operations }),
+    );
+
+    act(() => {
+      result.current.createNote();
+    });
+    const tempId = result.current.activeId;
+    expect(tempId).toMatch(/^local-/);
+
+    act(() => {
+      result.current.toggleNoteTag(tempId, "focus");
+    });
+    expect(result.current.active?.tags).toEqual(["focus"]);
+
+    const serverDate = new Date().toISOString();
+    await act(async () => {
+      resolveCreate({
+        id: "n-server-1",
+        category: "Note",
+        date: serverDate,
+        updatedAt: serverDate,
+        excerpt: "",
+        body: [""],
+        notebook: "Drafts",
+        tags: [],
+        wordCount: 0,
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.activeId).toBe("n-server-1");
+    expect(result.current.active?.tags).toEqual(["focus"]);
+    expect(result.current.notes.find((note) => note.id === "n-server-1")?.tags).toEqual(["focus"]);
+  });
+
+  it("preserves tags when bootstrap remaps local-* to a server id", () => {
+    const taggedLocal: Note = {
+      ...localNote,
+      tags: ["focus"],
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const initialData: NotesUIData = {
+      notes: [taggedLocal],
+      notebooks: ["Drafts"],
+      tags: ["focus"],
+    };
+    const syncedData: NotesUIData = {
+      notes: [
+        {
+          ...syncedNote,
+          tags: [],
+          date: "2026-08-10T11:00:00.000Z",
+          excerpt: taggedLocal.excerpt,
+          body: taggedLocal.body,
+        },
+      ],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ data }: { data: NotesUIData }) => useNotesController({ data, listLoading: false }),
+      { initialProps: { data: initialData } },
+    );
+
+    clickSelect(result, taggedLocal.id);
+    expect(result.current.active?.tags).toEqual(["focus"]);
+
+    rerender({ data: syncedData });
+
+    expect(result.current.activeId).toBe(syncedNote.id);
+    expect(result.current.active?.tags).toEqual(["focus"]);
   });
 
   it("renames the active notebook view when renameNotebook runs", () => {

@@ -187,6 +187,91 @@ export function enrichNote(note: Note): Note {
   };
 }
 
+function noteDisplayTimestampMs(note: Pick<Note, "date" | "updatedAt">): number {
+  const raw = note.date !== "—" ? note.date : note.updatedAt;
+  if (!raw || raw === "—") return 0;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/** Order-independent tag list equality after normalize. */
+export function noteTagsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = [...a].map(normalizeTag).filter(Boolean).sort();
+  const right = [...b].map(normalizeTag).filter(Boolean).sort();
+  return left.every((tag, i) => tag === right[i]);
+}
+
+/**
+ * Apply a create/upsert server row onto the in-memory note, keeping optimistic
+ * tags/starred (and listable body) that landed while the request was in flight.
+ *
+ * Tag upserts ride the workspace write queue (~2.5s), so create remap often
+ * returns first with an empty `tags` array — replacing wholesale made chips
+ * vanish until the delayed upsert / a later refresh.
+ */
+export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: Note): Note {
+  const tagsDiffer = !noteTagsEqual(local.tags, saved.tags);
+  const starredDiffer = local.starred !== saved.starred;
+  const preserveBody = noteHasListableBody(local) && !noteHasListableBody(saved);
+  // When keeping optimistic metadata, ensure display date is at least the
+  // server row's so a follow-up bootstrap merge (local date >= server) keeps
+  // the same tags — even if the create response clock is ahead of the client.
+  const date =
+    tagsDiffer || starredDiffer
+      ? noteDisplayTimestampMs(local) >= noteDisplayTimestampMs(saved)
+        ? local.date
+        : saved.date
+      : preserveBody && local.date !== "—"
+        ? local.date
+        : saved.date;
+  return enrichNote({
+    ...saved,
+    tags: local.tags,
+    starred: local.starred ?? saved.starred,
+    notebook: local.notebook || saved.notebook,
+    date,
+    ...(preserveBody
+      ? { body: local.body, excerpt: local.excerpt, wordCount: local.wordCount }
+      : {}),
+  });
+}
+
+/**
+ * Merge bootstrap/server notes into current UI notes without dropping optimistic
+ * tags/starred that are still ahead of a stale list payload (same id).
+ */
+export function mergeBootstrapNotesPreservingOptimistic(
+  serverNotes: Note[],
+  localNotes: Note[],
+): Note[] {
+  const localById = new Map(localNotes.map((note) => [note.id, note]));
+  return serverNotes.map((server) => {
+    const local = localById.get(server.id);
+    if (!local) return enrichNote(server);
+
+    const localNewerOrEqual = noteDisplayTimestampMs(local) >= noteDisplayTimestampMs(server);
+    const preserveTags = localNewerOrEqual && !noteTagsEqual(local.tags, server.tags);
+    const preserveStarred =
+      localNewerOrEqual && local.starred !== undefined && local.starred !== server.starred;
+    const preserveBody = !noteHasListableBody(server) && noteHasListableBody(local);
+
+    return enrichNote({
+      ...server,
+      ...(preserveTags ? { tags: local.tags } : {}),
+      ...(preserveStarred ? { starred: local.starred } : {}),
+      ...(preserveBody
+        ? {
+            body: local.body,
+            excerpt: local.excerpt,
+            wordCount: local.wordCount,
+            date: local.date !== "—" ? local.date : server.date,
+          }
+        : {}),
+    });
+  });
+}
+
 /**
  * Merge local (cache/outbox) notes with a fresh server list for read-path previews.
  *

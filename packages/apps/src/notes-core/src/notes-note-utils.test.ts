@@ -10,6 +10,8 @@ import {
   filterVisibleNotes,
   dedupeNotesById,
   mapNotesWithBodyMarkdown,
+  mergeBootstrapNotesPreservingOptimistic,
+  mergeCreatedNotePreservingLocalOptimistic,
   normalizeNoteBodyMarkdown,
   normalizeTag,
   noteAllowsTagAssignment,
@@ -232,6 +234,43 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.starred).toBe(false);
     expect(noteListTitle(merged[0]!)).toBe("Optimistic preview from typing");
     expect(merged[0]?.date).toBe("2026-08-06T12:00:00.000Z");
+  });
+
+  it("keeps optimistic tags when merging a stale create/bootstrap row", () => {
+    const local: Note = {
+      ...sampleNote,
+      id: "n-new",
+      tags: ["focus"],
+      date: "2026-08-10T12:00:01.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      id: "n-new",
+      tags: [],
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.tags).toEqual(["focus"]);
+  });
+
+  it("keeps local tags when create response remaps before the tag upsert lands", () => {
+    const local: Note = {
+      ...sampleNote,
+      id: "local-temp",
+      tags: ["focus"],
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      id: "n-server",
+      tags: [],
+      date: "2026-08-10T12:00:05.000Z",
+      updatedAt: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.id).toBe("n-server");
+    expect(merged.tags).toEqual(["focus"]);
+    expect(merged.date).toBe(saved.date);
   });
 
   it("prefers non-empty server body over cached body on refresh merge", () => {

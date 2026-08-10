@@ -6,7 +6,7 @@ import { useSelectionResetOnKeyChange } from "@/hooks/use-selection-reset-on-key
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
-import { filterVisibleNotes } from "./notes-note-utils";
+import { filterVisibleNotes, mergeCreatedNotePreservingLocalOptimistic } from "./notes-note-utils";
 import type { NotesShellState } from "./use-notes-shell";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
@@ -146,11 +146,23 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       setSelectedIds((current) =>
         current.map((rowId) => (rowId === activeId ? remappedId! : rowId)),
       );
+      // Bootstrap/outbox remap drops the local-* row; copy optimistic tags onto
+      // the server id before the write-queue tag upsert lands.
+      if (prevActive) {
+        const from = prevActive;
+        setNotes((current) =>
+          current.map((note) =>
+            note.id === remappedId
+              ? mergeCreatedNotePreservingLocalOptimistic(note, { ...from, id: remappedId! })
+              : note,
+          ),
+        );
+      }
     } else {
       setActiveId("");
     }
     prevNotesRef.current = notes;
-  }, [activeId, notes, setSelectedIds]);
+  }, [activeId, notes, setNotes, setSelectedIds]);
 
   const active = activeId ? notes.find((n) => n.id === activeId) : undefined;
 

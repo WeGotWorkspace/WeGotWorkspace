@@ -8,6 +8,7 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
 import {
   enrichNote,
+  mergeBootstrapNotesPreservingOptimistic,
   normalizeTag,
   notesCanCreateInView,
   noteShowsTags,
@@ -120,7 +121,9 @@ export function useNotesShell({
   );
 
   useEffect(() => {
-    setNotes(data.notes.map(enrichNote));
+    // Merge by id so optimistic tags/starred survive a stale bootstrap refresh
+    // (tag upserts are write-queue delayed; create/list often returns first).
+    setNotes((prev) => mergeBootstrapNotesPreservingOptimistic(data.notes.map(enrichNote), prev));
     setNotebooks(collectPersonalNotebookNames(data.notebooks, data.notes));
   }, [bootstrapRevision, data]);
 
