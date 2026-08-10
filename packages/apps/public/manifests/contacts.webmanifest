@@ -5,17 +5,17 @@
   "scope": "/contacts",
   "id": "/contacts",
   "display": "standalone",
-  "background_color": "#7360c8",
-  "theme_color": "#7360c8",
+  "background_color": "#A8895E",
+  "theme_color": "#A8895E",
   "icons": [
     {
-      "src": "/app-icons/contacts.svg?v=2",
+      "src": "/app-icons/contacts.svg?v=3",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/contacts-180.png?v=2",
+      "src": "/pwa-icons/contacts-180.png?v=3",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
