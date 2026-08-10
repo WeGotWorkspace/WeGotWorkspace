@@ -220,7 +220,9 @@ export function NotesWorkspace({
     };
   }, [active, noteCollabUrls, notesCollabWire, session.user.displayName, session.user.username]);
 
-  const showSingleNoteDetail = selectedIds.length <= 1 && !!active;
+  // Exactly one selected id (not 0): empty selection can leave a stale activeId
+  // after cmd/ctrl-deselect or selection reset, which must not keep the action bar.
+  const showSingleNoteDetail = selectedIds.length === 1 && !!active;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
   const openShareActiveNote = useCallback(() => {
@@ -270,7 +272,7 @@ export function NotesWorkspace({
     onRetry: handleRetrySync,
   });
 
-  const noteTitleActive = Boolean(active && selectedIds.length <= 1);
+  const noteTitleActive = showSingleNoteDetail;
   const browserTitleContext = noteTitleActive && active ? noteListTitle(active) : viewLabel;
   useDocumentTitle(browserTitleContext, {
     // Body edits derive the list title; debounce tab updates while typing.
@@ -401,7 +403,7 @@ export function NotesWorkspace({
               />
             );
           }
-          if (!active) {
+          if (!showSingleNoteDetail || !active) {
             return (
               <CollectionState icon={<StickyNote className="size-12" />}>
                 {L.emptyDetail}
