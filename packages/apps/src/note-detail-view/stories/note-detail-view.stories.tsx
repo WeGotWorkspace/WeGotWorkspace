@@ -16,7 +16,7 @@ const meta: Meta<typeof NoteDetailView> = {
     (Story) => (
       <TooltipProvider delayDuration={150}>
         <div className="notes-workspace notes-story-scope notes-story-scope--detail">
-          <div className="mx-auto max-w-3xl px-6 py-10 md:px-12 md:py-16">
+          <div className="notes-story-scope__detail-body mx-auto max-w-3xl px-6 py-10 md:px-12 md:py-16">
             <Story />
           </div>
         </div>
@@ -57,7 +57,7 @@ export const ReadOnly: Story = {
 /** Static layout preview: presence in the action bar, meta in the pinned footer. */
 export const CollabChromePreview: Story = {
   render: () => (
-    <div className="notes-workspace flex min-h-[24rem] flex-col">
+    <div className="notes-workspace notes-story-scope notes-story-scope--detail flex min-h-[24rem] flex-col">
       <ActionBar
         onBack={() => {}}
         rightLeading={

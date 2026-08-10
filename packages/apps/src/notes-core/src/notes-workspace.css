@@ -2,16 +2,19 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream main pane + gold sidebar.
- * Chip/button accent (`--notes-accent`) stays soft `#f6d176` (detail tags /
- * change-notebook). Full-bleed `--notes-sidebar` is a richer gold — same hex as
- * the chip reads washed on a large surface (no cream frame), so the sidebar
- * token is decoupled and stepped up toward former `#f0b422`.
+ * Notes product shell: cream panes + gold sidebar.
+ * Chip/button accent (`--notes-accent`) stays soft `#f6d176`. Full-bleed
+ * `--notes-sidebar` is a richer gold — soft accent reads washed on large
+ * surfaces (no cream frame), so the sidebar token is stepped up toward former
+ * `#f0b422`. Detail body (scroll only) uses a toned wash slightly heavier than
+ * list-item selected (`18%` accent) — no paper sheet.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
   --notes-accent: #f6d176;
   --notes-sidebar: #f3c450;
+  /* List selected ≈ 18% accent; body sits a step heavier on cream. */
+  --notes-detail-body-bg: color-mix(in oklab, var(--notes-accent) 26%, var(--color-cream, #ffffff));
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
@@ -39,6 +42,11 @@
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+
+/* Yellow only on the detail scroll body — action bar + footer stay cream. */
+.notes-workspace .workspace-detail-pane__scroll {
+  background-color: var(--notes-detail-body-bg);
 }
 
 @media (min-width: 768px) {
@@ -169,12 +177,16 @@
 
 .notes-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--workspace-detail-bg, var(--color-cream, #ffffff));
+}
+
+.notes-story-scope__detail-body {
+  background-color: var(--notes-detail-body-bg);
 }
 
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--workspace-detail-bg, var(--color-cream, #ffffff));
 }
 
 /* Owner outgoing-share pip on personal notebook rows (not a count badge). */
