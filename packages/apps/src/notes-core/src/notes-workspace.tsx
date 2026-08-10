@@ -220,9 +220,10 @@ export function NotesWorkspace({
     };
   }, [active, noteCollabUrls, notesCollabWire, session.user.displayName, session.user.username]);
 
-  // Exactly one selected id (not 0): empty selection can leave a stale activeId
-  // after cmd/ctrl-deselect or selection reset, which must not keep the action bar.
-  const showSingleNoteDetail = selectedIds.length === 1 && !!active;
+  // Empty detail = no multi-select and no selected note. Do not use `!!active`
+  // alone: cmd/ctrl-deselect and view selection-reset clear selectedIds while
+  // leaving a stale activeId — list looks unselected but the action bar stayed.
+  const showSingleNoteDetail = selectedIds.length === 1 && !!active && selectedIds[0] === active.id;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
   const openShareActiveNote = useCallback(() => {
