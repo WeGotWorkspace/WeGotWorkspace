@@ -23,6 +23,7 @@ function ContactsDetailActionBarHarness({
           editMode={editMode}
           createMode={createMode}
           closeMobileDetail={() => {}}
+          backLabel="All Contacts"
           onEdit={() => setEditMode(true)}
           onDelete={() => {}}
           onDownload={() => {}}

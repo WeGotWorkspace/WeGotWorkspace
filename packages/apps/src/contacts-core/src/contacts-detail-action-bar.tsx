@@ -9,6 +9,8 @@ type ContactsDetailActionBarProps = {
   createMode: boolean;
   canSaveCreate?: boolean;
   closeMobileDetail: () => void;
+  /** List / view title shown on the mobile back control. */
+  backLabel?: string;
   onEdit: () => void;
   onDelete: () => void;
   onSave: () => void;
@@ -23,6 +25,7 @@ export function ContactsDetailActionBar({
   createMode,
   canSaveCreate = true,
   closeMobileDetail,
+  backLabel,
   onEdit,
   onDelete,
   onSave,
@@ -33,6 +36,7 @@ export function ContactsDetailActionBar({
     return (
       <ActionBar
         onBack={closeMobileDetail}
+        backLabel={backLabel}
         rightActions={[
           {
             id: "cancel",
@@ -82,6 +86,7 @@ export function ContactsDetailActionBar({
   return (
     <ActionBar
       onBack={closeMobileDetail}
+      backLabel={backLabel}
       rightActions={rightActions}
       rightMenuLabel="More actions"
     />

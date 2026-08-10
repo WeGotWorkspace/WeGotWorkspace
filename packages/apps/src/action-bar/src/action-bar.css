@@ -12,12 +12,13 @@
 }
 
 .action-bar__back {
-  @apply size-9 rounded-full shrink-0 transition-colors;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  @apply max-w-[12rem] shrink min-w-0 rounded-full transition-colors;
   --button-ghost-color: var(--action-bar-back-color);
   --button-ghost-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+}
+
+.action-bar__back > span:last-child {
+  @apply truncate;
 }
 
 .action-bar__left,
@@ -70,7 +71,8 @@
   display: none;
 }
 
-@container action-bar (max-width: 36rem) {
+/* Keep inline actions visible until the bar is narrower than ~28rem. */
+@container action-bar (max-width: 28rem) {
   .action-bar__row {
     display: none;
   }
@@ -82,7 +84,7 @@
 
 /* Viewport fallback only when container queries are unavailable. */
 @supports not (container-type: inline-size) {
-  @media (max-width: 36rem) {
+  @media (max-width: 28rem) {
     .action-bar__row {
       display: none;
     }

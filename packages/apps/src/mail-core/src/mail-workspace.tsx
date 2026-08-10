@@ -223,6 +223,7 @@ export function MailWorkspace({
             <MailDetailActionBar
               active={active}
               closeMobileDetail={c.closeMobileDetail}
+              backLabel={viewLabel}
               onReply={reply}
               onReplyAll={replyAll}
               onForward={forward}

@@ -69,9 +69,7 @@ export function ViewHeader({
             <div className="view-header__actions">{actions}</div>
           </div>
           {subtitle ? (
-            <p className={cn("field-label-row__label", "view-header__subtitle", "mt-2")}>
-              {subtitle}
-            </p>
+            <p className={cn("field-label-row__label", "view-header__subtitle")}>{subtitle}</p>
           ) : null}
         </div>
       </div>

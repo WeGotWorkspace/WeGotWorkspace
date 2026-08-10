@@ -22,7 +22,7 @@
 
 /** Default: large serif display title. */
 .view-header__title {
-  @apply min-w-0 truncate text-3xl leading-none;
+  @apply min-w-0 truncate text-2xl leading-none;
   font-family: var(--font-serif);
   color: var(--color-ink);
 }
@@ -38,7 +38,8 @@
 }
 
 .view-header__subtitle {
-  @apply max-w-full;
+  @apply mt-0 max-w-full font-medium;
+  font-family: var(--font-sans);
 }
 
 .view-header__search-stack {

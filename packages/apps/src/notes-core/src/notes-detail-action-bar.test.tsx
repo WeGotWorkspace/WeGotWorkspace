@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi, afterEach } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import type { Note } from "@/lib/models/note";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { TooltipProvider } from "@/ui/tooltip";
+
+afterEach(() => {
+  cleanup();
+});
 
 function renderBar(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
@@ -45,6 +49,26 @@ describe("NotesDetailActionBar", () => {
       />,
     );
     expect(container.querySelector(".action-bar")).toBeNull();
+  });
+
+  it("shows the list name on the mobile back control", () => {
+    renderBar(
+      <NotesDetailActionBar
+        active={owned}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        backLabel="All Items"
+        openMoveDialog={vi.fn()}
+        toggleStar={vi.fn()}
+        toggleArchive={vi.fn()}
+      />,
+    );
+
+    const back = screen.getByRole("button", { name: "All Items" });
+    expect(back.textContent).toContain("All Items");
+    expect(back.className).toContain("action-bar__back");
   });
 
   it("shows notebook name and keeps move enabled for owned notes", () => {

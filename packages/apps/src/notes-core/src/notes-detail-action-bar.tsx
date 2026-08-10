@@ -19,6 +19,8 @@ type NotesDetailActionBarProps = {
   archived: Record<string, boolean>;
   starred: Record<string, boolean>;
   closeMobileDetail: () => void;
+  /** List / view title shown on the mobile back control. */
+  backLabel?: string;
   openMoveDialog: (ids: string[]) => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
@@ -44,6 +46,7 @@ export function NotesDetailActionBar({
   archived,
   starred,
   closeMobileDetail,
+  backLabel,
   openMoveDialog,
   toggleStar,
   toggleArchive,
@@ -119,6 +122,7 @@ export function NotesDetailActionBar({
   return (
     <ActionBar
       onBack={closeMobileDetail}
+      backLabel={backLabel}
       rightLeading={showCollabChrome ? <NoteCollabChrome /> : undefined}
       rightActions={rightActions}
       rightMenuLabel="More actions"

@@ -269,6 +269,7 @@ export function ContactsWorkspace({
               createMode={createMode}
               canSaveCreate={canSaveCreate}
               closeMobileDetail={c.closeMobileDetail}
+              backLabel={viewLabel}
               onEdit={startEdit}
               onDelete={deleteActive}
               onDownload={downloadActive}
