@@ -52,8 +52,10 @@ export function NotesDetailActionBar({
   readOnly = false,
   canArchive = true,
 }: NotesDetailActionBarProps) {
+  // Empty / deselected detail: caller must omit this bar. Never render a
+  // back-only ActionBar — that regressed as chrome when no note is selected.
   if (!active) {
-    return <ActionBar onBack={closeMobileDetail} />;
+    return null;
   }
 
   const sharedInbox = !!active.sharedInbox;

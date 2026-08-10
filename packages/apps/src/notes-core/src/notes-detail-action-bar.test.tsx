@@ -31,6 +31,22 @@ const shared: Note = {
 };
 
 describe("NotesDetailActionBar", () => {
+  it("renders nothing when no note is active", () => {
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={undefined}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={() => {}}
+        toggleStar={() => {}}
+        toggleArchive={() => {}}
+      />,
+    );
+    expect(container.querySelector(".action-bar")).toBeNull();
+  });
+
   it("shows notebook name and keeps move enabled for owned notes", () => {
     const openMoveDialog = vi.fn();
     renderBar(

@@ -224,10 +224,11 @@ export function NotesListPanel({
             };
             const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
             const multiSelect = selectionMode || selectedIds.length > 1;
-            // Single-select UI: only the open row may look highlighted. Multi-select:
-            // selected rows only (suppress active paint so a leftover activeId cannot
-            // light a second beige row).
-            const rowActive = !multiSelect && note.id === activeId;
+            // Single-select UI: open row = activeId ∩ selectedIds (stale activeId
+            // after empty selection must not paint). Multi-select: selected rows
+            // only (suppress active paint so leftover activeId cannot light a
+            // second beige row).
+            const rowActive = !multiSelect && note.id === activeId && selectedIds.includes(note.id);
             const rowSelected = multiSelect
               ? selectedIds.includes(note.id)
               : note.id === activeId && selectedIds.includes(note.id);
