@@ -330,8 +330,10 @@
   align-items: center;
 }
 
+/* Gutter defaults to 1.25rem; parents may set `--text-editor-sheet-shadow-gutter`
+ * (var() here reads the inherited value, not this declaration). */
 .text-editor-sheet:not(.text-editor-sheet--inline):not(.text-editor-sheet--fill) {
-  --text-editor-sheet-shadow-gutter: 1.25rem;
+  --text-editor-sheet-shadow-gutter: var(--text-editor-sheet-shadow-gutter, 1.25rem);
   padding-inline: var(--text-editor-sheet-shadow-gutter);
   margin-inline: calc(-1 * var(--text-editor-sheet-shadow-gutter));
   width: calc(100% + 2 * var(--text-editor-sheet-shadow-gutter));
@@ -877,10 +879,12 @@
   color: var(--accent-foreground);
 }
 
+/* Compact sheet inset on small viewports via tokens so parents (e.g. notes)
+ * can keep padding/margin at 0 without fighting a hardcoded surface rule. */
 @media (max-width: 768px) {
-  .text-editor-sheet__surface {
-    margin-block: 1rem;
-    padding: 1rem;
+  .text-editor {
+    --text-editor-sheet-padding: 1rem;
+    --text-editor-sheet-margin-block: 1rem;
   }
 }
 

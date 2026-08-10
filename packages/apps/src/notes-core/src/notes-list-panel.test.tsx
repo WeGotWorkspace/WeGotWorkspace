@@ -20,13 +20,21 @@ const baseNote: Note = {
   wordCount: 1,
 };
 
-function ListHarness({ notes }: { notes: Note[] }) {
+function ListHarness({
+  notes,
+  selectedIds = [],
+  activeId = "",
+}: {
+  notes: Note[];
+  selectedIds?: string[];
+  activeId?: string;
+}) {
   const panel = NotesListPanel({
     L: defaultNotesLabels,
     sidebarOpen: true,
     onToggleSidebar: () => {},
     viewLabel: "All Items",
-    selectedIds: [],
+    selectedIds,
     selectionMode: false,
     listLoading: false,
     visibleNotes: notes,
@@ -40,7 +48,7 @@ function ListHarness({ notes }: { notes: Note[] }) {
     isTouch: false,
     starred: {},
     archived: {},
-    activeId: "",
+    activeId,
     isItemDragging: () => false,
     handleSelect: () => {},
     enterSelectionFor: () => {},
@@ -54,6 +62,27 @@ function ListHarness({ notes }: { notes: Note[] }) {
   });
   return <>{panel.listContent}</>;
 }
+
+describe("NotesListPanel selection paint", () => {
+  it("does not paint active/selected when selectedIds is empty but activeId is stale", () => {
+    const { container } = render(
+      <ListHarness notes={[baseNote]} selectedIds={[]} activeId={baseNote.id} />,
+    );
+    const row = container.querySelector(`[data-list-item-id="${baseNote.id}"]`);
+    expect(row).toBeTruthy();
+    expect(row!.getAttribute("data-active")).toBe("false");
+    expect(row!.getAttribute("data-selected")).toBe("false");
+  });
+
+  it("paints the open row when activeId and selectedIds agree", () => {
+    const { container } = render(
+      <ListHarness notes={[baseNote]} selectedIds={[baseNote.id]} activeId={baseNote.id} />,
+    );
+    const row = container.querySelector(`[data-list-item-id="${baseNote.id}"]`);
+    expect(row!.getAttribute("data-active")).toBe("true");
+    expect(row!.getAttribute("data-selected")).toBe("true");
+  });
+});
 
 describe("NotesListPanel access chips", () => {
   it("shows a view-only eye icon when mayEditContent is false", () => {

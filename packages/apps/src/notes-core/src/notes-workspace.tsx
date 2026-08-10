@@ -1,9 +1,10 @@
-import { Pencil, Tag as TagIcon } from "lucide-react";
+import { Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
+import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
 import { MoveToDialog, EditDialog, DeleteDialog } from "@/dialogs/src/dialogs";
@@ -219,7 +220,10 @@ export function NotesWorkspace({
     };
   }, [active, noteCollabUrls, notesCollabWire, session.user.displayName, session.user.username]);
 
-  const showSingleNoteDetail = selectedIds.length <= 1 && !!active;
+  // Empty detail = no multi-select and no selected note. Do not use `!!active`
+  // alone: cmd/ctrl-deselect and view selection-reset clear selectedIds while
+  // leaving a stale activeId — list looks unselected but the action bar stayed.
+  const showSingleNoteDetail = selectedIds.length === 1 && !!active && selectedIds[0] === active.id;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
   const openShareActiveNote = useCallback(() => {
@@ -269,7 +273,7 @@ export function NotesWorkspace({
     onRetry: handleRetrySync,
   });
 
-  const noteTitleActive = Boolean(active && selectedIds.length <= 1);
+  const noteTitleActive = showSingleNoteDetail;
   const browserTitleContext = noteTitleActive && active ? noteListTitle(active) : viewLabel;
   useDocumentTitle(browserTitleContext, {
     // Body edits derive the list title; debounce tab updates while typing.
@@ -372,7 +376,7 @@ export function NotesWorkspace({
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}
         actionBar={(c) =>
-          selectedIds.length > 1 ? null : (
+          !showSingleNoteDetail ? null : (
             <NotesDetailActionBar
               active={active}
               labels={L}
@@ -401,7 +405,13 @@ export function NotesWorkspace({
               />
             );
           }
-          if (!active) return null;
+          if (!showSingleNoteDetail || !active) {
+            return (
+              <CollectionState icon={<StickyNote className="size-12" />}>
+                {L.emptyDetail}
+              </CollectionState>
+            );
+          }
           return (
             <NoteDetailView
               noteId={active.id}

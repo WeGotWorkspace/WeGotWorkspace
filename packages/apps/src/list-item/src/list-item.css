@@ -63,7 +63,8 @@
 }
 
 .list-item__checkbox-icon {
-  @apply size-3 text-white;
+  @apply size-3;
+  color: var(--list-item-checkbox-icon-color, #ffffff);
 }
 
 .list-item__leading {

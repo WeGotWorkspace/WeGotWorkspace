@@ -35,6 +35,22 @@ const shared: Note = {
 };
 
 describe("NotesDetailActionBar", () => {
+  it("renders nothing when no note is active", () => {
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={undefined}
+        labels={defaultNotesLabels}
+        archived={{}}
+        starred={{}}
+        closeMobileDetail={() => {}}
+        openMoveDialog={() => {}}
+        toggleStar={() => {}}
+        toggleArchive={() => {}}
+      />,
+    );
+    expect(container.querySelector(".action-bar")).toBeNull();
+  });
+
   it("shows the list name on the mobile back control", () => {
     renderBar(
       <NotesDetailActionBar
