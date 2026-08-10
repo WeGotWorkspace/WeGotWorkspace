@@ -51,6 +51,31 @@
   background-color: var(--notes-detail-body-bg);
 }
 
+/*
+ * Empty detail (“Select a note”): pin CollectionState ~40% down the scroll
+ * pane (not dead center). Asymmetric flex spacers 2:3 ≈ 40%/60%; Drive keeps
+ * justify-center on its own scroll host.
+ */
+.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state)::before {
+  content: "";
+  flex: 2 0 0;
+}
+
+.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state)::after {
+  content: "";
+  flex: 3 0 0;
+}
+
+.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state) > .collection-state {
+  flex-shrink: 0;
+}
+
 @media (min-width: 768px) {
   .notes-workspace {
     --workspace-chrome-footer-padding-x: 3rem;
