@@ -36,6 +36,8 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
+  /* Soft gold fill needs ink check (white on #f6d176 fails WCAG UI 3:1). */
+  --list-item-checkbox-icon-color: var(--color-ink);
   --note-detail-tag-bg: var(--notes-accent);
   --note-detail-tag-fg: var(--color-ink);
   --note-detail-title-font-family: var(--font-serif);
