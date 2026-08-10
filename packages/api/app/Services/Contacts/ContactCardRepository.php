@@ -348,11 +348,16 @@ final class ContactCardRepository
     }
 
     /**
-     * Return the raw vCard bytes stored by SabreDAV for the given card.
+     * Export a download-ready vCard for the given card.
+     *
+     * Re-serializes through JSContact so write-side Apple labels (`itemN.X-ABLabel`)
+     * and other normalizations apply even when stored `carddata` is stale (e.g.
+     * CardDAV uploads or cards written before X-ABLabel emission). Does not mutate
+     * storage — CardDAV clients still see the stored bytes until the next write.
      *
      * @return array{carddata: string, uri: string}
      */
-    public function rawVcard(string $username, string $cardId): array
+    public function exportVcard(string $username, string $cardId): array
     {
         $located = $this->findOwnedCard($username, $cardId);
         if ($located === null) {
@@ -364,8 +369,10 @@ final class ContactCardRepository
             throw new ApiHttpException(404, 'Contact card has no vCard data.', 'not_found');
         }
 
+        $card = $this->vcardConverter->cardFromVCard($carddata);
+
         return [
-            'carddata' => $carddata,
+            'carddata' => $this->vcardConverter->vCardFromCard($card),
             'uri' => (string) $located['card']->uri,
         ];
     }

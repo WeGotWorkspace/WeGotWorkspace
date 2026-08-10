@@ -18,7 +18,7 @@ final class ContactCardVcfController
         /** @var array{username: string, role: string} $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
 
-        $result = $this->cards->rawVcard($principal['username'], $cardId);
+        $result = $this->cards->exportVcard($principal['username'], $cardId);
 
         $filename = $this->safeFilename($result['uri']);
 

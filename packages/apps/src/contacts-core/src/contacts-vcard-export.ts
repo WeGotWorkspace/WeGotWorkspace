@@ -89,10 +89,19 @@ export function contactCardToVCard(card: ContactCard): string {
   const additional = components.find((c) => c.kind === "given2")?.value?.trim() ?? "";
   lines.push(`N:${vcardEscape(surname)};${vcardEscape(given)};${vcardEscape(additional)};;`);
 
-  // ORG
+  // ORG — name;unit;unit… (department = first org unit)
   for (const [, org] of mapEntriesSorted(card.organizations)) {
     const name = org.name?.trim() ?? "";
-    if (name) lines.push(`ORG:${vcardEscape(name)}`);
+    const units = (org.units ?? []).map((unit) => unit.name?.trim() ?? "").filter(Boolean);
+    if (!name && units.length === 0) continue;
+    lines.push(`ORG:${[name, ...units].map(vcardEscape).join(";")}`);
+  }
+
+  // TITLE — JSContact titles (kind title)
+  for (const [, title] of mapEntriesSorted(card.titles)) {
+    if ((title.kind ?? "title") !== "title") continue;
+    const name = title.name?.trim() ?? "";
+    if (name) lines.push(`TITLE:${vcardEscape(name)}`);
   }
 
   // EMAIL

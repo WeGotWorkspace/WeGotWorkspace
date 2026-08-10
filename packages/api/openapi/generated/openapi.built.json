@@ -14389,7 +14389,7 @@
                 "tags": [
                     "Contacts"
                 ],
-                "summary": "Download raw vCard file for a contact",
+                "summary": "Download vCard file for a contact",
                 "security": [
                     {
                         "bearerAuth": []
@@ -14407,7 +14407,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Raw vCard file",
+                        "description": "vCard file (re-serialized for Apple label compatibility)",
                         "content": {
                             "text/vcard": {
                                 "schema": {

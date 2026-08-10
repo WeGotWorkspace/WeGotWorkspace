@@ -150,7 +150,11 @@ final class JsContactToVCardConverter
                 continue;
             }
             $params = $this->sharedParams($entry, $id);
-            $vcard->add('EMAIL', (string) $entry['address'], $params);
+            $group = $this->maybeWriteLabel($vcard, $entry, $params);
+            $property = $vcard->add('EMAIL', (string) $entry['address'], $params);
+            if ($group !== null) {
+                $property->group = $group;
+            }
         }
     }
 
@@ -303,7 +307,11 @@ final class JsContactToVCardConverter
     private function writeNotes(VCard $vcard, array $card): void
     {
         foreach ($this->idMapEntries($card['notes'] ?? null) as $id => $entry) {
-            if (! is_array($entry) || ! isset($entry['note'])) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            // Accept string `note` only — skip null/non-string so empty maps do not drop other fields.
+            if (! array_key_exists('note', $entry) || ! is_string($entry['note'])) {
                 continue;
             }
             $params = $this->sharedParams($entry, $id);
@@ -318,7 +326,7 @@ final class JsContactToVCardConverter
                     $params['author'] = (string) $entry['author']['uri'];
                 }
             }
-            $vcard->add('NOTE', (string) $entry['note'], $params);
+            $vcard->add('NOTE', $entry['note'], $params);
         }
     }
 
@@ -483,7 +491,12 @@ final class JsContactToVCardConverter
                 continue;
             }
             $propertyName = (($entry['kind'] ?? null) === 'contact') ? 'CONTACT-URI' : 'URL';
-            $vcard->add($propertyName, (string) $entry['uri'], $this->sharedParams($entry, $id));
+            $params = $this->sharedParams($entry, $id);
+            $group = $this->maybeWriteLabel($vcard, $entry, $params);
+            $property = $vcard->add($propertyName, (string) $entry['uri'], $params);
+            if ($group !== null) {
+                $property->group = $group;
+            }
         }
     }
 
@@ -781,28 +794,65 @@ final class JsContactToVCardConverter
     }
 
     /**
+     * Emit Apple `itemN.X-ABLabel` for custom JSContact `label`, or for known
+     * standard contexts/features (Home/Work/Mobile/School). Keeps PROP-ID + TYPE.
+     *
      * @param  array<string, mixed>  $entry
      * @param  array<string, mixed>  $params
      */
     private function maybeWriteLabel(VCard $vcard, array $entry, array $params): ?string
     {
-        if (! isset($entry['label']) || ! is_string($entry['label']) || $entry['label'] === '') {
-            $vCardParams = ConversionSupport::vCardParamsFromObject($entry);
-            if (is_array($vCardParams) && isset($vCardParams['group']) && is_string($vCardParams['group'])) {
-                return $vCardParams['group'];
-            }
+        $vCardParams = ConversionSupport::vCardParamsFromObject($entry);
+        $existingGroup = (is_array($vCardParams) && isset($vCardParams['group']) && is_string($vCardParams['group']))
+            ? $vCardParams['group']
+            : null;
 
-            return null;
+        $label = null;
+        if (isset($entry['label']) && is_string($entry['label']) && $entry['label'] !== '') {
+            $label = $entry['label'];
+        } else {
+            $label = $this->standardAppleAbLabel($entry);
         }
 
-        $vCardParams = ConversionSupport::vCardParamsFromObject($entry);
-        $group = (is_array($vCardParams) && isset($vCardParams['group']) && is_string($vCardParams['group']))
-            ? $vCardParams['group']
-            : 'item'.(++$this->groupCounter);
-        $labelProperty = $vcard->add('X-ABLABEL', $entry['label']);
+        if ($label === null || $label === '') {
+            return $existingGroup;
+        }
+
+        $group = $existingGroup ?? 'item'.(++$this->groupCounter);
+        $labelProperty = $vcard->add('X-ABLABEL', $label);
         $labelProperty->group = $group;
 
         return $group;
+    }
+
+    /**
+     * Apple-friendly display label derived from JSContact contexts/features.
+     * Custom `label` is handled by the caller and always wins.
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    private function standardAppleAbLabel(array $entry): ?string
+    {
+        $features = $entry['features'] ?? null;
+        if (is_array($features) && ! empty($features['mobile'])) {
+            return 'Mobile';
+        }
+
+        $contexts = $entry['contexts'] ?? null;
+        if (! is_array($contexts)) {
+            return null;
+        }
+        if (! empty($contexts['private'])) {
+            return 'Home';
+        }
+        if (! empty($contexts['work'])) {
+            return 'Work';
+        }
+        if (! empty($contexts['school'])) {
+            return 'School';
+        }
+
+        return null;
     }
 
     /**

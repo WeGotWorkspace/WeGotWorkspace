@@ -72,7 +72,11 @@ describe("contacts-conflict-merge", () => {
       address: "jane@local.example",
       contexts: { work: true },
     });
-    expect(patch.phones?.p1).toEqual({ number: "+1 555 0199" });
+    expect(patch.phones?.p1).toEqual({
+      number: "+1 555 0199",
+      contexts: null,
+      features: null,
+    });
   });
 
   it("returns no rows when local and server drafts match", () => {

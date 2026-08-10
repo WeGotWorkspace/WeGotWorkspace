@@ -68,6 +68,7 @@ export const Default: Story = {
       "550e8400-e29b-41d4-a716-446655440013": {
         number: "+1-555-0199",
         contexts: { private: true },
+        features: null,
       },
     });
     expect(patch).not.toHaveProperty("@type");

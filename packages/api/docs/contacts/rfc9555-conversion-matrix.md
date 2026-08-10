@@ -248,7 +248,7 @@ MUST merge into same `Address` when:
 | `URL` | `links` (no `kind`) | Yes | |
 | `VERSION` | `vCardProps` | Partial | |
 | `CLIENTPIDMAP` | `vCardProps` | Partial | |
-| `X-ABLabel` | `label` on grouped property | Partial | Group name not preserved |
+| `X-ABLabel` | `label` on grouped property; also emitted for standard `contexts`/`features` | Partial | **Dual representation:** keep RFC 9554 `PROP-ID` + `TYPE`, and emit Apple `itemN.X-ABLabel` (`Home`/`Work`/`Mobile`/`School`) on write for known standard contexts/features so macOS shows real labels. Custom JSContact `label` still wins. Standard X-ABLabel that matches TYPE is not re-imported as a custom `label`. |
 
 ### Security
 
@@ -352,7 +352,7 @@ Full property-path → vCard section mapping (175 rows in RFC 9555 Table 8). Sum
 | `BIRTHPLACE`/`DEATHPLACE` non-TEXT/non-geo URI | `vCardProps` only |
 | DATE month-only or day-only (anniversaries) | No `PartialDate`; §2.15 |
 | `TIME`, `DATE-TIME`, `DATE-AND-OR-TIME` values | Property-specific; often §2.15 |
-| `X-ABLabel` group names | **Implemented:** `vCardParams.group` preserved on round-trip |
+| `X-ABLabel` group names | **Implemented:** `vCardParams.group` preserved on round-trip; standard Home/Work/Mobile/School labels also written outbound with `PROP-ID`+`TYPE` kept |
 | `localizations` | **Implemented:** `LANGUAGE` → `localizations` patches; write back localized FN/ADR/NOTE |
 | `organizationId` on `Title` | **Implemented:** inferred from grouped `ORG` via `GROUP` param |
 | JMAP `id`, `addressBookIds`, `blobId` | Not in vCard; server metadata only |

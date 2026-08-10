@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
+import { Textarea } from "@/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
 import { cn } from "@/lib/utils";
@@ -11,12 +12,15 @@ import { Tag } from "@/tag/src/tag";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   CONTACT_CHANNEL_CONTEXTS,
+  CONTACT_PHONE_TYPES,
   type ContactAddressDraft,
   type ContactChannelContext,
   type ContactEditDraft,
+  type ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
 import {
   contactDisplayName,
+  contactListSubtitle,
   contactPersonName,
   channelDisplayLabels,
   contactBirthdayDisplay,
@@ -39,7 +43,7 @@ type ContactsDetailViewProps = {
   onAddAddress: () => void;
   onUpdatePhone: (id: string, number: string) => void;
   onUpdateEmail: (id: string, address: string) => void;
-  onUpdatePhoneContext: (id: string, contextType: ContactChannelContext) => void;
+  onUpdatePhoneContext: (id: string, phoneType: ContactPhoneType) => void;
   onUpdateEmailContext: (id: string, contextType: ContactChannelContext) => void;
   onUpdateAddress: (
     id: string,
@@ -183,6 +187,11 @@ function channelTypeLabel(contextType: ContactChannelContext, labels: ContactsUI
   return labels.channelTypeNone;
 }
 
+function phoneTypeLabel(phoneType: ContactPhoneType, labels: ContactsUILabels): string {
+  if (phoneType === "mobile") return labels.channelTypeMobile;
+  return channelTypeLabel(phoneType, labels);
+}
+
 function ContextTypeSelect({
   labels,
   value,
@@ -206,6 +215,36 @@ function ContextTypeSelect({
         {CONTACT_CHANNEL_CONTEXTS.map((contextType) => (
           <SelectItem key={contextType || "none"} value={contextType || "none"}>
             {channelTypeLabel(contextType, labels)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function PhoneTypeSelect({
+  labels,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  labels: ContactsUILabels;
+  value: ContactPhoneType;
+  onChange: (value: ContactPhoneType) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <Select
+      value={value || "none"}
+      onValueChange={(next) => onChange(next === "none" ? "" : (next as ContactPhoneType))}
+    >
+      <SelectTrigger aria-label={ariaLabel} className="contacts-detail-view__context-select">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {CONTACT_PHONE_TYPES.map((phoneType) => (
+          <SelectItem key={phoneType || "none"} value={phoneType || "none"}>
+            {phoneTypeLabel(phoneType, labels)}
           </SelectItem>
         ))}
       </SelectContent>
@@ -316,6 +355,39 @@ export function ContactsDetailView({
         return typeof name === "string" ? name.trim() : "";
       })();
 
+  const jobTitle = isEditing
+    ? (editDraft?.title ?? "")
+    : (() => {
+        const entry =
+          mapEntriesSorted(card?.titles).find(([, title]) => (title.kind ?? "title") === "title") ??
+          mapEntriesSorted(card?.titles)[0];
+        return entry?.[1]?.name?.trim() ?? "";
+      })();
+
+  const jobDepartment = isEditing
+    ? (editDraft?.department ?? "")
+    : (() => {
+        const unit = mapEntriesSorted(card?.organizations)[0]?.[1]?.units?.[0]?.name;
+        return typeof unit === "string" ? unit.trim() : "";
+      })();
+
+  /** Identity lines under the header name (view mode only). */
+  const viewIdentityLines = (() => {
+    if (isEditing || !card) return [] as string[];
+    const lines: string[] = [];
+    if (card.kind === "org") {
+      const subtitle = contactListSubtitle(card);
+      if (subtitle) lines.push(subtitle);
+      if (jobTitle) lines.push(jobTitle);
+      if (jobDepartment) lines.push(jobDepartment);
+      return lines;
+    }
+    if (jobTitle) lines.push(jobTitle);
+    const orgLine = [jobDepartment, organization].filter(Boolean).join(" · ");
+    if (orgLine) lines.push(orgLine);
+    return lines;
+  })();
+
   const notes = isEditing
     ? (editDraft?.notes ?? "")
     : (() => {
@@ -323,12 +395,94 @@ export function ContactsDetailView({
         return typeof note === "string" ? note.trim() : "";
       })();
 
+  const showAsCompany = !!editDraft?.showAsCompany;
+
+  const nameFields =
+    isEditing && editDraft ? (
+      <>
+        <div className="contacts-detail-view__name-row">
+          <FieldLabelRow label={labels.nameGiven} htmlFor="contact-given-name">
+            <Input
+              id="contact-given-name"
+              value={editDraft.nameGiven}
+              onChange={(event) => onDraftChange({ nameGiven: event.target.value })}
+            />
+          </FieldLabelRow>
+          <FieldLabelRow label={labels.nameSurname} htmlFor="contact-surname">
+            <Input
+              id="contact-surname"
+              value={editDraft.nameSurname}
+              onChange={(event) => onDraftChange({ nameSurname: event.target.value })}
+            />
+          </FieldLabelRow>
+        </div>
+        {editDraft.showGiven2 ? (
+          <FieldLabelRow label={labels.nameGiven2} htmlFor="contact-given2-name">
+            <Input
+              id="contact-given2-name"
+              value={editDraft.nameGiven2}
+              onChange={(event) => onDraftChange({ nameGiven2: event.target.value })}
+            />
+          </FieldLabelRow>
+        ) : null}
+      </>
+    ) : null;
+
+  const organizationField =
+    isEditing && editDraft ? (
+      <FieldLabelRow label={labels.organizationName} htmlFor="contact-organization">
+        <Input
+          id="contact-organization"
+          value={editDraft.organization}
+          onChange={(event) => onDraftChange({ organization: event.target.value })}
+        />
+      </FieldLabelRow>
+    ) : null;
+
+  const jobFields =
+    isEditing && editDraft ? (
+      <div className="contacts-detail-view__job-row">
+        <FieldLabelRow label={labels.jobTitle} htmlFor="contact-job-title">
+          <Input
+            id="contact-job-title"
+            value={editDraft.title}
+            onChange={(event) => onDraftChange({ title: event.target.value })}
+          />
+        </FieldLabelRow>
+        <FieldLabelRow label={labels.jobDepartment} htmlFor="contact-job-department">
+          <Input
+            id="contact-job-department"
+            value={editDraft.department}
+            onChange={(event) => onDraftChange({ department: event.target.value })}
+          />
+        </FieldLabelRow>
+      </div>
+    ) : null;
+
+  const companyToggle =
+    isEditing && editDraft ? (
+      <FieldLabelRow label={labels.companyContact}>
+        <Switch
+          checked={editDraft.showAsCompany}
+          onCheckedChange={(checked) => onDraftChange({ showAsCompany: checked })}
+          aria-label={labels.companyContact}
+        />
+      </FieldLabelRow>
+    ) : null;
+
   return (
     <article className={cn("contacts-detail-view", className)}>
       <header className="contacts-detail-view__header">
         <ContactUserAvatar card={card} displayName={displayName} size="lg" compact />
         {!isEditing && card ? (
-          <h1 className="contacts-detail-view__title">{contactDisplayName(card)}</h1>
+          <div className="contacts-detail-view__heading">
+            <h1 className="contacts-detail-view__title">{contactDisplayName(card)}</h1>
+            {viewIdentityLines.map((line, index) => (
+              <p key={`${index}-${line}`} className="contacts-detail-view__subtitle">
+                {line}
+              </p>
+            ))}
+          </div>
         ) : null}
         {createMode && isEditing ? (
           <h1 className="contacts-detail-view__title">{labels.newContact}</h1>
@@ -341,54 +495,26 @@ export function ContactsDetailView({
       >
         {isEditing && editDraft ? (
           <div className="contacts-detail-view__field-stack">
-            <FieldLabelRow label={labels.nameGiven} htmlFor="contact-given-name">
-              <Input
-                id="contact-given-name"
-                value={editDraft.nameGiven}
-                onChange={(event) => onDraftChange({ nameGiven: event.target.value })}
-              />
-            </FieldLabelRow>
-            {editDraft.showGiven2 ? (
-              <FieldLabelRow label={labels.nameGiven2} htmlFor="contact-given2-name">
-                <Input
-                  id="contact-given2-name"
-                  value={editDraft.nameGiven2}
-                  onChange={(event) => onDraftChange({ nameGiven2: event.target.value })}
-                />
-              </FieldLabelRow>
-            ) : null}
-            <FieldLabelRow label={labels.nameSurname} htmlFor="contact-surname">
-              <Input
-                id="contact-surname"
-                value={editDraft.nameSurname}
-                onChange={(event) => onDraftChange({ nameSurname: event.target.value })}
-              />
-            </FieldLabelRow>
-            <FieldLabelRow label={labels.organizationName} htmlFor="contact-organization">
-              <Input
-                id="contact-organization"
-                value={editDraft.organization}
-                onChange={(event) => onDraftChange({ organization: event.target.value })}
-              />
-            </FieldLabelRow>
-            <FieldLabelRow label={labels.companyContact}>
-              <Switch
-                checked={editDraft.showAsCompany}
-                onCheckedChange={(checked) => onDraftChange({ showAsCompany: checked })}
-                aria-label={labels.companyContact}
-              />
-            </FieldLabelRow>
+            {showAsCompany ? (
+              <>
+                {organizationField}
+                {nameFields}
+                {jobFields}
+                {companyToggle}
+              </>
+            ) : (
+              <>
+                {nameFields}
+                {jobFields}
+                {organizationField}
+                {companyToggle}
+              </>
+            )}
           </div>
         ) : (
           <p className="contacts-detail-view__text">{personName}</p>
         )}
       </DetailSection>
-
-      {!isEditing && organization && card?.kind !== "org" ? (
-        <DetailSection title={labels.sectionOrganization}>
-          <p className="contacts-detail-view__text">{organization}</p>
-        </DetailSection>
-      ) : null}
 
       {!isEditing && card
         ? (() => {
@@ -410,11 +536,11 @@ export function ContactsDetailView({
                 className="contacts-detail-view__channel-row contacts-detail-view__channel-row--editable"
               >
                 <div className="contacts-detail-view__channel-type">
-                  <ContextTypeSelect
+                  <PhoneTypeSelect
                     labels={labels}
-                    value={row.contextType}
+                    value={row.phoneType}
                     ariaLabel={`${labels.channelType} ${labels.phoneNumber}`}
-                    onChange={(contextType) => onUpdatePhoneContext(row.id, contextType)}
+                    onChange={(phoneType) => onUpdatePhoneContext(row.id, phoneType)}
                   />
                 </div>
                 <Input
@@ -424,7 +550,7 @@ export function ContactsDetailView({
                 />
                 <IconButton
                   label={labels.removeRow}
-                  icon={<X className="size-4" />}
+                  icon={<Trash2 className="size-4" aria-hidden />}
                   variant="subtle"
                   size="sm"
                   onClick={() => onRemovePhone(row.id)}
@@ -432,9 +558,10 @@ export function ContactsDetailView({
               </div>
             ))}
             <Button
+              className="contacts-detail-view__add-row"
               label={labels.addPhone}
-              icon={<Plus className="size-4" />}
-              variant="subtle"
+              icon={<Plus />}
+              variant="ghost"
               size="sm"
               onClick={onAddPhone}
             />
@@ -487,7 +614,7 @@ export function ContactsDetailView({
                 />
                 <IconButton
                   label={labels.removeRow}
-                  icon={<X className="size-4" />}
+                  icon={<Trash2 className="size-4" aria-hidden />}
                   variant="subtle"
                   size="sm"
                   onClick={() => onRemoveEmail(row.id)}
@@ -495,9 +622,10 @@ export function ContactsDetailView({
               </div>
             ))}
             <Button
+              className="contacts-detail-view__add-row"
               label={labels.addEmail}
-              icon={<Plus className="size-4" />}
-              variant="subtle"
+              icon={<Plus />}
+              variant="ghost"
               size="sm"
               onClick={onAddEmail}
             />
@@ -537,45 +665,67 @@ export function ContactsDetailView({
                   />
                 </div>
                 <div className="contacts-detail-view__address-fields">
-                  <Input
-                    id={`contact-address-street-${row.id}`}
-                    aria-label={labels.addressStreet}
-                    value={row.street}
-                    onChange={(event) => onUpdateAddress(row.id, "street", event.target.value)}
-                  />
+                  <FieldLabelRow
+                    label={labels.addressStreet}
+                    htmlFor={`contact-address-street-${row.id}`}
+                  >
+                    <Input
+                      id={`contact-address-street-${row.id}`}
+                      value={row.street}
+                      onChange={(event) => onUpdateAddress(row.id, "street", event.target.value)}
+                    />
+                  </FieldLabelRow>
                   <div className="contacts-detail-view__address-locality-row">
-                    <Input
-                      id={`contact-address-postal-${row.id}`}
-                      aria-label={labels.addressPostalCode}
-                      value={row.postalCode}
-                      onChange={(event) =>
-                        onUpdateAddress(row.id, "postalCode", event.target.value)
-                      }
-                    />
-                    <Input
-                      id={`contact-address-locality-${row.id}`}
-                      aria-label={labels.addressLocality}
-                      value={row.locality}
-                      onChange={(event) => onUpdateAddress(row.id, "locality", event.target.value)}
-                    />
+                    <FieldLabelRow
+                      label={labels.addressPostalCode}
+                      htmlFor={`contact-address-postal-${row.id}`}
+                    >
+                      <Input
+                        id={`contact-address-postal-${row.id}`}
+                        value={row.postalCode}
+                        onChange={(event) =>
+                          onUpdateAddress(row.id, "postalCode", event.target.value)
+                        }
+                      />
+                    </FieldLabelRow>
+                    <FieldLabelRow
+                      label={labels.addressLocality}
+                      htmlFor={`contact-address-locality-${row.id}`}
+                    >
+                      <Input
+                        id={`contact-address-locality-${row.id}`}
+                        value={row.locality}
+                        onChange={(event) =>
+                          onUpdateAddress(row.id, "locality", event.target.value)
+                        }
+                      />
+                    </FieldLabelRow>
                   </div>
-                  <Input
-                    id={`contact-address-region-${row.id}`}
-                    aria-label={labels.addressRegion}
-                    value={row.region}
-                    onChange={(event) => onUpdateAddress(row.id, "region", event.target.value)}
-                  />
-                  <Input
-                    id={`contact-address-country-${row.id}`}
-                    aria-label={labels.addressCountry}
-                    value={row.country}
-                    onChange={(event) => onUpdateAddress(row.id, "country", event.target.value)}
-                  />
+                  <FieldLabelRow
+                    label={labels.addressRegion}
+                    htmlFor={`contact-address-region-${row.id}`}
+                  >
+                    <Input
+                      id={`contact-address-region-${row.id}`}
+                      value={row.region}
+                      onChange={(event) => onUpdateAddress(row.id, "region", event.target.value)}
+                    />
+                  </FieldLabelRow>
+                  <FieldLabelRow
+                    label={labels.addressCountry}
+                    htmlFor={`contact-address-country-${row.id}`}
+                  >
+                    <Input
+                      id={`contact-address-country-${row.id}`}
+                      value={row.country}
+                      onChange={(event) => onUpdateAddress(row.id, "country", event.target.value)}
+                    />
+                  </FieldLabelRow>
                 </div>
                 <IconButton
                   className="contacts-detail-view__address-remove"
                   label={labels.removeRow}
-                  icon={<X className="size-4" />}
+                  icon={<Trash2 className="size-4" aria-hidden />}
                   variant="subtle"
                   size="sm"
                   onClick={() => onRemoveAddress(row.id)}
@@ -583,9 +733,10 @@ export function ContactsDetailView({
               </div>
             ))}
             <Button
+              className="contacts-detail-view__add-row"
               label={labels.addAddress}
-              icon={<Plus className="size-4" />}
-              variant="subtle"
+              icon={<Plus />}
+              variant="ghost"
               size="sm"
               onClick={onAddAddress}
             />
@@ -628,7 +779,7 @@ export function ContactsDetailView({
                 />
                 <IconButton
                   label={labels.removeRow}
-                  icon={<X className="size-4" />}
+                  icon={<Trash2 className="size-4" aria-hidden />}
                   variant="subtle"
                   size="sm"
                   onClick={() => onRemoveUrl(row.id)}
@@ -636,9 +787,10 @@ export function ContactsDetailView({
               </div>
             ))}
             <Button
+              className="contacts-detail-view__add-row"
               label={labels.addUrl}
-              icon={<Plus className="size-4" />}
-              variant="subtle"
+              icon={<Plus />}
+              variant="ghost"
               size="sm"
               onClick={onAddUrl}
             />
@@ -674,13 +826,13 @@ export function ContactsDetailView({
 
       <DetailSection title={labels.sectionNotes} hidden={!isEditing && !notes}>
         {isEditing && editDraft ? (
-          <FieldLabelRow label={labels.notesText} htmlFor="contact-notes">
-            <Input
-              id="contact-notes"
-              value={editDraft.notes}
-              onChange={(event) => onDraftChange({ notes: event.target.value })}
-            />
-          </FieldLabelRow>
+          <Textarea
+            id="contact-notes"
+            className="contacts-detail-view__notes"
+            aria-label={labels.sectionNotes}
+            value={editDraft.notes}
+            onChange={(event) => onDraftChange({ notes: event.target.value })}
+          />
         ) : (
           <p className="contacts-detail-view__text">{notes}</p>
         )}

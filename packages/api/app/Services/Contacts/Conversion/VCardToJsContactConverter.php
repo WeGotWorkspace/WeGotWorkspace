@@ -1073,13 +1073,39 @@ final class VCardToJsContactConverter
             return;
         }
 
+        $label = $this->groupLabels[$group] ?? null;
+        // When TYPE already encodes Home/Work/Mobile/School, skip both the custom
+        // `label` and the Apple `itemN` group so PROP-ID + TYPE round-trips cleanly.
+        if (is_string($label) && $this->isRedundantStandardAbLabel($label, $entry)) {
+            return;
+        }
+
         $params = ConversionSupport::vCardParamsFromObject($entry) ?? [];
         $params['group'] = $group;
         $entry['vCardParams'] = $params;
 
-        if (isset($this->groupLabels[$group])) {
-            $entry['label'] = $this->groupLabels[$group];
+        if (is_string($label) && $label !== '') {
+            $entry['label'] = $label;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    private function isRedundantStandardAbLabel(string $label, array $entry): bool
+    {
+        $normalized = strtolower(trim($label));
+        if (preg_match('/^_\$!<(.+)>!\$_$/u', $normalized, $matches) === 1) {
+            $normalized = strtolower(trim((string) $matches[1]));
+        }
+
+        return match ($normalized) {
+            'mobile', 'cell' => isset($entry['features']['mobile']),
+            'home', 'private' => isset($entry['contexts']['private']),
+            'work' => isset($entry['contexts']['work']),
+            'school' => isset($entry['contexts']['school']),
+            default => false,
+        };
     }
 
     /**

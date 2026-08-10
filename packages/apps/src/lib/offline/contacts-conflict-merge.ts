@@ -2,6 +2,7 @@ import {
   contactCardToEditDraft,
   editDraftToPatch,
   type ContactEditDraft,
+  type ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
@@ -10,6 +11,7 @@ import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts
 export type ContactConflictFieldKey =
   | "name"
   | "kind"
+  | "title"
   | "organization"
   | "notes"
   | "phones"
@@ -34,13 +36,18 @@ export type ContactConflictFieldRow = {
 const EMPTY_PLACEHOLDER = "—";
 
 function channelLabel(
-  contextType: ContactEditDraft["phones"][number]["contextType"],
+  contextType: ContactEditDraft["emails"][number]["contextType"],
   L: ContactsUILabels,
 ): string {
   if (contextType === "work") return L.channelTypeWork;
   if (contextType === "home") return L.channelTypeHome;
   if (contextType === "school") return L.channelTypeSchool;
   return L.channelTypeNone;
+}
+
+function phoneTypeLabel(phoneType: ContactPhoneType, L: ContactsUILabels): string {
+  if (phoneType === "mobile") return L.channelTypeMobile;
+  return channelLabel(phoneType, L);
 }
 
 function formatNameDraft(draft: ContactEditDraft): string {
@@ -61,14 +68,14 @@ function formatKindCard(card: ContactCard, L: ContactsUILabels): string {
 }
 
 function formatChannelRows(
-  rows: Array<{ value: string; contextType: ContactEditDraft["phones"][number]["contextType"] }>,
+  rows: Array<{ value: string; typeLabel: string }>,
   L: ContactsUILabels,
 ): string {
   const lines = rows
     .filter((row) => row.value.trim())
     .map((row) => {
       const value = row.value.trim();
-      const type = channelLabel(row.contextType, L);
+      const type = row.typeLabel;
       return type === L.channelTypeNone ? value : `${value} (${type})`;
     });
   return lines.length > 0 ? lines.join("\n") : EMPTY_PLACEHOLDER;
@@ -76,21 +83,30 @@ function formatChannelRows(
 
 function formatPhoneDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
   return formatChannelRows(
-    draft.phones.map((row) => ({ value: row.number, contextType: row.contextType })),
+    draft.phones.map((row) => ({
+      value: row.number,
+      typeLabel: phoneTypeLabel(row.phoneType, L),
+    })),
     L,
   );
 }
 
 function formatEmailDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
   return formatChannelRows(
-    draft.emails.map((row) => ({ value: row.address, contextType: row.contextType })),
+    draft.emails.map((row) => ({
+      value: row.address,
+      typeLabel: channelLabel(row.contextType, L),
+    })),
     L,
   );
 }
 
 function formatUrlDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
   return formatChannelRows(
-    draft.urls.map((row) => ({ value: row.uri, contextType: row.contextType })),
+    draft.urls.map((row) => ({
+      value: row.uri,
+      typeLabel: channelLabel(row.contextType, L),
+    })),
     L,
   );
 }
@@ -118,6 +134,13 @@ function formatScalar(value: string): string {
   return trimmed || EMPTY_PLACEHOLDER;
 }
 
+function formatOrganizationDraft(draft: ContactEditDraft): string {
+  const orgParts = [draft.department, draft.organization]
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return orgParts.length > 0 ? orgParts.join(" · ") : EMPTY_PLACEHOLDER;
+}
+
 function nameDraftSignature(draft: ContactEditDraft): string {
   return JSON.stringify({
     given: draft.nameGiven.trim(),
@@ -140,12 +163,12 @@ function channelRowsSignature(
   rows: Array<{
     id: string;
     value: string;
-    contextType: ContactEditDraft["phones"][number]["contextType"];
+    type: string;
   }>,
 ): string {
   return JSON.stringify(
     rows
-      .map((row) => ({ id: row.id, value: row.value.trim(), contextType: row.contextType }))
+      .map((row) => ({ id: row.id, value: row.value.trim(), type: row.type }))
       .filter((row) => row.value)
       .sort((a, b) => a.id.localeCompare(b.id)),
   );
@@ -179,8 +202,13 @@ function fieldDiffers(
       return nameDraftSignature(localDraft) !== nameDraftSignature(serverDraft);
     case "kind":
       return kindDraftSignature(localDraft) !== kindCardSignature(serverCard);
+    case "title":
+      return localDraft.title.trim() !== serverDraft.title.trim();
     case "organization":
-      return localDraft.organization.trim() !== serverDraft.organization.trim();
+      return (
+        localDraft.organization.trim() !== serverDraft.organization.trim() ||
+        localDraft.department.trim() !== serverDraft.department.trim()
+      );
     case "notes":
       return localDraft.notes.trim() !== serverDraft.notes.trim();
     case "phones":
@@ -189,14 +217,14 @@ function fieldDiffers(
           localDraft.phones.map((row) => ({
             id: row.id,
             value: row.number,
-            contextType: row.contextType,
+            type: row.phoneType,
           })),
         ) !==
         channelRowsSignature(
           serverDraft.phones.map((row) => ({
             id: row.id,
             value: row.number,
-            contextType: row.contextType,
+            type: row.phoneType,
           })),
         )
       );
@@ -206,14 +234,14 @@ function fieldDiffers(
           localDraft.emails.map((row) => ({
             id: row.id,
             value: row.address,
-            contextType: row.contextType,
+            type: row.contextType,
           })),
         ) !==
         channelRowsSignature(
           serverDraft.emails.map((row) => ({
             id: row.id,
             value: row.address,
-            contextType: row.contextType,
+            type: row.contextType,
           })),
         )
       );
@@ -223,14 +251,14 @@ function fieldDiffers(
           localDraft.urls.map((row) => ({
             id: row.id,
             value: row.uri,
-            contextType: row.contextType,
+            type: row.contextType,
           })),
         ) !==
         channelRowsSignature(
           serverDraft.urls.map((row) => ({
             id: row.id,
             value: row.uri,
-            contextType: row.contextType,
+            type: row.contextType,
           })),
         )
       );
@@ -244,6 +272,7 @@ function fieldDiffers(
 const FIELD_ORDER: ContactConflictFieldKey[] = [
   "name",
   "kind",
+  "title",
   "organization",
   "notes",
   "phones",
@@ -258,6 +287,8 @@ function fieldLabel(key: ContactConflictFieldKey, L: ContactsUILabels): string {
       return L.sectionName;
     case "kind":
       return L.companyContact;
+    case "title":
+      return L.jobTitle;
     case "organization":
       return L.sectionOrganization;
     case "notes":
@@ -288,10 +319,15 @@ function fieldValues(
         localValue: formatKindDraft(localDraft, L),
         serverValue: formatKindCard(serverCard, L),
       };
+    case "title":
+      return {
+        localValue: formatScalar(localDraft.title),
+        serverValue: formatScalar(serverDraft.title),
+      };
     case "organization":
       return {
-        localValue: formatScalar(localDraft.organization),
-        serverValue: formatScalar(serverDraft.organization),
+        localValue: formatOrganizationDraft(localDraft),
+        serverValue: formatOrganizationDraft(serverDraft),
       };
     case "notes":
       return {
@@ -385,6 +421,9 @@ export function buildMergedContactEditDraft(
     emails: pickDraftField("emails", "emails", localDraft, serverDraft, choices),
     addresses: pickDraftField("addresses", "addresses", localDraft, serverDraft, choices),
     urls: pickDraftField("urls", "urls", localDraft, serverDraft, choices),
+    title: pickDraftField("title", "title", localDraft, serverDraft, choices),
+    titleId: pickDraftField("titleId", "title", localDraft, serverDraft, choices),
+    department: pickDraftField("department", "organization", localDraft, serverDraft, choices),
     organization: pickDraftField("organization", "organization", localDraft, serverDraft, choices),
     notes: pickDraftField("notes", "notes", localDraft, serverDraft, choices),
     organizationId: pickDraftField(
@@ -409,6 +448,7 @@ export function buildResolvedContactPatch(
 
   if (choices.name === "server") delete patch.name;
   if (choices.kind === "server") delete patch.kind;
+  if (choices.title === "server") delete patch.titles;
   if (choices.organization === "server") delete patch.organizations;
   if (choices.notes === "server") delete patch.notes;
   if (choices.phones === "server") delete patch.phones;

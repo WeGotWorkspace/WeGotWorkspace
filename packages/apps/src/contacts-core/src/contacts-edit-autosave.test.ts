@@ -15,6 +15,8 @@ const sampleDraft: ContactEditDraft = {
   emails: [],
   addresses: [],
   urls: [],
+  title: "",
+  department: "",
   organization: "",
   notes: "",
 };
