@@ -13,6 +13,7 @@ type Story = StoryObj<typeof ActionBar>;
 export const MailLike: Story = {
   args: {
     onBack: () => {},
+    backLabel: "Inbox",
     leftActions: [
       { id: "reply", label: "Reply", onClick: () => {}, icon: <Reply /> },
       { id: "forward", label: "Forward", onClick: () => {}, icon: <Forward /> },
@@ -30,6 +31,7 @@ export const MailLike: Story = {
 export const NotesLike: Story = {
   args: {
     onBack: () => {},
+    backLabel: "All Items",
     rightActions: [
       { id: "star", label: "Star", onClick: () => {}, icon: <Star /> },
       { id: "archive", label: "Archive", onClick: () => {}, icon: <Archive /> },

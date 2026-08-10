@@ -114,7 +114,7 @@ export const NarrowAside: Story = {
     docs: {
       description: {
         story:
-          "Desktop detail aside width (~22rem). Actions collapse into the overflow menu based on ActionBar container width, not viewport breakpoints.",
+          "Desktop detail aside width (~22rem). Actions collapse into the overflow menu when the ActionBar container is under 28rem (shared container query), not via viewport breakpoints.",
       },
     },
   },

@@ -379,6 +379,7 @@ export function NotesWorkspace({
               archived={archived}
               starred={starred}
               closeMobileDetail={c.closeMobileDetail}
+              backLabel={viewLabel}
               openMoveDialog={(ids) => setMoveDialog({ ids })}
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}

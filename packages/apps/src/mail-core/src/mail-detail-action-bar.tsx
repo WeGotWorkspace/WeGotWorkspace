@@ -6,6 +6,8 @@ import { buildMailActionButtons } from "@/mail-core/src/mail-action-buttons";
 type MailDetailActionBarProps = {
   active: Mail | undefined;
   closeMobileDetail: () => void;
+  /** List / mailbox title shown on the mobile back control. */
+  backLabel?: string;
   onReply: () => void;
   onReplyAll: () => void;
   onForward: () => void;
@@ -22,6 +24,7 @@ type MailDetailActionBarProps = {
 export function MailDetailActionBar({
   active,
   closeMobileDetail,
+  backLabel,
   onReply,
   onReplyAll,
   onForward,
@@ -34,7 +37,7 @@ export function MailDetailActionBar({
   toggleArchiveForMessage,
   toggleTrashForMessage,
 }: MailDetailActionBarProps) {
-  if (!active) return <ActionBar onBack={closeMobileDetail} />;
+  if (!active) return <ActionBar onBack={closeMobileDetail} backLabel={backLabel} />;
   const isDraft = active.mailbox === "Drafts";
   const moveToMailbox = () => setMoveDialog({ ids: [active.id], currentMailbox: active.mailbox });
   const toggleUnreadForActive = () =>
@@ -69,6 +72,7 @@ export function MailDetailActionBar({
   return (
     <ActionBar
       onBack={closeMobileDetail}
+      backLabel={backLabel}
       leftActions={leftActions}
       leftMenuLabel="Reply options"
       leftMenuIcon={<Reply />}

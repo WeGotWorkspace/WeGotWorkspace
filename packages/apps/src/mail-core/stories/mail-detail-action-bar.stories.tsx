@@ -50,6 +50,7 @@ function MailDetailActionBarHarness({
         <MailDetailActionBar
           active={message}
           closeMobileDetail={() => {}}
+          backLabel="Inbox"
           onReply={() => {}}
           onReplyAll={() => {}}
           onForward={() => {}}

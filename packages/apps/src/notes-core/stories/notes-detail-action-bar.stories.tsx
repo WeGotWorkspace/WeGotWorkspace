@@ -42,6 +42,7 @@ function NotesDetailActionBarHarness({
           archived={archivedMap}
           starred={starredMap}
           closeMobileDetail={() => {}}
+          backLabel="All Items"
           openMoveDialog={() => {}}
           toggleStar={toggleStar}
           toggleArchive={(id) => {

@@ -26,6 +26,7 @@ export type ActionBarAction = {
 export type ActionBarProps = {
   /** Shown only below the `md` breakpoint; typically closes the mobile detail stack. */
   onBack?: () => void;
+  /** Visible truncated label on the back control (list / view title). Defaults to “Back”. */
   backLabel?: string;
   /** Back arrow for stacked mobile detail; close (X) for side panels and dialogs. */
   backIcon?: "back" | "close";
@@ -147,13 +148,18 @@ export function ActionBar({
   return (
     <nav className={cn("action-bar", !collapseActions && "action-bar--expanded", className)}>
       {onBack ? (
-        <IconButton
-          label={backLabel}
-          onClick={onBack}
-          icon={backIcon === "close" ? <X /> : <ArrowLeft />}
-          variant="ghost"
-          className="action-bar__back"
-        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              label={backLabel}
+              onClick={onBack}
+              icon={backIcon === "close" ? <X /> : <ArrowLeft />}
+              variant="ghost"
+              className="action-bar__back"
+            />
+          </TooltipTrigger>
+          <TooltipContent>{backLabel}</TooltipContent>
+        </Tooltip>
       ) : null}
       {hasLeftActions ? (
         <div className="action-bar__left">

@@ -1,9 +1,13 @@
 import type { ComponentProps } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsDetailActionBar } from "./contacts-detail-action-bar";
 import { defaultContactsLabels } from "./contacts-labels";
+
+afterEach(() => {
+  cleanup();
+});
 
 function renderActionBar(props: Partial<ComponentProps<typeof ContactsDetailActionBar>> = {}) {
   return render(
@@ -26,6 +30,13 @@ function renderActionBar(props: Partial<ComponentProps<typeof ContactsDetailActi
 }
 
 describe("ContactsDetailActionBar", () => {
+  it("shows the list name on the mobile back control", () => {
+    renderActionBar({ backLabel: "All Contacts" });
+    const back = screen.getByRole("button", { name: "All Contacts" });
+    expect(back.textContent).toContain("All Contacts");
+    expect(back.className).toContain("action-bar__back");
+  });
+
   it("shows edit and delete actions in read mode", () => {
     renderActionBar();
     expect(screen.getByRole("button", { name: defaultContactsLabels.edit })).toBeTruthy();
