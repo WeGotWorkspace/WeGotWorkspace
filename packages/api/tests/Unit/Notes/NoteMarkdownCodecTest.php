@@ -102,7 +102,15 @@ final class NoteMarkdownCodecTest extends TestCase
     {
         $codec = new NoteMarkdownCodec;
         $raw = $codec->serialize('Untitled', [], false, '');
-        $this->assertSame('fallback-id', $codec->listPreview($raw, 'fallback-id'));
+        // Empty body + Untitled must not surface the note id as the list title.
+        $this->assertSame('', $codec->listPreview($raw, 'fallback-id'));
+        $this->assertSame(
+            '',
+            $codec->listPreview(
+                $codec->serialize('local-55a6723bcd6e453aa11abf548f043398', [], false, ''),
+                'local-55a6723bcd6e453aa11abf548f043398',
+            ),
+        );
     }
 
     public function test_list_preview_strips_task_list_and_common_markdown(): void

@@ -260,6 +260,44 @@ describe("shared notes listing parsers", () => {
     ).toEqual([]);
   });
 
+  it("maps shared-notebook body preview into list title without using local-* id", async () => {
+    const { noteFromSharedNotebookEntry, sharedEntryListPreview } =
+      await import("@/lib/api/wgw/notes");
+    const { noteListTitle } = await import("@/notes-core/src/notes-note-utils");
+    const localId = "local-55a6723bcd6e453aa11abf548f043398";
+
+    const withBody = noteFromSharedNotebookEntry({
+      path: `/users/wouter/.notes/Cooking/${localId}.md`,
+      id: localId,
+      notebook: "Cooking",
+      title: "Pasta with garlic and oil",
+      tags: [],
+      owner: "wouter",
+      scope: "personal",
+      groupSlug: null,
+    });
+    expect(noteListTitle(withBody)).toBe("Pasta with garlic and oil");
+    expect(noteListTitle(withBody)).not.toMatch(/^local-/);
+
+    // API may still echo the id when body is empty — never show it as the list title.
+    expect(sharedEntryListPreview({ id: localId, title: localId })).toBe("");
+    expect(sharedEntryListPreview({ id: localId, title: "" })).toBe("");
+    const emptyBody = noteFromSharedNotebookEntry({
+      path: `/users/wouter/.notes/Cooking/${localId}.md`,
+      id: localId,
+      notebook: "Cooking",
+      title: localId,
+      tags: [],
+      owner: "wouter",
+      scope: "personal",
+      groupSlug: null,
+    });
+    expect(emptyBody.excerpt).toBe("");
+    expect(emptyBody.body).toEqual([""]);
+    expect(noteListTitle(emptyBody)).toBe("Untitled note");
+    expect(noteListTitle(emptyBody)).not.toBe(localId);
+  });
+
   it("merges ACL shared-notebook notes for shared-nb views without Shared-with-me", async () => {
     const {
       mergeOwnedAndSharedInboxNotes,

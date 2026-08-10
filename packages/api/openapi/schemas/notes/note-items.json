@@ -97,7 +97,7 @@
       "notebook": { "type": "string" },
       "title": {
         "type": "string",
-        "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled."
+        "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*."
       },
       "tags": {
         "$ref": "#/components/schemas/NoteTagList",

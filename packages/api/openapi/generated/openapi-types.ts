@@ -9570,7 +9570,7 @@ export interface components {
             path: string;
             id: string;
             notebook: string;
-            /** @description List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled. */
+            /** @description List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*. */
             title: string;
             /** @description Tags from the note markdown frontmatter. Empty when the file is missing or has no tags. */
             tags: components["schemas"]["NoteTagList"];

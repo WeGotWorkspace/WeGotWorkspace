@@ -269,6 +269,81 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         $this->assertContains($first['id'], $noteIds);
         $this->assertContains($second['id'], $noteIds);
         $this->assertCount(2, $noteIds);
+        $byId = collect($notebooks->json('notes'))->keyBy('id');
+        $this->assertSame('first in pad', $byId[$first['id']]['title'] ?? null);
+        $this->assertSame('second in pad', $byId[$second['id']]['title'] ?? null);
+    }
+
+    public function test_shared_notebook_note_preview_uses_body_not_local_id(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+        $noteId = 'local-55a6723bcd6e453aa11abf548f043398';
+
+        $this->withBearer($ownerToken)
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'Cooking'])
+            ->assertCreated();
+
+        $this->createNoteFor($ownerToken, [
+            'id' => $noteId,
+            'notebook' => 'Cooking',
+            'body' => 'seed',
+        ]);
+        Storage::disk('wgw_notes')->put(
+            'users/bob/.notes/Cooking/'.$noteId.'.md',
+            "title: Untitled\ntags:\nstarred: false\n----\nPasta with garlic and oil"
+        );
+        $notebookPath = '/users/bob/.notes/Cooking';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notebookPath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $notebooks = $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-notebooks');
+        $notebooks->assertOk();
+        $row = collect($notebooks->json('notes'))->firstWhere('id', $noteId);
+        $this->assertIsArray($row);
+        $this->assertSame('Pasta with garlic and oil', $row['title']);
+        $this->assertNotSame($noteId, $row['title']);
+    }
+
+    public function test_shared_notebook_empty_body_does_not_list_as_local_id(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $aliceToken = $this->adminBearerToken();
+        $noteId = 'local-aa11bb22cc33dd44ee55ff6677889900';
+
+        $this->withBearer($ownerToken)
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'Recipes'])
+            ->assertCreated();
+
+        $this->createNoteFor($ownerToken, [
+            'id' => $noteId,
+            'notebook' => 'Recipes',
+            'body' => '',
+        ]);
+        Storage::disk('wgw_notes')->put(
+            'users/bob/.notes/Recipes/'.$noteId.'.md',
+            "title: Untitled\ntags:\nstarred: false\n----\n"
+        );
+        $notebookPath = '/users/bob/.notes/Recipes';
+
+        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => $notebookPath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['alice' => ['access' => 'view']],
+        ])->assertOk();
+
+        $notebooks = $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-notebooks');
+        $notebooks->assertOk();
+        $row = collect($notebooks->json('notes'))->firstWhere('id', $noteId);
+        $this->assertIsArray($row);
+        $this->assertSame('', $row['title']);
+        $this->assertNotSame($noteId, $row['title']);
     }
 
     public function test_notes_shared_with_me_preview_uses_body_when_frontmatter_title_is_untitled(): void

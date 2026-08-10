@@ -106,7 +106,9 @@ final class NoteMarkdownCodec
      * List-row preview for Notes UI (no separate title field).
      *
      * Prefer the body section; frontmatter often stays `Untitled` after collab
-     * body edits. Empty/Untitled titles fall through to body, then `$fallbackId`.
+     * body edits. Empty/Untitled titles (and titles that are only the note id)
+     * fall through to body, then an empty string — never surface raw note ids
+     * like `local-*` as the list title.
      */
     public function listPreview(string $markdown, string $fallbackId, int $maxLen = 180): string
     {
@@ -116,11 +118,15 @@ final class NoteMarkdownCodec
             return $this->truncatePreview($fromBody, $maxLen);
         }
         $fromTitle = trim($title);
-        if ($fromTitle !== '' && strcasecmp($fromTitle, 'Untitled') !== 0) {
+        if (
+            $fromTitle !== ''
+            && strcasecmp($fromTitle, 'Untitled') !== 0
+            && $fromTitle !== $fallbackId
+        ) {
             return $this->truncatePreview($fromTitle, $maxLen);
         }
 
-        return $fallbackId;
+        return '';
     }
 
     private function plainPreviewText(string $markdown): string

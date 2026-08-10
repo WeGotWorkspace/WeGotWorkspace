@@ -275,15 +275,28 @@ export function sharedInboxFallbackId(path: string): string {
   return `swm:${normalized}`;
 }
 
+/**
+ * Shared-list `title` is a body-first preview — never fall back to the note id.
+ * Empty / id-equal titles leave body blank so list rows show “Untitled note”
+ * (and collab IDB enrich can still fill a real preview without selecting).
+ */
+export function sharedEntryListPreview(entry: Pick<NotesSharedNoteEntry, "id" | "title">): string {
+  const title = entry.title.trim();
+  if (!title || title === entry.id) return "";
+  // Offline creates keep `local-*` ids; those must never appear as list titles.
+  if (/^local-[0-9a-f-]+$/i.test(title)) return "";
+  return title;
+}
+
 export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
-  const title = entry.title.trim() || entry.id;
+  const title = sharedEntryListPreview(entry);
   const sharedBy = entry.owner.trim();
   const myRights = noteMyRightsFromSharedEntry(entry);
   return {
     id: entry.id,
     notebook: entry.notebook,
     excerpt: title,
-    body: [title],
+    body: title ? [title] : [""],
     // Personal Shared-with-me recipients never see tags — omit from the stub.
     tags: [],
     wordCount: wordCountFromText(title),
@@ -300,14 +313,14 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
 
 /** Note rows under an ACL-shared notebook (not Shared-with-me file grants). */
 export function noteFromSharedNotebookEntry(entry: NotesSharedNoteEntry): Note {
-  const title = entry.title.trim() || entry.id;
+  const title = sharedEntryListPreview(entry);
   const isGroup = entry.scope === "group";
   const myRights = noteMyRightsFromSharedEntry(entry);
   return {
     id: entry.id,
     notebook: entry.notebook,
     excerpt: title,
-    body: [title],
+    body: title ? [title] : [""],
     // Personal ACL notebook shares hide tags; group notebooks keep frontmatter tags.
     tags: isGroup ? entry.tags.map((tag) => tag.trim()).filter(Boolean) : [],
     wordCount: wordCountFromText(title),
