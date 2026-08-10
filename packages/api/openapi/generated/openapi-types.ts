@@ -5841,7 +5841,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download raw vCard file for a contact */
+        /** Download vCard file for a contact */
         get: {
             parameters: {
                 query?: never;
@@ -5853,7 +5853,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Raw vCard file */
+                /** @description vCard file (re-serialized for Apple label compatibility) */
                 200: {
                     headers: {
                         [name: string]: unknown;

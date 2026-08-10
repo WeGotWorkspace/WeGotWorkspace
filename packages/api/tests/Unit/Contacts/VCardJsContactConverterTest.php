@@ -762,4 +762,121 @@ VCARD;
         $this->assertStringContainsString(';;Main Street 123', $unfolded);
         $this->assertStringNotContainsString('ADR;PROP-ID='.$propId.':;;;;;;', $unfolded);
     }
+
+    public function test_outbound_emits_x_ablabel_with_prop_id_and_type_for_standard_contexts(): void
+    {
+        $phoneHomeId = '550e8400-e29b-41d4-a716-446655440101';
+        $phoneMobileId = '550e8400-e29b-41d4-a716-446655440102';
+        $phoneBareId = '550e8400-e29b-41d4-a716-446655440103';
+        $emailWorkId = '550e8400-e29b-41d4-a716-446655440104';
+        $addrHomeId = '550e8400-e29b-41d4-a716-446655440105';
+        $urlWorkId = '550e8400-e29b-41d4-a716-446655440106';
+        $phoneCustomId = '550e8400-e29b-41d4-a716-446655440107';
+
+        $card = [
+            '@type' => 'Card',
+            'version' => '1.0',
+            'uid' => 'urn:uuid:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            'name' => ['@type' => 'Name', 'full' => 'Label Card'],
+            'phones' => [
+                $phoneHomeId => [
+                    '@type' => 'Phone',
+                    'number' => '+1-555-0100',
+                    'contexts' => ['private' => true],
+                ],
+                $phoneMobileId => [
+                    '@type' => 'Phone',
+                    'number' => '+1-555-0101',
+                    'features' => ['mobile' => true],
+                ],
+                $phoneBareId => [
+                    '@type' => 'Phone',
+                    'number' => '+1-555-0102',
+                ],
+                $phoneCustomId => [
+                    '@type' => 'Phone',
+                    'number' => '+1-555-0103',
+                    'contexts' => ['work' => true],
+                    'label' => 'Gym',
+                ],
+            ],
+            'emails' => [
+                $emailWorkId => [
+                    '@type' => 'EmailAddress',
+                    'address' => 'work@example.com',
+                    'contexts' => ['work' => true],
+                ],
+            ],
+            'addresses' => [
+                $addrHomeId => [
+                    '@type' => 'Address',
+                    'contexts' => ['private' => true],
+                    'components' => [
+                        ['@type' => 'AddressComponent', 'kind' => 'name', 'value' => '1 Main St'],
+                    ],
+                ],
+            ],
+            'links' => [
+                $urlWorkId => [
+                    '@type' => 'Link',
+                    'uri' => 'https://work.example',
+                    'contexts' => ['work' => true],
+                ],
+            ],
+        ];
+
+        $vcard = $this->converter->vCardFromCard($card);
+        $unfolded = str_replace(["\r\n ", "\n "], '', $vcard);
+
+        $this->assertMatchesRegularExpression('/item\d+\.TEL;PROP-ID='.$phoneHomeId.';TYPE=home:/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.X-ABLABEL:Home/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.TEL;PROP-ID='.$phoneMobileId.';TYPE=cell:/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.X-ABLABEL:Mobile/i', $unfolded);
+        $this->assertMatchesRegularExpression('/TEL;PROP-ID='.$phoneBareId.':/i', $unfolded);
+        $this->assertDoesNotMatchRegularExpression('/item\d+\.TEL;PROP-ID='.$phoneBareId.'/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.TEL;PROP-ID='.$phoneCustomId.';TYPE=work:/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.X-ABLABEL:Gym/i', $unfolded);
+
+        $this->assertMatchesRegularExpression('/item\d+\.EMAIL;PROP-ID='.$emailWorkId.';TYPE=work:/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.X-ABLABEL:Work/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.ADR;PROP-ID='.$addrHomeId.';TYPE=home/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.URL;PROP-ID='.$urlWorkId.';TYPE=work/i', $unfolded);
+
+        $roundTripped = $this->converter->cardFromVCard($vcard);
+        $this->assertSame($phoneHomeId, array_key_first(
+            array_filter(
+                $roundTripped['phones'] ?? [],
+                static fn ($phone): bool => is_array($phone) && ($phone['contexts'] ?? null) === ['private' => true],
+            ),
+        ));
+        $this->assertSame(['mobile' => true], $roundTripped['phones'][$phoneMobileId]['features'] ?? null);
+        $this->assertArrayNotHasKey('label', $roundTripped['phones'][$phoneHomeId] ?? []);
+        $this->assertArrayNotHasKey('label', $roundTripped['phones'][$phoneMobileId] ?? []);
+        $this->assertSame('Gym', $roundTripped['phones'][$phoneCustomId]['label'] ?? null);
+    }
+
+    public function test_outbound_notes_emit_note_property_with_prop_id(): void
+    {
+        $noteId = '550e8400-e29b-41d4-a716-446655440201';
+        $card = [
+            '@type' => 'Card',
+            'version' => '1.0',
+            'uid' => 'urn:uuid:cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            'name' => ['@type' => 'Name', 'full' => 'Notes Card'],
+            'notes' => [
+                $noteId => [
+                    '@type' => 'Note',
+                    'note' => 'Bring badge to lobby',
+                ],
+            ],
+        ];
+
+        $vcard = $this->converter->vCardFromCard($card);
+        $unfolded = str_replace(["\r\n ", "\n "], '', $vcard);
+
+        $this->assertStringContainsString('NOTE;PROP-ID='.$noteId.':Bring badge to lobby', $unfolded);
+
+        $roundTripped = $this->converter->cardFromVCard($vcard);
+        $this->assertSame('Bring badge to lobby', $roundTripped['notes'][$noteId]['note'] ?? null);
+    }
 }
