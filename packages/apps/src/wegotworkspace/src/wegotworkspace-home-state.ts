@@ -15,6 +15,7 @@ export type WeGotWorkspaceHomeState = {
     label: string;
     route: string;
     icon?: string;
+    sessionApiPath?: string;
   }[];
 };
 
@@ -39,7 +40,10 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
     ]);
     const pluginAppTiles = plugins
       .filter((plugin) => plugin.active && plugin.appTile)
-      .map((plugin) => plugin.appTile!);
+      .map((plugin) => ({
+        ...plugin.appTile!,
+        sessionApiPath: plugin.integration?.sessionApiPath,
+      }));
     const res = settingsRes;
     if (!res.ok) {
       return {
