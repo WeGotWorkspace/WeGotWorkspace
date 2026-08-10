@@ -1,11 +1,12 @@
 @import "../../styles.css" reference;
 
-/* Flush note body — detail pane owns the yellow surface (no paper sheet). */
+/* Flush note body — detail pane owns the yellow surface (no paper sheet).
+ * Zero sheet padding/gutter so tags + prose share `.workspace-detail-pane__scroll`
+ * inset (including ≤768px, where text-editor otherwise tightens sheet tokens). */
 .note-text-editor-body.text-editor {
   --text-editor-sheet: transparent;
   --text-editor-shadow-sheet: none;
   --text-editor-sheet-padding: 0;
-  /* Outer inset comes from `.workspace-detail-pane__scroll`; no sheet margin/gutter. */
   --text-editor-sheet-margin-block: 0;
   --text-editor-sheet-shadow-gutter: 0;
 }
