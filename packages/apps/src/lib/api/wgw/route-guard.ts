@@ -15,6 +15,8 @@ const PUBLIC_ROUTE_PREFIXES = ["/share", "/meet/guest", "/meet/join"] as const;
 const ALLOWED_RETURN_PREFIXES = [
   "/",
   "/admin",
+  "/apps",
+  "/contacts",
   "/docs",
   "/drive",
   "/install",
@@ -22,6 +24,7 @@ const ALLOWED_RETURN_PREFIXES = [
   "/meet",
   "/notes",
   "/settings",
+  "/tasks",
 ];
 
 const MAX_RETURN_UNWRAP_DEPTH = 16;
