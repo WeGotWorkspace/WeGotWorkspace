@@ -92,8 +92,6 @@ type NotesListPanelProps = {
   selectionBar: ReactNode;
   onRefreshList?: () => void;
   pendingNoteIds?: ReadonlySet<string>;
-  /** Share the selected personal notebook directory (ACL grant on `…/.notes/{notebook}`). */
-  onShareNotebook?: () => void;
 };
 
 export function NotesListPanel({
@@ -128,7 +126,6 @@ export function NotesListPanel({
   selectionBar,
   onRefreshList,
   pendingNoteIds,
-  onShareNotebook,
 }: NotesListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   useListReorderAnimation(
@@ -157,15 +154,6 @@ export function NotesListPanel({
                 icon={
                   <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
                 }
-                size="sm"
-                variant="subtle"
-              />
-            ) : null}
-            {canEditDelete && selectedNotebook && onShareNotebook ? (
-              <IconButton
-                label={L.share}
-                onClick={onShareNotebook}
-                icon={<Share2 />}
                 size="sm"
                 variant="subtle"
               />

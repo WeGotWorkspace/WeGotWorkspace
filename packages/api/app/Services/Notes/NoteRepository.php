@@ -458,63 +458,22 @@ final class NoteRepository
     }
 
     /**
-     * Marks personal notebooks that have direct outgoing share grants on the
-     * notebook directory (owner sidebar pip). Group rows are left unmarked.
-     * One batch query — no N+1.
+     * Notebook-directory ACL shares are not a product feature — never mark
+     * personal notebooks with hasShares from dir grants.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
     private function annotateNotebookHasShares(string $username, array $items): array
     {
-        if ($items === []) {
-            return $items;
-        }
-
-        /** @var array<int, string> $pathByIndex */
-        $pathByIndex = [];
-        foreach ($items as $index => $row) {
-            if (($row['scope'] ?? '') === 'group') {
-                continue;
-            }
-            $name = (string) ($row['name'] ?? '');
-            if ($name === '') {
-                continue;
-            }
-            $pathByIndex[$index] = '/'.$this->notePaths->notebookKey(
-                NoteScope::personal($username),
-                $name,
-                false,
-            );
-        }
-        if ($pathByIndex === []) {
-            return $items;
-        }
-
-        $indicators = $this->shares->shareIndicatorsForPaths(
-            $username,
-            array_values(array_unique(array_values($pathByIndex))),
-        );
-        if ($indicators === []) {
-            return $items;
-        }
-
-        foreach ($pathByIndex as $index => $path) {
-            $flags = $indicators[$path] ?? null;
-            if ($flags === null) {
-                continue;
-            }
-            if (($flags['hasPublicShare'] ?? false) || ($flags['hasTeamShare'] ?? false)) {
-                $items[$index]['hasShares'] = true;
-            }
-        }
+        unset($username);
 
         return $items;
     }
 
     /**
-     * Batch-annotate owned list rows with outgoing share indicators (note file
-     * and parent notebook directory). One query for the whole list — no N+1.
+     * Batch-annotate owned list rows with outgoing share indicators on the note
+     * file only (notebook-directory shares are not supported). One query — no N+1.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
@@ -526,30 +485,24 @@ final class NoteRepository
         }
 
         $notePaths = [];
-        $notebookPaths = [];
-        /** @var list<array{note: string, notebook: string}> $pathByIndex */
+        /** @var array<int, string> $pathByIndex */
         $pathByIndex = [];
         foreach ($items as $index => $note) {
-            $paths = $this->virtualSharePathsForNote($username, $note);
-            $notePaths[] = $paths['note'];
-            $notebookPaths[] = $paths['notebook'];
-            $pathByIndex[$index] = $paths;
+            $path = $this->virtualNoteSharePath($username, $note);
+            $notePaths[] = $path;
+            $pathByIndex[$index] = $path;
         }
 
         $indicators = $this->shares->shareIndicatorsForPaths(
             $username,
-            array_values(array_unique([...$notePaths, ...$notebookPaths])),
+            array_values(array_unique($notePaths)),
         );
         if ($indicators === []) {
             return $items;
         }
 
         foreach ($items as $index => &$note) {
-            $paths = $pathByIndex[$index];
-            $flags = $this->mergeShareIndicators(
-                $indicators[$paths['note']] ?? null,
-                $indicators[$paths['notebook']] ?? null,
-            );
+            $flags = $indicators[$pathByIndex[$index]] ?? null;
             if ($flags === null) {
                 continue;
             }
@@ -570,9 +523,8 @@ final class NoteRepository
 
     /**
      * @param  array<string, mixed>  $note
-     * @return array{note: string, notebook: string}
      */
-    private function virtualSharePathsForNote(string $username, array $note): array
+    private function virtualNoteSharePath(string $username, array $note): string
     {
         $scope = (($note['scope'] ?? '') === 'group' && is_string($note['groupSlug'] ?? null) && $note['groupSlug'] !== '')
             ? NoteScope::group((string) $note['groupSlug'])
@@ -582,30 +534,8 @@ final class NoteRepository
         $archived = ($note['archived'] ?? false) === true;
         $notebook = (string) ($note['notebook'] ?? 'General');
         $id = (string) ($note['id'] ?? '');
-        $noteKey = $this->notePaths->noteKey($scope, $notebook, $id, $archived);
-        $notebookKey = $this->notePaths->notebookKey($scope, $notebook, $archived);
 
-        return [
-            'note' => '/'.$noteKey,
-            'notebook' => '/'.$notebookKey,
-        ];
-    }
-
-    /**
-     * @param  array{hasPublicShare: bool, hasTeamShare: bool}|null  $a
-     * @param  array{hasPublicShare: bool, hasTeamShare: bool}|null  $b
-     * @return array{hasPublicShare: bool, hasTeamShare: bool}|null
-     */
-    private function mergeShareIndicators(?array $a, ?array $b): ?array
-    {
-        if ($a === null && $b === null) {
-            return null;
-        }
-
-        return [
-            'hasPublicShare' => ($a['hasPublicShare'] ?? false) || ($b['hasPublicShare'] ?? false),
-            'hasTeamShare' => ($a['hasTeamShare'] ?? false) || ($b['hasTeamShare'] ?? false),
-        ];
+        return '/'.$this->notePaths->noteKey($scope, $notebook, $id, $archived);
     }
 
     /**

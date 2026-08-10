@@ -7,10 +7,11 @@ Technical translation of Epic #414. Product context: Goal #412 (collaborate on N
 
 ## Goal
 
-Reuse Drive’s path-based share grants on `.notes` paths so signed-in users can share a single note or notebook with team members/groups (view/edit only). Provision `groups/{slug}/.notes/` for every group (create/seed + upgrade migration). Surface recipients in Notes as **Shared notebooks** (dir grants + group notebooks) vs **Shared with me** (file grants only). Keep Drive UI blind to `.notes`.
+Reuse Drive’s path-based share grants on `.notes` **note files** so signed-in users can share a single note with team members/groups (view/edit only). Provision `groups/{slug}/.notes/` for every group (create/seed + upgrade migration). Surface recipients in Notes as **Shared with me** (file grants). Group-membership notebooks appear under the main **Notebooks** sidebar (Users icon), not via notebook-directory ACL. Keep Drive UI blind to `.notes`.
 
 ## Non-goals
 
+- Sharing a whole personal notebook directory via ACL (`…/.notes/{NotebookName}`)
 - Guest / public link sharing (#388)
 - Comment / review ACL (Notes has no comment UX)
 - Full access share tier on Notes (Drive/Docs may keep full; Notes is view|edit only — archive/delete stay owner/group-member)
@@ -20,18 +21,18 @@ Reuse Drive’s path-based share grants on `.notes` paths so signed-in users can
 
 ## Affected packages
 
-- `packages/api` — DriveShare note-path rules, Notes/collab auth, shared listings, group `.notes` ensure + wgw migration, OpenAPI, feature tests
-- `packages/apps` — `share-ui` Notes mode; `notes-core` sidebar + open shared content
+- `packages/api` — DriveShare note-path rules, Notes/collab auth, shared-with-me listing, group `.notes` ensure + wgw migration, OpenAPI, feature tests
+- `packages/apps` — `share-ui` Notes mode; `notes-core` sidebar + open shared notes / group notebooks
 
 ## Technical constraints
 
-- Reuse `DriveShareService` / grants / `DriveShareAccess` — grants on `…/.notes/{notebook}/{id}.md` (note) or `…/.notes/{notebook}/` (notebook)
+- Reuse `DriveShareService` / grants / `DriveShareAccess` — grants on `…/.notes/{notebook}/{id}.md` (note file only); reject notebook-directory share creates
 - Permissions subset: `view | edit` only; reject `comment` / legacy `review` / `full` on note paths
 - Harden reads: force `mayComment` / `mayReview` / `mayManageStructure` false for note-path grants (legacy `full` rows keep edit content only)
 - Drive `GET /files/shared-with-me` excludes `isNotePath`
-- Notes listings thin-wrap the same grants, split by entry type (dir → notebooks, file → shared-with-me)
+- Notes `GET /notes/shared-with-me` lists file grants; `GET /notes/shared-notebooks` remains for contract compat but returns empty ACL items/notes
 - Group lifecycle: ensure `files/groups/{slug}/.notes/` on create/seed; wgw migration one-level walk with cheap `directoryExists` skip
-- Apps: Notes ShareDialog hides link/guest; wire Share on note + notebook; sidebar sections per Goal Decisions
+- Apps: Notes ShareDialog on single notes only (team view/edit); group notebooks listed under Notebooks with Users icon; Shared with me for file grants
 - Handoff: `pnpm test:api-done-gate` / `pnpm test:apps-done-gate` as applicable; verify AC on child Tasks #415–#418
 
 ## Edge cases
@@ -40,5 +41,5 @@ Reuse Drive’s path-based share grants on `.notes` paths so signed-in users can
 - Legacy `full` grant row on a note path → `mayEditContent: true`, `mayManageStructure: false`
 - View grant: collab GET ok, PUT forbidden; edit: PUT ok
 - Group already has `.notes` → migration second run is a no-op (no mtime touch)
-- Membership notebooks (`groups/{slug}/.notes`) appear under Shared notebooks without ACL grant
+- Membership notebooks (`groups/{slug}/.notes`) appear under Notebooks (Users) without ACL grant
 - Drive listings never surface `.notes` as a normal folder

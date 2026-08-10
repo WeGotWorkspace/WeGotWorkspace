@@ -6,8 +6,6 @@ export type NotesSeedData = {
   notebooks: string[];
   tags: string[];
   sharedNotebooks?: NotesSharedNotebook[];
-  /** Personal notebook names with outgoing directory shares (owner sidebar pip). */
-  notebooksWithShares?: string[];
 };
 
 export type NotesAdapter = {

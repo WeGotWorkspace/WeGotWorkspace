@@ -4061,8 +4061,8 @@
         "tags": [
           "Notes"
         ],
-        "summary": "List notebook directories shared with the current user via path grants",
-        "description": "Returns directory grants under `.notes` (shared notebooks) plus the note files inside those directories (`notes`). Group-membership notebooks continue via `GET /notes/notebooks` / `GET /notes/items`.",
+        "summary": "List shared notebook ACL rows (compat — always empty)",
+        "description": "Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.",
         "security": [
           {
             "bearerAuth": []
@@ -4070,7 +4070,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Shared notebooks",
+            "description": "Compat empty list (personal notebook-directory ACL shares removed).",
             "content": {
               "application/json": {
                 "schema": {

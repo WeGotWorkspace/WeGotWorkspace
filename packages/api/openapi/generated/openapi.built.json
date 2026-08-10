@@ -2562,7 +2562,7 @@
                     },
                     "hasShares": {
                         "type": "boolean",
-                        "description": "True when this personal notebook directory has direct outgoing share grants (member/team or public). Omitted or false when unshared; never set on group-membership rows."
+                        "description": "Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows."
                     }
                 },
                 "required": [
@@ -8902,7 +8902,7 @@
                     },
                     "notes": {
                         "type": "array",
-                        "description": "Note files under ACL-shared notebook directories (not group-membership notebooks). Same shape as shared-with-me file grants so clients can merge list rows with apiPath.",
+                        "description": "Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items.",
                         "items": {
                             "$ref": "#/components/schemas/NotesSharedNoteEntry"
                         }
@@ -15038,8 +15038,8 @@
                 "tags": [
                     "Notes"
                 ],
-                "summary": "List notebook directories shared with the current user via path grants",
-                "description": "Returns directory grants under `.notes` (shared notebooks) plus the note files inside those directories (`notes`). Group-membership notebooks continue via `GET /notes/notebooks` / `GET /notes/items`.",
+                "summary": "List shared notebook ACL rows (compat — always empty)",
+                "description": "Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15047,7 +15047,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Shared notebooks",
+                        "description": "Compat empty list (personal notebook-directory ACL shares removed).",
                         "content": {
                             "application/json": {
                                 "schema": {

@@ -367,7 +367,7 @@ export function filterVisibleNotes(
 
 /**
  * Parse `groups/{slug}/.notes/{notebook}` (with optional leading slash).
- * Used for Shared notebooks membership paths — not personal ACL shares.
+ * Used for group-membership notebook paths under the Notebooks sidebar.
  */
 export function parseGroupNotebookPath(
   path: string,

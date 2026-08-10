@@ -37,8 +37,7 @@ export type Note = {
   /** True for Shared-with-me file-grant stubs (excluded from All / personal notebooks). */
   sharedInbox?: boolean;
   /**
-   * True for notes loaded via an ACL notebook-directory grant (Shared notebooks).
-   * Kept out of All / owned notebook views; shown when opening that shared notebook.
+   * @deprecated Personal ACL notebook-directory grants were removed. Unused.
    */
   sharedNotebookGrant?: boolean;
   /**

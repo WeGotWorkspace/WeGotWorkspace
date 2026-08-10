@@ -129,10 +129,6 @@ export function useNotesShell({
     setView(initialView);
   }, [initialView]);
 
-  const notebooksWithShares = useMemo(
-    () => new Set(data.notebooksWithShares ?? []),
-    [data.notebooksWithShares],
-  );
   const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
   const tags = useMemo(
     () => [
@@ -220,7 +216,6 @@ export function useNotesShell({
     setArchived,
     notebooks,
     setNotebooks,
-    notebooksWithShares,
     sharedNotebooks,
     tags,
     viewLabel,

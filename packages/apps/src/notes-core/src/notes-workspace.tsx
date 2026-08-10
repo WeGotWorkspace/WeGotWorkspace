@@ -37,11 +37,7 @@ import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
-import {
-  buildNoteCollabUrls,
-  notebookCollabPath,
-  resolveNoteSharePath,
-} from "@/notes-core/src/note-collab-path";
+import { buildNoteCollabUrls, resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
@@ -73,7 +69,6 @@ export function NotesWorkspace({
     L,
     notes,
     notebooks,
-    notebooksWithShares,
     sharedNotebooks,
     tags,
     active,
@@ -133,19 +128,17 @@ export function NotesWorkspace({
     onNoteChange,
   });
 
-  const { primarySidebarItems, notebookSidebarItems, sharedNotebookSidebarItems, tagSidebarTags } =
-    useNotesSidebarModel({
-      labels: L,
-      view,
-      notebooks,
-      notebooksWithShares,
-      sharedNotebooks,
-      tags,
-      selectView,
-      sidebarDropZoneProps,
-      moveToNotebook,
-      assignTagToNotes,
-    });
+  const { primarySidebarItems, notebookSidebarItems, tagSidebarTags } = useNotesSidebarModel({
+    labels: L,
+    view,
+    notebooks,
+    sharedNotebooks,
+    tags,
+    selectView,
+    sidebarDropZoneProps,
+    moveToNotebook,
+    assignTagToNotes,
+  });
 
   const shareDialog = useDriveShareDialog({
     shareOperations,
@@ -237,14 +230,6 @@ export function NotesWorkspace({
     shareDialog.openShareDialog(path, noteListTitle(active));
   }, [active, archived, session.user.username, shareDialog, shareOperations]);
 
-  const openShareSelectedNotebook = useCallback(() => {
-    if (!selectedNotebook || !shareOperations) return;
-    const username = session.user.username;
-    if (!username) return;
-    const path = `/${notebookCollabPath({ kind: "personal", username }, selectedNotebook)}`;
-    shareDialog.openShareDialog(path, selectedNotebook);
-  }, [selectedNotebook, session.user.username, shareDialog, shareOperations]);
-
   const wrapDetailWithCollab = useCallback(
     (children: ReactNode) => {
       if (!collabSessionActive || !active || !noteBodyCollab) return children;
@@ -324,9 +309,6 @@ export function NotesWorkspace({
           >
             <SidebarSection items={primarySidebarItems} />
             <SidebarSection title={L.sectionNotebooks} items={notebookSidebarItems} />
-            {sharedNotebookSidebarItems.length > 0 ? (
-              <SidebarSection title={L.sectionSharedNotebooks} items={sharedNotebookSidebarItems} />
-            ) : null}
             <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
               {tagSidebarTags.map(({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
                 <li key={tag}>
@@ -381,8 +363,6 @@ export function NotesWorkspace({
             selectionBar,
             onRefreshList,
             pendingNoteIds,
-            onShareNotebook:
-              shareOperations && selectedNotebook ? openShareSelectedNotebook : undefined,
           })
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}

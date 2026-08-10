@@ -1,7 +1,7 @@
 import { isValidElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { Share2, Users } from "lucide-react";
+import { BookOpen, Users } from "lucide-react";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import {
   sharedNotebookLabel,
@@ -27,24 +27,15 @@ describe("useNotesSidebarModel", () => {
         groupSlug: "administrators",
       }),
     ).toBe("administrators");
-    expect(
-      sharedNotebookLabel({
-        notebook: "TeamPad",
-        owner: "bob",
-        scope: "personal",
-        groupSlug: null,
-      }),
-    ).toBe("TeamPad");
   });
 
-  it("includes Shared with me in primary nav and splits personal vs shared notebooks", () => {
+  it("lists personal + group notebooks under Notebooks (Users icon for groups)", () => {
     const selectView = vi.fn();
     const { result } = renderHook(() =>
       useNotesSidebarModel({
         labels: defaultNotesLabels,
         view: "all",
         notebooks: ["Drafts", "Journal"],
-        notebooksWithShares: ["Journal"],
         sharedNotebooks: [
           {
             path: "/groups/eng/.notes/Specs",
@@ -60,6 +51,7 @@ describe("useNotesSidebarModel", () => {
             scope: "group",
             groupSlug: "administrators",
           },
+          // Personal ACL notebook-dir shares are ignored.
           {
             path: "/users/bob/.notes/TeamPad",
             notebook: "TeamPad",
@@ -86,45 +78,26 @@ describe("useNotesSidebarModel", () => {
     expect(result.current.notebookSidebarItems.map((item) => item.label)).toEqual([
       "Drafts",
       "Journal",
-    ]);
-    expect(result.current.sharedNotebookSidebarItems.map((item) => item.label)).toEqual([
       "administrators",
       "eng",
-      "TeamPad",
     ]);
-    expect(
-      result.current.sharedNotebookSidebarItems.find((item) => item.label === "administrators")
-        ?.description,
-    ).toBeUndefined();
-    expect(
-      result.current.sharedNotebookSidebarItems.find((item) => item.label === "TeamPad")
-        ?.description,
-    ).toBeUndefined();
-
-    const personalIcon = result.current.sharedNotebookSidebarItems.find(
-      (item) => item.label === "TeamPad",
-    )?.icon;
-    const groupIcon = result.current.sharedNotebookSidebarItems.find(
-      (item) => item.label === "administrators",
-    )?.icon;
-    expect(isValidElement(personalIcon) && personalIcon.type).toBe(Share2);
-    expect(isValidElement(groupIcon) && groupIcon.type).toBe(Users);
 
     const drafts = result.current.notebookSidebarItems.find((item) => item.label === "Drafts");
-    const journal = result.current.notebookSidebarItems.find((item) => item.label === "Journal");
-    expect(drafts?.badge).toBeUndefined();
-    expect(drafts?.className).toBeUndefined();
-    expect(journal?.className).toBe("notes-sidebar-notebook--shared");
-    expect(isValidElement(journal?.badge)).toBe(true);
+    const groupItem = result.current.notebookSidebarItems.find(
+      (item) => item.label === "administrators",
+    );
+    expect(isValidElement(drafts?.icon) && drafts?.icon.type).toBe(BookOpen);
+    expect(isValidElement(groupItem?.icon) && groupItem?.icon.type).toBe(Users);
+    expect(groupItem?.description).toBeUndefined();
 
     result.current.primarySidebarItems[3]?.onClick?.();
     expect(selectView).toHaveBeenCalledWith("shared-with-me");
 
-    result.current.sharedNotebookSidebarItems.find((item) => item.label === "TeamPad")?.onClick?.();
-    expect(selectView).toHaveBeenCalledWith(sharedNotebookViewKey("/users/bob/.notes/TeamPad"));
+    result.current.notebookSidebarItems.find((item) => item.label === "eng")?.onClick?.();
+    expect(selectView).toHaveBeenCalledWith(sharedNotebookViewKey("/groups/eng/.notes/Specs"));
   });
 
-  it("selects the active shared notebook view", () => {
+  it("selects the active group notebook view under Notebooks", () => {
     const viewKey = sharedNotebookViewKey("/groups/eng/.notes/Specs");
     const { result } = renderHook(() =>
       useNotesSidebarModel({
@@ -148,7 +121,9 @@ describe("useNotesSidebarModel", () => {
       }),
     );
 
-    expect(result.current.sharedNotebookSidebarItems[0]?.selected).toBe(true);
-    expect(result.current.notebookSidebarItems[0]?.selected).toBe(false);
+    const groupItem = result.current.notebookSidebarItems.find((item) => item.label === "eng");
+    const drafts = result.current.notebookSidebarItems.find((item) => item.label === "Drafts");
+    expect(groupItem?.selected).toBe(true);
+    expect(drafts?.selected).toBe(false);
   });
 });

@@ -258,7 +258,7 @@ export async function fetchNotesSharedWithMe(opts?: {
   return parseSharedNotesPayload(await wgwReadJson(res));
 }
 
-/** List notebook-dir grants under `.notes` (Shared notebooks ACL rows + contained notes). */
+/** List shared notebook payload (compat — API returns empty ACL items/notes). */
 export async function fetchNotesSharedNotebooks(opts?: {
   signal?: AbortSignal;
 }): Promise<NotesSharedNotebooksPayload> {
@@ -311,29 +311,6 @@ export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {
   };
 }
 
-/** Note rows under an ACL-shared notebook (not Shared-with-me file grants). */
-export function noteFromSharedNotebookEntry(entry: NotesSharedNoteEntry): Note {
-  const title = sharedEntryListPreview(entry);
-  const isGroup = entry.scope === "group";
-  const myRights = noteMyRightsFromSharedEntry(entry);
-  return {
-    id: entry.id,
-    notebook: entry.notebook,
-    excerpt: title,
-    body: title ? [title] : [""],
-    // Personal ACL notebook shares hide tags; group notebooks keep frontmatter tags.
-    tags: isGroup ? entry.tags.map((tag) => tag.trim()).filter(Boolean) : [],
-    wordCount: wordCountFromText(title),
-    category: "Note",
-    date: "—",
-    scope: entry.scope,
-    groupSlug: entry.groupSlug,
-    apiPath: entry.path,
-    sharedNotebookGrant: true,
-    ...(myRights ? { myRights } : {}),
-  };
-}
-
 /**
  * Merge Shared-with-me file grants into the owned note list.
  *
@@ -360,33 +337,6 @@ export function mergeOwnedAndSharedInboxNotes(
   return [...ownedNotes, ...inboxNotes];
 }
 
-/**
- * Merge notes discovered under ACL-shared notebook directories.
- * Skips paths already present (e.g. overlapping file grants) and remaps id collisions.
- */
-export function mergeSharedNotebookGrantNotes(
-  notes: Note[],
-  underSharedNotebooks: NotesSharedNoteEntry[],
-): Note[] {
-  const usedIds = new Set(notes.map((note) => note.id));
-  const usedPaths = new Set(
-    notes.map((note) => note.apiPath?.replace(/^\//, "")).filter((p): p is string => !!p),
-  );
-  const extra: Note[] = [];
-  for (const entry of underSharedNotebooks) {
-    const pathKey = normalizeNotesPath(entry.path).replace(/^\//, "");
-    if (pathKey && usedPaths.has(pathKey)) continue;
-    const note = noteFromSharedNotebookEntry(entry);
-    if (usedIds.has(note.id)) {
-      note.id = sharedInboxFallbackId(entry.path);
-    }
-    usedIds.add(note.id);
-    if (pathKey) usedPaths.add(pathKey);
-    extra.push(note);
-  }
-  return extra.length === 0 ? notes : [...notes, ...extra];
-}
-
 function sharedNotebookFromGroupRow(row: NotesNotebookRow): NotesSharedNotebookEntry | null {
   if (row.scope !== "group" || !row.groupSlug?.trim()) return null;
   const slug = row.groupSlug.trim();
@@ -399,14 +349,9 @@ function sharedNotebookFromGroupRow(row: NotesNotebookRow): NotesSharedNotebookE
   };
 }
 
-function mergeSharedNotebooks(
-  acl: NotesSharedNotebookEntry[],
-  groupRows: NotesNotebookRow[],
-): NotesSharedNotebookEntry[] {
+/** Group-membership notebooks only (personal ACL notebook shares are not a product feature). */
+function mergeGroupSharedNotebooks(groupRows: NotesNotebookRow[]): NotesSharedNotebookEntry[] {
   const byPath = new Map<string, NotesSharedNotebookEntry>();
-  for (const entry of acl) {
-    byPath.set(entry.path, entry);
-  }
   for (const row of groupRows) {
     const entry = sharedNotebookFromGroupRow(row);
     if (!entry) continue;
@@ -527,24 +472,13 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   }
 
   let sharedWithMe: NotesSharedNoteEntry[] = [];
-  let aclSharedNotebooks: NotesSharedNotebookEntry[] = [];
-  let sharedNotebookNotes: NotesSharedNoteEntry[] = [];
   try {
-    const [swm, sharedNbs] = await Promise.all([
-      fetchNotesSharedWithMe(),
-      fetchNotesSharedNotebooks(),
-    ]);
-    sharedWithMe = swm;
-    aclSharedNotebooks = sharedNbs.items;
-    sharedNotebookNotes = sharedNbs.notes;
+    sharedWithMe = await fetchNotesSharedWithMe();
   } catch {
     // Shared listings are best-effort — owned notes still load if these fail.
   }
 
-  const notes = mergeSharedNotebookGrantNotes(
-    mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe),
-    sharedNotebookNotes,
-  );
+  const notes = mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe);
 
   const personalFromApi = notebookRows
     .filter((row) => row.scope !== "group")
@@ -553,13 +487,6 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   const notebooks = [...new Set([...personalFromApi, ...personalFromNotes])].filter((name) =>
     name.trim(),
   );
-  const notebooksWithShares = [
-    ...new Set(
-      notebookRows
-        .filter((row) => row.scope !== "group" && row.hasShares === true)
-        .map((row) => row.name),
-    ),
-  ];
 
   const groupRowsFromNotes = ownedNotes
     .filter((n) => n.scope === "group" && n.groupSlug?.trim())
@@ -570,15 +497,12 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
         groupSlug: n.groupSlug ?? null,
       }),
     );
-  const sharedNotebooks = mergeSharedNotebooks(aclSharedNotebooks, [
-    ...notebookRows,
-    ...groupRowsFromNotes,
-  ]);
+  const sharedNotebooks = mergeGroupSharedNotebooks([...notebookRows, ...groupRowsFromNotes]);
 
   const tags = [...new Set(ownedNotes.flatMap((n) => n.tags))];
 
   return {
-    data: { notes, notebooks, tags, sharedNotebooks, notebooksWithShares },
+    data: { notes, notebooks, tags, sharedNotebooks },
     session,
   };
 }

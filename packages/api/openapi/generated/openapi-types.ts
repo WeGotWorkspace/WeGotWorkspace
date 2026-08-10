@@ -6476,8 +6476,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List notebook directories shared with the current user via path grants
-         * @description Returns directory grants under `.notes` (shared notebooks) plus the note files inside those directories (`notes`). Group-membership notebooks continue via `GET /notes/notebooks` / `GET /notes/items`.
+         * List shared notebook ACL rows (compat — always empty)
+         * @description Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.
          */
         get: {
             parameters: {
@@ -6488,7 +6488,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Shared notebooks */
+                /** @description Compat empty list (personal notebook-directory ACL shares removed). */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -7376,7 +7376,7 @@ export interface components {
             scope?: "personal" | "group";
             /** @description Group slug when scope is group; null/omitted for personal notebooks. */
             groupSlug?: string | null;
-            /** @description True when this personal notebook directory has direct outgoing share grants (member/team or public). Omitted or false when unshared; never set on group-membership rows. */
+            /** @description Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows. */
             hasShares?: boolean;
         };
         NotebookListItemList: components["schemas"]["NotebookListItem"][];
@@ -9603,7 +9603,7 @@ export interface components {
         };
         NotesSharedNotebooksResponse: {
             items: components["schemas"]["NotesSharedNotebookEntry"][];
-            /** @description Note files under ACL-shared notebook directories (not group-membership notebooks). Same shape as shared-with-me file grants so clients can merge list rows with apiPath. */
+            /** @description Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items. */
             notes?: components["schemas"]["NotesSharedNoteEntry"][];
         };
     };

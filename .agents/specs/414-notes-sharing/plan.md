@@ -4,10 +4,11 @@ Derived from [spec.md](./spec.md).
 
 ## Goal
 
-Path-ACL Notes sharing (view/edit), group `.notes` homes, Notes-mode ShareDialog, and sidebar Shared notebooks / Shared with me — closing Epic #414 under Goal #412.
+Path-ACL **single-note** sharing (view/edit), group `.notes` homes, Notes-mode ShareDialog, Shared with me + group notebooks under Notebooks — closing Epic #414 under Goal #412.
 
 ## Non-goals
 
+- Sharing whole personal notebooks via directory ACL
 - Guest/public links, comment ACL, Drive-visible `.notes`, vault sharing, `notes_shares` table
 
 ## Affected packages
@@ -27,7 +28,7 @@ Path-ACL Notes sharing (view/edit), group `.notes` homes, Notes-mode ShareDialog
 - **id:** `api-path-grants`
 - **Skill:** api, testing
 - **Inputs:** `DriveShareService`, `DriveShareAccess`, Notes/collab auth, OpenAPI, Epic slices / Task #415
-- **Done when:** Note-path shares view/edit; comment/full rejected; mayComment/mayReview/mayManageStructure false on note grants; Notes/collab grant-aware; Drive SWM excludes `.notes`; Notes shared listings split; OpenAPI + feature tests green
+- **Done when:** Note-file shares view/edit; notebook-dir share create rejected; comment/full rejected; mayComment/mayReview/mayManageStructure false on note grants; Notes/collab grant-aware; Drive SWM excludes `.notes`; Notes shared-with-me listing; OpenAPI + feature tests green
 - **Verify with:** `pnpm test:api-done-gate` (or targeted Notes/Drive share feature tests then done-gate)
 - **Parallel with:** `ensure-group-notes-dir`
 
@@ -45,16 +46,16 @@ Path-ACL Notes sharing (view/edit), group `.notes` homes, Notes-mode ShareDialog
 - **id:** `share-ui-notes-mode`
 - **Skill:** apps-ui, workspace, storybook
 - **Inputs:** `packages/apps/src/share-ui/`, Task #417; A OpenAPI for note paths
-- **Done when:** Notes ShareDialog team-only, view/edit; Share wired on note + notebook; Vitest/Storybook mock-tier
+- **Done when:** Notes ShareDialog team-only, view/edit; Share wired on **single notes** only; Vitest/Storybook mock-tier
 - **Verify with:** targeted Vitest / Storybook; later `pnpm test:apps-done-gate`
 - **Parallel with:** `notes-sidebar-ui` (after A listing contracts)
 
-### Chunk C: Notes sidebar Shared sections
+### Chunk C: Notes sidebar Shared with me + group notebooks
 
 - **id:** `notes-sidebar-ui`
 - **Skill:** workspace, apps-ui, testing
 - **Inputs:** `use-notes-sidebar-model.tsx`, Notes shared listings from A, Task #418
-- **Done when:** Shared with me (files only) + Shared notebooks (dirs + group notebooks); open shared content under rights; Vitest/Storybook coverage
+- **Done when:** Shared with me (files only); group notebooks under Notebooks (Users icon); open shared notes under rights; Vitest/Storybook coverage
 - **Verify with:** targeted Vitest / Storybook; later `pnpm test:apps-done-gate`
 - **Parallel with:** `share-ui-notes-mode`
 
@@ -69,7 +70,7 @@ Path-ACL Notes sharing (view/edit), group `.notes` homes, Notes-mode ShareDialog
 
 ## Test plan
 
-- [ ] API: OpenAPI → feature tests (comment reject, note/notebook share, Drive SWM filter, Notes listings, group `.notes` migration) → `pnpm test:api-done-gate`
+- [ ] API: OpenAPI → feature tests (comment reject, note-file share, notebook-dir reject, Drive SWM filter, Notes SWM, group `.notes` migration) → `pnpm test:api-done-gate`
 - [ ] UI: Notes ShareDialog mock-tier + sidebar Vitest → `pnpm test:apps-done-gate`
 - [ ] verify-issue against #415–#418 / #414
 

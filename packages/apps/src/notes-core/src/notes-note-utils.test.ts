@@ -85,7 +85,7 @@ describe("notes-note-utils", () => {
     expect(noteListTagOverflow(["  focus  ", ""])).toEqual({ visible: ["focus"], overflow: 0 });
   });
 
-  it("hides tags and stars for personal share recipients; shows for owned and group", () => {
+  it("hides tags and stars for Shared-with-me recipients; shows for owned and group", () => {
     const owned = sampleNote;
     const sharedInbox: Note = {
       ...sampleNote,
@@ -93,13 +93,6 @@ describe("notes-note-utils", () => {
       sharedInbox: true,
       sharedBy: "bob",
       tags: ["secret"],
-    };
-    const personalSharedNb: Note = {
-      ...sampleNote,
-      id: "psn",
-      sharedNotebookGrant: true,
-      scope: "personal",
-      tags: ["team"],
     };
     const groupNote: Note = {
       ...sampleNote,
@@ -117,10 +110,6 @@ describe("notes-note-utils", () => {
     expect(noteShowsTags(sharedInbox)).toBe(false);
     expect(noteShowsStarControls(sharedInbox)).toBe(false);
     expect(noteAllowsTagAssignment(sharedInbox, true)).toBe(false);
-
-    expect(noteShowsTags(personalSharedNb)).toBe(false);
-    expect(noteShowsStarControls(personalSharedNb)).toBe(false);
-    expect(noteAllowsTagAssignment(personalSharedNb, true)).toBe(false);
 
     expect(noteShowsTags(groupNote)).toBe(true);
     expect(noteShowsStarControls(groupNote)).toBe(true);
@@ -149,13 +138,6 @@ describe("notes-note-utils", () => {
         ...sampleNote,
         isShared: true,
         sharedInbox: true,
-      }),
-    ).toBe(false);
-    expect(
-      noteShowsSharedBadge({
-        ...sampleNote,
-        isShared: true,
-        sharedNotebookGrant: true,
       }),
     ).toBe(false);
   });
@@ -615,7 +597,7 @@ describe("noteListLocationLabel", () => {
     ).toBe("administrators");
   });
 
-  it("sharedNotebookLabel keeps notebook name for personal ACL shares", () => {
+  it("sharedNotebookLabel keeps notebook name for non-group rows", () => {
     expect(
       sharedNotebookLabel({
         notebook: "TeamPad",
@@ -640,7 +622,7 @@ describe("group notebook create targets", () => {
     expect(parseGroupNotebookPath("/users/bob/.notes/TeamPad")).toBeNull();
   });
 
-  it("allows New note in group membership shared notebooks only", () => {
+  it("allows New note in group membership notebooks only", () => {
     expect(notesCanCreateInView("all")).toBe(true);
     expect(notesCanCreateInView("nb:Drafts")).toBe(true);
     expect(notesCanCreateInView("shared-nb:/groups/eng/.notes/General")).toBe(true);

@@ -169,7 +169,7 @@
       },
       "notes": {
         "type": "array",
-        "description": "Note files under ACL-shared notebook directories (not group-membership notebooks). Same shape as shared-with-me file grants so clients can merge list rows with apiPath.",
+        "description": "Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items.",
         "items": { "$ref": "#/components/schemas/NotesSharedNoteEntry" }
       }
     },
@@ -192,7 +192,7 @@
       },
       "hasShares": {
         "type": "boolean",
-        "description": "True when this personal notebook directory has direct outgoing share grants (member/team or public). Omitted or false when unshared; never set on group-membership rows."
+        "description": "Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows."
       }
     },
     "required": ["name", "activeCount", "archivedCount"]
