@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\Home\StateController as HomeStateController;
 use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionController;
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
 use App\Http\Controllers\Api\V1\Installer\StateController as InstallerStateController;
+use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Mail\MailController;
@@ -275,6 +276,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
 
         // JMAP transport envelope (RFC 8620) over the same calendar services.
         Route::get('jmap/session', JmapSessionController::class);
+        Route::post('jmap', [JmapApiController::class, 'handle']);
         Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapStubController::class, 'download']);
         Route::post('jmap/upload/{accountId}', [JmapStubController::class, 'upload']);
         Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);

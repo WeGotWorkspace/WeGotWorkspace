@@ -9332,6 +9332,94 @@
                         "type": "string"
                     }
                 }
+            },
+            "JmapMethodInvocation": {
+                "type": "array",
+                "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 §3.2).",
+                "prefixItems": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ],
+                "minItems": 3,
+                "maxItems": 3
+            },
+            "JmapApiRequest": {
+                "type": "object",
+                "description": "JMAP Request object (RFC 8620 §3.3).",
+                "required": [
+                    "using",
+                    "methodCalls"
+                ],
+                "properties": {
+                    "using": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 1
+                    },
+                    "methodCalls": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapMethodInvocation"
+                        }
+                    },
+                    "createdIds": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "JmapApiResponse": {
+                "type": "object",
+                "description": "JMAP Response object (RFC 8620 §3.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
+                "required": [
+                    "methodResponses",
+                    "sessionState"
+                ],
+                "properties": {
+                    "methodResponses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapMethodInvocation"
+                        }
+                    },
+                    "sessionState": {
+                        "type": "string"
+                    }
+                }
+            },
+            "JmapProblemDetails": {
+                "type": "object",
+                "description": "Request-level error as RFC 7807 problem details (RFC 8620 §3.6.1).",
+                "required": [
+                    "type",
+                    "status",
+                    "detail"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "limit": {
+                        "type": "string"
+                    }
+                }
             }
         },
         "responses": {
@@ -15817,6 +15905,56 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/jmap": {
+            "post": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP batch API endpoint",
+                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JmapApiRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "JMAP response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Request-level error (problem details)",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
                     }
                 }
             }

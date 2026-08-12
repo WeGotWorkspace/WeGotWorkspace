@@ -6816,6 +6816,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP batch API endpoint
+         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["JmapApiRequest"];
+                };
+            };
+            responses: {
+                /** @description JMAP response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapApiResponse"];
+                    };
+                };
+                /** @description Request-level error (problem details) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10049,6 +10102,32 @@ export interface components {
             uploadUrl: string;
             eventSourceUrl: string;
             state: string;
+        };
+        /** @description JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 §3.2). */
+        JmapMethodInvocation: [
+            string,
+            Record<string, never>,
+            string
+        ];
+        /** @description JMAP Request object (RFC 8620 §3.3). */
+        JmapApiRequest: {
+            using: string[];
+            methodCalls: components["schemas"]["JmapMethodInvocation"][];
+            createdIds?: {
+                [key: string]: string;
+            };
+        };
+        /** @description JMAP Response object (RFC 8620 §3.4). Method-level failures travel as ["error", {type, description?}, callId] invocations inside methodResponses. */
+        JmapApiResponse: {
+            methodResponses: components["schemas"]["JmapMethodInvocation"][];
+            sessionState: string;
+        };
+        /** @description Request-level error as RFC 7807 problem details (RFC 8620 §3.6.1). */
+        JmapProblemDetails: {
+            type: string;
+            status: number;
+            detail: string;
+            limit?: string;
         };
     };
     responses: {
