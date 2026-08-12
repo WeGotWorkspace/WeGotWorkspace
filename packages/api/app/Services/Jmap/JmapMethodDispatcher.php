@@ -10,6 +10,7 @@ use App\Services\Jmap\Methods\CalendarEventChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventGetMethod;
 use App\Services\Jmap\Methods\CalendarEventQueryChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventQueryMethod;
+use App\Services\Jmap\Methods\CalendarEventSetMethod;
 use App\Services\Jmap\Methods\CalendarGetMethod;
 use App\Services\Jmap\Methods\CalendarSetMethod;
 use App\Services\Jmap\Methods\CoreEchoMethod;
@@ -33,6 +34,7 @@ final class JmapMethodDispatcher
         CalendarSetMethod $calendarSet,
         CalendarEventGetMethod $calendarEventGet,
         CalendarEventChangesMethod $calendarEventChanges,
+        CalendarEventSetMethod $calendarEventSet,
         CalendarEventQueryMethod $calendarEventQuery,
         CalendarEventQueryChangesMethod $calendarEventQueryChanges,
     ) {
@@ -42,6 +44,7 @@ final class JmapMethodDispatcher
         $this->register($calendarSet);
         $this->register($calendarEventGet);
         $this->register($calendarEventChanges);
+        $this->register($calendarEventSet);
         $this->register($calendarEventQuery);
         $this->register($calendarEventQueryChanges);
     }
