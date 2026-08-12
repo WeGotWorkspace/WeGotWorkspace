@@ -64,6 +64,16 @@
     },
     "additionalProperties": false
   },
+  "CalendarRecurrenceNDay": {
+    "type": "object",
+    "required": ["@type", "day"],
+    "properties": {
+      "@type": { "type": "string", "const": "NDay" },
+      "day": { "type": "string", "enum": ["mo", "tu", "we", "th", "fr", "sa", "su"] },
+      "nthOfPeriod": { "type": "integer", "description": "Occurrence within the period, e.g. 2 = second, -1 = last (RFC 8984 §4.3.3)." }
+    },
+    "additionalProperties": false
+  },
   "CalendarRecurrenceRule": {
     "type": "object",
     "required": ["@type", "frequency"],
@@ -76,12 +86,19 @@
       "interval": { "type": "integer", "minimum": 1 },
       "count": { "type": "integer", "minimum": 1 },
       "until": { "type": "string" },
-      "byDay": { "type": "array", "items": { "type": "string" } },
-      "byMonth": { "type": "array", "items": { "type": "integer" } },
+      "byDay": { "type": "array", "items": { "$ref": "#/components/schemas/CalendarRecurrenceNDay" } },
+      "byMonth": {
+        "type": "array",
+        "items": { "type": "string", "pattern": "^[0-9]+L?$" },
+        "description": "Month numbers as strings, optionally with leap-month suffix, e.g. \"3L\" (RFC 8984 §4.3.3)."
+      },
       "byMonthDay": { "type": "array", "items": { "type": "integer" } },
       "byYearDay": { "type": "array", "items": { "type": "integer" } },
       "byWeekNo": { "type": "array", "items": { "type": "integer" } },
       "bySetPosition": { "type": "array", "items": { "type": "integer" } },
+      "byHour": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+      "byMinute": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+      "bySecond": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
       "firstDayOfWeek": { "type": "string" }
     },
     "additionalProperties": false

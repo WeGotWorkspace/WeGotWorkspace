@@ -154,7 +154,7 @@ final class CalendarEventsTest extends WgwDatabaseTestCase
             ->assertJsonPath('title', 'Weekly Standup')
             ->assertJsonCount(1, 'recurrenceRules')
             ->assertJsonPath('recurrenceRules.0.frequency', 'weekly')
-            ->assertJsonPath('recurrenceRules.0.byDay.0', 'MO');
+            ->assertJsonPath('recurrenceRules.0.byDay.0', ['@type' => 'NDay', 'day' => 'mo']);
 
         $this->assertArrayNotHasKey('instances', $response->json());
     }
