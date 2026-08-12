@@ -1,4 +1,4 @@
-Source: no GitHub issue yet — architecture proposal derived from the `429-calendar-jmap-parity` audit and a live cross-repo compliance review against `@lit-calendar/jmap-client` (2026-08-13). Refined 2026-08-13 after a second cross-repo verification pass (every code citation re-checked against both repos; draft-ietf-jmap-calendars-27 consulted); see §Resolved verification items.
+Source: ad-hoc — no GitHub issue yet (issue creation unavailable in the build environment; file a Task under epic #137 or Goal #385/#402/#403 and update this header + folder number afterwards). Architecture proposal derived from the `429-calendar-jmap-parity` audit and a live cross-repo compliance review against `@lit-calendar/jmap-client` (2026-08-13). Refined 2026-08-13 after a second cross-repo verification pass (every code citation re-checked against both repos; draft-ietf-jmap-calendars-27 consulted); see §Resolved verification items. Every code citation was independently re-verified against both repos on 2026-08-13 (18/19 exact; §6 prose on `mayDelete` was imprecise but the mapping table is correct).
 
 # JMAP Calendars: real RFC 8620 transport envelope
 

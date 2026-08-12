@@ -1,6 +1,6 @@
 # JMAP Calendars: real RFC 8620 transport envelope
 
-Derived from [spec.md](./spec.md). No GitHub issue yet — open one before starting if this repo's workflow requires it (mirror `429-calendar-jmap-parity`'s numbering convention).
+Derived from [spec.md](./spec.md). `Source: ad-hoc` — issue creation was unavailable in the build environment; file a Task issue afterwards and renumber this folder per the `429-calendar-jmap-parity` convention. Engineering rows: [tasks.md](./tasks.md).
 
 ## Goal
 
