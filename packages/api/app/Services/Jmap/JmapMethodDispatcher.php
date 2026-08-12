@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Jmap;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Jmap\Methods\CalendarEventGetMethod;
 use App\Services\Jmap\Methods\CalendarEventQueryChangesMethod;
+use App\Services\Jmap\Methods\CalendarEventQueryMethod;
+use App\Services\Jmap\Methods\CalendarGetMethod;
+use App\Services\Jmap\Methods\CalendarSetMethod;
 use App\Services\Jmap\Methods\CoreEchoMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
 
@@ -22,9 +26,17 @@ final class JmapMethodDispatcher
 
     public function __construct(
         CoreEchoMethod $coreEcho,
+        CalendarGetMethod $calendarGet,
+        CalendarSetMethod $calendarSet,
+        CalendarEventGetMethod $calendarEventGet,
+        CalendarEventQueryMethod $calendarEventQuery,
         CalendarEventQueryChangesMethod $calendarEventQueryChanges,
     ) {
         $this->register($coreEcho);
+        $this->register($calendarGet);
+        $this->register($calendarSet);
+        $this->register($calendarEventGet);
+        $this->register($calendarEventQuery);
         $this->register($calendarEventQueryChanges);
     }
 
