@@ -31,10 +31,14 @@
   },
   "JmapCalendarChangesResponse": {
     "type": "object",
-    "required": ["oldState", "newState", "created", "updated", "destroyed"],
+    "required": ["oldState", "newState", "hasMoreChanges", "created", "updated", "destroyed"],
     "properties": {
       "oldState": { "type": "string" },
       "newState": { "type": "string" },
+      "hasMoreChanges": {
+        "type": "boolean",
+        "description": "RFC 8620 §5.2. Always false: the full delta is returned in one response because the backing Sabre changes log cannot produce a safe intermediate sync token (maxChanges is accepted but not used for truncation)."
+      },
       "created": { "type": "array", "items": { "$ref": "#/components/schemas/JmapId" } },
       "updated": { "type": "array", "items": { "$ref": "#/components/schemas/JmapId" } },
       "destroyed": { "type": "array", "items": { "$ref": "#/components/schemas/JmapId" } }

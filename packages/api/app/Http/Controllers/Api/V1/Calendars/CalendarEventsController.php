@@ -43,6 +43,31 @@ final class CalendarEventsController
         ));
     }
 
+    public function changes(Request $request): JsonResponse
+    {
+        /** @var array{username: string, role: string} $principal */
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        $calendarId = $request->query('calendarId');
+        if (! is_string($calendarId) || trim($calendarId) === '') {
+            throw new ApiHttpException(400, 'calendarId is required.', 'bad_request');
+        }
+
+        $since = $request->query('since');
+
+        // Accepted per RFC 8620 §5.2 but not used for truncation: the backing
+        // Sabre changes log cannot produce a safe intermediate sync token, so
+        // the full delta is always returned (hasMoreChanges is always false).
+        $maxChanges = $request->query('maxChanges');
+        if ($maxChanges !== null && (! is_string($maxChanges) || ! ctype_digit($maxChanges) || (int) $maxChanges < 1)) {
+            throw new ApiHttpException(400, 'maxChanges must be a positive integer.', 'bad_request');
+        }
+
+        return response()->json(
+            $this->events->changes($principal['username'], $calendarId, is_string($since) ? $since : null),
+        );
+    }
+
     public function show(Request $request, string $eventId): JsonResponse
     {
         /** @var array{username: string, role: string} $principal */
