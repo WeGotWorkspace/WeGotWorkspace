@@ -6507,6 +6507,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/events/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Incremental calendar event changes
+         * @description JMAP CalendarEvent/changes mapping over the CalDAV calendarchanges log. Multi-VEVENT objects emit one composite id `{objectId}#{uid}` per VEVENT; destroyed ids include every id previously surfaced over REST for the destroyed object. The full delta is always returned in one response: `maxChanges` is accepted (RFC 8620 §5.2) but not used for truncation because the backing Sabre changes log cannot produce a safe intermediate sync token, so `hasMoreChanges` is always false.
+         */
+        get: {
+            parameters: {
+                query: {
+                    calendarId: string;
+                    since?: string;
+                    /** @description RFC 8620 §5.2 maxChanges. Validated (positive integer) but not used for truncation; the full delta is always returned and hasMoreChanges is always false. */
+                    maxChanges?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Calendar event changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapCalendarChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/events/set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP CalendarEvent/set batch mutations
+         * @description RFC 8620 §5.3 response semantics: `created` maps creation id to the server-set properties `{id, state}`, `updated` maps event id to the server-changed properties `{state}`. Top-level `oldState`/`newState` are the same per-calendar sync state `/calendars/events/changes` uses, scoped to the calendars touched by the request (single calendar: plain synctoken; multiple: `{count}:{uri:token,...}` composite sorted by uri; nothing mutated: all owned VEVENT calendars, oldState equals newState). Deliberate divergence: `ifInState` is per record (update/destroy entries carry their own per-event state token, stale token yields SetError type `stateMismatch`) instead of a request-level ifInState.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarEventSetRequest"];
+                };
+            };
+            responses: {
+                /** @description CalendarEvent/set result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarEventSetResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/events/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Query calendar event ids
+         * @description JMAP CalendarEvent/query mapping: filter by calendar ids, time range, and title text. Time-range matching is per VEVENT (composite ids match on their own occurrences, including recurrence expansion). Returns `queryState` (the same state string `/calendars/events/changes` uses, composed across `filter.inCalendars`) and `canCalculateChanges: false` (CalendarEvent/queryChanges is not implemented) per RFC 8620 §5.5.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarEventQueryRequest"];
+                };
+            };
+            responses: {
+                /** @description Matching calendar event ids */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarEventQueryResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8674,12 +8812,16 @@ export interface components {
             interval?: number;
             count?: number;
             until?: string;
-            byDay?: string[];
-            byMonth?: number[];
+            byDay?: components["schemas"]["CalendarRecurrenceNDay"][];
+            /** @description Month numbers as strings, optionally with leap-month suffix, e.g. "3L" (RFC 8984 §4.3.3). */
+            byMonth?: string[];
             byMonthDay?: number[];
             byYearDay?: number[];
             byWeekNo?: number[];
             bySetPosition?: number[];
+            byHour?: number[];
+            byMinute?: number[];
+            bySecond?: number[];
             firstDayOfWeek?: string;
         };
         CalendarEventLocation: {
@@ -8802,6 +8944,8 @@ export interface components {
             created?: components["schemas"]["JmapUTCDateTime"];
             updated?: components["schemas"]["JmapUTCDateTime"];
             etag?: components["schemas"]["DavEtag"];
+            /** @description Opaque JMAP state token for CalendarEvent/set ifInState. */
+            state?: string;
             icsProps?: {
                 [key: string]: string;
             };
@@ -9125,6 +9269,8 @@ export interface components {
         JmapCalendarChangesResponse: {
             oldState: string;
             newState: string;
+            /** @description RFC 8620 §5.2. Always false: the full delta is returned in one response because the backing Sabre changes log cannot produce a safe intermediate sync token (maxChanges is accepted but not used for truncation). */
+            hasMoreChanges: boolean;
             created: components["schemas"]["JmapId"][];
             updated: components["schemas"]["JmapId"][];
             destroyed: components["schemas"]["JmapId"][];
@@ -9605,6 +9751,105 @@ export interface components {
             items: components["schemas"]["NotesSharedNotebookEntry"][];
             /** @description Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items. */
             notes?: components["schemas"]["NotesSharedNoteEntry"][];
+        };
+        CalendarRecurrenceNDay: {
+            /** @constant */
+            "@type": "NDay";
+            /** @enum {string} */
+            day: "mo" | "tu" | "we" | "th" | "fr" | "sa" | "su";
+            /** @description Occurrence within the period, e.g. 2 = second, -1 = last (RFC 8984 §4.3.3). */
+            nthOfPeriod?: number;
+        };
+        /** @description RFC 8620 §5.3 /set arguments subset. Deliberate divergence: ifInState is per record (update/destroy entries carry their own per-event state token) instead of a single request-level ifInState. */
+        CalendarEventSetRequest: {
+            /** @description Map of client-chosen creation id to the event to create; the creation id keys the created/notCreated response maps. */
+            create?: {
+                [key: string]: components["schemas"]["CalendarEventCreate"];
+            };
+            /** @description Map of event id to patch; optional ifInState is resolved against the event state token. */
+            update?: {
+                [key: string]: {
+                    ifInState?: string;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+            /** @description Event ids to destroy, or map of id to { ifInState }. */
+            destroy?: components["schemas"]["JmapId"][] | {
+                [key: string]: {
+                    ifInState?: string;
+                };
+            };
+        };
+        /** @description RFC 8620 §5.3 SetError. Types: notFound, invalidProperties (with properties listing the offending paths), forbidden, serverFail, and stateMismatch (per-record ifInState divergence — see CalendarEventSetRequest). */
+        CalendarSetError: {
+            type: string;
+            description?: string | null;
+            /** @description Offending property paths; present when type is invalidProperties. */
+            properties?: string[];
+        };
+        /** @description Server-set properties of a created event (RFC 8620 §5.3): the server-assigned id and the event's state token. */
+        CalendarEventSetCreated: {
+            id: components["schemas"]["JmapId"];
+            state: string;
+        };
+        /** @description RFC 8620 §5.3 /set response. oldState/newState are the same per-calendar sync state /changes uses, scoped to the calendars touched by the request: a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite (sorted by uri) when the request spans calendars. When nothing was mutated the scope falls back to every owned VEVENT calendar and oldState equals newState. */
+        CalendarEventSetResponse: {
+            /** @description Touched-calendar sync state before the mutations (null only when unknowable). */
+            oldState: string | null;
+            /** @description Touched-calendar sync state after the mutations. */
+            newState: string;
+            /** @description Map of client creation id to server-set properties of the created event. */
+            created: {
+                [key: string]: components["schemas"]["CalendarEventSetCreated"];
+            };
+            /** @description Map of updated event id to the server-changed properties (the rotated state token), or null when the server changed nothing beyond the client patch. */
+            updated: {
+                [key: string]: {
+                    state?: string;
+                } | null;
+            };
+            destroyed: components["schemas"]["JmapId"][];
+            notCreated: {
+                [key: string]: components["schemas"]["CalendarSetError"];
+            };
+            notUpdated: {
+                [key: string]: components["schemas"]["CalendarSetError"];
+            };
+            notDestroyed: {
+                [key: string]: components["schemas"]["CalendarSetError"];
+            };
+        };
+        CalendarEventQueryFilter: {
+            inCalendars: components["schemas"]["JmapId"][];
+            /** @description Inclusive lower bound; an event matches when one of its occurrences intersects [after, before). Requires before. */
+            after?: components["schemas"]["JmapLocalDateTime"];
+            /** @description Exclusive upper bound; requires after. */
+            before?: components["schemas"]["JmapLocalDateTime"];
+            /** @description Case-insensitive substring match on the event title. */
+            title?: string;
+        };
+        CalendarEventQuerySortComparator: {
+            /** @enum {string} */
+            property: "start" | "title" | "uid";
+            /** @default true */
+            isAscending: boolean;
+        };
+        CalendarEventQueryRequest: {
+            filter: components["schemas"]["CalendarEventQueryFilter"];
+            sort?: components["schemas"]["CalendarEventQuerySortComparator"][];
+            /** @default 0 */
+            position: number;
+            limit?: number;
+        };
+        CalendarEventQueryResponse: {
+            ids: components["schemas"]["JmapId"][];
+            position: number;
+            total: number;
+            /** @description RFC 8620 §5.5. Same state string /changes uses, composed across filter.inCalendars: a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite sorted by uri. */
+            queryState: string;
+            /** @description Always false: CalendarEvent/queryChanges is not implemented. */
+            canCalculateChanges: boolean;
         };
     };
     responses: {
