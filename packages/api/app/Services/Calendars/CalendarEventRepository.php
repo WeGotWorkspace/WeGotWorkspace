@@ -447,6 +447,11 @@ final class CalendarEventRepository
         $idsByUri = [];
         foreach ($uris as $uri) {
             $uri = (string) $uri;
+            if ($uri === '') {
+                // Sabre logs calendar property changes (updateCalendar) as a
+                // change entry with an empty object uri — not an event.
+                continue;
+            }
             $object = $this->findObjectInCalendar((int) $instance->calendarid, $uri);
             if ($object === null) {
                 $idsByUri[$uri] = [CalendarEventMapper::eventIdFromUri($uri)];
@@ -485,6 +490,9 @@ final class CalendarEventRepository
         $destroyed = [];
         foreach ($deletedUris as $uri) {
             $uri = (string) $uri;
+            if ($uri === '') {
+                continue;
+            }
             $destroyed[] = CalendarEventMapper::eventIdFromUri($uri);
             foreach ($this->recordedEventIdsForObject($username, $uri) as $recorded) {
                 $destroyed[] = $recorded;
