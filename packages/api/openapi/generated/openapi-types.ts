@@ -6645,6 +6645,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jmap/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * JMAP Session resource
+         * @description RFC 8620 §2 Session resource for the calendars JMAP envelope. One account per authenticated principal (accountId = username); all URLs absolute; session-level calendars capability is the empty object per draft-ietf-jmap-calendars-27 §1.5.1.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description JMAP session */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapSession"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/download/{accountId}/{blobId}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * JMAP blob download (not implemented)
+         * @description Structurally required by the Session resource (RFC 8620 §6.2) but unused by the calendars client; returns 501.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    accountId: string;
+                    blobId: string;
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                403: components["responses"]["JmapForbidden"];
+                /** @description Not implemented */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/upload/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP blob upload (not implemented)
+         * @description Structurally required by the Session resource (RFC 8620 §6.1) but unused by the calendars client; returns 501.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    accountId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                /** @description Not implemented */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/events/{types}/{closeafter}/{ping}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * JMAP event source / push (not implemented)
+         * @description Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    types: string;
+                    closeafter: string;
+                    ping: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                403: components["responses"]["JmapForbidden"];
+                /** @description Not implemented */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9850,6 +10021,34 @@ export interface components {
             queryState: string;
             /** @description Always false: CalendarEvent/queryChanges is not implemented. */
             canCalculateChanges: boolean;
+        };
+        /** @description JMAP Account object (RFC 8620 §2). */
+        JmapAccount: {
+            name: string;
+            isPersonal: boolean;
+            isReadOnly: boolean;
+            accountCapabilities: {
+                [key: string]: Record<string, never>;
+            };
+        };
+        /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
+        JmapSession: {
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` is the empty object (draft-ietf-jmap-calendars-27 §1.5.1). */
+            capabilities: {
+                [key: string]: Record<string, never>;
+            };
+            accounts: {
+                [key: string]: components["schemas"]["JmapAccount"];
+            };
+            primaryAccounts: {
+                [key: string]: string;
+            };
+            username: string;
+            apiUrl: string;
+            downloadUrl: string;
+            uploadUrl: string;
+            eventSourceUrl: string;
+            state: string;
         };
     };
     responses: {

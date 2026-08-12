@@ -1,0 +1,52 @@
+{
+  "JmapAccount": {
+    "type": "object",
+    "description": "JMAP Account object (RFC 8620 \u00a72).",
+    "required": ["name", "isPersonal", "isReadOnly", "accountCapabilities"],
+    "properties": {
+      "name": { "type": "string" },
+      "isPersonal": { "type": "boolean" },
+      "isReadOnly": { "type": "boolean" },
+      "accountCapabilities": {
+        "type": "object",
+        "additionalProperties": { "type": "object" }
+      }
+    }
+  },
+  "JmapSession": {
+    "type": "object",
+    "description": "JMAP Session resource (RFC 8620 \u00a72). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
+    "required": [
+      "capabilities",
+      "accounts",
+      "primaryAccounts",
+      "username",
+      "apiUrl",
+      "downloadUrl",
+      "uploadUrl",
+      "eventSourceUrl",
+      "state"
+    ],
+    "properties": {
+      "capabilities": {
+        "type": "object",
+        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` is the empty object (draft-ietf-jmap-calendars-27 \u00a71.5.1).",
+        "additionalProperties": { "type": "object" }
+      },
+      "accounts": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/components/schemas/JmapAccount" }
+      },
+      "primaryAccounts": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      },
+      "username": { "type": "string" },
+      "apiUrl": { "type": "string" },
+      "downloadUrl": { "type": "string" },
+      "uploadUrl": { "type": "string" },
+      "eventSourceUrl": { "type": "string" },
+      "state": { "type": "string" }
+    }
+  }
+}
