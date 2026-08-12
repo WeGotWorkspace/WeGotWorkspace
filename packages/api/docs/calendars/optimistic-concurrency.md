@@ -13,3 +13,7 @@ Calendar events map to CalDAV `calendarobjects` rows. Multi-VEVENT `.ics` blobs 
 Patching or deleting one VEVENT inside a multi-event blob validates against the **whole calendar object** etag. After any mutation in the blob, all composite ids receive a new etag.
 
 Stale tokens return **412** with `code: precondition_failed`.
+
+## JMAP state alternative
+
+Events also carry an opaque `state` token (`jmap_calendar_event_states`). Batch writes via `POST /calendars/events/set` accept per-item `ifInState` against that token; stale states land in the `not*` buckets with `type: stateMismatch` instead of a 412. See [jmap-calendars-summary.md](./jmap-calendars-summary.md).
