@@ -11,6 +11,10 @@ use App\Models\CalendarObject;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 
@@ -63,6 +67,73 @@ final class CalendarEventRepository
     }
 
     /**
+     * JMAP CalendarEvent/query mapping: filter by calendar ids, time range, and title.
+     *
+     * Sabre's object-level firstoccurence/lastoccurence columns act as an
+     * index-assisted SQL pre-filter; the exact match is refined in PHP per
+     * VEVENT (composite ids match on their own occurrences, with recurrence
+     * expansion via CalendarEventExpansionService).
+     *
+     * @param  array<string, mixed>  $filter
+     * @param  list<array<string, mixed>>  $sort
+     * @return array{ids: list<string>, position: int, total: int, queryState: string, canCalculateChanges: bool}
+     */
+    public function query(
+        string $username,
+        array $filter,
+        array $sort = [],
+        int $position = 0,
+        ?int $limit = null,
+    ): array {
+        $instances = $this->resolveQueryCalendars($username, $filter['inCalendars'] ?? null);
+        $window = $this->parseQueryWindow($filter);
+        $title = isset($filter['title']) && is_string($filter['title']) && trim($filter['title']) !== ''
+            ? trim($filter['title'])
+            : null;
+
+        $matches = [];
+        foreach ($instances as $instance) {
+            foreach ($this->candidateObjects($instance, $window) as $object) {
+                $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                foreach ($this->mapper->toCalendarEvents($object, (string) $instance->uri, $username) as $event) {
+                    if ($title !== null && stripos((string) ($event['title'] ?? ''), $title) === false) {
+                        continue;
+                    }
+                    if ($window !== null && ! $this->eventIntersectsWindow($event, $raw, (string) $instance->uri, $window)) {
+                        continue;
+                    }
+                    $matches[] = $event;
+                }
+            }
+        }
+
+        $this->sortEvents($matches, $sort);
+
+        $ids = [];
+        foreach ($matches as $event) {
+            $id = (string) ($event['id'] ?? '');
+            if ($id !== '') {
+                $ids[] = $id;
+            }
+        }
+
+        $queryTokens = [];
+        foreach ($instances as $instance) {
+            $queryTokens[(string) $instance->uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+        }
+
+        return [
+            'ids' => array_slice($ids, $position, $limit),
+            'position' => $position,
+            'total' => count($ids),
+            // Same state string /changes uses, composed across the queried calendars (RFC 8620 §5.5).
+            'queryState' => self::composeCalendarState($queryTokens),
+            // CalendarEvent/queryChanges is not implemented.
+            'canCalculateChanges' => false,
+        ];
+    }
+
+    /**
      * Composes a /changes-comparable state string over per-calendar sync tokens:
      * a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite
      * (same format as the collection-level state) sorted by calendar uri.
@@ -111,6 +182,209 @@ final class CalendarEventRepository
     public function calendarUriForEvent(string $username, string $eventId): ?string
     {
         return $this->findOwnedEvent($username, $eventId)['calendarUri'] ?? null;
+    }
+
+    /**
+     * @return list<CalendarInstance>
+     */
+    private function resolveQueryCalendars(string $username, mixed $inCalendars): array
+    {
+        if (! is_array($inCalendars) || $inCalendars === []) {
+            throw new ApiHttpException(400, 'filter.inCalendars is required.', 'bad_request');
+        }
+
+        $instances = [];
+        foreach ($inCalendars as $calendarId) {
+            if (! is_string($calendarId) || trim($calendarId) === '') {
+                throw new ApiHttpException(400, 'filter.inCalendars must contain calendar ids.', 'bad_request');
+            }
+            $instance = $this->findOwnedCalendar($username, $calendarId);
+            if ($instance === null) {
+                throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
+            }
+            $instances[] = $instance;
+        }
+
+        return $instances;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filter
+     * @return array{after: DateTimeImmutable, before: DateTimeImmutable, afterRaw: string, beforeRaw: string}|null
+     */
+    private function parseQueryWindow(array $filter): ?array
+    {
+        $after = isset($filter['after']) && is_string($filter['after']) && trim($filter['after']) !== ''
+            ? trim($filter['after'])
+            : null;
+        $before = isset($filter['before']) && is_string($filter['before']) && trim($filter['before']) !== ''
+            ? trim($filter['before'])
+            : null;
+
+        if ($after === null && $before === null) {
+            return null;
+        }
+        if ($after === null || $before === null) {
+            throw new ApiHttpException(400, 'filter.after and filter.before must be provided together.', 'bad_request');
+        }
+
+        try {
+            $utc = new DateTimeZone('UTC');
+
+            return [
+                'after' => new DateTimeImmutable($after, $utc),
+                'before' => new DateTimeImmutable($before, $utc),
+                'afterRaw' => $after,
+                'beforeRaw' => $before,
+            ];
+        } catch (\Exception) {
+            throw new ApiHttpException(400, 'filter.after and filter.before must be valid date-times.', 'bad_request');
+        }
+    }
+
+    /**
+     * @param  array{after: DateTimeImmutable, before: DateTimeImmutable}|null  $window
+     * @return Collection<int, CalendarObject>
+     */
+    private function candidateObjects(CalendarInstance $instance, ?array $window): Collection
+    {
+        $query = CalendarObject::query()
+            ->where('calendarid', (int) $instance->calendarid)
+            ->where('componenttype', 'VEVENT')
+            ->orderBy('uri');
+
+        if ($window !== null) {
+            $afterTs = $window['after']->getTimestamp();
+            $beforeTs = $window['before']->getTimestamp();
+            $query
+                ->where(function ($q) use ($beforeTs): void {
+                    $q->whereNull('firstoccurence')->orWhere('firstoccurence', '<', $beforeTs);
+                })
+                ->where(function ($q) use ($afterTs): void {
+                    $q->whereNull('lastoccurence')->orWhere('lastoccurence', '>', $afterTs);
+                });
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     * @param  array{after: DateTimeImmutable, before: DateTimeImmutable, afterRaw: string, beforeRaw: string}  $window
+     */
+    private function eventIntersectsWindow(array $event, string $raw, string $calendarUri, array $window): bool
+    {
+        if ($this->expansion->isRecurring($event)) {
+            return $this->expansion->expandInWindow($event, $raw, $calendarUri, $window['afterRaw'], $window['beforeRaw']) !== [];
+        }
+
+        $start = $this->parseEventDate($event['start'] ?? null, $event);
+        if ($start === null) {
+            return false;
+        }
+
+        return $start < $window['before'] && $this->resolveEventEnd($event, $start) > $window['after'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function resolveEventEnd(array $event, DateTimeImmutable $start): DateTimeImmutable
+    {
+        $end = $this->parseEventDate($event['end'] ?? null, $event);
+        if ($end !== null) {
+            return $end;
+        }
+
+        $duration = $event['duration'] ?? null;
+        if (is_string($duration) && $duration !== '') {
+            try {
+                return $start->add(new DateInterval($duration));
+            } catch (\Exception) {
+                // Malformed duration: treat as zero-length below.
+            }
+        }
+
+        return $start;
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function parseEventDate(mixed $value, array $event): ?DateTimeImmutable
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return new DateTimeImmutable($value, $this->eventTimeZone($event));
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function eventTimeZone(array $event): DateTimeZone
+    {
+        $tzid = isset($event['timeZone']) && is_string($event['timeZone']) ? trim($event['timeZone']) : '';
+        if ($tzid !== '') {
+            try {
+                return new DateTimeZone($tzid);
+            } catch (\Exception) {
+                // Unknown TZID: fall back to UTC.
+            }
+        }
+
+        return new DateTimeZone('UTC');
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $events
+     * @param  list<array<string, mixed>>  $sort
+     */
+    private function sortEvents(array &$events, array $sort): void
+    {
+        $comparators = [];
+        foreach ($sort as $spec) {
+            $property = is_array($spec) ? (string) ($spec['property'] ?? '') : '';
+            if (! in_array($property, ['start', 'title', 'uid'], true)) {
+                continue;
+            }
+            $comparators[] = [$property, (bool) ($spec['isAscending'] ?? true)];
+        }
+        if ($comparators === []) {
+            $comparators = [['start', true]];
+        }
+
+        usort($events, function (array $a, array $b) use ($comparators): int {
+            foreach ($comparators as [$property, $ascending]) {
+                $result = $this->compareEventsBy($property, $a, $b);
+                if ($result !== 0) {
+                    return $ascending ? $result : -$result;
+                }
+            }
+
+            return strcmp((string) ($a['id'] ?? ''), (string) ($b['id'] ?? ''));
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $a
+     * @param  array<string, mixed>  $b
+     */
+    private function compareEventsBy(string $property, array $a, array $b): int
+    {
+        if ($property === 'start') {
+            $aStart = $this->parseEventDate($a['start'] ?? null, $a);
+            $bStart = $this->parseEventDate($b['start'] ?? null, $b);
+
+            return ($aStart?->getTimestamp() ?? 0) <=> ($bStart?->getTimestamp() ?? 0);
+        }
+
+        return strcasecmp((string) ($a[$property] ?? ''), (string) ($b[$property] ?? ''));
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Calendars;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\CalendarEventPatchRequest;
+use App\Http\Requests\Api\V1\CalendarEventQueryRequest;
 use App\Http\Requests\Api\V1\CalendarEventSetRequest;
 use App\Http\Requests\Api\V1\CalendarEventUpsertRequest;
 use App\Http\Support\JmapResourceResponse;
@@ -55,6 +56,22 @@ final class CalendarEventsController
 
         return response()->json(
             $this->eventSet->set($principal['username'], $request->json()->all()),
+        );
+    }
+
+    public function query(CalendarEventQueryRequest $request): JsonResponse
+    {
+        /** @var array{username: string, role: string} $principal */
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        $validated = $request->validated();
+        $filter = is_array($validated['filter'] ?? null) ? $validated['filter'] : [];
+        $sort = is_array($validated['sort'] ?? null) ? $validated['sort'] : [];
+        $position = isset($validated['position']) ? (int) $validated['position'] : 0;
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : null;
+
+        return response()->json(
+            $this->events->query($principal['username'], $filter, $sort, $position, $limit),
         );
     }
 

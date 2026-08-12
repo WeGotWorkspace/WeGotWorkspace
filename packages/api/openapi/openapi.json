@@ -6025,6 +6025,52 @@
         "x-wgw-access": "user"
       }
     },
+    "/calendars/events/query": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Query calendar event ids",
+        "description": "JMAP CalendarEvent/query mapping: filter by calendar ids, time range, and title text. Time-range matching is per VEVENT (composite ids match on their own occurrences, including recurrence expansion). Returns `queryState` (the same state string `/calendars/events/changes` uses, composed across `filter.inCalendars`) and `canCalculateChanges: false` (CalendarEvent/queryChanges is not implemented) per RFC 8620 §5.5.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching calendar event ids",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventQueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/tasks/capabilities": {
       "get": {
         "tags": [
