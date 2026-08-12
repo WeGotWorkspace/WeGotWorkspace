@@ -1,6 +1,6 @@
 # Calendars REST API
 
-JMAP-shaped REST endpoints over Sabre CalDAV storage (`calendarinstances`, `calendarobjects`).
+JMAP-shaped REST endpoints over Sabre CalDAV storage (`calendarinstances`, `calendarobjects`). A genuine RFC 8620 JMAP transport (`/api/v1/jmap` session + batched method calls) fronts the same services as a third adapter — see [jmap-envelope.md](jmap-envelope.md).
 
 ## Architecture
 

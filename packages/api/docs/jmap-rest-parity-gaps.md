@@ -25,6 +25,15 @@ Calendar event endpoints now follow RFC 8620 core method response semantics ([#4
 - **Per-record `ifInState`** on calendar `/set` update/destroy entries (instead of RFC's single request-level `ifInState`) is a **deliberate divergence**: item state tokens are per event, so preconditions are resolved per record. Stale tokens yield SetError type `stateMismatch`.
 - **`maxChanges` never truncates** (`hasMoreChanges` always `false`): Sabre's changes-log truncation cannot produce a safe intermediate sync token (per-uri dedup can skip lower-token changes), so the full delta is always returned.
 
+## JMAP transport envelope (calendars)
+
+The full JMAP protocol envelope — previously an explicit non-goal of the REST layer — now exists for calendars as an **additive third adapter** over the same services: `GET /api/v1/jmap/session` (RFC 8620 §2) plus `POST /api/v1/jmap` batched method calls with ResultReferences, dispatching `Core/echo`, `Calendar/get|changes|set`, and `CalendarEvent/get|changes|set|query|queryChanges`. See [docs/calendars/jmap-envelope.md](./calendars/jmap-envelope.md). Remaining envelope-level deviations (documented there):
+
+- **Event id charset:** composite multi-VEVENT ids (`{objectId}#{veventUid}`) contain `#`, outside the RFC 8620 §1.2 `Id` charset; ids pass through unchanged for parity with REST.
+- **`Calendar/changes` over-reports:** Sabre bumps a calendar's synctoken on event activity, so event-only changes also mark the calendar `updated` (harmless refetch); pure metadata updates **are** reported (empirically pinned in `JmapChangesTest`).
+- **No Push** (RFC 8620 §7): `eventSourceUrl`/upload/download are 501 stubs; clients poll.
+- **Contacts and tasks are not behind the envelope** — calendars only.
+
 ## Priority
 
 | Priority | Scheduling / interop impact |

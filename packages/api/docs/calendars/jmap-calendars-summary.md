@@ -1,6 +1,6 @@
 # JMAP Calendars field subset (REST API)
 
-This API exposes a **subset** of the [JMAP Calendars draft](https://jmap.io/spec.html) types over REST, including JMAP-shaped event sync endpoints (`/changes`, `/set`, `/query` below). The full JMAP protocol envelope (`/jmap` session, method calls) is out of scope.
+This API exposes a **subset** of the [JMAP Calendars draft](https://jmap.io/spec.html) types over REST, including JMAP-shaped event sync endpoints (`/changes`, `/set`, `/query` below). The full JMAP protocol envelope (`/jmap` session, batched method calls) **now exists as a separate, additive adapter** in front of the same services — see [jmap-envelope.md](./jmap-envelope.md); nothing in this REST document changed for it.
 
 ## Calendar
 
@@ -55,7 +55,7 @@ JMAP-shaped REST equivalents of `CalendarEvent/changes`, `/set`, `/query`. Respo
 | Endpoint | JMAP analogue | Notes |
 |----------|---------------|-------|
 | `GET /calendars/events/changes?calendarId=&since=&maxChanges=` | `CalendarEvent/changes` | Reads Sabre `calendarchanges`; `since` empty/`0` → initial sync (all ids in `created`); invalid/expired token → `400` `cannotCalculateChanges`. Response includes `hasMoreChanges` (always `false` — full delta in one response; `maxChanges` is validated but not used for truncation, see below). Multi-VEVENT objects emit all composite ids — see `docs/contacts/jmap-sync-rest-mapping.md` |
-| `POST /calendars/events/set` | `CalendarEvent/set` | Batch `create`/`update`/`destroy`; per-record `ifInState` resolved against the event `state` token, stale → `not*` bucket with `type: stateMismatch` (deliberate divergence from RFC's request-level `ifInState`) |
+| `POST /calendars/events/set` | `CalendarEvent/set` | Batch `create`/`update`/`destroy`; per-record `ifInState` resolved against the event `state` token, stale → `not*` bucket with `type: stateMismatch` (deliberate divergence from RFC's request-level `ifInState`; the [envelope](./jmap-envelope.md)'s `CalendarEvent/set` implements the genuine top-level form) |
 | `POST /calendars/events/query` | `CalendarEvent/query` | `filter.inCalendars` (required), `after`/`before` time range (per-VEVENT occurrence intersection), `title` substring; `sort` on `start`/`title`/`uid`; `position`/`limit`; returns `{ids, position, total, queryState, canCalculateChanges}` |
 
 ### `/set` response shape (RFC 8620 §5.3)
