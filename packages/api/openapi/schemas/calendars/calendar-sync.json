@@ -44,5 +44,122 @@
       "destroyed": { "type": "array", "items": { "$ref": "#/components/schemas/JmapId" } }
     },
     "additionalProperties": false
+  },
+  "CalendarEventSetRequest": {
+    "type": "object",
+    "description": "RFC 8620 §5.3 /set arguments subset. Deliberate divergence: ifInState is per record (update/destroy entries carry their own per-event state token) instead of a single request-level ifInState.",
+    "properties": {
+      "create": {
+        "type": "object",
+        "description": "Map of client-chosen creation id to the event to create; the creation id keys the created/notCreated response maps.",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/CalendarEventCreate"
+        }
+      },
+      "update": {
+        "type": "object",
+        "description": "Map of event id to patch; optional ifInState is resolved against the event state token.",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "ifInState": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "destroy": {
+        "description": "Event ids to destroy, or map of id to { ifInState }.",
+        "oneOf": [
+          {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/JmapId" }
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "ifInState": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          }
+        ]
+      }
+    },
+    "additionalProperties": false
+  },
+  "CalendarSetError": {
+    "type": "object",
+    "description": "RFC 8620 §5.3 SetError. Types: notFound, invalidProperties (with properties listing the offending paths), forbidden, serverFail, and stateMismatch (per-record ifInState divergence — see CalendarEventSetRequest).",
+    "required": ["type"],
+    "properties": {
+      "type": { "type": "string" },
+      "description": { "type": ["string", "null"] },
+      "properties": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Offending property paths; present when type is invalidProperties."
+      }
+    },
+    "additionalProperties": false
+  },
+  "CalendarEventSetCreated": {
+    "type": "object",
+    "description": "Server-set properties of a created event (RFC 8620 §5.3): the server-assigned id and the event's state token.",
+    "required": ["id", "state"],
+    "properties": {
+      "id": { "$ref": "#/components/schemas/JmapId" },
+      "state": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "CalendarEventSetResponse": {
+    "type": "object",
+    "required": ["oldState", "newState", "created", "updated", "destroyed", "notCreated", "notUpdated", "notDestroyed"],
+    "description": "RFC 8620 §5.3 /set response. oldState/newState are the same per-calendar sync state /changes uses, scoped to the calendars touched by the request: a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite (sorted by uri) when the request spans calendars. When nothing was mutated the scope falls back to every owned VEVENT calendar and oldState equals newState.",
+    "properties": {
+      "oldState": {
+        "type": ["string", "null"],
+        "description": "Touched-calendar sync state before the mutations (null only when unknowable)."
+      },
+      "newState": {
+        "type": "string",
+        "description": "Touched-calendar sync state after the mutations."
+      },
+      "created": {
+        "type": "object",
+        "description": "Map of client creation id to server-set properties of the created event.",
+        "additionalProperties": { "$ref": "#/components/schemas/CalendarEventSetCreated" }
+      },
+      "updated": {
+        "type": "object",
+        "description": "Map of updated event id to the server-changed properties (the rotated state token), or null when the server changed nothing beyond the client patch.",
+        "additionalProperties": {
+          "type": ["object", "null"],
+          "properties": {
+            "state": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "destroyed": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/JmapId" }
+      },
+      "notCreated": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/components/schemas/CalendarSetError" }
+      },
+      "notUpdated": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/components/schemas/CalendarSetError" }
+      },
+      "notDestroyed": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/components/schemas/CalendarSetError" }
+      }
+    },
+    "additionalProperties": false
   }
 }

@@ -266,6 +266,10 @@
       "created": { "$ref": "#/components/schemas/JmapUTCDateTime" },
       "updated": { "$ref": "#/components/schemas/JmapUTCDateTime" },
       "etag": { "$ref": "#/components/schemas/DavEtag" },
+      "state": {
+        "type": "string",
+        "description": "Opaque JMAP state token for CalendarEvent/set ifInState."
+      },
       "icsProps": {
         "type": "object",
         "additionalProperties": { "type": "string" }

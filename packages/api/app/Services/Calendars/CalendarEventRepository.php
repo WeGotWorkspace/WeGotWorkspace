@@ -48,7 +48,7 @@ final class CalendarEventRepository
         $events = [];
         foreach ($objects as $object) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            foreach ($this->mapper->toCalendarEvents($object, $calendarId) as $event) {
+            foreach ($this->mapper->toCalendarEvents($object, $calendarId, $username) as $event) {
                 if ($expandRecurrences && $after !== null && $before !== null && $this->expansion->isRecurring($event)) {
                     foreach ($this->expansion->expandInWindow($event, $raw, $calendarId, $after, $before) as $instance) {
                         $events[] = $instance;
@@ -60,6 +60,57 @@ final class CalendarEventRepository
         }
 
         return ['list' => $events];
+    }
+
+    /**
+     * Composes a /changes-comparable state string over per-calendar sync tokens:
+     * a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite
+     * (same format as the collection-level state) sorted by calendar uri.
+     *
+     * @param  array<string, string>  $tokensByUri
+     */
+    public static function composeCalendarState(array $tokensByUri): string
+    {
+        if (count($tokensByUri) === 1) {
+            return (string) reset($tokensByUri);
+        }
+
+        ksort($tokensByUri);
+        $parts = [];
+        foreach ($tokensByUri as $uri => $token) {
+            $parts[] = $uri.':'.$token;
+        }
+
+        return (string) count($parts).':'.implode(',', $parts);
+    }
+
+    /**
+     * Current per-calendar sync tokens for every owned VEVENT calendar.
+     *
+     * @return array<string, string> calendar uri => synctoken
+     */
+    public function calendarSyncTokens(string $username): array
+    {
+        $tokens = [];
+        $instances = CalendarInstance::query()
+            ->with('calendar')
+            ->where('principaluri', $this->principalUri($username))
+            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
+            ->orderBy('uri')
+            ->get();
+        foreach ($instances as $instance) {
+            $tokens[(string) $instance->uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+        }
+
+        return $tokens;
+    }
+
+    /**
+     * Calendar uri owning the given event id, or null when not visible to the user.
+     */
+    public function calendarUriForEvent(string $username, string $eventId): ?string
+    {
+        return $this->findOwnedEvent($username, $eventId)['calendarUri'] ?? null;
     }
 
     /**
@@ -235,6 +286,7 @@ final class CalendarEventRepository
             $located['object'],
             $located['calendarUri'],
             $located['veventUid'],
+            $username,
         );
     }
 
@@ -263,7 +315,7 @@ final class CalendarEventRepository
             throw new ApiHttpException(500, 'Could not load created calendar event.', 'server_error');
         }
 
-        return $this->mapper->toCalendarEvent($object, (string) $instance->uri);
+        return $this->mapper->toCalendarEvent($object, (string) $instance->uri, null, $username);
     }
 
     /**
@@ -295,6 +347,29 @@ final class CalendarEventRepository
     }
 
     /**
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public function patchWithPrecondition(
+        string $username,
+        string $eventId,
+        array $patch,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
+    ): array {
+        return $this->persistEventMutation(
+            $username,
+            $eventId,
+            $patch,
+            true,
+            $ifMatch,
+            $ifUnmodifiedSince,
+            $requirePrecondition,
+        );
+    }
+
+    /**
      * @return array{ok: true}
      */
     public function delete(
@@ -303,17 +378,29 @@ final class CalendarEventRepository
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
     ): array {
+        return $this->deleteWithPrecondition($username, $eventId, $ifMatch, $ifUnmodifiedSince, true);
+    }
+
+    /**
+     * @return array{ok: true}
+     */
+    public function deleteWithPrecondition(
+        string $username,
+        string $eventId,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
+    ): array {
         $located = $this->findOwnedEvent($username, $eventId);
         if ($located === null) {
             throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
         }
 
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
+        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
         $instance = $located['instance'];
         $object = $located['object'];
         $eventUri = (string) $object->uri;
-        $calendarId = (int) $object->calendarid;
         $veventUid = $located['veventUid'];
 
         if ($veventUid !== null) {
@@ -363,13 +450,14 @@ final class CalendarEventRepository
         bool $deepMerge,
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
     ): array {
         $located = $this->findOwnedEvent($username, $eventId);
         if ($located === null) {
             throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
         }
 
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
+        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
         $instance = $located['instance'];
         $object = $located['object'];
@@ -378,6 +466,7 @@ final class CalendarEventRepository
             $object,
             (string) $instance->uri,
             $located['veventUid'],
+            $username,
         );
         $eventPayload = $deepMerge
             ? $this->normalizeEventPayload(
@@ -415,6 +504,7 @@ final class CalendarEventRepository
             $updated,
             (string) $instance->uri,
             $located['veventUid'],
+            $username,
         );
     }
 
@@ -425,7 +515,7 @@ final class CalendarEventRepository
     {
         $calendarIds = $payload['calendarIds'] ?? null;
         if (! is_array($calendarIds) || $calendarIds === []) {
-            throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request');
+            throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
         }
 
         $calendarUri = null;
@@ -437,7 +527,7 @@ final class CalendarEventRepository
         }
 
         if ($calendarUri === null || $calendarUri === '') {
-            throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request');
+            throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
         }
 
         $instance = $this->findOwnedCalendar($username, $calendarUri);
@@ -462,7 +552,7 @@ final class CalendarEventRepository
             if ($existingEvent !== null && isset($existingEvent['start']) && is_string($existingEvent['start'])) {
                 $event['start'] = $existingEvent['start'];
             } else {
-                throw new ApiHttpException(400, 'start is required.', 'bad_request');
+                throw new ApiHttpException(400, 'start is required.', 'bad_request', ['start']);
             }
         }
 
@@ -570,13 +660,18 @@ final class CalendarEventRepository
         return 'principals/'.$username;
     }
 
-    private function assertObjectPreconditions(CalendarObject $object, ?string $ifMatch, ?string $ifUnmodifiedSince): void
-    {
+    private function assertObjectPreconditions(
+        CalendarObject $object,
+        ?string $ifMatch,
+        ?string $ifUnmodifiedSince,
+        bool $requirePrecondition = true,
+    ): void {
         OptimisticConcurrency::assertPreconditions(
             $ifMatch,
             $ifUnmodifiedSince,
             is_string($object->etag) ? $object->etag : null,
             (int) ($object->lastmodified ?? 0),
+            $requirePrecondition,
         );
     }
 

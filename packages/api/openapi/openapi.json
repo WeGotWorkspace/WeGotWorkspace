@@ -5982,6 +5982,49 @@
         "x-wgw-access": "user"
       }
     },
+    "/calendars/events/set": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "JMAP CalendarEvent/set batch mutations",
+        "description": "RFC 8620 §5.3 response semantics: `created` maps creation id to the server-set properties `{id, state}`, `updated` maps event id to the server-changed properties `{state}`. Top-level `oldState`/`newState` are the same per-calendar sync state `/calendars/events/changes` uses, scoped to the calendars touched by the request (single calendar: plain synctoken; multiple: `{count}:{uri:token,...}` composite sorted by uri; nothing mutated: all owned VEVENT calendars, oldState equals newState). Deliberate divergence: `ifInState` is per record (update/destroy entries carry their own per-event state token, stale token yields SetError type `stateMismatch`) instead of a request-level ifInState.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventSetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CalendarEvent/set result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/tasks/capabilities": {
       "get": {
         "tags": [

@@ -7,15 +7,20 @@ namespace App\Http\Controllers\Api\V1\Calendars;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\CalendarEventPatchRequest;
+use App\Http\Requests\Api\V1\CalendarEventSetRequest;
 use App\Http\Requests\Api\V1\CalendarEventUpsertRequest;
 use App\Http\Support\JmapResourceResponse;
 use App\Services\Calendars\CalendarEventRepository;
+use App\Services\Calendars\CalendarEventSetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class CalendarEventsController
 {
-    public function __construct(private readonly CalendarEventRepository $events) {}
+    public function __construct(
+        private readonly CalendarEventRepository $events,
+        private readonly CalendarEventSetService $eventSet,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -41,6 +46,16 @@ final class CalendarEventsController
             is_string($before) ? $before : null,
             $expandRecurrences,
         ));
+    }
+
+    public function set(CalendarEventSetRequest $request): JsonResponse
+    {
+        /** @var array{username: string, role: string} $principal */
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        return response()->json(
+            $this->eventSet->set($principal['username'], $request->json()->all()),
+        );
     }
 
     public function changes(Request $request): JsonResponse
