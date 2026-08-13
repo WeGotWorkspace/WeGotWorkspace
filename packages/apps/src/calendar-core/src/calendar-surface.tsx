@@ -4,6 +4,7 @@ import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { WgwCalendarSurface } from "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
+import { resolveCreateIntentAllDay } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 
 /** Lit surface view modes (agenda is a React-only presentation over month). */
@@ -139,7 +140,11 @@ export function CalendarSurface({
       if (!start || !end) return;
       onCreateRequested({
         calendarId: detail.envelope?.calendarId,
-        allDay: detail.content?.allDay === true,
+        allDay: resolveCreateIntentAllDay({
+          start,
+          end,
+          allDay: detail.content?.allDay,
+        }),
         start,
         end,
         title: detail.content?.summary,

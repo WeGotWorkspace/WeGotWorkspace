@@ -99,6 +99,7 @@ describe("useCalendarController view + create intent", () => {
       mode: "create",
       form: {
         calendarId: "work",
+        allDay: false,
         startDate: "2033-01-12",
         startTime: "10:00",
         endDate: "2033-01-12",

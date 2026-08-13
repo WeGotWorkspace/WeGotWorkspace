@@ -506,13 +506,14 @@ export class CalendarTimelineView extends CalendarViewBase {
       return;
     }
     const range = fromTimelineRange(detail.start, detail.end, this.#scale);
-    this.#emitEventCreateRequested({ start: range.start, end: range.end });
+    // Timed grid / day-week body: never omit the flag — consumers treat missing as ambiguous.
+    this.#emitEventCreateRequested({ start: range.start, end: range.end, allDay: false });
   }
 
   #emitEventCreateRequested(input: {
     start: Temporal.PlainDateTime;
     end: Temporal.PlainDateTime;
-    allDay?: boolean;
+    allDay: boolean;
   }) {
     const calendarId = this.calendarIdForNewEvent();
     const detail: EventCreateRequestDetail = {

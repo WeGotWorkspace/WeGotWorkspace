@@ -8,6 +8,7 @@ import {
   emptyCalendarEventForm,
   formToDraft,
   formToPatch,
+  resolveCreateIntentAllDay,
 } from "@/calendar-core/src/calendar-editor-model";
 
 const timedEvent = {
@@ -85,11 +86,34 @@ describe("formToDraft", () => {
   });
 });
 
+describe("resolveCreateIntentAllDay", () => {
+  it("treats wall-clock ranges as timed even when allDay was wrongly set", () => {
+    expect(
+      resolveCreateIntentAllDay({
+        start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T15:00:00"),
+        allDay: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("treats day-snapped midnight ranges as all-day when flagged or when the flag is omitted", () => {
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-17T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-18T00:00:00"),
+    };
+    expect(resolveCreateIntentAllDay({ ...range, allDay: true })).toBe(true);
+    expect(resolveCreateIntentAllDay(range)).toBe(true);
+    expect(resolveCreateIntentAllDay({ ...range, allDay: false })).toBe(false);
+  });
+});
+
 describe("createIntentToForm", () => {
-  it("prefills a timed drag range", () => {
+  it("prefills a timed drag range with all-day off", () => {
     const form = createIntentToForm("work", {
       start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
       end: Temporal.PlainDateTime.from("2033-01-12T15:30:00"),
+      allDay: false,
     });
     expect(form).toMatchObject({
       calendarId: "work",

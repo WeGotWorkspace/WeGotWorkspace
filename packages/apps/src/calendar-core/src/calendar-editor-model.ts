@@ -46,6 +46,34 @@ export function emptyCalendarEventForm(
   };
 }
 
+function isMidnight(dateTime: Temporal.PlainDateTime): boolean {
+  const time = dateTime.toPlainTime();
+  return (
+    time.hour === 0 &&
+    time.minute === 0 &&
+    time.second === 0 &&
+    time.millisecond === 0 &&
+    time.microsecond === 0 &&
+    time.nanosecond === 0
+  );
+}
+
+/**
+ * Resolve all-day vs timed for a Lit create intent.
+ * Wall-clock ranges (any non-midnight edge) are always timed — even if a flag was wrong.
+ * Day-snapped midnight→midnight ranges are all-day unless explicitly marked timed.
+ */
+export function resolveCreateIntentAllDay(intent: {
+  start: Temporal.PlainDateTime;
+  end: Temporal.PlainDateTime;
+  allDay?: boolean;
+}): boolean {
+  const daySnapped = isMidnight(intent.start) && isMidnight(intent.end);
+  if (!daySnapped) return false;
+  if (intent.allDay === false) return false;
+  return intent.allDay === true || Temporal.PlainDateTime.compare(intent.end, intent.start) > 0;
+}
+
 /**
  * Prefill the create dialog from a Lit drag/click create intent.
  * All-day `end` is exclusive (same as the engine); the form shows the inclusive last day.
@@ -59,7 +87,7 @@ export function createIntentToForm(
     title?: string;
   },
 ): CalendarEventFormValue {
-  const allDay = intent.allDay === true;
+  const allDay = resolveCreateIntentAllDay(intent);
   const formEnd = allDay ? intent.end.subtract({ days: 1 }) : intent.end;
   return {
     title: intent.title?.trim() ?? "",
