@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 const toastApi = {
@@ -507,7 +508,7 @@ describe("useCalendarController recurring scopes", () => {
     const surfaceEvents = new Map([
       ["server-standup", surfaceMaster],
       ["server-standup::20330112T093000", occurrence],
-    ]);
+    ]) as CalendarEventsMap;
 
     const { result } = renderHook(() =>
       useCalendarController({
@@ -515,7 +516,7 @@ describe("useCalendarController recurring scopes", () => {
         data: { ...bootstrap.data, events: [] },
         operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
         resolveEventId,
-        surfaceEvents: surfaceEvents as never,
+        surfaceEvents,
       }),
     );
 
