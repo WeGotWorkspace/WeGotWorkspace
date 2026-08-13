@@ -43,9 +43,13 @@ final class NotesCollabBodyStateTest extends WgwDatabaseTestCase
         $this->assertNotSame('', $beforeUpdatedAt);
 
         $key = 'users/bob/.notes/Drafts/'.$id.'.md';
+        // Include the frontmatter `updated` marker: without it, updatedAt
+        // falls back to the file mtime (NoteRepository::readAt), which made
+        // this test second-boundary flaky on slow runners (api-mysql CI) —
+        // every write that crossed a second changed the fallback value.
         Storage::disk('wgw_notes')->put(
             $key,
-            "title: Stable meta\ntags: keep\nstarred: false\n----\noriginal body"
+            "title: Stable meta\ntags: keep\nstarred: false\nupdated: {$beforeUpdatedAt}\n----\noriginal body"
         );
 
         // Body edit flows through the collab document, room = note virtual path.
