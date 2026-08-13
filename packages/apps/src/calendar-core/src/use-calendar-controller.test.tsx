@@ -132,6 +132,66 @@ describe("useCalendarController view + create intent", () => {
     });
   });
 
+  it("openEditEventKey asks scope then opens the editor for a recurring occurrence", async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+
+    expect(result.current.editor).toBeNull();
+    expect(result.current.recurrenceScopeDialog).toBeNull();
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.recurrenceScopeDialog).not.toBeNull();
+    expect(result.current.recurrenceScopeDialog?.action).toBe("edit");
+    expect(result.current.editor).toBeNull();
+
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisInstance");
+      await openPromise!;
+    });
+
+    expect(result.current.recurrenceScopeDialog).toBeNull();
+    expect(result.current.editor).toMatchObject({
+      mode: "edit",
+      eventId: "standup",
+      recurrenceId: "2033-01-12T09:30:00",
+      recurrenceScope: "thisInstance",
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("openEditEventKey cancel on scope leaves the editor closed", async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve(null);
+      await openPromise!;
+    });
+
+    expect(result.current.editor).toBeNull();
+    expect(result.current.recurrenceScopeDialog).toBeNull();
+
+    vi.useRealTimers();
+  });
+
   it("saveEditor moves an event by create+destroy when calendarId changes", async () => {
     const createEvent = vi.fn().mockResolvedValue({ id: "moved" });
     const patchEvent = vi.fn();

@@ -158,6 +158,7 @@ export function useCalendarController({
   const [calendarDialogBusy, setCalendarDialogBusy] = useState(false);
   const [recurrenceScopeDialog, setRecurrenceScopeDialog] =
     useState<CalendarRecurrenceScopeDialogState>(null);
+  const pendingScopeResolveRef = useRef<((scope: RecurrenceEditScope | null) => void) | null>(null);
 
   useEffect(() => {
     setCalendars(sortCalendarsForSidebar(data.calendars));
@@ -282,13 +283,31 @@ export function useCalendarController({
 
   const askRecurrenceScope = useCallback((request: RecurrenceScopeRequest) => {
     return new Promise<RecurrenceEditScope | null>((resolve) => {
-      setRecurrenceScopeDialog({
-        action: request.action === "update" ? "edit" : request.action,
-        resolve: (scope) => {
-          setRecurrenceScopeDialog(null);
-          resolve(scope);
-        },
-      });
+      // Replace any in-flight prompt so Lit drag and click never hang on an orphaned Promise.
+      const previous = pendingScopeResolveRef.current;
+      pendingScopeResolveRef.current = null;
+      previous?.(null);
+
+      let settled = false;
+      const settle = (scope: RecurrenceEditScope | null) => {
+        if (settled) return;
+        settled = true;
+        if (pendingScopeResolveRef.current === settle) {
+          pendingScopeResolveRef.current = null;
+        }
+        setRecurrenceScopeDialog(null);
+        resolve(scope);
+      };
+      pendingScopeResolveRef.current = settle;
+
+      // Defer open past the initiating pointer gesture so Radix does not treat it as dismiss.
+      window.setTimeout(() => {
+        if (settled) return;
+        setRecurrenceScopeDialog({
+          action: request.action === "update" ? "edit" : request.action,
+          resolve: settle,
+        });
+      }, 0);
     });
   }, []);
 
