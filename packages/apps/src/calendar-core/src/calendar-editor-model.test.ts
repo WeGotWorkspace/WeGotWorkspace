@@ -138,6 +138,11 @@ describe("formToPatch", () => {
     expect(formToPatch(form, timedEvent)).toEqual({ title: "Renamed" });
   });
 
+  it("emits calendarId when the event moves to another calendar", () => {
+    const form = { ...calendarEventToForm(timedEvent), calendarId: "default" };
+    expect(formToPatch(form, timedEvent)).toEqual({ calendarId: "default" });
+  });
+
   it("emits time changes as start + duration", () => {
     const form = { ...calendarEventToForm(timedEvent), startTime: "15:00", endTime: "16:00" };
     const patch = formToPatch(form, timedEvent);

@@ -106,4 +106,40 @@ describe("useCalendarController view + create intent", () => {
       },
     });
   });
+
+  it("saveEditor moves an event by create+destroy when calendarId changes", async () => {
+    const createEvent = vi.fn().mockResolvedValue({ id: "moved" });
+    const patchEvent = vi.fn();
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent, patchEvent, deleteEvent },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditEventKey("dentist");
+    });
+    expect(result.current.editor?.form.calendarId).toBe("default");
+
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        calendarId: "work",
+      });
+    });
+
+    await act(async () => {
+      result.current.saveEditor();
+    });
+
+    await vi.waitFor(() => {
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: "work", title: "Dentist" }),
+      );
+      expect(deleteEvent).toHaveBeenCalledWith("dentist");
+    });
+    expect(patchEvent).not.toHaveBeenCalled();
+  });
 });

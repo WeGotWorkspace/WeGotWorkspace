@@ -205,22 +205,23 @@
   height: 0.85rem;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__calendar-menu {
+/* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
+.calendar-event-dialog__calendar-menu {
   min-width: 12rem;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__calendar-option {
+.calendar-event-dialog__calendar-option {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__calendar-name {
+.calendar-event-dialog__calendar-name {
   flex: 1;
   min-width: 0;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__calendar-check {
+.calendar-event-dialog__calendar-check {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;

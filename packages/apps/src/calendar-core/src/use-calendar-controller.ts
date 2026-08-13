@@ -254,6 +254,13 @@ export function useCalendarController({
       const targetId = original
         ? editor.eventId
         : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
+      // Live CalendarEvent/set update keeps the CalDAV collection and rewrites
+      // calendarIds back to the current calendar — move via create + destroy.
+      if (patch.calendarId) {
+        await operations.createEvent(formToDraft(editor.form));
+        await operations.deleteEvent(targetId);
+        return;
+      }
       await operations.patchEvent(targetId, patch);
     }, L.toastEventUpdated);
   }, [editor, operations, data.events, runEditorMutation, resolveEventId, L]);
