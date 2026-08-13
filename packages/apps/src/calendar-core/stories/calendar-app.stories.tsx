@@ -36,10 +36,19 @@ export const Agenda: Story = {
 };
 
 export const Week: Story = {
+  tags: ["vitest-ci"],
   args: {
     ...bootstrap,
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "week",
+  },
+};
+
+export const Day: Story = {
+  args: {
+    ...bootstrap,
+    initialAnchor: "2033-01-12",
+    initialView: "day",
   },
 };
 

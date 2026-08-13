@@ -13,10 +13,13 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarAgendaView } from "@/calendar-core/src/calendar-agenda-view";
+import { CalendarMonthView } from "@/calendar-core/src/views/calendar-month-view";
+import { CalendarTimeGridView } from "@/calendar-core/src/views/calendar-time-grid-view";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import "./calendar-workspace.css";
+import "./views/calendar-views.css";
 
 const VIEW_ORDER: CalendarViewId[] = ["month", "week", "day", "agenda"];
 
@@ -46,6 +49,9 @@ export function CalendarWorkspace({
     L,
     view,
     selectView,
+    setAnchor,
+    dateRange,
+    anchor,
     title,
     goToday,
     goPrevious,
@@ -57,6 +63,11 @@ export function CalendarWorkspace({
     toggleCalendarVisibility,
     occurrences,
   } = controller;
+
+  const openDay = (dateISO: string) => {
+    setAnchor(dateISO);
+    selectView("day");
+  };
 
   const viewLabels: Record<CalendarViewId, string> = {
     month: L.viewMonth,
@@ -151,8 +162,25 @@ export function CalendarWorkspace({
           />
         }
         main={
-          <div className="calendar-main">
-            <CalendarAgendaView occurrences={occurrences} labels={L} />
+          <div className="calendar-main" data-view={view}>
+            {view === "agenda" ? (
+              <CalendarAgendaView occurrences={occurrences} labels={L} />
+            ) : view === "month" ? (
+              <CalendarMonthView
+                range={dateRange}
+                anchor={anchor}
+                occurrences={occurrences}
+                labels={L}
+                onSelectDay={openDay}
+              />
+            ) : (
+              <CalendarTimeGridView
+                range={dateRange}
+                occurrences={occurrences}
+                labels={L}
+                onSelectDay={openDay}
+              />
+            )}
           </div>
         }
       />
