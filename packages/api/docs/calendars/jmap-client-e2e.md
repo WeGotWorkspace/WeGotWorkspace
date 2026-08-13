@@ -92,9 +92,11 @@ describe.skipIf(!base || !token)("wgw backend e2e (real client, live API)", () =
     expect(calendarGet.list.length).toBeGreaterThan(0);
     const calendarState = calendarGet.state;
 
+    // DateRange takes Date objects; the client converts to the wire's
+    // after/before UTC strings itself (JmapCalendarsClient.toUTCDateTime).
     const range = {
-      after: "2033-01-01T00:00:00Z",
-      before: "2033-02-01T00:00:00Z",
+      utcStart: new Date("2033-01-01T00:00:00Z"),
+      utcEnd: new Date("2033-02-01T00:00:00Z"),
     };
     const initial = await calendars.getCalendarEventsInRange(accountId, range);
     const eventState = initial.state;
