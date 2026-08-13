@@ -2,6 +2,11 @@ import { Temporal } from "@js-temporal/polyfill";
 import { html, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
 import { cache } from "lit/directives/cache.js";
+import {
+  calendarRangeZoomDirection,
+  runCalendarRangeViewTransition,
+  type CalendarRangeZoomDirection,
+} from "@/calendar-core/src/calendar-range-transition";
 import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
 import "../CalendarTimelineView/CalendarTimelineView.js";
 import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
@@ -24,6 +29,8 @@ export class CalendarViewGroup extends CalendarViewBase {
   #view: CalendarViewMode = "month";
   #presentation: CalendarPresentationMode = "grid";
   #startDate?: string;
+  /** Direction for the next view swap; cleared in `performUpdate`. */
+  #pendingRangeZoom: CalendarRangeZoomDirection | null = null;
   weekStart?: number;
   #daysPerWeekStored = 7;
   snapInterval = 15;
@@ -87,6 +94,24 @@ export class CalendarViewGroup extends CalendarViewBase {
     super.disconnectedCallback();
   }
 
+  /**
+   * Wrap day/week/month/year swaps in a View Transition so both old and new
+   * snapshots animate. Presentation (list↔grid) updates stay instant.
+   */
+  protected performUpdate() {
+    const direction = this.#pendingRangeZoom;
+    this.#pendingRangeZoom = null;
+    if (!direction) {
+      super.performUpdate();
+      return;
+    }
+    const scope =
+      (this.renderRoot as ShadowRoot | null)?.querySelector<HTMLElement>(".content") ?? this;
+    runCalendarRangeViewTransition(scope, direction, () => {
+      super.performUpdate();
+    });
+  }
+
   get view(): CalendarViewMode {
     return this.#view;
   }
@@ -96,7 +121,13 @@ export class CalendarViewGroup extends CalendarViewBase {
       value === "day" || value === "week" || value === "month" || value === "year"
         ? value
         : "month";
+    const previous = this.#view;
+    if (previous === nextValue) return;
     this.#view = nextValue;
+    if (this.hasUpdated) {
+      this.#pendingRangeZoom = calendarRangeZoomDirection(previous, nextValue);
+    }
+    this.requestUpdate("view", previous);
   }
 
   get presentation(): CalendarPresentationMode {
@@ -104,7 +135,12 @@ export class CalendarViewGroup extends CalendarViewBase {
   }
 
   set presentation(value: CalendarPresentationMode | string | null | undefined) {
-    this.#presentation = value === "list" ? "list" : "grid";
+    const nextValue = value === "list" ? "list" : "grid";
+    const previous = this.#presentation;
+    if (previous === nextValue) return;
+    this.#presentation = nextValue;
+    // List↔calendar is a presentation toggle — never a range zoom.
+    this.requestUpdate("presentation", previous);
   }
 
   get month(): number {

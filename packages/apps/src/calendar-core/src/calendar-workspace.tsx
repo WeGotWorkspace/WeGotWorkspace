@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
@@ -18,38 +18,12 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
-import {
-  calendarRangeZoomDirection,
-  clearCalendarRangeTransition,
-  restartCalendarRangeTransition,
-} from "@/calendar-core/src/calendar-range-transition";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
-
-/**
- * Restart a one-shot directional zoom/cross-fade when the time-range view changes.
- * Skips the first paint, same-rank swaps, and `prefers-reduced-motion: reduce`.
- * List↔calendar presentation toggles do not use this hook.
- */
-function useCalendarRangeTransition(view: CalendarViewId) {
-  const rangeRef = useRef<HTMLDivElement>(null);
-  const prevView = useRef<CalendarViewId | null>(null);
-
-  useLayoutEffect(() => {
-    const previous = prevView.current;
-    prevView.current = view;
-    if (previous === null) return;
-    const direction = calendarRangeZoomDirection(previous, view);
-    if (!direction) return;
-    restartCalendarRangeTransition(rangeRef.current, direction);
-  }, [view]);
-
-  return rangeRef;
-}
 
 /** Day → Year by time span — list is a presentation toggle, not a dropdown option. */
 const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year"];
@@ -143,8 +117,6 @@ export function CalendarWorkspace({
   };
 
   useDocumentTitle(`${L.appTitle} — ${title}`);
-
-  const rangeTransitionRef = useCalendarRangeTransition(view);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -289,14 +261,7 @@ export function CalendarWorkspace({
         }
         main={
           <div className="calendar-main" data-view={view}>
-            <div
-              ref={rangeTransitionRef}
-              className="calendar-main__range"
-              onAnimationEnd={(event) => {
-                if (event.target !== event.currentTarget) return;
-                clearCalendarRangeTransition(event.currentTarget);
-              }}
-            >
+            <div className="calendar-main__range">
               <CalendarSurface
                 view={litSurface.view}
                 presentation={litSurface.presentation}
