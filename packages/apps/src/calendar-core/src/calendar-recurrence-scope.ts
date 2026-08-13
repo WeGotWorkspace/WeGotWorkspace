@@ -7,7 +7,7 @@ import type {
 } from "@/lib/jmap-client";
 import type { CalendarEventDraft } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
-import { formToDraft } from "@/calendar-core/src/calendar-editor-model";
+import { formRecurrenceRules, formToDraft } from "@/calendar-core/src/calendar-editor-model";
 
 /** User choice for editing/moving/resizing a recurring occurrence. */
 export type RecurrenceEditScope = "thisInstance" | "thisAndFuture";
@@ -93,10 +93,25 @@ export function truncateRecurrenceRules(
 ): JSCalendarRecurrenceRule[] {
   const base = rules?.[0];
   if (!base) {
+    // Prefer callers passing real series rules. Inventing `daily` used to wipe
+    // weekly/custom series when bootstrap `data.events` lagged the adapter.
     return [{ "@type": "RecurrenceRule", frequency: "daily", until }];
   }
   const { count: _count, ...rest } = base;
   return [{ ...rest, until }];
+}
+
+/**
+ * Rules for truncate/fork. Prefer the wire master; fall back to the editor form
+ * when bootstrap `data.events` is stale (common right after create — the adapter
+ * shows the series but React bootstrap has not refreshed yet).
+ */
+export function seriesRecurrenceRulesForSplit(
+  original: Pick<JmapCalendarEvent, "recurrenceRules"> | undefined,
+  form: CalendarEventFormValue,
+): JSCalendarRecurrenceRule[] | null {
+  if (original?.recurrenceRules?.length) return original.recurrenceRules;
+  return formRecurrenceRules(form);
 }
 
 /** Build the forked series draft starting at the edited occurrence. */
@@ -105,9 +120,14 @@ export function forkSeriesDraftFromForm(
   originalRules: JSCalendarRecurrenceRule[] | null | undefined,
 ): CalendarEventDraft {
   const draft = formToDraft(form);
-  const baseRule = originalRules?.[0];
-  if (!baseRule || form.recurrencePreset === "none") {
+  if (form.recurrencePreset === "none") {
     return { ...draft, recurrenceRules: null };
+  }
+  // Wire master first; else form preset/custom (covers stale bootstrap lookups).
+  const baseRule =
+    originalRules?.[0] ?? formRecurrenceRules(form)?.[0] ?? draft.recurrenceRules?.[0];
+  if (!baseRule) {
+    return draft;
   }
   const { until: _until, count: _count, ...rest } = baseRule;
   return {

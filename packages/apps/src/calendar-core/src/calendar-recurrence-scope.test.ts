@@ -6,13 +6,16 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
+  forkSeriesDraftFromForm,
   occurrenceRecurrenceOverrides,
+  seriesRecurrenceRulesForSplit,
   splitOccurrenceKey,
   toLocalRecurrenceId,
   truncateRecurrenceRules,
   untilBeforeRecurrenceId,
 } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
+import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 
 const appsSrcRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -97,6 +100,48 @@ describe("calendar-recurrence-scope", () => {
         "2033-01-11",
       ),
     ).toEqual([{ "@type": "RecurrenceRule", frequency: "weekly", until: "2033-01-11" }]);
+  });
+
+  it("resolves series rules from the form when wire original is missing", () => {
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-12", "09:30"),
+      title: "Standup from here",
+      recurrencePreset: "weekly",
+    };
+    expect(seriesRecurrenceRulesForSplit(undefined, form)).toEqual([
+      expect.objectContaining({
+        frequency: "weekly",
+        byDay: [{ "@type": "NDay", day: "we" }],
+      }),
+    ]);
+    expect(
+      seriesRecurrenceRulesForSplit(
+        {
+          recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", interval: 2 }],
+        },
+        form,
+      ),
+    ).toEqual([{ "@type": "RecurrenceRule", frequency: "daily", interval: 2 }]);
+  });
+
+  it("forks a series from the form preset when originalRules are missing", () => {
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-12", "09:30"),
+      title: "Standup from here",
+      recurrencePreset: "weekly",
+    };
+    expect(forkSeriesDraftFromForm(form, undefined)).toEqual(
+      expect.objectContaining({
+        title: "Standup from here",
+        start: "2033-01-12T09:30:00",
+        recurrenceRules: [
+          expect.objectContaining({
+            frequency: "weekly",
+            byDay: [{ "@type": "NDay", day: "we" }],
+          }),
+        ],
+      }),
+    );
   });
 
   it("builds an exclusion override for only-this delete", () => {

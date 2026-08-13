@@ -476,6 +476,85 @@ describe("useCalendarController recurring scopes", () => {
     });
   });
 
+  it("saveEditor thisAndFuture uses form rules when bootstrap lacks the master", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue({ id: "forked-stale" });
+    const resolveEventId = vi.fn().mockResolvedValue("server-standup");
+    const surfaceMaster = {
+      eventId: "urn:uuid:server-standup",
+      calendarId: "work",
+      isRecurring: true,
+      data: {
+        start: Temporal.PlainDateTime.from("2033-01-10T09:30:00"),
+        duration: Temporal.Duration.from("PT30M"),
+        summary: "Team standup",
+        recurrenceRule: {
+          freq: "WEEKLY" as const,
+          byDay: [{ day: "MO" as const }],
+        },
+      },
+    };
+    const occurrence = {
+      eventId: "urn:uuid:server-standup",
+      calendarId: "work",
+      recurrenceId: "20330112T093000",
+      data: {
+        start: Temporal.PlainDateTime.from("2033-01-12T09:30:00"),
+        duration: Temporal.Duration.from("PT30M"),
+        summary: "Team standup",
+      },
+    };
+    const surfaceEvents = new Map([
+      ["server-standup", surfaceMaster],
+      ["server-standup::20330112T093000", occurrence],
+    ]);
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        // Freshly created series often exist in the adapter but not yet in React bootstrap.
+        data: { ...bootstrap.data, events: [] },
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+        resolveEventId,
+        surfaceEvents: surfaceEvents as never,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.openEditEventKey("server-standup::20330112T093000");
+    });
+    expect(result.current.editor).not.toBeNull();
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup from here",
+      });
+    });
+
+    await saveAndResolveScope(result, "thisAndFuture");
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "server-standup",
+        expect.objectContaining({
+          recurrenceRules: [
+            expect.objectContaining({
+              frequency: "weekly",
+              until: "2033-01-12T09:29:59",
+            }),
+          ],
+        }),
+      );
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Standup from here",
+          recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
+        }),
+      );
+    });
+    // Must not invent a daily truncation when the wire master is missing.
+    expect(patchEvent.mock.calls[0]?.[1]?.recurrenceRules?.[0]?.frequency).toBe("weekly");
+  });
+
   it("deleteEditorEvent asks delete scope after opening a recurring occurrence", async () => {
     vi.useFakeTimers();
     const patchEvent = vi.fn().mockResolvedValue(undefined);
