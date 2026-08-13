@@ -8,8 +8,8 @@ Umbrella roadmap for extending the calendars JMAP transport envelope (`.agents/s
 |--------|-------------|---------------|-------|
 | Contacts | [../437-jmap-envelope-contacts/](../437-jmap-envelope-contacts/spec.md) | RFC 9610 (final) | #437 |
 | Blobs (shared infra) | [../438-jmap-blobs/](../438-jmap-blobs/spec.md) | RFC 8620 §6 (final) | #438 |
-| Files | [../000-jmap-envelope-filenode/](../000-jmap-envelope-filenode/spec.md) | draft-ietf-jmap-filenode-14 (active, pinned) | #439 (design); build filed after |
-| Mail | [../000-jmap-envelope-mail/](../000-jmap-envelope-mail/spec.md) | RFC 8621 (final; phased behind a design gate) | #440 (design gate); M1/M2 only if "build" |
+| Files | [../450-jmap-envelope-filenode/](../450-jmap-envelope-filenode/spec.md) | draft-ietf-jmap-filenode-14 (active, pinned) | #439 (design); build filed after |
+| Mail | [../452-jmap-envelope-mail/](../452-jmap-envelope-mail/spec.md) | RFC 8621 (final; phased behind a design gate) | #440 (design gate); M1/M2 only if "build" |
 
 ## Goal
 

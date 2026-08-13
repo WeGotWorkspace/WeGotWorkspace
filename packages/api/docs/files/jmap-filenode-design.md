@@ -1,6 +1,6 @@
 # FileNode node-identity design (JMAP filenode, #439)
 
-> **Issue:** [#439](https://github.com/WeGotWorkspace/wegotworkspace/issues/439) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/000-jmap-envelope-filenode/`
+> **Issue:** [#439](https://github.com/WeGotWorkspace/wegotworkspace/issues/439) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/450-jmap-envelope-filenode/`
 > **External spec:** draft-ietf-jmap-filenode-14 (pinned) · **Depends on:** real blobs (#438, merged)
 >
 > Design gate for the files envelope build (chunk F). The build Task derives its acceptance criteria from this document.

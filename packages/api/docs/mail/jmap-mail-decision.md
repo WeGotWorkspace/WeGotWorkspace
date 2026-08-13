@@ -1,6 +1,6 @@
 # JMAP Mail over IMAP — state model and build/defer decision (#440)
 
-> **Issue:** [#440](https://github.com/WeGotWorkspace/wegotworkspace/issues/440) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/000-jmap-envelope-mail/`
+> **Issue:** [#440](https://github.com/WeGotWorkspace/wegotworkspace/issues/440) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/452-jmap-envelope-mail/`
 > **External spec:** RFC 8621 (final) · **Related goals:** #382 (send/receive, fulfilled), #398 (threads, adopted), #400 (offline mail, adopted), #407 (multi-account) · **Eng tracker:** #401
 >
 > Decision gate: mail envelope Tasks M1 (read-only) / M2 (writes + submission) are filed **only if** this document's recommendation is "build".

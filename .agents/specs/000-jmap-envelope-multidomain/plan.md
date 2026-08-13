@@ -7,8 +7,8 @@ Derived from [spec.md](./spec.md). **Status: draft, planning-only.** This umbrel
 1. Chunk P (below) before any new domain — it removes the calendar couplings the domains would otherwise re-hardcode.
 2. Contacts ([../437-jmap-envelope-contacts/](../437-jmap-envelope-contacts/plan.md)) after P; may run parallel with blobs.
 3. Blobs ([../438-jmap-blobs/](../438-jmap-blobs/plan.md)) after P; prerequisite for files and mail M1, and for the final form of contacts photo blobIds.
-4. Files ([../000-jmap-envelope-filenode/](../000-jmap-envelope-filenode/plan.md)): design doc F0 gates build F; F also needs blobs.
-5. Mail ([../000-jmap-envelope-mail/](../000-jmap-envelope-mail/plan.md)): design doc M0 gates M1 (also needs blobs); M2 after M1. M1/M2 exist only if M0 recommends "build".
+4. Files ([../450-jmap-envelope-filenode/](../450-jmap-envelope-filenode/plan.md)): design doc F0 gates build F; F also needs blobs.
+5. Mail ([../452-jmap-envelope-mail/](../452-jmap-envelope-mail/plan.md)): design doc M0 gates M1 (also needs blobs); M2 after M1. M1/M2 exist only if M0 recommends "build".
 6. Design docs F0 and M0 have no dependencies — they can start parallel with P.
 
 ## Chunks

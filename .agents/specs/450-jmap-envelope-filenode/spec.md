@@ -1,4 +1,4 @@
-Source: ad-hoc (design Task F0 filed as **#439**; the build Task F is filed after #439 lands — see [issue-draft.md](./issue-draft.md) — then rename this folder to `<N>-jmap-envelope-filenode` with the build Task's number and set its body-hash here). Parent epic: #435. Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: #450 (body-hash: 7d3d3650). Parent epic: #435; design gate #439 delivered and merged (PR #447 — [`packages/api/docs/files/jmap-filenode-design.md`](../../../packages/api/docs/files/jmap-filenode-design.md)). Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
 # JMAP envelope: files (FileNode, draft-ietf-jmap-filenode-14)
 
