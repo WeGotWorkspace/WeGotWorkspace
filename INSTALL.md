@@ -60,6 +60,10 @@ Then follow the wizard:
 - Choose SQLite (quickest) or MySQL
 - Create the first account
 
+### Optional: PHP `imap` extension (Mail app)
+
+The requirements check lists **Extension: imap (optional)**. It is not required to install or run WeGotWorkspace — only the Mail app (IMAP mailbox access) needs it, and it is missing on many shared hosts. Without it, mail endpoints answer `503` with `imap_extension_required` and `/api/v1/mail/status` reports `extImap: false` so the web app can explain the limitation; everything else (files, calendars, contacts, tasks, meet, …) works normally. Enable `php-imap` in your hosting control panel (or `apt install php8.3-imap`) to activate Mail.
+
 ## 4) Done
 
 After setup, sign in with your new account and connect clients using the same site URL.
