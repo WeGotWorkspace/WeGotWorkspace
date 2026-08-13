@@ -504,7 +504,9 @@ describe("useCalendarController recurring scopes", () => {
       await openPromise!;
     });
 
-    expect(result.current.editor?.recurrenceScope).toBe("thisInstance");
+    expect(
+      result.current.editor?.mode === "edit" ? result.current.editor.recurrenceScope : undefined,
+    ).toBe("thisInstance");
 
     act(() => {
       result.current.deleteEditorEvent();
