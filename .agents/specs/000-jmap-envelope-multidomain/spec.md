@@ -1,4 +1,4 @@
-Source: #435 (body-hash: 615c8e37) — the multi-domain envelope Epic; chore P filed as #436 ([issue-drafts.md](./issue-drafts.md) records the filed set). Each domain has its own spec folder, linked below. External spec status verified against jmap.io and the IETF datatracker 2026-08-13. Tasks (VTODO) removed from the roadmap on maintainer review the same day (see Non-goals). Split into per-domain folders 2026-08-13; issues filed the same day.
+Source: #435 (body-hash: 7773425c) — the multi-domain envelope Epic; chore P filed as #436 ([issue-drafts.md](./issue-drafts.md) records the filed set). Each domain has its own spec folder, linked below. External spec status verified against jmap.io and the IETF datatracker 2026-08-13. Tasks (VTODO) removed from the roadmap on maintainer review the same day (see Non-goals). Split into per-domain folders 2026-08-13; issues filed the same day.
 
 # JMAP envelope: multi-domain umbrella (contacts, blobs, files, mail)
 

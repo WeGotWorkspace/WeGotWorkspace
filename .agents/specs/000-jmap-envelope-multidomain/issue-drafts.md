@@ -23,6 +23,6 @@ issue bodies require a maintainer):
 a "Supports Goals" table (#383 contacts, #379 drive, #400/#398 mail, #385/#402
 calendars) instead of a single parent Goal; not on the Product Project.
 
-**Note for a maintainer:** the Epic body's children list was written before
-the child issue numbers existed (the token cannot edit issues). If desired,
-edit #435 to link them: #436, #437, #438, #439, #440.
+**Epic body updated 2026-08-13** (maintainer edit): the children list in #435
+now links #436–#440; the umbrella `Source:` body-hash reflects the edited
+body (`7773425c`).
