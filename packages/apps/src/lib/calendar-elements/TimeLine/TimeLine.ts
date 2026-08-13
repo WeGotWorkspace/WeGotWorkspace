@@ -204,7 +204,9 @@ export class TimeLine extends LitElement {
   /**
    * Marker values on the absolute axis (same coordinate space as event `start`/`end`; cell `i`
    * spans `[i * max, (i + 1) * max)`). Each renders a thin line inside its cell, themeable via
-   * `--time-line-marker-color`. Values outside `[0, cells * max)` are ignored.
+   * `--time-line-marker-color`. Values outside `[0, cells * max)` are ignored. Pass one value
+   * per cell at the same local time (see `currentTimeMarkersAcrossDays`) for a full-width
+   * now-indicator; the leftmost cell’s marker also gets a lead dot (`.marker--anchor`).
    */
   @property({ type: Array })
   accessor markers: number[] = [];
@@ -1679,7 +1681,11 @@ export class TimeLine extends LitElement {
       if (Math.floor(m / span) !== cell) continue;
       const pct = this.#axisPct(m - cell * span, w0, w1);
       if (pct < 0 || pct > 100) continue;
-      frags.push(html`<div class="marker" part="marker" style="--__marker-pos:${pct}%"></div>`);
+      // Anchor dot on the first (inline-start) day column for full-width now indicators.
+      const anchorClass = cell === 0 ? " marker--anchor" : "";
+      frags.push(
+        html`<div class="marker${anchorClass}" part="marker" style="--__marker-pos:${pct}%"></div>`,
+      );
     }
     return frags;
   }

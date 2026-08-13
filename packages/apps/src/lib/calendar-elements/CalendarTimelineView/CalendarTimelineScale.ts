@@ -29,6 +29,26 @@ export function toTimelineValue(
   return (minutesFromStart * unitsPerDay) / MINUTES_PER_DAY;
 }
 
+/**
+ * Expands a single absolute “now” value into one marker per day column at the same
+ * time-of-day, so the indicator spans the full timed grid (day and week). Returns `[]`
+ * when `absoluteValue` falls outside the rendered range (today not in view).
+ */
+export function currentTimeMarkersAcrossDays(
+  absoluteValue: number,
+  unitsPerDay: number,
+  numDays: number,
+): number[] {
+  const dayUnits = Math.max(1, Math.floor(Number(unitsPerDay) || 1));
+  const days = Math.max(1, Math.floor(Number(numDays) || 1));
+  const gridMax = dayUnits * days;
+  if (!Number.isFinite(absoluteValue) || absoluteValue < 0 || absoluteValue >= gridMax) {
+    return [];
+  }
+  const timeOfDay = ((absoluteValue % dayUnits) + dayUnits) % dayUnits;
+  return Array.from({ length: days }, (_, day) => day * dayUnits + timeOfDay);
+}
+
 /** Converts timeline units back to a wall-clock datetime from `scale.startDate`. */
 export function fromTimelineValue(
   timelineValue: number,

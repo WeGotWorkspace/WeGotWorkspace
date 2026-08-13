@@ -141,6 +141,15 @@ export abstract class CalendarViewBase extends BaseElement {
     this.#currentTime = currentTime?.toString() ?? undefined;
   }
 
+  /**
+   * Explicitly pinned `currentTime`, or `undefined` when the view should read a live clock.
+   * Day/week composition binds this (not `currentTime`) so a parent re-render does not freeze
+   * Temporal.Now into the child and the now-indicator can tick.
+   */
+  protected get pinnedCurrentTime(): string | undefined {
+    return this.#currentTime;
+  }
+
   connectedCallback() {
     super.connectedCallback();
     void this.#eventsAPIConsumer;

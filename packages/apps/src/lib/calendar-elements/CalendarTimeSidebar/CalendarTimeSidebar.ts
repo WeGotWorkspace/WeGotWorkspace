@@ -1,4 +1,4 @@
-import { html, unsafeCSS } from "lit";
+import { html, nothing, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
 import { BaseElement } from "../BaseElement/BaseElement.js";
 import { getLocaleDirection } from "../utils/Locale.js";
@@ -12,12 +12,15 @@ export class CalendarTimeSidebar extends BaseElement {
   #hoursRaw = 24;
   /** Raw property value; `get startHour()` clamps to 0–23. */
   #startHourRaw = 0;
+  /** Live clock label for the now-indicator badge (e.g. `19:37`); omit when out of range. */
+  nowTimeLabel?: string;
 
   static get properties() {
     return {
       lang: { type: String },
       hours: { type: Number },
       startHour: { type: Number, attribute: "start-hour" },
+      nowTimeLabel: { type: String, attribute: "now-time-label" },
     } as const;
   }
 
@@ -62,6 +65,7 @@ export class CalendarTimeSidebar extends BaseElement {
     const endLabel = getHourlyTimeLabels(this.lang, 1, startHour + hours)[0] ?? "00:00";
     const labels = [...hourlyLabels, endLabel];
     const hourSlots = Math.max(1, hours);
+    const nowLabel = this.nowTimeLabel?.trim();
 
     return html`
       <div class="time-sidebar" dir=${direction}>
@@ -77,6 +81,7 @@ export class CalendarTimeSidebar extends BaseElement {
               `,
             )}
           </div>
+          ${nowLabel ? html`<div class="now-badge" aria-hidden="true">${nowLabel}</div>` : nothing}
         </div>
       </div>
     `;

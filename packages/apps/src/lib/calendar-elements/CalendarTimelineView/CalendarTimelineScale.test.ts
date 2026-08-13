@@ -5,6 +5,7 @@ import {
   alignedMonthGridStart,
   alignedWeekStart,
   compareDaySnappedRenderOrder,
+  currentTimeMarkersAcrossDays,
   fromTimelineRange,
   fromTimelineValue,
   resolveTimelineEventFilter,
@@ -60,6 +61,28 @@ describe("toTimelineValue / fromTimelineValue round trip", () => {
       expect(toTimelineValue(boundary, scale)).toBe(day * MINUTES_PER_DAY);
       expect(fromTimelineValue(day * MINUTES_PER_DAY, scale).toString()).toBe(boundary.toString());
     }
+  });
+});
+
+describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
+  it("expands a mid-week now into one marker per day at the same time-of-day", () => {
+    const unitsPerDay = MINUTES_PER_DAY;
+    const wednesday = 2 * unitsPerDay + 19 * 60 + 37;
+    expect(currentTimeMarkersAcrossDays(wednesday, unitsPerDay, 7)).toEqual(
+      Array.from({ length: 7 }, (_, day) => day * unitsPerDay + 19 * 60 + 37),
+    );
+  });
+
+  it("returns a single marker for day view", () => {
+    const unitsPerDay = MINUTES_PER_DAY;
+    const value = 10 * 60 + 15;
+    expect(currentTimeMarkersAcrossDays(value, unitsPerDay, 1)).toEqual([value]);
+  });
+
+  it("returns [] when now falls outside the rendered range", () => {
+    const unitsPerDay = MINUTES_PER_DAY;
+    expect(currentTimeMarkersAcrossDays(-1, unitsPerDay, 7)).toEqual([]);
+    expect(currentTimeMarkersAcrossDays(7 * unitsPerDay, unitsPerDay, 7)).toEqual([]);
   });
 });
 

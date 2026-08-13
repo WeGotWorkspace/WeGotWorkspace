@@ -120,6 +120,19 @@
   border-top: 2px solid var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
 }
 
+/* Lead dot where the now-line meets the first day column (full-width indicators). */
+:host([flow="vertical"]) .marker.marker--anchor::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+  transform: translate(-50%, -50%);
+}
+
 /* Horizontal flow uses logical insets so the time axis follows the inline direction (RTL-aware). */
 :host([flow="horizontal"]) .marker {
   top: 0;

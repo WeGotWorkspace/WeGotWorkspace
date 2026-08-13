@@ -33,12 +33,13 @@ import type {
 } from "../types/TimeLine.js";
 import "../TimeLine/TimeLine.js";
 import { getLocaleWeekInfo, resolveLocale } from "../utils/Locale.js";
-import { formatShortTimeRange } from "../utils/TimeFormatting.js";
+import { formatShortTime, formatShortTimeRange } from "../utils/TimeFormatting.js";
 import { weekNumberForDate } from "../utils/WeekNumber.js";
 import {
   alignedMonthGridStart,
   alignedWeekStart,
   compareDaySnappedRenderOrder,
+  currentTimeMarkersAcrossDays,
   fromTimelineRange,
   fromTimelineValue,
   resolveTimelineEventFilter,
@@ -183,6 +184,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   /** Watches the composed layout + all-day shell to derive the timed viewport height. */
   #composedResizeObserver: ResizeObserver | null = null;
   #observedComposedElements = new Set<Element>();
+  /** Keeps the now-indicator line + clock badge moving while the view is connected. */
+  #nowTickTimer: ReturnType<typeof setInterval> | null = null;
 
   static get properties() {
     return {
@@ -212,10 +215,24 @@ export class CalendarTimelineView extends CalendarViewBase {
     return [...CalendarViewBase.styles, unsafeCSS(componentStyle)];
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.#nowTickTimer == null) {
+      this.#nowTickTimer = setInterval(() => {
+        if (typeof document !== "undefined" && document.hidden) return;
+        this.requestUpdate();
+      }, 30_000);
+    }
+  }
+
   disconnectedCallback() {
     if (this.#suppressNextCardSelectTimeout) {
       clearTimeout(this.#suppressNextCardSelectTimeout);
       this.#suppressNextCardSelectTimeout = null;
+    }
+    if (this.#nowTickTimer != null) {
+      clearInterval(this.#nowTickTimer);
+      this.#nowTickTimer = null;
     }
     this.#composedResizeObserver?.disconnect();
     this.#composedResizeObserver = null;
@@ -411,12 +428,19 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
   }
 
-  /** Current-time marker on the absolute axis, only when it falls within the rendered range. */
+  /** Current-time marker on the absolute axis, only when it falls within the rendered range.
+   * One value per day column at the same time-of-day so the line spans the full timed grid. */
   get #currentTimeMarkers(): number[] {
     const value = toTimelineValue(this.#currentDateTime, this.#scale);
-    const gridMax = this.#resolvedTimelineMax * this.#resolvedNumDays;
-    if (!Number.isFinite(value) || value < 0 || value >= gridMax) return [];
-    return [value];
+    return currentTimeMarkersAcrossDays(value, this.#resolvedTimelineMax, this.#resolvedNumDays);
+  }
+
+  /** Fraction of the day (0–1) for the now badge / line; `null` when today is out of range. */
+  get #nowIndicatorDayFraction(): number | null {
+    if (this.#currentTimeMarkers.length === 0) return null;
+    const now = this.#currentDateTime;
+    const minutes = now.hour * 60 + now.minute + now.second / 60 + now.millisecond / 60_000;
+    return minutes / MINUTES_PER_DAY;
   }
 
   get #renderedEntries(): [string, ApiCalendarEvent][] {
@@ -1421,6 +1445,10 @@ export class CalendarTimelineView extends CalendarViewBase {
         `
       : nothing;
 
+    const nowFraction = this.#nowIndicatorDayFraction;
+    const nowBadgeLabel =
+      nowFraction == null ? undefined : formatShortTime(this.lang, this.#currentDateTime);
+
     return html`
       ${this.#renderWeekNumberCorner()}
       <calendar-time-sidebar
@@ -1428,6 +1456,12 @@ export class CalendarTimelineView extends CalendarViewBase {
         .lang=${this.lang}
         .hours=${24}
         .startHour=${0}
+        .nowTimeLabel=${nowBadgeLabel}
+        style=${styleMap(
+          nowFraction == null
+            ? {}
+            : { "--_lc-now-badge-top": `${(nowFraction * 100).toFixed(4)}%` },
+        )}
       ></calendar-time-sidebar>
       <swipe-container
         class="timeline-swipe"

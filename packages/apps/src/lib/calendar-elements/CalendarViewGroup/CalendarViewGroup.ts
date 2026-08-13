@@ -252,7 +252,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .rtl=${this.rtl}
           .lang=${this.lang}
           .timezone=${this.timezone}
-          .currentTime=${this.currentTime}
+          .currentTime=${this.pinnedCurrentTime}
           .snapInterval=${this.snapInterval}
           .visibleHours=${this.visibleHours}
           .selectedCalendarId=${this.selectedCalendarId}

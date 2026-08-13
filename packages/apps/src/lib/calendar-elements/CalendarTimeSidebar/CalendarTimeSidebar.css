@@ -63,3 +63,27 @@
 .hour-label {
   @apply text-inherit block text-xs leading-none font-medium whitespace-nowrap text-end tabular-nums;
 }
+
+/* Current-time clock pill: vertically centered on --_lc-now-badge-top (set by the composed
+   timeline as a % of the timed slot, matching the TimeLine marker). The +5.5px cancels the
+   timed-slot's label-centering offset (--_lc-time-sidebar-timed-top-offset) so the badge
+   sits on the same horizontal line as the grid now-marker. Uses --lc-higlight-color. */
+.now-badge {
+  position: absolute;
+  inset-inline-end: var(--_lc-time-sidebar-inline-padding, 0);
+  top: calc(var(--_lc-now-badge-top, 0%) + 5.5px);
+  z-index: var(--_lc-z-overlay-raised);
+  transform: translateY(-50%);
+  pointer-events: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--lc-higlight-color, #ff0000);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 0 0 1px var(--_lc-time-sidebar-layer-bg, transparent);
+}
