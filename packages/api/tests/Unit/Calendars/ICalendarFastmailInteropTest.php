@@ -55,6 +55,7 @@ final class ICalendarFastmailInteropTest extends TestCase
                 'locationCount' => count($event['locations'] ?? []),
                 'alertCount' => count($event['alerts'] ?? []),
                 'frequency' => $event['recurrenceRules'][0]['frequency'] ?? null,
+                'byDay' => $event['recurrenceRules'][0]['byDay'] ?? null,
                 default => $event[$key] ?? null,
             };
             $this->assertSame($value, $actual, "Mismatch on {$key} for {$fixture}");

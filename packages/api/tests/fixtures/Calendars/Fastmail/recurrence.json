@@ -1,4 +1,12 @@
 {
     "uid": "8d9b581d-6f64-4f9f-89ce-8f9c09d54911",
-    "frequency": "monthly"
+    "frequency": "monthly",
+    "byDay": [
+        { "@type": "NDay", "day": "mo", "nthOfPeriod": 2 },
+        { "@type": "NDay", "day": "tu" },
+        { "@type": "NDay", "day": "su", "nthOfPeriod": -3 },
+        { "@type": "NDay", "day": "mo", "nthOfPeriod": 1 },
+        { "@type": "NDay", "day": "th", "nthOfPeriod": -2 },
+        { "@type": "NDay", "day": "sa", "nthOfPeriod": -1 }
+    ]
 }

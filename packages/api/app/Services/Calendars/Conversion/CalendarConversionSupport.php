@@ -157,9 +157,17 @@ final class CalendarConversionSupport
     }
 
     /**
+     * Parse an RRULE/EXRULE property into a JSCalendar RecurrenceRule (RFC 8984 §4.3.3):
+     * byMonth is String[] (leap-month suffix "3L"), byDay is NDay[] objects, and
+     * byHour/byMinute/bySecond are UnsignedInt[].
+     *
+     * $legacyWireTypes keeps the pre-RFC-8984 shapes (byMonth Int[], byDay iCal
+     * strings, no byHour/byMinute/bySecond) for the tasks domain, which has shipped
+     * consumers of the legacy wire format.
+     *
      * @return array<string, mixed>
      */
-    public static function recurrenceRuleFromProperty(Property $property): array
+    public static function recurrenceRuleFromProperty(Property $property, bool $legacyWireTypes = false): array
     {
         $parts = $property->getParts();
         $frequency = strtoupper((string) ($parts['FREQ'] ?? ''));
@@ -183,22 +191,38 @@ final class CalendarConversionSupport
                     : $until);
         }
         if (isset($parts['BYDAY'])) {
-            $rule['byDay'] = array_map('trim', explode(',', (string) $parts['BYDAY']));
+            $days = self::rulePartValues($parts['BYDAY']);
+            $rule['byDay'] = $legacyWireTypes
+                ? $days
+                : array_values(array_filter(
+                    array_map(self::nDayFromIcs(...), $days),
+                    static fn (?array $nDay): bool => $nDay !== null,
+                ));
         }
         if (isset($parts['BYMONTH'])) {
-            $rule['byMonth'] = array_map('intval', explode(',', (string) $parts['BYMONTH']));
+            $months = self::rulePartValues($parts['BYMONTH']);
+            $rule['byMonth'] = $legacyWireTypes
+                ? array_map('intval', $months)
+                : array_map(self::normalizeByMonthValue(...), $months);
         }
         if (isset($parts['BYMONTHDAY'])) {
-            $rule['byMonthDay'] = array_map('intval', explode(',', (string) $parts['BYMONTHDAY']));
+            $rule['byMonthDay'] = array_map('intval', self::rulePartValues($parts['BYMONTHDAY']));
         }
         if (isset($parts['BYYEARDAY'])) {
-            $rule['byYearDay'] = array_map('intval', explode(',', (string) $parts['BYYEARDAY']));
+            $rule['byYearDay'] = array_map('intval', self::rulePartValues($parts['BYYEARDAY']));
         }
         if (isset($parts['BYWEEKNO'])) {
-            $rule['byWeekNo'] = array_map('intval', explode(',', (string) $parts['BYWEEKNO']));
+            $rule['byWeekNo'] = array_map('intval', self::rulePartValues($parts['BYWEEKNO']));
         }
         if (isset($parts['BYSETPOS'])) {
-            $rule['bySetPosition'] = array_map('intval', explode(',', (string) $parts['BYSETPOS']));
+            $rule['bySetPosition'] = array_map('intval', self::rulePartValues($parts['BYSETPOS']));
+        }
+        if (! $legacyWireTypes) {
+            foreach (['BYHOUR' => 'byHour', 'BYMINUTE' => 'byMinute', 'BYSECOND' => 'bySecond'] as $icsPart => $jmapKey) {
+                if (isset($parts[$icsPart])) {
+                    $rule[$jmapKey] = array_map('intval', self::rulePartValues($parts[$icsPart]));
+                }
+            }
         }
         if (isset($parts['WKST'])) {
             $rule['firstDayOfWeek'] = strtolower((string) $parts['WKST']);
@@ -208,6 +232,80 @@ final class CalendarConversionSupport
     }
 
     /**
+     * Sabre's Recur property exposes multi-value rule parts (BYDAY=MO,TU) as arrays
+     * and single values as strings; normalize both to a clean list of strings.
+     *
+     * @return list<string>
+     */
+    private static function rulePartValues(mixed $part): array
+    {
+        $values = is_array($part) ? $part : explode(',', (string) $part);
+        $values = array_map(static fn (mixed $value): string => trim((string) $value), $values);
+
+        return array_values(array_filter($values, static fn (string $value): bool => $value !== ''));
+    }
+
+    /**
+     * iCal BYDAY value ("MO", "+2MO", "-1SU") → RFC 8984 NDay object.
+     *
+     * @return array{'@type': string, day: string, nthOfPeriod?: int}|null
+     */
+    private static function nDayFromIcs(string $value): ?array
+    {
+        if (preg_match('/^([+-]?\d{1,2})?(MO|TU|WE|TH|FR|SA|SU)$/i', trim($value), $matches) !== 1) {
+            return null;
+        }
+
+        $nDay = ['@type' => 'NDay', 'day' => strtolower($matches[2])];
+        if ($matches[1] !== '') {
+            $nDay['nthOfPeriod'] = (int) $matches[1];
+        }
+
+        return $nDay;
+    }
+
+    /**
+     * Canonicalize an iCal BYMONTH value to the RFC 8984 string form: strip leading
+     * zeros, uppercase the leap-month suffix ("03" → "3", "3l" → "3L").
+     */
+    private static function normalizeByMonthValue(string $value): string
+    {
+        if (preg_match('/^0*(\d+)(l?)$/i', trim($value), $matches) === 1) {
+            return $matches[1].strtoupper($matches[2]);
+        }
+
+        return trim($value);
+    }
+
+    /**
+     * NDay object (RFC 8984) or legacy iCal day string → iCal BYDAY value.
+     */
+    private static function byDayValueToIcs(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $day = $value['day'] ?? null;
+            if (! is_string($day) || trim($day) === '') {
+                return null;
+            }
+            $ordinal = isset($value['nthOfPeriod']) && is_numeric($value['nthOfPeriod'])
+                ? (string) (int) $value['nthOfPeriod']
+                : '';
+
+            return $ordinal.strtoupper(trim($day));
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            return strtoupper(trim($value));
+        }
+
+        return null;
+    }
+
+    /**
+     * Serialize a JSCalendar RecurrenceRule to an RRULE/EXRULE value. Accepts both
+     * RFC 8984 wire shapes (byMonth String[], byDay NDay[]) and the legacy shapes
+     * still produced by the tasks domain (byMonth Int[], byDay iCal strings).
+     *
      * @param  array<string, mixed>  $rule
      */
     public static function recurrenceRuleToIcs(array $rule): string
@@ -229,10 +327,19 @@ final class CalendarConversionSupport
                 : str_replace('-', '', substr($until, 0, 10)));
         }
         if (isset($rule['byDay']) && is_array($rule['byDay']) && $rule['byDay'] !== []) {
-            $parts[] = 'BYDAY='.implode(',', array_map('strval', $rule['byDay']));
+            $days = array_values(array_filter(
+                array_map(self::byDayValueToIcs(...), $rule['byDay']),
+                static fn (?string $day): bool => $day !== null,
+            ));
+            if ($days !== []) {
+                $parts[] = 'BYDAY='.implode(',', $days);
+            }
         }
         if (isset($rule['byMonth']) && is_array($rule['byMonth']) && $rule['byMonth'] !== []) {
-            $parts[] = 'BYMONTH='.implode(',', array_map('strval', $rule['byMonth']));
+            $parts[] = 'BYMONTH='.implode(',', array_map(
+                static fn (mixed $value): string => strtoupper((string) $value),
+                $rule['byMonth'],
+            ));
         }
         if (isset($rule['byMonthDay']) && is_array($rule['byMonthDay']) && $rule['byMonthDay'] !== []) {
             $parts[] = 'BYMONTHDAY='.implode(',', array_map('strval', $rule['byMonthDay']));
@@ -245,6 +352,11 @@ final class CalendarConversionSupport
         }
         if (isset($rule['bySetPosition']) && is_array($rule['bySetPosition']) && $rule['bySetPosition'] !== []) {
             $parts[] = 'BYSETPOS='.implode(',', array_map('strval', $rule['bySetPosition']));
+        }
+        foreach (['byHour' => 'BYHOUR', 'byMinute' => 'BYMINUTE', 'bySecond' => 'BYSECOND'] as $jmapKey => $icsPart) {
+            if (isset($rule[$jmapKey]) && is_array($rule[$jmapKey]) && $rule[$jmapKey] !== []) {
+                $parts[] = $icsPart.'='.implode(',', array_map('intval', $rule[$jmapKey]));
+            }
         }
         if (isset($rule['firstDayOfWeek']) && is_string($rule['firstDayOfWeek']) && $rule['firstDayOfWeek'] !== '') {
             $parts[] = 'WKST='.strtoupper($rule['firstDayOfWeek']);

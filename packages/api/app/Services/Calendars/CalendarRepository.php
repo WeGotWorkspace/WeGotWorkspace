@@ -163,6 +163,7 @@ final class CalendarRepository
             return [
                 'oldState' => '0',
                 'newState' => $currentState,
+                'hasMoreChanges' => false,
                 'created' => $instances->pluck('uri')->map(fn ($uri): string => (string) $uri)->all(),
                 'updated' => [],
                 'destroyed' => [],
@@ -170,7 +171,7 @@ final class CalendarRepository
         }
 
         if ($since === $currentState) {
-            return ['oldState' => $since, 'newState' => $currentState, 'created' => [], 'updated' => [], 'destroyed' => []];
+            return ['oldState' => $since, 'newState' => $currentState, 'hasMoreChanges' => false, 'created' => [], 'updated' => [], 'destroyed' => []];
         }
 
         if ($previous === null) {
@@ -199,7 +200,7 @@ final class CalendarRepository
             }
         }
 
-        return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
+        return ['oldState' => $since, 'newState' => $currentState, 'hasMoreChanges' => false, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
     private function findOwnedCalendar(string $username, string $calendarId): ?CalendarInstance

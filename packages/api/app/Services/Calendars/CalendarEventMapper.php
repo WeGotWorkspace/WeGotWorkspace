@@ -14,12 +14,13 @@ final class CalendarEventMapper
 {
     public function __construct(
         private readonly ICalendarJmapEventConverter $converter = new ICalendarJmapEventConverter,
+        private readonly JmapCalendarEventStateService $eventStates = new JmapCalendarEventStateService,
     ) {}
 
     /**
      * @return list<array<string, mixed>>
      */
-    public function toCalendarEvents(CalendarObject $object, string $calendarUri): array
+    public function toCalendarEvents(CalendarObject $object, string $calendarUri, ?string $username = null): array
     {
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
         $events = $this->converter->eventsFromIcs($raw);
@@ -27,7 +28,7 @@ final class CalendarEventMapper
         $multi = count($events) > 1;
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
 
-        return array_map(function (array $event) use ($object, $calendarUri, $objectId, $multi, $etag): array {
+        return array_map(function (array $event) use ($object, $calendarUri, $objectId, $multi, $etag, $username): array {
             $uid = is_string($event['uid'] ?? null) ? $event['uid'] : '';
             $event['id'] = $multi && $uid !== ''
                 ? CalendarConversionSupport::compositeEventId($objectId, $uid)
@@ -49,6 +50,10 @@ final class CalendarEventMapper
                 }
             }
 
+            if ($username !== null) {
+                $event = $this->eventStates->attachStateToken($username, $event, $object, $calendarUri);
+            }
+
             return $event;
         }, $events);
     }
@@ -56,9 +61,13 @@ final class CalendarEventMapper
     /**
      * @return array<string, mixed>
      */
-    public function toCalendarEvent(CalendarObject $object, string $calendarUri, ?string $veventUid = null): array
-    {
-        $events = $this->toCalendarEvents($object, $calendarUri);
+    public function toCalendarEvent(
+        CalendarObject $object,
+        string $calendarUri,
+        ?string $veventUid = null,
+        ?string $username = null,
+    ): array {
+        $events = $this->toCalendarEvents($object, $calendarUri, $username);
         if ($veventUid !== null) {
             foreach ($events as $event) {
                 if (($event['uid'] ?? '') === $veventUid) {

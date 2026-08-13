@@ -44,8 +44,8 @@ CalDAV stores one `.ics` blob per `calendarobjects` row. The REST API maps each 
 
 | Direction | Rule |
 |-----------|------|
-| ICS → JMAP | Parse RRULE into `RecurrenceRule` objects; **do not** expand instances |
-| JMAP → ICS | Serialize `recurrenceRules` to RRULE properties (all BY* parts including `byYearDay`, `byWeekNo`, `bySetPosition`) |
+| ICS → JMAP | Parse RRULE into `RecurrenceRule` objects with RFC 8984 §4.3.3 wire types (`byDay` = `NDay[]` objects, `byMonth` = `String[]` incl. leap-month `"3L"`, `byHour`/`byMinute`/`bySecond` = `UnsignedInt[]`); **do not** expand instances |
+| JMAP → ICS | Serialize `recurrenceRules` to RRULE properties (all BY* parts); write side also tolerates the legacy shapes (`byDay` iCal strings, `byMonth` integers) still used by tasks |
 | RECURRENCE-ID override VEVENT | Merged into master `recurrenceOverrides` (key = RECURRENCE-ID datetime) |
 | `recurrenceOverrides.excluded: true` | STATUS:CANCELLED override VEVENT |
 | `recurrenceOverrides` time/title patch | Override VEVENT with RECURRENCE-ID + patched fields |

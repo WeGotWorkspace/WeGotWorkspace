@@ -48,6 +48,7 @@ docker/install/.env
 /build/
 wgw-content/
 .DS_Store
+.worktrees/
 .playwright-mcp/
 .env.local
 wgw-plugins

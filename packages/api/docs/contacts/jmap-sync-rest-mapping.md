@@ -3,7 +3,7 @@
 > **Issue:** [#158](https://github.com/WeGotWorkspace/wegotworkspace/issues/158)  
 > **Spec:** [RFC 9610](https://www.rfc-editor.org/info/rfc9610) (Contacts), [RFC 8620](https://www.rfc-editor.org/info/rfc8620) (JMAP core `/changes`, `/query`)
 
-WeGotWorkspace exposes a **REST subset** of JMAP sync methods. Contacts were the pilot; calendars and tasks now expose collection `/changes` and tasks expose item `/query`.
+WeGotWorkspace exposes a **REST subset** of JMAP sync methods. Contacts were the pilot; calendars now match at both collection and event level; tasks expose collection `/changes` and item `/query`.
 
 ## Sync tokens
 
@@ -12,6 +12,7 @@ WeGotWorkspace exposes a **REST subset** of JMAP sync methods. Contacts were the
 | `AddressBook` | `GET /api/v1/contacts/addressbooks/changes?since=` | Composite `{count}:{uri:synctoken,...}` over owned books |
 | `ContactCard` | `GET /api/v1/contacts/cards/changes?addressBookId=&since=` | Sabre CardDAV `addressbooks.synctoken` + `addressbookchanges` |
 | `Calendar` | `GET /api/v1/calendars/calendars/changes?since=` | Composite `{count}:{uri:synctoken,...}` over owned VEVENT calendars |
+| `CalendarEvent` | `GET /api/v1/calendars/events/changes?calendarId=&since=` | Sabre CalDAV `calendars.synctoken` + `calendarchanges` |
 | `TaskList` | `GET /api/v1/tasks/tasklists/changes?since=` | Composite `{count}:{uri:synctoken,...}` over owned VTODO calendars |
 
 ### Response shape (collection + card changes)
@@ -31,6 +32,7 @@ Maps to JMAP `/changes` (`oldState`, `newState`, `created`, `updated`, `destroye
 - **`since` omitted or `0`:** initial sync — all current ids appear in `created`.
 - **`since` unknown / malformed:** `400` with `cannotCalculateChanges` (JMAP equivalent).
 - **Card ids:** REST ids strip the `.vcf` suffix from CardDAV object uris.
+- **Calendar responses** (`/calendars/calendars/changes`, `/calendars/events/changes`) additionally include `hasMoreChanges: false` (RFC 8620 §5.2); contacts/tasks changes endpoints still omit it (follow-up).
 
 ### WebDAV alternative
 
@@ -92,16 +94,37 @@ Response: `{ "ids": ["…"], "total": 1 }` — fetch full tasks via `GET /tasks/
 
 ## Events and tasks (item-level sync)
 
-Calendar events and task items use per-calendar synctoken via `calendarchanges`, but REST item `/changes` endpoints are **not yet implemented**.
+Calendar events and task items use per-calendar synctoken via `calendarchanges`. Calendar events now expose REST item sync; task items are still deferred.
 
 | Store | Token column | Changes table |
 |-------|--------------|---------------|
 | Calendars / task lists | `calendars.synctoken` (via backend) | `calendarchanges` |
 | Events / tasks | per-calendar synctoken | `calendarchanges` rows |
 
+### CalendarEvent/changes
+
+`GET /api/v1/calendars/events/changes?calendarId=&since=&maxChanges=` reads the same `calendars.synctoken` + `calendarchanges` rows as CalDAV sync-collection, so REST and CalDAV clients see identical deltas (mutations made over either protocol appear in both).
+
+**Token semantics:** tokens are the numeric per-calendar Sabre synctoken. `since` omitted, empty, or `0` → initial sync (all current ids in `created`, `oldState: "0"`). Any other value must be numeric and ≤ the calendar's current synctoken, otherwise `400` with `cannotCalculateChanges`.
+
+**`hasMoreChanges` / `maxChanges` (RFC 8620 §5.2):** the response always includes `hasMoreChanges: false` — the full delta is returned in one response. `maxChanges` is validated (positive integer) but not used for truncation, because Sabre's limit-based truncation cannot produce a safe intermediate sync token (its per-uri dedup keeps the latest synctoken at the uri's first position, so a truncated token could skip lower-token changes to other objects).
+
+**Composite-id emission** (multi-VEVENT objects use ids `{objectId}#{veventUid}`):
+
+- **`created` / `updated`:** the endpoint re-reads current object data and emits exactly the ids list/show would produce — the plain objectId for single-VEVENT objects, **all** composite ids for multi-VEVENT objects. When a modification removes a sub-VEVENT, the removed composite ids additionally appear in `destroyed`.
+- **`destroyed`:** the object data is gone, so the endpoint emits the plain objectId plus every composite id previously recorded for that uri in `jmap_calendar_event_states` — covering every id a REST client can hold. CalDAV-only objects (never read over REST) have no state rows and fall back to the plain objectId.
+
+### CalendarEvent/set and /query
+
+`POST /calendars/events/set` and `POST /calendars/events/query` follow RFC 8620 §5.3/§5.5 response semantics (unlike the legacy-shaped contacts `/cards/set` and tasks `/items/query` — alignment is a follow-up, see [jmap-rest-parity-gaps.md](../jmap-rest-parity-gaps.md)):
+
+- `/set` — `created` maps creation id → server-set `{id, state}`; `updated` maps id → `{state}`; SetError types are camelCase (`notFound`, `invalidProperties` + `properties`, `forbidden`, `serverFail`, `stateMismatch`). Top-level `oldState`/`newState` compose the touched calendars' sync tokens (single calendar: plain synctoken, same string `/changes` uses; multiple: `{count}:{uri:token,...}` sorted by uri; nothing mutated: all owned VEVENT calendars, `oldState` == `newState`). Per-record `ifInState` (instead of RFC's request-level token) is a deliberate divergence because item state tokens are per event.
+- `/query` — returns `queryState` (same composition over `filter.inCalendars`) and `canCalculateChanges: false` alongside `ids`/`position`/`total`.
+
+Per-event `state` tokens live in `jmap_calendar_event_states` (same pattern as `jmap_contact_states`). Field-level notes and example payloads: [jmap-calendars-summary.md](../calendars/jmap-calendars-summary.md).
+
 **Planned REST mapping (deferred):**
 
-- `GET /calendars/events/changes?calendarId=&since=`
 - `GET /tasks/items/changes?taskListId=&since=`
 
 **ETag alternative:** `CalendarEvent` and `Task` responses expose `etag` (from `calendarobjects.etag`). Clients may use `If-Match` on PUT/PATCH/DELETE for optimistic concurrency without polling `/changes`.

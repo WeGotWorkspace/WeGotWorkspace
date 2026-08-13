@@ -257,6 +257,9 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
             ->where('calendarId', '[a-z0-9_-]+');
         Route::delete('calendars/calendars/{calendarId}', [CalendarsController::class, 'destroy'])
             ->where('calendarId', '[a-z0-9_-]+');
+        Route::get('calendars/events/changes', [CalendarEventsController::class, 'changes']);
+        Route::post('calendars/events/set', [CalendarEventsController::class, 'set']);
+        Route::post('calendars/events/query', [CalendarEventsController::class, 'query']);
         Route::get('calendars/events', [CalendarEventsController::class, 'index']);
         Route::post('calendars/events', [CalendarEventsController::class, 'store']);
         Route::get('calendars/events/{eventId}', [CalendarEventsController::class, 'show'])
