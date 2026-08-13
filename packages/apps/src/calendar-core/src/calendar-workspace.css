@@ -5,6 +5,25 @@
 .calendar-workspace {
   --calendar-accent: #6366f1;
   --calendar-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  /* Full-bleed main column (drive/docs pattern): the lit calendar surface
+     fills the viewport instead of the default centered 42rem measure. */
+  --workspace-main-content-max-width: none;
+}
+
+.calendar-workspace .workspace-app-layout__main-scroll {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-workspace .workspace-app-layout__main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .calendar-workspace .calendar-header-actions {
