@@ -16,6 +16,9 @@ use Sabre\DAV\PropPatch;
 
 final class CalendarRepository
 {
+    /** Sabre CalDAV PDO maps this Apple property onto `calendarinstances.calendarcolor`. */
+    private const CALENDAR_COLOR_PROPERTY = '{http://apple.com/ns/ical/}calendar-color';
+
     public function list(string $username): array
     {
         $instances = CalendarInstance::query()
@@ -67,7 +70,7 @@ final class CalendarRepository
             $properties['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($description) ? $description : null;
         }
         if (array_key_exists('color', $payload) && is_string($payload['color']) && trim($payload['color']) !== '') {
-            $properties['{'.CalDAVPlugin::NS_CALDAV.'}calendar-color'] = trim($payload['color']);
+            $properties[self::CALENDAR_COLOR_PROPERTY] = trim($payload['color']);
         }
         if (array_key_exists('timeZone', $payload) && is_string($payload['timeZone']) && trim($payload['timeZone']) !== '') {
             $properties['{'.CalDAVPlugin::NS_CALDAV.'}calendar-timezone'] = trim($payload['timeZone']);
@@ -108,7 +111,7 @@ final class CalendarRepository
         }
         if (array_key_exists('color', $payload)) {
             $color = $payload['color'];
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-color'] = is_string($color) && trim($color) !== '' ? trim($color) : null;
+            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
         }
         if (array_key_exists('timeZone', $payload)) {
             $timeZone = $payload['timeZone'];
