@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  CALENDAR_RANGE_ZOOM_ATTR,
   CALENDAR_RANGE_ZOOM_IN_CLASS,
   CALENDAR_RANGE_ZOOM_OUT_CLASS,
   calendarRangeZoomDirection,
@@ -85,101 +84,28 @@ describe("restartCalendarRangeTransition", () => {
 describe("runCalendarRangeViewTransition", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-    document.documentElement.removeAttribute(CALENDAR_RANGE_ZOOM_ATTR);
   });
 
-  it("uses startViewTransition with direction attribute when supported", async () => {
+  it("runs update then CSS enter animation without startViewTransition", () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn().mockReturnValue({ matches: false, media: "(prefers-reduced-motion: reduce)" }),
     );
-    const update = vi.fn();
-    let resolveFinished!: () => void;
-    const finished = new Promise<void>((resolve) => {
-      resolveFinished = resolve;
-    });
-    const startViewTransition = vi.fn((arg: unknown) => {
-      const cb = typeof arg === "function" ? arg : (arg as { update?: () => void }).update;
-      void Promise.resolve(cb?.()).catch(() => undefined);
-      return { finished };
-    });
+    const startViewTransition = vi.fn();
     Object.defineProperty(document, "startViewTransition", {
       configurable: true,
       value: startViewTransition,
-      writable: true,
-    });
-
-    const updateDone = runCalendarRangeViewTransition(document.createElement("div"), "out", update);
-
-    await updateDone;
-    expect(update).toHaveBeenCalledOnce();
-    expect(document.documentElement.getAttribute(CALENDAR_RANGE_ZOOM_ATTR)).toBe("out");
-    expect(startViewTransition).toHaveBeenCalled();
-    resolveFinished();
-    await finished;
-    await Promise.resolve();
-    expect(document.documentElement.hasAttribute(CALENDAR_RANGE_ZOOM_ATTR)).toBe(false);
-  });
-
-  it("awaits an async update before resolving", async () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false, media: "(prefers-reduced-motion: reduce)" }),
-    );
-    let releaseUpdate!: () => void;
-    const updateGate = new Promise<void>((resolve) => {
-      releaseUpdate = resolve;
-    });
-    let updateStarted = false;
-    const update = vi.fn(async () => {
-      updateStarted = true;
-      await updateGate;
-    });
-    const finished = Promise.resolve();
-    const startViewTransition = vi.fn((arg: unknown) => {
-      const cb = typeof arg === "function" ? arg : (arg as { update?: () => void }).update;
-      void Promise.resolve(cb?.()).catch(() => undefined);
-      return { finished };
-    });
-    Object.defineProperty(document, "startViewTransition", {
-      configurable: true,
-      value: startViewTransition,
-      writable: true,
-    });
-
-    let settled = false;
-    const done = runCalendarRangeViewTransition(document.createElement("div"), "in", update).then(
-      () => {
-        settled = true;
-      },
-    );
-
-    await Promise.resolve();
-    expect(updateStarted).toBe(true);
-    expect(settled).toBe(false);
-    releaseUpdate();
-    await done;
-    expect(settled).toBe(true);
-  });
-
-  it("falls back to enter-class animation when View Transitions are missing", async () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false, media: "(prefers-reduced-motion: reduce)" }),
-    );
-    Object.defineProperty(document, "startViewTransition", {
-      configurable: true,
-      value: undefined,
       writable: true,
     });
     const node = document.createElement("div");
     const update = vi.fn();
-    await runCalendarRangeViewTransition(node, "in", update);
+    runCalendarRangeViewTransition(node, "out", update);
     expect(update).toHaveBeenCalledOnce();
-    expect(node.classList.contains(CALENDAR_RANGE_ZOOM_IN_CLASS)).toBe(true);
+    expect(startViewTransition).not.toHaveBeenCalled();
+    expect(node.classList.contains(CALENDAR_RANGE_ZOOM_OUT_CLASS)).toBe(true);
   });
 
-  it("skips animation when prefers-reduced-motion", async () => {
+  it("skips animation when prefers-reduced-motion", () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn().mockImplementation((query: string) => ({
@@ -193,9 +119,11 @@ describe("runCalendarRangeViewTransition", () => {
       value: startViewTransition,
       writable: true,
     });
+    const node = document.createElement("div");
     const update = vi.fn();
-    await runCalendarRangeViewTransition(document.createElement("div"), "in", update);
+    runCalendarRangeViewTransition(node, "in", update);
     expect(update).toHaveBeenCalledOnce();
     expect(startViewTransition).not.toHaveBeenCalled();
+    expect(node.classList.contains(CALENDAR_RANGE_ZOOM_IN_CLASS)).toBe(false);
   });
 });

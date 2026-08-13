@@ -245,114 +245,11 @@
   flex: 1;
   min-height: 0;
   transform-origin: center center;
-  /*
-   * Light-DOM named VT target. Shadow-DOM names on lit `.content` do not lift
-   * out of `root` reliably — and we disable root animation during range zoom,
-   * which made day↔week↔month↔year look like an instant swap.
-   */
-  view-transition-name: calendar-range;
 }
 
 .calendar-workspace .calendar-main wgw-calendar-surface {
   flex: 1;
   min-height: 0;
-}
-
-/*
- * View Transitions API — old + new snapshots for day/week/month/year.
- * Named surface: `.calendar-main__range`. Direction: `html[data-calendar-range-zoom]`.
- * Root chrome stays still (named range is excluded from the root snapshot).
- */
-html[data-calendar-range-zoom]::view-transition-old(root),
-html[data-calendar-range-zoom]::view-transition-new(root) {
-  animation: none;
-}
-
-html[data-calendar-range-zoom]::view-transition-group(root) {
-  animation-duration: 0s;
-}
-
-::view-transition-group(calendar-range) {
-  animation-duration: 360ms;
-  animation-timing-function: cubic-bezier(0.2, 0.65, 0.25, 1);
-}
-
-::view-transition-image-pair(calendar-range) {
-  isolation: isolate;
-}
-
-html[data-calendar-range-zoom="out"]::view-transition-old(calendar-range) {
-  animation: calendar-vt-zoom-out-old 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
-}
-
-html[data-calendar-range-zoom="out"]::view-transition-new(calendar-range) {
-  animation: calendar-vt-zoom-out-new 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
-}
-
-html[data-calendar-range-zoom="in"]::view-transition-old(calendar-range) {
-  animation: calendar-vt-zoom-in-old 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
-}
-
-html[data-calendar-range-zoom="in"]::view-transition-new(calendar-range) {
-  animation: calendar-vt-zoom-in-new 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
-}
-
-/* Wider range: old recedes, new settles from slightly oversized. */
-@keyframes calendar-vt-zoom-out-old {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-}
-
-@keyframes calendar-vt-zoom-out-new {
-  from {
-    opacity: 0;
-    transform: scale(1.03);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Narrower range: old expands away, new grows in. */
-@keyframes calendar-vt-zoom-in-old {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(1.03);
-  }
-}
-
-@keyframes calendar-vt-zoom-in-new {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .calendar-workspace .calendar-main__range {
-    view-transition-name: none;
-  }
-
-  html[data-calendar-range-zoom]::view-transition-old(calendar-range),
-  html[data-calendar-range-zoom]::view-transition-new(calendar-range),
-  html[data-calendar-range-zoom]::view-transition-group(calendar-range) {
-    animation: none !important;
-  }
 }
 
 /**
