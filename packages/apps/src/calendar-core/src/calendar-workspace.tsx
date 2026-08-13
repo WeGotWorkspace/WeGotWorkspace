@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
@@ -18,12 +18,35 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
+import {
+  CALENDAR_RANGE_TRANSITION_CLASS,
+  restartCalendarRangeTransition,
+} from "@/calendar-core/src/calendar-range-transition";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
+
+/**
+ * Restart a one-shot zoom/cross-fade when the time-range view changes.
+ * Skips the first paint and `prefers-reduced-motion: reduce`.
+ */
+function useCalendarRangeTransition(view: CalendarViewId) {
+  const rangeRef = useRef<HTMLDivElement>(null);
+  const isFirstView = useRef(true);
+
+  useLayoutEffect(() => {
+    if (isFirstView.current) {
+      isFirstView.current = false;
+      return;
+    }
+    restartCalendarRangeTransition(rangeRef.current);
+  }, [view]);
+
+  return rangeRef;
+}
 
 /** Day → Year by time span — list is a presentation toggle, not a dropdown option. */
 const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year"];
@@ -117,6 +140,8 @@ export function CalendarWorkspace({
   };
 
   useDocumentTitle(`${L.appTitle} — ${title}`);
+
+  const rangeTransitionRef = useCalendarRangeTransition(view);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -261,22 +286,31 @@ export function CalendarWorkspace({
         }
         main={
           <div className="calendar-main" data-view={view}>
-            <CalendarSurface
-              view={litSurface.view}
-              presentation={litSurface.presentation}
-              startDate={anchor}
-              events={surfaceEventsForView ?? surface?.events ?? new Map()}
-              visibleCalendarIds={[...visibleCalendarIds]}
-              selectedCalendarId={defaultCalendarId}
-              contextValue={surface?.contextValue}
-              requestRecurrenceScope={askRecurrenceScope}
-              onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
-              onRecurrenceFutureUpdate={splitSeriesFromDrag}
-              onEventSelected={canWrite ? openEditEventKey : undefined}
-              onViewChange={selectView}
-              onStartDateChange={setAnchor}
-              onCreateRequested={canWrite ? openCreateFromSurface : undefined}
-            />
+            <div
+              ref={rangeTransitionRef}
+              className="calendar-main__range"
+              onAnimationEnd={(event) => {
+                if (event.target !== event.currentTarget) return;
+                event.currentTarget.classList.remove(CALENDAR_RANGE_TRANSITION_CLASS);
+              }}
+            >
+              <CalendarSurface
+                view={litSurface.view}
+                presentation={litSurface.presentation}
+                startDate={anchor}
+                events={surfaceEventsForView ?? surface?.events ?? new Map()}
+                visibleCalendarIds={[...visibleCalendarIds]}
+                selectedCalendarId={defaultCalendarId}
+                contextValue={surface?.contextValue}
+                requestRecurrenceScope={askRecurrenceScope}
+                onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
+                onRecurrenceFutureUpdate={splitSeriesFromDrag}
+                onEventSelected={canWrite ? openEditEventKey : undefined}
+                onViewChange={selectView}
+                onStartDateChange={setAnchor}
+                onCreateRequested={canWrite ? openCreateFromSurface : undefined}
+              />
+            </div>
           </div>
         }
       />
