@@ -224,6 +224,20 @@ export function CalendarWorkspace({
             title={title}
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            titleLeading={
+              <div className="calendar-header-nav">
+                <IconButton
+                  label={L.previousPeriod}
+                  icon={<ChevronLeft className="size-4" />}
+                  onClick={goPrevious}
+                />
+                <IconButton
+                  label={L.nextPeriod}
+                  icon={<ChevronRight className="size-4" />}
+                  onClick={goNext}
+                />
+              </div>
+            }
             actions={
               <div className="calendar-header-actions">
                 <Select value={view} onValueChange={(next) => selectView(next as CalendarViewId)}>
@@ -244,17 +258,7 @@ export function CalendarWorkspace({
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
                 />
-                <IconButton
-                  label={L.previousPeriod}
-                  icon={<ChevronLeft className="size-4" />}
-                  onClick={goPrevious}
-                />
                 <Button label={L.today} onClick={goToday} variant="subtle" />
-                <IconButton
-                  label={L.nextPeriod}
-                  icon={<ChevronRight className="size-4" />}
-                  onClick={goNext}
-                />
               </div>
             }
           />

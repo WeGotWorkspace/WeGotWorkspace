@@ -12,6 +12,8 @@ type ViewHeaderProps = {
   title: string;
   /** "default" = large serif display; "sm" = medium sans-serif title (e.g. doc editor file name). */
   titleSize?: ViewHeaderTitleSize;
+  /** Optional controls immediately left of the title (e.g. calendar period prev/next). */
+  titleLeading?: ReactNode;
   subtitle?: string;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
@@ -29,6 +31,7 @@ type ViewHeaderProps = {
 export function ViewHeader({
   title,
   titleSize = "default",
+  titleLeading,
   subtitle,
   hideSidebarToggle = false,
   sidebarOpen = false,
@@ -61,11 +64,14 @@ export function ViewHeader({
         )}
         <div className="view-header__main">
           <div className="view-header__title-row">
-            <h2
-              className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
-            >
-              {title}
-            </h2>
+            <div className="view-header__title-cluster">
+              {titleLeading}
+              <h2
+                className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
+              >
+                {title}
+              </h2>
+            </div>
             <div className="view-header__actions">{actions}</div>
           </div>
           {subtitle ? (

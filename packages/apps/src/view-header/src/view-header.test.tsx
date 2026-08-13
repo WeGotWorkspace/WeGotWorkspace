@@ -22,3 +22,27 @@ describe("ViewHeader titleSize", () => {
     expect(title!.classList.contains("view-header__title--sm")).toBe(true);
   });
 });
+
+describe("ViewHeader titleLeading", () => {
+  it("renders leading controls before the title in the title cluster", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        titleLeading={
+          <button type="button" className="nav-prev">
+            Prev
+          </button>
+        }
+      />,
+    );
+    const cluster = container.querySelector(".view-header__title-cluster");
+    expect(cluster).not.toBeNull();
+    const leading = cluster!.querySelector(".nav-prev");
+    const title = cluster!.querySelector(".view-header__title");
+    expect(leading).not.toBeNull();
+    expect(title).not.toBeNull();
+    expect(
+      Boolean(leading!.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+});

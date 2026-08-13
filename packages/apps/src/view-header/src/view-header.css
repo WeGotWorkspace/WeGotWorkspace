@@ -20,6 +20,11 @@
   min-height: var(--view-header-title-row-min-height, 2.25rem);
 }
 
+/** Title + optional leading controls (prev/next) as one left-side unit. */
+.view-header__title-cluster {
+  @apply flex min-w-0 items-center gap-1;
+}
+
 /** Default: large serif display title. */
 .view-header__title {
   @apply min-w-0 truncate text-2xl leading-none;

@@ -82,14 +82,18 @@
 }
 
 /* Header IconButtons match {@link WorkspaceSidebarToggle}; leave labeled Buttons alone. */
+.calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
 .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
   @apply size-9 shrink-0;
 }
 
+/* Prev/next sit tight against the range title (ViewHeader titleLeading). */
+.calendar-workspace .calendar-header-nav {
+  @apply flex shrink-0 items-center gap-0;
+}
+
 .calendar-workspace .calendar-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  @apply flex items-center gap-1;
 }
 
 .calendar-workspace .calendar-header-actions .calendar-view-select {
