@@ -9,6 +9,16 @@ return [
     'install_root' => env('WGW_APP_ROOT'),
     'data_dir' => env('WGW_DATA_DIR'),
     'update_feed_url' => env('WGW_UPDATE_FEED_URL', UpdateFeedDefaults::MANIFEST_URL),
+
+    /**
+     * JMAP envelope blob store (RFC 8620 §6). maxSizeUpload is advertised on
+     * the Session resource and enforced on POST /jmap/upload; PHP-level
+     * limits (post_max_size) still apply upstream.
+     */
+    'jmap' => [
+        'max_size_upload' => (int) env('WGW_JMAP_MAX_SIZE_UPLOAD', 25_000_000),
+        'blob_ttl_hours' => (int) env('WGW_JMAP_BLOB_TTL_HOURS', 24),
+    ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
 

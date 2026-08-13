@@ -10,8 +10,8 @@ Spec: `.agents/specs/000-jmap-envelope-calendars/` · Tests: `tests/Feature/Jmap
 |-------|---------|
 | `GET /api/v1/jmap/session` | Session resource (RFC 8620 §2) |
 | `POST /api/v1/jmap` | Batched method calls (§3) |
-| `GET /api/v1/jmap/download/{accountId}/{blobId}/{name}` | 501 stub — structurally required by the Session, unused by the calendar client |
-| `POST /api/v1/jmap/upload/{accountId}` | 501 stub |
+| `GET /api/v1/jmap/download/{accountId}/{blobId}/{name}` | Blob download (RFC 8620 §6.2, #438) — serves envelope-store ids (`jb-…`) **and** contacts REST blob-store ids; `type` query param overrides Content-Type |
+| `POST /api/v1/jmap/upload/{accountId}` | Blob upload (§6.1, #438) — content-addressed (sha-256), dedupes per account, TTL-expiring unless domain-referenced; enforces the advertised `maxSizeUpload` |
 | `GET /api/v1/jmap/events/{types}/{closeafter}/{ping}` | 501 stub — Push is a non-goal; the client polls |
 
 All behind `wgw.auth` + `wgw.role:user` — deliberately **outside** any domain feature-gate middleware (#436). Domain availability is expressed through the advertised capabilities and the `using` guard (`JmapCapabilitySet` + per-domain `JmapCapabilityProviderInterface` providers): a gated-off domain (e.g. `calendar_enabled: false`) is absent from the Session resource, rejected in `using` with a request-level `unknownCapability`, and its methods are `unknownMethod` — the envelope itself stays up for the other domains.
@@ -22,7 +22,7 @@ All behind `wgw.auth` + `wgw.role:user` — deliberately **outside** any domain 
 - **Capability placement per draft-ietf-jmap-calendars-27 §1.5.1:** the session-level calendars capability is the **empty object**; the six-property object (`maxCalendarsPerEvent: 1`, `minDateTime`, `maxDateTime`, `maxExpandedQueryDuration`, `maxParticipantsPerEvent`, `mayCreateCalendar`) lives in `accountCapabilities`.
 - **All URLs are absolute** (built from the request): the client fetches `apiUrl` verbatim with no base-URL resolution.
 - `state` is derived: the `JmapCapabilities::SESSION_STATE` document version plus a digest of the enabled capability URNs (`JmapCapabilitySet::sessionState()`), echoed as `sessionState` on every `POST /jmap` response. Toggling a domain feature gate changes the session document, so the state changes with it (RFC 8620 §2); the client reacts via `onSessionStateChange`.
-- Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (500) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`.
+- Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (500) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`, and `maxSizeUpload` (config `wgw.jmap.max_size_upload`, default 25 MB, enforced by `POST /jmap/upload` — #438).
 
 ## Batch endpoint
 
@@ -92,5 +92,6 @@ Sabre's 3-level access maps onto the draft's 8-property `CalendarRights` (`Calen
 - **Push** (RFC 8620 §7) is not implemented; `eventSourceUrl` is a 501 stub. The shipped client polls.
 - **`createdIds`** request/response maps are ignored/omitted (the client never sends them).
 - **Update payloads are plain partial objects**, not RFC 8620 PatchObjects with `/`-separated paths — matching what the shipped adapter sends and what the underlying set service accepts.
-- **Contact photo blobs** (#437): `media` blobIds resolve against the contacts REST blob store (`ContactBlobService`, `POST/GET /contacts/blobs`) — the envelope's own `/jmap/upload` stays a 501 stub until real blobs land (#438).
+- **Contact photo blobs**: `media` blobIds resolve from the contacts REST blob store **or** the envelope blob store (#438 superseded the #437 deviation) — clients may upload photos through `POST /jmap/upload` or `POST /contacts/blobs`; on read, media surfaces contacts-store ids that download through the envelope endpoint.
+- **Blob GC**: unreferenced envelope blobs expire after `wgw.jmap.blob_ttl_hours` (default 24h; re-upload refreshes); `php artisan wgw:jmap:blobs-gc` deletes expired blobs unless a registered domain reference checker (`JmapBlobGarbageCollector::CHECKERS` — the filenode seam) claims them. Contacts registers no checker: card media is copied into the vCard on write.
 - **`ContactCard/query` sorting** is not supported (`unsupportedSort`); RFC 9610 says servers MUST support `created`/`updated` sorts — deferred until the backing query grows ordering, rather than silently returning wrongly-ordered results.

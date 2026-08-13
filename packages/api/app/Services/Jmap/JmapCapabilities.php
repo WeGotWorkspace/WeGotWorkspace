@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap;
 
+use App\Services\Jmap\Blobs\JmapBlobService;
+
 /**
  * JMAP capability URNs, advertised limits, and the session state constant
  * shared by the Session resource (RFC 8620 §2) and the /jmap batch endpoint.
@@ -39,9 +41,10 @@ final class JmapCapabilities
     public static function coreCapability(): array
     {
         return [
-            // Upload endpoint is a 501 stub; advertising 0 is the honest bound.
-            'maxSizeUpload' => 0,
-            'maxConcurrentUpload' => 1,
+            // Enforced by POST /jmap/upload (JmapBlobService); PHP-level
+            // limits (post_max_size) still apply upstream.
+            'maxSizeUpload' => JmapBlobService::maxSizeUpload(),
+            'maxConcurrentUpload' => 4,
             'maxSizeRequest' => 2_000_000,
             'maxConcurrentRequests' => 4,
             'maxCallsInRequest' => self::MAX_CALLS_IN_REQUEST,

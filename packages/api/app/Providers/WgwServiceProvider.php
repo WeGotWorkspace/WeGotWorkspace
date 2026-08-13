@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Installer\WgwConfigMigrator;
+use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
+use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Storage\NoteStoragePaths;
@@ -39,6 +41,13 @@ final class WgwServiceProvider extends ServiceProvider
             fn ($app): JmapCapabilitySet => new JmapCapabilitySet(
                 $app->make(JmapMethodDispatcher::class),
                 array_map($app->make(...), JmapCapabilitySet::PROVIDERS),
+            ),
+        );
+        $this->app->singleton(
+            JmapBlobGarbageCollector::class,
+            fn ($app): JmapBlobGarbageCollector => new JmapBlobGarbageCollector(
+                $app->make(JmapBlobService::class),
+                array_map($app->make(...), JmapBlobGarbageCollector::CHECKERS),
             ),
         );
     }

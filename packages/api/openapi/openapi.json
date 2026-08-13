@@ -1642,6 +1642,30 @@
           }
         }
       },
+      "JmapBlobUploadResponse": {
+        "type": "object",
+        "description": "JMAP blob upload response (RFC 8620 \u00a76.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
+        "required": [
+          "accountId",
+          "blobId",
+          "type",
+          "size"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "blobId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
       "JmapMethodInvocation": {
         "type": "array",
         "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 \u00a73.2).",
@@ -7053,8 +7077,8 @@
         "tags": [
           "JMAP"
         ],
-        "summary": "JMAP blob download (not implemented)",
-        "description": "Structurally required by the Session resource (RFC 8620 \u00a76.2) but unused by the calendars client; returns 501.",
+        "summary": "JMAP blob download",
+        "description": "Streams a blob (RFC 8620 \u00a76.2). Serves ids from the envelope blob store (jb-\u2026, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) \u2014 every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
         "security": [
           {
             "bearerAuth": []
@@ -7085,15 +7109,35 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Overrides the response Content-Type."
           }
         ],
         "responses": {
-          "501": {
-            "description": "Not implemented",
+          "200": {
+            "description": "Blob content",
             "content": {
-              "application/json": {
+              "application/octet-stream": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown blob, or accountId does not match the authenticated principal (problem+json).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
                 }
               }
             }
@@ -7109,8 +7153,8 @@
         "tags": [
           "JMAP"
         ],
-        "summary": "JMAP blob upload (not implemented)",
-        "description": "Structurally required by the Session resource (RFC 8620 \u00a76.1) but unused by the calendars client; returns 501.",
+        "summary": "JMAP blob upload",
+        "description": "Stores the raw request body as a blob (RFC 8620 \u00a76.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
         "security": [
           {
             "bearerAuth": []
@@ -7128,21 +7172,49 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Not implemented",
+          "201": {
+            "description": "Upload response (RFC 8620 \u00a76.1)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/JmapBlobUploadResponse"
                 }
               }
             }
           },
           "400": {
-            "$ref": "#/components/responses/JmapBadRequest"
+            "description": "Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "accountId does not match the authenticated principal (problem+json).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
           }
         }
       }

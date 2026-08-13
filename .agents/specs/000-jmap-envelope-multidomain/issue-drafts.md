@@ -26,3 +26,7 @@ calendars) instead of a single parent Goal; not on the Product Project.
 **Epic body updated 2026-08-13** (maintainer edit): the children list in #435
 now links #436–#440; the umbrella `Source:` body-hash reflects the edited
 body (`7773425c`).
+
+**Filed later the same day:** #445 — feat(apps): contacts app on the JMAP
+envelope (apps-side migration; depends on #437, blob seam swaps at #438) —
+added to the Epic children by the maintainer.

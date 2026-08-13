@@ -7,6 +7,7 @@ use App\Services\Installer\InstallerJwtKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
+use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Foundation\Inspiring;
@@ -133,3 +134,14 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
 
     return self::SUCCESS;
 })->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
+
+Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
+    $result = $collector->collect();
+    $this->info(sprintf(
+        'Deleted %d expired blob(s); retained %d referenced blob(s).',
+        $result['deleted'],
+        $result['retained'],
+    ));
+
+    return self::SUCCESS;
+})->purpose('Delete expired, unreferenced JMAP envelope blobs (domain references are never collected)');
