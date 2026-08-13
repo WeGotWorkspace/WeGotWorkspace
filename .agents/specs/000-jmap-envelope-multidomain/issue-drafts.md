@@ -10,13 +10,13 @@ issue bodies require a maintainer):
 | #436 | Chore | refactor(api): decouple JMAP envelope routes and capabilities from calendars | this folder, chunk P (no spec folder needed) |
 | #437 | Task | feat(api): JMAP envelope methods for contacts (RFC 9610) | [../437-jmap-envelope-contacts/](../437-jmap-envelope-contacts/spec.md) |
 | #438 | Task | feat(api): real JMAP blob upload/download (RFC 8620 §6) | [../438-jmap-blobs/](../438-jmap-blobs/spec.md) |
-| #439 | Task | docs(api): FileNode node-identity index design (JMAP filenode) | [../000-jmap-envelope-filenode/](../000-jmap-envelope-filenode/spec.md) |
-| #440 | Task | docs(api): JMAP Mail over IMAP — state model and build/defer decision | [../000-jmap-envelope-mail/](../000-jmap-envelope-mail/spec.md) |
+| #439 | Task | docs(api): FileNode node-identity index design (JMAP filenode) | [../450-jmap-envelope-filenode/](../450-jmap-envelope-filenode/spec.md) |
+| #440 | Task | docs(api): JMAP Mail over IMAP — state model and build/defer decision | [../452-jmap-envelope-mail/](../452-jmap-envelope-mail/spec.md) |
 
 **Deliberately not filed yet** (gated):
 
-- Files envelope build — after #439 lands; draft body in [../000-jmap-envelope-filenode/issue-draft.md](../000-jmap-envelope-filenode/issue-draft.md)
-- Mail read-only (M1) — only if #440 concludes "build"; draft body in [../000-jmap-envelope-mail/issue-draft.md](../000-jmap-envelope-mail/issue-draft.md)
+- Files envelope build — after #439 lands; draft body in [../450-jmap-envelope-filenode/issue-draft.md](../450-jmap-envelope-filenode/issue-draft.md)
+- Mail read-only (M1) — only if #440 concludes "build"; draft body in [../452-jmap-envelope-mail/issue-draft.md](../452-jmap-envelope-mail/issue-draft.md)
 - Mail writes + submission (M2) — after M1; draft body in the same file
 
 **Epic parenting:** #435 follows the #401 precedent — an engineering epic with
@@ -30,3 +30,14 @@ body (`7773425c`).
 **Filed later the same day:** #445 — feat(apps): contacts app on the JMAP
 envelope (apps-side migration; depends on #437, blob seam swaps at #438) —
 added to the Epic children by the maintainer.
+
+**Filed after the design gates merged (#447/#448):**
+
+| Issue | Kind | Title | Spec folder |
+|-------|------|-------|-------------|
+| #450 | Task | feat(api): JMAP envelope methods for files (draft-filenode-14) | [../450-jmap-envelope-filenode/](../450-jmap-envelope-filenode/spec.md) |
+| #451 | Task | test(api): IMAP fixture in CI for live mail coverage (gates M1) | — (infra task, no spec folder) |
+| #452 | Task | feat(api): JMAP Mail envelope, read-only | [../452-jmap-envelope-mail/](../452-jmap-envelope-mail/spec.md) |
+
+M2 (mail writes + submission) is drafted in the mail folder's
+`issue-draft.md`, filed only after #452 lands.

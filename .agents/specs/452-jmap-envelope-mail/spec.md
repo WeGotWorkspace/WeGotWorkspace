@@ -1,4 +1,4 @@
-Source: ad-hoc (design Task M0 filed as **#440**; M1/M2 are filed **only if** #440 concludes "build" — see [issue-draft.md](./issue-draft.md) — then rename this folder to `<N>-jmap-envelope-mail` with the M1 Task's number and set its body-hash here). Parent epic: #435. Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: #452 (body-hash: b5ecd2cc). Parent epic: #435; design gate #440 delivered and merged with recommendation **build** (PR #448 — [`packages/api/docs/mail/jmap-mail-decision.md`](../../../packages/api/docs/mail/jmap-mail-decision.md)). M1 is additionally gated on the IMAP CI fixture (#451); M2's draft stays in [issue-draft.md](./issue-draft.md) until M1 lands. Umbrella roadmap: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
 # JMAP envelope: mail (RFC 8621, phased behind a design gate)
 

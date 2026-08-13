@@ -6,4 +6,4 @@ Engineering split per [plan.md](./plan.md). This umbrella owns only chunk P; dom
 |----|-------|-------|-----------|--------|--------|
 | chunk-p-envelope-decouple | builder | api | `routes/api.php`, `app/Services/Jmap/JmapCapabilities.php`, `app/Http/Controllers/Api/V1/Jmap/*`, `tests/Feature/Jmap/JmapDispatcherTest.php` | existing Jmap suites green unchanged; gated-capability test; `composer done-gate` | issue filed — #436 |
 
-Domain rows: [contacts](../437-jmap-envelope-contacts/tasks.md) · [blobs](../438-jmap-blobs/tasks.md) · [files](../000-jmap-envelope-filenode/tasks.md) · [mail](../000-jmap-envelope-mail/tasks.md)
+Domain rows: [contacts](../437-jmap-envelope-contacts/tasks.md) · [blobs](../438-jmap-blobs/tasks.md) · [files](../450-jmap-envelope-filenode/tasks.md) · [mail](../452-jmap-envelope-mail/tasks.md)
