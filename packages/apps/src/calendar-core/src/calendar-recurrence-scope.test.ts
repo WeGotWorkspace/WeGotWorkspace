@@ -1,12 +1,16 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { expandEvents } from "@/lib/calendar-engine";
+import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
   forkSeriesDraftFromForm,
+  formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   seriesRecurrenceRulesForSplit,
   splitOccurrenceKey,
@@ -142,6 +146,95 @@ describe("calendar-recurrence-scope", () => {
         ],
       }),
     );
+  });
+
+  it("anchors form wall times to the edited occurrence while keeping duration", () => {
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-10", "09:30"),
+      title: "Team standup",
+      endDate: "2033-01-10",
+      endTime: "10:00",
+      recurrencePreset: "weekly",
+    };
+    expect(formAnchoredToOccurrence(form, "2033-01-17T09:30:00")).toEqual(
+      expect.objectContaining({
+        startDate: "2033-01-17",
+        startTime: "09:30",
+        endDate: "2033-01-17",
+        endTime: "10:00",
+        recurrencePreset: "weekly",
+      }),
+    );
+    expect(formAnchoredToOccurrence(form, "20330117T093000")).toEqual(
+      expect.objectContaining({
+        startDate: "2033-01-17",
+        startTime: "09:30",
+        endDate: "2033-01-17",
+        endTime: "10:00",
+      }),
+    );
+  });
+
+  it("truncated master and fork do not expand overlapping occurrence starts", () => {
+    const masterStart = "2033-01-10T09:30:00";
+    const editedOccurrence = "2033-01-17T09:30:00";
+    const until = untilBeforeRecurrenceId(editedOccurrence, false, masterStart);
+    const seriesRules: NonNullable<JmapCalendarEvent["recurrenceRules"]> = [
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        byDay: [{ "@type": "NDay", day: "mo" }],
+      },
+    ];
+    const truncated = truncateRecurrenceRules(seriesRules, until);
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-10", "09:30"),
+      title: "Standup from here",
+      endDate: "2033-01-10",
+      endTime: "10:00",
+      recurrencePreset: "custom",
+      customRecurrenceRules: seriesRules,
+    };
+    const forkDraft = forkSeriesDraftFromForm(
+      formAnchoredToOccurrence(form, editedOccurrence),
+      seriesRules,
+    );
+
+    const masterWire = {
+      id: "master",
+      "@type": "Event",
+      uid: "u-master",
+      title: "Team standup",
+      start: masterStart,
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: truncated,
+    } as JmapCalendarEvent;
+    const forkWire = {
+      id: "fork",
+      "@type": "Event",
+      uid: "u-fork",
+      title: forkDraft.title,
+      start: forkDraft.start,
+      duration: forkDraft.duration,
+      calendarIds: { work: true },
+      recurrenceRules: forkDraft.recurrenceRules ?? undefined,
+    } as JmapCalendarEvent;
+
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-01T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-03-01T00:00:00"),
+    };
+    const masterExpanded = expandEvents(calendarEventsToEngineMap([masterWire]), range);
+    const forkExpanded = expandEvents(calendarEventsToEngineMap([forkWire]), range);
+    const masterStarts = [...masterExpanded.values()].map((event) => event.data.start.toString());
+    const forkStarts = [...forkExpanded.values()].map((event) => event.data.start.toString());
+
+    expect(masterStarts.length).toBeGreaterThan(0);
+    expect(forkStarts.length).toBeGreaterThan(0);
+    expect(masterStarts).not.toContain(editedOccurrence);
+    expect(forkStarts[0]).toBe(editedOccurrence);
+    expect(masterStarts.filter((start) => forkStarts.includes(start))).toEqual([]);
   });
 
   it("builds an exclusion override for only-this delete", () => {

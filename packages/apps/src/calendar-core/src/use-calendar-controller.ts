@@ -40,6 +40,7 @@ import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
   forkSeriesDraftFromForm,
+  formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   seriesRecurrenceRulesForSplit,
   splitOccurrenceKey,
@@ -333,16 +334,22 @@ export function useCalendarController({
       if (!form) return;
 
       // Prefill wall times from the clicked occurrence (master form starts at series start).
-      if (recurrenceId && occurrenceEngine) {
-        const occurrenceForm = engineEventToForm(occurrenceEngine);
-        form = {
-          ...form,
-          allDay: occurrenceForm.allDay,
-          startDate: occurrenceForm.startDate,
-          startTime: occurrenceForm.startTime,
-          endDate: occurrenceForm.endDate,
-          endTime: occurrenceForm.endTime,
-        };
+      // Surface maps only store masters — derive from recurrenceId when the expanded
+      // occurrence row is absent, so this-and-future forks do not restart at series start.
+      if (recurrenceId) {
+        if (occurrenceEngine) {
+          const occurrenceForm = engineEventToForm(occurrenceEngine);
+          form = {
+            ...form,
+            allDay: occurrenceForm.allDay,
+            startDate: occurrenceForm.startDate,
+            startTime: occurrenceForm.startTime,
+            endDate: occurrenceForm.endDate,
+            endTime: occurrenceForm.endTime,
+          };
+        } else {
+          form = formAnchoredToOccurrence(form, recurrenceId);
+        }
       }
 
       // Open the editor immediately — recurrence scope is chosen on Save / Delete.

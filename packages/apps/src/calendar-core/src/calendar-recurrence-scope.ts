@@ -114,6 +114,59 @@ export function seriesRecurrenceRulesForSplit(
   return formRecurrenceRules(form);
 }
 
+/**
+ * Shift form wall times to the edited occurrence while keeping duration.
+ *
+ * Surface `events` maps only hold masters (views expand), so opening an
+ * occurrence key without an engine row would otherwise leave the master's
+ * series start — and a this-and-future fork would overlap past instances.
+ */
+export function formAnchoredToOccurrence(
+  form: CalendarEventFormValue,
+  recurrenceId: string,
+): CalendarEventFormValue {
+  const templateStart = form.allDay
+    ? `${form.startDate}T00:00:00`
+    : `${form.startDate}T${form.startTime || "00:00"}:00`;
+  const local = toLocalRecurrenceId(recurrenceId, form.allDay, templateStart);
+  let occurrenceStart: Temporal.PlainDateTime;
+  try {
+    occurrenceStart = Temporal.PlainDateTime.from(
+      local.includes("T") ? local.replace(/Z$/, "") : `${local}T00:00:00`,
+    );
+  } catch {
+    return form;
+  }
+
+  const currentStart = form.allDay
+    ? Temporal.PlainDateTime.from(`${form.startDate}T00:00:00`)
+    : Temporal.PlainDateTime.from(`${form.startDate}T${form.startTime || "00:00"}:00`);
+  const currentEndExclusive = form.allDay
+    ? Temporal.PlainDateTime.from(`${form.endDate}T00:00:00`).add({ days: 1 })
+    : Temporal.PlainDateTime.from(`${form.endDate}T${form.endTime || "00:00"}:00`);
+  let duration: Temporal.Duration;
+  try {
+    duration = currentStart.until(currentEndExclusive);
+  } catch {
+    duration = Temporal.Duration.from(form.allDay ? "P1D" : "PT1H");
+  }
+  if (duration.total({ unit: "seconds" }) <= 0) {
+    duration = Temporal.Duration.from(form.allDay ? "P1D" : "PT1H");
+  }
+  const occurrenceEndExclusive = occurrenceStart.add(duration);
+  const formEnd = form.allDay
+    ? occurrenceEndExclusive.subtract({ days: 1 })
+    : occurrenceEndExclusive;
+
+  return {
+    ...form,
+    startDate: occurrenceStart.toPlainDate().toString(),
+    startTime: occurrenceStart.toPlainTime().toString({ smallestUnit: "minute" }),
+    endDate: formEnd.toPlainDate().toString(),
+    endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+  };
+}
+
 /** Build the forked series draft starting at the edited occurrence. */
 export function forkSeriesDraftFromForm(
   form: CalendarEventFormValue,

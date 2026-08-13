@@ -436,6 +436,26 @@ describe("useCalendarController recurring scopes", () => {
     expect(createEvent).not.toHaveBeenCalled();
   });
 
+  it("openEditEventKey prefills occurrence wall times from recurrenceId without surface rows", async () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    await act(async () => {
+      await result.current.openEditEventKey("standup::2033-01-17T09:30:00");
+    });
+
+    expect(result.current.editor).toMatchObject({
+      mode: "edit",
+      eventId: "standup",
+      recurrenceId: "2033-01-17T09:30:00",
+      form: {
+        startDate: "2033-01-17",
+        startTime: "09:30",
+        endDate: "2033-01-17",
+        endTime: "10:00",
+      },
+    });
+  });
+
   it("saveEditor thisAndFuture truncates master and forks a new series", async () => {
     const patchEvent = vi.fn().mockResolvedValue(undefined);
     const createEvent = vi.fn().mockResolvedValue({ id: "forked" });
@@ -446,7 +466,9 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    await openRecurringEditor(result);
+    await act(async () => {
+      await result.current.openEditEventKey("standup::2033-01-17T09:30:00");
+    });
     act(() => {
       result.current.setEditorForm({
         ...result.current.editor!.form,
@@ -463,7 +485,7 @@ describe("useCalendarController recurring scopes", () => {
           recurrenceRules: [
             expect.objectContaining({
               frequency: "weekly",
-              until: "2033-01-12T09:29:59",
+              until: "2033-01-17T09:29:59",
             }),
           ],
         }),
@@ -471,6 +493,7 @@ describe("useCalendarController recurring scopes", () => {
       expect(createEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Standup from here",
+          start: "2033-01-17T09:30:00",
           recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
         }),
       );
@@ -547,6 +570,7 @@ describe("useCalendarController recurring scopes", () => {
       expect(createEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Standup from here",
+          start: "2033-01-12T09:30:00",
           recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
         }),
       );
