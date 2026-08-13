@@ -48,7 +48,7 @@ export function CalendarEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className="calendar-event-dialog">
+      <DialogContent className="calendar-dialog-surface calendar-event-dialog">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? labels.createEventTitle : labels.editEventTitle}
