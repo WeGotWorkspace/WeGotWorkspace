@@ -8,6 +8,8 @@ Bring mail behind the JMAP envelope with `urn:ietf:params:jmap:mail`. **Status: 
 
 **RFC 8621** (final). Full conformance requires `Mailbox`, `Thread`, `Email`, `SearchSnippet`, `Identity`, `EmailSubmission`, `VacationResponse`; this plan phases it and explicitly cuts scope per phase (M0 decides the cuts; `SearchSnippet` and `VacationResponse` are expected phase-3+ candidates, not commitments).
 
+> **M0 delivered:** the decision doc lives at [`packages/api/docs/mail/jmap-mail-decision.md`](../../../packages/api/docs/mail/jmap-mail-decision.md) (#440) — recommendation: **build M1**, with an IMAP CI fixture as prerequisite and four documented scope cuts. M1's Task derives its AC from that document.
+
 ## Why mail is different (the substrate problem)
 
 Every other envelope domain sits on Sabre/PDO in-process; mail is **IMAP-backed** (`app/Services/Mail/MailImapClient.php`, `MailImapProcess`, `MailOperationService`) with SMTP for submission (`MailSmtpTransportConfig`, `MailFromAddressResolver`, `MailPrincipalIdentityService`). Consequences:
