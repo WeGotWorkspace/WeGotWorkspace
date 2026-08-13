@@ -227,7 +227,7 @@ export function CalendarCalendarDialog({
               {canDelete ? (
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="ghost"
                   className="calendar-calendar-dialog__delete"
                   disabled={busy}
                   onClick={() => setConfirmDeleteOpen(true)}
