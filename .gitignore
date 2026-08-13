@@ -48,6 +48,9 @@ docker/install/.env
 /build/
 wgw-content/
 .DS_Store
+.worktrees/
 .playwright-mcp/
+# jmap live-client e2e checkout (tools/test-jmap-client-e2e.sh)
+/.cache/
 .env.local
 wgw-plugins

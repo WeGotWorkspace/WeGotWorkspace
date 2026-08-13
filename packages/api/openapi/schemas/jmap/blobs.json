@@ -1,0 +1,13 @@
+{
+  "JmapBlobUploadResponse": {
+    "type": "object",
+    "description": "JMAP blob upload response (RFC 8620 \u00a76.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
+    "required": ["accountId", "blobId", "type", "size"],
+    "properties": {
+      "accountId": { "type": "string" },
+      "blobId": { "type": "string" },
+      "type": { "type": "string" },
+      "size": { "type": "integer" }
+    }
+  }
+}

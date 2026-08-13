@@ -12,6 +12,9 @@
         "swagger-api/swagger-ui": "^5.32",
         "zbateson/mail-mime-parser": "^4.0"
     },
+    "suggest": {
+        "ext-imap": "Required only for the Mail app (IMAP mailbox access); without it mail endpoints answer 503 imap_extension_required and everything else works"
+    },
     "require-dev": {
         "fakerphp/faker": "^1.24",
         "laravel/pint": "^1.18",

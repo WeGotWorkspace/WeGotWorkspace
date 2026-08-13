@@ -111,7 +111,7 @@ final class MailOperationService
     {
         $cfg = WgwSettings::normalized();
         $account = $this->credentials->loadAccount($username);
-        $ext = extension_loaded('imap');
+        $ext = ImapExtension::loaded();
         $serversConfigured = MailServerSettings::serversConfigured($cfg);
         $accountConfigured = MailCredentialService::isAccountConfigured($account);
         $smtp = MailSmtpTransportConfig::normalize(MailServerSettings::endpoints($cfg)['smtp']);
@@ -502,7 +502,7 @@ final class MailOperationService
         ?string &$outErr,
     ): void {
         $outErr = null;
-        if (! extension_loaded('imap') || ! function_exists('imap_append')) {
+        if (! ImapExtension::loaded() || ! function_exists('imap_append')) {
             $outErr = 'imap_extension_required';
 
             return;
@@ -1485,7 +1485,7 @@ final class MailOperationService
      */
     private function requireImap(string $username): array
     {
-        if (! extension_loaded('imap')) {
+        if (! ImapExtension::loaded()) {
             throw new MailResponseException(503, ['error' => 'imap_extension_required']);
         }
         $cred = MailUserRuntime::resolve($username, $this->credentials);

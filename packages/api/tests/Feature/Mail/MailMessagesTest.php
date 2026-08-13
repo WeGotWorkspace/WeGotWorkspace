@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mail;
 
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -30,6 +31,7 @@ final class MailMessagesTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'mailbox_required']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_messages_list_with_folder_and_credentials_reaches_imap_layer(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
@@ -46,6 +48,7 @@ final class MailMessagesTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'bad_params']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_message_show_with_path_id_reaches_imap_layer(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
@@ -84,6 +87,7 @@ final class MailMessagesTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'bad_params']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_folders_without_credentials_return_not_configured(): void
     {
         $this->withBearer($this->userBearerToken())->getJson('/api/v1/mail/folders')

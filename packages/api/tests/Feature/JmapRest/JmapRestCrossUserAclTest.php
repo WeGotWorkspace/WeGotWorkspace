@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\JmapRest;
 
 use App\Services\Tasks\InboxTaskListProvisioner;
+use Illuminate\Support\Facades\DB;
+use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\ContactsTestFixtures;
 use Tests\Support\TasksTestFixtures;
@@ -125,6 +128,39 @@ final class JmapRestCrossUserAclTest extends WgwDatabaseTestCase
             ->assertJsonPath('list', []);
     }
 
+    public function test_user_cannot_sync_or_query_other_users_private_calendar(): void
+    {
+        $this->seedPrivateCalendarFor('carol', 'carol-private-cal');
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/calendars/events/changes?calendarId=carol-private-cal')
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
+
+        $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/calendars/events/query', [
+                'filter' => ['inCalendars' => ['carol-private-cal']],
+            ])
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
+    }
+
+    public function test_user_cannot_mutate_other_users_calendar_event_via_set(): void
+    {
+        $eventId = $this->seedEventViaPdo('carol', 'carol-set-target.ics', $this->sampleIcs('Carol Set Target'));
+
+        $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/calendars/events/set', [
+                'update' => [$eventId => ['title' => 'Hijacked']],
+                'destroy' => [$eventId],
+            ])
+            ->assertOk()
+            ->assertJsonPath('notUpdated.'.$eventId.'.type', 'notFound')
+            ->assertJsonPath('notDestroyed.'.$eventId.'.type', 'notFound')
+            ->assertJsonPath('updated', [])
+            ->assertJsonPath('destroyed', []);
+    }
+
     public function test_user_cannot_read_other_users_task(): void
     {
         $taskId = $this->seedTaskViaPdo('carol', 'carol-task-read.ics', $this->sampleTodoIcs('Carol Task'));
@@ -168,5 +204,14 @@ final class JmapRestCrossUserAclTest extends WgwDatabaseTestCase
             ->getJson('/api/v1/tasks/items?taskListId='.InboxTaskListProvisioner::URI)
             ->assertOk()
             ->assertJsonPath('list', []);
+    }
+
+    private function seedPrivateCalendarFor(string $username, string $calendarUri): void
+    {
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $caldav->createCalendar('principals/'.$username, $calendarUri, [
+            '{DAV:}displayname' => 'Private',
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT']),
+        ]);
     }
 }

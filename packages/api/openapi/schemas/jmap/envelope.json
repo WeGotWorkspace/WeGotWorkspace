@@ -1,0 +1,56 @@
+{
+  "JmapMethodInvocation": {
+    "type": "array",
+    "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 \u00a73.2).",
+    "prefixItems": [
+      { "type": "string" },
+      { "type": "object" },
+      { "type": "string" }
+    ],
+    "minItems": 3,
+    "maxItems": 3
+  },
+  "JmapApiRequest": {
+    "type": "object",
+    "description": "JMAP Request object (RFC 8620 \u00a73.3).",
+    "required": ["using", "methodCalls"],
+    "properties": {
+      "using": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 1
+      },
+      "methodCalls": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/JmapMethodInvocation" }
+      },
+      "createdIds": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    }
+  },
+  "JmapApiResponse": {
+    "type": "object",
+    "description": "JMAP Response object (RFC 8620 \u00a73.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
+    "required": ["methodResponses", "sessionState"],
+    "properties": {
+      "methodResponses": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/JmapMethodInvocation" }
+      },
+      "sessionState": { "type": "string" }
+    }
+  },
+  "JmapProblemDetails": {
+    "type": "object",
+    "description": "Request-level error as RFC 7807 problem details (RFC 8620 \u00a73.6.1).",
+    "required": ["type", "status", "detail"],
+    "properties": {
+      "type": { "type": "string" },
+      "status": { "type": "integer" },
+      "detail": { "type": "string" },
+      "limit": { "type": "string" }
+    }
+  }
+}

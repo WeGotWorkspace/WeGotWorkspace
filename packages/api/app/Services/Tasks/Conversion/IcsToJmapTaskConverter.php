@@ -191,7 +191,9 @@ final class IcsToJmapTaskConverter
         if (isset($todo->RRULE)) {
             $rules = [];
             foreach ($todo->select('RRULE') as $property) {
-                $rules[] = CalendarConversionSupport::recurrenceRuleFromProperty($property);
+                // Tasks keep the pre-RFC-8984 wire types (byMonth Int[], byDay iCal
+                // strings) — shipped consumers; alignment is a documented follow-up.
+                $rules[] = CalendarConversionSupport::recurrenceRuleFromProperty($property, legacyWireTypes: true);
             }
             if ($rules !== []) {
                 $task['recurrenceRules'] = $rules;

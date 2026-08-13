@@ -5570,14 +5570,16 @@
                     "byDay": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/CalendarRecurrenceNDay"
                         }
                     },
                     "byMonth": {
                         "type": "array",
                         "items": {
-                            "type": "integer"
-                        }
+                            "type": "string",
+                            "pattern": "^[0-9]+L?$"
+                        },
+                        "description": "Month numbers as strings, optionally with leap-month suffix, e.g. \"3L\" (RFC 8984 §4.3.3)."
                     },
                     "byMonthDay": {
                         "type": "array",
@@ -5601,6 +5603,27 @@
                         "type": "array",
                         "items": {
                             "type": "integer"
+                        }
+                    },
+                    "byHour": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    "byMinute": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    "bySecond": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 0
                         }
                     },
                     "firstDayOfWeek": {
@@ -5955,6 +5978,10 @@
                     },
                     "etag": {
                         "$ref": "#/components/schemas/DavEtag"
+                    },
+                    "state": {
+                        "type": "string",
+                        "description": "Opaque JMAP state token for CalendarEvent/set ifInState."
                     },
                     "icsProps": {
                         "type": "object",
@@ -7123,6 +7150,7 @@
                 "required": [
                     "oldState",
                     "newState",
+                    "hasMoreChanges",
                     "created",
                     "updated",
                     "destroyed"
@@ -7133,6 +7161,10 @@
                     },
                     "newState": {
                         "type": "string"
+                    },
+                    "hasMoreChanges": {
+                        "type": "boolean",
+                        "description": "RFC 8620 §5.2. Always false: the full delta is returned in one response because the backing Sabre changes log cannot produce a safe intermediate sync token (maxChanges is accepted but not used for truncation)."
                     },
                     "created": {
                         "type": "array",
@@ -8909,6 +8941,509 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "CalendarRecurrenceNDay": {
+                "type": "object",
+                "required": [
+                    "@type",
+                    "day"
+                ],
+                "properties": {
+                    "@type": {
+                        "type": "string",
+                        "const": "NDay"
+                    },
+                    "day": {
+                        "type": "string",
+                        "enum": [
+                            "mo",
+                            "tu",
+                            "we",
+                            "th",
+                            "fr",
+                            "sa",
+                            "su"
+                        ]
+                    },
+                    "nthOfPeriod": {
+                        "type": "integer",
+                        "description": "Occurrence within the period, e.g. 2 = second, -1 = last (RFC 8984 §4.3.3)."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventSetRequest": {
+                "type": "object",
+                "description": "RFC 8620 §5.3 /set arguments subset. Deliberate divergence: ifInState is per record (update/destroy entries carry their own per-event state token) instead of a single request-level ifInState.",
+                "properties": {
+                    "create": {
+                        "type": "object",
+                        "description": "Map of client-chosen creation id to the event to create; the creation id keys the created/notCreated response maps.",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarEventCreate"
+                        }
+                    },
+                    "update": {
+                        "type": "object",
+                        "description": "Map of event id to patch; optional ifInState is resolved against the event state token.",
+                        "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                                "ifInState": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": true
+                        }
+                    },
+                    "destroy": {
+                        "description": "Event ids to destroy, or map of id to { ifInState }.",
+                        "oneOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ifInState": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                }
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarSetError": {
+                "type": "object",
+                "description": "RFC 8620 §5.3 SetError. Types: notFound, invalidProperties (with properties listing the offending paths), forbidden, serverFail, and stateMismatch (per-record ifInState divergence — see CalendarEventSetRequest).",
+                "required": [
+                    "type"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "properties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Offending property paths; present when type is invalidProperties."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventSetCreated": {
+                "type": "object",
+                "description": "Server-set properties of a created event (RFC 8620 §5.3): the server-assigned id and the event's state token.",
+                "required": [
+                    "id",
+                    "state"
+                ],
+                "properties": {
+                    "id": {
+                        "$ref": "#/components/schemas/JmapId"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventSetResponse": {
+                "type": "object",
+                "required": [
+                    "oldState",
+                    "newState",
+                    "created",
+                    "updated",
+                    "destroyed",
+                    "notCreated",
+                    "notUpdated",
+                    "notDestroyed"
+                ],
+                "description": "RFC 8620 §5.3 /set response. oldState/newState are the same per-calendar sync state /changes uses, scoped to the calendars touched by the request: a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite (sorted by uri) when the request spans calendars. When nothing was mutated the scope falls back to every owned VEVENT calendar and oldState equals newState.",
+                "properties": {
+                    "oldState": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Touched-calendar sync state before the mutations (null only when unknowable)."
+                    },
+                    "newState": {
+                        "type": "string",
+                        "description": "Touched-calendar sync state after the mutations."
+                    },
+                    "created": {
+                        "type": "object",
+                        "description": "Map of client creation id to server-set properties of the created event.",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarEventSetCreated"
+                        }
+                    },
+                    "updated": {
+                        "type": "object",
+                        "description": "Map of updated event id to the server-changed properties (the rotated state token), or null when the server changed nothing beyond the client patch.",
+                        "additionalProperties": {
+                            "type": [
+                                "object",
+                                "null"
+                            ],
+                            "properties": {
+                                "state": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    "destroyed": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "notCreated": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarSetError"
+                        }
+                    },
+                    "notUpdated": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarSetError"
+                        }
+                    },
+                    "notDestroyed": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarSetError"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventQueryFilter": {
+                "type": "object",
+                "required": [
+                    "inCalendars"
+                ],
+                "properties": {
+                    "inCalendars": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "after": {
+                        "$ref": "#/components/schemas/JmapLocalDateTime",
+                        "description": "Inclusive lower bound; an event matches when one of its occurrences intersects [after, before). Requires before."
+                    },
+                    "before": {
+                        "$ref": "#/components/schemas/JmapLocalDateTime",
+                        "description": "Exclusive upper bound; requires after."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Case-insensitive substring match on the event title."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventQuerySortComparator": {
+                "type": "object",
+                "required": [
+                    "property"
+                ],
+                "properties": {
+                    "property": {
+                        "type": "string",
+                        "enum": [
+                            "start",
+                            "title",
+                            "uid"
+                        ]
+                    },
+                    "isAscending": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventQueryRequest": {
+                "type": "object",
+                "required": [
+                    "filter"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/CalendarEventQueryFilter"
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarEventQuerySortComparator"
+                        }
+                    },
+                    "position": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 500
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventQueryResponse": {
+                "type": "object",
+                "required": [
+                    "ids",
+                    "position",
+                    "total",
+                    "queryState",
+                    "canCalculateChanges"
+                ],
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "position": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "queryState": {
+                        "type": "string",
+                        "description": "RFC 8620 §5.5. Same state string /changes uses, composed across filter.inCalendars: a single calendar's plain synctoken, or the `{count}:{uri:token,...}` composite sorted by uri."
+                    },
+                    "canCalculateChanges": {
+                        "type": "boolean",
+                        "description": "Always false: CalendarEvent/queryChanges is not implemented."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "JmapAccount": {
+                "type": "object",
+                "description": "JMAP Account object (RFC 8620 §2).",
+                "required": [
+                    "name",
+                    "isPersonal",
+                    "isReadOnly",
+                    "accountCapabilities"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "isPersonal": {
+                        "type": "boolean"
+                    },
+                    "isReadOnly": {
+                        "type": "boolean"
+                    },
+                    "accountCapabilities": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "JmapSession": {
+                "type": "object",
+                "description": "JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
+                "required": [
+                    "capabilities",
+                    "accounts",
+                    "primaryAccounts",
+                    "username",
+                    "apiUrl",
+                    "downloadUrl",
+                    "uploadUrl",
+                    "eventSourceUrl",
+                    "state"
+                ],
+                "properties": {
+                    "capabilities": {
+                        "type": "object",
+                        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1) and `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent.",
+                        "additionalProperties": {
+                            "type": "object"
+                        }
+                    },
+                    "accounts": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/JmapAccount"
+                        }
+                    },
+                    "primaryAccounts": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "apiUrl": {
+                        "type": "string"
+                    },
+                    "downloadUrl": {
+                        "type": "string"
+                    },
+                    "uploadUrl": {
+                        "type": "string"
+                    },
+                    "eventSourceUrl": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                }
+            },
+            "JmapMethodInvocation": {
+                "type": "array",
+                "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 §3.2).",
+                "prefixItems": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ],
+                "minItems": 3,
+                "maxItems": 3
+            },
+            "JmapApiRequest": {
+                "type": "object",
+                "description": "JMAP Request object (RFC 8620 §3.3).",
+                "required": [
+                    "using",
+                    "methodCalls"
+                ],
+                "properties": {
+                    "using": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 1
+                    },
+                    "methodCalls": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapMethodInvocation"
+                        }
+                    },
+                    "createdIds": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "JmapApiResponse": {
+                "type": "object",
+                "description": "JMAP Response object (RFC 8620 §3.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
+                "required": [
+                    "methodResponses",
+                    "sessionState"
+                ],
+                "properties": {
+                    "methodResponses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapMethodInvocation"
+                        }
+                    },
+                    "sessionState": {
+                        "type": "string"
+                    }
+                }
+            },
+            "JmapProblemDetails": {
+                "type": "object",
+                "description": "Request-level error as RFC 7807 problem details (RFC 8620 §3.6.1).",
+                "required": [
+                    "type",
+                    "status",
+                    "detail"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "limit": {
+                        "type": "string"
+                    }
+                }
+            },
+            "JmapBlobUploadResponse": {
+                "type": "object",
+                "description": "JMAP blob upload response (RFC 8620 §6.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
+                "required": [
+                    "accountId",
+                    "blobId",
+                    "type",
+                    "size"
+                ],
+                "properties": {
+                    "accountId": {
+                        "type": "string"
+                    },
+                    "blobId": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    }
+                }
             }
         },
         "responses": {
@@ -15058,6 +15593,442 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/calendars/events/changes": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Incremental calendar event changes",
+                "description": "JMAP CalendarEvent/changes mapping over the CalDAV calendarchanges log. Multi-VEVENT objects emit one composite id `{objectId}#{uid}` per VEVENT; destroyed ids include every id previously surfaced over REST for the destroyed object. The full delta is always returned in one response: `maxChanges` is accepted (RFC 8620 §5.2) but not used for truncation because the backing Sabre changes log cannot produce a safe intermediate sync token, so `hasMoreChanges` is always false.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "calendarId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "maxChanges",
+                        "in": "query",
+                        "required": false,
+                        "description": "RFC 8620 §5.2 maxChanges. Validated (positive integer) but not used for truncation; the full delta is always returned and hasMoreChanges is always false.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Calendar event changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapCalendarChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/events/set": {
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "JMAP CalendarEvent/set batch mutations",
+                "description": "RFC 8620 §5.3 response semantics: `created` maps creation id to the server-set properties `{id, state}`, `updated` maps event id to the server-changed properties `{state}`. Top-level `oldState`/`newState` are the same per-calendar sync state `/calendars/events/changes` uses, scoped to the calendars touched by the request (single calendar: plain synctoken; multiple: `{count}:{uri:token,...}` composite sorted by uri; nothing mutated: all owned VEVENT calendars, oldState equals newState). Deliberate divergence: `ifInState` is per record (update/destroy entries carry their own per-event state token, stale token yields SetError type `stateMismatch`) instead of a request-level ifInState.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarEventSetRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "CalendarEvent/set result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarEventSetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/events/query": {
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Query calendar event ids",
+                "description": "JMAP CalendarEvent/query mapping: filter by calendar ids, time range, and title text. Time-range matching is per VEVENT (composite ids match on their own occurrences, including recurrence expansion). Returns `queryState` (the same state string `/calendars/events/changes` uses, composed across `filter.inCalendars`) and `canCalculateChanges: false` (CalendarEvent/queryChanges is not implemented) per RFC 8620 §5.5.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarEventQueryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Matching calendar event ids",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarEventQueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/jmap/session": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP Session resource",
+                "description": "RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "responses": {
+                    "200": {
+                        "description": "JMAP session",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapSession"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/jmap/download/{accountId}/{blobId}/{name}": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP blob download",
+                "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "blobId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Overrides the response Content-Type."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Blob content",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "description": "Unknown blob, or accountId does not match the authenticated principal (problem+json).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap/upload/{accountId}": {
+            "post": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP blob upload",
+                "description": "Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Upload response (RFC 8620 §6.1)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapBlobUploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "description": "accountId does not match the authenticated principal (problem+json).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "*/*": {
+                            "schema": {
+                                "type": "string",
+                                "format": "binary"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap/events/{types}/{closeafter}/{ping}": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP event source / push (not implemented)",
+                "description": "Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "types",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "closeafter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ping",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "501": {
+                        "description": "Not implemented",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap": {
+            "post": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP batch API endpoint",
+                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JmapApiRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "JMAP response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Request-level error (problem details)",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
             }
         }
     }

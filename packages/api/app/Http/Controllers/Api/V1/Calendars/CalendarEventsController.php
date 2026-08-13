@@ -7,15 +7,21 @@ namespace App\Http\Controllers\Api\V1\Calendars;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\CalendarEventPatchRequest;
+use App\Http\Requests\Api\V1\CalendarEventQueryRequest;
+use App\Http\Requests\Api\V1\CalendarEventSetRequest;
 use App\Http\Requests\Api\V1\CalendarEventUpsertRequest;
 use App\Http\Support\JmapResourceResponse;
 use App\Services\Calendars\CalendarEventRepository;
+use App\Services\Calendars\CalendarEventSetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class CalendarEventsController
 {
-    public function __construct(private readonly CalendarEventRepository $events) {}
+    public function __construct(
+        private readonly CalendarEventRepository $events,
+        private readonly CalendarEventSetService $eventSet,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -41,6 +47,57 @@ final class CalendarEventsController
             is_string($before) ? $before : null,
             $expandRecurrences,
         ));
+    }
+
+    public function set(CalendarEventSetRequest $request): JsonResponse
+    {
+        /** @var array{username: string, role: string} $principal */
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        return response()->json(
+            $this->eventSet->set($principal['username'], $request->json()->all()),
+        );
+    }
+
+    public function query(CalendarEventQueryRequest $request): JsonResponse
+    {
+        /** @var array{username: string, role: string} $principal */
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        $validated = $request->validated();
+        $filter = is_array($validated['filter'] ?? null) ? $validated['filter'] : [];
+        $sort = is_array($validated['sort'] ?? null) ? $validated['sort'] : [];
+        $position = isset($validated['position']) ? (int) $validated['position'] : 0;
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : null;
+
+        return response()->json(
+            $this->events->query($principal['username'], $filter, $sort, $position, $limit),
+        );
+    }
+
+    public function changes(Request $request): JsonResponse
+    {
+        /** @var array{username: string, role: string} $principal */
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        $calendarId = $request->query('calendarId');
+        if (! is_string($calendarId) || trim($calendarId) === '') {
+            throw new ApiHttpException(400, 'calendarId is required.', 'bad_request');
+        }
+
+        $since = $request->query('since');
+
+        // Accepted per RFC 8620 §5.2 but not used for truncation: the backing
+        // Sabre changes log cannot produce a safe intermediate sync token, so
+        // the full delta is always returned (hasMoreChanges is always false).
+        $maxChanges = $request->query('maxChanges');
+        if ($maxChanges !== null && (! is_string($maxChanges) || ! ctype_digit($maxChanges) || (int) $maxChanges < 1)) {
+            throw new ApiHttpException(400, 'maxChanges must be a positive integer.', 'bad_request');
+        }
+
+        return response()->json(
+            $this->events->changes($principal['username'], $calendarId, is_string($since) ? $since : null),
+        );
     }
 
     public function show(Request $request, string $eventId): JsonResponse

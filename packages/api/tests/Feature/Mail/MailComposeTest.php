@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mail;
 
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -60,6 +61,7 @@ final class MailComposeTest extends WgwDatabaseTestCase
         $this->assertContains($response->json('error'), ['smtp_connect', 'send_failed']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_draft_without_credentials_returns_not_configured(): void
     {
         $this->withBearer($this->userBearerToken())->postJson('/api/v1/mail/drafts', [
@@ -70,6 +72,7 @@ final class MailComposeTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'not_configured']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_draft_with_credentials_reaches_imap_append_path(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');

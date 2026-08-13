@@ -33,6 +33,10 @@ use App\Http\Controllers\Api\V1\Home\StateController as HomeStateController;
 use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionController;
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
 use App\Http\Controllers\Api\V1\Installer\StateController as InstallerStateController;
+use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
+use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
+use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
+use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
 use App\Http\Controllers\Api\V1\Notes\CapabilitiesController as NotesCapabilitiesController;
@@ -257,6 +261,9 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
             ->where('calendarId', '[a-z0-9_-]+');
         Route::delete('calendars/calendars/{calendarId}', [CalendarsController::class, 'destroy'])
             ->where('calendarId', '[a-z0-9_-]+');
+        Route::get('calendars/events/changes', [CalendarEventsController::class, 'changes']);
+        Route::post('calendars/events/set', [CalendarEventsController::class, 'set']);
+        Route::post('calendars/events/query', [CalendarEventsController::class, 'query']);
         Route::get('calendars/events', [CalendarEventsController::class, 'index']);
         Route::post('calendars/events', [CalendarEventsController::class, 'store']);
         Route::get('calendars/events/{eventId}', [CalendarEventsController::class, 'show'])
@@ -268,6 +275,16 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         Route::delete('calendars/events/{eventId}', [CalendarEventsController::class, 'destroy'])
             ->where('eventId', '[a-z0-9_#%-]+');
     });
+
+    // JMAP transport envelope (RFC 8620) — deliberately outside any domain
+    // feature-gate middleware: domain availability is expressed through the
+    // advertised capabilities and the `using` guard (JmapCapabilitySet), so
+    // disabling one domain never takes the whole envelope down.
+    Route::get('jmap/session', JmapSessionController::class);
+    Route::post('jmap', [JmapApiController::class, 'handle']);
+    Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapBlobController::class, 'download']);
+    Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload']);
+    Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
 Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
