@@ -1,13 +1,8 @@
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
+import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   DropdownMenu,
@@ -17,7 +12,6 @@ import {
 } from "@/ui/dropdown-menu";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { MenuItem } from "@/menu-item/src/menu-item";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -187,36 +181,41 @@ export function CalendarWorkspace({
                 const canManage = mayEdit || mayDelete;
                 const selected = calendar.id === defaultCalendarId;
                 return (
-                  <li key={calendar.id} className="calendar-sidebar-row">
+                  <li
+                    key={calendar.id}
+                    className={cn(
+                      "calendar-sidebar-row",
+                      selected && "calendar-sidebar-row--selected",
+                    )}
+                    style={
+                      {
+                        "--calendar-row-color": calendar.color || "var(--color-ink)",
+                      } as CSSProperties
+                    }
+                  >
+                    <Checkbox
+                      checked={visible}
+                      aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
+                      className="calendar-sidebar-row__visibility"
+                      onCheckedChange={() => toggleCalendarVisibility(calendar.id)}
+                      onClick={(event) => event.stopPropagation()}
+                    />
                     <button
                       type="button"
-                      className="calendar-sidebar-visibility"
-                      aria-pressed={visible}
-                      aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
-                      onClick={() => toggleCalendarVisibility(calendar.id)}
-                    >
-                      <span
-                        className="calendar-sidebar-dot"
-                        data-hidden={visible ? undefined : "true"}
-                        style={{ backgroundColor: calendar.color }}
-                        aria-hidden
-                      />
-                    </button>
-                    <MenuItem
-                      label={calendar.name}
-                      selected={selected}
+                      className="calendar-sidebar-row__select"
                       onClick={() => selectDefaultCalendar(calendar.id)}
-                      className="calendar-sidebar-row__item"
-                    />
+                    >
+                      <span className="calendar-sidebar-row__name">{calendar.name}</span>
+                    </button>
                     {canManage ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton
                             label={L.editCalendar}
                             icon={<MoreHorizontal className="size-3.5" aria-hidden />}
-                            size="xs"
-                            variant="ghost"
-                            className="calendar-sidebar-overflow__button"
+                            size="sm"
+                            variant="subtle"
+                            className="calendar-sidebar-row__overflow"
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-40">

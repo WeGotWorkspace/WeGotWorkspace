@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronsUpDown } from "lucide-react";
 import { Button, buttonVariants } from "@/button/src/button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -17,6 +16,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { cn } from "@/lib/utils";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 import "./calendar-calendar-dialog.css";
 
 export const CALENDAR_COLOR_SWATCHES = [
@@ -74,19 +74,7 @@ function ColorPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="control-surface calendar-calendar-dialog__color-trigger"
-          aria-label={colorLabel}
-          aria-haspopup="dialog"
-        >
-          <span
-            className="calendar-calendar-dialog__color-dot"
-            style={{ backgroundColor: value }}
-            aria-hidden
-          />
-          <ChevronsUpDown className="calendar-calendar-dialog__color-chevron" aria-hidden />
-        </button>
+        <CalendarColorSwatchTrigger color={value} label={colorLabel} aria-haspopup="dialog" />
       </PopoverTrigger>
       <PopoverContent align="end" className="calendar-calendar-dialog__color-content">
         <div
@@ -132,6 +120,8 @@ function ColorPicker({
             type="color"
             className="calendar-calendar-dialog__native-color"
             value={value}
+            tabIndex={-1}
+            aria-hidden
             onChange={(event) => {
               onChange(event.target.value);
               setOpen(false);
@@ -180,10 +170,29 @@ export function CalendarCalendarDialog({
   const canSubmit = Boolean(trimmedName) && (isCreate || !unchangedEdit) && !busy;
   const canDelete = dialog?.mode === "edit" && dialog.mayDelete && Boolean(onDelete);
 
+  /** Portaled popover / native color picker sit outside DialogContent in the DOM. */
+  const keepOpenForPortaledLayer = (event: Event) => {
+    const target = event.target as Element | null;
+    const active = document.activeElement;
+    if (
+      target?.closest("[data-radix-popper-content-wrapper]") ||
+      (target instanceof HTMLInputElement && target.type === "color") ||
+      target?.closest(".calendar-calendar-dialog__native-color") ||
+      (active instanceof HTMLInputElement && active.type === "color")
+    ) {
+      event.preventDefault();
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-        <DialogContent className="calendar-dialog-surface">
+        <DialogContent
+          className="calendar-dialog-surface"
+          onPointerDownOutside={keepOpenForPortaledLayer}
+          onInteractOutside={keepOpenForPortaledLayer}
+          onFocusOutside={keepOpenForPortaledLayer}
+        >
           <DialogHeader>
             <DialogTitle>
               {isCreate ? labels.createCalendarTitle : labels.editCalendarTitle}
@@ -218,7 +227,7 @@ export function CalendarCalendarDialog({
               {canDelete ? (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="destructive"
                   className="calendar-calendar-dialog__delete"
                   disabled={busy}
                   onClick={() => setConfirmDeleteOpen(true)}

@@ -30,6 +30,7 @@ import {
   type EditableRecurrencePresetId,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
+import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 
 export type CalendarEventDialogProps = {
   open: boolean;
@@ -206,21 +207,15 @@ export function CalendarEventDialog({
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="control-surface calendar-event-dialog__calendar-trigger"
-                    aria-label={
+                  <CalendarColorSwatchTrigger
+                    color={selectedCalendar?.color ?? "transparent"}
+                    label={
                       selectedCalendar
                         ? `${labels.eventCalendarLabel}: ${selectedCalendar.name}`
                         : labels.eventCalendarLabel
                     }
-                  >
-                    <span
-                      className="calendar-sidebar-dot"
-                      style={{ backgroundColor: selectedCalendar?.color ?? "transparent" }}
-                      aria-hidden
-                    />
-                  </button>
+                    className="calendar-event-dialog__calendar-trigger"
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
                   {writableCalendars.map((calendar) => (

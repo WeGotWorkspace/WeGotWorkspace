@@ -106,50 +106,92 @@
   border-radius: 9999px;
 }
 
-.calendar-workspace .calendar-sidebar-dot[data-hidden] {
-  opacity: 0.3;
-}
-
-/* Color swatch doubles as visibility control (sibling of the select MenuItem). */
+/* Full-width row: checkbox + name + overflow share one hover/selected surface.
+   Inline padding matches SidebarSection heading / MenuItem (px-4) so ⋯ lines up with +. */
 .calendar-workspace .calendar-sidebar-row {
   display: flex;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.5rem;
   min-width: 0;
+  min-height: 2rem;
+  padding-block: 0.25rem;
+  padding-inline: 1rem;
+  border-radius: 0.25rem;
+  color: color-mix(in oklab, var(--color-ink) 75%, transparent);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 }
 
-.calendar-workspace .calendar-sidebar-row__item {
+.calendar-workspace .calendar-sidebar-row:hover {
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.calendar-workspace .calendar-sidebar-row--selected {
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  color: var(--color-ink);
+}
+
+.calendar-workspace .calendar-sidebar-row__visibility {
+  --primary: var(--calendar-row-color, var(--color-ink));
+  --primary-foreground: #ffffff;
+  flex-shrink: 0;
+  border-color: var(--calendar-row-color, var(--color-ink));
+}
+
+.calendar-workspace .calendar-sidebar-row__visibility[data-state="checked"] {
+  background-color: var(--calendar-row-color, var(--color-ink));
+  border-color: var(--calendar-row-color, var(--color-ink));
+  color: #ffffff;
+}
+
+.calendar-workspace .calendar-sidebar-row__visibility[data-state="unchecked"] {
+  background-color: transparent;
+  opacity: 0.85;
+}
+
+.calendar-workspace .calendar-sidebar-row__select {
   flex: 1;
   min-width: 0;
-  padding-inline-start: 0.5rem;
-}
-
-.calendar-workspace .calendar-sidebar-visibility {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
-  margin-inline-start: 0.5rem;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: var(--control-radius);
   background: transparent;
-  cursor: pointer;
   color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
 }
 
-.calendar-workspace .calendar-sidebar-visibility:focus-visible {
+.calendar-workspace .calendar-sidebar-row__select:focus-visible {
   outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
   outline-offset: 1px;
+  border-radius: 0.125rem;
 }
 
-.calendar-workspace .calendar-sidebar-overflow__button {
-  opacity: 0.7;
-  margin-inline-end: 0.35rem;
+.calendar-workspace .calendar-sidebar-row__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Calendar color dots render at full color. */
-.calendar-workspace .calendar-sidebar-row .calendar-sidebar-dot {
+/* Match `.sidebar-section__add` (size-6 subtle IconButton). */
+.calendar-workspace .calendar-sidebar-row__overflow.button {
+  @apply size-6 shrink-0;
+  opacity: 0.85;
+}
+
+.calendar-workspace .calendar-sidebar-row__overflow:hover,
+.calendar-workspace .calendar-sidebar-row__overflow:focus-visible {
+  opacity: 1;
+}
+
+/* Calendar color dots render at full color (event dialog menu options). */
+.calendar-workspace .calendar-sidebar-row .calendar-sidebar-dot,
+.calendar-event-dialog__calendar-option .calendar-sidebar-dot {
   opacity: 1;
 }
 
@@ -221,24 +263,8 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__calendar-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--input-height, 2.25rem);
-  min-width: var(--input-height, 2.25rem);
-  height: var(--input-height, 2.25rem);
-  padding: 0;
+  /* Shared CalendarColorSwatchTrigger sizing; keep title-row alignment. */
   flex-shrink: 0;
-  cursor: pointer;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__calendar-trigger:hover {
-  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__calendar-trigger .calendar-sidebar-dot {
-  width: 0.85rem;
-  height: 0.85rem;
 }
 
 /* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */

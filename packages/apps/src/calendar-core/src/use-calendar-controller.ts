@@ -555,7 +555,16 @@ export function useCalendarController({
           });
           setCalendars((prev) =>
             sortCalendarsForSidebar(
-              prev.map((entry) => (entry.id === updated.id ? { ...entry, ...updated } : entry)),
+              prev.map((entry) =>
+                entry.id === updated.id
+                  ? {
+                      ...entry,
+                      ...updated,
+                      color: updated.color || color,
+                      name: updated.name || name,
+                    }
+                  : entry,
+              ),
             ),
           );
           show(L.toastCalendarUpdated);
