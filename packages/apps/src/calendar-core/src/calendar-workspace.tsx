@@ -17,7 +17,7 @@ import {
 } from "@/ui/dropdown-menu";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import type { MenuItemProps } from "@/menu-item/src/menu-item";
+import { MenuItem } from "@/menu-item/src/menu-item";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -126,77 +126,6 @@ export function CalendarWorkspace({
     agenda: L.viewAgenda,
   };
 
-  const calendarItems: MenuItemProps[] = calendars.map((calendar) => {
-    const visible = !hiddenCalendarIds.has(calendar.id);
-    const mayEdit = calendar.mayWrite !== false;
-    const mayDelete = calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
-    const canManage = mayEdit || mayDelete;
-
-    return {
-      label: calendar.name,
-      icon: (
-        <span
-          className="calendar-sidebar-visibility"
-          role="checkbox"
-          aria-checked={visible}
-          aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
-          tabIndex={0}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toggleCalendarVisibility(calendar.id);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            event.stopPropagation();
-            toggleCalendarVisibility(calendar.id);
-          }}
-        >
-          <span
-            className="calendar-sidebar-dot"
-            data-hidden={visible ? undefined : "true"}
-            style={{ backgroundColor: calendar.color }}
-            aria-hidden
-          />
-        </span>
-      ),
-      badge: canManage ? (
-        <span
-          className="calendar-sidebar-overflow"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          onKeyDown={(event) => event.stopPropagation()}
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                label={L.editCalendar}
-                icon={<MoreHorizontal className="size-3.5" aria-hidden />}
-                size="xs"
-                variant="ghost"
-                className="calendar-sidebar-overflow__button"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-40">
-              <DropdownMenuItem
-                onSelect={() => {
-                  openEditCalendarDialog(calendar.id);
-                }}
-              >
-                {L.editCalendar}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </span>
-      ) : undefined,
-      selected: calendar.id === defaultCalendarId,
-      onClick: () => selectDefaultCalendar(calendar.id),
-    };
-  });
-
   useDocumentTitle(`${L.appTitle} — ${title}`);
 
   return (
@@ -247,10 +176,64 @@ export function CalendarWorkspace({
           >
             <SidebarSection
               title={L.calendarsSection}
-              items={calendarItems}
               onAdd={canCreateCalendar ? openCreateCalendarDialog : undefined}
               addLabel={L.newCalendar}
-            />
+            >
+              {calendars.map((calendar) => {
+                const visible = !hiddenCalendarIds.has(calendar.id);
+                const mayEdit = calendar.mayWrite !== false;
+                const mayDelete =
+                  calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
+                const canManage = mayEdit || mayDelete;
+                const selected = calendar.id === defaultCalendarId;
+                return (
+                  <li key={calendar.id} className="calendar-sidebar-row">
+                    <button
+                      type="button"
+                      className="calendar-sidebar-visibility"
+                      aria-pressed={visible}
+                      aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
+                      onClick={() => toggleCalendarVisibility(calendar.id)}
+                    >
+                      <span
+                        className="calendar-sidebar-dot"
+                        data-hidden={visible ? undefined : "true"}
+                        style={{ backgroundColor: calendar.color }}
+                        aria-hidden
+                      />
+                    </button>
+                    <MenuItem
+                      label={calendar.name}
+                      selected={selected}
+                      onClick={() => selectDefaultCalendar(calendar.id)}
+                      className="calendar-sidebar-row__item"
+                    />
+                    {canManage ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            label={L.editCalendar}
+                            icon={<MoreHorizontal className="size-3.5" aria-hidden />}
+                            size="xs"
+                            variant="ghost"
+                            className="calendar-sidebar-overflow__button"
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-40">
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              openEditCalendarDialog(calendar.id);
+                            }}
+                          >
+                            {L.editCalendar}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </SidebarSection>
           </AppSidebar>
         }
         mainHeader={

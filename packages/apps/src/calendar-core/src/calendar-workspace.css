@@ -110,15 +110,32 @@
   opacity: 0.3;
 }
 
-/* Color swatch doubles as visibility checkbox (Lit CalendarsSidebar pattern). */
+/* Color swatch doubles as visibility control (sibling of the select MenuItem). */
+.calendar-workspace .calendar-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.calendar-workspace .calendar-sidebar-row__item {
+  flex: 1;
+  min-width: 0;
+  padding-inline-start: 0.5rem;
+}
+
 .calendar-workspace .calendar-sidebar-visibility {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25rem;
-  min-height: 1.25rem;
-  border-radius: 0.25rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin-inline-start: 0.5rem;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
   cursor: pointer;
+  color: inherit;
 }
 
 .calendar-workspace .calendar-sidebar-visibility:focus-visible {
@@ -126,32 +143,14 @@
   outline-offset: 1px;
 }
 
-.calendar-workspace .calendar-sidebar-overflow {
-  display: inline-flex;
-  align-items: center;
-}
-
 .calendar-workspace .calendar-sidebar-overflow__button {
   opacity: 0.7;
+  margin-inline-end: 0.35rem;
 }
 
-.calendar-workspace .sidebar-section .menu-item--selected .calendar-sidebar-overflow__button {
-  color: inherit;
-}
-
-/* Calendar color dots render at full color; icon slots default to reduced opacity. */
-.calendar-workspace .sidebar-section .menu-item__icon-slot .calendar-sidebar-dot,
-.calendar-workspace
-  .sidebar-section
-  .menu-item
-  .menu-item__icon-slot:has(.calendar-sidebar-visibility) {
+/* Calendar color dots render at full color. */
+.calendar-workspace .calendar-sidebar-row .calendar-sidebar-dot {
   opacity: 1;
-}
-
-/* Selected-row badge chrome is for counts; keep overflow ghost on the row ink. */
-.calendar-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__badge {
-  background-color: transparent;
-  color: inherit;
 }
 
 .calendar-workspace .workspace-app-layout__main-scroll {

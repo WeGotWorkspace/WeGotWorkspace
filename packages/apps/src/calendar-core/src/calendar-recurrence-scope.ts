@@ -45,7 +45,7 @@ export function untilBeforeRecurrenceId(recurrenceId: string, allDay: boolean): 
 }
 
 export function truncateRecurrenceRules(
-  rules: JSCalendarRecurrenceRule[] | undefined,
+  rules: JSCalendarRecurrenceRule[] | null | undefined,
   until: string,
 ): JSCalendarRecurrenceRule[] {
   const base = rules?.[0];
@@ -59,7 +59,7 @@ export function truncateRecurrenceRules(
 /** Build the forked series draft starting at the edited occurrence. */
 export function forkSeriesDraftFromForm(
   form: CalendarEventFormValue,
-  originalRules: JSCalendarRecurrenceRule[] | undefined,
+  originalRules: JSCalendarRecurrenceRule[] | null | undefined,
 ): CalendarEventDraft {
   const draft = formToDraft(form);
   const baseRule = originalRules?.[0];
