@@ -8,6 +8,7 @@ use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Contacts\ContactBlobService;
 use App\Services\Jmap\Blobs\JmapBlobService;
+use App\Services\Jmap\FileNodes\FileNodeBlobResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,17 +16,18 @@ use Illuminate\Http\Response;
 /**
  * JMAP blob upload/download (RFC 8620 §6, #438), replacing the 501 stubs.
  *
- * Download serves blobIds from BOTH stores: the envelope store
- * (JmapBlobService, `jb-…` ids) and the contacts REST blob store
- * (ContactBlobService, UUID-shaped ids) — every blobId the envelope surfaces
- * (e.g. contact `media` on read) must be downloadable through the Session's
- * downloadUrl, wherever it is stored.
+ * Download serves blobIds from ALL stores that surface ids through the
+ * envelope: the envelope store (JmapBlobService, `jb-…`), the contacts REST
+ * blob store (ContactBlobService, UUID-shaped), and drive file content via
+ * node-derived `fnb-…` ids (FileNodeBlobResolver, #450) — every blobId the
+ * envelope surfaces must be downloadable through the Session's downloadUrl.
  */
 final class JmapBlobController
 {
     public function __construct(
         private readonly JmapBlobService $blobs,
         private readonly ContactBlobService $contactBlobs,
+        private readonly FileNodeBlobResolver $fileNodeBlobs,
     ) {}
 
     public function upload(Request $request, string $accountId): JsonResponse
@@ -83,7 +85,8 @@ final class JmapBlobController
         }
 
         $blob = $this->blobs->retrieve($username, $blobId)
-            ?? $this->contactBlobs->retrieve($username, $blobId);
+            ?? $this->contactBlobs->retrieve($username, $blobId)
+            ?? $this->fileNodeBlobs->retrieve($username, $blobId);
         if ($blob === null) {
             return $this->notFoundProblem('Blob not found.');
         }

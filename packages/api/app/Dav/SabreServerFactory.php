@@ -10,12 +10,14 @@ use App\Dav\Server\AppCalDAVPrincipalCollection;
 use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
+use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
 use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
@@ -32,6 +34,7 @@ final class SabreServerFactory
     public function __construct(
         private WgwInstallConfig $install,
         private SearchIndexerService $searchIndexer,
+        private FileNodeIndexService $fileNodeIndex,
     ) {}
 
     public function create(): DAV\Server
@@ -87,6 +90,7 @@ final class SabreServerFactory
         $server->addPlugin($authPlugin);
         $server->addPlugin(new WebdavWriteGuardPlugin);
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
+        $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex));
         $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));
         if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? true)) {

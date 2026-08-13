@@ -32,6 +32,7 @@ final class JmapCapabilitySet
     public const PROVIDERS = [
         CalendarsCapabilityProvider::class,
         ContactsCapabilityProvider::class,
+        FilesCapabilityProvider::class,
     ];
 
     /** @var list<JmapCapabilityProviderInterface> */
