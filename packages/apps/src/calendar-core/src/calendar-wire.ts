@@ -18,6 +18,9 @@ export function draftToJmapEvent(draft: CalendarEventDraft): Omit<JmapCalendarEv
       : {}),
     ...(draft.description ? { description: draft.description } : {}),
     ...(draft.recurrenceRules?.length ? { recurrenceRules: draft.recurrenceRules } : {}),
+    ...(draft.recurrenceOverrides && Object.keys(draft.recurrenceOverrides).length
+      ? { recurrenceOverrides: draft.recurrenceOverrides }
+      : {}),
   } as Omit<JmapCalendarEvent, "id">;
 }
 

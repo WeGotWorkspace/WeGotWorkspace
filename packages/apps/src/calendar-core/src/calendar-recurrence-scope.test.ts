@@ -10,12 +10,16 @@ import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
   forkSeriesDraftFromForm,
+  forkSeriesDraftWithSplitOverrides,
   formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
   seriesRecurrenceRulesForSplit,
+  shiftRecurrenceOverrides,
   splitOccurrenceKey,
+  splitRecurrenceOverridesAt,
   toLocalRecurrenceId,
+  truncateMasterSeriesPatch,
   truncateRecurrenceRules,
   untilBeforeRecurrenceId,
 } from "@/calendar-core/src/calendar-recurrence-scope";
@@ -337,5 +341,245 @@ describe("calendar-recurrence-scope", () => {
         start: "2026-03-11T11:00:00",
       },
     });
+  });
+
+  it("splits recurrenceOverrides before vs at-or-after the this-and-future occurrence", () => {
+    const overrides = {
+      "2033-01-10T09:30:00": { title: "Past override" },
+      "2033-01-17T09:30:00": { excluded: true },
+      "2033-01-24T09:30:00": { title: "Future override", start: "2033-01-24T11:00:00" },
+    };
+    expect(
+      splitRecurrenceOverridesAt(overrides, "2033-01-17T09:30:00", false, "2033-01-10T09:30:00"),
+    ).toEqual({
+      masterOverrides: {
+        "2033-01-10T09:30:00": { title: "Past override" },
+      },
+      forkOverrides: {
+        "2033-01-17T09:30:00": { excluded: true },
+        "2033-01-24T09:30:00": { title: "Future override", start: "2033-01-24T11:00:00" },
+      },
+    });
+  });
+
+  it("shifts fork override keys when DTSTART moves on this-and-future", () => {
+    expect(
+      shiftRecurrenceOverrides(
+        {
+          "2033-01-24T09:30:00": { title: "Moved", start: "2033-01-24T10:00:00" },
+          "2033-01-31T09:30:00": { excluded: true },
+        },
+        "2033-01-17T09:30:00",
+        "2033-01-17T11:00:00",
+        false,
+        "2033-01-10T09:30:00",
+      ),
+    ).toEqual({
+      "2033-01-24T11:00:00": { title: "Moved", start: "2033-01-24T11:30:00" },
+      "2033-01-31T11:00:00": { excluded: true },
+    });
+  });
+
+  it("truncateMasterSeriesPatch drops future-side overrides from the master", () => {
+    expect(
+      truncateMasterSeriesPatch(
+        [{ "@type": "RecurrenceRule", frequency: "weekly" }],
+        "2033-01-17T09:30:00",
+        false,
+        "2033-01-10T09:30:00",
+        {
+          "2033-01-10T09:30:00": { title: "Past" },
+          "2033-01-24T09:30:00": { excluded: true },
+        },
+      ),
+    ).toEqual({
+      recurrenceRules: [
+        expect.objectContaining({
+          frequency: "weekly",
+          until: "2033-01-17T09:29:59",
+        }),
+      ],
+      recurrenceOverrides: {
+        "2033-01-10T09:30:00": { title: "Past" },
+      },
+    });
+  });
+
+  it("this-and-future fork keeps future exclusions so they are not resurrected", () => {
+    const masterStart = "2033-01-10T09:30:00";
+    const splitAt = "2033-01-17T09:30:00";
+    const excludedAfter = "2033-01-24T09:30:00";
+    const seriesRules: NonNullable<JmapCalendarEvent["recurrenceRules"]> = [
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        byDay: [{ "@type": "NDay", day: "mo" }],
+      },
+    ];
+    const original = {
+      id: "master",
+      "@type": "Event",
+      uid: "u-master",
+      title: "Team standup",
+      start: masterStart,
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: seriesRules,
+      recurrenceOverrides: {
+        [excludedAfter]: { excluded: true },
+      },
+    } as JmapCalendarEvent;
+
+    const masterPatch = truncateMasterSeriesPatch(
+      seriesRules,
+      splitAt,
+      false,
+      masterStart,
+      original.recurrenceOverrides,
+    );
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-10", "09:30"),
+      title: "Standup from here",
+      endDate: "2033-01-10",
+      endTime: "10:00",
+      recurrencePreset: "custom",
+      customRecurrenceRules: seriesRules,
+    };
+    const forkDraft = forkSeriesDraftWithSplitOverrides(
+      formAnchoredToOccurrence(form, splitAt),
+      seriesRules,
+      original,
+      splitAt,
+    );
+
+    expect(masterPatch.recurrenceOverrides).toBeNull();
+    expect(forkDraft.recurrenceOverrides).toEqual({
+      [excludedAfter]: { excluded: true },
+    });
+
+    const masterWire = {
+      ...original,
+      id: "master",
+      recurrenceRules: masterPatch.recurrenceRules ?? undefined,
+      recurrenceOverrides: masterPatch.recurrenceOverrides ?? undefined,
+    } as JmapCalendarEvent;
+    const forkWire = {
+      id: "fork",
+      "@type": "Event",
+      uid: "u-fork",
+      title: forkDraft.title,
+      start: forkDraft.start,
+      duration: forkDraft.duration,
+      calendarIds: { work: true },
+      recurrenceRules: forkDraft.recurrenceRules ?? undefined,
+      recurrenceOverrides: forkDraft.recurrenceOverrides ?? undefined,
+    } as JmapCalendarEvent;
+
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-01T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-03-01T00:00:00"),
+    };
+    const masterExpanded = expandEvents(calendarEventsToEngineMap([masterWire]), range);
+    const forkExpanded = expandEvents(calendarEventsToEngineMap([forkWire]), range);
+    const masterStarts = [...masterExpanded.values()].map((event) => event.data.start.toString());
+    const forkStarts = [...forkExpanded.values()].map((event) => event.data.start.toString());
+
+    expect(masterStarts).not.toContain(excludedAfter);
+    expect(forkStarts).not.toContain(excludedAfter);
+    expect(forkStarts).toContain(splitAt);
+  });
+
+  it("this-and-future fork keeps future modified exceptions without duplicating the base slot", () => {
+    const masterStart = "2033-01-10T09:30:00";
+    const splitAt = "2033-01-17T09:30:00";
+    const exceptionRid = "2033-01-24T09:30:00";
+    const exceptionStart = "2033-01-24T11:00:00";
+    const seriesRules: NonNullable<JmapCalendarEvent["recurrenceRules"]> = [
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        byDay: [{ "@type": "NDay", day: "mo" }],
+      },
+    ];
+    const original = {
+      id: "master",
+      "@type": "Event",
+      uid: "u-master",
+      title: "Team standup",
+      start: masterStart,
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: seriesRules,
+      recurrenceOverrides: {
+        [exceptionRid]: { title: "Standup (moved)", start: exceptionStart },
+      },
+    } as JmapCalendarEvent;
+
+    const masterPatch = truncateMasterSeriesPatch(
+      seriesRules,
+      splitAt,
+      false,
+      masterStart,
+      original.recurrenceOverrides,
+    );
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-10", "09:30"),
+      title: "Standup from here",
+      endDate: "2033-01-10",
+      endTime: "10:00",
+      recurrencePreset: "custom",
+      customRecurrenceRules: seriesRules,
+    };
+    const forkDraft = forkSeriesDraftWithSplitOverrides(
+      formAnchoredToOccurrence(form, splitAt),
+      seriesRules,
+      original,
+      splitAt,
+    );
+
+    expect(masterPatch.recurrenceOverrides).toBeNull();
+    expect(forkDraft.recurrenceOverrides).toEqual({
+      [exceptionRid]: { title: "Standup (moved)", start: exceptionStart },
+    });
+
+    const masterWire = {
+      ...original,
+      id: "master",
+      uid: "u-master",
+      recurrenceRules: masterPatch.recurrenceRules ?? undefined,
+      recurrenceOverrides: masterPatch.recurrenceOverrides ?? undefined,
+    } as JmapCalendarEvent;
+    const forkWire = {
+      id: "fork",
+      "@type": "Event",
+      uid: "u-fork",
+      title: forkDraft.title,
+      start: forkDraft.start,
+      duration: forkDraft.duration,
+      calendarIds: { work: true },
+      recurrenceRules: forkDraft.recurrenceRules ?? undefined,
+      recurrenceOverrides: forkDraft.recurrenceOverrides ?? undefined,
+    } as JmapCalendarEvent;
+
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-01T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-03-01T00:00:00"),
+    };
+    const masterExpanded = expandEvents(calendarEventsToEngineMap([masterWire]), range);
+    const forkExpanded = expandEvents(calendarEventsToEngineMap([forkWire]), range);
+    const combined = expandEvents(calendarEventsToEngineMap([masterWire, forkWire]), range);
+
+    const masterStarts = [...masterExpanded.values()].map((event) => event.data.start.toString());
+    const forkStarts = [...forkExpanded.values()].map((event) => event.data.start.toString());
+    const combinedStarts = [...combined.values()].map((event) => event.data.start.toString());
+
+    // Exception must leave the truncated master and live only on the fork.
+    expect(masterStarts).not.toContain(exceptionStart);
+    expect(masterStarts).not.toContain(exceptionRid);
+    expect(forkStarts).toContain(exceptionStart);
+    expect(forkStarts).not.toContain(exceptionRid);
+    // No duplicate: one rendered instance at the moved time, none at the base slot.
+    expect(combinedStarts.filter((start) => start === exceptionStart)).toHaveLength(1);
+    expect(combinedStarts.filter((start) => start === exceptionRid)).toHaveLength(0);
   });
 });

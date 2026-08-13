@@ -73,6 +73,10 @@ function optimisticEventFromDraft(tempId: string, draft: CalendarEventDraft): Jm
       ? { locations: { primary: { "@type": "Location", name: draft.location } } }
       : {}),
     ...(draft.description ? { description: draft.description } : {}),
+    ...(draft.recurrenceRules?.length ? { recurrenceRules: draft.recurrenceRules } : {}),
+    ...(draft.recurrenceOverrides && Object.keys(draft.recurrenceOverrides).length
+      ? { recurrenceOverrides: draft.recurrenceOverrides }
+      : {}),
   } as JmapCalendarEvent;
 }
 

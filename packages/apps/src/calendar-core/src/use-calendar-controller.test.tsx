@@ -500,6 +500,69 @@ describe("useCalendarController recurring scopes", () => {
     });
   });
 
+  it("saveEditor thisAndFuture moves future overrides onto the fork and keeps past on master", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue({ id: "forked-overrides" });
+    const standup = bootstrap.data.events.find((event) => event.id === "standup")!;
+    const data = {
+      ...bootstrap.data,
+      events: [
+        {
+          ...standup,
+          recurrenceOverrides: {
+            "2033-01-10T09:30:00": { title: "Past override" },
+            "2033-01-24T09:30:00": { excluded: true },
+            "2033-01-31T09:30:00": { title: "Moved later", start: "2033-01-31T11:00:00" },
+          },
+        },
+        ...bootstrap.data.events.filter((event) => event.id !== "standup"),
+      ],
+    };
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data,
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await act(async () => {
+      await result.current.openEditEventKey("standup::2033-01-17T09:30:00");
+    });
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup from here",
+      });
+    });
+
+    await saveAndResolveScope(result, "thisAndFuture");
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceRules: [
+            expect.objectContaining({
+              until: "2033-01-17T09:29:59",
+            }),
+          ],
+          recurrenceOverrides: {
+            "2033-01-10T09:30:00": { title: "Past override" },
+          },
+        }),
+      );
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          start: "2033-01-17T09:30:00",
+          recurrenceOverrides: {
+            "2033-01-24T09:30:00": { excluded: true },
+            "2033-01-31T09:30:00": { title: "Moved later", start: "2033-01-31T11:00:00" },
+          },
+        }),
+      );
+    });
+  });
+
   it("saveEditor thisAndFuture uses form rules when bootstrap lacks the master", async () => {
     const patchEvent = vi.fn().mockResolvedValue(undefined);
     const createEvent = vi.fn().mockResolvedValue({ id: "forked-stale" });

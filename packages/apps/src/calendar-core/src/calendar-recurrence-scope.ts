@@ -9,7 +9,7 @@ import type {
   JSCalendarPatchObject,
   JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
-import type { CalendarEventDraft } from "@/calendar-core/src/calendar-types";
+import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { formRecurrenceRules, formToDraft } from "@/calendar-core/src/calendar-editor-model";
 
@@ -142,6 +142,131 @@ export function truncateRecurrenceRules(
   return [{ ...rest, until }];
 }
 
+/** Parse a recurrence id (compact or LocalDateTime) to PlainDateTime for ordering. */
+export function recurrenceIdAsPlainDateTime(
+  recurrenceId: string,
+  allDay: boolean,
+  templateStart?: string,
+): Temporal.PlainDateTime | null {
+  const local = toLocalRecurrenceId(recurrenceId, allDay, templateStart);
+  try {
+    return Temporal.PlainDateTime.from(
+      local.includes("T") ? local.replace(/Z$/, "") : `${local}T00:00:00`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+function formatLocalRecurrenceKey(value: Temporal.PlainDateTime, allDay: boolean): string {
+  return allDay ? value.toPlainDate().toString() : value.toString({ smallestUnit: "second" });
+}
+
+/**
+ * Partition `recurrenceOverrides` for a this-and-future split at occurrence T.
+ * Master keeps overrides strictly before T; fork receives T and later (≥ T).
+ */
+export function splitRecurrenceOverridesAt(
+  overrides: Record<string, JSCalendarPatchObject> | null | undefined,
+  splitRecurrenceId: string,
+  allDay: boolean,
+  templateStart?: string,
+): {
+  masterOverrides: Record<string, JSCalendarPatchObject> | null;
+  forkOverrides: Record<string, JSCalendarPatchObject> | null;
+} {
+  if (!overrides || Object.keys(overrides).length === 0) {
+    return { masterOverrides: null, forkOverrides: null };
+  }
+  const splitAt = recurrenceIdAsPlainDateTime(splitRecurrenceId, allDay, templateStart);
+  const master: Record<string, JSCalendarPatchObject> = {};
+  const fork: Record<string, JSCalendarPatchObject> = {};
+  for (const [rid, patch] of Object.entries(overrides)) {
+    const instant = recurrenceIdAsPlainDateTime(rid, allDay, templateStart);
+    if (!splitAt || !instant) {
+      // Unparseable keys stay on the truncated master to avoid silent data loss.
+      master[rid] = patch;
+      continue;
+    }
+    if (Temporal.PlainDateTime.compare(instant, splitAt) < 0) {
+      master[rid] = patch;
+    } else {
+      fork[rid] = patch;
+    }
+  }
+  return {
+    masterOverrides: Object.keys(master).length ? master : null,
+    forkOverrides: Object.keys(fork).length ? fork : null,
+  };
+}
+
+/**
+ * Remap override keys (and nested `start` patches) when the fork DTSTART moves
+ * away from the original occurrence wall time (drag / reschedule this-and-future).
+ */
+export function shiftRecurrenceOverrides(
+  overrides: Record<string, JSCalendarPatchObject> | null | undefined,
+  fromOccurrenceId: string,
+  toForkStartLocal: string,
+  allDay: boolean,
+  templateStart?: string,
+): Record<string, JSCalendarPatchObject> | null {
+  if (!overrides || Object.keys(overrides).length === 0) return null;
+  const from = recurrenceIdAsPlainDateTime(fromOccurrenceId, allDay, templateStart);
+  const to = recurrenceIdAsPlainDateTime(toForkStartLocal, allDay, templateStart);
+  if (!from || !to) return { ...overrides };
+  const shift = from.until(to);
+  if (shift.total({ unit: "seconds" }) === 0) return { ...overrides };
+
+  const out: Record<string, JSCalendarPatchObject> = {};
+  for (const [rid, patch] of Object.entries(overrides)) {
+    const instant = recurrenceIdAsPlainDateTime(rid, allDay, templateStart);
+    if (!instant) {
+      out[rid] = patch;
+      continue;
+    }
+    const newKey = formatLocalRecurrenceKey(instant.add(shift), allDay);
+    const nextPatch: JSCalendarPatchObject = { ...patch };
+    if (typeof nextPatch.start === "string") {
+      const patchStart = recurrenceIdAsPlainDateTime(
+        String(nextPatch.start),
+        allDay,
+        templateStart,
+      );
+      if (patchStart) {
+        nextPatch.start = formatLocalRecurrenceKey(patchStart.add(shift), allDay);
+      }
+    }
+    out[newKey] = nextPatch;
+  }
+  return out;
+}
+
+/**
+ * Truncate-master patch for this-and-future (edit fork, delete, or Lit truncate):
+ * set `until` and keep only overrides that apply before the split occurrence.
+ */
+export function truncateMasterSeriesPatch(
+  seriesRules: JSCalendarRecurrenceRule[] | null | undefined,
+  recurrenceId: string,
+  allDay: boolean,
+  templateStart: string | undefined,
+  originalOverrides: Record<string, JSCalendarPatchObject> | null | undefined,
+): CalendarEventPatch {
+  const until = untilBeforeRecurrenceId(recurrenceId, allDay, templateStart);
+  const { masterOverrides } = splitRecurrenceOverridesAt(
+    originalOverrides,
+    recurrenceId,
+    allDay,
+    templateStart,
+  );
+  const hadOverrides = Boolean(originalOverrides && Object.keys(originalOverrides).length);
+  return {
+    recurrenceRules: truncateRecurrenceRules(seriesRules, until),
+    ...(hadOverrides ? { recurrenceOverrides: masterOverrides } : {}),
+  };
+}
+
 /**
  * Rules for truncate/fork. Prefer the wire master; fall back to the editor form
  * when bootstrap `data.events` is stale (common right after create — the adapter
@@ -208,26 +333,80 @@ export function formAnchoredToOccurrence(
   };
 }
 
+export type ForkSeriesDraftOptions = {
+  /**
+   * Overrides that belong on the fork (≥ split occurrence). Remapped when
+   * `splitRecurrenceId` differs from the fork's new DTSTART.
+   */
+  recurrenceOverrides?: Record<string, JSCalendarPatchObject> | null;
+  /** Original occurrence id before any wall-time shift (drag / reschedule). */
+  splitRecurrenceId?: string;
+  /** Series master start — template for compact recurrence ids. */
+  templateStart?: string;
+};
+
 /** Build the forked series draft starting at the edited occurrence. */
 export function forkSeriesDraftFromForm(
   form: CalendarEventFormValue,
   originalRules: JSCalendarRecurrenceRule[] | null | undefined,
+  options?: ForkSeriesDraftOptions,
 ): CalendarEventDraft {
   const draft = formToDraft(form);
+  const shiftedOverrides =
+    options?.recurrenceOverrides && options.splitRecurrenceId
+      ? shiftRecurrenceOverrides(
+          options.recurrenceOverrides,
+          options.splitRecurrenceId,
+          draft.start,
+          form.allDay,
+          options.templateStart,
+        )
+      : (options?.recurrenceOverrides ?? null);
+  const withOverrides = (base: CalendarEventDraft): CalendarEventDraft =>
+    shiftedOverrides && Object.keys(shiftedOverrides).length
+      ? { ...base, recurrenceOverrides: shiftedOverrides }
+      : base;
+
   if (form.recurrencePreset === "none") {
-    return { ...draft, recurrenceRules: null };
+    return withOverrides({ ...draft, recurrenceRules: null });
   }
   // Wire master first; else form preset/custom (covers stale bootstrap lookups).
   const baseRule =
     originalRules?.[0] ?? formRecurrenceRules(form)?.[0] ?? draft.recurrenceRules?.[0];
   if (!baseRule) {
-    return draft;
+    return withOverrides(draft);
   }
   const { until: _until, count: _count, ...rest } = baseRule;
-  return {
+  return withOverrides({
     ...draft,
     recurrenceRules: [rest],
-  };
+  });
+}
+
+/**
+ * Fork draft for this-and-future: carry future-side overrides from the master,
+ * remapped when the fork DTSTART moves.
+ */
+export function forkSeriesDraftWithSplitOverrides(
+  form: CalendarEventFormValue,
+  seriesRules: JSCalendarRecurrenceRule[] | null | undefined,
+  original:
+    | Pick<JmapCalendarEvent, "start" | "showWithoutTime" | "recurrenceOverrides">
+    | undefined,
+  splitRecurrenceId: string,
+): CalendarEventDraft {
+  const allDay = Boolean(original?.showWithoutTime ?? form.allDay);
+  const { forkOverrides } = splitRecurrenceOverridesAt(
+    original?.recurrenceOverrides,
+    splitRecurrenceId,
+    allDay,
+    original?.start,
+  );
+  return forkSeriesDraftFromForm(form, seriesRules, {
+    recurrenceOverrides: forkOverrides,
+    splitRecurrenceId,
+    templateStart: original?.start,
+  });
 }
 
 /** Merge `{ excluded: true }` for one occurrence into the master's overrides map. */
