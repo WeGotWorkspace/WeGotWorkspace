@@ -37,7 +37,6 @@ type EventEntry = [string, ApiCalendarEvent];
 import type {
   EventCreateRequestDetail,
   EventDeleteRequestDetail,
-  EventExceptionRequestDetail,
   EventKeyDetail,
   EventUpdateRequestDetail,
 } from "../types/CalendarEventRequests.js";
@@ -67,20 +66,20 @@ export abstract class CalendarViewBase extends BaseElement {
 
   /**
    * Optional host-provided scope picker (React wires this on `wgw-calendar-surface`).
-   * Returns `all` | `thisAndFuture`, or `null` when the user cancels.
+   * Returns `thisInstance` | `thisAndFuture`, or `null` when the user cancels.
    */
   async #askRecurrenceScope(args: {
     action: "update" | "delete";
     masterId: string;
     recurrenceId?: string;
-  }): Promise<"all" | "thisAndFuture" | null> {
+  }): Promise<"thisInstance" | "thisAndFuture" | null> {
     const host = this.closest("wgw-calendar-surface") as
       | (HTMLElement & {
           requestRecurrenceScope?: (request: {
             action: "edit" | "delete" | "update";
             masterId: string;
             recurrenceId?: string;
-          }) => Promise<"all" | "thisAndFuture" | null>;
+          }) => Promise<"thisInstance" | "thisAndFuture" | null>;
         })
       | null;
     if (host?.requestRecurrenceScope) {
@@ -90,12 +89,13 @@ export abstract class CalendarViewBase extends BaseElement {
         recurrenceId: args.recurrenceId,
       });
     }
+    // No React dialog: only-this-instance is the safe default confirm.
     const ok = window.confirm(
       args.action === "delete"
-        ? "Delete all instances of this recurring event?\n\nOK = all instances\nCancel = abort"
-        : "Apply changes to all instances of this recurring event?\n\nOK = all instances\nCancel = abort",
+        ? "Delete only this instance of the recurring event?\n\nOK = only this instance\nCancel = abort"
+        : "Edit only this instance of the recurring event?\n\nOK = only this instance\nCancel = abort",
     );
-    return ok ? "all" : null;
+    return ok ? "thisInstance" : null;
   }
 
   static get properties() {
@@ -257,60 +257,7 @@ export abstract class CalendarViewBase extends BaseElement {
       detail.content.end,
     );
 
-    const shouldCreateExceptionFromMove = Boolean(
-      updateKind === "move" &&
-      recurrenceId &&
-      data.recurrenceRule &&
-      !current.recurrenceId &&
-      this.#movedToDifferentDay(occurrenceStart, detail.content.start),
-    );
-
-    if (shouldCreateExceptionFromMove && recurrenceId) {
-      const exceptionRequestedDetail: EventExceptionRequestDetail = {
-        envelope: {
-          eventId: detail.envelope.eventId,
-          accountId: detail.envelope.accountId,
-          calendarId: detail.envelope.calendarId,
-          recurrenceId,
-          isException: true,
-          isRecurring: true,
-        },
-        content: { ...detail.content },
-        source: "move",
-      };
-      const accepted = this.dispatchEvent(
-        new CustomEvent("event-exception", {
-          detail: exceptionRequestedDetail,
-          composed: true,
-          cancelable: true,
-        }),
-      );
-      // Cross-day occurrence move still needs a detached exception for correctness.
-      const keepException = window.confirm(
-        "Save this as an exception?\n\nOK = keep\nCancel = revert",
-      );
-      if (!accepted || !keepException) {
-        return { handled: true, accepted: false };
-      }
-      return this.#applyUpdateAndNotify(eventKey, {
-        type: "add-exception",
-        input: {
-          target: { key: eventKey },
-          recurrenceId,
-          event: {
-            start: detail.content.start,
-            end: detail.content.end,
-            summary: detail.content.summary,
-            color: detail.content.color,
-            location: detail.content.location,
-            calendarId: detail.envelope.calendarId,
-            accountId: detail.envelope.accountId,
-          },
-        },
-      });
-    }
-
-    if (shouldPromptForSeries) {
+    if (shouldPromptForSeries && recurrenceId) {
       const scope = await this.#askRecurrenceScope({
         action: "update",
         masterId: detail.envelope.eventId,
@@ -320,67 +267,44 @@ export abstract class CalendarViewBase extends BaseElement {
         return { handled: true, accepted: false };
       }
 
-      // thisAndFuture on drag: apply as series for now (full truncate+fork is
-      // handled in the React dialog save path). Drag split is a follow-up.
-      if (updateKind === "move") {
-        const delta = this.#toPlainDateTime(occurrenceStart).until(
-          this.#toPlainDateTime(detail.content.start),
-        );
-        const moveInput = moveFromUpdateRequest(detail, delta);
+      if (scope === "thisInstance") {
         return this.#applyUpdateAndNotify(eventKey, {
-          type: "move",
+          type: "add-exception",
           input: {
-            ...moveInput,
             target: { key: eventKey },
-            scope: "series",
+            recurrenceId,
+            event: {
+              start: detail.content.start,
+              end: detail.content.end,
+              summary: detail.content.summary,
+              color: detail.content.color,
+              location: detail.content.location,
+              calendarId: detail.envelope.calendarId,
+              accountId: detail.envelope.accountId,
+            },
           },
         });
       }
 
-      if (updateKind === "resize-start") {
-        const startDelta = this.#toPlainDateTime(occurrenceStart).until(
-          this.#toPlainDateTime(detail.content.start),
-        );
-        return this.#applyUpdateAndNotify(eventKey, {
-          type: "resize-start",
-          input: {
-            target: { key: eventKey },
-            scope: "series",
-            toStart: shiftDateValue(data.start, startDelta),
-          },
-        });
-      }
-
-      if (updateKind === "resize-end") {
-        const endDelta = this.#toPlainDateTime(occurrenceEnd).until(
-          this.#toPlainDateTime(detail.content.end),
-        );
-        return this.#applyUpdateAndNotify(eventKey, {
-          type: "resize-end",
-          input: {
-            target: { key: eventKey },
-            scope: "series",
-            toEnd: shiftDateValue(currentEnd, endDelta),
-          },
-        });
-      }
-
-      return this.#applyUpdateAndNotify(eventKey, {
-        type: "update",
-        input: {
-          target: { key: eventKey },
-          scope: "series",
-          patch: {
+      // thisAndFuture: React truncates the master and creates a forked series.
+      // Revert the optimistic drag; the controller applies the split then syncs.
+      this.dispatchEvent(
+        new CustomEvent("recurrence-future-update", {
+          detail: {
+            masterId: detail.envelope.eventId,
+            recurrenceId,
+            allDay: Boolean(data.allDay),
             start: detail.content.start,
             end: detail.content.end,
             summary: detail.content.summary,
-            color: detail.content.color,
             location: detail.content.location,
             calendarId: detail.envelope.calendarId,
-            accountId: detail.envelope.accountId,
           },
-        },
-      });
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      return { handled: true, accepted: false };
     }
 
     if (updateKind === "move") {
@@ -453,18 +377,8 @@ export abstract class CalendarViewBase extends BaseElement {
         recurrenceId,
       });
       if (!scope) return true;
-      if (scope === "all") {
-        return this.#applyDeleteAndNotify(eventKey, {
-          type: "remove",
-          input: {
-            ...fromDeleteRequest(detail),
-            target: { key: eventKey },
-            scope: "series",
-          },
-        });
-      }
       // thisAndFuture: ask React to truncate the master series at this occurrence.
-      if (recurrenceId) {
+      if (scope === "thisAndFuture" && recurrenceId) {
         this.dispatchEvent(
           new CustomEvent("recurrence-future-delete", {
             detail: {
@@ -478,6 +392,7 @@ export abstract class CalendarViewBase extends BaseElement {
         );
         return true;
       }
+      // thisInstance: fall through to add-exclusion / remove-exception below.
     }
 
     if (isCalendarEventException(current)) {
@@ -713,18 +628,6 @@ export abstract class CalendarViewBase extends BaseElement {
     return oldDuration.total({ unit: "seconds" }) === newDuration.total({ unit: "seconds" })
       ? "move"
       : "update";
-  }
-
-  #movedToDifferentDay(
-    currentStart: Temporal.PlainDateTime,
-    nextStart: Temporal.PlainDateTime,
-  ): boolean {
-    return (
-      Temporal.PlainDate.compare(
-        this.#toPlainDateTime(currentStart).toPlainDate(),
-        this.#toPlainDateTime(nextStart).toPlainDate(),
-      ) !== 0
-    );
   }
 
   #resolvePendingOperation(event: ApiCalendarEvent): CalendarEventPendingOperation | undefined {

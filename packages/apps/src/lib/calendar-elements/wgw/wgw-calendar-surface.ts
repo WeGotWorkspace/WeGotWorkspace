@@ -52,14 +52,14 @@ export class WgwCalendarSurface extends LitElement {
   events: EventsMap = new Map();
   visibleCalendarIds?: string[];
   /**
-   * Optional React-provided resolver for All vs This-and-future when editing
-   * recurring occurrences via drag/delete in the Lit views.
+   * Optional React-provided resolver for Only-this vs This-and-future when
+   * editing recurring occurrences via drag/delete in the Lit views.
    */
   requestRecurrenceScope?: (request: {
     action: "edit" | "delete" | "update";
     masterId: string;
     recurrenceId?: string;
-  }) => Promise<"all" | "thisAndFuture" | null>;
+  }) => Promise<"thisInstance" | "thisAndFuture" | null>;
 
   #provider = new ContextProvider(this, { context: eventsAPIContext });
 

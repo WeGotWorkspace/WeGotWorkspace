@@ -1,4 +1,8 @@
-import type { JmapCalendarEvent, JSCalendarRecurrenceRule } from "@/lib/jmap-client";
+import type {
+  JmapCalendarEvent,
+  JSCalendarPatchObject,
+  JSCalendarRecurrenceRule,
+} from "@/lib/jmap-client";
 
 /**
  * UI-facing calendar collection. Events travel as JSCalendar wire objects
@@ -44,6 +48,8 @@ export type CalendarEventDraft = {
 
 export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">> & {
   calendarId?: string;
+  /** JSCalendar single-instance patches / exclusions keyed by LocalDateTime. */
+  recurrenceOverrides?: Record<string, JSCalendarPatchObject> | null;
 };
 
 export type CalendarDraft = {

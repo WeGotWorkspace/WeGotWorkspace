@@ -36,5 +36,8 @@ export function patchToJmapPartial(patch: CalendarEventPatch): Partial<JmapCalen
     ...(patch.recurrenceRules !== undefined
       ? { recurrenceRules: patch.recurrenceRules as JSCalendarRecurrenceRule[] | null }
       : {}),
+    ...(patch.recurrenceOverrides !== undefined
+      ? { recurrenceOverrides: patch.recurrenceOverrides }
+      : {}),
   } as Partial<JmapCalendarEvent>;
 }

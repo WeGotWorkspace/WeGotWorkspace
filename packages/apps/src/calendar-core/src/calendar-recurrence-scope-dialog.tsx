@@ -18,11 +18,11 @@ export function CalendarRecurrenceScopeDialog({
   dialog,
   labels,
 }: CalendarRecurrenceScopeDialogProps) {
-  const [choice, setChoice] = useState<RecurrenceEditScope>("all");
+  const [choice, setChoice] = useState<RecurrenceEditScope>("thisInstance");
   const open = dialog !== null;
 
   useEffect(() => {
-    if (dialog) setChoice("all");
+    if (dialog) setChoice("thisInstance");
   }, [dialog]);
 
   const title =
@@ -51,11 +51,11 @@ export function CalendarRecurrenceScopeDialog({
             <input
               type="radio"
               name="calendar-recurrence-scope"
-              value="all"
-              checked={choice === "all"}
-              onChange={() => setChoice("all")}
+              value="thisInstance"
+              checked={choice === "thisInstance"}
+              onChange={() => setChoice("thisInstance")}
             />
-            <span>{labels.recurrenceScopeAll}</span>
+            <span>{labels.recurrenceScopeThisInstance}</span>
           </label>
           <label className="calendar-recurrence-scope__option">
             <input

@@ -1,11 +1,16 @@
 import { Temporal } from "@js-temporal/polyfill";
-import type { JmapCalendarEvent, JSCalendarRecurrenceRule } from "@/lib/jmap-client";
+import { parseRecurrenceId } from "@/lib/calendar-engine";
+import type {
+  JmapCalendarEvent,
+  JSCalendarPatchObject,
+  JSCalendarRecurrenceRule,
+} from "@/lib/jmap-client";
 import type { CalendarEventDraft } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { formToDraft } from "@/calendar-core/src/calendar-editor-model";
 
 /** User choice for editing/deleting a recurring occurrence. */
-export type RecurrenceEditScope = "all" | "thisAndFuture";
+export type RecurrenceEditScope = "thisInstance" | "thisAndFuture";
 
 export type RecurrenceScopeAction = "edit" | "delete" | "update";
 
@@ -27,12 +32,39 @@ export function eventIsRecurringSeries(event: Pick<JmapCalendarEvent, "recurrenc
 }
 
 /**
+ * Normalize engine compact ids (`20260311T090000`) or LocalDateTime strings to
+ * JSCalendar `recurrenceOverrides` keys.
+ */
+export function toLocalRecurrenceId(
+  recurrenceId: string,
+  allDay: boolean,
+  templateStart?: string,
+): string {
+  if (recurrenceId.includes("-")) return recurrenceId;
+  const template = Temporal.PlainDateTime.from(
+    templateStart?.includes("T")
+      ? templateStart.replace(/Z$/, "")
+      : templateStart
+        ? `${templateStart}T00:00:00`
+        : "1970-01-01T00:00:00",
+  );
+  const parsed = parseRecurrenceId(recurrenceId, allDay, template);
+  if (!parsed) return recurrenceId;
+  return allDay ? parsed.toPlainDate().toString() : parsed.toString({ smallestUnit: "second" });
+}
+
+/**
  * Instant strictly before the occurrence so the master series keeps past
  * instances and excludes this occurrence and later ones (`until` is inclusive
  * in JSCalendar — subtract one day for all-day, one second for timed).
  */
-export function untilBeforeRecurrenceId(recurrenceId: string, allDay: boolean): string {
-  const normalized = recurrenceId.includes("T") ? recurrenceId : `${recurrenceId}T00:00:00`;
+export function untilBeforeRecurrenceId(
+  recurrenceId: string,
+  allDay: boolean,
+  templateStart?: string,
+): string {
+  const local = toLocalRecurrenceId(recurrenceId, allDay, templateStart);
+  const normalized = local.includes("T") ? local : `${local}T00:00:00`;
   try {
     const instant = Temporal.PlainDateTime.from(normalized.replace(/Z$/, ""));
     if (allDay) {
@@ -40,7 +72,7 @@ export function untilBeforeRecurrenceId(recurrenceId: string, allDay: boolean): 
     }
     return instant.subtract({ seconds: 1 }).toString();
   } catch {
-    return recurrenceId;
+    return local;
   }
 }
 
@@ -71,4 +103,74 @@ export function forkSeriesDraftFromForm(
     ...draft,
     recurrenceRules: [rest],
   };
+}
+
+/** Merge `{ excluded: true }` for one occurrence into the master's overrides map. */
+export function exclusionRecurrenceOverrides(
+  original: JmapCalendarEvent | undefined,
+  recurrenceId: string,
+): Record<string, JSCalendarPatchObject> {
+  const allDay = Boolean(original?.showWithoutTime);
+  const localRid = toLocalRecurrenceId(recurrenceId, allDay, original?.start);
+  const existing = original?.recurrenceOverrides ?? {};
+  const previous = existing[localRid] ?? {};
+  return {
+    ...existing,
+    [localRid]: { ...previous, excluded: true },
+  };
+}
+
+/**
+ * Diff the editor form against the master series into a single-occurrence
+ * JSCalendar patch, merged into existing `recurrenceOverrides`.
+ */
+export function occurrenceRecurrenceOverrides(
+  form: CalendarEventFormValue,
+  original: JmapCalendarEvent,
+  recurrenceId: string,
+): Record<string, JSCalendarPatchObject> | null {
+  const allDay = Boolean(original.showWithoutTime);
+  const localRid = toLocalRecurrenceId(recurrenceId, allDay, original.start);
+  const draft = formToDraft({ ...form, recurrencePreset: "none" });
+  const patch: JSCalendarPatchObject = {};
+
+  if (form.title.trim() !== (original.title ?? "")) patch.title = draft.title;
+
+  const defaultStart = allDay
+    ? `${localRid.includes("T") ? localRid.slice(0, 10) : localRid}T00:00:00`
+    : localRid;
+  if (draft.start !== defaultStart) patch.start = draft.start;
+
+  const originalDuration = original.duration ?? (allDay ? "P1D" : "PT0S");
+  if (draft.duration !== originalDuration) patch.duration = draft.duration;
+
+  if (form.allDay !== allDay) patch.showWithoutTime = form.allDay;
+
+  const originalLocation = primaryLocationName(original);
+  if (form.location.trim() !== originalLocation) {
+    patch.locations = form.location.trim()
+      ? { primary: { "@type": "Location", name: form.location.trim() } }
+      : null;
+  }
+
+  const originalDescription = typeof original.description === "string" ? original.description : "";
+  if (form.description.trim() !== originalDescription) {
+    patch.description = form.description.trim();
+  }
+
+  if (Object.keys(patch).length === 0) return null;
+
+  const existing = original.recurrenceOverrides ?? {};
+  const previous = existing[localRid] ?? {};
+  return {
+    ...existing,
+    [localRid]: { ...previous, ...patch },
+  };
+}
+
+function primaryLocationName(event: JmapCalendarEvent): string {
+  const locations = event.locations;
+  if (!locations) return "";
+  const key = Object.keys(locations).sort()[0];
+  return key ? (locations[key]?.name ?? "") : "";
 }

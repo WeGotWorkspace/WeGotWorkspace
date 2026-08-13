@@ -37,7 +37,9 @@ import { sortCalendarsForSidebar } from "@/calendar-core/src/calendar-sidebar-or
 import type { CalendarRecurrenceScopeDialogState } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import {
   eventIsRecurringSeries,
+  exclusionRecurrenceOverrides,
   forkSeriesDraftFromForm,
+  occurrenceRecurrenceOverrides,
   splitOccurrenceKey,
   truncateRecurrenceRules,
   untilBeforeRecurrenceId,
@@ -295,17 +297,33 @@ export function useCalendarController({
       if (pendingDeletedEventIds.has(masterId)) return;
 
       const wireEvent = data.events.find((entry) => entry.id === masterId);
-      const engineEvent = surfaceEvents?.get(masterId) ?? surfaceEvents?.get(key);
-      const form = wireEvent
+      const occurrenceEngine = surfaceEvents?.get(key);
+      const masterEngine = surfaceEvents?.get(masterId);
+      let form = wireEvent
         ? calendarEventToForm(wireEvent)
-        : engineEvent
-          ? engineEventToForm(engineEvent)
-          : null;
+        : masterEngine
+          ? engineEventToForm(masterEngine)
+          : occurrenceEngine
+            ? engineEventToForm(occurrenceEngine)
+            : null;
       if (!form) return;
+
+      // Prefill wall times from the clicked occurrence (master form starts at series start).
+      if (recurrenceId && occurrenceEngine) {
+        const occurrenceForm = engineEventToForm(occurrenceEngine);
+        form = {
+          ...form,
+          allDay: occurrenceForm.allDay,
+          startDate: occurrenceForm.startDate,
+          startTime: occurrenceForm.startTime,
+          endDate: occurrenceForm.endDate,
+          endTime: occurrenceForm.endTime,
+        };
+      }
 
       const isRecurring = wireEvent
         ? eventIsRecurringSeries(wireEvent)
-        : Boolean(engineEvent?.data.recurrenceRule);
+        : Boolean(masterEngine?.data.recurrenceRule ?? occurrenceEngine?.data.recurrenceRule);
       let recurrenceScope: RecurrenceEditScope | undefined;
       if (isRecurring && recurrenceId) {
         const scope = await askRecurrenceScope({
@@ -368,6 +386,25 @@ export function useCalendarController({
     const original = data.events.find((entry) => entry.id === editor.eventId);
     const patch = original ? formToPatch(editor.form, original) : formToFullPatch(editor.form);
 
+    // Only-this-instance: persist a JSCalendar recurrenceOverrides patch on the master.
+    if (editor.recurrenceScope === "thisInstance" && editor.recurrenceId) {
+      if (!original) {
+        showError(L.toastEventSaveFailed);
+        return;
+      }
+      const overrides = occurrenceRecurrenceOverrides(editor.form, original, editor.recurrenceId);
+      if (!overrides) {
+        setEditor(null);
+        return;
+      }
+      ensureCalendarVisible(editor.form.calendarId);
+      runEditorMutation(async () => {
+        const targetId = (await resolveEventId?.(editor.eventId)) ?? editor.eventId;
+        await operations.patchEvent(targetId, { recurrenceOverrides: overrides });
+      }, L.toastEventUpdated);
+      return;
+    }
+
     // This-and-future: truncate the master series, then create a forked series.
     if (editor.recurrenceScope === "thisAndFuture" && editor.recurrenceId) {
       ensureCalendarVisible(editor.form.calendarId);
@@ -376,7 +413,7 @@ export function useCalendarController({
           ? editor.eventId
           : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
         const allDay = Boolean(original?.showWithoutTime ?? editor.form.allDay);
-        const until = untilBeforeRecurrenceId(editor.recurrenceId!, allDay);
+        const until = untilBeforeRecurrenceId(editor.recurrenceId!, allDay, original?.start);
         await operations.patchEvent(targetId, {
           recurrenceRules: truncateRecurrenceRules(original?.recurrenceRules, until),
         });
@@ -410,6 +447,7 @@ export function useCalendarController({
     runEditorMutation,
     resolveEventId,
     ensureCalendarVisible,
+    showError,
     L,
   ]);
 
@@ -436,9 +474,26 @@ export function useCalendarController({
 
       setEditor(null);
 
+      if (scope === "thisInstance" && recurrenceId) {
+        setEditorBusy(true);
+        try {
+          const targetId = isWireEvent ? eventId : ((await resolveEventId?.(eventId)) ?? eventId);
+          await operations.patchEvent(targetId, {
+            recurrenceOverrides: exclusionRecurrenceOverrides(original, recurrenceId),
+          });
+          show(L.toastEventDeleted);
+          onMutated?.();
+        } catch {
+          showError(L.toastEventSaveFailed);
+        } finally {
+          setEditorBusy(false);
+        }
+        return;
+      }
+
       if (scope === "thisAndFuture" && recurrenceId) {
         const allDay = Boolean(original?.showWithoutTime);
-        const until = untilBeforeRecurrenceId(recurrenceId, allDay);
+        const until = untilBeforeRecurrenceId(recurrenceId, allDay, original?.start);
         setEditorBusy(true);
         try {
           const targetId = isWireEvent ? eventId : ((await resolveEventId?.(eventId)) ?? eventId);
@@ -632,7 +687,11 @@ export function useCalendarController({
     async (args: { masterId: string; recurrenceId: string; allDay?: boolean }) => {
       if (!operations?.patchEvent) return;
       const original = data.events.find((entry) => entry.id === args.masterId);
-      const until = untilBeforeRecurrenceId(args.recurrenceId, Boolean(args.allDay));
+      const until = untilBeforeRecurrenceId(
+        args.recurrenceId,
+        Boolean(args.allDay),
+        original?.start,
+      );
       try {
         const targetId = (await resolveEventId?.(args.masterId)) ?? args.masterId;
         await operations.patchEvent(targetId, {
@@ -652,6 +711,65 @@ export function useCalendarController({
       showError,
       onMutated,
       L.toastEventDeleted,
+      L.toastEventSaveFailed,
+    ],
+  );
+
+  /** Drag chose this-and-future: truncate master, fork a new series at the dragged times. */
+  const splitSeriesFromDrag = useCallback(
+    async (args: {
+      masterId: string;
+      recurrenceId: string;
+      allDay?: boolean;
+      start: Temporal.PlainDateTime;
+      end: Temporal.PlainDateTime;
+      summary?: string;
+      location?: string;
+      calendarId?: string;
+    }) => {
+      if (!operations?.patchEvent || !operations.createEvent) return;
+      const original = data.events.find((entry) => entry.id === args.masterId);
+      const allDay = Boolean(args.allDay ?? original?.showWithoutTime);
+      const until = untilBeforeRecurrenceId(args.recurrenceId, allDay, original?.start);
+      const startDate = args.start.toPlainDate().toString();
+      const formEnd = allDay ? args.end.subtract({ days: 1 }) : args.end;
+      const form: CalendarEventFormValue = {
+        title: args.summary?.trim() || original?.title || "",
+        calendarId:
+          args.calendarId || Object.keys(original?.calendarIds ?? {})[0] || defaultCalendarId || "",
+        allDay,
+        startDate,
+        startTime: args.start.toPlainTime().toString({ smallestUnit: "minute" }),
+        endDate: formEnd.toPlainDate().toString(),
+        endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+        location: args.location ?? "",
+        description: typeof original?.description === "string" ? original.description : "",
+        recurrencePreset: "custom",
+        customRecurrenceRules: original?.recurrenceRules?.length
+          ? original.recurrenceRules
+          : undefined,
+      };
+      try {
+        const targetId = (await resolveEventId?.(args.masterId)) ?? args.masterId;
+        await operations.patchEvent(targetId, {
+          recurrenceRules: truncateRecurrenceRules(original?.recurrenceRules, until),
+        });
+        await operations.createEvent(forkSeriesDraftFromForm(form, original?.recurrenceRules));
+        show(L.toastEventUpdated);
+        onMutated?.();
+      } catch {
+        showError(L.toastEventSaveFailed);
+      }
+    },
+    [
+      operations,
+      data.events,
+      resolveEventId,
+      defaultCalendarId,
+      show,
+      showError,
+      onMutated,
+      L.toastEventUpdated,
       L.toastEventSaveFailed,
     ],
   );
@@ -716,6 +834,7 @@ export function useCalendarController({
     askRecurrenceScope,
     recurrenceScopeDialog,
     truncateSeriesFromOccurrence,
+    splitSeriesFromDrag,
   };
 }
 

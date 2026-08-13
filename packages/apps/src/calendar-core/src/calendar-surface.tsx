@@ -42,13 +42,24 @@ export type CalendarSurfaceProps = {
    * prevented so the adapter does not persist until the dialog saves.
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
-  /** Ask All vs This-and-future before Lit drag/delete on recurring occurrences. */
+  /** Ask Only-this vs This-and-future before Lit drag/delete on recurring occurrences. */
   requestRecurrenceScope?: (request: RecurrenceScopeRequest) => Promise<RecurrenceEditScope | null>;
   /** Lit chose this-and-future delete — truncate master at the occurrence. */
   onRecurrenceFutureDelete?: (args: {
     masterId: string;
     recurrenceId: string;
     allDay?: boolean;
+  }) => void;
+  /** Lit chose this-and-future on drag — truncate master and fork at the new times. */
+  onRecurrenceFutureUpdate?: (args: {
+    masterId: string;
+    recurrenceId: string;
+    allDay?: boolean;
+    start: Temporal.PlainDateTime;
+    end: Temporal.PlainDateTime;
+    summary?: string;
+    location?: string;
+    calendarId?: string;
   }) => void;
 };
 
@@ -76,6 +87,7 @@ export function CalendarSurface({
   onCreateRequested,
   requestRecurrenceScope,
   onRecurrenceFutureDelete,
+  onRecurrenceFutureUpdate,
 }: CalendarSurfaceProps) {
   const hostRef = useRef<WgwCalendarSurface | null>(null);
 
@@ -195,6 +207,38 @@ export function CalendarSurface({
     host.addEventListener("recurrence-future-delete", handleFutureDelete);
     return () => host.removeEventListener("recurrence-future-delete", handleFutureDelete);
   }, [onRecurrenceFutureDelete]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !onRecurrenceFutureUpdate) return;
+    const handleFutureUpdate = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          masterId?: string;
+          recurrenceId?: string;
+          allDay?: boolean;
+          start?: Temporal.PlainDateTime;
+          end?: Temporal.PlainDateTime;
+          summary?: string;
+          location?: string;
+          calendarId?: string;
+        }>
+      ).detail;
+      if (!detail?.masterId || !detail.recurrenceId || !detail.start || !detail.end) return;
+      onRecurrenceFutureUpdate({
+        masterId: detail.masterId,
+        recurrenceId: detail.recurrenceId,
+        allDay: detail.allDay,
+        start: detail.start,
+        end: detail.end,
+        summary: detail.summary,
+        location: detail.location,
+        calendarId: detail.calendarId,
+      });
+    };
+    host.addEventListener("recurrence-future-update", handleFutureUpdate);
+    return () => host.removeEventListener("recurrence-future-update", handleFutureUpdate);
+  }, [onRecurrenceFutureUpdate]);
 
   return createElement("wgw-calendar-surface", {
     ref: hostRef,

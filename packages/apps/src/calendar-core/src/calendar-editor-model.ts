@@ -15,8 +15,8 @@ import {
 
 /**
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.
- * Editing a recurring occurrence edits the master series in v1 (per-occurrence
- * exceptions are a documented follow-up alongside drag interactions).
+ * Recurring occurrence edits use `recurrenceScope` on the controller
+ * (`thisInstance` → recurrenceOverrides, `thisAndFuture` → truncate+fork).
  */
 
 export type CalendarEventFormValue = {

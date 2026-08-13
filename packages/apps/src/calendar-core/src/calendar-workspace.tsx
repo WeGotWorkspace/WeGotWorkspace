@@ -104,6 +104,7 @@ export function CalendarWorkspace({
     askRecurrenceScope,
     recurrenceScopeDialog,
     truncateSeriesFromOccurrence,
+    splitSeriesFromDrag,
   } = controller;
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
@@ -270,6 +271,7 @@ export function CalendarWorkspace({
               contextValue={surface?.contextValue}
               requestRecurrenceScope={askRecurrenceScope}
               onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
+              onRecurrenceFutureUpdate={splitSeriesFromDrag}
               onEventSelected={canWrite ? openEditEventKey : undefined}
               onViewChange={selectView}
               onStartDateChange={setAnchor}
