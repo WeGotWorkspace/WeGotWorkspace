@@ -48,13 +48,13 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.litSurface).toEqual({ view: "day", presentation: "grid" });
   });
 
-  it("togglePresentation switches list/grid without changing the time-range view", () => {
+  it("setPresentation switches list/grid without changing the time-range view", () => {
     const { result } = renderHook(() =>
       useCalendarController({ data: bootstrap.data, initialView: "week" }),
     );
 
     act(() => {
-      result.current.togglePresentation();
+      result.current.setPresentation("list");
     });
 
     expect(result.current.view).toBe("week");

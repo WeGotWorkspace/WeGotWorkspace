@@ -1,12 +1,4 @@
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  LayoutList,
-  Pencil,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -14,6 +6,7 @@ import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
+import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -77,7 +70,7 @@ export function CalendarWorkspace({
     view,
     selectView,
     presentation,
-    togglePresentation,
+    setPresentation,
     anchor,
     title,
     goToday,
@@ -247,18 +240,11 @@ export function CalendarWorkspace({
                     ))}
                   </SelectContent>
                 </Select>
-                <IconButton
-                  label={presentation === "list" ? L.showAsCalendar : L.showAsList}
-                  icon={
-                    presentation === "list" ? (
-                      <CalendarDays className="size-4" aria-hidden />
-                    ) : (
-                      <LayoutList className="size-4" aria-hidden />
-                    )
-                  }
-                  variant="subtle"
-                  active={presentation === "list"}
-                  onClick={togglePresentation}
+                <ViewModeToggle
+                  value={presentation}
+                  onChange={setPresentation}
+                  gridLabel={L.showAsCalendar}
+                  listLabel={L.showAsList}
                 />
                 <IconButton
                   label={L.previousPeriod}

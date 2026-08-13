@@ -201,10 +201,6 @@ export function useCalendarController({
   );
   const goNext = useCallback(() => setAnchor((current) => shiftAnchor(view, current, 1)), [view]);
 
-  const togglePresentation = useCallback(() => {
-    setPresentation((current) => (current === "list" ? "grid" : "list"));
-  }, []);
-
   const ensureCalendarVisible = useCallback((calendarId: string) => {
     setHiddenCalendarIds((current) => {
       if (!current.has(calendarId)) return current;
@@ -687,7 +683,7 @@ export function useCalendarController({
     view,
     selectView,
     presentation,
-    togglePresentation,
+    setPresentation,
     anchor,
     setAnchor,
     dateRange,
