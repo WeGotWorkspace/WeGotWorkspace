@@ -12,6 +12,7 @@ import {
   forkSeriesDraftFromForm,
   formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
+  resolveRecurrenceMasterRef,
   seriesRecurrenceRulesForSplit,
   splitOccurrenceKey,
   toLocalRecurrenceId,
@@ -70,6 +71,58 @@ describe("calendar-recurrence-scope", () => {
       masterId: "master",
       recurrenceId: "20260311T090000",
     });
+  });
+
+  it("resolves recurrence master by JMAP id or JSCalendar uid", () => {
+    const wire = {
+      id: "standup",
+      uid: "urn:uuid:mock-standup",
+      "@type": "Event",
+      title: "Team standup",
+      start: "2033-01-10T09:30:00",
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly" }],
+    } as JmapCalendarEvent;
+    const surface = new Map([
+      [
+        "standup",
+        {
+          eventId: "urn:uuid:mock-standup",
+          calendarId: "work",
+          isRecurring: true,
+          data: {
+            start: Temporal.PlainDateTime.from("2033-01-10T09:30:00"),
+            duration: Temporal.Duration.from("PT30M"),
+            summary: "Team standup",
+            recurrenceRule: { freq: "WEEKLY" as const },
+          },
+        },
+      ],
+    ]);
+
+    expect(resolveRecurrenceMasterRef("standup", [wire], surface).masterKey).toBe("standup");
+    expect(resolveRecurrenceMasterRef("urn:uuid:mock-standup", [wire], surface)).toEqual(
+      expect.objectContaining({
+        masterKey: "standup",
+        original: wire,
+      }),
+    );
+  });
+
+  it("Lit this-and-future drag/delete passes engine master key not envelope uid", () => {
+    const viewBase = readFileSync(
+      path.join(appsSrcRoot, "lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts"),
+      "utf8",
+    );
+    expect(viewBase).toContain("seriesMasterKey");
+    expect(viewBase).toContain("masterId: seriesMasterKey");
+    expect(viewBase).not.toMatch(
+      /recurrence-future-update[\s\S]*masterId:\s*detail\.envelope\.eventId/,
+    );
+    expect(viewBase).not.toMatch(
+      /recurrence-future-delete[\s\S]*masterId:\s*detail\.envelope\.eventId/,
+    );
   });
 
   it("detects recurring series from wire rules", () => {

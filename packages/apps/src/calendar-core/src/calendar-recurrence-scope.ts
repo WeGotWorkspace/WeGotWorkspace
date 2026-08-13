@@ -1,5 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { parseRecurrenceId } from "@/lib/calendar-engine";
+import {
+  parseRecurrenceId,
+  type CalendarEvent as EngineCalendarEvent,
+  type CalendarEventsMap,
+} from "@/lib/calendar-engine";
 import type {
   JmapCalendarEvent,
   JSCalendarPatchObject,
@@ -36,6 +40,43 @@ export function splitOccurrenceKey(key: string): { masterId: string; recurrenceI
   const separator = key.indexOf("::");
   if (separator === -1) return { masterId: key };
   return { masterId: key.slice(0, separator), recurrenceId: key.slice(separator + 2) };
+}
+
+/**
+ * Resolve a recurring series master whether `masterId` is the engine/JMAP map
+ * key or the JSCalendar `uid` (Lit update envelopes historically used `eventId` = uid).
+ */
+export function resolveRecurrenceMasterRef(
+  masterId: string,
+  wireEvents: readonly JmapCalendarEvent[],
+  surfaceEvents?: CalendarEventsMap,
+): {
+  masterKey: string;
+  original: JmapCalendarEvent | undefined;
+  masterEngine: EngineCalendarEvent | undefined;
+} {
+  const byId = wireEvents.find((entry) => entry.id === masterId);
+  const byUid = byId ? undefined : wireEvents.find((entry) => entry.uid === masterId);
+  let original = byId ?? byUid;
+  let masterKey = byId ? masterId : (original?.id ?? masterId);
+  let masterEngine = surfaceEvents?.get(masterKey) ?? surfaceEvents?.get(masterId);
+
+  if (!masterEngine && surfaceEvents) {
+    for (const [key, event] of surfaceEvents) {
+      if (key.includes("::")) continue;
+      if (event.eventId === masterId) {
+        masterEngine = event;
+        masterKey = key;
+        break;
+      }
+    }
+  }
+
+  if (!original && masterKey !== masterId) {
+    original = wireEvents.find((entry) => entry.id === masterKey);
+  }
+
+  return { masterKey, original, masterEngine };
 }
 
 export function eventIsRecurringSeries(event: Pick<JmapCalendarEvent, "recurrenceRules">): boolean {

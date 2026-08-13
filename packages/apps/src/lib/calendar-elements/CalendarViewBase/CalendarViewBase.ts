@@ -292,10 +292,15 @@ export abstract class CalendarViewBase extends BaseElement {
     );
 
     if (shouldPromptForSeries && recurrenceId) {
+      // Engine/JMAP map key — not JSCalendar uid (`envelope.eventId`). React
+      // truncate/fork looks up bootstrap + surface by this key.
+      const seriesMasterKey = eventKey.includes("::")
+        ? eventKey.slice(0, eventKey.indexOf("::"))
+        : eventKey;
       const moveTarget = this.#formatScopeMoveTarget(detail.content.start, Boolean(data.allDay));
       const scope = await this.#askRecurrenceScope({
         action: "update",
-        masterId: detail.envelope.eventId,
+        masterId: seriesMasterKey,
         recurrenceId,
         description: moveTarget
           ? `Do you want to move only this occurrence to ${moveTarget}, or change the date for this and all future events?`
@@ -329,7 +334,7 @@ export abstract class CalendarViewBase extends BaseElement {
       this.dispatchEvent(
         new CustomEvent("recurrence-future-update", {
           detail: {
-            masterId: detail.envelope.eventId,
+            masterId: seriesMasterKey,
             recurrenceId,
             allDay: Boolean(data.allDay),
             start: detail.content.start,
@@ -406,9 +411,12 @@ export abstract class CalendarViewBase extends BaseElement {
     const shouldPromptForSeries = isRecurring && !isCalendarEventException(current);
 
     if (shouldPromptForSeries) {
+      const seriesMasterKey = eventKey.includes("::")
+        ? eventKey.slice(0, eventKey.indexOf("::"))
+        : eventKey;
       const scope = await this.#askRecurrenceScope({
         action: "delete",
-        masterId: detail.envelope.eventId,
+        masterId: seriesMasterKey,
         recurrenceId,
       });
       if (!scope) return true;
@@ -418,9 +426,7 @@ export abstract class CalendarViewBase extends BaseElement {
         const masterKey =
           detail.envelope.eventId && events.has(detail.envelope.eventId)
             ? detail.envelope.eventId
-            : eventKey.includes("::")
-              ? eventKey.slice(0, eventKey.indexOf("::"))
-              : eventKey;
+            : seriesMasterKey;
         const removeInput = fromDeleteRequest(detail);
         return this.#applyDeleteAndNotify(masterKey, {
           type: "remove",
@@ -437,7 +443,7 @@ export abstract class CalendarViewBase extends BaseElement {
         this.dispatchEvent(
           new CustomEvent("recurrence-future-delete", {
             detail: {
-              masterId: detail.envelope.eventId,
+              masterId: seriesMasterKey,
               recurrenceId,
               allDay: Boolean(current.data.allDay),
             },

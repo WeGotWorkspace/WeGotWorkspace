@@ -42,6 +42,7 @@ import {
   forkSeriesDraftFromForm,
   formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
+  resolveRecurrenceMasterRef,
   seriesRecurrenceRulesForSplit,
   splitOccurrenceKey,
   truncateRecurrenceRules,
@@ -731,20 +732,23 @@ export function useCalendarController({
   const truncateSeriesFromOccurrence = useCallback(
     async (args: { masterId: string; recurrenceId: string; allDay?: boolean }) => {
       if (!operations?.patchEvent) return;
-      const original = data.events.find((entry) => entry.id === args.masterId);
+      const { masterKey, original, masterEngine } = resolveRecurrenceMasterRef(
+        args.masterId,
+        data.events,
+        surfaceEvents,
+      );
       const until = untilBeforeRecurrenceId(
         args.recurrenceId,
         Boolean(args.allDay),
         original?.start,
       );
-      const masterEngine = surfaceEvents?.get(args.masterId);
       const seriesRules = original?.recurrenceRules?.length
         ? original.recurrenceRules
         : masterEngine
           ? seriesRecurrenceRulesForSplit(undefined, engineEventToForm(masterEngine))
           : null;
       try {
-        const targetId = (await resolveEventId?.(args.masterId)) ?? args.masterId;
+        const targetId = (await resolveEventId?.(masterKey)) ?? masterKey;
         await operations.patchEvent(targetId, {
           recurrenceRules: truncateRecurrenceRules(seriesRules, until),
         });
@@ -780,8 +784,11 @@ export function useCalendarController({
       calendarId?: string;
     }) => {
       if (!operations?.patchEvent || !operations.createEvent) return;
-      const original = data.events.find((entry) => entry.id === args.masterId);
-      const masterEngine = surfaceEvents?.get(args.masterId);
+      const { masterKey, original, masterEngine } = resolveRecurrenceMasterRef(
+        args.masterId,
+        data.events,
+        surfaceEvents,
+      );
       const allDay = Boolean(args.allDay ?? original?.showWithoutTime ?? masterEngine?.data.allDay);
       const until = untilBeforeRecurrenceId(args.recurrenceId, allDay, original?.start);
       const startDate = args.start.toPlainDate().toString();
@@ -819,7 +826,7 @@ export function useCalendarController({
         ...(seriesRules?.length ? { customRecurrenceRules: seriesRules } : {}),
       };
       try {
-        const targetId = (await resolveEventId?.(args.masterId)) ?? args.masterId;
+        const targetId = (await resolveEventId?.(masterKey)) ?? masterKey;
         await operations.patchEvent(targetId, {
           recurrenceRules: truncateRecurrenceRules(seriesRules, until),
         });

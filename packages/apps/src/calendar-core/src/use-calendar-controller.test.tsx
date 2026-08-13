@@ -832,6 +832,67 @@ describe("useCalendarController recurring scopes", () => {
       expect.objectContaining({
         title: "Team standup",
         start: "2033-01-12T11:00:00",
+        duration: "PT30M",
+        recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
+      }),
+    );
+  });
+
+  it("splitSeriesFromDrag resolves JSCalendar uid masterId and applies resized wall times", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue({ id: "drag-fork-uid" });
+    const wireMaster = bootstrap.data.events.find((event) => event.id === "standup")!;
+    const surfaceEvents: CalendarEventsMap = new Map();
+    surfaceEvents.set("standup", {
+      eventId: wireMaster.uid,
+      calendarId: "work",
+      isRecurring: true,
+      data: {
+        start: Temporal.PlainDateTime.from("2033-01-10T09:30:00"),
+        duration: Temporal.Duration.from("PT30M"),
+        summary: "Team standup",
+        recurrenceRule: {
+          freq: "WEEKLY" as const,
+          byDay: [{ day: "MO" as const }],
+        },
+      },
+    } as CalendarEvent);
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        surfaceEvents,
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    // Lit historically passed envelope.eventId (uid) — must still fork at new times.
+    await act(async () => {
+      await result.current.splitSeriesFromDrag({
+        masterId: wireMaster.uid,
+        recurrenceId: "2033-01-12T09:30:00",
+        start: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T12:00:00"),
+        summary: "Team standup",
+        calendarId: "work",
+      });
+    });
+
+    expect(patchEvent).toHaveBeenCalledWith(
+      "standup",
+      expect.objectContaining({
+        recurrenceRules: [
+          expect.objectContaining({
+            frequency: "weekly",
+            until: "2033-01-12T09:29:59",
+          }),
+        ],
+      }),
+    );
+    expect(createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start: "2033-01-12T11:00:00",
+        duration: "PT1H",
         recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
       }),
     );
