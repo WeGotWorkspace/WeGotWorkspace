@@ -16,7 +16,7 @@ One `/api/v1/jmap` front for every JMAP-backed domain. The envelope machinery fr
 | Calendars | draft-ietf-jmap-calendars-27 | In progress (shipped in #430) | `urn:ietf:params:jmap:calendars` |
 | Contacts | **RFC 9610** (JSContact: RFC 9553) | **Final** | `urn:ietf:params:jmap:contacts` |
 | Mail | **RFC 8621** | **Final** | `urn:ietf:params:jmap:mail` (+ `:submission`) |
-| Tasks | draft-ietf-jmap-tasks-06 | **Expired draft** (last revision 2023-03-10; WG milestone slipped to Jul 2026) | `urn:ietf:params:jmap:tasks` |
+| Tasks | draft-ietf-jmap-tasks-06 | **Expired draft** (last revision 2023-03-10; IESG-submission milestone since slipped to Mar 2027) | `urn:ietf:params:jmap:tasks` |
 | Files | draft-ietf-jmap-filenode-14 | **Active draft** (2026-05-15, expires 2026-11-16) | `urn:ietf:params:jmap:filenode` |
 | Sharing | RFC 9670 | Final (referenced by filenode; not built here) | — |
 
