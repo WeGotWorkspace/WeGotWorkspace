@@ -1,16 +1,4 @@
-/**
- * Ported verbatim from lit-calendar `TimeLine/StaggerLayout.ts` (UX reference
- * for the timed grids): calendar-style overlap placement for one column's
- * events, intervals `[start, end)` in any consistent unit.
- */
-
-export type StaggerEventLayout = {
-  groupIndex: number;
-  groupSize: number;
-  indent: number;
-};
-
-type StaggerInterval = { start: number; end: number };
+import type { StaggerEventLayout, TimelineEvent } from "../types/TimeLine";
 
 function heapPush(heap: number[], value: number): void {
   heap.push(value);
@@ -50,12 +38,22 @@ function heapPop(heap: number[]): void {
 }
 
 /**
- * Events sharing the exact same start split the width evenly
- * (`groupIndex`/`groupSize`, no indent); an event with a unique start keeps
- * near-full width with `indent` = number of earlier-starting events still
- * running. Single sweep with a min-heap of active ends — O(n log n).
+ * Calendar-style overlap placement for one cell's events (intervals are `[start, end)`, already
+ * clamped to the cell). Matches the reference grid behavior (TimedEvent):
+ *
+ * - Events sharing the exact same start form a group that splits the width evenly
+ *   (`groupIndex` / `groupSize`), with no indent.
+ * - An event whose start differs from every concurrent event keeps near-full width and gets
+ *   `indent` = number of earlier-starting events still running at its start; it renders indented
+ *   at the inline start and above them (z-order), cascading per overlap level.
+ *
+ * Single pass: sort by start (stable by index), then sweep with a min-heap of active end values —
+ * O(n log n), no DOM access, no pairwise sibling scans. Results are positional (index-aligned
+ * with the input).
  */
-export function computeStaggerLayout(events: readonly StaggerInterval[]): StaggerEventLayout[] {
+export function computeStaggerLayout(
+  events: readonly Pick<TimelineEvent, "start" | "end">[],
+): StaggerEventLayout[] {
   const n = events.length;
   const result: StaggerEventLayout[] = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -69,6 +67,7 @@ export function computeStaggerLayout(events: readonly StaggerInterval[]): Stagge
     return startA - startB || a - b;
   });
 
+  /** Min-heap of end values of already-started events (the sweep's active set). */
   const activeEnds: number[] = [];
 
   let groupBegin = 0;
@@ -77,6 +76,7 @@ export function computeStaggerLayout(events: readonly StaggerInterval[]): Stagge
     let groupEnd = groupBegin + 1;
     while (groupEnd < n && (events[order[groupEnd] ?? 0]?.start ?? 0) === start) groupEnd++;
 
+    // Drop earlier events that ended at or before this start; the rest all overlap this group.
     while (activeEnds.length && (activeEnds[0] ?? Infinity) <= start) heapPop(activeEnds);
     const depth = activeEnds.length;
     const groupSize = groupEnd - groupBegin;
@@ -87,6 +87,7 @@ export function computeStaggerLayout(events: readonly StaggerInterval[]): Stagge
       if (placement) {
         placement.groupIndex = k - groupBegin;
         placement.groupSize = groupSize;
+        // Reference grid behavior: a same-start group splits the width and is never indented.
         placement.indent = groupSize > 1 ? 0 : depth;
       }
       const end = events[index]?.end ?? start;

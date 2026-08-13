@@ -1,4 +1,5 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import type {
   CalendarAPIOperations,
   CalendarUIData,
@@ -11,6 +12,8 @@ export type CalendarWorkspaceProps = {
   session: WorkspaceSession;
   labels?: Partial<CalendarUILabels>;
   operations?: CalendarAPIOperations;
+  /** Adapter-backed store for the lit views; omitted = read-only empty surface. */
+  surface?: CalendarSurfaceStore;
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   initialView?: CalendarViewId;

@@ -28,6 +28,7 @@ export type UseCalendarAPIOptions = {
 
 export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendarAPIOptions) {
   const resolvedSource = useMemo(() => source ?? createDefaultCalendarApiSource(), [source]);
+  const jmapClient = useMemo(() => resolvedSource.createJmapClient?.(), [resolvedSource]);
   const placeholderData = useMemo<CalendarUIData>(() => ({ calendars: [], events: [] }), []);
 
   const runBootstrap = useCallback(() => resolvedSource.loadBootstrap(), [resolvedSource]);
@@ -110,5 +111,6 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     data: data?.data ?? placeholderData,
     operations,
     offlineUsername,
+    jmapClient,
   };
 }

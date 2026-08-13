@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:host > div[role="radiogroup"] {
+  @apply inline-flex items-stretch gap-0 border-0 border-b border-solid;
+  --_lc-switch-active-color: var(
+    --lc-switch-active-color,
+    light-dark(rgb(15 23 42 / 95%), rgb(255 255 255 / 98%))
+  );
+  --_lc-switch-border-color: light-dark(
+    var(--_lc-grid-line-color, rgb(15 23 42 / 14%)),
+    var(--_lc-grid-line-color, rgb(255 255 255 / 16%))
+  );
+  border-color: var(--_lc-switch-border-color);
+}
+
+:host > div[role="radiogroup"] > div {
+  @apply flex items-center;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"] {
+  @apply sr-only;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"] + label {
+  @apply inline-flex h-9 items-center justify-center border-0 rounded-none bg-transparent px-3;
+  @apply transition-colors duration-150;
+  color: light-dark(rgb(15 23 42 / 56%), rgb(255 255 255 / 58%));
+  cursor: pointer;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"]:focus-visible + label {
+  @apply rounded-lg outline-solid outline-2 outline-offset-2 ring-2 ring-offset-2;
+  outline-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  --tw-ring-color: light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%));
+  --tw-ring-offset-color: light-dark(rgb(255 255 255), rgb(2 6 23));
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"]:disabled + label {
+  @apply cursor-not-allowed opacity-55;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"] + label:hover {
+  color: var(--_lc-switch-active-color);
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"]:checked + label {
+  color: var(--_lc-switch-active-color);
+}
+
+:host([compact]) > div[role="radiogroup"] > div > input[type="radio"] + label {
+  @apply min-w-9 px-2;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"] + label > span {
+  @apply inline-flex h-full box-border items-center border-b-2 border-transparent;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"]:checked + label > span {
+  @apply border-b-current;
+}
+
+:host > div[role="radiogroup"] > div > input[type="radio"] + label > span > svg {
+  @apply block h-4 w-4;
+}

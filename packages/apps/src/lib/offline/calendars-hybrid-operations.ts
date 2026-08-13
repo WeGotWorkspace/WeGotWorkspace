@@ -112,9 +112,15 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
     patchEvent: async (eventId, patch) => {
       const existing = await resolveCachedEvent(username, eventId);
       if (!existing) {
-        throw new Error(
-          !readBrowserOnline() ? "Event not found in cache while offline" : "Event not found",
-        );
+        if (!readBrowserOnline()) {
+          throw new Error("Event not found in cache while offline");
+        }
+        // Not in the cache (e.g. just drag-created through the jmap adapter):
+        // patch straight through and add the result to the cache.
+        const event = await patchCalendarEventLive(eventId, patch);
+        await upsertCalendarEventInCache(username, event, false);
+        await runner.flush();
+        return event;
       }
       const queueOffline = async () => {
         const optimistic = applyCalendarEventPatch(existing, patch);

@@ -80,6 +80,15 @@ export class JmapEventsAdapter {
     this.#calendars = new JmapCalendarsClient(options.client);
   }
 
+  /**
+   * WGW addition: the server-side JMAP id for an engine master key (undefined
+   * while a local create is still awaiting its push). The workspace editor
+   * uses this to address adapter-created events through the set transport.
+   */
+  jmapIdForKey(masterKey: string): JmapId | undefined {
+    return this.#jmapIdByKey.get(masterKey);
+  }
+
   get accountId(): JmapId {
     if (this.#accountId) return this.#accountId;
     this.#accountId = this.#options.accountId ?? this.#options.client.primaryAccountId();

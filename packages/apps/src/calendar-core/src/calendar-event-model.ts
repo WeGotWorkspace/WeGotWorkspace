@@ -116,6 +116,10 @@ export function viewDateRange(view: CalendarViewId, anchorISO: string): Calendar
     }
     case "agenda":
       return { start: anchor, end: anchor.add({ days: AGENDA_DAYS }) };
+    case "year": {
+      const first = anchor.with({ month: 1, day: 1 });
+      return { start: first, end: first.add({ years: 1 }) };
+    }
     case "month": {
       const first = anchor.with({ day: 1 });
       const gridStart = first.subtract({ days: first.dayOfWeek - 1 });
@@ -137,6 +141,8 @@ export function shiftAnchor(view: CalendarViewId, anchorISO: string, direction: 
       return anchor.add({ days: AGENDA_DAYS * direction }).toString();
     case "month":
       return anchor.add({ months: direction }).with({ day: 1 }).toString();
+    case "year":
+      return anchor.add({ years: direction }).with({ month: 1, day: 1 }).toString();
   }
 }
 

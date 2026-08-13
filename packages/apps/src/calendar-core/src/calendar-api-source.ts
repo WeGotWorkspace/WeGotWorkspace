@@ -1,90 +1,69 @@
-import {
-  createCalendarAppBootstrap,
-  type CalendarAppBootstrap,
-} from "@/lib/api/mock/calendar-bootstrap";
+import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createCalendarEventLive,
+  createCalendarJmapClient,
+  deleteCalendarEventLive,
+  fetchCalendarBootstrapForClient,
+  patchCalendarEventLive,
+} from "@/lib/api/wgw/calendar";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { JmapClient, MockJmapServer, type JmapCalendar } from "@/lib/jmap-client";
 import {
   createHybridCalendarOperations,
   loadCalendarBootstrapHybrid,
 } from "@/lib/offline/calendars-hybrid-operations";
 import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
-import type { CalendarAPIOperations, CalendarEventDraft } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 
 export type CalendarApiSource = {
   loadBootstrap: () => Promise<CalendarAppBootstrap>;
   createOperations: (bootstrap?: CalendarAppBootstrap) => CalendarAPIOperations | undefined;
+  /** Client for the interactive lit surface's JmapEventsAdapter (undefined = read-only surface). */
+  createJmapClient?: () => JmapClient;
 };
 
-function draftToWireEvent(id: string, draft: CalendarEventDraft): JmapCalendarEvent {
-  return {
-    "@type": "Event",
-    id,
-    uid: `urn:uuid:${crypto.randomUUID()}`,
-    calendarIds: { [draft.calendarId]: true },
-    title: draft.title,
-    start: draft.start,
-    duration: draft.duration,
-    ...(draft.timeZone ? { timeZone: draft.timeZone } : {}),
-    ...(draft.allDay ? { showWithoutTime: true } : {}),
-    ...(draft.location
-      ? { locations: { primary: { "@type": "Location", name: draft.location } } }
-      : {}),
-    ...(draft.description ? { description: draft.description } : {}),
-  } as JmapCalendarEvent;
-}
-
-function createMockCalendarOperations(
-  getBootstrap: () => CalendarAppBootstrap,
-  setBootstrap: (next: CalendarAppBootstrap) => void,
-): CalendarAPIOperations {
-  const updateEvents = (updater: (events: JmapCalendarEvent[]) => JmapCalendarEvent[]) => {
-    const current = getBootstrap();
-    setBootstrap({
-      ...current,
-      data: { ...current.data, events: updater(current.data.events) },
-    });
-  };
-
-  return {
-    createEvent: async (draft) => {
-      const created = draftToWireEvent(`event-${Date.now()}`, draft);
-      updateEvents((events) => [...events, created]);
-      return created;
-    },
-    patchEvent: async (eventId, patch) => {
-      let updated: JmapCalendarEvent | null = null;
-      updateEvents((events) =>
-        events.map((event) => {
-          if (event.id !== eventId) return event;
-          updated = {
-            ...event,
-            ...(patch.title !== undefined ? { title: patch.title } : {}),
-            ...(patch.start !== undefined ? { start: patch.start } : {}),
-            ...(patch.duration !== undefined ? { duration: patch.duration } : {}),
-            ...(patch.timeZone !== undefined ? { timeZone: patch.timeZone } : {}),
-            ...(patch.allDay !== undefined ? { showWithoutTime: patch.allDay } : {}),
-            ...(patch.calendarId !== undefined
-              ? { calendarIds: { [patch.calendarId]: true as const } }
-              : {}),
-          };
-          return updated;
-        }),
-      );
-      if (!updated) throw new Error("Event not found");
-      return updated;
-    },
-    deleteEvent: async (eventId) => {
-      updateEvents((events) => events.filter((event) => event.id !== eventId));
-    },
-  };
-}
+const FULL_RIGHTS = {
+  mayReadFreeBusy: true,
+  mayReadItems: true,
+  mayWriteAll: true,
+  mayWriteOwn: true,
+  mayUpdatePrivate: true,
+  mayRSVP: true,
+  mayShare: false,
+  mayDelete: true,
+};
 
 /**
- * Live source lands with the offline domain (chunk C): hybrid bootstrap over
- * the vendored jmap-client + Dexie cache, mirroring tasks-api-source.ts.
+ * Mock mode runs the vendored MockJmapServer seeded from the mock bootstrap,
+ * so stories and the mock route exercise the exact same jmap paths (and the
+ * same adapter-driven drag interactions) as the live app.
  */
+function createMockJmapServer(): MockJmapServer {
+  const server = new MockJmapServer();
+  const bootstrap = createCalendarAppBootstrap();
+  for (const calendar of bootstrap.data.calendars) {
+    server.seedCalendar({
+      id: calendar.id,
+      name: calendar.name,
+      color: calendar.color,
+      isDefault: calendar.isDefault === true,
+      isVisible: calendar.isVisible !== false,
+      myRights: {
+        ...FULL_RIGHTS,
+        mayWriteAll: calendar.mayWrite !== false,
+        mayWriteOwn: calendar.mayWrite !== false,
+      },
+    } as JmapCalendar);
+  }
+  for (const event of bootstrap.data.events) {
+    server.seedEvent(event);
+  }
+  return server;
+}
+
 /** Live source: jmap bootstrap + Dexie cache + hybrid (online/queued) writes. */
 export function createHybridCalendarApiSource(): CalendarApiSource {
   return {
@@ -94,26 +73,32 @@ export function createHybridCalendarApiSource(): CalendarApiSource {
       if (!username) return undefined;
       return createHybridCalendarOperations(username);
     },
+    // The adapter gets its own client — see createCalendarJmapClient's note
+    // on JmapClient sync-state tracking.
+    createJmapClient: createCalendarJmapClient,
+  };
+}
+
+export function createMockCalendarApiSource(): CalendarApiSource {
+  const server = createMockJmapServer();
+  const clientFor = () => new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch });
+  const opsClient = clientFor();
+  return {
+    loadBootstrap: () => fetchCalendarBootstrapForClient(opsClient, mockWorkspaceSession),
+    createOperations: () => ({
+      createEvent: (draft) => createCalendarEventLive(draft, opsClient),
+      patchEvent: (eventId, patch) => patchCalendarEventLive(eventId, patch, opsClient),
+      deleteEvent: (eventId) => deleteCalendarEventLive(eventId, opsClient),
+    }),
+    // Separate client for the adapter — independent sync-state tracking.
+    createJmapClient: clientFor,
   };
 }
 
 export function createDefaultCalendarApiSource(): CalendarApiSource {
-  let mockBootstrap = createCalendarAppBootstrap();
-
-  const mockSource: CalendarApiSource = {
-    loadBootstrap: () => Promise.resolve(mockBootstrap),
-    createOperations: () =>
-      createMockCalendarOperations(
-        () => mockBootstrap,
-        (next) => {
-          mockBootstrap = next;
-        },
-      ),
-  };
-
   return createWorkspaceSource<CalendarApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => mockSource,
+    createMockSource: createMockCalendarApiSource,
     createLiveSource: createHybridCalendarApiSource,
   });
 }

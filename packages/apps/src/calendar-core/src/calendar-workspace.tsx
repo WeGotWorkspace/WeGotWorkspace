@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
@@ -12,23 +13,21 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
-import { CalendarAgendaView } from "@/calendar-core/src/calendar-agenda-view";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
-import { CalendarMonthView } from "@/calendar-core/src/views/calendar-month-view";
-import { CalendarTimeGridView } from "@/calendar-core/src/views/calendar-time-grid-view";
+import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import "./calendar-workspace.css";
-import "./views/calendar-views.css";
 
-const VIEW_ORDER: CalendarViewId[] = ["month", "week", "day", "agenda"];
+const VIEW_ORDER: CalendarViewId[] = ["month", "week", "day", "year", "agenda"];
 
 export function CalendarWorkspace({
   data,
   session,
   labels,
   operations,
+  surface,
   listRefreshing = false,
   onRefreshList,
   initialView,
@@ -44,15 +43,18 @@ export function CalendarWorkspace({
     initialView,
     initialAnchor,
     onViewChange,
-    onMutated: onRefreshList,
+    surfaceEvents: surface?.events,
+    resolveEventId: surface?.resolveJmapId,
+    onMutated: () => {
+      surface?.syncNow();
+      onRefreshList?.();
+    },
   });
 
   const {
     L,
     view,
     selectView,
-    setAnchor,
-    dateRange,
     anchor,
     title,
     goToday,
@@ -63,35 +65,27 @@ export function CalendarWorkspace({
     calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
-    occurrences,
+    visibleCalendarIds,
+    litSurface,
     editor,
     editorBusy,
     openCreateEvent,
-    openEditOccurrence,
+    openEditEventKey,
     closeEditor,
     setEditorForm,
     saveEditor,
     deleteEditorEvent,
   } = controller;
 
-  const openDay = (dateISO: string) => {
-    setAnchor(dateISO);
-    selectView("day");
-  };
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
 
   const viewLabels: Record<CalendarViewId, string> = {
     month: L.viewMonth,
     week: L.viewWeek,
     day: L.viewDay,
+    year: L.viewYear,
     agenda: L.viewAgenda,
   };
-
-  const viewItems: MenuItemProps[] = VIEW_ORDER.map((id) => ({
-    label: viewLabels[id],
-    selected: view === id,
-    onClick: () => selectView(id),
-  }));
 
   const calendarItems: MenuItemProps[] = calendars.map((calendar) => ({
     label: calendar.name,
@@ -147,7 +141,6 @@ export function CalendarWorkspace({
               />
             }
           >
-            <SidebarSection title={L.viewsSection} items={viewItems} />
             <SidebarSection title={L.calendarsSection} items={calendarItems} />
           </AppSidebar>
         }
@@ -158,6 +151,18 @@ export function CalendarWorkspace({
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             actions={
               <div className="calendar-header-actions">
+                <Select value={view} onValueChange={(next) => selectView(next as CalendarViewId)}>
+                  <SelectTrigger className="calendar-view-select" aria-label={L.viewSelectLabel}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VIEW_ORDER.map((id) => (
+                      <SelectItem key={id} value={id}>
+                        {viewLabels[id]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <IconButton
                   label={L.previousPeriod}
                   icon={<ChevronLeft className="size-4" />}
@@ -185,31 +190,15 @@ export function CalendarWorkspace({
         }
         main={
           <div className="calendar-main" data-view={view}>
-            {view === "agenda" ? (
-              <CalendarAgendaView
-                occurrences={occurrences}
-                labels={L}
-                onSelectOccurrence={canWrite ? openEditOccurrence : undefined}
-              />
-            ) : view === "month" ? (
-              <CalendarMonthView
-                range={dateRange}
-                anchor={anchor}
-                occurrences={occurrences}
-                labels={L}
-                onSelectDay={openDay}
-                onSelectOccurrence={canWrite ? openEditOccurrence : undefined}
-              />
-            ) : (
-              <CalendarTimeGridView
-                range={dateRange}
-                occurrences={occurrences}
-                labels={L}
-                onSelectDay={openDay}
-                onSelectOccurrence={canWrite ? openEditOccurrence : undefined}
-                onCreateSlot={canWrite ? openCreateEvent : undefined}
-              />
-            )}
+            <CalendarSurface
+              view={litSurface.view}
+              presentation={litSurface.presentation}
+              startDate={anchor}
+              events={surface?.events ?? new Map()}
+              visibleCalendarIds={[...visibleCalendarIds]}
+              contextValue={surface?.contextValue}
+              onEventSelected={canWrite ? openEditEventKey : undefined}
+            />
           </div>
         }
       />

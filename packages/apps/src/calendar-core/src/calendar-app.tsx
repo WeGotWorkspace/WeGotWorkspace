@@ -3,6 +3,7 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
+import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
 
 export type CalendarAppProps = {
   apiSource?: CalendarApiSource;
@@ -19,7 +20,10 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     data,
     session,
     operations,
+    jmapClient,
   } = useCalendarAPI(apiSource);
+
+  const surface = useCalendarSurface(jmapClient, data);
 
   return (
     <WorkspaceLiveAppShell
@@ -34,6 +38,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
           data={data}
           session={session}
           operations={operations}
+          surface={surface}
           listRefreshing={listRefreshing}
           onRefreshList={refreshList}
           onLogout={() => {

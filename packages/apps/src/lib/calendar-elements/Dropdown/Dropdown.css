@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/* tailwind-exception: Uses host attribute selectors and native select appearance resets for consistent cross-browser behavior. */
+:host {
+  --_lc-button-bg-default: light-dark(rgb(255 255 255 / 94%), rgb(255 255 255 / 24%));
+  --_lc-button-hover-bg-default: light-dark(rgb(255 255 255 / 98%), rgb(255 255 255 / 30%));
+  --_lc-button-border-color: light-dark(
+    var(--_lc-grid-line-color, rgb(15 23 42 / 14%)),
+    var(--_lc-grid-line-color, rgb(255 255 255 / 16%))
+  );
+  --_lc-focus-outline-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  --_lc-focus-ring-color: light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%));
+  --_lc-focus-ring-offset-color: light-dark(rgb(255 255 255), rgb(2 6 23));
+}
+
+:host > div {
+  @apply relative inline-flex;
+}
+
+.lc-dropdown-select {
+  @apply block h-9 w-full rounded-lg border border-solid px-3 pe-12 text-start text-sm leading-5 transition-colors duration-200;
+  @apply focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2;
+  @apply focus-visible:ring-2 focus-visible:ring-offset-2;
+  @apply disabled:cursor-not-allowed disabled:opacity-55;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none;
+  border-color: var(--_lc-button-border-color);
+  background-color: var(--_lc-button-bg, var(--lc-button-bg, var(--_lc-button-bg-default)));
+  outline-color: var(--_lc-focus-outline-color);
+  --tw-ring-color: var(--_lc-focus-ring-color);
+  --tw-ring-offset-color: var(--_lc-focus-ring-offset-color);
+}
+
+.lc-dropdown-select:hover {
+  background-color: var(
+    --_lc-button-hover-bg,
+    var(--lc-button-hover-bg, var(--_lc-button-hover-bg-default))
+  );
+}
+
+:host > div > .lc-dropdown-select[data-state="selected"] {
+  color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 95%));
+}
+
+:host > div > .lc-dropdown-select[data-state="placeholder"] {
+  color: light-dark(rgb(15 23 42 / 56%), rgb(255 255 255 / 56%));
+}
+
+.lc-dropdown-select:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+.lc-dropdown-select[data-pointer-focus="true"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.lc-dropdown-select::-ms-expand {
+  display: none;
+}
+
+:host([icon-only]) .lc-dropdown-select {
+  inline-size: calc(2.75rem + 2px);
+  min-inline-size: calc(2.75rem + 2px);
+  block-size: calc(2.75rem + 2px);
+  min-block-size: calc(2.75rem + 2px);
+  padding-inline-start: 0;
+  padding-inline-end: 0;
+  color: transparent;
+  text-indent: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+:host > div > [data-role="chevron"] {
+  @apply pointer-events-none absolute end-4 top-1/2 z-10 block -translate-y-1/2;
+  color: light-dark(rgb(15 23 42 / 78%), rgb(255 255 255 / 78%));
+}
+
+:host > div > [data-role="icon"] {
+  @apply pointer-events-none absolute end-4 top-1/2 z-10 inline-flex -translate-y-1/2;
+  color: light-dark(rgb(15 23 42 / 74%), rgb(255 255 255 / 78%));
+}
+
+:host > div > [data-role="icon"]:empty {
+  display: none;
+}
+
+:host([icon-only]) > div > [data-role="icon"],
+:host([icon-only]) > div > [data-role="chevron"] {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: none;
+}
+
+:host([icon-only]) > div > [data-role="icon"] ::slotted([slot="icon"]) {
+  display: block;
+  margin: 0;
+}

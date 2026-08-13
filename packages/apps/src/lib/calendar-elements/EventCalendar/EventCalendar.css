@@ -1,0 +1,281 @@
+@import "tailwindcss";
+@import "../styles/z-index.css";
+
+/*
+  No overflow:hidden on the shell: the narrow calendars UI uses a native dialog (top layer);
+  overflow:hidden on an ancestor could clip non-dialog UI. Containment lives on .event-calendar-main.
+*/
+:host .event-calendar-shell {
+  @apply flex h-full min-h-0 flex-col gap-7 [container-type:inline-size];
+}
+
+/* dir on shell mirrors column order: calendars first in DOM stay at inline-start (left LTR, right RTL) */
+:host .event-calendar-shell.event-calendar-has-calendars {
+  @apply flex-row items-stretch gap-x-2 gap-y-0;
+}
+
+:host .event-calendar-main {
+  @apply flex min-h-0 flex-1 flex-col gap-7 overflow-hidden;
+}
+
+:host .event-calendar-header {
+  @apply sticky top-[var(--_lc-event-calendar-sticky-top,0px)] flex flex-col gap-2 bg-[var(--_lc-surface-bg)] p-4 pb-0;
+  z-index: var(--_lc-event-calendar-header-z-index, calc(var(--_lc-z-sticky) + 30));
+}
+
+:host .event-calendar-toolbar {
+  @apply flex items-center gap-2;
+}
+
+:host .event-calendar-heading-row {
+  @apply flex min-w-0 flex-1 items-center gap-2;
+}
+
+:host .event-calendar-nav-buttons {
+  @apply flex items-center gap-0;
+}
+
+:host .event-calendar-nav-icon {
+  @apply block h-[1.1rem] w-[1.1rem];
+}
+
+:host .event-calendar-divider {
+  @apply inline-block h-5 w-px bg-[light-dark(rgb(15_23_42_/_16%),rgb(255_255_255_/_18%))];
+}
+
+:host .event-calendar-range-label {
+  @apply m-0 min-w-0 truncate px-1 text-start text-xl font-bold text-[light-dark(rgb(15_23_42_/_95%),rgb(255_255_255_/_98%))];
+}
+
+:host .event-calendar-range-year {
+  @apply font-normal;
+}
+
+:host .event-calendar-today-label {
+  @apply [@container(max-width:54rem)]:hidden;
+}
+
+:host .event-calendar-controls-row {
+  @apply flex items-center justify-end gap-0 border-t border-[light-dark(rgb(15_23_42_/_10%),rgb(255_255_255_/_12%))] pt-2;
+}
+
+:host .event-calendar-switch {
+  @apply flex-none;
+}
+
+:host .event-calendar-divider--controls {
+  @apply mx-1 block shrink-0 self-center h-6;
+}
+
+:host .event-calendar-content {
+  @apply min-h-0 min-w-0 flex-1 overflow-y-auto p-4 pt-0 mb-4;
+}
+
+:host .event-calendar-content:focus-visible {
+  @apply outline-solid outline-2 outline-offset-2;
+  outline-color: light-dark(rgb(15 23 42 / 35%), rgb(255 255 255 / 35%));
+}
+
+/* ——— Calendars list (wide: column; narrow: overlay) ——— */
+
+:host .event-calendar-calendars-toggle {
+  @apply hidden shrink-0;
+}
+
+:host .event-calendar-has-calendars .event-calendar-calendars-toggle {
+  @apply [@container(max-width:54rem)]:inline-block;
+}
+
+/* Wide: docked column (second calendars-sidebar lives in dialog, hidden via container rule). */
+:host .event-calendar-calendars--docked {
+  @apply flex shrink-0 min-h-0 flex-col self-stretch overflow-hidden;
+  flex: 0 0 auto;
+}
+
+@container (min-width: 54.0625rem) {
+  :host .event-calendar-calendars--docked {
+    @apply w-[min(18rem,32cqw)] min-w-[16rem];
+    max-width: 20rem;
+  }
+
+  :host .event-calendar-calendars--docked .event-calendar-calendars-sidebar {
+    --_lc-calendars-sidebar-bg: var(
+      --_lc-event-calendar-sidebar-docked-bg,
+      light-dark(rgb(15 23 42 / 2%), rgb(248 250 252 / 3%))
+    );
+  }
+}
+
+@container (max-width: 54rem) {
+  :host .event-calendar-calendars--docked {
+    display: none;
+  }
+}
+
+:host .event-calendar-calendars--docked .event-calendar-calendars-panel {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+
+/* Narrow overlay: native dialog + duplicate sidebar (docked copy is display:none above). */
+@container (min-width: 54.0625rem) {
+  :host .event-calendar-calendars-dialog {
+    display: none;
+  }
+}
+
+:host .event-calendar-calendars-dialog {
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+}
+
+:host .event-calendar-calendars-dialog::backdrop {
+  background: transparent;
+}
+
+:host .event-calendar-calendars-panel {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+
+:host .event-calendar-calendars-panel-header {
+  @apply hidden;
+}
+
+:host .event-calendar-calendars-sidebar {
+  @apply min-h-0 flex-1;
+  min-height: 0;
+}
+
+@container (max-width: 54rem) {
+  :host .event-calendar-calendars-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+  }
+
+  :host .event-calendar-calendars-dialog .event-calendar-calendars-backdrop {
+    @apply absolute inset-0 cursor-default;
+    display: block;
+    background-color: light-dark(rgb(15 23 42 / 40%), rgb(0 0 0 / 50%));
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.2s ease,
+      visibility 0.2s ease;
+  }
+
+  /*
+    Dialog was display:none until [open], so there is no “before” frame for transition.
+    @starting-style supplies the first painted frame so slide / fade can run.
+  */
+  :host .event-calendar-calendars-dialog[open] .event-calendar-calendars-backdrop {
+    opacity: 1;
+    visibility: visible;
+
+    @starting-style {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+
+  /*
+    Slide from inline-start (physical left LTR, physical right RTL).
+    [open] matches showModal(); closing removes it so the panel leaves with the dialog.
+  */
+  :host .event-calendar-calendars-dialog .event-calendar-calendars-panel {
+    @apply absolute top-0 bottom-0 flex w-[min(20rem,88vw)] max-w-full flex-col shadow-lg;
+    background-color: var(--_lc-surface-bg);
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    --_lc-calendars-sidebar-inline-end: none;
+  }
+
+  :host
+    .event-calendar-shell[dir="rtl"]
+    .event-calendar-calendars-dialog
+    .event-calendar-calendars-panel,
+  :host .event-calendar-calendars-dialog[dir="rtl"] .event-calendar-calendars-panel {
+    transform: translateX(100%);
+  }
+
+  :host .event-calendar-calendars-dialog[open] .event-calendar-calendars-panel {
+    transform: translateX(0);
+
+    @starting-style {
+      transform: translateX(-100%);
+    }
+  }
+
+  :host
+    .event-calendar-shell[dir="rtl"]
+    .event-calendar-calendars-dialog[open]
+    .event-calendar-calendars-panel,
+  :host .event-calendar-calendars-dialog[dir="rtl"][open] .event-calendar-calendars-panel {
+    transform: translateX(0);
+
+    @starting-style {
+      transform: translateX(100%);
+    }
+  }
+
+  /*
+    Exit: `close()` drops the top layer immediately, so we animate while still [open], then close()
+    from JS on transitionend (see EventCalendar.#beginCalendarsDialogExit).
+  */
+  :host .event-calendar-calendars-dialog--closing[open] .event-calendar-calendars-backdrop {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  :host .event-calendar-calendars-dialog--closing[open] .event-calendar-calendars-panel {
+    transform: translateX(-100%);
+  }
+
+  :host
+    .event-calendar-shell[dir="rtl"]
+    .event-calendar-calendars-dialog--closing[open]
+    .event-calendar-calendars-panel,
+  :host .event-calendar-calendars-dialog--closing[open][dir="rtl"] .event-calendar-calendars-panel {
+    transform: translateX(100%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :host .event-calendar-calendars-dialog .event-calendar-calendars-backdrop,
+    :host .event-calendar-calendars-dialog .event-calendar-calendars-panel {
+      transition: none;
+    }
+  }
+
+  :host .event-calendar-calendars-dialog .event-calendar-calendars-panel-header {
+    @apply flex shrink-0 items-center justify-start border-b px-4 pt-4 pb-2;
+    border-color: light-dark(rgb(226 232 240), rgb(51 65 85));
+    display: flex;
+  }
+}
+
+@container (max-width: 54rem) {
+  :host .event-calendar-shell {
+    @apply gap-4;
+  }
+
+  :host .event-calendar-range-label {
+    @apply text-base;
+  }
+}
+
+@container (max-width: 34rem) {
+  :host .event-calendar-controls-row {
+    @apply w-full justify-between gap-2 items-stretch;
+  }
+}

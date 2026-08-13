@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:host {
+  @apply absolute z-10 flex justify-center items-center;
+  --_lc-resize-handle-color: transparent;
+  --_lc-resize-handle-thickness: 2px;
+  --_lc-resize-handle-length: 22px;
+  --_lc-resize-handle-length-vertical: 30px;
+  --_lc-resize-handle-length-horizontal: var(--_lc-resize-handle-length);
+  --_lc-resize-handle-opacity: 0;
+  --_lc-resize-handle-opacity-hover: 0.9;
+}
+
+:host([axis="vertical"]) {
+  @apply w-full left-0;
+}
+
+:host([axis="vertical"][position="start"]) {
+  @apply top-0;
+}
+
+:host([axis="vertical"][position="end"]) {
+  @apply bottom-0;
+}
+
+:host([axis="horizontal"]) {
+  @apply m-0 h-full top-0;
+}
+
+:host([axis="horizontal"][position="start"]) {
+  @apply [inset-inline-start:0];
+}
+
+:host([axis="horizontal"][position="end"]) {
+  @apply [inset-inline-end:0];
+}
+
+:host > div {
+  @apply relative z-10 flex items-center justify-center opacity-80 transition-opacity duration-200 ease-in-out hover:opacity-100;
+}
+
+:host > div::before {
+  content: "";
+  border-radius: 999px;
+  background: var(--_lc-resize-handle-color);
+  opacity: var(--_lc-resize-handle-opacity);
+  transition: opacity 160ms ease-in-out;
+}
+
+:host(:hover) > div::before,
+:host(:focus-within) > div::before {
+  opacity: var(--_lc-resize-handle-opacity-hover);
+}
+
+:host([axis="vertical"]) > div {
+  @apply w-full h-2 cursor-ns-resize;
+}
+
+:host([axis="vertical"]) > div::before {
+  width: min(var(--_lc-resize-handle-length-vertical), calc(100% - 8px));
+  height: var(--_lc-resize-handle-thickness);
+}
+
+:host([axis="horizontal"]) > div {
+  @apply h-full w-2 cursor-ew-resize;
+}
+
+:host([axis="horizontal"]) > div::before {
+  width: var(--_lc-resize-handle-thickness);
+  height: min(var(--_lc-resize-handle-length-horizontal), calc(100% - 8px));
+}
+
+@media (hover: none), (pointer: coarse) {
+  :host {
+    display: none;
+    pointer-events: none;
+  }
+}

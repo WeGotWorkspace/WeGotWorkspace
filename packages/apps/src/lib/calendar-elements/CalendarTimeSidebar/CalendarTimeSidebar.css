@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@import "../styles/z-index.css";
+
+:host {
+  @apply block h-full;
+  width: var(--_lc-time-sidebar-width, max-content);
+  min-width: max-content;
+  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+}
+
+.time-sidebar {
+  @apply grid h-full min-h-0 relative;
+  grid-template-rows:
+    var(--_lc-time-sidebar-header-height, 0px)
+    var(--_lc-time-sidebar-all-day-height, 0px)
+    var(--_lc-time-sidebar-timed-height, 100%);
+  background-color: var(--_lc-time-sidebar-bg, transparent);
+  --_lc-time-sidebar-layer-bg: var(
+    --_lc-time-sidebar-bg,
+    var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)))
+  );
+}
+
+.weekday-header-slot {
+  @apply min-h-0 sticky;
+  z-index: var(--_lc-z-overlay-raised);
+  top: var(--_lc-time-sidebar-sticky-top-base, 0px);
+  background-color: var(--_lc-time-sidebar-layer-bg);
+}
+
+.all-day-slot {
+  @apply sticky;
+  z-index: var(--_lc-z-overlay);
+  top: calc(
+    var(--_lc-time-sidebar-sticky-top-base, 0px) + var(--_lc-time-sidebar-header-height, 0px)
+  );
+  background-color: var(--_lc-time-sidebar-layer-bg);
+  border-bottom: var(--_lc-time-sidebar-all-day-divider-width, 0px) solid
+    var(--_lc-time-sidebar-all-day-divider-color, transparent);
+}
+
+.timed-slot {
+  @apply flex flex-col min-w-0 min-h-0 relative;
+  z-index: var(--_lc-z-base);
+  top: var(--_lc-time-sidebar-timed-top-offset, -7px);
+}
+
+.hour-labels {
+  @apply block h-full min-h-0 pointer-events-none;
+  padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
+  margin-top: var(--_lc-hour-labels-margin-top, -8px);
+}
+
+.hour-label-row:last-child {
+  height: auto;
+}
+
+.hour-label-row {
+  @apply flex justify-end items-start;
+  height: var(--_lc-time-sidebar-hour-cell-height, calc(100% / var(--_lc-time-sidebar-hours, 24)));
+}
+
+.hour-label {
+  @apply text-inherit block text-xs leading-none font-medium whitespace-nowrap text-end tabular-nums;
+}

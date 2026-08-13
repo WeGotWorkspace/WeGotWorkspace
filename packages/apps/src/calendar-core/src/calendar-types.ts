@@ -19,7 +19,7 @@ export type CalendarUIData = {
   events: JmapCalendarEvent[];
 };
 
-export type CalendarViewId = "month" | "week" | "day" | "agenda";
+export type CalendarViewId = "month" | "week" | "day" | "year" | "agenda";
 
 export type CalendarEventDraft = {
   calendarId: string;

@@ -8,9 +8,6 @@ import {
 } from "@tanstack/react-router";
 import { AdminApp } from "@/admin-core/src/admin-app";
 import { CalendarApp } from "@/calendar-core/src/calendar-app";
-import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
-import { createDefaultCalendarApiSource } from "@/calendar-core/src/calendar-api-source";
-import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
 import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
@@ -216,22 +213,10 @@ function MockTasksRoute() {
   );
 }
 
+// The default calendar source resolves to the MockJmapServer-backed source in
+// mock mode, so the mock route runs the full adapter-driven app.
 function MockCalendarRoute() {
-  const onLogout = useWeGotWorkspaceLogout();
-  const bootstrap = useMemo(() => createCalendarAppBootstrap(), []);
-  const operations = useMemo(
-    () => createDefaultCalendarApiSource().createOperations(bootstrap),
-    [bootstrap],
-  );
-  return (
-    <CalendarWorkspace
-      data={bootstrap.data}
-      session={bootstrap.session}
-      operations={operations}
-      listRefreshing={false}
-      onLogout={onLogout}
-    />
-  );
+  return <CalendarApp />;
 }
 
 function MockAdminRoute() {

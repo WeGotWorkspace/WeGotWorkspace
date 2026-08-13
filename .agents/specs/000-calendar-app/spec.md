@@ -10,11 +10,22 @@ A calendar workspace app in `packages/apps` backed by the JMAP envelope on `main
 
 ## Non-goals
 
-- Embedding Lit web components inside the React app (port, not embed).
-- Tailwind anywhere in the monorepo — ported styles use the workspace CSS-variable system.
-- Year view, list presentations beyond the agenda, and drag-create/move/resize in v1 (fast-follow; the pure `TimedEventInteractionController` pointer logic is ported when D2's drag scope lands).
 - Push/real-time — the client polls, matching the envelope's documented non-goal.
 - Changing the backend: `packages/api` is touched only for the `UiStaticServer` shell-route allowlist.
+
+## Amendment (2026-08-13, user decision): embed the Lit views instead of porting
+
+After reviewing the ported v1, the calendar surface was reworked to **embed the
+vendored lit-calendar web components directly** (`src/lib/calendar-elements/`,
+React 19 custom-element interop) rather than porting them — the Lit views carry
+the full interaction set (drag-create/move/resize, year view, list
+presentations, overflow popovers) that a clean-room port lacked. `packages/apps`
+already runs Tailwind v4 + Vite, so the components' shadow-DOM styles compile
+natively. View switching moved from the sidebar to a header dropdown. The
+original ported React views were deleted. Integration recipe: the repo's own
+`StoryJmapAdapterHost` pattern — `JmapEventsAdapter` provided as the events-api
+context (own `JmapClient` per adapter: shared clients would advance the sync
+state past dialog writes), MockJmapServer-backed in mock mode.
 
 ## Affected packages
 

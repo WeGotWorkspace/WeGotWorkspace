@@ -40,12 +40,23 @@ function toApiRelativePath(input: string): string {
 
 let cachedClient: JmapClient | null = null;
 
-function jmapClient(): JmapClient {
+/**
+ * Fresh authenticated client. The JmapEventsAdapter needs its OWN client:
+ * JmapClient tracks per-type sync states, and sharing one instance with the
+ * set transport would advance the state past dialog writes — the adapter's
+ * next /changes would then see an empty delta and miss them.
+ */
+export function createCalendarJmapClient(): JmapClient {
+  return new JmapClient({
+    sessionUrl: "/jmap/session",
+    fetch: (input, init) => wgwFetch(toApiRelativePath(input), init ?? {}),
+  });
+}
+
+/** Shared client for the set/bootstrap transport (session cached per page). */
+export function calendarJmapClient(): JmapClient {
   if (!cachedClient) {
-    cachedClient = new JmapClient({
-      sessionUrl: "/jmap/session",
-      fetch: (input, init) => wgwFetch(toApiRelativePath(input), init ?? {}),
-    });
+    cachedClient = createCalendarJmapClient();
   }
   return cachedClient;
 }
@@ -55,11 +66,10 @@ export function resetCalendarJmapClientForTests(): void {
   cachedClient = null;
 }
 
-async function connectedCalendars(): Promise<{
+async function connectedCalendars(client: JmapClient = calendarJmapClient()): Promise<{
   calendars: JmapCalendarsClient;
   accountId: string;
 }> {
-  const client = jmapClient();
   if (!client.isConnected) {
     await client.connect();
   }
@@ -89,9 +99,12 @@ export function calendarBootstrapWindow(today = Temporal.Now.plainDateISO()): {
   };
 }
 
-export async function fetchCalendarLiveBootstrap(): Promise<CalendarAppBootstrap> {
-  const session = await wgwFetchPrincipal();
-  const { calendars, accountId } = await connectedCalendars();
+/** Bootstrap against any client — the mock api source reuses this with a MockJmapServer client. */
+export async function fetchCalendarBootstrapForClient(
+  client: JmapClient,
+  session: CalendarAppBootstrap["session"],
+): Promise<CalendarAppBootstrap> {
+  const { calendars, accountId } = await connectedCalendars(client);
 
   const calendarGet = await calendars.getCalendars(accountId);
   const events = await calendars.getCalendarEventsInRange(accountId, calendarBootstrapWindow());
@@ -105,10 +118,15 @@ export async function fetchCalendarLiveBootstrap(): Promise<CalendarAppBootstrap
   };
 }
 
+export async function fetchCalendarLiveBootstrap(): Promise<CalendarAppBootstrap> {
+  return fetchCalendarBootstrapForClient(calendarJmapClient(), await wgwFetchPrincipal());
+}
+
 export async function createCalendarEventLive(
   draft: CalendarEventDraft,
+  client?: JmapClient,
 ): Promise<JmapCalendarEvent> {
-  const { calendars, accountId } = await connectedCalendars();
+  const { calendars, accountId } = await connectedCalendars(client);
   const response = await calendars.setCalendarEvents({
     accountId,
     create: { "create-1": draftToJmapEvent(draft) },
@@ -124,8 +142,9 @@ export async function createCalendarEventLive(
 export async function patchCalendarEventLive(
   eventId: string,
   patch: CalendarEventPatch,
+  client?: JmapClient,
 ): Promise<JmapCalendarEvent> {
-  const { calendars, accountId } = await connectedCalendars();
+  const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendarEvents({
     accountId,
     update: { [eventId]: patchToJmapPartial(patch) },
@@ -136,7 +155,7 @@ export async function patchCalendarEventLive(
   return event;
 }
 
-export async function deleteCalendarEventLive(eventId: string): Promise<void> {
-  const { calendars, accountId } = await connectedCalendars();
+export async function deleteCalendarEventLive(eventId: string, client?: JmapClient): Promise<void> {
+  const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendarEvents({ accountId, destroy: [eventId] });
 }

@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+:host {
+  @apply block w-full [container-type:inline-size];
+}
+
+.weekday-header {
+  @apply grid items-center gap-0 pb-1 leading-none font-medium;
+  /* Edge padding is themeable so composing views whose day columns are exact viewport
+     fractions (e.g. the composed timeline's time-line strips) can zero it for alignment. */
+  padding-inline: var(--_lc-weekday-header-inline-padding, 2px);
+  min-height: var(--_lc-weekday-header-height, 26px);
+  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  --_lc-weekend-day-color: var(
+    --lc-weekend-day-label-color,
+    light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%))
+  );
+  font-size: var(--_lc-weekday-header-font-size, 14px);
+}
+
+.weekday {
+  @apply inline-flex [container-type:inline-size] items-center justify-start text-start whitespace-nowrap [padding-inline:6px];
+}
+
+.weekday-label {
+  @apply text-inherit;
+}
+
+.weekday.weekend {
+  @apply text-[var(--_lc-weekend-day-color)];
+}
+
+/* Date mode (see the startDate property): each cell is an interactive day-selection button.
+   It keeps the .weekday layout (flex, container, 6px inline padding) and only adds button
+   resets + the hover/focus affordances the grid views give their day headers. */
+.weekday-date-button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  gap: 6px;
+  min-height: 24px;
+  padding-block: 3px;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.weekday-date-button:hover {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+.weekday-date-button:focus-visible {
+  outline: 2px solid light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  outline-offset: -2px;
+}
+
+/* Day-number pill (date mode). Same metrics as the timeline/grid day-number chrome. */
+.weekday-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.weekday-day-number.is-today {
+  background: var(--lc-higlight-color, #ff0000);
+  color: #fff;
+  font-weight: 600;
+}
+
+.weekday-short {
+  @apply inline;
+}
+
+.weekday-long {
+  @apply hidden;
+}
+
+.weekday-narrow {
+  @apply hidden;
+}
+
+@container (max-width: 64px) {
+  .weekday-label {
+    @apply inline-flex w-full justify-center text-center;
+  }
+
+  .weekday-short {
+    @apply hidden;
+  }
+
+  .weekday-narrow {
+    @apply inline;
+  }
+
+  /* Date mode keeps the name + number pair side by side instead of centering the label. */
+  .weekday-date-button .weekday-label {
+    @apply w-auto justify-start text-start;
+  }
+}
+
+@container (min-width: 160px) {
+  .weekday-long {
+    @apply inline;
+  }
+
+  .weekday-short,
+  .weekday-narrow {
+    @apply hidden;
+  }
+}
+
+/* Forced narrow variant (see the `narrow` property): mirrors the max-width: 64px container
+   block above and outranks both width queries via the :host compound selector. */
+:host([narrow]) .weekday-label {
+  @apply inline-flex w-full justify-center text-center;
+}
+
+:host([narrow]) .weekday-long,
+:host([narrow]) .weekday-short {
+  @apply hidden;
+}
+
+:host([narrow]) .weekday-narrow {
+  @apply inline;
+}
+
+:host([narrow]) .weekday-date-button .weekday-label {
+  @apply w-auto justify-start text-start;
+}

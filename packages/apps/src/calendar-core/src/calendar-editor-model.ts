@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import type { CalendarEvent as EngineCalendarEvent } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 
@@ -135,4 +136,40 @@ export function formToPatch(
     patch.description = form.description.trim();
   }
   return patch;
+}
+
+/**
+ * Form from the adapter's engine model — used when the clicked event is not in
+ * the bootstrap snapshot (e.g. just drag-created through the lit surface).
+ */
+export function engineEventToForm(event: EngineCalendarEvent): CalendarEventFormValue {
+  const allDay = event.data.allDay === true;
+  const start = event.data.start;
+  const duration = event.data.duration ?? Temporal.Duration.from(allDay ? "P1D" : "PT1H");
+  const end = start.add(duration);
+  const formEnd = allDay ? end.subtract({ days: 1 }) : end;
+  return {
+    title: event.data.summary,
+    calendarId: event.calendarId ?? "",
+    allDay,
+    startDate: start.toPlainDate().toString(),
+    startTime: start.toPlainTime().toString({ smallestUnit: "minute" }),
+    endDate: formEnd.toPlainDate().toString(),
+    endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+    location: event.data.location ?? "",
+    description: "",
+  };
+}
+
+/** Full-field patch for edits whose wire original is unavailable (engine fallback). */
+export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatch {
+  const draft = formToDraft(form);
+  return {
+    title: draft.title,
+    calendarId: draft.calendarId,
+    start: draft.start,
+    duration: draft.duration,
+    allDay: form.allDay,
+    ...(form.location.trim() ? { location: form.location.trim() } : {}),
+  };
 }

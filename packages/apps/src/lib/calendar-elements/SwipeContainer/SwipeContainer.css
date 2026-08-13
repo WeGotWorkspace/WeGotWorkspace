@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+:host {
+  @apply relative block w-full select-none touch-pan-y;
+  height: var(--_lc-swipe-height, 100%);
+  min-height: var(--_lc-swipe-min-height, 0);
+  overflow-x: var(--_lc-swipe-overflow-x, hidden);
+  overflow-y: var(--_lc-swipe-overflow-y, auto);
+  -webkit-overflow-scrolling: touch;
+}
+
+.container {
+  @apply relative flex w-full min-w-full items-start;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+::slotted(*) {
+  @apply touch-pan-y;
+  flex: 0 0 var(--page-width, 100%);
+  width: var(--page-width, 100%);
+}
+
+@media (pointer: fine) {
+  :host {
+    @apply overflow-x-visible overflow-y-visible touch-auto;
+  }
+}

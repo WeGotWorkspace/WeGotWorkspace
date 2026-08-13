@@ -6,18 +6,14 @@ import type {
   CalendarUIData,
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
-import {
-  occurrencesInRange,
-  rangeToPlainDateTimeStrings,
-  shiftAnchor,
-  todayISODate,
-  viewDateRange,
-  type CalendarOccurrence,
-} from "@/calendar-core/src/calendar-event-model";
+import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/calendar-event-model";
+import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import {
   calendarEventToForm,
   emptyCalendarEventForm,
+  engineEventToForm,
   formToDraft,
+  formToFullPatch,
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
@@ -38,6 +34,10 @@ export type UseCalendarControllerOptions = {
   initialView?: CalendarViewId;
   initialAnchor?: string;
   onViewChange?: (view: CalendarViewId) => void;
+  /** Adapter-backed engine events — editor fallback for events not yet in the bootstrap. */
+  surfaceEvents?: CalendarEventsMap;
+  /** Resolves an engine key to its server-side JMAP id (adapter-created events). */
+  resolveEventId?: (engineKey: string) => Promise<string | undefined>;
   /** Called after a successful create/update/delete (e.g. to refresh the bootstrap). */
   onMutated?: () => void;
 };
@@ -50,8 +50,11 @@ const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOption
 function rangeTitle(view: CalendarViewId, anchorISO: string): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
   const locale = undefined;
-  if (view === "month") {
+  if (view === "month" || view === "agenda") {
     return anchor.toLocaleString(locale, MONTH_TITLE);
+  }
+  if (view === "year") {
+    return String(anchor.year);
   }
   if (view === "day") {
     return anchor.toLocaleString(locale, {
@@ -82,6 +85,8 @@ export function useCalendarController({
   initialView,
   initialAnchor,
   onViewChange,
+  surfaceEvents,
+  resolveEventId,
   onMutated,
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
@@ -129,13 +134,13 @@ export function useCalendarController({
 
   const dateRange = useMemo(() => viewDateRange(view, anchor), [view, anchor]);
 
-  const occurrences: CalendarOccurrence[] = useMemo(
+  /** The vendored lit views take a view id + presentation; agenda = list over the month. */
+  const litSurface = useMemo(
     () =>
-      occurrencesInRange(data.events, rangeToPlainDateTimeStrings(dateRange), {
-        calendars: data.calendars,
-        visibleCalendarIds,
-      }),
-    [data.events, data.calendars, dateRange, visibleCalendarIds],
+      view === "agenda"
+        ? ({ view: "month", presentation: "list" } as const)
+        : ({ view, presentation: "grid" } as const),
+    [view],
   );
 
   const defaultCalendarId = useMemo(() => {
@@ -157,14 +162,24 @@ export function useCalendarController({
     [defaultCalendarId, anchor],
   );
 
-  const openEditOccurrence = useCallback(
-    (occurrence: CalendarOccurrence) => {
-      // Recurring occurrences edit the master series in v1.
-      const event = data.events.find((entry) => entry.id === occurrence.eventId);
-      if (!event) return;
-      setEditor({ mode: "edit", eventId: event.id, form: calendarEventToForm(event) });
+  const openEditEventKey = useCallback(
+    (key: string) => {
+      // Engine keys detached exceptions as `${masterId}::${recurrenceId}`;
+      // recurring occurrences edit the master series in v1.
+      const separator = key.indexOf("::");
+      const masterId = separator === -1 ? key : key.slice(0, separator);
+      const wireEvent = data.events.find((entry) => entry.id === masterId);
+      if (wireEvent) {
+        setEditor({ mode: "edit", eventId: wireEvent.id, form: calendarEventToForm(wireEvent) });
+        return;
+      }
+      // Not in the bootstrap snapshot (e.g. drag-created via the adapter):
+      // build the form from the engine event instead.
+      const engineEvent = surfaceEvents?.get(masterId) ?? surfaceEvents?.get(key);
+      if (!engineEvent) return;
+      setEditor({ mode: "edit", eventId: masterId, form: engineEventToForm(engineEvent) });
     },
-    [data.events],
+    [data.events, surfaceEvents],
   );
 
   const closeEditor = useCallback(() => {
@@ -204,29 +219,37 @@ export function useCalendarController({
       return;
     }
     const original = data.events.find((entry) => entry.id === editor.eventId);
-    if (!original) return;
-    const patch = formToPatch(editor.form, original);
+    // Without the wire original (engine-fallback edit) send the full field set.
+    const patch = original ? formToPatch(editor.form, original) : formToFullPatch(editor.form);
     if (Object.keys(patch).length === 0) {
       setEditor(null);
       return;
     }
     runEditorMutation(async () => {
-      await operations.patchEvent(editor.eventId, patch);
+      // Engine keys of adapter-created events resolve to their server id here.
+      const targetId = original
+        ? editor.eventId
+        : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
+      await operations.patchEvent(targetId, patch);
     }, L.toastEventUpdated);
-  }, [editor, operations, data.events, runEditorMutation, L]);
+  }, [editor, operations, data.events, runEditorMutation, resolveEventId, L]);
 
   const deleteEditorEvent = useCallback(() => {
     if (!editor || editor.mode !== "edit" || !operations) return;
     runEditorMutation(async () => {
-      await operations.deleteEvent(editor.eventId);
+      const isWireEvent = data.events.some((entry) => entry.id === editor.eventId);
+      const targetId = isWireEvent
+        ? editor.eventId
+        : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
+      await operations.deleteEvent(targetId);
     }, L.toastEventDeleted);
-  }, [editor, operations, runEditorMutation, L.toastEventDeleted]);
+  }, [editor, operations, data.events, runEditorMutation, resolveEventId, L.toastEventDeleted]);
 
   return {
     editor,
     editorBusy,
     openCreateEvent,
-    openEditOccurrence,
+    openEditEventKey,
     closeEditor,
     setEditorForm,
     saveEditor,
@@ -247,7 +270,7 @@ export function useCalendarController({
     hiddenCalendarIds,
     toggleCalendarVisibility,
     visibleCalendarIds,
-    occurrences,
+    litSurface,
     defaultCalendarId,
     operations,
   };

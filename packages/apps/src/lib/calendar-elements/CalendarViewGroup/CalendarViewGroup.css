@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:host {
+  @apply block w-full h-full min-h-0;
+}
+
+.calendar-view-group {
+  @apply block w-full h-full min-h-0;
+}
+
+.content {
+  @apply relative min-h-0 h-full;
+  view-transition-name: lc-event-calendar-content;
+}
+
+.content > * {
+  @apply w-full h-full;
+}
+
+/* Month composition: shared weekday header above the timeline month (which intentionally has
+   no weekday row of its own — grid month view parity, where the header lived inside
+   CalendarMonthView). */
+.timeline-month-layout {
+  @apply grid min-h-0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.timeline-month-layout > .timeline-month-view {
+  @apply min-h-0;
+}
+
+:host::view-transition-group(lc-event-calendar-content) {
+  animation-duration: var(--_lc-view-transition-duration, 180ms);
+  animation-timing-function: var(--_lc-view-transition-easing, cubic-bezier(0.2, 0.65, 0.25, 1));
+}
+
+:host::view-transition-old(lc-event-calendar-content) {
+  animation-name: lc-view-transition-fade-old;
+}
+
+:host::view-transition-new(lc-event-calendar-content) {
+  animation-name: lc-view-transition-fade-new;
+}
+
+@keyframes lc-view-transition-fade-old {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lc-view-transition-fade-new {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
