@@ -50,7 +50,10 @@ export function eventTimeZoneFromSelectValue(value: string): string | null {
 
 function displayNameForTimeZone(timeZone: string, locale: string): string | null {
   try {
-    const names = new Intl.DisplayNames([locale], { type: "timeZone" });
+    // TS lib typings lag the runtime: `timeZone` is valid on modern engines.
+    const names = new Intl.DisplayNames([locale], {
+      type: "timeZone" as unknown as Intl.DisplayNamesOptions["type"],
+    });
     return names.of(timeZone) ?? null;
   } catch {
     return null;
