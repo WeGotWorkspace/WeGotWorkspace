@@ -1,22 +1,9 @@
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import {
@@ -215,26 +202,14 @@ export function CalendarWorkspace({
                       <span className="calendar-sidebar-row__name">{calendar.name}</span>
                     </button>
                     {canManage ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            label={L.editCalendar}
-                            icon={<MoreHorizontal className="size-3.5" aria-hidden />}
-                            size="sm"
-                            variant="subtle"
-                            className="calendar-sidebar-row__overflow"
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-40">
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              openEditCalendarDialog(calendar.id);
-                            }}
-                          >
-                            {L.editCalendar}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <IconButton
+                        label={L.editCalendar}
+                        icon={<Pencil className="size-3.5" aria-hidden />}
+                        size="sm"
+                        variant="subtle"
+                        className="calendar-sidebar-row__edit"
+                        onClick={() => openEditCalendarDialog(calendar.id)}
+                      />
                     ) : null}
                   </li>
                 );

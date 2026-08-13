@@ -179,13 +179,13 @@
 }
 
 /* Match `.sidebar-section__add` (size-6 subtle IconButton). */
-.calendar-workspace .calendar-sidebar-row__overflow.button {
+.calendar-workspace .calendar-sidebar-row__edit.button {
   @apply size-6 shrink-0;
   opacity: 0.85;
 }
 
-.calendar-workspace .calendar-sidebar-row__overflow:hover,
-.calendar-workspace .calendar-sidebar-row__overflow:focus-visible {
+.calendar-workspace .calendar-sidebar-row__edit:hover,
+.calendar-workspace .calendar-sidebar-row__edit:focus-visible {
   opacity: 1;
 }
 
