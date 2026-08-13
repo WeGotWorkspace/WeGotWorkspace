@@ -15,6 +15,8 @@ export type CalendarTimeGridViewProps = {
   labels: CalendarUILabels;
   onSelectOccurrence?: (occurrence: CalendarOccurrence) => void;
   onSelectDay?: (dateISO: string) => void;
+  /** Click-to-create on an empty grid slot (hour granularity). */
+  onCreateSlot?: (dateISO: string, startTime: string) => void;
   className?: string;
 };
 
@@ -40,6 +42,7 @@ export function CalendarTimeGridView({
   labels,
   onSelectOccurrence,
   onSelectDay,
+  onCreateSlot,
   className,
 }: CalendarTimeGridViewProps) {
   const columns = timeGridColumns(range, occurrences);
@@ -109,7 +112,16 @@ export function CalendarTimeGridView({
             data-today={column.isToday || undefined}
           >
             {HOURS.map((hour) => (
-              <div key={hour} className="calendar-timegrid__hourline" aria-hidden />
+              <button
+                key={hour}
+                type="button"
+                tabIndex={-1}
+                className="calendar-timegrid__hourline"
+                aria-label={`${column.date.toString()} ${hourLabel(hour)}`}
+                onClick={() =>
+                  onCreateSlot?.(column.date.toString(), `${String(hour).padStart(2, "0")}:00`)
+                }
+              />
             ))}
             {column.timed.map((block) => {
               const metrics = staggerBlockMetrics(block.layout);

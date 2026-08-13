@@ -254,8 +254,52 @@
 }
 
 .calendar-workspace .calendar-timegrid__hourline {
+  display: block;
+  width: 100%;
   height: var(--calendar-timegrid-hour-height);
   border-bottom: 1px solid var(--calendar-grid-line);
+  cursor: pointer;
+}
+
+.calendar-workspace .calendar-timegrid__hourline:hover {
+  background: color-mix(in oklab, var(--calendar-accent) 6%, transparent);
+}
+
+.calendar-workspace .calendar-event-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.calendar-workspace-dialog .calendar-event-dialog__fields,
+.calendar-event-dialog__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.calendar-event-dialog__datetime {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-event-dialog__calendar-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.calendar-event-dialog__calendar-option .calendar-sidebar-dot,
+.calendar-event-dialog .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+}
+
+.calendar-event-dialog__footer .calendar-event-dialog__delete {
+  margin-inline-end: auto;
+  color: #b91c1c;
 }
 
 .calendar-workspace .calendar-timegrid__event {

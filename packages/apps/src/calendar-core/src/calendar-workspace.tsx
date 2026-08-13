@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -13,6 +13,7 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarAgendaView } from "@/calendar-core/src/calendar-agenda-view";
+import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { CalendarMonthView } from "@/calendar-core/src/views/calendar-month-view";
 import { CalendarTimeGridView } from "@/calendar-core/src/views/calendar-time-grid-view";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
@@ -43,6 +44,7 @@ export function CalendarWorkspace({
     initialView,
     initialAnchor,
     onViewChange,
+    onMutated: onRefreshList,
   });
 
   const {
@@ -62,12 +64,21 @@ export function CalendarWorkspace({
     hiddenCalendarIds,
     toggleCalendarVisibility,
     occurrences,
+    editor,
+    editorBusy,
+    openCreateEvent,
+    openEditOccurrence,
+    closeEditor,
+    setEditorForm,
+    saveEditor,
+    deleteEditorEvent,
   } = controller;
 
   const openDay = (dateISO: string) => {
     setAnchor(dateISO);
     selectView("day");
   };
+  const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
 
   const viewLabels: Record<CalendarViewId, string> = {
     month: L.viewMonth,
@@ -107,14 +118,25 @@ export function CalendarWorkspace({
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
             primaryButton={
-              <Button
-                label={L.today}
-                icon={<CalendarDays />}
-                onClick={() => {
-                  goToday();
-                  setSidebarOpen(false);
-                }}
-              />
+              canWrite ? (
+                <Button
+                  label={L.newEvent}
+                  icon={<Plus />}
+                  onClick={() => {
+                    openCreateEvent();
+                    setSidebarOpen(false);
+                  }}
+                />
+              ) : (
+                <Button
+                  label={L.today}
+                  icon={<CalendarDays />}
+                  onClick={() => {
+                    goToday();
+                    setSidebarOpen(false);
+                  }}
+                />
+              )
             }
             footer={
               <WorkspaceUserFooter
@@ -164,7 +186,11 @@ export function CalendarWorkspace({
         main={
           <div className="calendar-main" data-view={view}>
             {view === "agenda" ? (
-              <CalendarAgendaView occurrences={occurrences} labels={L} />
+              <CalendarAgendaView
+                occurrences={occurrences}
+                labels={L}
+                onSelectOccurrence={canWrite ? openEditOccurrence : undefined}
+              />
             ) : view === "month" ? (
               <CalendarMonthView
                 range={dateRange}
@@ -172,6 +198,7 @@ export function CalendarWorkspace({
                 occurrences={occurrences}
                 labels={L}
                 onSelectDay={openDay}
+                onSelectOccurrence={canWrite ? openEditOccurrence : undefined}
               />
             ) : (
               <CalendarTimeGridView
@@ -179,11 +206,27 @@ export function CalendarWorkspace({
                 occurrences={occurrences}
                 labels={L}
                 onSelectDay={openDay}
+                onSelectOccurrence={canWrite ? openEditOccurrence : undefined}
+                onCreateSlot={canWrite ? openCreateEvent : undefined}
               />
             )}
           </div>
         }
       />
+      {editor ? (
+        <CalendarEventDialog
+          open
+          mode={editor.mode}
+          form={editor.form}
+          calendars={calendars}
+          labels={L}
+          busy={editorBusy}
+          onChange={setEditorForm}
+          onClose={closeEditor}
+          onSave={saveEditor}
+          onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }

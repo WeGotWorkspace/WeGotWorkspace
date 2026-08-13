@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type {
   CalendarAPIOperations,
   CalendarUIData,
@@ -14,10 +15,21 @@ import {
   type CalendarOccurrence,
 } from "@/calendar-core/src/calendar-event-model";
 import {
+  calendarEventToForm,
+  emptyCalendarEventForm,
+  formToDraft,
+  formToPatch,
+  type CalendarEventFormValue,
+} from "@/calendar-core/src/calendar-editor-model";
+import {
   defaultCalendarLabels,
   mergeCalendarLabels,
   type CalendarUILabels,
 } from "@/calendar-core/src/calendar-labels";
+
+export type CalendarEditorState =
+  | { mode: "create"; form: CalendarEventFormValue }
+  | { mode: "edit"; eventId: string; form: CalendarEventFormValue };
 
 export type UseCalendarControllerOptions = {
   data: CalendarUIData;
@@ -26,6 +38,8 @@ export type UseCalendarControllerOptions = {
   initialView?: CalendarViewId;
   initialAnchor?: string;
   onViewChange?: (view: CalendarViewId) => void;
+  /** Called after a successful create/update/delete (e.g. to refresh the bootstrap). */
+  onMutated?: () => void;
 };
 
 const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOptions = {
@@ -68,8 +82,10 @@ export function useCalendarController({
   initialView,
   initialAnchor,
   onViewChange,
+  onMutated,
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
+  const { show, showError } = useAppToast();
 
   const [view, setView] = useState<CalendarViewId>(initialView ?? "month");
   const [anchor, setAnchor] = useState<string>(initialAnchor ?? todayISODate());
@@ -127,7 +143,94 @@ export function useCalendarController({
     return (writable.find((c) => c.isDefault) ?? writable[0])?.id;
   }, [data.calendars]);
 
+  const [editor, setEditor] = useState<CalendarEditorState | null>(null);
+  const [editorBusy, setEditorBusy] = useState(false);
+
+  const openCreateEvent = useCallback(
+    (dateISO?: string, startTime?: string) => {
+      if (!defaultCalendarId) return;
+      setEditor({
+        mode: "create",
+        form: emptyCalendarEventForm(defaultCalendarId, dateISO ?? anchor, startTime),
+      });
+    },
+    [defaultCalendarId, anchor],
+  );
+
+  const openEditOccurrence = useCallback(
+    (occurrence: CalendarOccurrence) => {
+      // Recurring occurrences edit the master series in v1.
+      const event = data.events.find((entry) => entry.id === occurrence.eventId);
+      if (!event) return;
+      setEditor({ mode: "edit", eventId: event.id, form: calendarEventToForm(event) });
+    },
+    [data.events],
+  );
+
+  const closeEditor = useCallback(() => {
+    if (!editorBusy) setEditor(null);
+  }, [editorBusy]);
+
+  const setEditorForm = useCallback((form: CalendarEventFormValue) => {
+    setEditor((current) => (current ? { ...current, form } : current));
+  }, []);
+
+  const runEditorMutation = useCallback(
+    (mutation: () => Promise<void>, successToast: string) => {
+      if (!operations) return;
+      setEditorBusy(true);
+      void (async () => {
+        try {
+          await mutation();
+          setEditor(null);
+          show(successToast);
+          onMutated?.();
+        } catch {
+          showError(L.toastEventSaveFailed);
+        } finally {
+          setEditorBusy(false);
+        }
+      })();
+    },
+    [operations, show, showError, onMutated, L.toastEventSaveFailed],
+  );
+
+  const saveEditor = useCallback(() => {
+    if (!editor || !operations) return;
+    if (editor.mode === "create") {
+      runEditorMutation(async () => {
+        await operations.createEvent(formToDraft(editor.form));
+      }, L.toastEventCreated);
+      return;
+    }
+    const original = data.events.find((entry) => entry.id === editor.eventId);
+    if (!original) return;
+    const patch = formToPatch(editor.form, original);
+    if (Object.keys(patch).length === 0) {
+      setEditor(null);
+      return;
+    }
+    runEditorMutation(async () => {
+      await operations.patchEvent(editor.eventId, patch);
+    }, L.toastEventUpdated);
+  }, [editor, operations, data.events, runEditorMutation, L]);
+
+  const deleteEditorEvent = useCallback(() => {
+    if (!editor || editor.mode !== "edit" || !operations) return;
+    runEditorMutation(async () => {
+      await operations.deleteEvent(editor.eventId);
+    }, L.toastEventDeleted);
+  }, [editor, operations, runEditorMutation, L.toastEventDeleted]);
+
   return {
+    editor,
+    editorBusy,
+    openCreateEvent,
+    openEditOccurrence,
+    closeEditor,
+    setEditorForm,
+    saveEditor,
+    deleteEditorEvent,
     L,
     view,
     selectView,
