@@ -60,9 +60,11 @@ describe("calendar-recurrence-scope", () => {
 
   it("builds an exclusion override for only-this delete", () => {
     const original = {
+      id: "ev-1",
       "@type": "Event",
       uid: "u1",
       start: "2026-03-09T09:00:00",
+      calendarIds: { "cal-work": true },
       recurrenceOverrides: {
         "2026-03-11T09:00:00": { title: "Moved" },
       },
@@ -75,6 +77,7 @@ describe("calendar-recurrence-scope", () => {
 
   it("builds an occurrence override patch from the editor form", () => {
     const original = {
+      id: "ev-1",
       "@type": "Event",
       uid: "u1",
       title: "Standup",
