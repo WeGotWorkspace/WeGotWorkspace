@@ -45,6 +45,7 @@ describe("calendarEventToForm", () => {
       startTime: "14:00",
       endDate: "2033-01-12",
       endTime: "15:30",
+      timeZone: "UTC",
       location: "Room 2.1",
     });
   });
@@ -55,24 +56,54 @@ describe("calendarEventToForm", () => {
       allDay: true,
       startDate: "2033-01-17",
       endDate: "2033-01-18",
+      timeZone: null,
     });
+  });
+
+  it("treats a missing timeZone as floating local wall time", () => {
+    const floating = {
+      ...timedEvent,
+      timeZone: null,
+    };
+    delete (floating as { timeZone?: string | null }).timeZone;
+    expect(calendarEventToForm(floating).timeZone).toBeNull();
   });
 });
 
 describe("formToDraft", () => {
-  it("round-trips a timed form to start + duration", () => {
+  it("round-trips a timed form to start + duration and preserves timeZone", () => {
     const draft = formToDraft(calendarEventToForm(timedEvent));
     expect(draft.start).toBe("2033-01-12T14:00:00");
     expect(draft.duration).toBe("PT1H30M");
     expect(draft.calendarId).toBe("work");
     expect(draft.location).toBe("Room 2.1");
+    expect(draft.timeZone).toBe("UTC");
   });
 
-  it("round-trips an all-day form to an exclusive-end day duration", () => {
+  it("omits timeZone for floating local wall time", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12", "14:00"),
+      title: "Floating",
+      timeZone: null,
+    };
+    expect(formToDraft(form).timeZone).toBeUndefined();
+  });
+
+  it("emits a named IANA timeZone on create", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12", "14:00"),
+      title: "Amsterdam",
+      timeZone: "Europe/Amsterdam",
+    };
+    expect(formToDraft(form).timeZone).toBe("Europe/Amsterdam");
+  });
+
+  it("round-trips an all-day form to an exclusive-end day duration without timeZone", () => {
     const draft = formToDraft(calendarEventToForm(allDayEvent));
     expect(draft.start).toBe("2033-01-17T00:00:00");
     expect(draft.duration).toBe("P2D");
     expect(draft.allDay).toBe(true);
+    expect(draft.timeZone).toBeUndefined();
   });
 
   it("spans days for overnight timed events", () => {
@@ -192,6 +223,39 @@ describe("formToPatch", () => {
     const patch = formToPatch(form, timedEvent);
     expect(patch.start).toBe("2033-01-12T15:00:00");
     expect(patch.duration).toBe("PT1H");
+  });
+
+  it("emits timeZone when switching floating to a named zone", () => {
+    const floating = { ...timedEvent };
+    delete (floating as { timeZone?: string | null }).timeZone;
+    const form = {
+      ...calendarEventToForm(floating),
+      timeZone: "Europe/Amsterdam",
+    };
+    expect(formToPatch(form, floating)).toEqual({ timeZone: "Europe/Amsterdam" });
+  });
+
+  it("clears timeZone with null when switching to floating local wall time", () => {
+    const form = { ...calendarEventToForm(timedEvent), timeZone: null };
+    expect(formToPatch(form, timedEvent)).toEqual({ timeZone: null });
+  });
+
+  it("emits UTC when selecting the UTC option", () => {
+    const form = {
+      ...calendarEventToForm({ ...timedEvent, timeZone: "Europe/Amsterdam" }),
+      timeZone: "UTC",
+    };
+    expect(formToPatch(form, { ...timedEvent, timeZone: "Europe/Amsterdam" })).toEqual({
+      timeZone: "UTC",
+    });
+  });
+
+  it("does not emit a timeZone patch when only Etc/UTC vs UTC spelling differs", () => {
+    const form = calendarEventToForm(timedEvent);
+    expect(form.timeZone).toBe("UTC");
+    expect(formToPatch({ ...form, title: "Same zone" }, timedEvent)).toEqual({
+      title: "Same zone",
+    });
   });
 
   it("emits recurrenceRules when a preset is chosen", () => {

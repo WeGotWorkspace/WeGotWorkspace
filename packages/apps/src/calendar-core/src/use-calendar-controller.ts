@@ -22,6 +22,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import {
   defaultCalendarLabels,
   mergeCalendarLabels,
@@ -742,6 +743,9 @@ export function useCalendarController({
         startTime: args.start.toPlainTime().toString({ smallestUnit: "minute" }),
         endDate: formEnd.toPlainDate().toString(),
         endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+        timeZone: normalizeEventTimeZone(
+          typeof original?.timeZone === "string" ? original.timeZone : null,
+        ),
         location: args.location ?? "",
         description: typeof original?.description === "string" ? original.description : "",
         recurrencePreset: "custom",

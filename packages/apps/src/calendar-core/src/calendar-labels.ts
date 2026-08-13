@@ -46,6 +46,9 @@ export type CalendarUILabels = {
   eventStartLabel: string;
   eventEndLabel: string;
   eventAllDayLabel: string;
+  eventTimeZoneLabel: string;
+  /** Floating / wall-clock option (no fixed TZID). */
+  eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
   eventNotesLabel: string;
   eventRepeatLabel: string;
@@ -103,6 +106,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventStartLabel: "Starts",
   eventEndLabel: "Ends",
   eventAllDayLabel: "All day",
+  eventTimeZoneLabel: "Time zone",
+  eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
   eventNotesLabel: "Notes",
   eventRepeatLabel: "Repeat",

@@ -94,6 +94,7 @@ describe("calendar-recurrence-scope", () => {
       startTime: "11:00",
       endDate: "2026-03-11",
       endTime: "11:30",
+      timeZone: null,
       location: "",
       description: "",
       recurrencePreset: "weekly",

@@ -12,6 +12,7 @@ import {
   recurrenceRulesEqual,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
+import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 
 /**
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.
@@ -29,6 +30,11 @@ export type CalendarEventFormValue = {
   startTime: string;
   endDate: string;
   endTime: string;
+  /**
+   * Timed events: IANA id, or `null` for floating/local wall (omit on create).
+   * Ignored on the wire when `allDay` (kept in the form so toggling all-day back restores it).
+   */
+  timeZone: string | null;
   location: string;
   description: string;
   recurrencePreset: RecurrencePresetId;
@@ -57,6 +63,7 @@ export function emptyCalendarEventForm(
     startTime,
     endDate: end.toPlainDate().toString(),
     endTime: end.toPlainTime().toString({ smallestUnit: "minute" }),
+    timeZone: null,
     location: "",
     description: "",
     recurrencePreset: "none",
@@ -114,6 +121,7 @@ export function createIntentToForm(
     startTime: intent.start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+    timeZone: null,
     location: "",
     description: "",
     recurrencePreset: "none",
@@ -165,6 +173,7 @@ export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventForm
     startTime: start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+    timeZone: normalizeEventTimeZone(event.timeZone),
     location: primaryLocationName(event),
     description: typeof event.description === "string" ? event.description : "",
     ...recurrenceFieldsFromRules(event.recurrenceRules, startDate),
@@ -205,15 +214,24 @@ function formDuration(form: CalendarEventFormValue): string {
     .toString();
 }
 
+/** Timed wire `timeZone`: IANA string, or omitted when floating (`null` form value). */
+function formWireTimeZone(form: CalendarEventFormValue): string | undefined {
+  if (form.allDay) return undefined;
+  const timeZone = normalizeEventTimeZone(form.timeZone);
+  return timeZone ?? undefined;
+}
+
 export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
   const start = formStart(form);
   const recurrenceRules = formRecurrenceRules(form);
+  const timeZone = formWireTimeZone(form);
   return {
     calendarId: form.calendarId,
     title: form.title.trim(),
     start: start.toString({ smallestUnit: "second" }),
     duration: formDuration(form),
-    ...(form.allDay ? { allDay: true } : { timeZone: Temporal.Now.timeZoneId() }),
+    ...(form.allDay ? { allDay: true } : {}),
+    ...(timeZone ? { timeZone } : {}),
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
     ...(form.description.trim() ? { description: form.description.trim() } : {}),
     ...(recurrenceRules?.length ? { recurrenceRules } : {}),
@@ -232,6 +250,14 @@ export function formToPatch(
   if (draft.start !== original.start) patch.start = draft.start;
   if (draft.duration !== (original.duration ?? "")) patch.duration = draft.duration;
   if (form.allDay !== originalForm.allDay) patch.allDay = form.allDay;
+  const nextTimeZone = form.allDay ? null : normalizeEventTimeZone(form.timeZone);
+  const prevTimeZone = originalForm.allDay
+    ? null
+    : normalizeEventTimeZone(originalForm.timeZone);
+  if (nextTimeZone !== prevTimeZone) {
+    // Floating clears a fixed zone with explicit null (JMAP/JSCalendar patch semantics).
+    patch.timeZone = nextTimeZone;
+  }
   if (form.location.trim() !== originalForm.location) patch.location = form.location.trim();
   if (form.description.trim() !== originalForm.description) {
     patch.description = form.description.trim();
@@ -278,6 +304,7 @@ export function engineEventToForm(event: EngineCalendarEvent): CalendarEventForm
     startTime: start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+    timeZone: normalizeEventTimeZone(event.data.timeZone),
     location: event.data.location ?? "",
     description: "",
     ...recurrenceFieldsFromRules(wireRules, startDate),
@@ -293,6 +320,7 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     start: draft.start,
     duration: draft.duration,
     allDay: form.allDay,
+    timeZone: form.allDay ? null : normalizeEventTimeZone(form.timeZone),
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
     ...(form.description.trim() ? { description: form.description.trim() } : {}),
     recurrenceRules: formRecurrenceRules(form),

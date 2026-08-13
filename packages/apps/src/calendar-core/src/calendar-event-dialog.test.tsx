@@ -109,6 +109,24 @@ describe("CalendarEventDialog", () => {
     renderDialog({ form, mode: "edit", onDelete: vi.fn(), locale: "en-US" });
     expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
     expect(screen.getAllByRole("button", { name: /Jan/i }).length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel }),
+    ).toBeNull();
+  });
+
+  it("shows a timezone select for timed events and propagates changes", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      timeZone: "Europe/Amsterdam",
+    };
+    const { onChange } = renderDialog({ form, locale: "en-US" });
+    const zone = screen.getByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel });
+    expect(zone.textContent).toMatch(/Amsterdam|Europe\/Amsterdam/i);
+    fireEvent.click(zone);
+    const utc = screen.getByRole("option", { name: /^UTC$/i });
+    fireEvent.click(utc);
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ timeZone: "UTC" }));
   });
 
   it("shows Custom for unmatched recurrence and disables the repeat control", () => {

@@ -30,6 +30,11 @@ import {
   type EditableRecurrencePresetId,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
+import {
+  eventTimeZoneFromSelectValue,
+  eventTimeZoneOptions,
+  eventTimeZoneSelectValue,
+} from "@/calendar-core/src/calendar-timezones";
 import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 
 export type CalendarEventDialogProps = {
@@ -149,6 +154,11 @@ export function CalendarEventDialog({
       label: recurrencePresetOptionLabel(id, form.startDate, locale),
     }));
   }, [form.startDate, locale, recurrenceLocked]);
+
+  const timeZoneOptions = useMemo(
+    () => eventTimeZoneOptions(locale, labels.eventTimeZoneLocalLabel, form.timeZone),
+    [form.timeZone, labels.eventTimeZoneLocalLabel, locale],
+  );
 
   const set = <K extends keyof CalendarEventFormValue>(
     key: K,
@@ -298,6 +308,27 @@ export function CalendarEventDialog({
                 ) : null}
               </div>
             </FieldLabelRow>
+
+            {!form.allDay ? (
+              <FieldLabelRow label={labels.eventTimeZoneLabel}>
+                <Select
+                  value={eventTimeZoneSelectValue(form.timeZone)}
+                  onValueChange={(value) => set("timeZone", eventTimeZoneFromSelectValue(value))}
+                  disabled={busy}
+                >
+                  <SelectTrigger aria-label={labels.eventTimeZoneLabel}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeZoneOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldLabelRow>
+            ) : null}
 
             <FieldLabelRow label={labels.eventRepeatLabel}>
               <Select

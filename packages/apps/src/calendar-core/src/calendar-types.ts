@@ -38,7 +38,11 @@ export type CalendarEventDraft = {
   start: string;
   /** ISO 8601 duration, e.g. "PT1H" / "P1D". */
   duration: string;
-  timeZone?: string;
+  /**
+   * JSCalendar `timeZone`: IANA id when fixed; omit on create / `null` on patch
+   * for floating (local wall) time. All-day events omit a timed zone.
+   */
+  timeZone?: string | null;
   allDay?: boolean;
   location?: string;
   description?: string;
