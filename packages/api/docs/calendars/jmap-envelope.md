@@ -2,7 +2,7 @@
 
 A genuine RFC 8620 JMAP-over-HTTP transport in front of the same calendar services the REST layer uses, so a spec-faithful JMAP client (specifically the shipped `@lit-calendar/jmap-client`, separate repo) can talk to this backend with **zero client-side changes**. The REST endpoints (`docs/calendars/jmap-calendars-summary.md`) are unchanged; the envelope is an **additive third protocol adapter** next to REST and CalDAV — one database, one process, three fronts.
 
-Spec: `.agents/specs/000-jmap-envelope-calendars/` · Tests: `tests/Feature/Jmap/`, `tests/Unit/Jmap/`
+Spec: `.agents/specs/000-jmap-envelope-calendars/` · Tests: `tests/Feature/Jmap/`, `tests/Unit/Jmap/` · Live-client testing: [jmap-client-e2e.md](./jmap-client-e2e.md)
 
 ## Endpoints
 
