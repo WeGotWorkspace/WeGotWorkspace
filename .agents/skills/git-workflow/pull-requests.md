@@ -14,7 +14,7 @@ pnpm run ci:quality
 
 For API contract work also run `pnpm test:api-done-gate` — see [testing](../testing/SKILL.md) and [developer/done-checklist.md](../developer/done-checklist.md).
 
-Ensure commits are **signed** (required for merge to `main`).
+Signed commits are **not required** for merge to `main` (branch protection rule dropped Aug 2026); signing your own commits is still welcome.
 
 **CI validates PR tip only** — `apps-quality` / `api-quality` run on branch HEAD. Intermediate commits may fail the done gate until fix-forward; do not treat old SHAs as merge blockers when HEAD is green ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250)).
 
