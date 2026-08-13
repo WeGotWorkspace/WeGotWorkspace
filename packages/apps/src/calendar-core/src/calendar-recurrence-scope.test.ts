@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
@@ -11,7 +14,44 @@ import {
 } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 
+const appsSrcRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+/** Recursively collect `.ts`/`.tsx`/`.js`/`.mjs` under `dir` (skips node_modules). */
+function listSourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name === "dist") continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...listSourceFiles(full));
+      continue;
+    }
+    if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
 describe("calendar-recurrence-scope", () => {
+  it("apps sources have no native recurring-edit confirm string", () => {
+    const forbidden = [
+      "Edit only this instance of the recurring event",
+      "Delete only this instance of the recurring event",
+      "OK = only this instance",
+    ] as const;
+    const hits: string[] = [];
+    for (const file of listSourceFiles(appsSrcRoot)) {
+      // This test intentionally names the forbidden strings — skip self.
+      if (file.endsWith(`${path.sep}calendar-recurrence-scope.test.ts`)) continue;
+      const text = readFileSync(file, "utf8");
+      for (const needle of forbidden) {
+        if (text.includes(needle)) {
+          hits.push(`${path.relative(appsSrcRoot, file)}: ${needle}`);
+        }
+      }
+    }
+    expect(hits, hits.join("\n")).toEqual([]);
+  });
+
   it("splits occurrence keys", () => {
     expect(splitOccurrenceKey("master")).toEqual({ masterId: "master" });
     expect(splitOccurrenceKey("master::2026-01-01T10:00:00")).toEqual({

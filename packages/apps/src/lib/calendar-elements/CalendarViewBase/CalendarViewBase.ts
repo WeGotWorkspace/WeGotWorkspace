@@ -65,37 +65,57 @@ export abstract class CalendarViewBase extends BaseElement {
   selectedCalendarId?: string;
 
   /**
-   * Optional host-provided scope picker (React wires this on `wgw-calendar-surface`).
-   * Returns `thisInstance` | `thisAndFuture`, or `null` when the user cancels.
+   * Walk ancestors across Lit shadow roots to find `wgw-calendar-surface`.
+   * `Element.closest` stops at a shadow boundary, so a plain closest from a
+   * nested view never reaches the React-wired host.
+   */
+  #findCalendarSurfaceHost():
+    | (HTMLElement & {
+        requestRecurrenceScope?: (request: {
+          action: "edit" | "delete" | "update";
+          masterId: string;
+          recurrenceId?: string;
+        }) => Promise<"thisInstance" | "thisAndFuture" | null>;
+      })
+    | null {
+    type SurfaceHost = HTMLElement & {
+      requestRecurrenceScope?: (request: {
+        action: "edit" | "delete" | "update";
+        masterId: string;
+        recurrenceId?: string;
+      }) => Promise<"thisInstance" | "thisAndFuture" | null>;
+    };
+    const inLightDom = this.closest("wgw-calendar-surface") as SurfaceHost | null;
+    if (inLightDom) return inLightDom;
+
+    let root: Node = this.getRootNode();
+    while (root instanceof ShadowRoot) {
+      const host = root.host;
+      if (host.localName === "wgw-calendar-surface") return host as SurfaceHost;
+      const nested = host.closest("wgw-calendar-surface") as SurfaceHost | null;
+      if (nested) return nested;
+      root = host.getRootNode();
+    }
+    return null;
+  }
+
+  /**
+   * Host-provided scope picker (React wires this on `wgw-calendar-surface`).
+   * Returns `thisInstance` | `thisAndFuture`, or `null` when the user cancels
+   * or no host callback is available (abort — never use `window.confirm`).
    */
   async #askRecurrenceScope(args: {
     action: "update" | "delete";
     masterId: string;
     recurrenceId?: string;
   }): Promise<"thisInstance" | "thisAndFuture" | null> {
-    const host = this.closest("wgw-calendar-surface") as
-      | (HTMLElement & {
-          requestRecurrenceScope?: (request: {
-            action: "edit" | "delete" | "update";
-            masterId: string;
-            recurrenceId?: string;
-          }) => Promise<"thisInstance" | "thisAndFuture" | null>;
-        })
-      | null;
-    if (host?.requestRecurrenceScope) {
-      return host.requestRecurrenceScope({
-        action: args.action === "update" ? "edit" : args.action,
-        masterId: args.masterId,
-        recurrenceId: args.recurrenceId,
-      });
-    }
-    // No React dialog: only-this-instance is the safe default confirm.
-    const ok = window.confirm(
-      args.action === "delete"
-        ? "Delete only this instance of the recurring event?\n\nOK = only this instance\nCancel = abort"
-        : "Edit only this instance of the recurring event?\n\nOK = only this instance\nCancel = abort",
-    );
-    return ok ? "thisInstance" : null;
+    const host = this.#findCalendarSurfaceHost();
+    if (!host?.requestRecurrenceScope) return null;
+    return host.requestRecurrenceScope({
+      action: args.action === "update" ? "edit" : args.action,
+      masterId: args.masterId,
+      recurrenceId: args.recurrenceId,
+    });
   }
 
   static get properties() {
