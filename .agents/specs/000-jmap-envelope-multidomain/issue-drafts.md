@@ -15,9 +15,9 @@ issue bodies require a maintainer):
 
 **Deliberately not filed yet** (gated):
 
-- Files envelope build — after #439 lands; draft body in [../450-jmap-envelope-filenode/issue-draft.md](../450-jmap-envelope-filenode/issue-draft.md)
-- Mail read-only (M1) — only if #440 concludes "build"; draft body in [../452-jmap-envelope-mail/issue-draft.md](../452-jmap-envelope-mail/issue-draft.md)
-- Mail writes + submission (M2) — after M1; draft body in the same file
+- Mail writes + submission (M2) — after M1 (#452) lands; draft body in [../452-jmap-envelope-mail/issue-draft.md](../452-jmap-envelope-mail/issue-draft.md)
+
+(The files build and mail M1 gates opened when #447/#448 merged — filed as #450/#452, see the table below.)
 
 **Epic parenting:** #435 follows the #401 precedent — an engineering epic with
 a "Supports Goals" table (#383 contacts, #379 drive, #400/#398 mail, #385/#402
