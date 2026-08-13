@@ -243,6 +243,29 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         $this->assertSame([$cardId], $destroy->json('methodResponses.0.1.destroyed'));
     }
 
+    public function test_contact_card_set_with_unknown_media_blob_id_is_invalid_properties(): void
+    {
+        $payload = $this->sampleContactCardPayload();
+        $payload['media'] = [
+            'm1' => ['kind' => 'photo', 'blobId' => 'ffffffff-ffff-ffff-ffff-ffffffffffff'],
+        ];
+
+        $create = $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'create' => ['k0' => $payload]], 'c0'],
+        ])->assertOk();
+        // spec.md edge case: unknown/foreign blobId → invalidProperties,
+        // never serverFail (a client-input problem, not a server bug).
+        $create->assertJsonPath('methodResponses.0.1.notCreated.k0.type', 'invalidProperties');
+
+        $cardId = $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'create' => ['k1' => $this->sampleContactCardPayload()]], 'c1'],
+        ])->assertOk()->json('methodResponses.0.1.created.k1.id');
+        $update = $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => ['media' => $payload['media']]]], 'c2'],
+        ])->assertOk();
+        $update->assertJsonPath('methodResponses.0.1.notUpdated.'.$cardId.'.type', 'invalidProperties');
+    }
+
     public function test_contact_card_set_top_level_if_in_state_rejects_stale_state_without_mutating(): void
     {
         $response = $this->jmap([

@@ -28,6 +28,9 @@ final class JmapSetErrors
             'calendarHasContents' => 'calendarHasEvent',
             // RFC 9610 AddressBook/set destroy without onDestroyRemoveContents.
             'addressBookHasContents' => 'addressBookHasContents',
+            // Unknown/foreign media blobId (ContactMediaBlobResolver) — a
+            // client-input problem, not a server failure.
+            'invalid_blob' => 'invalidProperties',
             'alreadyExists' => 'invalidProperties',
             default => 'serverFail',
         };
@@ -59,7 +62,9 @@ final class JmapSetErrors
         $legacyType = is_string($shape['type'] ?? null) ? $shape['type'] : 'serverFail';
         $type = match ($legacyType) {
             'not_found', 'notFound' => 'notFound',
-            'bad_request', 'invalidProperties', 'alreadyExists' => 'invalidProperties',
+            // invalid_blob: unknown/foreign media blobId — client input, not
+            // a server failure (spec.md edge case: "never a 500").
+            'bad_request', 'invalidProperties', 'alreadyExists', 'invalid_blob' => 'invalidProperties',
             'forbidden' => 'forbidden',
             'stateMismatch', 'precondition_failed' => 'stateMismatch',
             'addressBookHasContents' => 'addressBookHasContents',
