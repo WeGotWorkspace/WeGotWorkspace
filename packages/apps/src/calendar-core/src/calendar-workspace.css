@@ -1,0 +1,97 @@
+/* Calendar workspace shell — scoped to .calendar-workspace (split shell). */
+
+.calendar-workspace {
+  --calendar-accent: #6366f1;
+  --calendar-grid-line: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --calendar-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.calendar-workspace .calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.calendar-workspace .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+}
+
+.calendar-workspace .calendar-sidebar-dot[data-hidden] {
+  opacity: 0.3;
+}
+
+.calendar-workspace .calendar-main {
+  padding: 1rem 1.25rem 2rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Agenda view */
+
+.calendar-workspace .calendar-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 44rem;
+}
+
+.calendar-workspace .calendar-agenda-empty {
+  color: var(--calendar-muted);
+  padding: 2rem 0;
+}
+
+.calendar-workspace .calendar-agenda-day__heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--calendar-muted);
+  margin-bottom: 0.4rem;
+}
+
+.calendar-workspace .calendar-agenda-day__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.calendar-workspace .calendar-agenda-item {
+  display: grid;
+  grid-template-columns: auto 8.5rem 1fr;
+  align-items: baseline;
+  column-gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+}
+
+.calendar-workspace .calendar-agenda-item:hover {
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.calendar-workspace .calendar-agenda-item__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  align-self: center;
+}
+
+.calendar-workspace .calendar-agenda-item__time {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--calendar-muted);
+}
+
+.calendar-workspace .calendar-agenda-item__title {
+  font-weight: 500;
+}
+
+.calendar-workspace .calendar-agenda-item__location {
+  grid-column: 3;
+  font-size: 0.8rem;
+  color: var(--calendar-muted);
+}

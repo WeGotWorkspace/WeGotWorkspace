@@ -26,6 +26,7 @@ export function WeGotWorkspaceHome() {
   const apps: AppsHomeScreenItem[] = [
     homeAppTile("notes", "Notes", () => void navigate({ to: "/notes" })),
     homeAppTile("mail", "Mail", () => void navigate({ to: "/mail" })),
+    homeAppTile("calendar", "Calendar", () => void navigate({ to: "/calendar" }), "#ffffff"),
     homeAppTile("contacts", "Contacts", () => void navigate({ to: "/contacts" }), "#ffffff"),
     homeAppTile("tasks", "Tasks", () => void navigate({ to: "/tasks" }), "#ffffff"),
     homeAppTile("drive", "Drive", () => void navigate({ to: "/drive" }), "#ffffff"),

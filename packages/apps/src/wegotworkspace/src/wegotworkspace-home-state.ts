@@ -6,6 +6,7 @@ const ADMIN_GROUP_ID = "principals/groups/administrators";
 
 export type WeGotWorkspaceHomeState = {
   showAdmin: boolean;
+  showCalendar: boolean;
   showContacts: boolean;
   showTasks: boolean;
   userDisplayName: string;
@@ -21,6 +22,7 @@ export type WeGotWorkspaceHomeState = {
 
 export const MOCK_HOME_STATE: WeGotWorkspaceHomeState = {
   showAdmin: true,
+  showCalendar: true,
   showContacts: true,
   showTasks: true,
   userDisplayName: "Demo User",
@@ -48,6 +50,7 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
     if (!res.ok) {
       return {
         showAdmin: false,
+        showCalendar: true,
         showContacts: true,
         showTasks: true,
         userDisplayName: "User",
@@ -56,12 +59,13 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
       };
     }
     const state = (await wgwReadJson(res)) as WgwSettingsStateResponse & {
-      apps?: { contacts?: boolean; tasks?: boolean };
+      apps?: { calendars?: boolean; contacts?: boolean; tasks?: boolean };
     };
     const userDisplayName = state.user.displayName?.trim() || state.user.username?.trim() || "User";
     const showUserMenu = Boolean(state.user.username?.trim() || state.user.email?.trim());
     return {
       showAdmin: state.groups.some((group) => group.id === ADMIN_GROUP_ID),
+      showCalendar: state.apps?.calendars !== false,
       showContacts: state.apps?.contacts !== false,
       showTasks: state.apps?.tasks !== false,
       userDisplayName,
@@ -71,6 +75,7 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
   } catch {
     return {
       showAdmin: false,
+      showCalendar: true,
       showContacts: true,
       showTasks: true,
       userDisplayName: "User",

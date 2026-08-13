@@ -1,0 +1,45 @@
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
+
+/**
+ * UI-facing calendar collection. Events travel as JSCalendar wire objects
+ * (`JmapCalendarEvent` — plain JSON, safe for Dexie and mocks); views convert
+ * to the calendar-engine's Temporal model via calendar-event-model.ts.
+ */
+export type CalendarInfo = {
+  id: string;
+  name: string;
+  color: string;
+  isVisible?: boolean;
+  isDefault?: boolean;
+  mayWrite?: boolean;
+};
+
+export type CalendarUIData = {
+  calendars: CalendarInfo[];
+  events: JmapCalendarEvent[];
+};
+
+export type CalendarViewId = "month" | "week" | "day" | "agenda";
+
+export type CalendarEventDraft = {
+  calendarId: string;
+  title: string;
+  /** JSCalendar LocalDateTime, e.g. "2033-01-10T10:00:00". */
+  start: string;
+  /** ISO 8601 duration, e.g. "PT1H" / "P1D". */
+  duration: string;
+  timeZone?: string;
+  allDay?: boolean;
+  location?: string;
+  description?: string;
+};
+
+export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">> & {
+  calendarId?: string;
+};
+
+export type CalendarAPIOperations = {
+  createEvent: (draft: CalendarEventDraft) => Promise<JmapCalendarEvent>;
+  patchEvent: (eventId: string, patch: CalendarEventPatch) => Promise<JmapCalendarEvent>;
+  deleteEvent: (eventId: string) => Promise<void>;
+};

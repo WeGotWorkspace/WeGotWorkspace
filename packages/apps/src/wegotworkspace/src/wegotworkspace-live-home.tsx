@@ -47,6 +47,9 @@ export function WeGotWorkspaceLiveHome() {
   const apps: AppsHomeScreenItem[] = [
     homeAppTile("notes", "Notes", () => void navigate({ to: "/notes" })),
     homeAppTile("mail", "Mail", () => void navigate({ to: "/mail" })),
+    ...(homeState.showCalendar
+      ? [homeAppTile("calendar", "Calendar", () => void navigate({ to: "/calendar" }), "#ffffff")]
+      : []),
     ...(homeState.showContacts
       ? [homeAppTile("contacts", "Contacts", () => void navigate({ to: "/contacts" }), "#ffffff")]
       : []),

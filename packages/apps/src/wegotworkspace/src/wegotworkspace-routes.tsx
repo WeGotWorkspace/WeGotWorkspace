@@ -7,6 +7,10 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { AdminApp } from "@/admin-core/src/admin-app";
+import { CalendarApp } from "@/calendar-core/src/calendar-app";
+import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
+import { createDefaultCalendarApiSource } from "@/calendar-core/src/calendar-api-source";
+import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
 import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
@@ -89,6 +93,7 @@ const sharePublicPwaHead = () =>
 const adminPwaHead = () => createWorkspacePwaHead("admin");
 const contactsPwaHead = () => createWorkspacePwaHead("contacts");
 const tasksPwaHead = () => createWorkspacePwaHead("tasks");
+const calendarPwaHead = () => createWorkspacePwaHead("calendar");
 
 const STORY_SYSTEM_MAILBOXES = [
   "Inbox",
@@ -207,6 +212,24 @@ function MockTasksRoute() {
       onLogout={onLogout}
       initialView={initialView}
       onViewChange={handleViewChange}
+    />
+  );
+}
+
+function MockCalendarRoute() {
+  const onLogout = useWeGotWorkspaceLogout();
+  const bootstrap = useMemo(() => createCalendarAppBootstrap(), []);
+  const operations = useMemo(
+    () => createDefaultCalendarApiSource().createOperations(bootstrap),
+    [bootstrap],
+  );
+  return (
+    <CalendarWorkspace
+      data={bootstrap.data}
+      session={bootstrap.session}
+      operations={operations}
+      listRefreshing={false}
+      onLogout={onLogout}
     />
   );
 }
@@ -515,6 +538,13 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: TasksComponent,
   });
 
+  const calendarRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar",
+    head: calendarPwaHead,
+    component: isLive ? withWeGotWorkspaceAuth(CalendarApp) : MockCalendarRoute,
+  });
+
   const installRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/install",
@@ -567,6 +597,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     tasksTagRoute,
     tasksListRoute,
     tasksPriorityRoute,
+    calendarRoute,
     installRoute,
     sharePublicRoute,
   ]);

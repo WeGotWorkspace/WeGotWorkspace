@@ -95,6 +95,7 @@ final class FrontRoutingTest extends TestCase
     {
         return [
             'admin' => ['/admin'],
+            'calendar' => ['/calendar'],
             'contacts' => ['/contacts'],
             'docs' => ['/docs'],
             'drive' => ['/drive'],

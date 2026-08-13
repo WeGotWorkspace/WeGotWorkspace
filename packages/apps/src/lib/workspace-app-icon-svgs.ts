@@ -15,6 +15,7 @@ import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 /** Inline SVG markup for switch-trigger recoloring via `--wai-*` CSS vars on the root `<svg>`. */
 export const WORKSPACE_APP_ICON_INLINE: Record<WorkspaceAppId, string> = {
   admin: adminIcon,
+  calendar: calendarIcon,
   contacts: contactsIcon,
   docs: docsIcon,
   drive: driveIcon,
@@ -34,6 +35,5 @@ export const WORKSPACE_HOME_ICON_INLINE = homeIcon;
 
 /** Future icons — same source files, not wired in the home grid yet. */
 export const WORKSPACE_FUTURE_APP_ICON_INLINE = {
-  calendar: calendarIcon,
   reminders: remindersIcon,
 } as const;
