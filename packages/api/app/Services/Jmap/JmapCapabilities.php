@@ -18,6 +18,8 @@ final class JmapCapabilities
 
     public const CONTACTS = 'urn:ietf:params:jmap:contacts';
 
+    public const FILENODE = 'urn:ietf:params:jmap:filenode';
+
     /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
@@ -85,6 +87,34 @@ final class JmapCapabilities
             // Storage keys each card to exactly one address book.
             'maxAddressBooksPerCard' => 1,
             'mayCreateAddressBook' => true,
+        ];
+    }
+
+    /**
+     * draft-ietf-jmap-filenode-14 §2.1 account-level capability object. The
+     * session-level value for the filenode URN is the empty object.
+     *
+     * @return array<string, mixed>
+     */
+    public static function filenodeAccountCapability(): array
+    {
+        return [
+            'maxFileNodeDepth' => null,
+            'maxSizeFileNodeName' => 255,
+            // Matches DriveService::validateItemName; "." and ".." are also
+            // rejected via forbiddenNodeNames.
+            'forbiddenNameChars' => "/\\\0",
+            'forbiddenNodeNames' => ['.', '..'],
+            'fileNodeQuerySortOptions' => ['name', 'nodeType'],
+            // Roots are fixed (the personal home + member group trees).
+            'mayCreateTopLevelFileNode' => false,
+            'webTrashUrl' => null,
+            // Backing filesystems are case-sensitive in production (Linux);
+            // compareCaseInsensitively is honoured per request.
+            'caseInsensitiveNames' => false,
+            'webUrlTemplate' => null,
+            // Clients use FileNode/set + blob upload (roadmap non-goal).
+            'webWriteUrlTemplate' => null,
         ];
     }
 }

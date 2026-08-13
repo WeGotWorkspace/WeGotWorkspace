@@ -22,6 +22,12 @@ use App\Services\Jmap\Methods\ContactCardQueryChangesMethod;
 use App\Services\Jmap\Methods\ContactCardQueryMethod;
 use App\Services\Jmap\Methods\ContactCardSetMethod;
 use App\Services\Jmap\Methods\CoreEchoMethod;
+use App\Services\Jmap\Methods\FileNodeChangesMethod;
+use App\Services\Jmap\Methods\FileNodeCopyMethod;
+use App\Services\Jmap\Methods\FileNodeGetMethod;
+use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
+use App\Services\Jmap\Methods\FileNodeQueryMethod;
+use App\Services\Jmap\Methods\FileNodeSetMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
 
 /**
@@ -59,6 +65,13 @@ final class JmapMethodDispatcher
         ContactCardSetMethod::class,
         ContactCardQueryMethod::class,
         ContactCardQueryChangesMethod::class,
+        // urn:ietf:params:jmap:filenode (draft-ietf-jmap-filenode-14)
+        FileNodeGetMethod::class,
+        FileNodeChangesMethod::class,
+        FileNodeSetMethod::class,
+        FileNodeCopyMethod::class,
+        FileNodeQueryMethod::class,
+        FileNodeQueryChangesMethod::class,
     ];
 
     /** @var array<string, JmapMethodInterface> */
