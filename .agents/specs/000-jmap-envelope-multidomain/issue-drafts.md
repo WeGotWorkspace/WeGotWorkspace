@@ -24,7 +24,7 @@ chunks fit #400) or file a new one; Epics/Tasks never go on the Product Project.
 ### Title
 
 ```
-feat(api): JMAP transport envelope for contacts, blobs, tasks, files, and mail
+feat(api): JMAP transport envelope for contacts, blobs, files, and mail
 ```
 
 ### Body
@@ -32,11 +32,11 @@ feat(api): JMAP transport envelope for contacts, blobs, tasks, files, and mail
 ```markdown
 Parent: #<goal>
 
-Extend the RFC 8620 JMAP envelope shipped for calendars (#430) to every other
-JMAP-shaped domain, so `/api/v1/jmap` becomes the single protocol front:
-contacts (RFC 9610), real blob upload/download (RFC 8620 §6), tasks
-(draft-ietf-jmap-tasks-06, pinned), files (draft-ietf-jmap-filenode-14,
-pinned), and mail (RFC 8621, phased behind a design gate).
+Extend the RFC 8620 JMAP envelope shipped for calendars (#430) to the other
+JMAP-shaped domains, so `/api/v1/jmap` becomes the single protocol front:
+contacts (RFC 9610), real blob upload/download (RFC 8620 §6), files
+(draft-ietf-jmap-filenode-14, pinned), and mail (RFC 8621, phased behind a
+design gate).
 
 Roadmap: `.agents/specs/000-jmap-envelope-multidomain/` (spec.md / plan.md /
 tasks.md). Non-goals across all children: JMAP Push, RFC 9670 sharing writes,
@@ -47,13 +47,15 @@ changing REST endpoints or their legacy shapes, frontend work.
 - [ ] Chore: envelope decoupling (routes + capability derivation)
 - [ ] Task: contacts envelope (RFC 9610)
 - [ ] Task: real blob infrastructure (RFC 8620 §6)
-- [ ] Task: tasks REST item sync primitives
-- [ ] Task: tasks envelope (draft-06 pinned)
 - [ ] Task: filenode node-identity design doc
 - [ ] Task: files envelope (draft-filenode-14 pinned)
 - [ ] Task: mail state-model design doc (build/defer/reject gate)
 - [ ] Task: mail envelope read-only (if M0 = build)
 - [ ] Task: mail writes + submission (if M0 = build)
+
+Tasks (VTODO) is deliberately absent: `draft-ietf-jmap-tasks-06` is an expired,
+immature draft — see the roadmap spec's Non-goals. The task item `/changes` +
+`/set` REST gap stays tracked in parity-gaps (#158), outside this epic.
 ```
 
 ---
@@ -156,70 +158,7 @@ bodies/attachments, and contacts photo blobIds.
 
 ---
 
-## 5. Task — tasks REST item sync primitives (chunk T-rest)
-
-**Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above (lineage: #158/#137) · **Branch:** `feat/tasks-item-sync`
-
-### Title
-
-```
-feat(api): task item /changes and /set REST sync primitives
-```
-
-### Body
-
-```markdown
-Parent: #<epic>
-
-Task items still lack the `/changes` + `/set` sync primitives that calendar
-events gained in #429 (see parity-gaps platform row). Land them on the same
-pattern so the tasks envelope can wrap them.
-
-### Acceptance criteria
-
-- [ ] `GET /tasks/items/changes` per task list (Sabre synctoken-based), same semantics as calendar event `/changes`
-- [ ] `POST /tasks/items/set` with per-record `ifInState` → `stateMismatch`, same semantics as calendar event `/set`
-- [ ] Per-item state tokens recorded (analog of `jmap_calendar_event_states` or shared table), surviving destroys for `/changes` expansion
-- [ ] Test parity with the calendar event sync suites; parity-gaps doc updated; `composer done-gate`
-```
-
----
-
-## 6. Task — tasks envelope (chunk T-envelope)
-
-**Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above · **Branch:** `feat/jmap-envelope-tasks` · **Spec folder:** `<N>-jmap-envelope-tasks`
-
-### Title
-
-```
-feat(api): JMAP envelope methods for tasks (draft-ietf-jmap-tasks-06, pinned)
-```
-
-### Body
-
-```markdown
-Parent: #<epic>
-Depends on: #<chore P>, #<task T-rest>
-
-Add `TaskList/*` and `Task/*` to the JMAP envelope behind
-`urn:ietf:params:jmap:tasks` (already advertised by `TasksCapabilitiesService`
-on REST), wrapping the T-rest primitives.
-
-Note: the tasks spec is an **expired** IETF draft (last revision 2023-03-10).
-We control both ends, so we pin `-06` and own the drift risk.
-
-### Acceptance criteria
-
-- [ ] `TaskList/get|changes|set` and `Task/get|changes|set|query` dispatched; `Task/queryChanges` → `cannotCalculateChanges`
-- [ ] Legacy REST shapes normalized in adapters (incl. the legacy RecurrenceRule wire types noted in parity-gaps); REST untouched
-- [ ] Top-level `ifInState` on `Task/set` with account-wide codec states
-- [ ] `draft-ietf-jmap-tasks-06` pinned in docs and converter tests; deviation risk recorded
-- [ ] Lifecycle contract test; mixed-domain batch test; OpenAPI + docs; `composer done-gate`
-```
-
----
-
-## 7. Task — filenode node-identity design doc (chunk F0)
+## 5. Task — filenode node-identity design doc (chunk F0)
 
 **Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above · **Deliverable:** design doc, no code
 
@@ -250,7 +189,7 @@ resolves this before any filenode code is written.
 
 ---
 
-## 8. Task — files envelope (chunk F)
+## 6. Task — files envelope (chunk F)
 
 **Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above · **Branch:** `feat/jmap-envelope-filenode` · **Spec folder:** `<N>-jmap-envelope-filenode`
 
@@ -282,7 +221,7 @@ per the F0 design.
 
 ---
 
-## 9. Task — mail state-model design doc (chunk M0)
+## 7. Task — mail state-model design doc (chunk M0)
 
 **Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above (Goal lineage: #400) · **Deliverable:** decision doc, no code
 
@@ -313,7 +252,7 @@ apply. Produce the design + decision doc gating any mail envelope build.
 
 ---
 
-## 10. Task — mail envelope, read-only (chunk M1; file only if M0 = build)
+## 8. Task — mail envelope, read-only (chunk M1; file only if M0 = build)
 
 **Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above · **Branch:** `feat/jmap-envelope-mail-read` · **Spec folder:** `<N>-jmap-envelope-mail`
 
@@ -342,7 +281,7 @@ Phase 1 of RFC 8621 per the M0 design: read-only mail behind
 
 ---
 
-## 11. Task — mail writes + submission (chunk M2; file only after M1)
+## 9. Task — mail writes + submission (chunk M2; file only after M1)
 
 **Template:** `.github/ISSUE_TEMPLATE/task.yml` · **Label:** `type:task` · **Parent:** the Epic above · **Branch:** `feat/jmap-envelope-mail-write`
 
