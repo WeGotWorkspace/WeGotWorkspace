@@ -1,4 +1,11 @@
-import { CalendarDays, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
