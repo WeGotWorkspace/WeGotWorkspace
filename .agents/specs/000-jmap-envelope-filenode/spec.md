@@ -19,6 +19,8 @@ Expose the drive as JMAP FileNodes behind `urn:ietf:params:jmap:filenode`. **Sta
 - Blobext/ArchiveEntry integration (draft's optional archive extraction) — out of scope.
 - Symlink nodes — decide in F0 whether to expose them at all (`nodeType: "symlink"` is optional server behavior; the Flysystem drive has no symlink concept).
 
+> **F0 delivered:** the design doc lives at [`packages/api/docs/files/jmap-filenode-design.md`](../../../packages/api/docs/files/jmap-filenode-design.md) (#439). The build Task derives its AC from that document; the section below is the original problem statement.
+
 ## The core problem (chunk F0 resolves this)
 
 FileNode ids must be **stable across rename/move** — `name` and `parentId` are mutable properties on an immutable id — while the drive is path-addressed Flysystem: `app/Dav/Storage/FlysystemNode.php` / `FlysystemFile.php` / `FlysystemDirectory.php` (WebDAV) and `FilesController` (REST) both address nodes by path, and Flysystem has no changelog to back `FileNode/changes`.
