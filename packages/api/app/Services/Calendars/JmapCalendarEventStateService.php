@@ -79,6 +79,24 @@ final class JmapCalendarEventStateService
     }
 
     /**
+     * Every event id previously surfaced for any object in this calendar —
+     * the destroyed-branch primitive for the JMAP envelope's account-wide
+     * CalendarEvent/changes when a whole calendar disappeared since sinceState.
+     *
+     * @return list<string>
+     */
+    public function recordedEventIdsForCalendar(string $username, string $calendarUri): array
+    {
+        return JmapCalendarEventState::query()
+            ->where('username', $username)
+            ->where('calendar_uri', $calendarUri)
+            ->pluck('event_id')
+            ->map(static fn ($id): string => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Ensures a state row exists and rotates state_token when the CalDAV etag changes (read path).
      */
     private function ensureStateRow(

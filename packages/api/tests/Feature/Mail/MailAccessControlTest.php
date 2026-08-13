@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Mail;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -73,6 +74,7 @@ final class MailAccessControlTest extends WgwDatabaseTestCase
             ->assertJsonPath('accountConfigured', false);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_mail_routes_use_jwt_principal_not_other_users_credentials(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');

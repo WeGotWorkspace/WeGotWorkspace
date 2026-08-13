@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mail;
 
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -42,6 +43,7 @@ final class MailEndpointsTest extends WgwDatabaseTestCase
         $this->assertFalse($response->json('ready'));
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_mail_folders_returns_not_configured_without_credentials(): void
     {
         $token = $this->userBearerToken();
@@ -71,6 +73,7 @@ final class MailEndpointsTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'bad_params']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_mail_move_is_routed_and_validates_params(): void
     {
         $token = $this->userBearerToken();

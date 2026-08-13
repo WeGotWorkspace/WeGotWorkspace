@@ -9251,6 +9251,175 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "JmapAccount": {
+                "type": "object",
+                "description": "JMAP Account object (RFC 8620 §2).",
+                "required": [
+                    "name",
+                    "isPersonal",
+                    "isReadOnly",
+                    "accountCapabilities"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "isPersonal": {
+                        "type": "boolean"
+                    },
+                    "isReadOnly": {
+                        "type": "boolean"
+                    },
+                    "accountCapabilities": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "JmapSession": {
+                "type": "object",
+                "description": "JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
+                "required": [
+                    "capabilities",
+                    "accounts",
+                    "primaryAccounts",
+                    "username",
+                    "apiUrl",
+                    "downloadUrl",
+                    "uploadUrl",
+                    "eventSourceUrl",
+                    "state"
+                ],
+                "properties": {
+                    "capabilities": {
+                        "type": "object",
+                        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` is the empty object (draft-ietf-jmap-calendars-27 §1.5.1).",
+                        "additionalProperties": {
+                            "type": "object"
+                        }
+                    },
+                    "accounts": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/JmapAccount"
+                        }
+                    },
+                    "primaryAccounts": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "apiUrl": {
+                        "type": "string"
+                    },
+                    "downloadUrl": {
+                        "type": "string"
+                    },
+                    "uploadUrl": {
+                        "type": "string"
+                    },
+                    "eventSourceUrl": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                }
+            },
+            "JmapMethodInvocation": {
+                "type": "array",
+                "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 §3.2).",
+                "prefixItems": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ],
+                "minItems": 3,
+                "maxItems": 3
+            },
+            "JmapApiRequest": {
+                "type": "object",
+                "description": "JMAP Request object (RFC 8620 §3.3).",
+                "required": [
+                    "using",
+                    "methodCalls"
+                ],
+                "properties": {
+                    "using": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 1
+                    },
+                    "methodCalls": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapMethodInvocation"
+                        }
+                    },
+                    "createdIds": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "JmapApiResponse": {
+                "type": "object",
+                "description": "JMAP Response object (RFC 8620 §3.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
+                "required": [
+                    "methodResponses",
+                    "sessionState"
+                ],
+                "properties": {
+                    "methodResponses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapMethodInvocation"
+                        }
+                    },
+                    "sessionState": {
+                        "type": "string"
+                    }
+                }
+            },
+            "JmapProblemDetails": {
+                "type": "object",
+                "description": "Request-level error as RFC 7807 problem details (RFC 8620 §3.6.1).",
+                "required": [
+                    "type",
+                    "status",
+                    "detail"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "limit": {
+                        "type": "string"
+                    }
+                }
             }
         },
         "responses": {
@@ -15553,6 +15722,241 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/jmap/session": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP Session resource",
+                "description": "RFC 8620 §2 Session resource for the calendars JMAP envelope. One account per authenticated principal (accountId = username); all URLs absolute; session-level calendars capability is the empty object per draft-ietf-jmap-calendars-27 §1.5.1.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "responses": {
+                    "200": {
+                        "description": "JMAP session",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapSession"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/jmap/download/{accountId}/{blobId}/{name}": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP blob download (not implemented)",
+                "description": "Structurally required by the Session resource (RFC 8620 §6.2) but unused by the calendars client; returns 501.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "blobId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "501": {
+                        "description": "Not implemented",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap/upload/{accountId}": {
+            "post": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP blob upload (not implemented)",
+                "description": "Structurally required by the Session resource (RFC 8620 §6.1) but unused by the calendars client; returns 501.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "501": {
+                        "description": "Not implemented",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap/events/{types}/{closeafter}/{ping}": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP event source / push (not implemented)",
+                "description": "Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "types",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "closeafter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ping",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "501": {
+                        "description": "Not implemented",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap": {
+            "post": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "JMAP batch API endpoint",
+                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JmapApiRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "JMAP response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Request-level error (problem details)",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
             }
         }
     }

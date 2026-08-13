@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mail;
 
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -23,6 +24,7 @@ final class MailMoveTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_move_without_credentials_returns_not_configured(): void
     {
         $this->withBearer($this->userBearerToken())->postJson('/api/v1/mail/move', [
@@ -59,6 +61,7 @@ final class MailMoveTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'bad_params']);
     }
 
+    #[RequiresPhpExtension('imap')]
     public function test_move_with_system_folder_alias_is_accepted_by_validation(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');

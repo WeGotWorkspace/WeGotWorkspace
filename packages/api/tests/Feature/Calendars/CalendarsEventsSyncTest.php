@@ -273,6 +273,25 @@ final class CalendarsEventsSyncTest extends WgwDatabaseTestCase
         $this->assertContains($otherCalendarEventId, $secondChanges->json('created'));
     }
 
+    public function test_event_changes_ignore_calendar_property_change_entries(): void
+    {
+        $state = $this->currentEventSyncState();
+
+        // Sabre's updateCalendar logs a change entry with an empty object
+        // uri; it must not surface as a phantom event id in any list.
+        $this->withBearer($this->userBearerToken())
+            ->patchJson('/api/v1/calendars/calendars/default', ['name' => 'Renamed Calendar'])
+            ->assertOk();
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/calendars/events/changes?calendarId=default&since='.$state)
+            ->assertOk();
+
+        $this->assertNotContains('', $response->json('created'));
+        $this->assertNotContains('', $response->json('updated'));
+        $this->assertNotContains('', $response->json('destroyed'));
+    }
+
     private function currentEventSyncState(string $calendarId = 'default'): string
     {
         $response = $this->withBearer($this->userBearerToken())
