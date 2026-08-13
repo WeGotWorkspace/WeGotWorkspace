@@ -18,10 +18,15 @@ import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
 
 const VIEW_ORDER: CalendarViewId[] = ["month", "week", "day", "year", "agenda"];
 
+function closeSidebarOnMobile(close: () => void) {
+  if (!isSidebarOverlayViewport()) return;
+  close();
+}
 export function CalendarWorkspace({
   data,
   session,
@@ -118,8 +123,12 @@ export function CalendarWorkspace({
                   icon={<Plus />}
                   onClick={() => {
                     openCreateEvent();
-                    setSidebarOpen(false);
+                    closeSidebarOnMobile(() => setSidebarOpen(false));
                   }}
+                  size="lg"
+                  pill
+                  variant="primary"
+                  className="w-full"
                 />
               ) : (
                 <Button
@@ -127,8 +136,12 @@ export function CalendarWorkspace({
                   icon={<CalendarDays />}
                   onClick={() => {
                     goToday();
-                    setSidebarOpen(false);
+                    closeSidebarOnMobile(() => setSidebarOpen(false));
                   }}
+                  size="lg"
+                  pill
+                  variant="primary"
+                  className="w-full"
                 />
               )
             }
@@ -168,7 +181,7 @@ export function CalendarWorkspace({
                   icon={<ChevronLeft className="size-4" />}
                   onClick={goPrevious}
                 />
-                <Button label={L.today} onClick={goToday} variant="ghost" />
+                <Button label={L.today} onClick={goToday} variant="subtle" />
                 <IconButton
                   label={L.nextPeriod}
                   icon={<ChevronRight className="size-4" />}

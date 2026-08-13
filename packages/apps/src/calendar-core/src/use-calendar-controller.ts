@@ -22,6 +22,7 @@ import {
   mergeCalendarLabels,
   type CalendarUILabels,
 } from "@/calendar-core/src/calendar-labels";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export type CalendarEditorState =
   | { mode: "create"; form: CalendarEventFormValue }
@@ -94,7 +95,7 @@ export function useCalendarController({
 
   const [view, setView] = useState<CalendarViewId>(initialView ?? "month");
   const [anchor, setAnchor] = useState<string>(initialAnchor ?? todayISODate());
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [hiddenCalendarIds, setHiddenCalendarIds] = useState<ReadonlySet<string>>(
     () => new Set(data.calendars.filter((c) => c.isVisible === false).map((c) => c.id)),
   );
@@ -102,7 +103,10 @@ export function useCalendarController({
   const selectView = useCallback(
     (next: CalendarViewId) => {
       setView(next);
-      setSidebarOpen(false);
+      // Match tasks/drive: only dismiss the overlay drawer on small viewports.
+      if (isSidebarOverlayViewport()) {
+        setSidebarOpen(false);
+      }
       onViewChange?.(next);
     },
     [onViewChange],

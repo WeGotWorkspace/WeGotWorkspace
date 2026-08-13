@@ -10,6 +10,9 @@
  */
 .calendar-workspace {
   --calendar-accent: #6366f1;
+  /* CTA background: darker indigo so white 16px text clears WCAG AA 4.5:1
+     (the raw accent measures 4.46:1 and fails the Storybook a11y gate). */
+  --calendar-accent-strong: #5558e8;
   --calendar-sidebar: color-mix(in oklab, var(--calendar-accent) 10%, var(--color-cream, #ffffff));
   --calendar-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
 
@@ -35,9 +38,9 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --button-primary-bg: var(--calendar-accent);
+  --button-primary-bg: var(--calendar-accent-strong);
   --button-primary-fg: #ffffff;
-  --primary: var(--calendar-accent);
+  --primary: var(--calendar-accent-strong);
   --primary-foreground: #ffffff;
 
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
@@ -49,24 +52,37 @@
 }
 
 .calendar-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--calendar-accent);
+  --button-primary-bg: var(--calendar-accent-strong);
   --button-primary-fg: #ffffff;
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
-/** App switcher lockup: accent tile + white glyph (matches the primary CTA). */
+/**
+ * App switcher lockup: same calendar.svg as the homescreen tile.
+ * Do not mono-map --wai-detail / --wai-detail-muted to white — that washes the
+ * day grid into a blank white square on the indigo tile.
+ */
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--calendar-accent);
-  --app-switch-icon-fg: #ffffff;
   background-color: var(--app-switch-icon-bg);
 }
 
-/* Header action icon buttons match {@link WorkspaceSidebarToggle} sizing. */
-.calendar-workspace .calendar-header-actions .button {
+.calendar-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: #ffffff;
+  --wai-detail: #4f46e5;
+  --wai-detail-muted: #c7d2fe;
+}
+
+/* Header IconButtons match {@link WorkspaceSidebarToggle}; leave labeled Buttons alone. */
+.calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
   @apply size-9 shrink-0;
 }
 
@@ -135,10 +151,11 @@
  */
 .calendar-dialog-surface {
   --calendar-accent: #6366f1;
+  --calendar-accent-strong: #5558e8;
   --color-emerald: var(--calendar-accent);
-  --button-primary-bg: var(--calendar-accent);
+  --button-primary-bg: var(--calendar-accent-strong);
   --button-primary-fg: #ffffff;
-  --primary: var(--calendar-accent);
+  --primary: var(--calendar-accent-strong);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
 }
