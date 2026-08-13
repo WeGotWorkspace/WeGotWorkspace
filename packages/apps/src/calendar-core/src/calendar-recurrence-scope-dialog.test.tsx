@@ -9,7 +9,7 @@ describe("CalendarRecurrenceScopeDialog", () => {
     cleanup();
   });
 
-  it("edit action offers only this / this and future", () => {
+  it("edit action offers only this / all future as stacked buttons", () => {
     const resolve = vi.fn();
     render(
       <CalendarRecurrenceScopeDialog
@@ -18,12 +18,20 @@ describe("CalendarRecurrenceScopeDialog", () => {
       />,
     );
 
-    expect(screen.getByText(defaultCalendarLabels.recurrenceScopeThisInstance)).toBeTruthy();
-    expect(screen.getByText(defaultCalendarLabels.recurrenceScopeThisAndFuture)).toBeTruthy();
-    expect(screen.queryByText(defaultCalendarLabels.recurrenceScopeAllInstances)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeThisInstance }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeThisAndFuture }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.recurrenceScopeAllInstances }),
+    ).toBeNull();
+    expect(screen.getByText(defaultCalendarLabels.recurrenceScopeEditTitle)).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.recurrenceScopeEditDescription)).toBeTruthy();
   });
 
-  it("delete action offers all instances and resolves it", () => {
+  it("delete action offers all events and resolves it immediately", () => {
     let chosen: RecurrenceScopeChoice | null | undefined;
     const resolve = vi.fn((scope: RecurrenceScopeChoice | null) => {
       chosen = scope;
@@ -35,14 +43,46 @@ describe("CalendarRecurrenceScopeDialog", () => {
       />,
     );
 
-    const allInstances = screen.getByLabelText(defaultCalendarLabels.recurrenceScopeAllInstances);
-    fireEvent.click(allInstances);
     fireEvent.click(
-      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeContinue }),
+      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeAllInstances }),
     );
 
     expect(resolve).toHaveBeenCalledWith("allInstances");
     expect(chosen).toBe("allInstances");
+  });
+
+  it("primary action resolves thisInstance without a continue step", () => {
+    const resolve = vi.fn();
+    render(
+      <CalendarRecurrenceScopeDialog
+        dialog={{ action: "edit", resolve }}
+        labels={defaultCalendarLabels}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeThisInstance }),
+    );
+
+    expect(resolve).toHaveBeenCalledWith("thisInstance");
+  });
+
+  it("shows a custom description when provided", () => {
+    const resolve = vi.fn();
+    render(
+      <CalendarRecurrenceScopeDialog
+        dialog={{
+          action: "edit",
+          description: "Do you want to move only this occurrence to 11/08/2026, 14:00?",
+          resolve,
+        }}
+        labels={defaultCalendarLabels}
+      />,
+    );
+
+    expect(
+      screen.getByText("Do you want to move only this occurrence to 11/08/2026, 14:00?"),
+    ).toBeTruthy();
   });
 
   it("cancel resolves null", () => {

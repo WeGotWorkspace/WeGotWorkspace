@@ -36,11 +36,12 @@ export type CalendarUILabels = {
   toastEventSaveFailed: string;
   recurrenceScopeEditTitle: string;
   recurrenceScopeDeleteTitle: string;
+  recurrenceScopeEditDescription: string;
+  recurrenceScopeDeleteDescription: string;
   recurrenceScopeThisInstance: string;
   recurrenceScopeThisAndFuture: string;
   /** Delete only — destroy the master series. */
   recurrenceScopeAllInstances: string;
-  recurrenceScopeContinue: string;
   editEventTitle: string;
   createEventTitle: string;
   eventTitleLabel: string;
@@ -96,12 +97,15 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastEventDeleted: "Event deleted",
   toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",
-  recurrenceScopeEditTitle: "Edit recurring event",
-  recurrenceScopeDeleteTitle: "Delete recurring event",
-  recurrenceScopeThisInstance: "Only this instance",
-  recurrenceScopeThisAndFuture: "This and future instances",
-  recurrenceScopeAllInstances: "All instances",
-  recurrenceScopeContinue: "Continue",
+  recurrenceScopeEditTitle: "You're changing a repeating event.",
+  recurrenceScopeDeleteTitle: "You're deleting a repeating event.",
+  recurrenceScopeEditDescription:
+    "Do you want to change only this occurrence, or this and all future events?",
+  recurrenceScopeDeleteDescription:
+    "Do you want to delete only this occurrence, this and all future events, or the entire series?",
+  recurrenceScopeThisInstance: "Only this event",
+  recurrenceScopeThisAndFuture: "All future events",
+  recurrenceScopeAllInstances: "All events",
   editEventTitle: "Edit event",
   createEventTitle: "New event",
   eventTitleLabel: "Title",

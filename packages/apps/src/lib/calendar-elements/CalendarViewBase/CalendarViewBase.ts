@@ -75,6 +75,7 @@ export abstract class CalendarViewBase extends BaseElement {
           action: "edit" | "delete" | "update";
           masterId: string;
           recurrenceId?: string;
+          description?: string;
         }) => Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null>;
       })
     | null {
@@ -83,6 +84,7 @@ export abstract class CalendarViewBase extends BaseElement {
         action: "edit" | "delete" | "update";
         masterId: string;
         recurrenceId?: string;
+        description?: string;
       }) => Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null>;
     };
     const inLightDom = this.closest("wgw-calendar-surface") as SurfaceHost | null;
@@ -109,6 +111,7 @@ export abstract class CalendarViewBase extends BaseElement {
     action: "update" | "delete";
     masterId: string;
     recurrenceId?: string;
+    description?: string;
   }): Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null> {
     const host = this.#findCalendarSurfaceHost();
     if (!host?.requestRecurrenceScope) return null;
@@ -116,6 +119,7 @@ export abstract class CalendarViewBase extends BaseElement {
       action: args.action === "update" ? "edit" : args.action,
       masterId: args.masterId,
       recurrenceId: args.recurrenceId,
+      description: args.description,
     });
   }
 
@@ -288,10 +292,14 @@ export abstract class CalendarViewBase extends BaseElement {
     );
 
     if (shouldPromptForSeries && recurrenceId) {
+      const moveTarget = this.#formatScopeMoveTarget(detail.content.start, Boolean(data.allDay));
       const scope = await this.#askRecurrenceScope({
         action: "update",
         masterId: detail.envelope.eventId,
         recurrenceId,
+        description: moveTarget
+          ? `Do you want to move only this occurrence to ${moveTarget}, or change the date for this and all future events?`
+          : undefined,
       });
       if (scope !== "thisInstance" && scope !== "thisAndFuture") {
         return { handled: true, accepted: false };
@@ -647,6 +655,22 @@ export abstract class CalendarViewBase extends BaseElement {
 
   #toPlainDateTime(value: Temporal.PlainDateTime): Temporal.PlainDateTime {
     return value;
+  }
+
+  /** Compact wall time for the recurrence-scope dialog description. */
+  #formatScopeMoveTarget(start: Temporal.PlainDateTime, allDay: boolean): string | undefined {
+    try {
+      const dt = this.#toPlainDateTime(start);
+      const day = String(dt.day).padStart(2, "0");
+      const month = String(dt.month).padStart(2, "0");
+      const date = `${day}/${month}/${dt.year}`;
+      if (allDay) return date;
+      const hour = String(dt.hour).padStart(2, "0");
+      const minute = String(dt.minute).padStart(2, "0");
+      return `${date}, ${hour}:${minute}`;
+    } catch {
+      return undefined;
+    }
   }
 
   #getUpdateKind(

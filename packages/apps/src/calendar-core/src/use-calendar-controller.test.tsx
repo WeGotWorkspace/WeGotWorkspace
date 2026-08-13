@@ -132,29 +132,11 @@ describe("useCalendarController view + create intent", () => {
     });
   });
 
-  it("openEditEventKey asks scope then opens the editor for a recurring occurrence", async () => {
-    vi.useFakeTimers();
+  it("openEditEventKey opens the editor directly for a recurring occurrence", async () => {
     const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
 
-    let openPromise: Promise<void>;
-    act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
-    });
-
-    expect(result.current.editor).toBeNull();
-    expect(result.current.recurrenceScopeDialog).toBeNull();
-
     await act(async () => {
-      vi.runAllTimers();
-    });
-
-    expect(result.current.recurrenceScopeDialog).not.toBeNull();
-    expect(result.current.recurrenceScopeDialog?.action).toBe("edit");
-    expect(result.current.editor).toBeNull();
-
-    await act(async () => {
-      result.current.recurrenceScopeDialog?.resolve("thisInstance");
-      await openPromise!;
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
     });
 
     expect(result.current.recurrenceScopeDialog).toBeNull();
@@ -162,32 +144,42 @@ describe("useCalendarController view + create intent", () => {
       mode: "edit",
       eventId: "standup",
       recurrenceId: "2033-01-12T09:30:00",
-      recurrenceScope: "thisInstance",
     });
-
-    vi.useRealTimers();
   });
 
-  it("openEditEventKey cancel on scope leaves the editor closed", async () => {
+  it("saveEditor cancel on scope leaves the editor open", async () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+    const patchEvent = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
 
-    let openPromise: Promise<void>;
+    await act(async () => {
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
     act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup (edited)",
+      });
     });
 
+    act(() => {
+      result.current.saveEditor();
+    });
     await act(async () => {
       vi.runAllTimers();
     });
-
     await act(async () => {
       result.current.recurrenceScopeDialog?.resolve(null);
-      await openPromise!;
     });
 
-    expect(result.current.editor).toBeNull();
+    expect(result.current.editor).not.toBeNull();
     expect(result.current.recurrenceScopeDialog).toBeNull();
+    expect(patchEvent).not.toHaveBeenCalled();
 
     vi.useRealTimers();
   });
@@ -384,21 +376,28 @@ describe("useCalendarController recurring scopes", () => {
     });
   });
 
-  async function openRecurringEditor(
+  async function openRecurringEditor(result: {
+    current: ReturnType<typeof useCalendarController>;
+  }) {
+    await act(async () => {
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+  }
+
+  async function saveAndResolveScope(
     result: { current: ReturnType<typeof useCalendarController> },
-    scope: "thisInstance" | "thisAndFuture",
+    scope: "thisInstance" | "thisAndFuture" | "allInstances" | null,
   ) {
     vi.useFakeTimers();
-    let openPromise: Promise<void>;
     act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+      result.current.saveEditor();
     });
     await act(async () => {
       vi.runAllTimers();
     });
+    expect(result.current.recurrenceScopeDialog).not.toBeNull();
     await act(async () => {
       result.current.recurrenceScopeDialog?.resolve(scope);
-      await openPromise!;
     });
     vi.useRealTimers();
   }
@@ -413,7 +412,7 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    await openRecurringEditor(result, "thisInstance");
+    await openRecurringEditor(result);
     act(() => {
       result.current.setEditorForm({
         ...result.current.editor!.form,
@@ -421,9 +420,7 @@ describe("useCalendarController recurring scopes", () => {
       });
     });
 
-    await act(async () => {
-      result.current.saveEditor();
-    });
+    await saveAndResolveScope(result, "thisInstance");
 
     await vi.waitFor(() => {
       expect(patchEvent).toHaveBeenCalledWith(
@@ -448,7 +445,7 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    await openRecurringEditor(result, "thisAndFuture");
+    await openRecurringEditor(result);
     act(() => {
       result.current.setEditorForm({
         ...result.current.editor!.form,
@@ -456,9 +453,7 @@ describe("useCalendarController recurring scopes", () => {
       });
     });
 
-    await act(async () => {
-      result.current.saveEditor();
-    });
+    await saveAndResolveScope(result, "thisAndFuture");
 
     await vi.waitFor(() => {
       expect(patchEvent).toHaveBeenCalledWith(
@@ -481,7 +476,7 @@ describe("useCalendarController recurring scopes", () => {
     });
   });
 
-  it("deleteEditorEvent always re-asks delete scope even after edit thisInstance", async () => {
+  it("deleteEditorEvent asks delete scope after opening a recurring occurrence", async () => {
     vi.useFakeTimers();
     const patchEvent = vi.fn().mockResolvedValue(undefined);
     const deleteEvent = vi.fn().mockResolvedValue(undefined);
@@ -492,21 +487,12 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    let openPromise: Promise<void>;
-    act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
-    });
     await act(async () => {
-      vi.runAllTimers();
-    });
-    await act(async () => {
-      result.current.recurrenceScopeDialog?.resolve("thisInstance");
-      await openPromise!;
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
     });
 
-    expect(
-      result.current.editor?.mode === "edit" ? result.current.editor.recurrenceScope : undefined,
-    ).toBe("thisInstance");
+    expect(result.current.editor).not.toBeNull();
+    expect(result.current.recurrenceScopeDialog).toBeNull();
 
     act(() => {
       result.current.deleteEditorEvent();
@@ -534,16 +520,8 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    let openPromise: Promise<void>;
-    act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
-    });
     await act(async () => {
-      vi.runAllTimers();
-    });
-    await act(async () => {
-      result.current.recurrenceScopeDialog?.resolve("thisInstance");
-      await openPromise!;
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
     });
 
     act(() => {
@@ -583,16 +561,8 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    let openPromise: Promise<void>;
-    act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
-    });
     await act(async () => {
-      vi.runAllTimers();
-    });
-    await act(async () => {
-      result.current.recurrenceScopeDialog?.resolve("thisAndFuture");
-      await openPromise!;
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
     });
 
     act(() => {
@@ -634,16 +604,8 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    let openPromise: Promise<void>;
-    act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
-    });
     await act(async () => {
-      vi.runAllTimers();
-    });
-    await act(async () => {
-      result.current.recurrenceScopeDialog?.resolve("thisInstance");
-      await openPromise!;
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
     });
 
     act(() => {
@@ -681,16 +643,8 @@ describe("useCalendarController recurring scopes", () => {
       }),
     );
 
-    let openPromise: Promise<void>;
-    act(() => {
-      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
-    });
     await act(async () => {
-      vi.runAllTimers();
-    });
-    await act(async () => {
-      result.current.recurrenceScopeDialog?.resolve("thisInstance");
-      await openPromise!;
+      await result.current.openEditEventKey("standup::2033-01-12T09:30:00");
     });
 
     act(() => {

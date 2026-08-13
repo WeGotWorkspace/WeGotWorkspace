@@ -61,6 +61,7 @@ export class WgwCalendarSurface extends LitElement {
     action: "edit" | "delete" | "update";
     masterId: string;
     recurrenceId?: string;
+    description?: string;
   }) => Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null>;
 
   #provider = new ContextProvider(this, { context: eventsAPIContext });

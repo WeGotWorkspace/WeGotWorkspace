@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/button/src/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type {
-  RecurrenceEditScope,
-  RecurrenceScopeChoice,
-} from "@/calendar-core/src/calendar-recurrence-scope";
+import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
 
 export type CalendarRecurrenceScopeDialogState = null | {
   action: "edit" | "delete" | "update";
+  /** Optional short context (e.g. move target time). */
+  description?: string;
   resolve: (scope: RecurrenceScopeChoice | null) => void;
 };
 
@@ -18,21 +17,19 @@ type CalendarRecurrenceScopeDialogProps = {
 };
 
 /**
- * Scope chooser for recurring occurrences.
+ * Scope chooser for recurring occurrences — stacked action buttons.
  *
- * Edit / move / resize: Only this | This and future.
- * Delete: those two plus All instances (destroy the master series).
+ * Edit / move / resize: Only this event | All future events.
+ * Delete: those two plus All events (destroy the master series).
  *
  * Hardened against the click→open race: opening from a Lit shadow-DOM click
  * (or React Strict Mode remount) can fire Radix `onOpenChange(false)` /
- * outside-interact immediately and cancel the Promise before the user acts —
- * which aborted `openEditEventKey` and left recurring clicks with no edit dialog.
+ * outside-interact immediately and cancel the Promise before the user acts.
  */
 export function CalendarRecurrenceScopeDialog({
   dialog,
   labels,
 }: CalendarRecurrenceScopeDialogProps) {
-  const [choice, setChoice] = useState<RecurrenceScopeChoice>("thisInstance");
   const open = dialog !== null;
   const settledRef = useRef(false);
   /** Ignore dismiss signals until the opening pointer gesture has fully settled. */
@@ -47,7 +44,6 @@ export function CalendarRecurrenceScopeDialog({
     }
     settledRef.current = false;
     ignoreDismissRef.current = true;
-    setChoice("thisInstance");
     const timer = window.setTimeout(() => {
       ignoreDismissRef.current = false;
     }, 100);
@@ -55,6 +51,9 @@ export function CalendarRecurrenceScopeDialog({
   }, [dialog]);
 
   const title = isDelete ? labels.recurrenceScopeDeleteTitle : labels.recurrenceScopeEditTitle;
+  const description =
+    dialog?.description ??
+    (isDelete ? labels.recurrenceScopeDeleteDescription : labels.recurrenceScopeEditDescription);
 
   const close = (scope: RecurrenceScopeChoice | null) => {
     if (!dialog || settledRef.current) return;
@@ -68,10 +67,6 @@ export function CalendarRecurrenceScopeDialog({
     }
   };
 
-  const selectEditScope = (scope: RecurrenceEditScope) => {
-    setChoice(scope);
-  };
-
   return (
     <Dialog
       open={open}
@@ -83,58 +78,51 @@ export function CalendarRecurrenceScopeDialog({
       }}
     >
       <DialogContent
-        className="calendar-dialog-surface"
-        aria-describedby={undefined}
+        className="calendar-dialog-surface calendar-recurrence-scope-dialog"
         onPointerDownOutside={preventPrematureDismiss}
         onInteractOutside={preventPrematureDismiss}
         onFocusOutside={preventPrematureDismiss}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        <fieldset className="calendar-recurrence-scope">
-          <legend className="sr-only">{title}</legend>
-          <label className="calendar-recurrence-scope__option">
-            <input
-              type="radio"
-              name="calendar-recurrence-scope"
-              value="thisInstance"
-              checked={choice === "thisInstance"}
-              onChange={() => selectEditScope("thisInstance")}
-            />
-            <span>{labels.recurrenceScopeThisInstance}</span>
-          </label>
-          <label className="calendar-recurrence-scope__option">
-            <input
-              type="radio"
-              name="calendar-recurrence-scope"
-              value="thisAndFuture"
-              checked={choice === "thisAndFuture"}
-              onChange={() => selectEditScope("thisAndFuture")}
-            />
-            <span>{labels.recurrenceScopeThisAndFuture}</span>
-          </label>
+        <div className="calendar-recurrence-scope" role="group" aria-label={title}>
+          <Button
+            type="button"
+            variant="primary"
+            className="calendar-recurrence-scope__action"
+            onClick={() => close("thisInstance")}
+          >
+            {labels.recurrenceScopeThisInstance}
+          </Button>
+          <Button
+            type="button"
+            variant="subtle"
+            className="calendar-recurrence-scope__action"
+            onClick={() => close("thisAndFuture")}
+          >
+            {labels.recurrenceScopeThisAndFuture}
+          </Button>
           {isDelete ? (
-            <label className="calendar-recurrence-scope__option">
-              <input
-                type="radio"
-                name="calendar-recurrence-scope"
-                value="allInstances"
-                checked={choice === "allInstances"}
-                onChange={() => setChoice("allInstances")}
-              />
-              <span>{labels.recurrenceScopeAllInstances}</span>
-            </label>
+            <Button
+              type="button"
+              variant="subtle"
+              className="calendar-recurrence-scope__action"
+              onClick={() => close("allInstances")}
+            >
+              {labels.recurrenceScopeAllInstances}
+            </Button>
           ) : null}
-        </fieldset>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => close(null)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="calendar-recurrence-scope__action"
+            onClick={() => close(null)}
+          >
             {labels.cancel}
           </Button>
-          <Button type="button" onClick={() => close(choice)}>
-            {labels.recurrenceScopeContinue}
-          </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -16,7 +16,7 @@ import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 
 /**
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.
- * Recurring occurrence edits use `recurrenceScope` on the controller
+ * Recurring occurrence edits choose scope at Save
  * (`thisInstance` → recurrenceOverrides, `thisAndFuture` → truncate+fork).
  * Deletes separately offer `allInstances` → destroy master.
  */

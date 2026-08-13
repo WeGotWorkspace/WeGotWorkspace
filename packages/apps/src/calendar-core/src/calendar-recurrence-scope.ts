@@ -27,6 +27,8 @@ export type RecurrenceScopeRequest = {
   action: RecurrenceScopeAction;
   masterId: string;
   recurrenceId?: string;
+  /** Optional short context shown under the title (e.g. move target time). */
+  description?: string;
 };
 
 /** Engine keys detached exceptions / expanded occurrences as `${masterId}::${recurrenceId}`. */
