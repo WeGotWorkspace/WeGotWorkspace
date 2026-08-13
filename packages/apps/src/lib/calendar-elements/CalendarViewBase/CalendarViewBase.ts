@@ -75,7 +75,7 @@ export abstract class CalendarViewBase extends BaseElement {
           action: "edit" | "delete" | "update";
           masterId: string;
           recurrenceId?: string;
-        }) => Promise<"thisInstance" | "thisAndFuture" | null>;
+        }) => Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null>;
       })
     | null {
     type SurfaceHost = HTMLElement & {
@@ -83,7 +83,7 @@ export abstract class CalendarViewBase extends BaseElement {
         action: "edit" | "delete" | "update";
         masterId: string;
         recurrenceId?: string;
-      }) => Promise<"thisInstance" | "thisAndFuture" | null>;
+      }) => Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null>;
     };
     const inLightDom = this.closest("wgw-calendar-surface") as SurfaceHost | null;
     if (inLightDom) return inLightDom;
@@ -101,14 +101,15 @@ export abstract class CalendarViewBase extends BaseElement {
 
   /**
    * Host-provided scope picker (React wires this on `wgw-calendar-surface`).
-   * Returns `thisInstance` | `thisAndFuture`, or `null` when the user cancels
-   * or no host callback is available (abort — never use `window.confirm`).
+   * Returns `thisInstance` | `thisAndFuture` | `allInstances` (delete only),
+   * or `null` when the user cancels or no host callback is available
+   * (abort — never use `window.confirm`).
    */
   async #askRecurrenceScope(args: {
     action: "update" | "delete";
     masterId: string;
     recurrenceId?: string;
-  }): Promise<"thisInstance" | "thisAndFuture" | null> {
+  }): Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null> {
     const host = this.#findCalendarSurfaceHost();
     if (!host?.requestRecurrenceScope) return null;
     return host.requestRecurrenceScope({
@@ -292,7 +293,7 @@ export abstract class CalendarViewBase extends BaseElement {
         masterId: detail.envelope.eventId,
         recurrenceId,
       });
-      if (!scope) {
+      if (scope !== "thisInstance" && scope !== "thisAndFuture") {
         return { handled: true, accepted: false };
       }
 
@@ -396,16 +397,33 @@ export abstract class CalendarViewBase extends BaseElement {
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
     const shouldPromptForSeries = isRecurring && !isCalendarEventException(current);
 
-    if (!shouldPromptForSeries) {
-      const doDelete = window.confirm("Are you sure you want to delete this event?");
-      if (!doDelete) return true;
-    } else {
+    if (shouldPromptForSeries) {
       const scope = await this.#askRecurrenceScope({
         action: "delete",
         masterId: detail.envelope.eventId,
         recurrenceId,
       });
       if (!scope) return true;
+
+      // All instances: destroy the master series (not an exclusion on one occurrence).
+      if (scope === "allInstances") {
+        const masterKey =
+          detail.envelope.eventId && events.has(detail.envelope.eventId)
+            ? detail.envelope.eventId
+            : eventKey.includes("::")
+              ? eventKey.slice(0, eventKey.indexOf("::"))
+              : eventKey;
+        const removeInput = fromDeleteRequest(detail);
+        return this.#applyDeleteAndNotify(masterKey, {
+          type: "remove",
+          input: {
+            ...removeInput,
+            target: { key: masterKey },
+            scope: "series",
+          },
+        });
+      }
+
       // thisAndFuture: ask React to truncate the master series at this occurrence.
       if (scope === "thisAndFuture" && recurrenceId) {
         this.dispatchEvent(

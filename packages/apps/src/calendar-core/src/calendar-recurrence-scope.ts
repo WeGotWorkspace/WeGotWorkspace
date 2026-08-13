@@ -9,8 +9,17 @@ import type { CalendarEventDraft } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { formToDraft } from "@/calendar-core/src/calendar-editor-model";
 
-/** User choice for editing/deleting a recurring occurrence. */
+/** User choice for editing/moving/resizing a recurring occurrence. */
 export type RecurrenceEditScope = "thisInstance" | "thisAndFuture";
+
+/**
+ * Delete adds `allInstances` so the whole series can be destroyed (not just
+ * excluded or truncated). Edit/move/resize never offer this option.
+ */
+export type RecurrenceDeleteScope = RecurrenceEditScope | "allInstances";
+
+/** Resolved choice from the scope dialog (edit or delete). */
+export type RecurrenceScopeChoice = RecurrenceDeleteScope;
 
 export type RecurrenceScopeAction = "edit" | "delete" | "update";
 

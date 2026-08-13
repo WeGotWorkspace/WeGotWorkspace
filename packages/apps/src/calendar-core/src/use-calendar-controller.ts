@@ -45,6 +45,7 @@ import {
   truncateRecurrenceRules,
   untilBeforeRecurrenceId,
   type RecurrenceEditScope,
+  type RecurrenceScopeChoice,
   type RecurrenceScopeRequest,
 } from "@/calendar-core/src/calendar-recurrence-scope";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
@@ -158,7 +159,9 @@ export function useCalendarController({
   const [calendarDialogBusy, setCalendarDialogBusy] = useState(false);
   const [recurrenceScopeDialog, setRecurrenceScopeDialog] =
     useState<CalendarRecurrenceScopeDialogState>(null);
-  const pendingScopeResolveRef = useRef<((scope: RecurrenceEditScope | null) => void) | null>(null);
+  const pendingScopeResolveRef = useRef<((scope: RecurrenceScopeChoice | null) => void) | null>(
+    null,
+  );
 
   useEffect(() => {
     setCalendars(sortCalendarsForSidebar(data.calendars));
@@ -282,14 +285,14 @@ export function useCalendarController({
   );
 
   const askRecurrenceScope = useCallback((request: RecurrenceScopeRequest) => {
-    return new Promise<RecurrenceEditScope | null>((resolve) => {
+    return new Promise<RecurrenceScopeChoice | null>((resolve) => {
       // Replace any in-flight prompt so Lit drag and click never hang on an orphaned Promise.
       const previous = pendingScopeResolveRef.current;
       pendingScopeResolveRef.current = null;
       previous?.(null);
 
       let settled = false;
-      const settle = (scope: RecurrenceEditScope | null) => {
+      const settle = (scope: RecurrenceScopeChoice | null) => {
         if (settled) return;
         settled = true;
         if (pendingScopeResolveRef.current === settle) {
@@ -351,7 +354,8 @@ export function useCalendarController({
           masterId,
           recurrenceId,
         });
-        if (!scope) return;
+        // Edit dialog only offers thisInstance | thisAndFuture.
+        if (scope !== "thisInstance" && scope !== "thisAndFuture") return;
         recurrenceScope = scope;
       }
 
@@ -475,14 +479,15 @@ export function useCalendarController({
     if (!editor || editor.mode !== "edit" || !operations) return;
     const eventId = editor.eventId;
     const recurrenceId = editor.recurrenceId;
-    const recurrenceScope = editor.recurrenceScope;
     const isWireEvent = data.events.some((entry) => entry.id === eventId);
     const original = data.events.find((entry) => entry.id === eventId);
     const isRecurring = original ? eventIsRecurringSeries(original) : Boolean(recurrenceId);
 
     void (async () => {
-      let scope = recurrenceScope;
-      if (isRecurring && !scope) {
+      // Never reuse the *edit* scope for delete — delete needs All instances,
+      // and choosing "only this" to open the editor must not lock delete to exclusion.
+      let scope: RecurrenceScopeChoice | undefined;
+      if (isRecurring && recurrenceId) {
         const asked = await askRecurrenceScope({
           action: "delete",
           masterId: eventId,
@@ -530,6 +535,7 @@ export function useCalendarController({
         return;
       }
 
+      // Non-recurring, master-without-occurrence, or All instances → destroy master.
       setPendingDeletedEventIds((current) => {
         const next = new Set(current);
         next.add(eventId);

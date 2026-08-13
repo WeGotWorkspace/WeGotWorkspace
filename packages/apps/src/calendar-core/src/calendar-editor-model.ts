@@ -18,6 +18,7 @@ import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.
  * Recurring occurrence edits use `recurrenceScope` on the controller
  * (`thisInstance` → recurrenceOverrides, `thisAndFuture` → truncate+fork).
+ * Deletes separately offer `allInstances` → destroy master.
  */
 
 export type CalendarEventFormValue = {
@@ -251,9 +252,7 @@ export function formToPatch(
   if (draft.duration !== (original.duration ?? "")) patch.duration = draft.duration;
   if (form.allDay !== originalForm.allDay) patch.allDay = form.allDay;
   const nextTimeZone = form.allDay ? null : normalizeEventTimeZone(form.timeZone);
-  const prevTimeZone = originalForm.allDay
-    ? null
-    : normalizeEventTimeZone(originalForm.timeZone);
+  const prevTimeZone = originalForm.allDay ? null : normalizeEventTimeZone(originalForm.timeZone);
   if (nextTimeZone !== prevTimeZone) {
     // Floating clears a fixed zone with explicit null (JMAP/JSCalendar patch semantics).
     patch.timeZone = nextTimeZone;

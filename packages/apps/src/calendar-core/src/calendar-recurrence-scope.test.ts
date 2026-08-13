@@ -37,6 +37,7 @@ describe("calendar-recurrence-scope", () => {
       "Edit only this instance of the recurring event",
       "Delete only this instance of the recurring event",
       "OK = only this instance",
+      'window.confirm("Are you sure you want to delete this event?")',
     ] as const;
     const hits: string[] = [];
     for (const file of listSourceFiles(appsSrcRoot)) {

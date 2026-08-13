@@ -52,15 +52,16 @@ export class WgwCalendarSurface extends LitElement {
   events: EventsMap = new Map();
   visibleCalendarIds?: string[];
   /**
-   * React-provided resolver for Only-this vs This-and-future when editing
-   * recurring occurrences via drag/delete in the Lit views. Lit views reach
-   * this host across shadow roots (not via light-DOM `closest` alone).
+   * React-provided resolver for Only-this / This-and-future (and All instances
+   * on delete) when editing recurring occurrences via drag/delete in the Lit
+   * views. Lit views reach this host across shadow roots (not via light-DOM
+   * `closest` alone).
    */
   requestRecurrenceScope?: (request: {
     action: "edit" | "delete" | "update";
     masterId: string;
     recurrenceId?: string;
-  }) => Promise<"thisInstance" | "thisAndFuture" | null>;
+  }) => Promise<"thisInstance" | "thisAndFuture" | "allInstances" | null>;
 
   #provider = new ContextProvider(this, { context: eventsAPIContext });
 

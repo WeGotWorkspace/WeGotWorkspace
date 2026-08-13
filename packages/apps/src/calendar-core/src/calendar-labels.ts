@@ -38,6 +38,8 @@ export type CalendarUILabels = {
   recurrenceScopeDeleteTitle: string;
   recurrenceScopeThisInstance: string;
   recurrenceScopeThisAndFuture: string;
+  /** Delete only — destroy the master series. */
+  recurrenceScopeAllInstances: string;
   recurrenceScopeContinue: string;
   editEventTitle: string;
   createEventTitle: string;
@@ -98,6 +100,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   recurrenceScopeDeleteTitle: "Delete recurring event",
   recurrenceScopeThisInstance: "Only this instance",
   recurrenceScopeThisAndFuture: "This and future instances",
+  recurrenceScopeAllInstances: "All instances",
   recurrenceScopeContinue: "Continue",
   editEventTitle: "Edit event",
   createEventTitle: "New event",

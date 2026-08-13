@@ -366,3 +366,415 @@ describe("useCalendarController view + create intent", () => {
     vi.useRealTimers();
   });
 });
+
+describe("useCalendarController recurring scopes", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
+  async function openRecurringEditor(
+    result: { current: ReturnType<typeof useCalendarController> },
+    scope: "thisInstance" | "thisAndFuture",
+  ) {
+    vi.useFakeTimers();
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve(scope);
+      await openPromise!;
+    });
+    vi.useRealTimers();
+  }
+
+  it("saveEditor thisInstance patches recurrenceOverrides on the master", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await openRecurringEditor(result, "thisInstance");
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup (moved)",
+      });
+    });
+
+    await act(async () => {
+      result.current.saveEditor();
+    });
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceOverrides: expect.objectContaining({
+            "2033-01-12T09:30:00": expect.objectContaining({ title: "Standup (moved)" }),
+          }),
+        }),
+      );
+    });
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
+  it("saveEditor thisAndFuture truncates master and forks a new series", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue({ id: "forked" });
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await openRecurringEditor(result, "thisAndFuture");
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup from here",
+      });
+    });
+
+    await act(async () => {
+      result.current.saveEditor();
+    });
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceRules: [
+            expect.objectContaining({
+              frequency: "weekly",
+              until: "2033-01-12T09:29:59",
+            }),
+          ],
+        }),
+      );
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Standup from here",
+          recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
+        }),
+      );
+    });
+  });
+
+  it("deleteEditorEvent always re-asks delete scope even after edit thisInstance", async () => {
+    vi.useFakeTimers();
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent },
+      }),
+    );
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisInstance");
+      await openPromise!;
+    });
+
+    expect(result.current.editor?.recurrenceScope).toBe("thisInstance");
+
+    act(() => {
+      result.current.deleteEditorEvent();
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.recurrenceScopeDialog).not.toBeNull();
+    expect(result.current.recurrenceScopeDialog?.action).toBe("delete");
+    expect(patchEvent).not.toHaveBeenCalled();
+    expect(deleteEvent).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("deleteEditorEvent thisInstance excludes only that occurrence", async () => {
+    vi.useFakeTimers();
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent },
+      }),
+    );
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisInstance");
+      await openPromise!;
+    });
+
+    act(() => {
+      result.current.deleteEditorEvent();
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisInstance");
+    });
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceOverrides: expect.objectContaining({
+            "2033-01-12T09:30:00": expect.objectContaining({ excluded: true }),
+          }),
+        }),
+      );
+    });
+    expect(deleteEvent).not.toHaveBeenCalled();
+    expect(result.current.pendingDeletedEventIds.has("standup")).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it("deleteEditorEvent thisAndFuture truncates the master series", async () => {
+    vi.useFakeTimers();
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent },
+      }),
+    );
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisAndFuture");
+      await openPromise!;
+    });
+
+    act(() => {
+      result.current.deleteEditorEvent();
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisAndFuture");
+    });
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceRules: [
+            expect.objectContaining({
+              frequency: "weekly",
+              until: "2033-01-12T09:29:59",
+            }),
+          ],
+        }),
+      );
+    });
+    expect(deleteEvent).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("deleteEditorEvent allInstances destroys the master series", async () => {
+    vi.useFakeTimers();
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent },
+      }),
+    );
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisInstance");
+      await openPromise!;
+    });
+
+    act(() => {
+      result.current.deleteEditorEvent();
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("allInstances");
+    });
+
+    expect(result.current.pendingDeletedEventIds.has("standup")).toBe(true);
+    expect(patchEvent).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    await vi.waitFor(() => {
+      expect(deleteEvent).toHaveBeenCalledWith("standup");
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("deleteEditorEvent cancel on scope leaves the editor open and does nothing", async () => {
+    vi.useFakeTimers();
+    const patchEvent = vi.fn();
+    const deleteEvent = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent },
+      }),
+    );
+
+    let openPromise: Promise<void>;
+    act(() => {
+      openPromise = result.current.openEditEventKey("standup::2033-01-12T09:30:00");
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve("thisInstance");
+      await openPromise!;
+    });
+
+    act(() => {
+      result.current.deleteEditorEvent();
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await act(async () => {
+      result.current.recurrenceScopeDialog?.resolve(null);
+    });
+
+    expect(result.current.editor).not.toBeNull();
+    expect(result.current.recurrenceScopeDialog).toBeNull();
+    expect(patchEvent).not.toHaveBeenCalled();
+    expect(deleteEvent).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("truncateSeriesFromOccurrence patches until before the occurrence", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent: vi.fn(), patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await act(async () => {
+      await result.current.truncateSeriesFromOccurrence({
+        masterId: "standup",
+        recurrenceId: "2033-01-12T09:30:00",
+      });
+    });
+
+    expect(patchEvent).toHaveBeenCalledWith(
+      "standup",
+      expect.objectContaining({
+        recurrenceRules: [
+          expect.objectContaining({
+            frequency: "weekly",
+            until: "2033-01-12T09:29:59",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("splitSeriesFromDrag truncates master and creates a forked series at new times", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue({ id: "drag-fork" });
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await act(async () => {
+      await result.current.splitSeriesFromDrag({
+        masterId: "standup",
+        recurrenceId: "2033-01-12T09:30:00",
+        start: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T11:30:00"),
+        summary: "Team standup",
+        calendarId: "work",
+      });
+    });
+
+    expect(patchEvent).toHaveBeenCalledWith(
+      "standup",
+      expect.objectContaining({
+        recurrenceRules: [
+          expect.objectContaining({
+            until: "2033-01-12T09:29:59",
+          }),
+        ],
+      }),
+    );
+    expect(createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Team standup",
+        start: "2033-01-12T11:00:00",
+        recurrenceRules: [expect.objectContaining({ frequency: "weekly" })],
+      }),
+    );
+  });
+});

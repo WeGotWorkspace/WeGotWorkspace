@@ -20,7 +20,7 @@ export type CalendarSurfaceCreateIntent = {
   title?: string;
 };
 
-import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
+import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
 
 export type CalendarSurfaceProps = {
@@ -42,8 +42,10 @@ export type CalendarSurfaceProps = {
    * prevented so the adapter does not persist until the dialog saves.
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
-  /** Ask Only-this vs This-and-future before Lit drag/delete on recurring occurrences. */
-  requestRecurrenceScope?: (request: RecurrenceScopeRequest) => Promise<RecurrenceEditScope | null>;
+  /** Ask Only-this / This-and-future (delete also offers All instances). */
+  requestRecurrenceScope?: (
+    request: RecurrenceScopeRequest,
+  ) => Promise<RecurrenceScopeChoice | null>;
   /** Lit chose this-and-future delete — truncate master at the occurrence. */
   onRecurrenceFutureDelete?: (args: {
     masterId: string;
