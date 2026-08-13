@@ -6,7 +6,7 @@ import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
 
-const SYNC_POLL_MS = 60_000;
+const SYNC_POLL_MS = 30_000;
 
 export type CalendarSurfaceStore = {
   /** Engine-model events for the lit views (adapter state, or cache fallback). */

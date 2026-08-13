@@ -10,18 +10,8 @@ export type CalendarAppProps = {
 };
 
 export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
-  const {
-    phase,
-    error,
-    retry,
-    successVersion,
-    listRefreshing,
-    refreshList,
-    data,
-    session,
-    operations,
-    jmapClient,
-  } = useCalendarAPI(apiSource);
+  const { phase, error, retry, successVersion, data, session, operations, jmapClient } =
+    useCalendarAPI(apiSource);
 
   const surface = useCalendarSurface(jmapClient, data);
 
@@ -39,8 +29,6 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
           session={session}
           operations={operations}
           surface={surface}
-          listRefreshing={listRefreshing}
-          onRefreshList={refreshList}
           onLogout={() => {
             window.location.assign("/logout");
           }}

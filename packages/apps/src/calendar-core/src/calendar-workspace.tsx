@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -39,8 +39,6 @@ export function CalendarWorkspace({
   labels,
   operations,
   surface,
-  listRefreshing = false,
-  onRefreshList,
   initialView,
   initialPresentation,
   initialAnchor,
@@ -60,7 +58,6 @@ export function CalendarWorkspace({
     resolveEventId: surface?.resolveJmapId,
     onMutated: () => {
       surface?.syncNow();
-      onRefreshList?.();
     },
   });
 
@@ -257,16 +254,6 @@ export function CalendarWorkspace({
                   icon={<ChevronRight className="size-4" />}
                   onClick={goNext}
                 />
-                {onRefreshList ? (
-                  <IconButton
-                    label={L.refreshList}
-                    icon={
-                      <RefreshCw className={listRefreshing ? "size-4 animate-spin" : "size-4"} />
-                    }
-                    onClick={onRefreshList}
-                    disabled={listRefreshing}
-                  />
-                ) : null}
               </div>
             }
           />

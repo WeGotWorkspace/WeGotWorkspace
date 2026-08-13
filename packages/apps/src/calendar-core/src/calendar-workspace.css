@@ -189,9 +189,8 @@
   opacity: 1;
 }
 
-/* Calendar color dots render at full color (event dialog menu options). */
-.calendar-workspace .calendar-sidebar-row .calendar-sidebar-dot,
-.calendar-event-dialog__calendar-option .calendar-sidebar-dot {
+/* Calendar color dots render at full color. */
+.calendar-workspace .calendar-sidebar-row .calendar-sidebar-dot {
   opacity: 1;
 }
 
@@ -276,6 +275,15 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.calendar-event-dialog__calendar-option .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  opacity: 1;
 }
 
 .calendar-event-dialog__calendar-name {

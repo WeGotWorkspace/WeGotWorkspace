@@ -15,8 +15,6 @@ export type CalendarWorkspaceProps = {
   operations?: CalendarAPIOperations;
   /** Adapter-backed store for the lit views; omitted = read-only empty surface. */
   surface?: CalendarSurfaceStore;
-  listRefreshing?: boolean;
-  onRefreshList?: () => void;
   initialView?: CalendarViewId;
   initialPresentation?: CalendarPresentation;
   initialAnchor?: string;

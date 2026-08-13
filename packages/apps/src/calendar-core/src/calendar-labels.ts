@@ -29,9 +29,6 @@ export type CalendarUILabels = {
   untitledEvent: string;
   allDay: string;
   noEventsInRange: string;
-  refreshList: string;
-  toastListUpdated: string;
-  toastListRefreshFailed: string;
   toastEventCreated: string;
   toastEventUpdated: string;
   toastEventDeleted: string;
@@ -89,9 +86,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   untitledEvent: "Untitled event",
   allDay: "All day",
   noEventsInRange: "No events in this period.",
-  refreshList: "Refresh",
-  toastListUpdated: "Calendar updated",
-  toastListRefreshFailed: "Could not refresh calendar",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventDeleted: "Event deleted",
