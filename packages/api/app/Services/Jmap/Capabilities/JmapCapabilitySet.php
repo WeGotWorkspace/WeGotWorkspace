@@ -23,16 +23,31 @@ use App\Services\Jmap\JmapMethodDispatcher;
  */
 final class JmapCapabilitySet
 {
+    /**
+     * Domain capability providers; new envelope domains append their
+     * provider class here (and their methods to JmapMethodDispatcher::METHODS).
+     *
+     * @var list<class-string<JmapCapabilityProviderInterface>>
+     */
+    public const PROVIDERS = [
+        CalendarsCapabilityProvider::class,
+        ContactsCapabilityProvider::class,
+    ];
+
     /** @var list<JmapCapabilityProviderInterface> */
     private array $providers;
 
+    /**
+     * Resolved from self::PROVIDERS by the container binding in
+     * WgwServiceProvider — autowiring cannot construct a provider list.
+     *
+     * @param  list<JmapCapabilityProviderInterface>  $providers
+     */
     public function __construct(
         private readonly JmapMethodDispatcher $dispatcher,
-        CalendarsCapabilityProvider $calendars,
+        array $providers,
     ) {
-        // Constructor-injected list, mirroring the dispatcher's method
-        // registration; new domains add a provider parameter here.
-        $this->providers = [$calendars];
+        $this->providers = $providers;
     }
 
     /**

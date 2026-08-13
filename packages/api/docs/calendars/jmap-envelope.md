@@ -43,8 +43,18 @@ ResultReferences (§3.7): every `#key` argument is resolved against the matching
 | `CalendarEvent/set` | `CalendarEventSetService::set()` | True top-level `ifInState`; account-wide state recomposition (below) |
 | `CalendarEvent/query` | `CalendarEventRepository::query()` | Injects `filter.inCalendars` = all owned VEVENT calendars when absent (the shipped adapter never sends it) |
 | `CalendarEvent/queryChanges` | — | Always `cannotCalculateChanges` (matches `canCalculateChanges: false`); part of the advertised capability, so `unknownMethod` would be a lie |
+| `AddressBook/get` | `AddressBookRepository::list()` | REST already emits the RFC 9610 shape incl. the 4-property `AddressBookRights` — no remapping (#437) |
+| `AddressBook/changes` | `AddressBookRepository::syncTokens()` | Existence/token diff via the envelope codec; card activity over-reports books as `updated` (same Sabre behavior as calendars) |
+| `AddressBook/set` | `AddressBookRepository::create/update/delete` | Top-level `ifInState`; `onDestroyRemoveContents` → `addressBookHasContents` SetError when refused; `onSuccessSetIsDefault` → `invalidArguments` (default book is fixed) |
+| `ContactCard/get` | `ContactCardRepository::show()` per id / `list()` per book | Multi-id loop lives in the dispatcher; per-card `state` tokens attached by the mapper |
+| `ContactCard/changes` | per-book `ContactCardRepository::changes()` | Account-wide fan-out (same algorithm as `CalendarEvent/changes`); deleted books expand via `JmapContactStateService::recordedCardIdsForBook()` |
+| `ContactCard/set` | `ContactCardSetService::set()` | True top-level `ifInState`; **legacy shapes normalized at the adapter**: `created` id-strings → `{id, state}`, `updated` state-strings → `{state}`, snake_case error types → RFC vocabulary (`JmapSetErrors::fromLegacyShape()`); REST untouched |
+| `ContactCard/query` | `ContactCardRepository::query()` per book | Book-less filters fan out over all owned books; supported conditions `inAddressBook` + `uid`, everything else → `unsupportedFilter`; non-empty `sort` → `unsupportedSort` (backing query only orders by id) |
+| `ContactCard/queryChanges` | — | Always `cannotCalculateChanges`, same rationale as calendars |
 
-Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary; unknown internal codes normalize to `serverFail` instead of inventing types.
+Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `unsupportedFilter`, `unsupportedSort`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary (calendars) or are normalized from the legacy snake_case shapes at the adapter layer (contacts); unknown internal codes normalize to `serverFail` instead of inventing types.
+
+Contacts states compose over address-book sync tokens (`AddressBookRepository::syncTokens()`) with the same `JmapAccountStateCodec`; calendar and contacts states never mix (pinned in `JmapContactsClientContractTest`).
 
 ## Envelope state codec + `CalendarEvent/changes` fan-out
 
@@ -82,3 +92,5 @@ Sabre's 3-level access maps onto the draft's 8-property `CalendarRights` (`Calen
 - **Push** (RFC 8620 §7) is not implemented; `eventSourceUrl` is a 501 stub. The shipped client polls.
 - **`createdIds`** request/response maps are ignored/omitted (the client never sends them).
 - **Update payloads are plain partial objects**, not RFC 8620 PatchObjects with `/`-separated paths — matching what the shipped adapter sends and what the underlying set service accepts.
+- **Contact photo blobs** (#437): `media` blobIds resolve against the contacts REST blob store (`ContactBlobService`, `POST/GET /contacts/blobs`) — the envelope's own `/jmap/upload` stays a 501 stub until real blobs land (#438).
+- **`ContactCard/query` sorting** is not supported (`unsupportedSort`); RFC 9610 says servers MUST support `created`/`updated` sorts — deferred until the backing query grows ordering, rather than silently returning wrongly-ordered results.

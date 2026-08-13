@@ -14,6 +14,8 @@ final class JmapCapabilities
 
     public const CALENDARS = 'urn:ietf:params:jmap:calendars';
 
+    public const CONTACTS = 'urn:ietf:params:jmap:contacts';
+
     /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
@@ -65,6 +67,21 @@ final class JmapCapabilities
             'maxExpandedQueryDuration' => 'P1Y',
             'maxParticipantsPerEvent' => null,
             'mayCreateCalendar' => true,
+        ];
+    }
+
+    /**
+     * RFC 9610 §1.3 account-level capability object. The session-level value
+     * for the contacts URN is the empty object.
+     *
+     * @return array<string, mixed>
+     */
+    public static function contactsAccountCapability(): array
+    {
+        return [
+            // Storage keys each card to exactly one address book.
+            'maxAddressBooksPerCard' => 1,
+            'mayCreateAddressBook' => true,
         ];
     }
 }
