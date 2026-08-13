@@ -1,4 +1,4 @@
-Source: ad-hoc (draft — file the Task from [issue-draft.md](./issue-draft.md), then rename this folder to `<N>-jmap-blobs` and set the body-hash header). Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: #438 (body-hash: 359bbf09). Parent epic: #435. Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
 # JMAP blobs: real RFC 8620 §6 upload/download
 

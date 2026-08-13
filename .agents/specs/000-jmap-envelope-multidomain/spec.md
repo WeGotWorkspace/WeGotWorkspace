@@ -1,15 +1,15 @@
-Source: ad-hoc (draft umbrella — file the Epic + chore P from [issue-drafts.md](./issue-drafts.md); each domain has its own spec folder and issue drafts, linked below). External spec status verified against jmap.io and the IETF datatracker 2026-08-13. Tasks (VTODO) removed from the roadmap on maintainer review the same day (see Non-goals). Split into per-domain folders 2026-08-13.
+Source: #435 (body-hash: 615c8e37) — the multi-domain envelope Epic; chore P filed as #436 ([issue-drafts.md](./issue-drafts.md) records the filed set). Each domain has its own spec folder, linked below. External spec status verified against jmap.io and the IETF datatracker 2026-08-13. Tasks (VTODO) removed from the roadmap on maintainer review the same day (see Non-goals). Split into per-domain folders 2026-08-13; issues filed the same day.
 
 # JMAP envelope: multi-domain umbrella (contacts, blobs, files, mail)
 
 Umbrella roadmap for extending the calendars JMAP transport envelope (`.agents/specs/000-jmap-envelope-calendars/`, PR #430) to the other JMAP-shaped domains in `packages/api`. **Status: draft, planning-only.** This folder owns what is shared — sequencing, the decoupling prep chunk, cross-domain constraints, the Epic — and delegates everything domain-specific:
 
-| Domain | Spec folder | External spec |
-|--------|-------------|---------------|
-| Contacts | [../000-jmap-envelope-contacts/](../000-jmap-envelope-contacts/spec.md) | RFC 9610 (final) |
-| Blobs (shared infra) | [../000-jmap-blobs/](../000-jmap-blobs/spec.md) | RFC 8620 §6 (final) |
-| Files | [../000-jmap-envelope-filenode/](../000-jmap-envelope-filenode/spec.md) | draft-ietf-jmap-filenode-14 (active, pinned) |
-| Mail | [../000-jmap-envelope-mail/](../000-jmap-envelope-mail/spec.md) | RFC 8621 (final; phased behind a design gate) |
+| Domain | Spec folder | External spec | Issue |
+|--------|-------------|---------------|-------|
+| Contacts | [../437-jmap-envelope-contacts/](../437-jmap-envelope-contacts/spec.md) | RFC 9610 (final) | #437 |
+| Blobs (shared infra) | [../438-jmap-blobs/](../438-jmap-blobs/spec.md) | RFC 8620 §6 (final) | #438 |
+| Files | [../000-jmap-envelope-filenode/](../000-jmap-envelope-filenode/spec.md) | draft-ietf-jmap-filenode-14 (active, pinned) | #439 (design); build filed after |
+| Mail | [../000-jmap-envelope-mail/](../000-jmap-envelope-mail/spec.md) | RFC 8621 (final; phased behind a design gate) | #440 (design gate); M1/M2 only if "build" |
 
 ## Goal
 

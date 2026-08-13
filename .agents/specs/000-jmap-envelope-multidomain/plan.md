@@ -5,8 +5,8 @@ Derived from [spec.md](./spec.md). **Status: draft, planning-only.** This umbrel
 ## Cross-domain dependencies
 
 1. Chunk P (below) before any new domain — it removes the calendar couplings the domains would otherwise re-hardcode.
-2. Contacts ([../000-jmap-envelope-contacts/](../000-jmap-envelope-contacts/plan.md)) after P; may run parallel with blobs.
-3. Blobs ([../000-jmap-blobs/](../000-jmap-blobs/plan.md)) after P; prerequisite for files and mail M1, and for the final form of contacts photo blobIds.
+2. Contacts ([../437-jmap-envelope-contacts/](../437-jmap-envelope-contacts/plan.md)) after P; may run parallel with blobs.
+3. Blobs ([../438-jmap-blobs/](../438-jmap-blobs/plan.md)) after P; prerequisite for files and mail M1, and for the final form of contacts photo blobIds.
 4. Files ([../000-jmap-envelope-filenode/](../000-jmap-envelope-filenode/plan.md)): design doc F0 gates build F; F also needs blobs.
 5. Mail ([../000-jmap-envelope-mail/](../000-jmap-envelope-mail/plan.md)): design doc M0 gates M1 (also needs blobs); M2 after M1. M1/M2 exist only if M0 recommends "build".
 6. Design docs F0 and M0 have no dependencies — they can start parallel with P.
@@ -15,7 +15,7 @@ Derived from [spec.md](./spec.md). **Status: draft, planning-only.** This umbrel
 
 ### Chunk P: envelope decoupling (prep refactor)
 
-- **Branch:** `refactor/jmap-envelope-decouple` (chore — no spec folder required; this plan is the reference)
+- **Issue:** #436 (chore) · **Branch:** `refactor/jmap-envelope-decouple` (no spec folder required; this plan is the reference)
 - **Skill:** api
 - Move `/jmap*` routes out of the `wgw.calendars` group to `wgw.auth` + `wgw.role:user`.
 - Derive `JmapApiController`'s supported-capability set from registered methods; make session capabilities/`accountCapabilities`/`primaryAccounts` pluggable per domain; feature-gated domains drop out of both (session + `using`).

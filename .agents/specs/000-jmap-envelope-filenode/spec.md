@@ -1,4 +1,4 @@
-Source: ad-hoc (draft — file the two Tasks from [issue-draft.md](./issue-draft.md) (design doc F0, build F), then rename this folder to `<N>-jmap-envelope-filenode` and set the body-hash header from the build Task). Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: ad-hoc (design Task F0 filed as **#439**; the build Task F is filed after #439 lands — see [issue-draft.md](./issue-draft.md) — then rename this folder to `<N>-jmap-envelope-filenode` with the build Task's number and set its body-hash here). Parent epic: #435. Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
 # JMAP envelope: files (FileNode, draft-ietf-jmap-filenode-14)
 
@@ -27,7 +27,7 @@ Proposed direction (F0 validates or replaces it): a `jmap_file_nodes` index tabl
 
 ## Technical constraints
 
-1. **Blob dependency** — every file node's content is a `blobId` (non-null for files, incl. zero-byte; null for directories). Hard dependency on the blobs chunk ([../000-jmap-blobs/](../000-jmap-blobs/spec.md)), including its reference-protected GC (a blob referenced by a live FileNode must never be collected — draft-14 hard requirement).
+1. **Blob dependency** — every file node's content is a `blobId` (non-null for files, incl. zero-byte; null for directories). Hard dependency on the blobs chunk ([../438-jmap-blobs/](../438-jmap-blobs/spec.md)), including its reference-protected GC (a blob referenced by a live FileNode must never be collected — draft-14 hard requirement).
 2. **Rights mapping** — existing drive shares (`DriveSharesController`, share sessions) map onto the draft's inherited `myRights` (`mayRead`, `mayAddChildren`, `mayRename`, `mayDelete`, `mayModifyContent`, `mayShare`, …). Tree inheritance: rights derive from ancestors; when a share change alters derived rights of descendants, those descendants must be reported in `FileNode/changes` (draft §sharing).
 3. **Sibling name uniqueness** — `FileNode/set` must order creates/destroys so the sibling-uniqueness constraint holds at transaction end while allowing atomic replace; `onExists` values null (→ `alreadyExists` SetError with `existingId`), `"replace"`, `"rename"`, `"newest"` per draft-14; `compareCaseInsensitively` honored or capability `caseInsensitiveNames` advertised truthfully.
 4. **Capability object** — account-level `urn:ietf:params:jmap:filenode` object with honest values: `maxSizeFileNodeName`, sort-property list, root-node creation permission, `caseInsensitiveNames`, `webWriteUrlTemplate: null`.
