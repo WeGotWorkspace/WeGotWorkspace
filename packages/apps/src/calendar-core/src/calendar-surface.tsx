@@ -1,11 +1,26 @@
 import { createElement, useEffect, useRef } from "react";
+import type { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { WgwCalendarSurface } from "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
+import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+
+/** Lit surface view modes (agenda is a React-only presentation over month). */
+export type CalendarSurfaceViewId = Exclude<CalendarViewId, "agenda">;
+
+/** Drag/click create intent from cancelable `event-create-requested`. */
+export type CalendarSurfaceCreateIntent = {
+  calendarId?: string;
+  allDay: boolean;
+  start: Temporal.PlainDateTime;
+  /** Exclusive end for all-day; wall-clock end for timed. */
+  end: Temporal.PlainDateTime;
+  title?: string;
+};
 
 export type CalendarSurfaceProps = {
-  view: "day" | "week" | "month" | "year";
+  view: CalendarSurfaceViewId;
   presentation: "grid" | "list";
   /** ISO date for the view anchor (view-group aligns its own grid start). */
   startDate: string;
@@ -14,7 +29,20 @@ export type CalendarSurfaceProps = {
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
   onEventSelected?: (key: string) => void;
+  /** Lit navigated (day-number click, swipe) — keep React view/dropdown in sync. */
+  onViewChange?: (view: CalendarSurfaceViewId) => void;
+  /** Lit changed the anchor date (day click, week swipe, …). */
+  onStartDateChange?: (isoDate: string) => void;
+  /**
+   * Drag/click create intent. When provided, the cancelable Lit create is
+   * prevented so the adapter does not persist until the dialog saves.
+   */
+  onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
 };
+
+function isSurfaceViewId(value: string): value is CalendarSurfaceViewId {
+  return value === "day" || value === "week" || value === "month" || value === "year";
+}
 
 /**
  * React boundary for the vendored lit calendar views: sets properties
@@ -31,6 +59,9 @@ export function CalendarSurface({
   selectedCalendarId,
   contextValue,
   onEventSelected,
+  onViewChange,
+  onStartDateChange,
+  onCreateRequested,
 }: CalendarSurfaceProps) {
   const hostRef = useRef<WgwCalendarSurface | null>(null);
 
@@ -56,6 +87,68 @@ export function CalendarSurface({
     host.addEventListener("event-selected", handleSelected);
     return () => host.removeEventListener("event-selected", handleSelected);
   }, [onEventSelected]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const handleStartDateChanged = () => {
+      if (!onStartDateChange) return;
+      const next = host.startDate;
+      if (typeof next === "string" && next !== "" && next !== startDate) {
+        onStartDateChange(next);
+      }
+    };
+
+    const handleViewChanged = () => {
+      if (!onViewChange) return;
+      const next = host.view;
+      if (typeof next === "string" && isSurfaceViewId(next) && next !== view) {
+        onViewChange(next);
+      }
+    };
+
+    host.addEventListener("view-changed", handleViewChanged);
+    host.addEventListener("start-date-changed", handleStartDateChanged);
+    return () => {
+      host.removeEventListener("view-changed", handleViewChanged);
+      host.removeEventListener("start-date-changed", handleStartDateChanged);
+    };
+  }, [onViewChange, onStartDateChange, view, startDate]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !onCreateRequested) return;
+
+    const handleCreateRequested = (event: Event) => {
+      // Prefer dialog → save over optimistic adapter create.
+      event.preventDefault();
+      const detail = (
+        event as CustomEvent<{
+          envelope?: { calendarId?: string };
+          content?: {
+            start?: Temporal.PlainDateTime;
+            end?: Temporal.PlainDateTime;
+            allDay?: boolean;
+            summary?: string;
+          };
+        }>
+      ).detail;
+      const start = detail?.content?.start;
+      const end = detail?.content?.end;
+      if (!start || !end) return;
+      onCreateRequested({
+        calendarId: detail.envelope?.calendarId,
+        allDay: detail.content?.allDay === true,
+        start,
+        end,
+        title: detail.content?.summary,
+      });
+    };
+
+    host.addEventListener("event-create-requested", handleCreateRequested);
+    return () => host.removeEventListener("event-create-requested", handleCreateRequested);
+  }, [onCreateRequested]);
 
   return createElement("wgw-calendar-surface", {
     ref: hostRef,

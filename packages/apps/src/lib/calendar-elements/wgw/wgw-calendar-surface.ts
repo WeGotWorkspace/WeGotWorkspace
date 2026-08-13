@@ -1,6 +1,7 @@
 import { ContextProvider } from "@lit/context";
 import { css, html, LitElement } from "lit";
 import type { CalendarEventsMap as EventsMap } from "@/lib/calendar-engine";
+import type { CalendarViewGroup } from "../CalendarViewGroup/CalendarViewGroup.js";
 import { eventsAPIContext, type EventsAPIContextValue } from "../context/EventsAPIContext.js";
 import "../CalendarViewGroup/CalendarViewGroup.js";
 
@@ -10,8 +11,10 @@ import "../CalendarViewGroup/CalendarViewGroup.js";
  * a MockJmapServer-backed adapter in stories, or nothing for read-only
  * offline rendering) and renders `<calendar-view-group>` with the visibility
  * filtering the reference `<event-calendar>` shell applies. React drives it
- * purely through properties; interaction events (`event-selected`,
- * `event-create-requested`, …) bubble out composed.
+ * through properties; the host mirrors view-group navigation (day-number → day
+ * view, etc.) onto its own properties so React can stay the source of truth.
+ * Interaction events (`event-selected`, `event-create-requested`, …) bubble out
+ * composed.
  */
 export class WgwCalendarSurface extends LitElement {
   static styles = css`
@@ -72,6 +75,16 @@ export class WgwCalendarSurface extends LitElement {
     return filtered;
   }
 
+  /** Keep host props aligned when the view-group navigates on its own (day click, swipe). */
+  #syncFromViewGroup = (event: Event) => {
+    const target = event.target as CalendarViewGroup | null;
+    if (!target) return;
+    this.view = target.view;
+    this.presentation = target.presentation;
+    const nextStart = target.startDate;
+    if (nextStart) this.startDate = nextStart.toString();
+  };
+
   override render() {
     return html`
       <calendar-view-group
@@ -82,6 +95,9 @@ export class WgwCalendarSurface extends LitElement {
         week-start=${this.weekStart}
         timezone=${this.timezone ?? ""}
         selected-calendar-id=${this.selectedCalendarId ?? ""}
+        @view-changed=${this.#syncFromViewGroup}
+        @start-date-changed=${this.#syncFromViewGroup}
+        @presentation-changed=${this.#syncFromViewGroup}
       ></calendar-view-group>
     `;
   }

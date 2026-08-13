@@ -58,6 +58,7 @@ export function CalendarWorkspace({
 
   const {
     L,
+    locale,
     view,
     selectView,
     anchor,
@@ -75,11 +76,13 @@ export function CalendarWorkspace({
     editor,
     editorBusy,
     openCreateEvent,
+    openCreateFromSurface,
     openEditEventKey,
     closeEditor,
     setEditorForm,
     saveEditor,
     deleteEditorEvent,
+    setAnchor,
   } = controller;
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
@@ -211,6 +214,9 @@ export function CalendarWorkspace({
               visibleCalendarIds={[...visibleCalendarIds]}
               contextValue={surface?.contextValue}
               onEventSelected={canWrite ? openEditEventKey : undefined}
+              onViewChange={selectView}
+              onStartDateChange={setAnchor}
+              onCreateRequested={canWrite ? openCreateFromSurface : undefined}
             />
           </div>
         }
@@ -222,6 +228,7 @@ export function CalendarWorkspace({
           form={editor.form}
           calendars={calendars}
           labels={L}
+          locale={locale}
           busy={editorBusy}
           onChange={setEditorForm}
           onClose={closeEditor}

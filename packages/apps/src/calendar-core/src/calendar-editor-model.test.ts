@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { Temporal } from "@js-temporal/polyfill";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   calendarEventFormIsValid,
   calendarEventToForm,
+  createIntentToForm,
   emptyCalendarEventForm,
   formToDraft,
   formToPatch,
@@ -80,6 +82,39 @@ describe("formToDraft", () => {
       endTime: "01:00",
     };
     expect(formToDraft(form).duration).toBe("PT2H");
+  });
+});
+
+describe("createIntentToForm", () => {
+  it("prefills a timed drag range", () => {
+    const form = createIntentToForm("work", {
+      start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-12T15:30:00"),
+    });
+    expect(form).toMatchObject({
+      calendarId: "work",
+      allDay: false,
+      startDate: "2033-01-12",
+      startTime: "14:00",
+      endDate: "2033-01-12",
+      endTime: "15:30",
+      title: "",
+    });
+  });
+
+  it("uses inclusive last day for all-day ranges", () => {
+    const form = createIntentToForm("default", {
+      start: Temporal.PlainDateTime.from("2033-01-17T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-19T00:00:00"),
+      allDay: true,
+      title: "  ",
+    });
+    expect(form).toMatchObject({
+      allDay: true,
+      startDate: "2033-01-17",
+      endDate: "2033-01-18",
+      title: "",
+    });
   });
 });
 

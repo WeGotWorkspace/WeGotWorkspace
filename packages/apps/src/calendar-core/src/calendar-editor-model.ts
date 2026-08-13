@@ -46,6 +46,34 @@ export function emptyCalendarEventForm(
   };
 }
 
+/**
+ * Prefill the create dialog from a Lit drag/click create intent.
+ * All-day `end` is exclusive (same as the engine); the form shows the inclusive last day.
+ */
+export function createIntentToForm(
+  calendarId: string,
+  intent: {
+    start: Temporal.PlainDateTime;
+    end: Temporal.PlainDateTime;
+    allDay?: boolean;
+    title?: string;
+  },
+): CalendarEventFormValue {
+  const allDay = intent.allDay === true;
+  const formEnd = allDay ? intent.end.subtract({ days: 1 }) : intent.end;
+  return {
+    title: intent.title?.trim() ?? "",
+    calendarId,
+    allDay,
+    startDate: intent.start.toPlainDate().toString(),
+    startTime: intent.start.toPlainTime().toString({ smallestUnit: "minute" }),
+    endDate: formEnd.toPlainDate().toString(),
+    endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+    location: "",
+    description: "",
+  };
+}
+
 function primaryLocationName(event: JmapCalendarEvent): string {
   const locations = event.locations ?? {};
   const key = Object.keys(locations)[0];
@@ -171,5 +199,6 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     duration: draft.duration,
     allDay: form.allDay,
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
+    ...(form.description.trim() ? { description: form.description.trim() } : {}),
   };
 }

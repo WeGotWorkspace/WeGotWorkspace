@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type {
@@ -10,6 +10,7 @@ import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/ca
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import {
   calendarEventToForm,
+  createIntentToForm,
   emptyCalendarEventForm,
   engineEventToForm,
   formToDraft,
@@ -22,6 +23,8 @@ import {
   mergeCalendarLabels,
   type CalendarUILabels,
 } from "@/calendar-core/src/calendar-labels";
+import type { CalendarSurfaceCreateIntent } from "@/calendar-core/src/calendar-surface";
+import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export type CalendarEditorState =
@@ -48,9 +51,8 @@ const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOption
   month: "long",
 };
 
-function rangeTitle(view: CalendarViewId, anchorISO: string): string {
+function rangeTitle(view: CalendarViewId, anchorISO: string, locale: string): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
-  const locale = undefined;
   if (view === "month" || view === "agenda") {
     return anchor.toLocaleString(locale, MONTH_TITLE);
   }
@@ -92,9 +94,12 @@ export function useCalendarController({
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
   const { show, showError } = useAppToast();
+  const locale = useMemo(() => resolveLocale(undefined), []);
 
   const [view, setView] = useState<CalendarViewId>(initialView ?? "month");
   const [anchor, setAnchor] = useState<string>(initialAnchor ?? todayISODate());
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [hiddenCalendarIds, setHiddenCalendarIds] = useState<ReadonlySet<string>>(
     () => new Set(data.calendars.filter((c) => c.isVisible === false).map((c) => c.id)),
@@ -102,6 +107,8 @@ export function useCalendarController({
 
   const selectView = useCallback(
     (next: CalendarViewId) => {
+      if (viewRef.current === next) return;
+      viewRef.current = next;
       setView(next);
       // Match tasks/drive: only dismiss the overlay drawer on small viewports.
       if (isSidebarOverlayViewport()) {
@@ -164,6 +171,19 @@ export function useCalendarController({
       });
     },
     [defaultCalendarId, anchor],
+  );
+
+  /** Drag/click create from the Lit surface — dialog only; nothing persisted yet. */
+  const openCreateFromSurface = useCallback(
+    (intent: CalendarSurfaceCreateIntent) => {
+      const calendarId = intent.calendarId || defaultCalendarId;
+      if (!calendarId) return;
+      setEditor({
+        mode: "create",
+        form: createIntentToForm(calendarId, intent),
+      });
+    },
+    [defaultCalendarId],
   );
 
   const openEditEventKey = useCallback(
@@ -253,18 +273,20 @@ export function useCalendarController({
     editor,
     editorBusy,
     openCreateEvent,
+    openCreateFromSurface,
     openEditEventKey,
     closeEditor,
     setEditorForm,
     saveEditor,
     deleteEditorEvent,
     L,
+    locale,
     view,
     selectView,
     anchor,
     setAnchor,
     dateRange,
-    title: rangeTitle(view, anchor),
+    title: rangeTitle(view, anchor, locale),
     goToday,
     goPrevious,
     goNext,
