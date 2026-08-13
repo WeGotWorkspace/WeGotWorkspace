@@ -1,7 +1,20 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
@@ -14,6 +27,7 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
+import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
@@ -21,12 +35,14 @@ import { useCalendarController } from "@/calendar-core/src/use-calendar-controll
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
 
-const VIEW_ORDER: CalendarViewId[] = ["month", "week", "day", "year", "agenda"];
+/** Day → Year by time span, then List (agenda) — common calendar UI order. */
+const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year", "agenda"];
 
 function closeSidebarOnMobile(close: () => void) {
   if (!isSidebarOverlayViewport()) return;
   close();
 }
+
 export function CalendarWorkspace({
   data,
   session,
@@ -71,7 +87,9 @@ export function CalendarWorkspace({
     calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
+    selectDefaultCalendar,
     visibleCalendarIds,
+    defaultCalendarId,
     litSurface,
     editor,
     editorBusy,
@@ -83,6 +101,15 @@ export function CalendarWorkspace({
     saveEditor,
     deleteEditorEvent,
     setAnchor,
+    canCreateCalendar,
+    calendarDialog,
+    calendarDialogBusy,
+    openCreateCalendarDialog,
+    openEditCalendarDialog,
+    closeCalendarDialog,
+    saveCalendarDialog,
+    deleteCalendarFromDialog,
+    surfaceEventsForView,
   } = controller;
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
@@ -95,19 +122,76 @@ export function CalendarWorkspace({
     agenda: L.viewAgenda,
   };
 
-  const calendarItems: MenuItemProps[] = calendars.map((calendar) => ({
-    label: calendar.name,
-    icon: (
-      <span
-        className="calendar-sidebar-dot"
-        data-hidden={hiddenCalendarIds.has(calendar.id) || undefined}
-        style={{ backgroundColor: calendar.color }}
-        aria-hidden
-      />
-    ),
-    checked: !hiddenCalendarIds.has(calendar.id),
-    onClick: () => toggleCalendarVisibility(calendar.id),
-  }));
+  const calendarItems: MenuItemProps[] = calendars.map((calendar) => {
+    const visible = !hiddenCalendarIds.has(calendar.id);
+    const mayEdit = calendar.mayWrite !== false;
+    const mayDelete = calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
+    const canManage = mayEdit || mayDelete;
+
+    return {
+      label: calendar.name,
+      icon: (
+        <span
+          className="calendar-sidebar-visibility"
+          role="checkbox"
+          aria-checked={visible}
+          aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
+          tabIndex={0}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleCalendarVisibility(calendar.id);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            event.stopPropagation();
+            toggleCalendarVisibility(calendar.id);
+          }}
+        >
+          <span
+            className="calendar-sidebar-dot"
+            data-hidden={visible ? undefined : "true"}
+            style={{ backgroundColor: calendar.color }}
+            aria-hidden
+          />
+        </span>
+      ),
+      badge: canManage ? (
+        <span
+          className="calendar-sidebar-overflow"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                label={L.editCalendar}
+                icon={<MoreHorizontal className="size-3.5" aria-hidden />}
+                size="xs"
+                variant="ghost"
+                className="calendar-sidebar-overflow__button"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuItem
+                onSelect={() => {
+                  openEditCalendarDialog(calendar.id);
+                }}
+              >
+                {L.editCalendar}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </span>
+      ) : undefined,
+      selected: calendar.id === defaultCalendarId,
+      onClick: () => selectDefaultCalendar(calendar.id),
+    };
+  });
 
   useDocumentTitle(`${L.appTitle} — ${title}`);
 
@@ -157,7 +241,12 @@ export function CalendarWorkspace({
               />
             }
           >
-            <SidebarSection title={L.calendarsSection} items={calendarItems} />
+            <SidebarSection
+              title={L.calendarsSection}
+              items={calendarItems}
+              onAdd={canCreateCalendar ? openCreateCalendarDialog : undefined}
+              addLabel={L.newCalendar}
+            />
           </AppSidebar>
         }
         mainHeader={
@@ -210,8 +299,9 @@ export function CalendarWorkspace({
               view={litSurface.view}
               presentation={litSurface.presentation}
               startDate={anchor}
-              events={surface?.events ?? new Map()}
+              events={surfaceEventsForView ?? surface?.events ?? new Map()}
               visibleCalendarIds={[...visibleCalendarIds]}
+              selectedCalendarId={defaultCalendarId}
               contextValue={surface?.contextValue}
               onEventSelected={canWrite ? openEditEventKey : undefined}
               onViewChange={selectView}
@@ -236,6 +326,18 @@ export function CalendarWorkspace({
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
         />
       ) : null}
+      <CalendarCalendarDialog
+        dialog={calendarDialog}
+        labels={L}
+        busy={calendarDialogBusy}
+        onClose={closeCalendarDialog}
+        onConfirm={saveCalendarDialog}
+        onDelete={
+          calendarDialog?.mode === "edit" && calendarDialog.mayDelete
+            ? deleteCalendarFromDialog
+            : undefined
+        }
+      />
     </TooltipProvider>
   );
 }

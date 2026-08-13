@@ -11,6 +11,19 @@ export type CalendarUILabels = {
   nextPeriod: string;
   newEvent: string;
   calendarsSection: string;
+  newCalendar: string;
+  editCalendar: string;
+  editCalendarTitle: string;
+  createCalendarTitle: string;
+  calendarNameLabel: string;
+  calendarColorLabel: string;
+  deleteCalendar: string;
+  deleteCalendarConfirmTitle: string;
+  deleteCalendarConfirmDescription: string;
+  toastCalendarCreated: string;
+  toastCalendarUpdated: string;
+  toastCalendarDeleted: string;
+  toastCalendarSaveFailed: string;
   viewsSection: string;
   untitledEvent: string;
   allDay: string;
@@ -21,6 +34,7 @@ export type CalendarUILabels = {
   toastEventCreated: string;
   toastEventUpdated: string;
   toastEventDeleted: string;
+  toastEventDeleteUndone: string;
   toastEventSaveFailed: string;
   editEventTitle: string;
   createEventTitle: string;
@@ -43,13 +57,27 @@ export const defaultCalendarLabels: CalendarUILabels = {
   viewWeek: "Week",
   viewDay: "Day",
   viewYear: "Year",
-  viewAgenda: "Agenda",
+  viewAgenda: "List",
   viewSelectLabel: "Calendar view",
   today: "Today",
   previousPeriod: "Previous",
   nextPeriod: "Next",
   newEvent: "New event",
   calendarsSection: "Calendars",
+  newCalendar: "New calendar",
+  editCalendar: "Edit calendar",
+  editCalendarTitle: "Edit calendar",
+  createCalendarTitle: "New calendar",
+  calendarNameLabel: "Name",
+  calendarColorLabel: "Color",
+  deleteCalendar: "Delete calendar",
+  deleteCalendarConfirmTitle: "Delete calendar?",
+  deleteCalendarConfirmDescription:
+    "Events on this calendar will be permanently deleted. This cannot be undone.",
+  toastCalendarCreated: "Calendar created",
+  toastCalendarUpdated: "Calendar updated",
+  toastCalendarDeleted: "Calendar deleted",
+  toastCalendarSaveFailed: "Could not save calendar",
   viewsSection: "Views",
   untitledEvent: "Untitled event",
   allDay: "All day",
@@ -60,6 +88,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventDeleted: "Event deleted",
+  toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",
   editEventTitle: "Edit event",
   createEventTitle: "New event",

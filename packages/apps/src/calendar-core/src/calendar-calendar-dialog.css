@@ -1,0 +1,67 @@
+@import "../../styles.css" reference;
+
+.calendar-calendar-dialog__name-color-row {
+  @apply flex items-center gap-2;
+}
+
+.calendar-calendar-dialog__name-input {
+  @apply min-w-0 flex-[1_1_85%];
+}
+
+.calendar-calendar-dialog__footer {
+  @apply mt-4;
+}
+
+.calendar-calendar-dialog__delete {
+  margin-inline-end: auto;
+  color: #b91c1c;
+}
+
+.calendar-calendar-dialog__color-trigger {
+  @apply inline-flex w-auto shrink-0 cursor-pointer justify-between gap-1.5 px-2 shadow-none;
+  @apply focus-visible:ring-2 focus-visible:ring-offset-1;
+  min-width: 3.25rem;
+}
+
+.calendar-calendar-dialog__color-dot {
+  @apply size-3 shrink-0 rounded-full;
+}
+
+.calendar-calendar-dialog__color-chevron {
+  @apply size-3.5 shrink-0 opacity-70;
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+}
+
+.calendar-calendar-dialog__color-content {
+  @apply w-auto p-3;
+}
+
+.calendar-calendar-dialog__swatches {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.calendar-calendar-dialog__swatch {
+  @apply inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent p-0 transition-shadow;
+}
+
+.calendar-calendar-dialog__swatch:hover {
+  @apply ring-2 ring-offset-2;
+  ring-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
+}
+
+.calendar-calendar-dialog__swatch--selected {
+  @apply ring-2 ring-offset-2;
+  ring-color: var(--color-ink);
+}
+
+.calendar-calendar-dialog__swatch--custom {
+  background: conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+
+.calendar-calendar-dialog__custom-marker {
+  @apply size-3 rounded-full border border-white/80 bg-white/20;
+}
+
+.calendar-calendar-dialog__native-color {
+  @apply sr-only;
+}

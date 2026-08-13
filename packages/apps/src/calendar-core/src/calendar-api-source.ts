@@ -5,9 +5,12 @@ import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import {
   createCalendarEventLive,
   createCalendarJmapClient,
+  createCalendarLive,
   deleteCalendarEventLive,
+  deleteCalendarLive,
   fetchCalendarBootstrapForClient,
   patchCalendarEventLive,
+  patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { JmapClient, MockJmapServer, type JmapCalendar } from "@/lib/jmap-client";
@@ -55,7 +58,9 @@ function createMockJmapServer(): MockJmapServer {
         ...FULL_RIGHTS,
         mayWriteAll: calendar.mayWrite !== false,
         mayWriteOwn: calendar.mayWrite !== false,
+        mayDelete: calendar.mayDelete !== false,
       },
+      ...(typeof calendar.sortOrder === "number" ? { sortOrder: calendar.sortOrder } : {}),
     } as JmapCalendar);
   }
   for (const event of bootstrap.data.events) {
@@ -89,6 +94,9 @@ export function createMockCalendarApiSource(): CalendarApiSource {
       createEvent: (draft) => createCalendarEventLive(draft, opsClient),
       patchEvent: (eventId, patch) => patchCalendarEventLive(eventId, patch, opsClient),
       deleteEvent: (eventId) => deleteCalendarEventLive(eventId, opsClient),
+      createCalendar: (draft) => createCalendarLive(draft, opsClient),
+      patchCalendar: (calendarId, patch) => patchCalendarLive(calendarId, patch, opsClient),
+      deleteCalendar: (calendarId) => deleteCalendarLive(calendarId, opsClient),
     }),
     // Separate client for the adapter — independent sync-state tracking.
     createJmapClient: clientFor,

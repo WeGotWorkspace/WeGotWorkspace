@@ -4,13 +4,15 @@ import { Temporal } from "@js-temporal/polyfill";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
+const toastApi = {
+  show: vi.fn(() => "toast-1"),
+  showError: vi.fn(),
+  showSuccess: vi.fn(),
+  dismiss: vi.fn(),
+};
+
 vi.mock("@/hooks/use-app-toast", () => ({
-  useAppToast: () => ({
-    show: vi.fn(),
-    showError: vi.fn(),
-    showSuccess: vi.fn(),
-    dismiss: vi.fn(),
-  }),
+  useAppToast: () => toastApi,
 }));
 
 const bootstrap = createCalendarAppBootstrap();
@@ -142,5 +144,143 @@ describe("useCalendarController view + create intent", () => {
       expect(deleteEvent).toHaveBeenCalledWith("dentist");
     });
     expect(patchEvent).not.toHaveBeenCalled();
+  });
+
+  it("defaults create target to the isDefault calendar and highlights via defaultCalendarId", () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    expect(result.current.defaultCalendarId).toBe("default");
+  });
+
+  it("selectDefaultCalendar sets create target and unhides a hidden calendar", () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    act(() => {
+      result.current.toggleCalendarVisibility("work");
+    });
+    expect(result.current.hiddenCalendarIds.has("work")).toBe(true);
+
+    act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
+
+    expect(result.current.defaultCalendarId).toBe("work");
+    expect(result.current.hiddenCalendarIds.has("work")).toBe(false);
+
+    act(() => {
+      result.current.openCreateEvent("2033-01-12");
+    });
+
+    expect(result.current.editor).toMatchObject({
+      mode: "create",
+      form: { calendarId: "work", startDate: "2033-01-12" },
+    });
+  });
+
+  it("saveEditor auto-shows the target calendar when creating onto a hidden calendar", async () => {
+    const createEvent = vi.fn().mockResolvedValue({ id: "new" });
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent,
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openCreateEvent("2033-01-12");
+    });
+    act(() => {
+      result.current.toggleCalendarVisibility("work");
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        calendarId: "work",
+        title: "Hidden target",
+      });
+    });
+    expect(result.current.hiddenCalendarIds.has("work")).toBe(true);
+
+    await act(async () => {
+      result.current.saveEditor();
+    });
+
+    await vi.waitFor(() => {
+      expect(createEvent).toHaveBeenCalled();
+    });
+    expect(result.current.hiddenCalendarIds.has("work")).toBe(false);
+  });
+
+  it("saveEditor auto-shows the target calendar when moving an event onto a hidden calendar", async () => {
+    const createEvent = vi.fn().mockResolvedValue({ id: "moved" });
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent,
+          patchEvent: vi.fn(),
+          deleteEvent,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.toggleCalendarVisibility("work");
+    });
+    act(() => {
+      result.current.openEditEventKey("dentist");
+    });
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        calendarId: "work",
+      });
+    });
+    expect(result.current.hiddenCalendarIds.has("work")).toBe(true);
+
+    await act(async () => {
+      result.current.saveEditor();
+    });
+
+    await vi.waitFor(() => {
+      expect(createEvent).toHaveBeenCalled();
+    });
+    expect(result.current.hiddenCalendarIds.has("work")).toBe(false);
+  });
+
+  it("deleteEditorEvent queues undoable delete and hides the event pending commit", async () => {
+    vi.useFakeTimers();
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditEventKey("dentist");
+    });
+    act(() => {
+      result.current.deleteEditorEvent();
+    });
+
+    expect(result.current.editor).toBeNull();
+    expect(result.current.pendingDeletedEventIds.has("dentist")).toBe(true);
+    expect(deleteEvent).not.toHaveBeenCalled();
+
+    act(() => {
+      expect(result.current.undoLatest()).toBe(true);
+    });
+    expect(result.current.pendingDeletedEventIds.has("dentist")).toBe(false);
+
+    vi.useRealTimers();
   });
 });

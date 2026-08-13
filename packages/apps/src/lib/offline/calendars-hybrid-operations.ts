@@ -1,11 +1,20 @@
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations, CalendarEventDraft } from "@/calendar-core/src/calendar-types";
+import type {
+  CalendarAPIOperations,
+  CalendarDraft,
+  CalendarEventDraft,
+  CalendarInfo,
+  CalendarPatch,
+} from "@/calendar-core/src/calendar-types";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import {
   createCalendarEventLive,
+  createCalendarLive,
   deleteCalendarEventLive,
+  deleteCalendarLive,
   fetchCalendarLiveBootstrap,
   patchCalendarEventLive,
+  patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
@@ -91,6 +100,21 @@ async function resolveCachedEvent(
   return cached?.data.events.find((event) => event.id === eventId);
 }
 
+async function writeCalendarsToCache(
+  username: string,
+  mutate: (calendars: CalendarInfo[]) => CalendarInfo[],
+): Promise<void> {
+  const cached = await readCalendarBootstrapFromCache(username);
+  if (!cached) return;
+  await writeCalendarBootstrapToCache(username, {
+    ...cached,
+    data: {
+      ...cached.data,
+      calendars: mutate(cached.data.calendars),
+    },
+  });
+}
+
 export function createHybridCalendarOperations(username: string): CalendarAPIOperations {
   const runner = runnerFor(username);
 
@@ -163,6 +187,33 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         rethrowUnlessOfflineQueue(error);
         await queueOffline();
       }
+    },
+    createCalendar: async (draft: CalendarDraft) => {
+      if (!readBrowserOnline()) {
+        throw new Error("Cannot create calendar while offline");
+      }
+      const created = await createCalendarLive(draft);
+      await writeCalendarsToCache(username, (calendars) => [...calendars, created]);
+      return created;
+    },
+    patchCalendar: async (calendarId: string, patch: CalendarPatch) => {
+      if (!readBrowserOnline()) {
+        throw new Error("Cannot update calendar while offline");
+      }
+      const updated = await patchCalendarLive(calendarId, patch);
+      await writeCalendarsToCache(username, (calendars) =>
+        calendars.map((calendar) => (calendar.id === calendarId ? updated : calendar)),
+      );
+      return updated;
+    },
+    deleteCalendar: async (calendarId: string) => {
+      if (!readBrowserOnline()) {
+        throw new Error("Cannot delete calendar while offline");
+      }
+      await deleteCalendarLive(calendarId);
+      await writeCalendarsToCache(username, (calendars) =>
+        calendars.filter((calendar) => calendar.id !== calendarId),
+      );
     },
   };
 }

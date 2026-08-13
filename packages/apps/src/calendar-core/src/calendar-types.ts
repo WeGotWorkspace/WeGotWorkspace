@@ -9,9 +9,12 @@ export type CalendarInfo = {
   id: string;
   name: string;
   color: string;
+  /** JMAP/CalDAV `sortOrder` / `calendar-order`; lower sorts first in the sidebar. */
+  sortOrder?: number;
   isVisible?: boolean;
   isDefault?: boolean;
   mayWrite?: boolean;
+  mayDelete?: boolean;
 };
 
 export type CalendarUIData = {
@@ -40,8 +43,21 @@ export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">>
   calendarId?: string;
 };
 
+export type CalendarDraft = {
+  name: string;
+  color: string;
+};
+
+export type CalendarPatch = {
+  name?: string;
+  color?: string;
+};
+
 export type CalendarAPIOperations = {
   createEvent: (draft: CalendarEventDraft) => Promise<JmapCalendarEvent>;
   patchEvent: (eventId: string, patch: CalendarEventPatch) => Promise<JmapCalendarEvent>;
   deleteEvent: (eventId: string) => Promise<void>;
+  createCalendar?: (draft: CalendarDraft) => Promise<CalendarInfo>;
+  patchCalendar?: (calendarId: string, patch: CalendarPatch) => Promise<CalendarInfo>;
+  deleteCalendar?: (calendarId: string) => Promise<void>;
 };

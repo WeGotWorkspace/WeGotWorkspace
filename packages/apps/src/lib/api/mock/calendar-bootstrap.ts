@@ -42,9 +42,31 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
     session: mockWorkspaceSession,
     data: {
       calendars: [
-        { id: "default", name: "Personal", color: "#6366f1", isDefault: true, mayWrite: true },
-        { id: "work", name: "Work", color: "#0ea5e9", mayWrite: true },
-        { id: "family", name: "Family", color: "#f59e0b", mayWrite: false },
+        {
+          id: "default",
+          name: "Personal",
+          color: "#6366f1",
+          isDefault: true,
+          mayWrite: true,
+          mayDelete: true,
+          sortOrder: 0,
+        },
+        {
+          id: "work",
+          name: "Work",
+          color: "#0ea5e9",
+          mayWrite: true,
+          mayDelete: true,
+          sortOrder: 1,
+        },
+        {
+          id: "family",
+          name: "Family",
+          color: "#f59e0b",
+          mayWrite: false,
+          mayDelete: false,
+          sortOrder: 2,
+        },
       ],
       events: [
         mockEvent("standup", "work", "Team standup", day(0, "09:30:00"), "PT30M", {

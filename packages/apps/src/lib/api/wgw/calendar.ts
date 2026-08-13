@@ -8,9 +8,11 @@ import {
 } from "@/lib/jmap-client";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type {
+  CalendarDraft,
   CalendarEventDraft,
   CalendarEventPatch,
   CalendarInfo,
+  CalendarPatch,
 } from "@/calendar-core/src/calendar-types";
 import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
 
@@ -81,9 +83,11 @@ function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
     id: calendar.id,
     name: calendar.name,
     color: calendar.color ?? "#6366F1",
+    sortOrder: typeof calendar.sortOrder === "number" ? calendar.sortOrder : 0,
     ...(calendar.isVisible === false ? { isVisible: false } : {}),
     ...(calendar.isDefault ? { isDefault: true } : {}),
     mayWrite: calendar.myRights ? calendar.myRights.mayWriteAll === true : true,
+    mayDelete: calendar.myRights ? calendar.myRights.mayDelete === true : true,
   };
 }
 
@@ -158,4 +162,47 @@ export async function patchCalendarEventLive(
 export async function deleteCalendarEventLive(eventId: string, client?: JmapClient): Promise<void> {
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendarEvents({ accountId, destroy: [eventId] });
+}
+
+export async function createCalendarLive(
+  draft: CalendarDraft,
+  client?: JmapClient,
+): Promise<CalendarInfo> {
+  const { calendars, accountId } = await connectedCalendars(client);
+  const response = await calendars.setCalendars({
+    accountId,
+    create: {
+      "create-1": {
+        name: draft.name,
+        color: draft.color,
+      } as JmapCalendar,
+    },
+  });
+  const created = response.created?.["create-1"];
+  if (!created?.id) throw new Error("Calendar/set returned no created id");
+  const get = await calendars.getCalendars(accountId, [created.id]);
+  const calendar = get.list[0];
+  if (!calendar) throw new Error("Created calendar could not be fetched");
+  return toCalendarInfo(calendar);
+}
+
+export async function patchCalendarLive(
+  calendarId: string,
+  patch: CalendarPatch,
+  client?: JmapClient,
+): Promise<CalendarInfo> {
+  const { calendars, accountId } = await connectedCalendars(client);
+  await calendars.setCalendars({
+    accountId,
+    update: { [calendarId]: patch },
+  });
+  const get = await calendars.getCalendars(accountId, [calendarId]);
+  const calendar = get.list[0];
+  if (!calendar) throw new Error("Updated calendar could not be fetched");
+  return toCalendarInfo(calendar);
+}
+
+export async function deleteCalendarLive(calendarId: string, client?: JmapClient): Promise<void> {
+  const { calendars, accountId } = await connectedCalendars(client);
+  await calendars.setCalendars({ accountId, destroy: [calendarId] });
 }

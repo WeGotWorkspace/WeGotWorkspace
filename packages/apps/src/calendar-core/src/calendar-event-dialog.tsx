@@ -208,7 +208,7 @@ export function CalendarEventDialog({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="calendar-event-dialog__calendar-trigger"
+                    className="control-surface calendar-event-dialog__calendar-trigger"
                     aria-label={
                       selectedCalendar
                         ? `${labels.eventCalendarLabel}: ${selectedCalendar.name}`

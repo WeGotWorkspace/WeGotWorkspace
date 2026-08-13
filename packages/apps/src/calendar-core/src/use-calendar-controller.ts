@@ -1,8 +1,11 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, createElement } from "react";
 import { Temporal } from "@js-temporal/polyfill";
+import { Trash2 } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type {
   CalendarAPIOperations,
+  CalendarInfo,
   CalendarUIData,
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
@@ -24,6 +27,12 @@ import {
   type CalendarUILabels,
 } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSurfaceCreateIntent } from "@/calendar-core/src/calendar-surface";
+import type {
+  CalendarCalendarDialogConfirmInput,
+  CalendarCalendarDialogState,
+} from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { sortCalendarsForSidebar } from "@/calendar-core/src/calendar-sidebar-order";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
@@ -81,6 +90,13 @@ function rangeTitle(view: CalendarViewId, anchorISO: string, locale: string): st
     : `${startLabel} – ${endLabel}`;
 }
 
+function pickDefaultCalendarId(calendars: CalendarInfo[], preferred?: string): string | undefined {
+  const writable = calendars.filter((c) => c.mayWrite !== false);
+  if (preferred && writable.some((c) => c.id === preferred)) return preferred;
+  if (preferred && calendars.some((c) => c.id === preferred)) return preferred;
+  return (writable.find((c) => c.isDefault) ?? writable[0])?.id;
+}
+
 export function useCalendarController({
   data,
   labels,
@@ -101,9 +117,44 @@ export function useCalendarController({
   const viewRef = useRef(view);
   viewRef.current = view;
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
+  const [calendars, setCalendars] = useState<CalendarInfo[]>(() =>
+    sortCalendarsForSidebar(data.calendars),
+  );
   const [hiddenCalendarIds, setHiddenCalendarIds] = useState<ReadonlySet<string>>(
     () => new Set(data.calendars.filter((c) => c.isVisible === false).map((c) => c.id)),
   );
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string | undefined>(() =>
+    pickDefaultCalendarId(data.calendars),
+  );
+  const [pendingDeletedEventIds, setPendingDeletedEventIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [calendarDialog, setCalendarDialog] = useState<CalendarCalendarDialogState>(null);
+  const [calendarDialogBusy, setCalendarDialogBusy] = useState(false);
+
+  useEffect(() => {
+    setCalendars(sortCalendarsForSidebar(data.calendars));
+  }, [data.calendars]);
+
+  const { queueMutation, undoLatest } = useQueuedMutation({
+    onMutationError: () => showError(L.toastEventSaveFailed),
+  });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z" || event.shiftKey) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+      if (undoLatest()) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undoLatest]);
 
   const selectView = useCallback(
     (next: CalendarViewId) => {
@@ -126,6 +177,15 @@ export function useCalendarController({
   );
   const goNext = useCallback(() => setAnchor((current) => shiftAnchor(view, current, 1)), [view]);
 
+  const ensureCalendarVisible = useCallback((calendarId: string) => {
+    setHiddenCalendarIds((current) => {
+      if (!current.has(calendarId)) return current;
+      const next = new Set(current);
+      next.delete(calendarId);
+      return next;
+    });
+  }, []);
+
   const toggleCalendarVisibility = useCallback((calendarId: string) => {
     setHiddenCalendarIds((current) => {
       const next = new Set(current);
@@ -139,8 +199,8 @@ export function useCalendarController({
   }, []);
 
   const visibleCalendarIds = useMemo(
-    () => new Set(data.calendars.filter((c) => !hiddenCalendarIds.has(c.id)).map((c) => c.id)),
-    [data.calendars, hiddenCalendarIds],
+    () => new Set(calendars.filter((c) => !hiddenCalendarIds.has(c.id)).map((c) => c.id)),
+    [calendars, hiddenCalendarIds],
   );
 
   const dateRange = useMemo(() => viewDateRange(view, anchor), [view, anchor]);
@@ -154,10 +214,21 @@ export function useCalendarController({
     [view],
   );
 
-  const defaultCalendarId = useMemo(() => {
-    const writable = data.calendars.filter((c) => c.mayWrite !== false);
-    return (writable.find((c) => c.isDefault) ?? writable[0])?.id;
-  }, [data.calendars]);
+  /** Sidebar create-target; falls back if the selection disappears from bootstrap data. */
+  const defaultCalendarId = useMemo(
+    () => pickDefaultCalendarId(calendars, selectedCalendarId),
+    [calendars, selectedCalendarId],
+  );
+
+  /** Click sidebar row: set create target (and unhide if needed, matching Lit CalendarsSidebar). */
+  const selectDefaultCalendar = useCallback(
+    (calendarId: string) => {
+      if (!calendars.some((c) => c.id === calendarId)) return;
+      ensureCalendarVisible(calendarId);
+      setSelectedCalendarId(calendarId);
+    },
+    [calendars, ensureCalendarVisible],
+  );
 
   const [editor, setEditor] = useState<CalendarEditorState | null>(null);
   const [editorBusy, setEditorBusy] = useState(false);
@@ -165,12 +236,13 @@ export function useCalendarController({
   const openCreateEvent = useCallback(
     (dateISO?: string, startTime?: string) => {
       if (!defaultCalendarId) return;
+      ensureCalendarVisible(defaultCalendarId);
       setEditor({
         mode: "create",
         form: emptyCalendarEventForm(defaultCalendarId, dateISO ?? anchor, startTime),
       });
     },
-    [defaultCalendarId, anchor],
+    [defaultCalendarId, anchor, ensureCalendarVisible],
   );
 
   /** Drag/click create from the Lit surface — dialog only; nothing persisted yet. */
@@ -178,12 +250,13 @@ export function useCalendarController({
     (intent: CalendarSurfaceCreateIntent) => {
       const calendarId = intent.calendarId || defaultCalendarId;
       if (!calendarId) return;
+      ensureCalendarVisible(calendarId);
       setEditor({
         mode: "create",
         form: createIntentToForm(calendarId, intent),
       });
     },
-    [defaultCalendarId],
+    [defaultCalendarId, ensureCalendarVisible],
   );
 
   const openEditEventKey = useCallback(
@@ -192,6 +265,7 @@ export function useCalendarController({
       // recurring occurrences edit the master series in v1.
       const separator = key.indexOf("::");
       const masterId = separator === -1 ? key : key.slice(0, separator);
+      if (pendingDeletedEventIds.has(masterId)) return;
       const wireEvent = data.events.find((entry) => entry.id === masterId);
       if (wireEvent) {
         setEditor({ mode: "edit", eventId: wireEvent.id, form: calendarEventToForm(wireEvent) });
@@ -203,7 +277,7 @@ export function useCalendarController({
       if (!engineEvent) return;
       setEditor({ mode: "edit", eventId: masterId, form: engineEventToForm(engineEvent) });
     },
-    [data.events, surfaceEvents],
+    [data.events, surfaceEvents, pendingDeletedEventIds],
   );
 
   const closeEditor = useCallback(() => {
@@ -237,6 +311,7 @@ export function useCalendarController({
   const saveEditor = useCallback(() => {
     if (!editor || !operations) return;
     if (editor.mode === "create") {
+      ensureCalendarVisible(editor.form.calendarId);
       runEditorMutation(async () => {
         await operations.createEvent(formToDraft(editor.form));
       }, L.toastEventCreated);
@@ -249,6 +324,8 @@ export function useCalendarController({
       setEditor(null);
       return;
     }
+    // Moving onto a hidden calendar would look like a delete — show it first.
+    ensureCalendarVisible(editor.form.calendarId);
     runEditorMutation(async () => {
       // Engine keys of adapter-created events resolve to their server id here.
       const targetId = original
@@ -263,18 +340,191 @@ export function useCalendarController({
       }
       await operations.patchEvent(targetId, patch);
     }, L.toastEventUpdated);
-  }, [editor, operations, data.events, runEditorMutation, resolveEventId, L]);
+  }, [
+    editor,
+    operations,
+    data.events,
+    runEditorMutation,
+    resolveEventId,
+    ensureCalendarVisible,
+    L,
+  ]);
 
   const deleteEditorEvent = useCallback(() => {
     if (!editor || editor.mode !== "edit" || !operations) return;
-    runEditorMutation(async () => {
-      const isWireEvent = data.events.some((entry) => entry.id === editor.eventId);
-      const targetId = isWireEvent
-        ? editor.eventId
-        : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
-      await operations.deleteEvent(targetId);
-    }, L.toastEventDeleted);
-  }, [editor, operations, data.events, runEditorMutation, resolveEventId, L.toastEventDeleted]);
+    const eventId = editor.eventId;
+    const isWireEvent = data.events.some((entry) => entry.id === eventId);
+    setEditor(null);
+    setPendingDeletedEventIds((current) => {
+      const next = new Set(current);
+      next.add(eventId);
+      return next;
+    });
+
+    const rollback = () => {
+      setPendingDeletedEventIds((current) => {
+        if (!current.has(eventId)) return current;
+        const next = new Set(current);
+        next.delete(eventId);
+        return next;
+      });
+    };
+
+    queueMutation({
+      key: `calendar:delete-event:${eventId}`,
+      toastMessage: L.toastEventDeleted,
+      icon: createElement(Trash2, { className: "size-4" }),
+      execute: async () => {
+        const targetId = isWireEvent ? eventId : ((await resolveEventId?.(eventId)) ?? eventId);
+        await operations.deleteEvent(targetId);
+        onMutated?.();
+      },
+      undo: rollback,
+      onError: rollback,
+      undoToastMessage: L.toastEventDeleteUndone,
+    });
+  }, [
+    editor,
+    operations,
+    data.events,
+    queueMutation,
+    resolveEventId,
+    onMutated,
+    L.toastEventDeleted,
+    L.toastEventDeleteUndone,
+  ]);
+
+  const canCreateCalendar = Boolean(operations?.createCalendar);
+  const openCreateCalendarDialog = useCallback(() => {
+    if (!canCreateCalendar) return;
+    setCalendarDialog({ mode: "create" });
+  }, [canCreateCalendar]);
+
+  const openEditCalendarDialog = useCallback(
+    (calendarId: string) => {
+      const calendar = calendars.find((entry) => entry.id === calendarId);
+      if (!calendar) return;
+      const mayEdit = calendar.mayWrite !== false;
+      const mayDelete = calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
+      if (!mayEdit && !mayDelete) return;
+      setCalendarDialog({
+        mode: "edit",
+        calendarId: calendar.id,
+        name: calendar.name,
+        color: calendar.color || DEFAULT_CALENDAR_COLOR,
+        mayDelete,
+      });
+    },
+    [calendars, operations?.deleteCalendar],
+  );
+
+  const closeCalendarDialog = useCallback(() => {
+    if (!calendarDialogBusy) setCalendarDialog(null);
+  }, [calendarDialogBusy]);
+
+  const saveCalendarDialog = useCallback(
+    (input: CalendarCalendarDialogConfirmInput) => {
+      if (!operations || !calendarDialog) return;
+      const name = input.name.trim();
+      const color = input.color.trim() || DEFAULT_CALENDAR_COLOR;
+      if (!name) return;
+
+      setCalendarDialogBusy(true);
+      void (async () => {
+        try {
+          if (calendarDialog.mode === "create") {
+            if (!operations.createCalendar) return;
+            const created = await operations.createCalendar({ name, color });
+            setCalendars((prev) => sortCalendarsForSidebar([...prev, created]));
+            selectDefaultCalendar(created.id);
+            show(L.toastCalendarCreated);
+            setCalendarDialog(null);
+            onMutated?.();
+            return;
+          }
+          if (!operations.patchCalendar) return;
+          const updated = await operations.patchCalendar(calendarDialog.calendarId, {
+            name,
+            color,
+          });
+          setCalendars((prev) =>
+            sortCalendarsForSidebar(
+              prev.map((entry) => (entry.id === updated.id ? { ...entry, ...updated } : entry)),
+            ),
+          );
+          show(L.toastCalendarUpdated);
+          setCalendarDialog(null);
+          onMutated?.();
+        } catch {
+          showError(L.toastCalendarSaveFailed);
+        } finally {
+          setCalendarDialogBusy(false);
+        }
+      })();
+    },
+    [
+      operations,
+      calendarDialog,
+      selectDefaultCalendar,
+      show,
+      showError,
+      onMutated,
+      L.toastCalendarCreated,
+      L.toastCalendarUpdated,
+      L.toastCalendarSaveFailed,
+    ],
+  );
+
+  const deleteCalendarFromDialog = useCallback(() => {
+    const deleteCalendar = operations?.deleteCalendar;
+    if (!deleteCalendar || calendarDialog?.mode !== "edit") return;
+    const calendarId = calendarDialog.calendarId;
+    setCalendarDialogBusy(true);
+    void (async () => {
+      try {
+        await deleteCalendar(calendarId);
+        setCalendars((prev) => {
+          const next = prev.filter((entry) => entry.id !== calendarId);
+          const nextDefault = pickDefaultCalendarId(next);
+          setSelectedCalendarId(nextDefault);
+          return sortCalendarsForSidebar(next);
+        });
+        setHiddenCalendarIds((current) => {
+          if (!current.has(calendarId)) return current;
+          const next = new Set(current);
+          next.delete(calendarId);
+          return next;
+        });
+        show(L.toastCalendarDeleted);
+        setCalendarDialog(null);
+        onMutated?.();
+      } catch {
+        showError(L.toastCalendarSaveFailed);
+      } finally {
+        setCalendarDialogBusy(false);
+      }
+    })();
+  }, [
+    operations,
+    calendarDialog,
+    show,
+    showError,
+    onMutated,
+    L.toastCalendarDeleted,
+    L.toastCalendarSaveFailed,
+  ]);
+
+  const surfaceEventsForView = useMemo(() => {
+    if (!surfaceEvents || pendingDeletedEventIds.size === 0) return surfaceEvents;
+    const next = new Map(surfaceEvents);
+    for (const id of pendingDeletedEventIds) {
+      next.delete(id);
+      for (const key of [...next.keys()]) {
+        if (key.startsWith(`${id}::`)) next.delete(key);
+      }
+    }
+    return next;
+  }, [surfaceEvents, pendingDeletedEventIds]);
 
   return {
     editor,
@@ -299,13 +549,26 @@ export function useCalendarController({
     goNext,
     sidebarOpen,
     setSidebarOpen,
-    calendars: data.calendars,
+    calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
+    ensureCalendarVisible,
+    selectDefaultCalendar,
     visibleCalendarIds,
     litSurface,
     defaultCalendarId,
     operations,
+    canCreateCalendar,
+    calendarDialog,
+    calendarDialogBusy,
+    openCreateCalendarDialog,
+    openEditCalendarDialog,
+    closeCalendarDialog,
+    saveCalendarDialog,
+    deleteCalendarFromDialog,
+    undoLatest,
+    surfaceEventsForView,
+    pendingDeletedEventIds,
   };
 }
 
