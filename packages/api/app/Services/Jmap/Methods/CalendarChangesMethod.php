@@ -14,11 +14,11 @@ use App\Services\Jmap\Methods\Concerns\ValidatesChangesArguments;
  * Calendar/changes: the CalendarEvent/changes fan-out one level up (spec
  * §4), diffing calendar existence and sync tokens instead of event ids.
  *
- * Known caveat (documented in docs/calendars/jmap-envelope.md): Sabre bumps
- * a calendar's synctoken on event changes, not on pure metadata updates —
- * so event activity over-reports the calendar as `updated` (harmless), and
- * a pure rename/recolor is NOT reported until the next event change. This
- * matches the existing REST collection-level /changes behavior.
+ * Empirically pinned behavior (JmapChangesTest, documented in
+ * docs/calendars/jmap-envelope.md): Sabre bumps a calendar's synctoken on
+ * BOTH event changes and pure metadata updates — so renames/recolors ARE
+ * reported as `updated`, and event activity over-reports the calendar as
+ * `updated` (harmless: clients refetch metadata that didn't change).
  */
 final class CalendarChangesMethod implements JmapMethodInterface
 {

@@ -38,6 +38,20 @@ trait HandlesGetArguments
     }
 
     /**
+     * RFC 8620 §5.1: a get-all (ids: null) whose result would exceed
+     * maxObjectsInGet must be rejected with requestTooLarge, same as an
+     * over-long explicit ids list.
+     *
+     * @param  list<array<string, mixed>>  $records
+     */
+    private function guardGetAllBound(array $records): void
+    {
+        if (count($records) > JmapCapabilities::MAX_OBJECTS_IN_GET) {
+            throw new JmapMethodException('requestTooLarge', 'The number of records exceeds maxObjectsInGet; request explicit ids.');
+        }
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $records
      * @return list<array<string, mixed>>
      */

@@ -50,6 +50,7 @@ final class CalendarGetMethod implements JmapMethodInterface
         $ids = $this->requestedIds($args);
         $notFound = [];
         if ($ids === null) {
+            $this->guardGetAllBound($all);
             $list = $all;
         } else {
             $byId = [];

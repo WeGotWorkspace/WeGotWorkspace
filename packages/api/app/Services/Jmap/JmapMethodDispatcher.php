@@ -100,7 +100,7 @@ final class JmapMethodDispatcher
             } catch (ApiHttpException $e) {
                 $responses[] = ['error', $this->mapApiException($e), $callId];
             } catch (\Throwable $e) {
-                $responses[] = ['error', ['type' => 'serverFail', 'description' => $e->getMessage()], $callId];
+                $responses[] = ['error', JmapSetErrors::serverFail($e), $callId];
             }
         }
 

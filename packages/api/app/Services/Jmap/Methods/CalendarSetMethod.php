@@ -61,7 +61,7 @@ final class CalendarSetMethod implements JmapMethodInterface
             } catch (ApiHttpException $e) {
                 $notCreated[(string) $creationId] = JmapSetErrors::fromApiException($e);
             } catch (\Throwable $e) {
-                $notCreated[(string) $creationId] = ['type' => 'serverFail', 'description' => $e->getMessage()];
+                $notCreated[(string) $creationId] = JmapSetErrors::serverFail($e);
             }
         }
 
@@ -79,7 +79,7 @@ final class CalendarSetMethod implements JmapMethodInterface
             } catch (ApiHttpException $e) {
                 $notUpdated[(string) $calendarId] = JmapSetErrors::fromApiException($e);
             } catch (\Throwable $e) {
-                $notUpdated[(string) $calendarId] = ['type' => 'serverFail', 'description' => $e->getMessage()];
+                $notUpdated[(string) $calendarId] = JmapSetErrors::serverFail($e);
             }
         }
 
@@ -98,7 +98,7 @@ final class CalendarSetMethod implements JmapMethodInterface
             } catch (ApiHttpException $e) {
                 $notDestroyed[$calendarId] = JmapSetErrors::fromApiException($e);
             } catch (\Throwable $e) {
-                $notDestroyed[$calendarId] = ['type' => 'serverFail', 'description' => $e->getMessage()];
+                $notDestroyed[$calendarId] = JmapSetErrors::serverFail($e);
             }
         }
 

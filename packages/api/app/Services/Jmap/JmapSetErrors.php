@@ -40,4 +40,22 @@ final class JmapSetErrors
 
         return $shape;
     }
+
+    /**
+     * Unexpected internal failure, shaped for both the method-level `error`
+     * invocation and the per-item SetError buckets. The raw exception message
+     * is logged but kept off the wire outside debug mode — internals (SQL,
+     * file paths) must not leak into responses.
+     *
+     * @return array<string, mixed>
+     */
+    public static function serverFail(\Throwable $e): array
+    {
+        report($e);
+
+        return [
+            'type' => 'serverFail',
+            'description' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred.',
+        ];
+    }
 }

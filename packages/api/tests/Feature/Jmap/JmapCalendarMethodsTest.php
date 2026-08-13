@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Models\CalendarObject;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Testing\TestResponse;
@@ -287,5 +288,57 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         ])->assertOk()
             ->assertJsonPath('methodResponses.0.0', 'error')
             ->assertJsonPath('methodResponses.0.1.type', 'invalidArguments');
+    }
+
+    public function test_get_with_ids_beyond_max_objects_in_get_is_request_too_large(): void
+    {
+        $ids = array_map(static fn (int $i): string => "id-{$i}", range(0, JmapCapabilities::MAX_OBJECTS_IN_GET));
+
+        $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => $ids], 'c0'],
+        ])->assertOk()
+            ->assertJsonPath('methodResponses.0.0', 'error')
+            ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
+    }
+
+    public function test_event_get_all_beyond_max_objects_in_get_is_request_too_large(): void
+    {
+        // Seeded straight into calendarobjects: 501 Sabre createCalendarObject
+        // round-trips would dominate the suite runtime for no extra coverage.
+        [$backendCalendarId] = $this->resolveCalendarBackendId('bob', 'default');
+        $rows = [];
+        for ($i = 0; $i <= JmapCapabilities::MAX_OBJECTS_IN_GET; $i++) {
+            $ics = $this->sampleIcs("Bulk {$i}", uid: "bulk-uid-{$i}");
+            $rows[] = [
+                'calendardata' => $ics,
+                'uri' => sprintf('bulk-%04d.ics', $i),
+                'calendarid' => $backendCalendarId,
+                'lastmodified' => time(),
+                'etag' => md5($ics),
+                'size' => strlen($ics),
+                'componenttype' => 'VEVENT',
+                'uid' => "bulk-uid-{$i}",
+            ];
+        }
+        foreach (array_chunk($rows, 100) as $chunk) {
+            CalendarObject::query()->insert($chunk);
+        }
+
+        $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+        ])->assertOk()
+            ->assertJsonPath('methodResponses.0.0', 'error')
+            ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
+    }
+
+    public function test_set_beyond_max_objects_in_set_is_request_too_large(): void
+    {
+        $destroy = array_map(static fn (int $i): string => "gone-{$i}", range(0, JmapCapabilities::MAX_OBJECTS_IN_SET));
+
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => $destroy], 'c0'],
+        ])->assertOk()
+            ->assertJsonPath('methodResponses.0.0', 'error')
+            ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
     }
 }

@@ -53,6 +53,7 @@ final class CalendarEventGetMethod implements JmapMethodInterface
                     $list[] = $event;
                 }
             }
+            $this->guardGetAllBound($list);
         } else {
             foreach ($ids as $id) {
                 try {
