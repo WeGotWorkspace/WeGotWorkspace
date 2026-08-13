@@ -55,6 +55,23 @@ final class JmapMethodDispatcher
     }
 
     /**
+     * Capability URNs with at least one registered method. The supported
+     * `using` set is derived from this (via JmapCapabilitySet), so route
+     * wiring and capability advertisement cannot drift apart.
+     *
+     * @return list<string>
+     */
+    public function capabilityUrns(): array
+    {
+        $urns = [];
+        foreach ($this->methods as $method) {
+            $urns[$method->capability()] = true;
+        }
+
+        return array_keys($urns);
+    }
+
+    /**
      * @param  list<string>  $using
      * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $methodCalls
      * @return list<array{0: string, 1: array<string, mixed>, 2: string}>

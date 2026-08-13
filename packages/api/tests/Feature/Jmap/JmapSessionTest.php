@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapCapabilities;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -46,7 +47,9 @@ final class JmapSessionTest extends WgwDatabaseTestCase
         }
 
         $this->assertSame('bob', $session['username']);
-        $this->assertSame(JmapCapabilities::SESSION_STATE, $session['state']);
+        // Derived session state: document version + enabled-capability digest.
+        $this->assertSame(app(JmapCapabilitySet::class)->sessionState(), $session['state']);
+        $this->assertStringStartsWith(JmapCapabilities::SESSION_STATE.';', $session['state']);
     }
 
     public function test_session_capability_placement_follows_draft_27(): void

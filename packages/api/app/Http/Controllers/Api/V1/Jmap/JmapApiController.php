@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Jmap;
 
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodDispatcher;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,10 @@ use Illuminate\Http\Request;
  */
 final class JmapApiController
 {
-    public function __construct(private readonly JmapMethodDispatcher $dispatcher) {}
+    public function __construct(
+        private readonly JmapMethodDispatcher $dispatcher,
+        private readonly JmapCapabilitySet $capabilities,
+    ) {}
 
     public function handle(Request $request): JsonResponse
     {
@@ -38,7 +42,10 @@ final class JmapApiController
         if (! is_array($using) || $using === [] || ! array_is_list($using)) {
             return $this->problem('urn:ietf:params:jmap:error:notRequest', 400, 'using must be a non-empty array of capability URIs.');
         }
-        $supported = [JmapCapabilities::CORE, JmapCapabilities::CALENDARS];
+        // Derived from registered methods + feature gates, never hardcoded:
+        // a gated-off domain is unknownCapability here and absent from the
+        // Session resource in the same request.
+        $supported = $this->capabilities->supportedUrns();
         foreach ($using as $capability) {
             if (! is_string($capability) || ! in_array($capability, $supported, true)) {
                 return $this->problem('urn:ietf:params:jmap:error:unknownCapability', 400, sprintf('Unsupported capability: %s.', is_string($capability) ? $capability : gettype($capability)));
@@ -63,7 +70,7 @@ final class JmapApiController
 
         return response()->json([
             'methodResponses' => $responses,
-            'sessionState' => JmapCapabilities::SESSION_STATE,
+            'sessionState' => $this->capabilities->sessionState(),
         ]);
     }
 
