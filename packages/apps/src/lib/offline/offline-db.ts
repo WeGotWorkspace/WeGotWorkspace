@@ -4,6 +4,7 @@
  * This shim preserves the historical import path and guarantees domain schemas are
  * registered before the database opens.
  */
+import "@/lib/offline/calendars/calendars-schema";
 import "@/lib/offline/contacts/contacts-schema";
 import "@/lib/offline/docs/docs-schema";
 import "@/lib/offline/drive/drive-schema";

@@ -4,10 +4,27 @@ import {
   resolveOfflineUsername,
 } from "@/lib/offline/core/offline-account";
 
+const CALENDARS_DOMAIN = "calendars";
 const CONTACTS_DOMAIN = "contacts";
 const DOCS_DOMAIN = "docs";
 const DRIVE_DOMAIN = "drive";
 const NOTES_DOMAIN = "notes";
+
+/** Calendars-domain wrapper over the generic offline account session helpers. */
+export function rememberOfflineCalendarsUsername(username: string): void {
+  rememberOfflineUsername(CALENDARS_DOMAIN, username);
+}
+
+export function readOfflineCalendarsUsername(): string | null {
+  return readOfflineUsername(CALENDARS_DOMAIN);
+}
+
+/** Session username first, then the last cached calendars account from localStorage. */
+export function resolveCalendarsOfflineUsername(
+  sessionUsername: string | undefined,
+): string | null {
+  return resolveOfflineUsername(CALENDARS_DOMAIN, sessionUsername);
+}
 
 /** Contacts-domain wrapper over the generic offline account session helpers. */
 export function rememberOfflineContactsUsername(username: string): void {

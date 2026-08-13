@@ -5,6 +5,11 @@ import {
 import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import {
+  createHybridCalendarOperations,
+  loadCalendarBootstrapHybrid,
+} from "@/lib/offline/calendars-hybrid-operations";
+import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
 import type { CalendarAPIOperations, CalendarEventDraft } from "@/calendar-core/src/calendar-types";
 
 export type CalendarApiSource = {
@@ -80,6 +85,18 @@ function createMockCalendarOperations(
  * Live source lands with the offline domain (chunk C): hybrid bootstrap over
  * the vendored jmap-client + Dexie cache, mirroring tasks-api-source.ts.
  */
+/** Live source: jmap bootstrap + Dexie cache + hybrid (online/queued) writes. */
+export function createHybridCalendarApiSource(): CalendarApiSource {
+  return {
+    loadBootstrap: loadCalendarBootstrapHybrid,
+    createOperations: (bootstrap) => {
+      const username = resolveCalendarsOfflineUsername(bootstrap?.session.user.username);
+      if (!username) return undefined;
+      return createHybridCalendarOperations(username);
+    },
+  };
+}
+
 export function createDefaultCalendarApiSource(): CalendarApiSource {
   let mockBootstrap = createCalendarAppBootstrap();
 
@@ -97,7 +114,6 @@ export function createDefaultCalendarApiSource(): CalendarApiSource {
   return createWorkspaceSource<CalendarApiSource>({
     isLive: wgwLiveApiEnabled(),
     createMockSource: () => mockSource,
-    // Chunk C replaces this with the hybrid (jmap + Dexie) source.
-    createLiveSource: () => mockSource,
+    createLiveSource: createHybridCalendarApiSource,
   });
 }
