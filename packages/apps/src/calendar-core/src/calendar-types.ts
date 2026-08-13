@@ -1,4 +1,4 @@
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import type { JmapCalendarEvent, JSCalendarRecurrenceRule } from "@/lib/jmap-client";
 
 /**
  * UI-facing calendar collection. Events travel as JSCalendar wire objects
@@ -32,6 +32,8 @@ export type CalendarEventDraft = {
   allDay?: boolean;
   location?: string;
   description?: string;
+  /** JSCalendar recurrence; `null` clears an existing rule on patch. */
+  recurrenceRules?: JSCalendarRecurrenceRule[] | null;
 };
 
 export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">> & {

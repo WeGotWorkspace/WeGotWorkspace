@@ -1,7 +1,17 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEvent as EngineCalendarEvent } from "@/lib/calendar-engine";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import {
+  internalRecurrenceRuleToJs,
+  type JmapCalendarEvent,
+  type JSCalendarRecurrenceRule,
+} from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
+import {
+  matchRecurrencePreset,
+  recurrencePresetToRule,
+  recurrenceRulesEqual,
+  type RecurrencePresetId,
+} from "@/calendar-core/src/calendar-recurrence-presets";
 
 /**
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.
@@ -21,6 +31,12 @@ export type CalendarEventFormValue = {
   endTime: string;
   location: string;
   description: string;
+  recurrencePreset: RecurrencePresetId;
+  /**
+   * Preserved when `recurrencePreset` is `"custom"` so save does not wipe an
+   * unmatched rule. Cleared when the user picks a predefined preset.
+   */
+  customRecurrenceRules?: JSCalendarRecurrenceRule[];
 };
 
 const DEFAULT_START_TIME = "10:00";
@@ -43,6 +59,7 @@ export function emptyCalendarEventForm(
     endTime: end.toPlainTime().toString({ smallestUnit: "minute" }),
     location: "",
     description: "",
+    recurrencePreset: "none",
   };
 }
 
@@ -99,6 +116,7 @@ export function createIntentToForm(
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
     location: "",
     description: "",
+    recurrencePreset: "none",
   };
 }
 
@@ -108,6 +126,29 @@ function primaryLocationName(event: JmapCalendarEvent): string {
   return key ? (locations[key]?.name ?? "") : "";
 }
 
+function recurrenceFieldsFromRules(
+  rules: JSCalendarRecurrenceRule[] | null | undefined,
+  startDateISO: string,
+): Pick<CalendarEventFormValue, "recurrencePreset" | "customRecurrenceRules"> {
+  const preset = matchRecurrencePreset(rules, startDateISO);
+  if (preset === "custom" && rules?.length) {
+    return { recurrencePreset: "custom", customRecurrenceRules: rules };
+  }
+  return { recurrencePreset: preset };
+}
+
+/** JSCalendar rules to persist for the current form recurrence selection. */
+export function formRecurrenceRules(
+  form: CalendarEventFormValue,
+): JSCalendarRecurrenceRule[] | null {
+  if (form.recurrencePreset === "custom") {
+    return form.customRecurrenceRules?.length ? form.customRecurrenceRules : null;
+  }
+  if (form.recurrencePreset === "none") return null;
+  const rule = recurrencePresetToRule(form.recurrencePreset, form.startDate);
+  return rule ? [rule] : null;
+}
+
 export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventFormValue {
   const allDay = event.showWithoutTime === true;
   const start = Temporal.PlainDateTime.from(event.start);
@@ -115,16 +156,18 @@ export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventForm
   const end = start.add(duration);
   // All-day events span [startDate, endDate); the form shows the inclusive last day.
   const formEnd = allDay ? end.subtract({ days: 1 }) : end;
+  const startDate = start.toPlainDate().toString();
   return {
     title: event.title ?? "",
     calendarId: Object.keys(event.calendarIds ?? {})[0] ?? "",
     allDay,
-    startDate: start.toPlainDate().toString(),
+    startDate,
     startTime: start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
     location: primaryLocationName(event),
     description: typeof event.description === "string" ? event.description : "",
+    ...recurrenceFieldsFromRules(event.recurrenceRules, startDate),
   };
 }
 
@@ -164,6 +207,7 @@ function formDuration(form: CalendarEventFormValue): string {
 
 export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
   const start = formStart(form);
+  const recurrenceRules = formRecurrenceRules(form);
   return {
     calendarId: form.calendarId,
     title: form.title.trim(),
@@ -172,6 +216,7 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
     ...(form.allDay ? { allDay: true } : { timeZone: Temporal.Now.timeZoneId() }),
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
     ...(form.description.trim() ? { description: form.description.trim() } : {}),
+    ...(recurrenceRules?.length ? { recurrenceRules } : {}),
   };
 }
 
@@ -191,6 +236,23 @@ export function formToPatch(
   if (form.description.trim() !== originalForm.description) {
     patch.description = form.description.trim();
   }
+  const nextRules = formRecurrenceRules(form);
+  const prevRules = original.recurrenceRules ?? null;
+  const prevNormalized = prevRules?.length ? prevRules : null;
+  const nextNormalized = nextRules?.length ? nextRules : null;
+  const sameRecurrence =
+    prevNormalized === null && nextNormalized === null
+      ? true
+      : Boolean(
+          prevNormalized &&
+          nextNormalized &&
+          prevNormalized.length === nextNormalized.length &&
+          prevNormalized.length === 1 &&
+          recurrenceRulesEqual(prevNormalized[0], nextNormalized[0]),
+        );
+  if (!sameRecurrence) {
+    patch.recurrenceRules = nextNormalized;
+  }
   return patch;
 }
 
@@ -204,16 +266,21 @@ export function engineEventToForm(event: EngineCalendarEvent): CalendarEventForm
   const duration = event.data.duration ?? Temporal.Duration.from(allDay ? "P1D" : "PT1H");
   const end = start.add(duration);
   const formEnd = allDay ? end.subtract({ days: 1 }) : end;
+  const startDate = start.toPlainDate().toString();
+  const wireRules = event.data.recurrenceRule
+    ? [internalRecurrenceRuleToJs(event.data.recurrenceRule)]
+    : undefined;
   return {
     title: event.data.summary,
     calendarId: event.calendarId ?? "",
     allDay,
-    startDate: start.toPlainDate().toString(),
+    startDate,
     startTime: start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
     location: event.data.location ?? "",
     description: "",
+    ...recurrenceFieldsFromRules(wireRules, startDate),
   };
 }
 
@@ -228,5 +295,6 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     allDay: form.allDay,
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
     ...(form.description.trim() ? { description: form.description.trim() } : {}),
+    recurrenceRules: formRecurrenceRules(form),
   };
 }

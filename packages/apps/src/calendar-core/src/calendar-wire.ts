@@ -1,4 +1,4 @@
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import type { JmapCalendarEvent, JSCalendarRecurrenceRule } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 
 /** Pure JSCalendar wire shaping shared by the jmap transport and the offline layer. */
@@ -17,6 +17,7 @@ export function draftToJmapEvent(draft: CalendarEventDraft): Omit<JmapCalendarEv
       ? { locations: { primary: { "@type": "Location", name: draft.location } } }
       : {}),
     ...(draft.description ? { description: draft.description } : {}),
+    ...(draft.recurrenceRules?.length ? { recurrenceRules: draft.recurrenceRules } : {}),
   } as Omit<JmapCalendarEvent, "id">;
 }
 
@@ -32,5 +33,8 @@ export function patchToJmapPartial(patch: CalendarEventPatch): Partial<JmapCalen
       ? { locations: { primary: { "@type": "Location", name: patch.location } } }
       : {}),
     ...(patch.description !== undefined ? { description: patch.description } : {}),
+    ...(patch.recurrenceRules !== undefined
+      ? { recurrenceRules: patch.recurrenceRules as JSCalendarRecurrenceRule[] | null }
+      : {}),
   } as Partial<JmapCalendarEvent>;
 }

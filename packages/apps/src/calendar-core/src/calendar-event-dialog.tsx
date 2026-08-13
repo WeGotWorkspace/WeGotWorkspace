@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { cn } from "@/lib/utils";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
@@ -23,6 +24,12 @@ import {
   calendarEventFormIsValid,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import {
+  EDITABLE_RECURRENCE_PRESET_IDS,
+  recurrencePresetOptionLabel,
+  type EditableRecurrencePresetId,
+  type RecurrencePresetId,
+} from "@/calendar-core/src/calendar-recurrence-presets";
 
 export type CalendarEventDialogProps = {
   open: boolean;
@@ -131,12 +138,30 @@ export function CalendarEventDialog({
   const selectedCalendar =
     writableCalendars.find((calendar) => calendar.id === form.calendarId) ?? writableCalendars[0];
   const valid = calendarEventFormIsValid(form);
+  const recurrenceLocked = form.recurrencePreset === "custom";
+  const recurrenceOptions = useMemo(() => {
+    const ids: RecurrencePresetId[] = recurrenceLocked
+      ? ["custom"]
+      : EDITABLE_RECURRENCE_PRESET_IDS;
+    return ids.map((id) => ({
+      id,
+      label: recurrencePresetOptionLabel(id, form.startDate, locale),
+    }));
+  }, [form.startDate, locale, recurrenceLocked]);
 
   const set = <K extends keyof CalendarEventFormValue>(
     key: K,
     value: CalendarEventFormValue[K],
   ) => {
     onChange({ ...form, [key]: value });
+  };
+
+  const setRecurrencePreset = (preset: EditableRecurrencePresetId) => {
+    onChange({
+      ...form,
+      recurrencePreset: preset,
+      customRecurrenceRules: undefined,
+    });
   };
 
   /** Portaled DropdownMenu/Popover layers sit outside DialogContent in the DOM. */
@@ -277,6 +302,25 @@ export function CalendarEventDialog({
                   />
                 ) : null}
               </div>
+            </FieldLabelRow>
+
+            <FieldLabelRow label={labels.eventRepeatLabel}>
+              <Select
+                value={form.recurrencePreset}
+                onValueChange={(value) => setRecurrencePreset(value as EditableRecurrencePresetId)}
+                disabled={recurrenceLocked || busy}
+              >
+                <SelectTrigger aria-label={labels.eventRepeatLabel}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {recurrenceOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FieldLabelRow>
 
             <FieldLabelRow label={labels.eventNotesLabel}>

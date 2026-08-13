@@ -31,6 +31,7 @@ export type CalendarUILabels = {
   eventAllDayLabel: string;
   eventLocationLabel: string;
   eventNotesLabel: string;
+  eventRepeatLabel: string;
   save: string;
   cancel: string;
   delete: string;
@@ -69,6 +70,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAllDayLabel: "All day",
   eventLocationLabel: "Location",
   eventNotesLabel: "Notes",
+  eventRepeatLabel: "Repeat",
   save: "Save",
   cancel: "Cancel",
   delete: "Delete",

@@ -111,6 +111,26 @@ describe("CalendarEventDialog", () => {
     expect(screen.getAllByRole("button", { name: /Jan/i }).length).toBeGreaterThanOrEqual(2);
   });
 
+  it("shows Custom for unmatched recurrence and disables the repeat control", () => {
+    const form = calendarEventToForm({
+      "@type": "Event",
+      id: "custom",
+      uid: "urn:uuid:custom",
+      calendarIds: { default: true },
+      title: "Odd series",
+      start: "2033-01-12T10:00:00",
+      duration: "PT1H",
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 4 }],
+    } as Parameters<typeof calendarEventToForm>[0]);
+    expect(form.recurrencePreset).toBe("custom");
+    renderDialog({ form, locale: "en-US" });
+    const repeat = screen.getByRole("combobox", { name: defaultCalendarLabels.eventRepeatLabel });
+    expect(repeat.textContent).toMatch(/Custom/i);
+    expect(repeat.hasAttribute("disabled") || repeat.getAttribute("data-disabled") !== null).toBe(
+      true,
+    );
+  });
+
   it("offers delete only in edit mode and forwards it", () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "x" };
     renderDialog({ form, mode: "edit", onDelete: vi.fn() });

@@ -84,6 +84,26 @@ describe("formToDraft", () => {
     };
     expect(formToDraft(form).duration).toBe("PT2H");
   });
+
+  it("includes recurrenceRules for a weekly preset", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12"),
+      title: "Standup",
+      recurrencePreset: "weekly" as const,
+    };
+    expect(formToDraft(form).recurrenceRules).toEqual([
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        byDay: [{ "@type": "NDay", day: "we" }],
+      },
+    ]);
+  });
+
+  it("omits recurrenceRules for does-not-repeat", () => {
+    const form = { ...emptyCalendarEventForm("work", "2033-01-12"), title: "Once" };
+    expect(formToDraft(form).recurrenceRules).toBeUndefined();
+  });
 });
 
 describe("resolveCreateIntentAllDay", () => {
@@ -172,5 +192,37 @@ describe("formToPatch", () => {
     const patch = formToPatch(form, timedEvent);
     expect(patch.start).toBe("2033-01-12T15:00:00");
     expect(patch.duration).toBe("PT1H");
+  });
+
+  it("emits recurrenceRules when a preset is chosen", () => {
+    const form = { ...calendarEventToForm(timedEvent), recurrencePreset: "daily" as const };
+    expect(formToPatch(form, timedEvent).recurrenceRules).toEqual([
+      { "@type": "RecurrenceRule", frequency: "daily" },
+    ]);
+  });
+
+  it("clears recurrence with null when switching to does-not-repeat", () => {
+    const recurring = {
+      ...timedEvent,
+      recurrenceRules: [{ "@type": "RecurrenceRule" as const, frequency: "daily" as const }],
+    };
+    const form = calendarEventToForm(recurring);
+    expect(form.recurrencePreset).toBe("daily");
+    const cleared = { ...form, recurrencePreset: "none" as const };
+    expect(formToPatch(cleared, recurring).recurrenceRules).toBeNull();
+  });
+
+  it("preserves custom rules on save without emitting a recurrence patch", () => {
+    const custom = {
+      ...timedEvent,
+      recurrenceRules: [
+        { "@type": "RecurrenceRule" as const, frequency: "daily" as const, count: 3 },
+      ],
+    };
+    const form = calendarEventToForm(custom);
+    expect(form.recurrencePreset).toBe("custom");
+    expect(formToPatch({ ...form, title: "Still custom" }, custom)).toEqual({
+      title: "Still custom",
+    });
   });
 });
