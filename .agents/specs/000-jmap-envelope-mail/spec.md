@@ -1,4 +1,4 @@
-Source: ad-hoc (draft — file the Tasks from [issue-draft.md](./issue-draft.md); M1/M2 are filed **only if** the M0 design doc concludes "build". Rename this folder to `<N>-jmap-envelope-mail` using the M1 Task's number and set the body-hash header). Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: ad-hoc (design Task M0 filed as **#440**; M1/M2 are filed **only if** #440 concludes "build" — see [issue-draft.md](./issue-draft.md) — then rename this folder to `<N>-jmap-envelope-mail` with the M1 Task's number and set its body-hash here). Parent epic: #435. Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
 # JMAP envelope: mail (RFC 8621, phased behind a design gate)
 
@@ -15,7 +15,7 @@ Every other envelope domain sits on Sabre/PDO in-process; mail is **IMAP-backed*
 1. **The Sabre synctoken codec does not apply.** `JmapAccountStateCodec` composes `{uri → synctoken}` maps; IMAP has no synctokens. Mail needs its own state model: per-mailbox `UIDVALIDITY`/`HIGHESTMODSEQ` (QRESYNC/CONDSTORE, RFC 7162 — only when the IMAP server advertises it) or a local sync-cache table. M0 decides; `UIDVALIDITY` change must yield `cannotCalculateChanges` (client refetches), never silently wrong deltas.
 2. **Shared-hosting constraints.** No long-lived connections, one-request-one-response, ext-imap optionality (`ImapExtension`), per-request IMAP session setup cost — an `Email/query` + `Email/get` batch should not open N connections.
 3. **Threading is not free.** RFC 8621 requires `threadId` on every Email and `Thread/get`; IMAP has no server-side thread ids — M0 picks the derivation (References/In-Reply-To walk, cached).
-4. **Blobs are load-bearing.** Bodies and attachments are blob downloads; drafts are created from uploaded blobs. Hard dependency on the blobs chunk ([../000-jmap-blobs/](../000-jmap-blobs/spec.md)).
+4. **Blobs are load-bearing.** Bodies and attachments are blob downloads; drafts are created from uploaded blobs. Hard dependency on the blobs chunk ([../438-jmap-blobs/](../438-jmap-blobs/spec.md)).
 
 ## Non-goals
 

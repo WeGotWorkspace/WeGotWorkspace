@@ -5,7 +5,7 @@ Derived from [spec.md](./spec.md). Umbrella sequencing: [../000-jmap-envelope-mu
 ## Dependencies
 
 1. Chunk F0 (design doc) before chunk F — the node-identity decision shapes everything else.
-2. Chunk F needs the blobs chunk ([../000-jmap-blobs/](../000-jmap-blobs/plan.md)) and umbrella chunk P.
+2. Chunk F needs the blobs chunk ([../438-jmap-blobs/](../438-jmap-blobs/plan.md)) and umbrella chunk P.
 3. F0 itself has no dependencies — can start any time, parallel with P and the mail design doc.
 
 ## Chunks

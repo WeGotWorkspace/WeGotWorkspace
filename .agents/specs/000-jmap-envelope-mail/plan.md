@@ -5,7 +5,7 @@ Derived from [spec.md](./spec.md). Umbrella sequencing: [../000-jmap-envelope-mu
 ## Dependencies
 
 1. Chunk M0 (design + decision doc) gates everything; M1/M2 issues are filed only if M0 recommends "build".
-2. Chunk M1 needs umbrella chunk P and the blobs chunk ([../000-jmap-blobs/](../000-jmap-blobs/plan.md)).
+2. Chunk M1 needs umbrella chunk P and the blobs chunk ([../438-jmap-blobs/](../438-jmap-blobs/plan.md)).
 3. Chunk M2 after M1.
 4. M0 itself has no dependencies — can start any time, parallel with P and the filenode design doc.
 

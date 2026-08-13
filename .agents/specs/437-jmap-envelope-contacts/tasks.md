@@ -1,6 +1,6 @@
 # Tasks — JMAP envelope: contacts (draft)
 
-Engineering split per [plan.md](./plan.md). Row becomes actionable when the Task is filed ([issue-draft.md](./issue-draft.md)).
+Engineering split per [plan.md](./plan.md). Delivery issue: #437.
 
 | id | owner | skill | key paths | verify | status |
 |----|-------|-------|-----------|--------|--------|

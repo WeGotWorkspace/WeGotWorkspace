@@ -1,4 +1,4 @@
-Source: ad-hoc (draft — file the Task from [issue-draft.md](./issue-draft.md), then rename this folder to `<N>-jmap-envelope-contacts` and set the body-hash header). Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: #437 (body-hash: 96c87f25). Parent epic: #435. Umbrella roadmap with sequencing and shared constraints: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
 # JMAP envelope: contacts (RFC 9610)
 
@@ -16,7 +16,7 @@ Add `AddressBook/*` and `ContactCard/*` to the JMAP transport envelope behind `u
 
 - Changing the REST endpoints or their legacy response shapes (shipped consumers).
 - JMAP Sharing writes; Push — see umbrella non-goals.
-- Real envelope blobs — interim deviation documented below; superseded by the blobs chunk ([../000-jmap-blobs/](../000-jmap-blobs/spec.md)).
+- Real envelope blobs — interim deviation documented below; superseded by the blobs chunk ([../438-jmap-blobs/](../438-jmap-blobs/spec.md)).
 
 ## Technical constraints
 
