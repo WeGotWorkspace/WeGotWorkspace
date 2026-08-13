@@ -178,15 +178,30 @@
   white-space: nowrap;
 }
 
-/* Match `.sidebar-section__add` (size-6 subtle IconButton). */
+/* Match `.sidebar-section__add` (size-6); muted so it stays lighter than row text. */
 .calendar-workspace .calendar-sidebar-row__edit.button {
   @apply size-6 shrink-0;
-  opacity: 0.85;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease;
 }
 
 .calendar-workspace .calendar-sidebar-row__edit:hover,
 .calendar-workspace .calendar-sidebar-row__edit:focus-visible {
-  opacity: 1;
+  color: var(--color-ink);
+}
+
+/* Fine pointers: hide until row hover / focus-within. Touch keeps pencils visible. */
+@media (hover: hover) and (pointer: fine) {
+  .calendar-workspace .calendar-sidebar-row__edit.button {
+    opacity: 0;
+  }
+
+  .calendar-workspace .calendar-sidebar-row:hover .calendar-sidebar-row__edit.button,
+  .calendar-workspace .calendar-sidebar-row:focus-within .calendar-sidebar-row__edit.button {
+    opacity: 1;
+  }
 }
 
 /* Calendar color dots render at full color. */
