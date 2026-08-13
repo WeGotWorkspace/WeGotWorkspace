@@ -15,9 +15,11 @@ final class JmapCapabilities
     public const CALENDARS = 'urn:ietf:params:jmap:calendars';
 
     /**
-     * Top-level session state (distinct from per-type states). Constant by
-     * design: the client only reacts to it changing between requests, which
-     * never happens for a static session document (spec §2).
+     * Session document version, used as the prefix of the derived session
+     * state (JmapCapabilitySet::sessionState()). The full state is this
+     * constant plus a digest of the enabled capability URNs, so a feature
+     * gate toggling a domain on/off is an observable session change
+     * (RFC 8620 §2). Bump the version when the document shape itself changes.
      */
     public const SESSION_STATE = 'wgw-jmap-1';
 

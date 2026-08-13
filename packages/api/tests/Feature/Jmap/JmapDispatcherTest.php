@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
@@ -52,7 +53,9 @@ final class JmapDispatcherTest extends WgwDatabaseTestCase
         $response->assertJsonPath('methodResponses.0.1.hello', 'world');
         $response->assertJsonPath('methodResponses.0.1.nested.a', 1);
         $response->assertJsonPath('methodResponses.0.2', 'c0');
-        $response->assertJsonPath('sessionState', JmapCapabilities::SESSION_STATE);
+        // Derived session state: document version + enabled-capability digest.
+        $response->assertJsonPath('sessionState', app(JmapCapabilitySet::class)->sessionState());
+        $this->assertStringStartsWith(JmapCapabilities::SESSION_STATE.';', $response->json('sessionState'));
     }
 
     public function test_result_reference_resolves_json_pointer_against_prior_call(): void

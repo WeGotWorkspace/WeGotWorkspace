@@ -14,14 +14,14 @@ Spec: `.agents/specs/000-jmap-envelope-calendars/` · Tests: `tests/Feature/Jmap
 | `POST /api/v1/jmap/upload/{accountId}` | 501 stub |
 | `GET /api/v1/jmap/events/{types}/{closeafter}/{ping}` | 501 stub — Push is a non-goal; the client polls |
 
-All behind `wgw.auth` + `wgw.role:user` + `wgw.calendars` (same gates as the calendars REST group).
+All behind `wgw.auth` + `wgw.role:user` — deliberately **outside** any domain feature-gate middleware (#436). Domain availability is expressed through the advertised capabilities and the `using` guard (`JmapCapabilitySet` + per-domain `JmapCapabilityProviderInterface` providers): a gated-off domain (e.g. `calendar_enabled: false`) is absent from the Session resource, rejected in `using` with a request-level `unknownCapability`, and its methods are `unknownMethod` — the envelope itself stays up for the other domains.
 
 ## Session resource
 
 - **One account per authenticated principal; `accountId` = the raw username.** Usernames (`^[a-z0-9][a-z0-9_-]{1,62}$`) are a strict subset of the JMAP `Id` charset — no encoding. `primaryAccounts` maps both `urn:ietf:params:jmap:core` and `urn:ietf:params:jmap:calendars` to it.
 - **Capability placement per draft-ietf-jmap-calendars-27 §1.5.1:** the session-level calendars capability is the **empty object**; the six-property object (`maxCalendarsPerEvent: 1`, `minDateTime`, `maxDateTime`, `maxExpandedQueryDuration`, `maxParticipantsPerEvent`, `mayCreateCalendar`) lives in `accountCapabilities`.
 - **All URLs are absolute** (built from the request): the client fetches `apiUrl` verbatim with no base-URL resolution.
-- `state` is the constant `JmapCapabilities::SESSION_STATE`, echoed as `sessionState` on every `POST /jmap` response; the client only reacts to it changing.
+- `state` is derived: the `JmapCapabilities::SESSION_STATE` document version plus a digest of the enabled capability URNs (`JmapCapabilitySet::sessionState()`), echoed as `sessionState` on every `POST /jmap` response. Toggling a domain feature gate changes the session document, so the state changes with it (RFC 8620 §2); the client reacts via `onSessionStateChange`.
 - Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (500) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`.
 
 ## Batch endpoint

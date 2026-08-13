@@ -273,14 +273,17 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
             ->where('eventId', '[a-z0-9_#%-]+');
         Route::delete('calendars/events/{eventId}', [CalendarEventsController::class, 'destroy'])
             ->where('eventId', '[a-z0-9_#%-]+');
-
-        // JMAP transport envelope (RFC 8620) over the same calendar services.
-        Route::get('jmap/session', JmapSessionController::class);
-        Route::post('jmap', [JmapApiController::class, 'handle']);
-        Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapStubController::class, 'download']);
-        Route::post('jmap/upload/{accountId}', [JmapStubController::class, 'upload']);
-        Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
     });
+
+    // JMAP transport envelope (RFC 8620) — deliberately outside any domain
+    // feature-gate middleware: domain availability is expressed through the
+    // advertised capabilities and the `using` guard (JmapCapabilitySet), so
+    // disabling one domain never takes the whole envelope down.
+    Route::get('jmap/session', JmapSessionController::class);
+    Route::post('jmap', [JmapApiController::class, 'handle']);
+    Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapStubController::class, 'download']);
+    Route::post('jmap/upload/{accountId}', [JmapStubController::class, 'upload']);
+    Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
 Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
