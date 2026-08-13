@@ -10,8 +10,8 @@
 
 .content {
   @apply relative min-h-0 h-full;
-  /* Participates in document View Transitions (directional CSS in calendar-workspace.css). */
-  view-transition-name: calendar-range;
+  /* VT name lives on light-DOM `.calendar-main__range` — shadow names do not
+     participate reliably, and root animation is disabled during range zoom. */
   transform-origin: center center;
 }
 
@@ -51,10 +51,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .content {
-    view-transition-name: none;
-  }
-
   .content.calendar-range--animate-in,
   .content.calendar-range--animate-out {
     animation: none;

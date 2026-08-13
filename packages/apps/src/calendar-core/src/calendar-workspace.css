@@ -244,6 +244,13 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  transform-origin: center center;
+  /*
+   * Light-DOM named VT target. Shadow-DOM names on lit `.content` do not lift
+   * out of `root` reliably — and we disable root animation during range zoom,
+   * which made day↔week↔month↔year look like an instant swap.
+   */
+  view-transition-name: calendar-range;
 }
 
 .calendar-workspace .calendar-main wgw-calendar-surface {
@@ -253,8 +260,8 @@
 
 /*
  * View Transitions API — old + new snapshots for day/week/month/year.
- * `view-transition-name: calendar-range` is on the lit view-group `.content`.
- * Direction comes from `html[data-calendar-range-zoom]`. Root chrome stays still.
+ * Named surface: `.calendar-main__range`. Direction: `html[data-calendar-range-zoom]`.
+ * Root chrome stays still (named range is excluded from the root snapshot).
  */
 html[data-calendar-range-zoom]::view-transition-old(root),
 html[data-calendar-range-zoom]::view-transition-new(root) {
@@ -337,6 +344,10 @@ html[data-calendar-range-zoom="in"]::view-transition-new(calendar-range) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .calendar-workspace .calendar-main__range {
+    view-transition-name: none;
+  }
+
   html[data-calendar-range-zoom]::view-transition-old(calendar-range),
   html[data-calendar-range-zoom]::view-transition-new(calendar-range),
   html[data-calendar-range-zoom]::view-transition-group(calendar-range) {

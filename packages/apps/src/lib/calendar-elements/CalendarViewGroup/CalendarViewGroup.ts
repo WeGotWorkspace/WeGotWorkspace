@@ -3,6 +3,7 @@ import { html, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
 import { cache } from "lit/directives/cache.js";
 import {
+  awaitCalendarRangePaint,
   calendarRangeZoomDirection,
   runCalendarRangeViewTransition,
   type CalendarRangeZoomDirection,
@@ -97,18 +98,22 @@ export class CalendarViewGroup extends CalendarViewBase {
   /**
    * Wrap day/week/month/year swaps in a View Transition so both old and new
    * snapshots animate. Presentation (list↔grid) updates stay instant.
+   *
+   * Uses `scheduleUpdate` (not `performUpdate`) so Lit awaits the VT update
+   * callback. Nested timeline views must finish painting before the "new"
+   * snapshot is captured — otherwise the transition is invisible.
    */
-  protected performUpdate() {
+  protected scheduleUpdate(): void | Promise<unknown> {
     const direction = this.#pendingRangeZoom;
     this.#pendingRangeZoom = null;
     if (!direction) {
-      super.performUpdate();
-      return;
+      return super.scheduleUpdate();
     }
     const scope =
       (this.renderRoot as ShadowRoot | null)?.querySelector<HTMLElement>(".content") ?? this;
-    runCalendarRangeViewTransition(scope, direction, () => {
-      super.performUpdate();
+    return runCalendarRangeViewTransition(scope, direction, async () => {
+      await super.scheduleUpdate();
+      await awaitCalendarRangePaint(this);
     });
   }
 
