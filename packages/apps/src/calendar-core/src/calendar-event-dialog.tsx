@@ -1,9 +1,22 @@
+import { useMemo, useState } from "react";
+import { Check } from "lucide-react";
+import { Temporal } from "@js-temporal/polyfill";
 import { Button } from "@/button/src/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
+import { Calendar } from "@/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
@@ -17,6 +30,8 @@ export type CalendarEventDialogProps = {
   form: CalendarEventFormValue;
   calendars: CalendarInfo[];
   labels: CalendarUILabels;
+  /** BCP 47 tag; defaults to the same resolver the Lit calendar surface uses. */
+  locale?: string;
   busy?: boolean;
   onChange: (next: CalendarEventFormValue) => void;
   onClose: () => void;
@@ -24,19 +39,97 @@ export type CalendarEventDialogProps = {
   onDelete?: () => void;
 };
 
+function isoToJsDate(iso: string): Date | undefined {
+  try {
+    const plain = Temporal.PlainDate.from(iso);
+    return new Date(plain.year, plain.month - 1, plain.day);
+  } catch {
+    return undefined;
+  }
+}
+
+function jsDateToIso(date: Date): string {
+  return Temporal.PlainDate.from({
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+  }).toString();
+}
+
+function formatDateLabel(iso: string, locale: string): string {
+  try {
+    return Temporal.PlainDate.from(iso).toLocaleString(locale, { dateStyle: "medium" });
+  } catch {
+    return iso;
+  }
+}
+
+function LocaleDatePicker({
+  value,
+  locale,
+  label,
+  onChange,
+}: {
+  value: string;
+  locale: string;
+  label: string;
+  onChange: (next: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = isoToJsDate(value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="calendar-event-dialog__date-trigger"
+          aria-label={`${label}: ${formatDateLabel(value, locale)}`}
+          lang={locale}
+        >
+          {formatDateLabel(value, locale)}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="calendar-event-dialog__date-popover w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          onSelect={(date) => {
+            if (!date) return;
+            onChange(jsDateToIso(date));
+            setOpen(false);
+          }}
+          formatters={{
+            formatCaption: (date) =>
+              date.toLocaleString(locale, { month: "long", year: "numeric" }),
+            formatWeekdayName: (date) => date.toLocaleString(locale, { weekday: "short" }),
+            formatMonthDropdown: (date) => date.toLocaleString(locale, { month: "short" }),
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function CalendarEventDialog({
   open,
   mode,
   form,
   calendars,
   labels,
+  locale: localeProp,
   busy = false,
   onChange,
   onClose,
   onSave,
   onDelete,
 }: CalendarEventDialogProps) {
+  const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
   const writableCalendars = calendars.filter((calendar) => calendar.mayWrite !== false);
+  const selectedCalendar =
+    writableCalendars.find((calendar) => calendar.id === form.calendarId) ?? writableCalendars[0];
   const valid = calendarEventFormIsValid(form);
 
   const set = <K extends keyof CalendarEventFormValue>(
@@ -48,7 +141,11 @@ export function CalendarEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className="calendar-dialog-surface calendar-event-dialog">
+      <DialogContent
+        className="calendar-dialog-surface calendar-event-dialog"
+        lang={locale}
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? labels.createEventTitle : labels.editEventTitle}
@@ -62,34 +159,65 @@ export function CalendarEventDialog({
           }}
         >
           <div className="calendar-event-dialog__fields">
-            <FieldLabelRow label={labels.eventTitleLabel}>
+            <div className="calendar-event-dialog__title-row">
               <Input
+                className="calendar-event-dialog__title-input"
                 value={form.title}
                 onChange={(event) => set("title", event.target.value)}
+                placeholder={labels.eventTitleLabel}
+                aria-label={labels.eventTitleLabel}
                 autoFocus
               />
-            </FieldLabelRow>
-
-            <FieldLabelRow label={labels.eventCalendarLabel}>
-              <Select value={form.calendarId} onValueChange={(value) => set("calendarId", value)}>
-                <SelectTrigger aria-label={labels.eventCalendarLabel}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="calendar-event-dialog__calendar-trigger"
+                    aria-label={
+                      selectedCalendar
+                        ? `${labels.eventCalendarLabel}: ${selectedCalendar.name}`
+                        : labels.eventCalendarLabel
+                    }
+                  >
+                    <span
+                      className="calendar-sidebar-dot"
+                      style={{ backgroundColor: selectedCalendar?.color ?? "transparent" }}
+                      aria-hidden
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
                   {writableCalendars.map((calendar) => (
-                    <SelectItem key={calendar.id} value={calendar.id}>
-                      <span className="calendar-event-dialog__calendar-option">
-                        <span
-                          className="calendar-sidebar-dot"
-                          style={{ backgroundColor: calendar.color }}
-                          aria-hidden
-                        />
-                        {calendar.name}
-                      </span>
-                    </SelectItem>
+                    <DropdownMenuItem
+                      key={calendar.id}
+                      className="calendar-event-dialog__calendar-option"
+                      onSelect={() => set("calendarId", calendar.id)}
+                    >
+                      <span
+                        className="calendar-sidebar-dot"
+                        style={{ backgroundColor: calendar.color }}
+                        aria-hidden
+                      />
+                      <span className="calendar-event-dialog__calendar-name">{calendar.name}</span>
+                      <Check
+                        className={cn(
+                          "calendar-event-dialog__calendar-check",
+                          form.calendarId === calendar.id ? "opacity-100" : "opacity-0",
+                        )}
+                        aria-hidden
+                      />
+                    </DropdownMenuItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <FieldLabelRow label={labels.eventLocationLabel}>
+              <Input
+                value={form.location}
+                onChange={(event) => set("location", event.target.value)}
+                placeholder={labels.eventLocationLabel}
+              />
             </FieldLabelRow>
 
             <FieldLabelRow label={labels.eventAllDayLabel}>
@@ -102,15 +230,18 @@ export function CalendarEventDialog({
 
             <FieldLabelRow label={labels.eventStartLabel}>
               <div className="calendar-event-dialog__datetime">
-                <Input
-                  type="date"
+                <LocaleDatePicker
                   value={form.startDate}
-                  onChange={(event) => set("startDate", event.target.value)}
+                  locale={locale}
+                  label={labels.eventStartLabel}
+                  onChange={(next) => set("startDate", next)}
                 />
                 {!form.allDay ? (
                   <Input
                     type="time"
+                    lang={locale}
                     value={form.startTime}
+                    aria-label={`${labels.eventStartLabel} time`}
                     onChange={(event) => set("startTime", event.target.value)}
                   />
                 ) : null}
@@ -119,25 +250,30 @@ export function CalendarEventDialog({
 
             <FieldLabelRow label={labels.eventEndLabel}>
               <div className="calendar-event-dialog__datetime">
-                <Input
-                  type="date"
+                <LocaleDatePicker
                   value={form.endDate}
-                  onChange={(event) => set("endDate", event.target.value)}
+                  locale={locale}
+                  label={labels.eventEndLabel}
+                  onChange={(next) => set("endDate", next)}
                 />
                 {!form.allDay ? (
                   <Input
                     type="time"
+                    lang={locale}
                     value={form.endTime}
+                    aria-label={`${labels.eventEndLabel} time`}
                     onChange={(event) => set("endTime", event.target.value)}
                   />
                 ) : null}
               </div>
             </FieldLabelRow>
 
-            <FieldLabelRow label={labels.eventLocationLabel}>
-              <Input
-                value={form.location}
-                onChange={(event) => set("location", event.target.value)}
+            <FieldLabelRow label={labels.eventNotesLabel}>
+              <Textarea
+                value={form.description}
+                onChange={(event) => set("description", event.target.value)}
+                placeholder={labels.eventNotesLabel}
+                rows={3}
               />
             </FieldLabelRow>
           </div>

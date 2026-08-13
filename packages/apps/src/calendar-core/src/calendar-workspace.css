@@ -172,15 +172,91 @@
   gap: 0.7rem;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__datetime {
+.calendar-dialog-surface .calendar-event-dialog__title-row {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__calendar-option {
+.calendar-dialog-surface .calendar-event-dialog__title-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
+  background: var(--color-cream, #ffffff);
+  cursor: pointer;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-trigger:hover {
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-trigger .calendar-sidebar-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-menu {
+  min-width: 12rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-check {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__datetime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-trigger {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
+  background: var(--color-cream, #ffffff);
+  color: var(--color-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-trigger:hover {
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-popover {
+  z-index: 80;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__datetime input[type="time"] {
+  width: auto;
+  min-width: 7.5rem;
 }
 
 .calendar-dialog-surface .calendar-sidebar-dot {

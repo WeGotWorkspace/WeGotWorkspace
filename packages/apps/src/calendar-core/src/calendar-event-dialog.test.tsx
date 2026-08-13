@@ -24,6 +24,7 @@ function renderDialog(overrides: Partial<React.ComponentProps<typeof CalendarEve
       form={emptyCalendarEventForm("default", "2033-01-12")}
       calendars={bootstrap.data.calendars}
       labels={defaultCalendarLabels}
+      locale="en-US"
       onChange={onChange}
       onClose={onClose}
       onSave={onSave}
@@ -69,7 +70,30 @@ describe("CalendarEventDialog", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
-  it("hides time inputs for all-day events", () => {
+  it("keeps the calendar picker icon-only when closed", () => {
+    renderDialog();
+    const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
+    expect(trigger.textContent?.trim()).toBe("");
+    expect(trigger.querySelector(".calendar-sidebar-dot")).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: /Personal/i })).toBeNull();
+  });
+
+  it("places location under the title and exposes notes", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      location: "Cafe",
+      description: "Bring laptop",
+    };
+    const { onChange } = renderDialog({ form });
+
+    expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
+    const notes = screen.getByDisplayValue("Bring laptop");
+    fireEvent.change(notes, { target: { value: "Bring slides" } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ description: "Bring slides" }));
+  });
+
+  it("hides time inputs for all-day events and shows locale date triggers", () => {
     const form = {
       ...calendarEventToForm({
         "@type": "Event",
@@ -82,15 +106,14 @@ describe("CalendarEventDialog", () => {
         showWithoutTime: true,
       } as Parameters<typeof calendarEventToForm>[0]),
     };
-    renderDialog({ form, mode: "edit", onDelete: vi.fn() });
+    renderDialog({ form, mode: "edit", onDelete: vi.fn(), locale: "en-US" });
     expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
-    expect(document.querySelectorAll('input[type="date"]')).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /Jan/i }).length).toBeGreaterThanOrEqual(2);
   });
 
   it("offers delete only in edit mode and forwards it", () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "x" };
-    const { onDelete } = renderDialog({ form, mode: "edit", onDelete: vi.fn() });
-    void onDelete;
+    renderDialog({ form, mode: "edit", onDelete: vi.fn() });
     const deleteButton = screen.getByRole("button", { name: defaultCalendarLabels.delete });
     expect(deleteButton).toBeTruthy();
   });
