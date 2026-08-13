@@ -59,80 +59,20 @@ Point the app's session URL at `/api/v1/jmap/session` (relative is fine in the b
 
 ## Tier 2 — automated e2e with the real client bytes
 
-A gated Vitest suite in **lit-calendar** (Node `fetch` has no browser origin, so no proxy/CORS is involved — auth header only). Skips unless `JMAP_E2E_URL` is set, so the normal offline run against `MockJmapServer` is untouched:
+**One command, from this repo:**
 
-```ts
-// lit-calendar packages/jmap-client/src/tests/wgw-backend.e2e.test.ts
-// Run: JMAP_E2E_URL=http://127.0.0.1:9080 JMAP_E2E_TOKEN=$(…/tools/jmap-e2e-token.sh) vitest run wgw-backend.e2e
-// Adjust imports to the package's actual exports.
-import { describe, expect, it } from "vitest";
-import { JmapClient } from "../core/JmapClient";
-import { JmapCalendarsClient } from "../calendars/JmapCalendarsClient";
-
-const base = process.env.JMAP_E2E_URL;
-const token = process.env.JMAP_E2E_TOKEN;
-const CALENDARS_URN = "urn:ietf:params:jmap:calendars";
-
-describe.skipIf(!base || !token)("wgw backend e2e (real client, live API)", () => {
-  it("runs the full adapter lifecycle incrementally", async () => {
-    const client = new JmapClient({
-      sessionUrl: `${base}/api/v1/jmap/session`,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // connect(): key-checks both URNs, derives accountId from primaryAccounts.
-    const session = await client.connect();
-    expect(session.capabilities).toHaveProperty(CALENDARS_URN);
-    const accountId = session.primaryAccounts[CALENDARS_URN];
-
-    const calendars = new JmapCalendarsClient(client);
-
-    // refreshCalendars() + loadRange() equivalents.
-    const calendarGet = await calendars.getCalendars(accountId);
-    expect(calendarGet.list.length).toBeGreaterThan(0);
-    const calendarState = calendarGet.state;
-
-    // DateRange takes Date objects; the client converts to the wire's
-    // after/before UTC strings itself (JmapCalendarsClient.toUTCDateTime).
-    const range = {
-      utcStart: new Date("2033-01-01T00:00:00Z"),
-      utcEnd: new Date("2033-02-01T00:00:00Z"),
-    };
-    const initial = await calendars.getCalendarEventsInRange(accountId, range);
-    const eventState = initial.state;
-
-    // create → flush.
-    const set = await calendars.setCalendarEvents({
-      accountId,
-      create: {
-        "e2e-1": {
-          calendarIds: { [calendarGet.list[0].id]: true },
-          title: "wgw e2e lifecycle",
-          start: "2033-01-10T10:00:00",
-          duration: "PT1H",
-          timeZone: "Etc/UTC",
-          "@type": "Event",
-        },
-      },
-    });
-    const createdId = set.created["e2e-1"].id;
-    expect(createdId).toBeTruthy();
-
-    // post-flush sync(): MUST take the incremental path — a
-    // cannotCalculateChanges error here is the mismatch-13 regression
-    // (adapter would fall back to the expensive #refetchAll()).
-    const calDelta = await calendars.calendarChanges(accountId, calendarState);
-    expect(calDelta.newState).toBeTypeOf("string");
-    const delta = await calendars.calendarEventChanges(accountId, eventState);
-    expect(delta.created).toContain(createdId);
-
-    // self-clean: destroy + verify the next delta reports it.
-    await calendars.setCalendarEvents({ accountId, destroy: [createdId] });
-    const after = await calendars.calendarEventChanges(accountId, delta.newState);
-    expect(after.destroyed).toContain(createdId);
-  });
-});
+```bash
+pnpm test:jmap-client-e2e
 ```
+
+`tools/test-jmap-client-e2e.sh` does everything: locates the client repo (`$LIT_CALENDAR_DIR` for a local working copy, otherwise clones the public repo into `.cache/lit-calendar` and keeps it updated), installs its dependencies, starts a local API on `:9080` if none is running (and stops it again on exit — an already-running `pnpm dev:api` is reused), mints a token, copies the canonical test from `tools/jmap-client-e2e/wgw-backend.e2e.test.ts` into the client's `src/tests/`, runs it with the client's own vitest, and removes the copy afterwards. The client repo itself is never modified permanently.
+
+```bash
+# use your local working copy instead of the cached clone:
+LIT_CALENDAR_DIR=~/Sites/lit-calendar pnpm test:jmap-client-e2e
+```
+
+The test itself lives at [`tools/jmap-client-e2e/wgw-backend.e2e.test.ts`](../../../../tools/jmap-client-e2e/wgw-backend.e2e.test.ts) — the single canonical copy; imports verified against the shipped client (`JmapClientOptions` with `sessionUrl`/`headers`, `DateRange` with `utcStart`/`utcEnd` Date objects). It is a gated Vitest suite: Node `fetch` has no browser origin, so no proxy/CORS is involved, auth header only. It skips unless `JMAP_E2E_URL` is set, so the client's normal offline run against `MockJmapServer` is untouched.
 
 Notes:
 
@@ -141,4 +81,4 @@ Notes:
 
 ## CI direction (when ready)
 
-Run the tier-2 suite in this repo's CI against branches that touch `app/Services/Jmap/` or `app/Http/Controllers/Api/V1/Jmap/`: check out lit-calendar (read token required), boot the API via `compose.ci.yml`, mint a token with `tools/jmap-e2e-token.sh`, run `vitest run wgw-backend.e2e` with `JMAP_E2E_URL`/`JMAP_E2E_TOKEN`. That direction catches backend regressions before merge — the backend is the moving part.
+Run `pnpm test:jmap-client-e2e` in this repo's CI against branches that touch `app/Services/Jmap/` or `app/Http/Controllers/Api/V1/Jmap/` — the script already handles clone, boot, token, and cleanup (the client repo is public, no token needed). That direction catches backend regressions before merge — the backend is the moving part.

@@ -13,6 +13,7 @@
     "preview:bootstrap": "composer --working-dir packages/api install --no-interaction --prefer-dist && php packages/api/artisan wgw:dev-install && pnpm --filter @wgw/apps run build",
     "setup:storybook-live-api": "bash tools/setup-storybook-live-api.sh --set-password",
     "jmap:e2e:token": "bash tools/jmap-e2e-token.sh",
+    "test:jmap-client-e2e": "bash tools/test-jmap-client-e2e.sh",
     "test:collab-api": "bash tools/test-collab-api.sh",
     "test:meet-api": "bash tools/test-meet-api.sh",
     "build": "tools/with-root-env.sh -- turbo run typegen build --filter=@wgw/api --filter=@wgw/apps",
