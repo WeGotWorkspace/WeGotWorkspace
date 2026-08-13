@@ -36,6 +36,11 @@ export type CalendarUILabels = {
   toastEventDeleted: string;
   toastEventDeleteUndone: string;
   toastEventSaveFailed: string;
+  recurrenceScopeEditTitle: string;
+  recurrenceScopeDeleteTitle: string;
+  recurrenceScopeAll: string;
+  recurrenceScopeThisAndFuture: string;
+  recurrenceScopeContinue: string;
   editEventTitle: string;
   createEventTitle: string;
   eventTitleLabel: string;
@@ -90,6 +95,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastEventDeleted: "Event deleted",
   toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",
+  recurrenceScopeEditTitle: "Edit recurring event",
+  recurrenceScopeDeleteTitle: "Delete recurring event",
+  recurrenceScopeAll: "All instances",
+  recurrenceScopeThisAndFuture: "This and future instances",
+  recurrenceScopeContinue: "Continue",
   editEventTitle: "Edit event",
   createEventTitle: "New event",
   eventTitleLabel: "Title",

@@ -65,6 +65,39 @@ export abstract class CalendarViewBase extends BaseElement {
   declare events?: EventsMap;
   selectedCalendarId?: string;
 
+  /**
+   * Optional host-provided scope picker (React wires this on `wgw-calendar-surface`).
+   * Returns `all` | `thisAndFuture`, or `null` when the user cancels.
+   */
+  async #askRecurrenceScope(args: {
+    action: "update" | "delete";
+    masterId: string;
+    recurrenceId?: string;
+  }): Promise<"all" | "thisAndFuture" | null> {
+    const host = this.closest("wgw-calendar-surface") as
+      | (HTMLElement & {
+          requestRecurrenceScope?: (request: {
+            action: "edit" | "delete" | "update";
+            masterId: string;
+            recurrenceId?: string;
+          }) => Promise<"all" | "thisAndFuture" | null>;
+        })
+      | null;
+    if (host?.requestRecurrenceScope) {
+      return host.requestRecurrenceScope({
+        action: args.action === "update" ? "edit" : args.action,
+        masterId: args.masterId,
+        recurrenceId: args.recurrenceId,
+      });
+    }
+    const ok = window.confirm(
+      args.action === "delete"
+        ? "Delete all instances of this recurring event?\n\nOK = all instances\nCancel = abort"
+        : "Apply changes to all instances of this recurring event?\n\nOK = all instances\nCancel = abort",
+    );
+    return ok ? "all" : null;
+  }
+
   static get properties() {
     return {
       events: {
@@ -195,10 +228,10 @@ export abstract class CalendarViewBase extends BaseElement {
     return true;
   }
 
-  protected applyUpdateRequestToEventsAPI(detail: EventUpdateRequestDetail): {
+  protected async applyUpdateRequestToEventsAPI(detail: EventUpdateRequestDetail): Promise<{
     handled: boolean;
     accepted: boolean;
-  } {
+  }> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return { handled: false, accepted: true };
     const events = this.#viewMapFromContext(this.#eventsAPI);
     const eventKey = this.#resolveEventMapKey(events, detail.envelope);
@@ -252,6 +285,7 @@ export abstract class CalendarViewBase extends BaseElement {
           cancelable: true,
         }),
       );
+      // Cross-day occurrence move still needs a detached exception for correctness.
       const keepException = window.confirm(
         "Save this as an exception?\n\nOK = keep\nCancel = revert",
       );
@@ -277,46 +311,17 @@ export abstract class CalendarViewBase extends BaseElement {
     }
 
     if (shouldPromptForSeries) {
-      const commitSeries = window.confirm(
-        "Apply changes to the whole series?\n\nOK = series\nCancel = only this instance",
-      );
-      if (!commitSeries) {
-        if (recurrenceId && data.recurrenceRule && !current.recurrenceId) {
-          return this.#applyUpdateAndNotify(eventKey, {
-            type: "add-exception",
-            input: {
-              target: { key: eventKey },
-              recurrenceId,
-              event: {
-                start: detail.content.start,
-                end: detail.content.end,
-                summary: detail.content.summary,
-                color: detail.content.color,
-                location: detail.content.location,
-                calendarId: detail.envelope.calendarId,
-                accountId: detail.envelope.accountId,
-              },
-            },
-          });
-        }
-        return this.#applyUpdateAndNotify(eventKey, {
-          type: "update",
-          input: {
-            target: { key: eventKey },
-            scope: "single",
-            patch: {
-              start: detail.content.start,
-              end: detail.content.end,
-              summary: detail.content.summary,
-              color: detail.content.color,
-              location: detail.content.location,
-              calendarId: detail.envelope.calendarId,
-              accountId: detail.envelope.accountId,
-            },
-          },
-        });
+      const scope = await this.#askRecurrenceScope({
+        action: "update",
+        masterId: detail.envelope.eventId,
+        recurrenceId,
+      });
+      if (!scope) {
+        return { handled: true, accepted: false };
       }
 
+      // thisAndFuture on drag: apply as series for now (full truncate+fork is
+      // handled in the React dialog save path). Drag split is a follow-up.
       if (updateKind === "move") {
         const delta = this.#toPlainDateTime(occurrenceStart).until(
           this.#toPlainDateTime(detail.content.start),
@@ -424,7 +429,9 @@ export abstract class CalendarViewBase extends BaseElement {
     });
   }
 
-  protected applyDeleteRequestToEventsAPI(detail: EventDeleteRequestDetail): boolean {
+  protected async applyDeleteRequestToEventsAPI(
+    detail: EventDeleteRequestDetail,
+  ): Promise<boolean> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return false;
     const events = this.#viewMapFromContext(this.#eventsAPI);
     const eventKey = this.#resolveEventMapKey(events, detail.envelope);
@@ -440,10 +447,13 @@ export abstract class CalendarViewBase extends BaseElement {
       const doDelete = window.confirm("Are you sure you want to delete this event?");
       if (!doDelete) return true;
     } else {
-      const commitSeries = window.confirm(
-        "Delete the whole series?\n\nOK = series\nCancel = only this instance",
-      );
-      if (commitSeries) {
+      const scope = await this.#askRecurrenceScope({
+        action: "delete",
+        masterId: detail.envelope.eventId,
+        recurrenceId,
+      });
+      if (!scope) return true;
+      if (scope === "all") {
         return this.#applyDeleteAndNotify(eventKey, {
           type: "remove",
           input: {
@@ -452,6 +462,21 @@ export abstract class CalendarViewBase extends BaseElement {
             scope: "series",
           },
         });
+      }
+      // thisAndFuture: ask React to truncate the master series at this occurrence.
+      if (recurrenceId) {
+        this.dispatchEvent(
+          new CustomEvent("recurrence-future-delete", {
+            detail: {
+              masterId: detail.envelope.eventId,
+              recurrenceId,
+              allDay: Boolean(current.data.allDay),
+            },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+        return true;
       }
     }
 

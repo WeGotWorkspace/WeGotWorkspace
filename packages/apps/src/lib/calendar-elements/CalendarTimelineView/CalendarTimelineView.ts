@@ -597,7 +597,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       .toPlainDateTime(Temporal.PlainTime.from("00:00"));
   }
 
-  #applyTimelineUpdate(
+  async #applyTimelineUpdate(
     timelineEvent: CalendarTimelineEvent,
     next: { start: Temporal.PlainDateTime; end: Temporal.PlainDateTime },
   ) {
@@ -620,7 +620,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         location: current?.data.location,
       },
     };
-    const result = this.applyUpdateRequestToEventsAPI(detail);
+    const result = await this.applyUpdateRequestToEventsAPI(detail);
     if (!result.handled || !result.accepted) {
       // Rejected or unhandled: re-render from the unchanged events map so the
       // timeline snaps back to the pre-gesture range.
@@ -628,7 +628,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
   }
 
-  #requestDeleteForKey(key: string) {
+  async #requestDeleteForKey(key: string) {
     const { event: current, recurrenceId } = this.#resolveSourceEvent(key);
     const detail: EventDeleteRequestDetail = {
       envelope: {
@@ -639,7 +639,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         isRecurring: current ? isCalendarEventRecurring(current) : undefined,
       },
     };
-    this.applyDeleteRequestToEventsAPI(detail);
+    await this.applyDeleteRequestToEventsAPI(detail);
     if (this.#selectedEventKey === key) {
       this.#selectedEventKey = null;
       this.requestUpdate();

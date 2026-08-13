@@ -20,6 +20,9 @@ export type CalendarSurfaceCreateIntent = {
   title?: string;
 };
 
+import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
+import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
+
 export type CalendarSurfaceProps = {
   view: CalendarSurfaceViewId;
   presentation: "grid" | "list";
@@ -29,7 +32,7 @@ export type CalendarSurfaceProps = {
   visibleCalendarIds?: string[];
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
-  onEventSelected?: (key: string) => void;
+  onEventSelected?: (key: string) => void | Promise<void>;
   /** Lit navigated (day-number click, swipe) — keep React view/dropdown in sync. */
   onViewChange?: (view: CalendarSurfaceViewId) => void;
   /** Lit changed the anchor date (day click, week swipe, …). */
@@ -39,6 +42,14 @@ export type CalendarSurfaceProps = {
    * prevented so the adapter does not persist until the dialog saves.
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
+  /** Ask All vs This-and-future before Lit drag/delete on recurring occurrences. */
+  requestRecurrenceScope?: (request: RecurrenceScopeRequest) => Promise<RecurrenceEditScope | null>;
+  /** Lit chose this-and-future delete — truncate master at the occurrence. */
+  onRecurrenceFutureDelete?: (args: {
+    masterId: string;
+    recurrenceId: string;
+    allDay?: boolean;
+  }) => void;
 };
 
 function isSurfaceViewId(value: string): value is CalendarSurfaceViewId {
@@ -63,6 +74,8 @@ export function CalendarSurface({
   onViewChange,
   onStartDateChange,
   onCreateRequested,
+  requestRecurrenceScope,
+  onRecurrenceFutureDelete,
 }: CalendarSurfaceProps) {
   const hostRef = useRef<WgwCalendarSurface | null>(null);
 
@@ -76,7 +89,17 @@ export function CalendarSurface({
     host.visibleCalendarIds = visibleCalendarIds;
     host.selectedCalendarId = selectedCalendarId;
     host.contextValue = contextValue;
-  }, [view, presentation, startDate, events, visibleCalendarIds, selectedCalendarId, contextValue]);
+    host.requestRecurrenceScope = requestRecurrenceScope;
+  }, [
+    view,
+    presentation,
+    startDate,
+    events,
+    visibleCalendarIds,
+    selectedCalendarId,
+    contextValue,
+    requestRecurrenceScope,
+  ]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -154,6 +177,24 @@ export function CalendarSurface({
     host.addEventListener("event-create-requested", handleCreateRequested);
     return () => host.removeEventListener("event-create-requested", handleCreateRequested);
   }, [onCreateRequested]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !onRecurrenceFutureDelete) return;
+    const handleFutureDelete = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ masterId?: string; recurrenceId?: string; allDay?: boolean }>
+      ).detail;
+      if (!detail?.masterId || !detail.recurrenceId) return;
+      onRecurrenceFutureDelete({
+        masterId: detail.masterId,
+        recurrenceId: detail.recurrenceId,
+        allDay: detail.allDay,
+      });
+    };
+    host.addEventListener("recurrence-future-delete", handleFutureDelete);
+    return () => host.removeEventListener("recurrence-future-delete", handleFutureDelete);
+  }, [onRecurrenceFutureDelete]);
 
   return createElement("wgw-calendar-surface", {
     ref: hostRef,

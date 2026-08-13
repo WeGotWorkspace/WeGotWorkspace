@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
+import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
@@ -110,6 +111,9 @@ export function CalendarWorkspace({
     saveCalendarDialog,
     deleteCalendarFromDialog,
     surfaceEventsForView,
+    askRecurrenceScope,
+    recurrenceScopeDialog,
+    truncateSeriesFromOccurrence,
   } = controller;
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
@@ -303,6 +307,8 @@ export function CalendarWorkspace({
               visibleCalendarIds={[...visibleCalendarIds]}
               selectedCalendarId={defaultCalendarId}
               contextValue={surface?.contextValue}
+              requestRecurrenceScope={askRecurrenceScope}
+              onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
               onEventSelected={canWrite ? openEditEventKey : undefined}
               onViewChange={selectView}
               onStartDateChange={setAnchor}
@@ -338,6 +344,7 @@ export function CalendarWorkspace({
             : undefined
         }
       />
+      <CalendarRecurrenceScopeDialog dialog={recurrenceScopeDialog} labels={L} />
     </TooltipProvider>
   );
 }
