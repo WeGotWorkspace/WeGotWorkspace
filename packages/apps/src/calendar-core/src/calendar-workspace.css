@@ -243,8 +243,12 @@
   transform-origin: center center;
 }
 
-.calendar-workspace .calendar-main__range--animate {
-  animation: calendar-range-zoom-fade 240ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
+.calendar-workspace .calendar-main__range--animate-in {
+  animation: calendar-range-zoom-in 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
+}
+
+.calendar-workspace .calendar-main__range--animate-out {
+  animation: calendar-range-zoom-out 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
 }
 
 .calendar-workspace .calendar-main wgw-calendar-surface {
@@ -252,10 +256,23 @@
   min-height: 0;
 }
 
-@keyframes calendar-range-zoom-fade {
+/* Wider → narrower range: zoom in. */
+@keyframes calendar-range-zoom-in {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Narrower → wider range: zoom out. */
+@keyframes calendar-range-zoom-out {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
   }
   to {
     opacity: 1;
@@ -264,7 +281,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .calendar-workspace .calendar-main__range--animate {
+  .calendar-workspace .calendar-main__range--animate-in,
+  .calendar-workspace .calendar-main__range--animate-out {
     animation: none;
   }
 }

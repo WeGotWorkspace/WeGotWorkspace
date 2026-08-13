@@ -19,7 +19,8 @@ import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import {
-  CALENDAR_RANGE_TRANSITION_CLASS,
+  calendarRangeZoomDirection,
+  clearCalendarRangeTransition,
   restartCalendarRangeTransition,
 } from "@/calendar-core/src/calendar-range-transition";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
@@ -30,19 +31,21 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 import "./calendar-workspace.css";
 
 /**
- * Restart a one-shot zoom/cross-fade when the time-range view changes.
- * Skips the first paint and `prefers-reduced-motion: reduce`.
+ * Restart a one-shot directional zoom/cross-fade when the time-range view changes.
+ * Skips the first paint, same-rank swaps, and `prefers-reduced-motion: reduce`.
+ * List↔calendar presentation toggles do not use this hook.
  */
 function useCalendarRangeTransition(view: CalendarViewId) {
   const rangeRef = useRef<HTMLDivElement>(null);
-  const isFirstView = useRef(true);
+  const prevView = useRef<CalendarViewId | null>(null);
 
   useLayoutEffect(() => {
-    if (isFirstView.current) {
-      isFirstView.current = false;
-      return;
-    }
-    restartCalendarRangeTransition(rangeRef.current);
+    const previous = prevView.current;
+    prevView.current = view;
+    if (previous === null) return;
+    const direction = calendarRangeZoomDirection(previous, view);
+    if (!direction) return;
+    restartCalendarRangeTransition(rangeRef.current, direction);
   }, [view]);
 
   return rangeRef;
@@ -291,7 +294,7 @@ export function CalendarWorkspace({
               className="calendar-main__range"
               onAnimationEnd={(event) => {
                 if (event.target !== event.currentTarget) return;
-                event.currentTarget.classList.remove(CALENDAR_RANGE_TRANSITION_CLASS);
+                clearCalendarRangeTransition(event.currentTarget);
               }}
             >
               <CalendarSurface
