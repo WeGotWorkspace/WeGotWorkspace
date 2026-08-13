@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace App\Services\Contacts;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Jmap\Blobs\JmapBlobService;
 
 /**
- * Maps contact Media between vCard data: URIs and REST blobId references (RFC 9610).
+ * Maps contact Media between vCard data: URIs and blobId references
+ * (RFC 9610). On write, blobIds resolve from the contacts REST blob store
+ * first, then the JMAP envelope blob store (#438) — a client may reference
+ * media it uploaded through either surface.
  */
 final class ContactMediaBlobResolver
 {
     public function __construct(
         private readonly ContactBlobService $blobs,
+        private readonly JmapBlobService $envelopeBlobs,
     ) {}
 
     /**
@@ -78,23 +83,18 @@ final class ContactMediaBlobResolver
                 continue;
             }
 
+            $stored = $this->blobs->retrieve($username, $blobId)
+                ?? $this->envelopeBlobs->retrieve($username, $blobId);
+            if ($stored === null) {
+                throw new ApiHttpException(400, 'Unknown media blobId.', 'invalid_blob');
+            }
+
             $kind = (string) ($entry['kind'] ?? 'photo');
             if ($kind === 'photo') {
-                $stored = $this->blobs->retrieve($username, $blobId);
-                if ($stored === null) {
-                    throw new ApiHttpException(400, 'Unknown media blobId.', 'invalid_blob');
-                }
                 $this->blobs->assertPhotoMediaType($stored['mediaType']);
-                $entry['uri'] = 'data:'.$stored['mediaType'].';base64,'.base64_encode($stored['contents']);
-                $entry['mediaType'] = $stored['mediaType'];
-            } else {
-                $stored = $this->blobs->retrieve($username, $blobId);
-                if ($stored === null) {
-                    throw new ApiHttpException(400, 'Unknown media blobId.', 'invalid_blob');
-                }
-                $entry['uri'] = 'data:'.$stored['mediaType'].';base64,'.base64_encode($stored['contents']);
-                $entry['mediaType'] = $stored['mediaType'];
             }
+            $entry['uri'] = 'data:'.$stored['mediaType'].';base64,'.base64_encode($stored['contents']);
+            $entry['mediaType'] = $stored['mediaType'];
 
             unset($entry['blobId']);
             $media[$id] = $entry;

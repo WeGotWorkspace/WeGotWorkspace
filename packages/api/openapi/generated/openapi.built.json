@@ -9420,6 +9420,30 @@
                         "type": "string"
                     }
                 }
+            },
+            "JmapBlobUploadResponse": {
+                "type": "object",
+                "description": "JMAP blob upload response (RFC 8620 §6.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
+                "required": [
+                    "accountId",
+                    "blobId",
+                    "type",
+                    "size"
+                ],
+                "properties": {
+                    "accountId": {
+                        "type": "string"
+                    },
+                    "blobId": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    }
+                }
             }
         },
         "responses": {
@@ -15759,8 +15783,8 @@
                 "tags": [
                     "JMAP"
                 ],
-                "summary": "JMAP blob download (not implemented)",
-                "description": "Structurally required by the Session resource (RFC 8620 §6.2) but unused by the calendars client; returns 501.",
+                "summary": "JMAP blob download",
+                "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15791,18 +15815,38 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Overrides the response Content-Type."
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "Blob content",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
                     },
-                    "501": {
-                        "description": "Not implemented",
+                    "404": {
+                        "description": "Unknown blob, or accountId does not match the authenticated principal (problem+json).",
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Error"
+                                    "type": "object"
                                 }
                             }
                         }
@@ -15815,8 +15859,8 @@
                 "tags": [
                     "JMAP"
                 ],
-                "summary": "JMAP blob upload (not implemented)",
-                "description": "Structurally required by the Session resource (RFC 8620 §6.1) but unused by the calendars client; returns 501.",
+                "summary": "JMAP blob upload",
+                "description": "Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15834,19 +15878,47 @@
                     }
                 ],
                 "responses": {
+                    "201": {
+                        "description": "Upload response (RFC 8620 §6.1)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapBlobUploadResponse"
+                                }
+                            }
+                        }
+                    },
                     "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
+                        "description": "Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
                     },
-                    "501": {
-                        "description": "Not implemented",
+                    "404": {
+                        "description": "accountId does not match the authenticated principal (problem+json).",
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Error"
+                                    "type": "object"
                                 }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "*/*": {
+                            "schema": {
+                                "type": "string",
+                                "format": "binary"
                             }
                         }
                     }

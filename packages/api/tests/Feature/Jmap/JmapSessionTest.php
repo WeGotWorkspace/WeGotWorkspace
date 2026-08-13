@@ -121,16 +121,16 @@ final class JmapSessionTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('/jmap/events/{types}/{closeafter}/{ping}', $session['eventSourceUrl']);
     }
 
-    public function test_unused_session_urls_are_stubbed_with_501(): void
+    public function test_blob_urls_are_live_and_only_push_stays_stubbed(): void
     {
         $token = $this->userBearerToken();
 
+        // Upload/download are real since #438 (JmapBlobsTest covers them);
+        // an unknown blobId is 404, not 501.
         $this->withBearer($token)
             ->getJson('/api/v1/jmap/download/bob/blob-1/file.ics')
-            ->assertStatus(501);
-        $this->withBearer($token)
-            ->postJson('/api/v1/jmap/upload/bob')
-            ->assertStatus(501);
+            ->assertStatus(404);
+        // Push (RFC 8620 §7) stays an explicit non-goal.
         $this->withBearer($token)
             ->getJson('/api/v1/jmap/events/CalendarEvent/0/0')
             ->assertStatus(501);
