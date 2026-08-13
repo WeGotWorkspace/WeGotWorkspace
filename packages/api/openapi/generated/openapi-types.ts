@@ -6654,7 +6654,7 @@ export interface paths {
         };
         /**
          * JMAP Session resource
-         * @description RFC 8620 §2 Session resource for the calendars JMAP envelope. One account per authenticated principal (accountId = username); all URLs absolute; session-level calendars capability is the empty object per draft-ietf-jmap-calendars-27 §1.5.1.
+         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
          */
         get: {
             parameters: {
@@ -10086,7 +10086,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` is the empty object (draft-ietf-jmap-calendars-27 §1.5.1). */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1) and `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };

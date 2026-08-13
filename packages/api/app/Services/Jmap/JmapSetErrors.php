@@ -26,6 +26,8 @@ final class JmapSetErrors
             'stateMismatch', 'precondition_failed' => 'stateMismatch',
             // draft-ietf-jmap-calendars Calendar/set destroy without onDestroyRemoveEvents.
             'calendarHasContents' => 'calendarHasEvent',
+            // RFC 9610 AddressBook/set destroy without onDestroyRemoveContents.
+            'addressBookHasContents' => 'addressBookHasContents',
             'alreadyExists' => 'invalidProperties',
             default => 'serverFail',
         };
@@ -39,6 +41,44 @@ final class JmapSetErrors
         }
 
         return $shape;
+    }
+
+    /**
+     * Normalizes a legacy REST SetError shape (snake_case types such as
+     * `not_found` / `serverError`, produced by services that catch their own
+     * exceptions, e.g. ContactCardSetService::errorShape()) to the RFC 8620
+     * §5.3 vocabulary. The REST wire format is untouched — this runs only in
+     * envelope adapters (parity-gaps: legacy shapes normalize at the adapter
+     * layer).
+     *
+     * @param  array<string, mixed>  $shape
+     * @return array<string, mixed>
+     */
+    public static function fromLegacyShape(array $shape): array
+    {
+        $legacyType = is_string($shape['type'] ?? null) ? $shape['type'] : 'serverFail';
+        $type = match ($legacyType) {
+            'not_found', 'notFound' => 'notFound',
+            'bad_request', 'invalidProperties', 'alreadyExists' => 'invalidProperties',
+            'forbidden' => 'forbidden',
+            'stateMismatch', 'precondition_failed' => 'stateMismatch',
+            'addressBookHasContents' => 'addressBookHasContents',
+            default => 'serverFail',
+        };
+
+        $description = is_string($shape['description'] ?? null) ? $shape['description'] : '';
+        if ($type === 'serverFail' && ! config('app.debug')) {
+            // Same sanitization as serverFail(): legacy shapes carry raw
+            // Throwable messages that must not leak internals on the wire.
+            $description = 'An unexpected error occurred.';
+        }
+
+        $normalized = ['type' => $type, 'description' => $description];
+        if ($type === 'invalidProperties') {
+            $normalized['properties'] = [];
+        }
+
+        return $normalized;
     }
 
     /**

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Installer\WgwConfigMigrator;
+use App\Services\Jmap\Capabilities\JmapCapabilitySet;
+use App\Services\Jmap\JmapMethodDispatcher;
 use App\Storage\NoteStoragePaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -22,6 +24,23 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(NoteStoragePaths::class);
         $this->app->singleton(WgwStorage::class);
+
+        // JMAP envelope: the method-handler and capability-provider lists are
+        // class constants (autowiring cannot construct lists); resolving them
+        // here keeps the services free of container references.
+        $this->app->singleton(
+            JmapMethodDispatcher::class,
+            fn ($app): JmapMethodDispatcher => new JmapMethodDispatcher(
+                array_map($app->make(...), JmapMethodDispatcher::METHODS),
+            ),
+        );
+        $this->app->singleton(
+            JmapCapabilitySet::class,
+            fn ($app): JmapCapabilitySet => new JmapCapabilitySet(
+                $app->make(JmapMethodDispatcher::class),
+                array_map($app->make(...), JmapCapabilitySet::PROVIDERS),
+            ),
+        );
     }
 
     public function boot(): void

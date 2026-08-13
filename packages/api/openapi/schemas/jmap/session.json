@@ -30,7 +30,7 @@
     "properties": {
       "capabilities": {
         "type": "object",
-        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` is the empty object (draft-ietf-jmap-calendars-27 \u00a71.5.1).",
+        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 \u00a71.5.1) and `urn:ietf:params:jmap:contacts` (RFC 9610 \u00a71.3) are empty objects \u2014 their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent.",
         "additionalProperties": { "type": "object" }
       },
       "accounts": {
