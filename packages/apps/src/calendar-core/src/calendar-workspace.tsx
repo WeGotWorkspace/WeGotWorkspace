@@ -1,4 +1,12 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  LayoutList,
+  Pencil,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -24,8 +32,8 @@ import { useCalendarController } from "@/calendar-core/src/use-calendar-controll
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
 
-/** Day → Year by time span, then List (agenda) — common calendar UI order. */
-const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year", "agenda"];
+/** Day → Year by time span — list is a presentation toggle, not a dropdown option. */
+const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year"];
 
 function closeSidebarOnMobile(close: () => void) {
   if (!isSidebarOverlayViewport()) return;
@@ -41,6 +49,7 @@ export function CalendarWorkspace({
   listRefreshing = false,
   onRefreshList,
   initialView,
+  initialPresentation,
   initialAnchor,
   onViewChange,
   onLogout,
@@ -51,6 +60,7 @@ export function CalendarWorkspace({
     labels,
     operations,
     initialView,
+    initialPresentation,
     initialAnchor,
     onViewChange,
     surfaceEvents: surface?.events,
@@ -66,6 +76,8 @@ export function CalendarWorkspace({
     locale,
     view,
     selectView,
+    presentation,
+    togglePresentation,
     anchor,
     title,
     goToday,
@@ -111,7 +123,6 @@ export function CalendarWorkspace({
     week: L.viewWeek,
     day: L.viewDay,
     year: L.viewYear,
-    agenda: L.viewAgenda,
   };
 
   useDocumentTitle(`${L.appTitle} — ${title}`);
@@ -206,7 +217,7 @@ export function CalendarWorkspace({
                         label={L.editCalendar}
                         icon={<Pencil className="size-3.5" aria-hidden />}
                         size="sm"
-                        variant="subtle"
+                        variant="ghost"
                         className="calendar-sidebar-row__edit"
                         onClick={() => openEditCalendarDialog(calendar.id)}
                       />
@@ -236,6 +247,19 @@ export function CalendarWorkspace({
                     ))}
                   </SelectContent>
                 </Select>
+                <IconButton
+                  label={presentation === "list" ? L.showAsCalendar : L.showAsList}
+                  icon={
+                    presentation === "list" ? (
+                      <CalendarDays className="size-4" aria-hidden />
+                    ) : (
+                      <LayoutList className="size-4" aria-hidden />
+                    )
+                  }
+                  variant="subtle"
+                  active={presentation === "list"}
+                  onClick={togglePresentation}
+                />
                 <IconButton
                   label={L.previousPeriod}
                   icon={<ChevronLeft className="size-4" />}

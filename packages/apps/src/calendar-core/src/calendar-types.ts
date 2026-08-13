@@ -22,7 +22,10 @@ export type CalendarUIData = {
   events: JmapCalendarEvent[];
 };
 
-export type CalendarViewId = "month" | "week" | "day" | "year" | "agenda";
+export type CalendarViewId = "month" | "week" | "day" | "year";
+
+/** Grid (calendar) vs list presentation for the selected time-range view. */
+export type CalendarPresentation = "grid" | "list";
 
 export type CalendarEventDraft = {
   calendarId: string;

@@ -99,11 +99,9 @@ export type CalendarDateRange = {
   end: Temporal.PlainDate;
 };
 
-const AGENDA_DAYS = 30;
-
 /**
  * Rendered date range for a view anchored at `anchor` (ISO date). Month covers
- * full weeks around the month (Monday start); agenda looks ahead N days.
+ * full weeks around the month (Monday start).
  */
 export function viewDateRange(view: CalendarViewId, anchorISO: string): CalendarDateRange {
   const anchor = Temporal.PlainDate.from(anchorISO);
@@ -114,8 +112,6 @@ export function viewDateRange(view: CalendarViewId, anchorISO: string): Calendar
       const start = anchor.subtract({ days: anchor.dayOfWeek - 1 });
       return { start, end: start.add({ days: 7 }) };
     }
-    case "agenda":
-      return { start: anchor, end: anchor.add({ days: AGENDA_DAYS }) };
     case "year": {
       const first = anchor.with({ month: 1, day: 1 });
       return { start: first, end: first.add({ years: 1 }) };
@@ -137,8 +133,6 @@ export function shiftAnchor(view: CalendarViewId, anchorISO: string, direction: 
       return anchor.add({ days: direction }).toString();
     case "week":
       return anchor.add({ days: 7 * direction }).toString();
-    case "agenda":
-      return anchor.add({ days: AGENDA_DAYS * direction }).toString();
     case "month":
       return anchor.add({ months: direction }).with({ day: 1 }).toString();
     case "year":

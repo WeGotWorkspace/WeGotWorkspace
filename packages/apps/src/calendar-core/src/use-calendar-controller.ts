@@ -6,6 +6,7 @@ import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type {
   CalendarAPIOperations,
   CalendarInfo,
+  CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
@@ -62,6 +63,8 @@ export type UseCalendarControllerOptions = {
   labels?: Partial<CalendarUILabels>;
   operations?: CalendarAPIOperations;
   initialView?: CalendarViewId;
+  /** Grid vs list for the selected time range (independent of `initialView`). */
+  initialPresentation?: CalendarPresentation;
   initialAnchor?: string;
   onViewChange?: (view: CalendarViewId) => void;
   /** Adapter-backed engine events — editor fallback for events not yet in the bootstrap. */
@@ -79,7 +82,7 @@ const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOption
 
 function rangeTitle(view: CalendarViewId, anchorISO: string, locale: string): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
-  if (view === "month" || view === "agenda") {
+  if (view === "month") {
     return anchor.toLocaleString(locale, MONTH_TITLE);
   }
   if (view === "year") {
@@ -119,6 +122,7 @@ export function useCalendarController({
   labels,
   operations,
   initialView,
+  initialPresentation = "grid",
   initialAnchor,
   onViewChange,
   surfaceEvents,
@@ -130,6 +134,7 @@ export function useCalendarController({
   const locale = useMemo(() => resolveLocale(undefined), []);
 
   const [view, setView] = useState<CalendarViewId>(initialView ?? "month");
+  const [presentation, setPresentation] = useState<CalendarPresentation>(initialPresentation);
   const [anchor, setAnchor] = useState<string>(initialAnchor ?? todayISODate());
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -196,6 +201,10 @@ export function useCalendarController({
   );
   const goNext = useCallback(() => setAnchor((current) => shiftAnchor(view, current, 1)), [view]);
 
+  const togglePresentation = useCallback(() => {
+    setPresentation((current) => (current === "list" ? "grid" : "list"));
+  }, []);
+
   const ensureCalendarVisible = useCallback((calendarId: string) => {
     setHiddenCalendarIds((current) => {
       if (!current.has(calendarId)) return current;
@@ -224,14 +233,8 @@ export function useCalendarController({
 
   const dateRange = useMemo(() => viewDateRange(view, anchor), [view, anchor]);
 
-  /** The vendored lit views take a view id + presentation; agenda = list over the month. */
-  const litSurface = useMemo(
-    () =>
-      view === "agenda"
-        ? ({ view: "month", presentation: "list" } as const)
-        : ({ view, presentation: "grid" } as const),
-    [view],
-  );
+  /** Lit surface mirrors time-range `view` and independent grid/list `presentation`. */
+  const litSurface = useMemo(() => ({ view, presentation }) as const, [view, presentation]);
 
   /** Sidebar create-target; falls back if the selection disappears from bootstrap data. */
   const defaultCalendarId = useMemo(
@@ -683,6 +686,8 @@ export function useCalendarController({
     locale,
     view,
     selectView,
+    presentation,
+    togglePresentation,
     anchor,
     setAnchor,
     dateRange,

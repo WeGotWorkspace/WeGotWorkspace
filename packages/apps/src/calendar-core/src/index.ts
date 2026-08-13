@@ -10,6 +10,7 @@ export type {
   CalendarEventDraft,
   CalendarEventPatch,
   CalendarInfo,
+  CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
 } from "./calendar-types";

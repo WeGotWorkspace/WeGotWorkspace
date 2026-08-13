@@ -44,7 +44,29 @@ describe("useCalendarController view + create intent", () => {
     });
 
     expect(result.current.view).toBe("day");
+    expect(result.current.presentation).toBe("grid");
     expect(result.current.litSurface).toEqual({ view: "day", presentation: "grid" });
+  });
+
+  it("togglePresentation switches list/grid without changing the time-range view", () => {
+    const { result } = renderHook(() =>
+      useCalendarController({ data: bootstrap.data, initialView: "week" }),
+    );
+
+    act(() => {
+      result.current.togglePresentation();
+    });
+
+    expect(result.current.view).toBe("week");
+    expect(result.current.presentation).toBe("list");
+    expect(result.current.litSurface).toEqual({ view: "week", presentation: "list" });
+
+    act(() => {
+      result.current.selectView("month");
+    });
+
+    expect(result.current.view).toBe("month");
+    expect(result.current.presentation).toBe("list");
   });
 
   it("selectView is a no-op when the view is unchanged (no duplicate onViewChange)", () => {

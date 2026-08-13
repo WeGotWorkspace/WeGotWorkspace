@@ -4,8 +4,9 @@ export type CalendarUILabels = {
   viewWeek: string;
   viewDay: string;
   viewYear: string;
-  viewAgenda: string;
   viewSelectLabel: string;
+  showAsList: string;
+  showAsCalendar: string;
   today: string;
   previousPeriod: string;
   nextPeriod: string;
@@ -62,8 +63,9 @@ export const defaultCalendarLabels: CalendarUILabels = {
   viewWeek: "Week",
   viewDay: "Day",
   viewYear: "Year",
-  viewAgenda: "List",
   viewSelectLabel: "Calendar view",
+  showAsList: "Show as list",
+  showAsCalendar: "Show as calendar",
   today: "Today",
   previousPeriod: "Previous",
   nextPeriod: "Next",

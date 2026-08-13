@@ -41,12 +41,13 @@ export const Default: Story = {
   },
 };
 
-export const Agenda: Story = {
+export const ListPresentation: Story = {
   args: {
     ...bootstrap,
     surface: staticSurface,
     initialAnchor: MOCK_CALENDAR_ANCHOR,
-    initialView: "agenda",
+    initialView: "month",
+    initialPresentation: "list",
   },
 };
 
@@ -84,6 +85,7 @@ export const Empty: Story = {
     session: bootstrap.session,
     surface: { events: new Map(), contextValue: undefined, syncNow: () => {} },
     initialAnchor: MOCK_CALENDAR_ANCHOR,
-    initialView: "agenda",
+    initialView: "month",
+    initialPresentation: "list",
   },
 };

@@ -5,10 +5,10 @@ import type { WgwCalendarSurface } from "@/lib/calendar-elements/wgw/wgw-calenda
 import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { resolveCreateIntentAllDay } from "@/calendar-core/src/calendar-editor-model";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
 
-/** Lit surface view modes (agenda is a React-only presentation over month). */
-export type CalendarSurfaceViewId = Exclude<CalendarViewId, "agenda">;
+/** Lit surface time-range view (list vs grid is `presentation`). */
+export type CalendarSurfaceViewId = CalendarViewId;
 
 /** Drag/click create intent from cancelable `event-create-requested`. */
 export type CalendarSurfaceCreateIntent = {
@@ -25,7 +25,7 @@ import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurr
 
 export type CalendarSurfaceProps = {
   view: CalendarSurfaceViewId;
-  presentation: "grid" | "list";
+  presentation: CalendarPresentation;
   /** ISO date for the view anchor (view-group aligns its own grid start). */
   startDate: string;
   events: CalendarEventsMap;

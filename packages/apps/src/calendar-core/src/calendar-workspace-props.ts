@@ -2,6 +2,7 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import type {
   CalendarAPIOperations,
+  CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
@@ -17,6 +18,7 @@ export type CalendarWorkspaceProps = {
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   initialView?: CalendarViewId;
+  initialPresentation?: CalendarPresentation;
   initialAnchor?: string;
   onViewChange?: (view: CalendarViewId) => void;
   onLogout?: () => void;
