@@ -253,7 +253,7 @@ export function shiftRecurrenceOverrides(
 export function recurrenceOverridesFromEngineMap(
   events: CalendarEventsMap,
   masterKey: string,
-  original?: Pick<JmapCalendarEvent, "recurrenceOverrides" | "uid" | "calendarIds">,
+  original?: Partial<Pick<JmapCalendarEvent, "recurrenceOverrides" | "uid" | "calendarIds">>,
 ): Record<string, JSCalendarPatchObject> | null {
   const group = collectInternalGroup(events, masterKey);
   if (!group) return null;
@@ -261,7 +261,12 @@ export function recurrenceOverridesFromEngineMap(
     original: original as JmapCalendarEvent | undefined,
   });
   const overrides = wire.recurrenceOverrides;
-  return overrides && Object.keys(overrides).length ? overrides : null;
+  if (!overrides || typeof overrides !== "object") return null;
+  const entries = Object.entries(overrides).filter(
+    (entry): entry is [string, JSCalendarPatchObject] =>
+      entry[1] != null && typeof entry[1] === "object",
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
 /**
