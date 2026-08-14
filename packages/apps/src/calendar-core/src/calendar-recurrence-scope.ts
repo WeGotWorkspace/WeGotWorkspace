@@ -4,10 +4,12 @@ import {
   type CalendarEvent as EngineCalendarEvent,
   type CalendarEventsMap,
 } from "@/lib/calendar-engine";
-import type {
-  JmapCalendarEvent,
-  JSCalendarPatchObject,
-  JSCalendarRecurrenceRule,
+import {
+  collectInternalGroup,
+  internalGroupToJmapEvent,
+  type JmapCalendarEvent,
+  type JSCalendarPatchObject,
+  type JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
@@ -243,8 +245,47 @@ export function shiftRecurrenceOverrides(
 }
 
 /**
+ * Rebuild `recurrenceOverrides` from adapter/engine rows (master + detached
+ * exceptions / exclusionDates). Used when React bootstrap `data.events` lags
+ * the surface after an only-this edit — partitioning from stale wire would leave
+ * the exception on the master and expand a twin on the fork.
+ */
+export function recurrenceOverridesFromEngineMap(
+  events: CalendarEventsMap,
+  masterKey: string,
+  original?: Pick<JmapCalendarEvent, "recurrenceOverrides" | "uid" | "calendarIds">,
+): Record<string, JSCalendarPatchObject> | null {
+  const group = collectInternalGroup(events, masterKey);
+  if (!group) return null;
+  const wire = internalGroupToJmapEvent(group, {
+    original: original as JmapCalendarEvent | undefined,
+  });
+  const overrides = wire.recurrenceOverrides;
+  return overrides && Object.keys(overrides).length ? overrides : null;
+}
+
+/**
+ * Prefer adapter/surface overrides (fresher after only-this) over bootstrap wire.
+ */
+export function resolveSeriesRecurrenceOverrides(
+  original: Pick<JmapCalendarEvent, "recurrenceOverrides"> | undefined,
+  masterKey: string,
+  surfaceEvents?: CalendarEventsMap,
+): Record<string, JSCalendarPatchObject> | null {
+  if (surfaceEvents) {
+    const fromSurface = recurrenceOverridesFromEngineMap(surfaceEvents, masterKey, original);
+    if (fromSurface && Object.keys(fromSurface).length) return fromSurface;
+  }
+  const wire = original?.recurrenceOverrides;
+  return wire && Object.keys(wire).length ? wire : null;
+}
+
+/**
  * Truncate-master patch for this-and-future (edit fork, delete, or Lit truncate):
  * set `until` and keep only overrides that apply before the split occurrence.
+ *
+ * Keys that move to the fork are explicitly set to `null` so servers that
+ * deep-merge override maps still drop them (omission alone is not enough).
  */
 export function truncateMasterSeriesPatch(
   seriesRules: JSCalendarRecurrenceRule[] | null | undefined,
@@ -261,9 +302,22 @@ export function truncateMasterSeriesPatch(
     templateStart,
   );
   const hadOverrides = Boolean(originalOverrides && Object.keys(originalOverrides).length);
+  if (!hadOverrides) {
+    return { recurrenceRules: truncateRecurrenceRules(seriesRules, until) };
+  }
+  if (!masterOverrides) {
+    return {
+      recurrenceRules: truncateRecurrenceRules(seriesRules, until),
+      recurrenceOverrides: null,
+    };
+  }
+  const cleared: Record<string, JSCalendarPatchObject | null> = { ...masterOverrides };
+  for (const rid of Object.keys(originalOverrides ?? {})) {
+    if (!(rid in masterOverrides)) cleared[rid] = null;
+  }
   return {
     recurrenceRules: truncateRecurrenceRules(seriesRules, until),
-    ...(hadOverrides ? { recurrenceOverrides: masterOverrides } : {}),
+    recurrenceOverrides: cleared,
   };
 }
 
@@ -386,6 +440,9 @@ export function forkSeriesDraftFromForm(
 /**
  * Fork draft for this-and-future: carry future-side overrides from the master,
  * remapped when the fork DTSTART moves.
+ *
+ * `overrides` may be supplied explicitly (e.g. resolved from the adapter when
+ * bootstrap wire is stale); otherwise `original.recurrenceOverrides` is used.
  */
 export function forkSeriesDraftWithSplitOverrides(
   form: CalendarEventFormValue,
@@ -394,10 +451,12 @@ export function forkSeriesDraftWithSplitOverrides(
     | Pick<JmapCalendarEvent, "start" | "showWithoutTime" | "recurrenceOverrides">
     | undefined,
   splitRecurrenceId: string,
+  overrides?: Record<string, JSCalendarPatchObject> | null,
 ): CalendarEventDraft {
   const allDay = Boolean(original?.showWithoutTime ?? form.allDay);
+  const sourceOverrides = overrides !== undefined ? overrides : original?.recurrenceOverrides;
   const { forkOverrides } = splitRecurrenceOverridesAt(
-    original?.recurrenceOverrides,
+    sourceOverrides,
     splitRecurrenceId,
     allDay,
     original?.start,

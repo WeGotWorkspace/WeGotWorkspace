@@ -43,6 +43,7 @@ import {
   formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
+  resolveSeriesRecurrenceOverrides,
   seriesRecurrenceRulesForSplit,
   splitOccurrenceKey,
   truncateMasterSeriesPatch,
@@ -453,6 +454,12 @@ export function useCalendarController({
             ? editor.eventId
             : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
           const allDay = Boolean(original?.showWithoutTime ?? editor.form.allDay);
+          // Adapter rows are fresher than bootstrap after only-this — partition from those.
+          const seriesOverrides = resolveSeriesRecurrenceOverrides(
+            original,
+            editor.eventId,
+            surfaceEvents,
+          );
           await operations.patchEvent(
             targetId,
             truncateMasterSeriesPatch(
@@ -460,7 +467,7 @@ export function useCalendarController({
               editor.recurrenceId!,
               allDay,
               original?.start,
-              original?.recurrenceOverrides,
+              seriesOverrides,
             ),
           );
           await operations.createEvent(
@@ -469,6 +476,7 @@ export function useCalendarController({
               seriesRules,
               original,
               editor.recurrenceId!,
+              seriesOverrides,
             ),
           );
         }, L.toastEventUpdated);
@@ -560,7 +568,7 @@ export function useCalendarController({
               recurrenceId,
               allDay,
               original?.start,
-              original?.recurrenceOverrides,
+              resolveSeriesRecurrenceOverrides(original, eventId, surfaceEvents),
             ),
           );
           show(L.toastEventDeleted);
@@ -607,6 +615,7 @@ export function useCalendarController({
     editor,
     operations,
     data.events,
+    surfaceEvents,
     queueMutation,
     resolveEventId,
     onMutated,
@@ -769,7 +778,7 @@ export function useCalendarController({
             args.recurrenceId,
             Boolean(args.allDay ?? original?.showWithoutTime),
             original?.start,
-            original?.recurrenceOverrides,
+            resolveSeriesRecurrenceOverrides(original, masterKey, surfaceEvents),
           ),
         );
         show(L.toastEventDeleted);
@@ -846,6 +855,11 @@ export function useCalendarController({
       };
       try {
         const targetId = (await resolveEventId?.(masterKey)) ?? masterKey;
+        const seriesOverrides = resolveSeriesRecurrenceOverrides(
+          original,
+          masterKey,
+          surfaceEvents,
+        );
         await operations.patchEvent(
           targetId,
           truncateMasterSeriesPatch(
@@ -853,11 +867,17 @@ export function useCalendarController({
             args.recurrenceId,
             allDay,
             original?.start,
-            original?.recurrenceOverrides,
+            seriesOverrides,
           ),
         );
         await operations.createEvent(
-          forkSeriesDraftWithSplitOverrides(form, seriesRules, original, args.recurrenceId),
+          forkSeriesDraftWithSplitOverrides(
+            form,
+            seriesRules,
+            original,
+            args.recurrenceId,
+            seriesOverrides,
+          ),
         );
         show(L.toastEventUpdated);
         onMutated?.();

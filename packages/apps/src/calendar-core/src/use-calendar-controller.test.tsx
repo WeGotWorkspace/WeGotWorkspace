@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
+import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 const toastApi = {
@@ -548,6 +549,8 @@ describe("useCalendarController recurring scopes", () => {
           ],
           recurrenceOverrides: {
             "2033-01-10T09:30:00": { title: "Past override" },
+            "2033-01-24T09:30:00": null,
+            "2033-01-31T09:30:00": null,
           },
         }),
       );
@@ -557,6 +560,61 @@ describe("useCalendarController recurring scopes", () => {
           recurrenceOverrides: {
             "2033-01-24T09:30:00": { excluded: true },
             "2033-01-31T09:30:00": { title: "Moved later", start: "2033-01-31T11:00:00" },
+          },
+        }),
+      );
+    });
+  });
+
+  it("saveEditor thisAndFuture reads overrides from surface when bootstrap is stale", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue({ id: "forked-surface" });
+    const standup = bootstrap.data.events.find((event) => event.id === "standup")!;
+    // Bootstrap lacks the only-this exception; adapter/surface already has it.
+    const data = {
+      ...bootstrap.data,
+      events: [{ ...standup }, ...bootstrap.data.events.filter((event) => event.id !== "standup")],
+    };
+    const surfaceEvents = calendarEventsToEngineMap([
+      {
+        ...standup,
+        recurrenceOverrides: {
+          "2033-01-24T09:30:00": { title: "Standup (moved)", start: "2033-01-24T11:00:00" },
+        },
+      },
+    ]);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data,
+        surfaceEvents,
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await act(async () => {
+      await result.current.openEditEventKey("standup::2033-01-17T09:30:00");
+    });
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup from here",
+      });
+    });
+
+    await saveAndResolveScope(result, "thisAndFuture");
+
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceOverrides: null,
+        }),
+      );
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          start: "2033-01-17T09:30:00",
+          recurrenceOverrides: {
+            "2033-01-24T09:30:00": { title: "Standup (moved)", start: "2033-01-24T11:00:00" },
           },
         }),
       );

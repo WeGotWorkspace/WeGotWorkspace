@@ -14,6 +14,7 @@ import {
   formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
+  resolveSeriesRecurrenceOverrides,
   seriesRecurrenceRulesForSplit,
   shiftRecurrenceOverrides,
   splitOccurrenceKey,
@@ -401,6 +402,8 @@ describe("calendar-recurrence-scope", () => {
       ],
       recurrenceOverrides: {
         "2033-01-10T09:30:00": { title: "Past" },
+        // Explicit null so deep-merge servers drop the migrated key.
+        "2033-01-24T09:30:00": null,
       },
     });
   });
@@ -581,5 +584,130 @@ describe("calendar-recurrence-scope", () => {
     // No duplicate: one rendered instance at the moved time, none at the base slot.
     expect(combinedStarts.filter((start) => start === exceptionStart)).toHaveLength(1);
     expect(combinedStarts.filter((start) => start === exceptionRid)).toHaveLength(0);
+  });
+
+  it("this-and-future from stale bootstrap still dedupes exception slots via surface engine map", () => {
+    // Bug B: only-this updated the adapter, but React bootstrap still lacks overrides.
+    // Partition must read detached exceptions from the surface map or the master keeps
+    // the exception while the fork expands a regular twin beside it.
+    const masterStart = "2033-01-10T09:30:00";
+    const splitAt = "2033-01-17T09:30:00";
+    const exceptionRid = "2033-01-24T09:30:00";
+    const exceptionStart = "2033-01-24T11:00:00";
+    const seriesRules: NonNullable<JmapCalendarEvent["recurrenceRules"]> = [
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        byDay: [{ "@type": "NDay", day: "mo" }],
+      },
+    ];
+    const staleWire = {
+      id: "master",
+      "@type": "Event",
+      uid: "u-master",
+      title: "Team standup",
+      start: masterStart,
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: seriesRules,
+      // Intentionally missing — bootstrap lag after only-this.
+    } as JmapCalendarEvent;
+    const surfaceWire = {
+      ...staleWire,
+      recurrenceOverrides: {
+        [exceptionRid]: { title: "Standup (moved)", start: exceptionStart },
+      },
+    } as JmapCalendarEvent;
+    const surfaceEvents = calendarEventsToEngineMap([surfaceWire]);
+
+    const seriesOverrides = resolveSeriesRecurrenceOverrides(staleWire, "master", surfaceEvents);
+    expect(seriesOverrides).toEqual({
+      [exceptionRid]: { title: "Standup (moved)", start: exceptionStart },
+    });
+
+    const masterPatch = truncateMasterSeriesPatch(
+      seriesRules,
+      splitAt,
+      false,
+      masterStart,
+      seriesOverrides,
+    );
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-10", "09:30"),
+      title: "Standup from here",
+      endDate: "2033-01-10",
+      endTime: "10:00",
+      recurrencePreset: "custom",
+      customRecurrenceRules: seriesRules,
+    };
+    const forkDraft = forkSeriesDraftWithSplitOverrides(
+      formAnchoredToOccurrence(form, splitAt),
+      seriesRules,
+      staleWire,
+      splitAt,
+      seriesOverrides,
+    );
+
+    expect(masterPatch.recurrenceOverrides).toBeNull();
+    expect(forkDraft.recurrenceOverrides).toEqual({
+      [exceptionRid]: { title: "Standup (moved)", start: exceptionStart },
+    });
+
+    // Simulate post-split wire as the adapter would ingest after patch+create.
+    const masterWire = {
+      ...staleWire,
+      recurrenceRules: masterPatch.recurrenceRules ?? undefined,
+      recurrenceOverrides: undefined,
+    } as JmapCalendarEvent;
+    const forkWire = {
+      id: "fork",
+      "@type": "Event",
+      uid: "u-fork",
+      title: forkDraft.title,
+      start: forkDraft.start,
+      duration: forkDraft.duration,
+      calendarIds: { work: true },
+      recurrenceRules: forkDraft.recurrenceRules ?? undefined,
+      recurrenceOverrides: forkDraft.recurrenceOverrides ?? undefined,
+    } as JmapCalendarEvent;
+
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-01T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-03-01T00:00:00"),
+    };
+    const combined = expandEvents(calendarEventsToEngineMap([masterWire, forkWire]), range);
+    const combinedStarts = [...combined.values()].map((event) => event.data.start.toString());
+
+    expect(combinedStarts.filter((start) => start === exceptionStart)).toHaveLength(1);
+    expect(combinedStarts.filter((start) => start === exceptionRid)).toHaveLength(0);
+
+    // Contrast: partitioning from stale wire alone resurrects the twin.
+    const brokenFork = forkSeriesDraftWithSplitOverrides(
+      formAnchoredToOccurrence(form, splitAt),
+      seriesRules,
+      staleWire,
+      splitAt,
+    );
+    const brokenMaster = {
+      ...surfaceWire,
+      recurrenceRules: truncateMasterSeriesPatch(
+        seriesRules,
+        splitAt,
+        false,
+        masterStart,
+        staleWire.recurrenceOverrides,
+      ).recurrenceRules,
+      // Stale truncate omitted recurrenceOverrides → server/adapter keep the exception.
+    } as JmapCalendarEvent;
+    const brokenForkWire = {
+      ...forkWire,
+      recurrenceOverrides: brokenFork.recurrenceOverrides ?? undefined,
+    } as JmapCalendarEvent;
+    const broken = expandEvents(calendarEventsToEngineMap([brokenMaster, brokenForkWire]), range);
+    const brokenStarts = [...broken.values()].map((event) => event.data.start.toString());
+    expect(brokenStarts.filter((start) => start === exceptionStart).length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(brokenStarts.filter((start) => start === exceptionRid).length).toBeGreaterThanOrEqual(1);
   });
 });

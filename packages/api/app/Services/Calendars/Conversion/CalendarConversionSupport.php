@@ -378,7 +378,13 @@ final class CalendarConversionSupport
                 continue;
             }
             if (is_array($value) && isset($merged[$key]) && is_array($merged[$key]) && self::isAssociativeMap($value) && self::isAssociativeMap($merged[$key])) {
-                $merged[$key] = array_replace($merged[$key], $value);
+                // recurrenceOverrides is a full replacement (RFC 8620 property set), not a
+                // per-key merge — otherwise this-and-future splits cannot drop future exceptions.
+                if ($key === 'recurrenceOverrides') {
+                    $merged[$key] = $value;
+                } else {
+                    $merged[$key] = array_replace($merged[$key], $value);
+                }
             } else {
                 $merged[$key] = $value;
             }

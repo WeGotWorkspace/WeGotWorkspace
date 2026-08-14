@@ -48,8 +48,13 @@ export type CalendarEventDraft = {
   description?: string;
   /** JSCalendar recurrence; `null` clears an existing rule on patch. */
   recurrenceRules?: JSCalendarRecurrenceRule[] | null;
-  /** JSCalendar single-instance patches / exclusions keyed by LocalDateTime. */
-  recurrenceOverrides?: Record<string, JSCalendarPatchObject> | null;
+  /**
+   * JSCalendar single-instance patches / exclusions keyed by LocalDateTime.
+   * On patch: `null` clears the map; a key mapped to `null` removes that override
+   * (needed because some servers deep-merge override maps and cannot drop keys
+   * by omission).
+   */
+  recurrenceOverrides?: Record<string, JSCalendarPatchObject | null> | null;
 };
 
 export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">> & {

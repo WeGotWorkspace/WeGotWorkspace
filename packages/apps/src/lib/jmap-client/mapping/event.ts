@@ -95,6 +95,8 @@ export function jmapEventToInternalRows(
   const exclusionDates = new Set<string>();
   const overrideEntries: Array<[JSCalendarLocalDateTime, JSCalendarPatchObject]> = [];
   for (const [rid, patch] of Object.entries(jmapEvent.recurrenceOverrides ?? {})) {
+    // JMAP remove-nulls (and corrupt entries) must not become detached rows.
+    if (!patch || typeof patch !== "object") continue;
     if (isExcludedPatch(patch)) {
       exclusionDates.add(localToInternalRecurrenceId(rid, allDay));
     } else {
