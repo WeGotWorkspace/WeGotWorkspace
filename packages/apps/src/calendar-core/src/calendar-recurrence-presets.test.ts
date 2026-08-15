@@ -77,10 +77,16 @@ describe("recurrencePresetToRule / matchRecurrencePreset", () => {
     expect(matchRecurrencePreset([], start)).toBe("none");
   });
 
-  it("detects custom rules (count, multi-rule, odd byDay)", () => {
+  it("detects custom rules (multi-rule, odd byDay) but not until/count alone", () => {
     expect(
       matchRecurrencePreset([{ "@type": "RecurrenceRule", frequency: "daily", count: 5 }], start),
-    ).toBe("custom");
+    ).toBe("daily");
+    expect(
+      matchRecurrencePreset(
+        [{ "@type": "RecurrenceRule", frequency: "daily", until: "2033-02-01T00:00:00" }],
+        start,
+      ),
+    ).toBe("daily");
     expect(
       matchRecurrencePreset(
         [

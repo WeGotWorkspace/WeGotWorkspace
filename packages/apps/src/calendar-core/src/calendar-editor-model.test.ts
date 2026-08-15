@@ -8,6 +8,7 @@ import {
   emptyCalendarEventForm,
   formToDraft,
   formToPatch,
+  patchCalendarEventForm,
   resolveCreateIntentAllDay,
 } from "@/calendar-core/src/calendar-editor-model";
 
@@ -207,6 +208,197 @@ describe("calendarEventFormIsValid", () => {
   });
 });
 
+describe("patchCalendarEventForm", () => {
+  it("sets end to start + 30 minutes when leaving all-day", () => {
+    const form = calendarEventToForm(allDayEvent);
+    expect(form).toMatchObject({
+      allDay: true,
+      startDate: "2033-01-17",
+      startTime: "00:00",
+      endDate: "2033-01-18",
+    });
+    const next = patchCalendarEventForm(form, { allDay: false });
+    expect(next).toMatchObject({
+      allDay: false,
+      startDate: "2033-01-17",
+      startTime: "00:00",
+      endDate: "2033-01-17",
+      endTime: "00:30",
+    });
+  });
+
+  it("moves end to preserve duration when start time changes", () => {
+    const form = calendarEventToForm(timedEvent);
+    expect(form).toMatchObject({ startTime: "14:00", endTime: "15:30" });
+    const next = patchCalendarEventForm(form, { startTime: "16:00" });
+    expect(next).toMatchObject({
+      startDate: "2033-01-12",
+      startTime: "16:00",
+      endDate: "2033-01-12",
+      endTime: "17:30",
+    });
+  });
+
+  it("preserves overnight duration when start date moves", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12", "23:00"),
+      endDate: "2033-01-13",
+      endTime: "01:00",
+    };
+    const next = patchCalendarEventForm(form, { startDate: "2033-01-15" });
+    expect(next).toMatchObject({
+      startDate: "2033-01-15",
+      startTime: "23:00",
+      endDate: "2033-01-16",
+      endTime: "01:00",
+    });
+  });
+
+  it("coerces end equal to start up to start + 30 minutes", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12", "14:00"),
+      endDate: "2033-01-12",
+      endTime: "15:00",
+    };
+    expect(patchCalendarEventForm(form, { endTime: "14:00" })).toMatchObject({
+      startTime: "14:00",
+      endDate: "2033-01-12",
+      endTime: "14:30",
+    });
+  });
+
+  it("coerces end before start up to start + 30 minutes", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12", "14:00"),
+      endDate: "2033-01-12",
+      endTime: "15:00",
+    };
+    expect(patchCalendarEventForm(form, { endTime: "13:00" })).toMatchObject({
+      startTime: "14:00",
+      endTime: "14:30",
+    });
+  });
+
+  it("does not auto-shift all-day end when start date changes", () => {
+    const form = calendarEventToForm(allDayEvent);
+    const next = patchCalendarEventForm(form, { startDate: "2033-01-16" });
+    expect(next).toMatchObject({
+      allDay: true,
+      startDate: "2033-01-16",
+      endDate: "2033-01-18",
+    });
+  });
+});
+
+describe("recurrence ends (until / count)", () => {
+  it("loads until into form fields and round-trips through formToDraft", () => {
+    const event = {
+      ...timedEvent,
+      recurrenceRules: [
+        {
+          "@type": "RecurrenceRule" as const,
+          frequency: "daily" as const,
+          until: "2033-02-01T14:00:00",
+        },
+      ],
+    };
+    const form = calendarEventToForm(event);
+    expect(form).toMatchObject({
+      recurrencePreset: "daily",
+      recurrenceEnds: "until",
+      recurrenceUntilDate: "2033-02-01",
+    });
+    expect(formToDraft(form).recurrenceRules).toEqual([
+      {
+        "@type": "RecurrenceRule",
+        frequency: "daily",
+        until: "2033-02-01T14:00:00",
+      },
+    ]);
+  });
+
+  it("loads count into form fields and round-trips through formToDraft", () => {
+    const event = {
+      ...timedEvent,
+      recurrenceRules: [
+        {
+          "@type": "RecurrenceRule" as const,
+          frequency: "daily" as const,
+          count: 8,
+        },
+      ],
+    };
+    const form = calendarEventToForm(event);
+    expect(form).toMatchObject({
+      recurrencePreset: "daily",
+      recurrenceEnds: "count",
+      recurrenceCount: 8,
+    });
+    expect(formToDraft(form).recurrenceRules).toEqual([
+      { "@type": "RecurrenceRule", frequency: "daily", count: 8 },
+    ]);
+  });
+
+  it("emits until without count and count without until (mutual exclusion)", () => {
+    const base = {
+      ...emptyCalendarEventForm("work", "2033-01-12"),
+      title: "Series",
+      recurrencePreset: "daily" as const,
+    };
+    const withUntil = formToDraft({
+      ...base,
+      recurrenceEnds: "until",
+      recurrenceUntilDate: "2033-03-01",
+      recurrenceCount: 99,
+    });
+    expect(withUntil.recurrenceRules).toEqual([
+      {
+        "@type": "RecurrenceRule",
+        frequency: "daily",
+        until: "2033-03-01T10:00:00",
+      },
+    ]);
+    const withCount = formToDraft({
+      ...base,
+      recurrenceEnds: "count",
+      recurrenceCount: 5,
+      recurrenceUntilDate: "2033-03-01",
+    });
+    expect(withCount.recurrenceRules).toEqual([
+      { "@type": "RecurrenceRule", frequency: "daily", count: 5 },
+    ]);
+  });
+
+  it("clears until and count when Ends is Never", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12"),
+      title: "Open",
+      recurrencePreset: "daily" as const,
+      recurrenceEnds: "never" as const,
+      recurrenceUntilDate: "2033-03-01",
+      recurrenceCount: 5,
+    };
+    expect(formToDraft(form).recurrenceRules).toEqual([
+      { "@type": "RecurrenceRule", frequency: "daily" },
+    ]);
+  });
+
+  it("patches recurrenceRules when switching ends mode", () => {
+    const original = {
+      ...timedEvent,
+      recurrenceRules: [{ "@type": "RecurrenceRule" as const, frequency: "daily" as const }],
+    };
+    const form = {
+      ...calendarEventToForm(original),
+      recurrenceEnds: "count" as const,
+      recurrenceCount: 12,
+    };
+    expect(formToPatch(form, original).recurrenceRules).toEqual([
+      { "@type": "RecurrenceRule", frequency: "daily", count: 12 },
+    ]);
+  });
+});
+
 describe("formToPatch", () => {
   it("emits only changed fields", () => {
     const form = { ...calendarEventToForm(timedEvent), title: "Renamed" };
@@ -280,7 +472,14 @@ describe("formToPatch", () => {
     const custom = {
       ...timedEvent,
       recurrenceRules: [
-        { "@type": "RecurrenceRule" as const, frequency: "daily" as const, count: 3 },
+        {
+          "@type": "RecurrenceRule" as const,
+          frequency: "weekly" as const,
+          byDay: [
+            { "@type": "NDay" as const, day: "mo" as const },
+            { "@type": "NDay" as const, day: "we" as const },
+          ],
+        },
       ],
     };
     const form = calendarEventToForm(custom);

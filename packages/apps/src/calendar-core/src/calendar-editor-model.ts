@@ -21,6 +21,9 @@ import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
  * Deletes separately offer `allInstances` → destroy master.
  */
 
+/** Series end mode for editable recurrence presets. */
+export type RecurrenceEndsMode = "never" | "until" | "count";
+
 export type CalendarEventFormValue = {
   title: string;
   calendarId: string;
@@ -40,6 +43,15 @@ export type CalendarEventFormValue = {
   description: string;
   recurrencePreset: RecurrencePresetId;
   /**
+   * How a repeating series ends. Ignored when preset is `"none"` or `"custom"`.
+   * `"never"` omits both `until` and `count` on the wire.
+   */
+  recurrenceEnds: RecurrenceEndsMode;
+  /** YYYY-MM-DD when `recurrenceEnds === "until"`. */
+  recurrenceUntilDate: string;
+  /** Occurrence count when `recurrenceEnds === "count"`. */
+  recurrenceCount: number;
+  /**
    * Preserved when `recurrencePreset` is `"custom"` so save does not wipe an
    * unmatched rule. Cleared when the user picks a predefined preset.
    */
@@ -48,6 +60,19 @@ export type CalendarEventFormValue = {
 
 const DEFAULT_START_TIME = "10:00";
 const DEFAULT_DURATION_MINUTES = 60;
+/** Minimum timed span when coercing end ≤ start or leaving all-day. */
+export const MIN_TIMED_DURATION_MINUTES = 30;
+const DEFAULT_RECURRENCE_COUNT = 10;
+
+function defaultRecurrenceEndsFields(
+  startDateISO: string,
+): Pick<CalendarEventFormValue, "recurrenceEnds" | "recurrenceUntilDate" | "recurrenceCount"> {
+  return {
+    recurrenceEnds: "never",
+    recurrenceUntilDate: startDateISO,
+    recurrenceCount: DEFAULT_RECURRENCE_COUNT,
+  };
+}
 
 export function emptyCalendarEventForm(
   calendarId: string,
@@ -68,6 +93,7 @@ export function emptyCalendarEventForm(
     location: "",
     description: "",
     recurrencePreset: "none",
+    ...defaultRecurrenceEndsFields(dateISO),
   };
 }
 
@@ -114,11 +140,12 @@ export function createIntentToForm(
 ): CalendarEventFormValue {
   const allDay = resolveCreateIntentAllDay(intent);
   const formEnd = allDay ? intent.end.subtract({ days: 1 }) : intent.end;
+  const startDate = intent.start.toPlainDate().toString();
   return {
     title: intent.title?.trim() ?? "",
     calendarId,
     allDay,
-    startDate: intent.start.toPlainDate().toString(),
+    startDate,
     startTime: intent.start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
@@ -126,6 +153,7 @@ export function createIntentToForm(
     location: "",
     description: "",
     recurrencePreset: "none",
+    ...defaultRecurrenceEndsFields(startDate),
   };
 }
 
@@ -135,15 +163,63 @@ function primaryLocationName(event: JmapCalendarEvent): string {
   return key ? (locations[key]?.name ?? "") : "";
 }
 
+function untilDateFromWire(until: string | undefined): string | null {
+  if (!until) return null;
+  const datePart = until.slice(0, 10);
+  try {
+    Temporal.PlainDate.from(datePart);
+    return datePart;
+  } catch {
+    return null;
+  }
+}
+
+/** LocalDateTime `until` for the selected end date (inclusive last occurrence day). */
+export function formRecurrenceUntilWire(form: CalendarEventFormValue): string {
+  const date = form.recurrenceUntilDate;
+  if (form.allDay) return `${date}T00:00:00`;
+  return `${date}T${form.startTime}:00`;
+}
+
 function recurrenceFieldsFromRules(
   rules: JSCalendarRecurrenceRule[] | null | undefined,
   startDateISO: string,
-): Pick<CalendarEventFormValue, "recurrencePreset" | "customRecurrenceRules"> {
+): Pick<
+  CalendarEventFormValue,
+  | "recurrencePreset"
+  | "customRecurrenceRules"
+  | "recurrenceEnds"
+  | "recurrenceUntilDate"
+  | "recurrenceCount"
+> {
   const preset = matchRecurrencePreset(rules, startDateISO);
+  const defaults = defaultRecurrenceEndsFields(startDateISO);
   if (preset === "custom" && rules?.length) {
-    return { recurrencePreset: "custom", customRecurrenceRules: rules };
+    return {
+      recurrencePreset: "custom",
+      customRecurrenceRules: rules,
+      ...defaults,
+    };
   }
-  return { recurrencePreset: preset };
+  const rule = rules?.[0];
+  const untilDate = untilDateFromWire(rule?.until);
+  if (untilDate) {
+    return {
+      recurrencePreset: preset,
+      recurrenceEnds: "until",
+      recurrenceUntilDate: untilDate,
+      recurrenceCount: defaults.recurrenceCount,
+    };
+  }
+  if (rule?.count != null && rule.count > 0) {
+    return {
+      recurrencePreset: preset,
+      recurrenceEnds: "count",
+      recurrenceUntilDate: defaults.recurrenceUntilDate,
+      recurrenceCount: rule.count,
+    };
+  }
+  return { recurrencePreset: preset, ...defaults };
 }
 
 /** JSCalendar rules to persist for the current form recurrence selection. */
@@ -155,7 +231,14 @@ export function formRecurrenceRules(
   }
   if (form.recurrencePreset === "none") return null;
   const rule = recurrencePresetToRule(form.recurrencePreset, form.startDate);
-  return rule ? [rule] : null;
+  if (!rule) return null;
+  if (form.recurrenceEnds === "until" && form.recurrenceUntilDate) {
+    return [{ ...rule, until: formRecurrenceUntilWire(form) }];
+  }
+  if (form.recurrenceEnds === "count" && form.recurrenceCount >= 1) {
+    return [{ ...rule, count: Math.floor(form.recurrenceCount) }];
+  }
+  return [rule];
 }
 
 export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventFormValue {
@@ -195,9 +278,142 @@ function formEndExclusive(form: CalendarEventFormValue): Temporal.PlainDateTime 
   return Temporal.PlainDateTime.from(`${form.endDate}T${form.endTime}:00`);
 }
 
+function formatFormDate(dateTime: Temporal.PlainDateTime): string {
+  return dateTime.toPlainDate().toString();
+}
+
+function formatFormTime(dateTime: Temporal.PlainDateTime): string {
+  return dateTime.toPlainTime().toString({ smallestUnit: "minute" });
+}
+
+function withTimedEnd(
+  form: CalendarEventFormValue,
+  end: Temporal.PlainDateTime,
+): CalendarEventFormValue {
+  return {
+    ...form,
+    endDate: formatFormDate(end),
+    endTime: formatFormTime(end),
+  };
+}
+
+/**
+ * Timed events: if end ≤ start, bump end to start + {@link MIN_TIMED_DURATION_MINUTES}.
+ * All-day forms are unchanged.
+ */
+export function ensureTimedEndAfterStart(form: CalendarEventFormValue): CalendarEventFormValue {
+  if (form.allDay) return form;
+  try {
+    const start = formStart(form);
+    const end = formEndExclusive(form);
+    if (Temporal.PlainDateTime.compare(end, start) > 0) return form;
+    return withTimedEnd(form, start.add({ minutes: MIN_TIMED_DURATION_MINUTES }));
+  } catch {
+    return form;
+  }
+}
+
+function timedDurationOrMin(form: CalendarEventFormValue): Temporal.Duration {
+  try {
+    const start = formStart(form);
+    const end = formEndExclusive(form);
+    const minutes = start.until(end).total({ unit: "minutes" });
+    if (minutes > 0) {
+      return Temporal.Duration.from({ minutes: Math.round(minutes) });
+    }
+  } catch {
+    // fall through
+  }
+  return Temporal.Duration.from({ minutes: MIN_TIMED_DURATION_MINUTES });
+}
+
+/**
+ * Apply a partial form update with editor UX rules:
+ * - all-day → timed: end = start + 30 minutes
+ * - timed start change: move (preserve prior duration)
+ * - timed end ≤ start: coerce end to start + 30 minutes
+ * - recurrence ends mode: default until date / count when switching modes
+ * All-day date ranges keep existing date semantics (no auto-shift).
+ */
+export function patchCalendarEventForm(
+  form: CalendarEventFormValue,
+  patch: Partial<CalendarEventFormValue>,
+): CalendarEventFormValue {
+  const prevAllDay = form.allDay;
+  let next: CalendarEventFormValue = { ...form, ...patch };
+  const becameTimed = prevAllDay && next.allDay === false;
+  const startMoved =
+    !next.allDay &&
+    (Object.prototype.hasOwnProperty.call(patch, "startDate") ||
+      Object.prototype.hasOwnProperty.call(patch, "startTime"));
+  const endEdited =
+    !next.allDay &&
+    (Object.prototype.hasOwnProperty.call(patch, "endDate") ||
+      Object.prototype.hasOwnProperty.call(patch, "endTime"));
+
+  if (Object.prototype.hasOwnProperty.call(patch, "recurrenceEnds")) {
+    if (next.recurrenceEnds === "until" && !next.recurrenceUntilDate) {
+      next = { ...next, recurrenceUntilDate: next.startDate };
+    }
+    if (
+      next.recurrenceEnds === "count" &&
+      (!(next.recurrenceCount >= 1) || !Number.isFinite(next.recurrenceCount))
+    ) {
+      next = { ...next, recurrenceCount: DEFAULT_RECURRENCE_COUNT };
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "recurrencePreset")) {
+    if (next.recurrencePreset === "none" || next.recurrencePreset === "custom") {
+      next = { ...next, ...defaultRecurrenceEndsFields(next.startDate) };
+    } else if (form.recurrencePreset === "none" || form.recurrencePreset === "custom") {
+      // Entering an editable preset from none/custom → open-ended by default.
+      next = { ...next, recurrenceEnds: "never" };
+    }
+  }
+
+  if (becameTimed) {
+    try {
+      const start = formStart({ ...next, allDay: false });
+      return withTimedEnd(
+        { ...next, allDay: false },
+        start.add({ minutes: MIN_TIMED_DURATION_MINUTES }),
+      );
+    } catch {
+      return { ...next, allDay: false };
+    }
+  }
+
+  if (startMoved) {
+    const duration = timedDurationOrMin({ ...form, allDay: false });
+    try {
+      const start = formStart(next);
+      return ensureTimedEndAfterStart(withTimedEnd(next, start.add(duration)));
+    } catch {
+      return ensureTimedEndAfterStart(next);
+    }
+  }
+
+  if (endEdited) {
+    return ensureTimedEndAfterStart(next);
+  }
+
+  return next;
+}
+
 export function calendarEventFormIsValid(form: CalendarEventFormValue): boolean {
   if (!form.title.trim() || !form.calendarId || !form.startDate || !form.endDate) return false;
   if (!form.allDay && (!form.startTime || !form.endTime)) return false;
+  const repeating = form.recurrencePreset !== "none" && form.recurrencePreset !== "custom";
+  if (repeating) {
+    if (form.recurrenceEnds === "until" && !form.recurrenceUntilDate) return false;
+    if (
+      form.recurrenceEnds === "count" &&
+      (!Number.isFinite(form.recurrenceCount) || form.recurrenceCount < 1)
+    ) {
+      return false;
+    }
+  }
   try {
     return Temporal.PlainDateTime.compare(formEndExclusive(form), formStart(form)) > 0;
   } catch {

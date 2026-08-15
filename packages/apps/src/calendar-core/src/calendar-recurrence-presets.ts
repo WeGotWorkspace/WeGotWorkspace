@@ -110,6 +110,14 @@ function intervalOf(ruleValue: JSCalendarRecurrenceRule): number {
   return ruleValue.interval === undefined || ruleValue.interval === 1 ? 1 : ruleValue.interval;
 }
 
+/** Drop series bounds so preset matching can ignore editable until/count. */
+export function recurrenceRuleWithoutBounds(
+  rule: JSCalendarRecurrenceRule,
+): JSCalendarRecurrenceRule {
+  const { count: _count, until: _until, ...rest } = rule;
+  return rest;
+}
+
 /** Structural equality for the subset of fields our presets emit (and custom round-trips). */
 export function recurrenceRulesEqual(
   a: JSCalendarRecurrenceRule | undefined,
@@ -133,6 +141,14 @@ export function recurrenceRulesEqual(
   return true;
 }
 
+/** Preset shape equality — ignores until/count (edited separately in the dialog). */
+export function recurrenceRuleMatchesPresetShape(
+  wire: JSCalendarRecurrenceRule,
+  expected: JSCalendarRecurrenceRule,
+): boolean {
+  return recurrenceRulesEqual(recurrenceRuleWithoutBounds(wire), expected);
+}
+
 const EDITABLE_PRESETS: EditableRecurrencePresetId[] = [
   "none",
   "daily",
@@ -146,7 +162,7 @@ const EDITABLE_PRESETS: EditableRecurrencePresetId[] = [
 
 /**
  * Match a wire rule (or absence) to a preset for the given start date.
- * Unmatched rules → `"custom"`.
+ * Unmatched rules → `"custom"`. until/count alone do not force custom.
  */
 export function matchRecurrencePreset(
   rules: JSCalendarRecurrenceRule[] | null | undefined,
@@ -155,33 +171,30 @@ export function matchRecurrencePreset(
   if (!rules?.length) return "none";
   if (rules.length !== 1) return "custom";
   const wire = rules[0]!;
+  const shape = recurrenceRuleWithoutBounds(wire);
   for (const preset of EDITABLE_PRESETS) {
     if (preset === "none") continue;
     const expected = recurrencePresetToRule(preset, startDateISO);
-    if (expected && recurrenceRulesEqual(wire, expected)) return preset;
+    if (expected && recurrenceRuleMatchesPresetShape(wire, expected)) return preset;
   }
   // Bare weekly/yearly (no by*) still means "on the start date's weekday / month-day".
   if (
-    wire.frequency === "weekly" &&
-    intervalOf(wire) === 1 &&
-    !wire.byDay?.length &&
-    !wire.byMonthDay?.length &&
-    !wire.byMonth?.length &&
-    wire.count === undefined &&
-    wire.until === undefined &&
-    !wire.bySetPosition?.length
+    shape.frequency === "weekly" &&
+    intervalOf(shape) === 1 &&
+    !shape.byDay?.length &&
+    !shape.byMonthDay?.length &&
+    !shape.byMonth?.length &&
+    !shape.bySetPosition?.length
   ) {
     return "weekly";
   }
   if (
-    wire.frequency === "yearly" &&
-    intervalOf(wire) === 1 &&
-    !wire.byDay?.length &&
-    !wire.byMonthDay?.length &&
-    !wire.byMonth?.length &&
-    wire.count === undefined &&
-    wire.until === undefined &&
-    !wire.bySetPosition?.length
+    shape.frequency === "yearly" &&
+    intervalOf(shape) === 1 &&
+    !shape.byDay?.length &&
+    !shape.byMonthDay?.length &&
+    !shape.byMonth?.length &&
+    !shape.bySetPosition?.length
   ) {
     return "yearly";
   }
