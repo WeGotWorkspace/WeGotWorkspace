@@ -1,7 +1,10 @@
 {
   "name": "@wgw/apps",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css",
+    "./src/lib/calendar-elements/**/*.ts"
+  ],
   "type": "module",
   "scripts": {
     "dev:app": "vite dev",
