@@ -3,14 +3,17 @@
   display: flex;
   flex-direction: column;
   min-height: 280px;
-  /* Grid-line tokens for <day-overflow-popover>: its cell border reads
-     --_lc-grid-line-width/color with no fallback. In the grid stack these come from
-     CalendarGridView's host; here the popover lives in <time-line>'s shadow tree, so the
-     tokens must be declared on this host (custom properties inherit through the shadow
-     boundary). Values mirror CalendarGridView.css exactly, including the color-mix upgrade
-     below. */
+  /* Grid-line / day-label tokens for <time-line> chrome and <day-overflow-popover>:
+     those trees read --_lc-* with no fallback. In the old grid stack they came from
+     CalendarGridView's host; here they must be declared on this host (custom properties
+     inherit through the shadow boundary). Recipe mirrors CalendarGridView.css, with a
+     WCAG-safe outside-month ink (was 42% / opacity 0.45 — ~2:1 on white; ~55% keeps a
+     clear mute near ~4.5:1 AA for 12px day numbers in month and year mini-months). */
   --_lc-grid-line-width: 1px;
   --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
+  --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
+  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 55%), rgb(255 255 255 / 55%));
+  --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
 }
 
 @supports (color: color-mix(in srgb, black, white)) {
@@ -20,6 +23,21 @@
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 14%,
       var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+    --_lc-grid-line-day-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 72%,
+      transparent
+    );
+    --_lc-outside-month-day-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 55%,
+      transparent
+    );
+    --_lc-grid-ghost-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 10%,
+      transparent
     );
   }
 }
@@ -450,9 +468,9 @@ time-line::part(day-header) {
 }
 
 time-line::part(day-header-outside-month) {
-  /* WGW a11y: was 0.45 — compounded with the 72% ink to ~2.07:1 on white. 0.8 keeps the
-     outside-month dimming cue near ~4.9:1 (WCAG AA 4.5:1 for the 12px day numbers). */
-  opacity: 0.85;
+  /* Color (not opacity): same cue as CalendarGridView `.outside-month-day-label`, and keeps
+     compact year event dots at full strength. Token is WCAG-tuned on :host above. */
+  color: var(--_lc-outside-month-day-color);
 }
 
 /* The templates only set the weekend part on days inside the anchor month, encoding the old
