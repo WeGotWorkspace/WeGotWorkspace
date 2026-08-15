@@ -324,16 +324,10 @@ describe("calendar-recurrence-scope", () => {
       recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly" }],
     } as JmapCalendarEvent;
     const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("cal-work", "2026-03-11", "11:00"),
       title: "Standup (moved)",
-      calendarId: "cal-work",
-      allDay: false,
-      startDate: "2026-03-11",
-      startTime: "11:00",
       endDate: "2026-03-11",
       endTime: "11:30",
-      timeZone: null,
-      location: "",
-      description: "",
       recurrencePreset: "weekly",
     };
     expect(occurrenceRecurrenceOverrides(form, original, "20260311T090000")).toEqual({

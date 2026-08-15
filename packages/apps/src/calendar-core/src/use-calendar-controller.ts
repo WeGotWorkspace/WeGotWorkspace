@@ -851,6 +851,9 @@ export function useCalendarController({
             ? original.description
             : (engineForm?.description ?? ""),
         recurrencePreset: seriesRules?.length ? "custom" : (engineForm?.recurrencePreset ?? "none"),
+        recurrenceEnds: engineForm?.recurrenceEnds ?? "never",
+        recurrenceUntilDate: engineForm?.recurrenceUntilDate ?? startDate,
+        recurrenceCount: engineForm?.recurrenceCount ?? 10,
         ...(seriesRules?.length ? { customRecurrenceRules: seriesRules } : {}),
       };
       try {
