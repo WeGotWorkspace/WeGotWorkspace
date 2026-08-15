@@ -6,6 +6,7 @@ import {
   alignedWeekStart,
   compareDaySnappedRenderOrder,
   currentTimeMarkersAcrossDays,
+  composedTimedScrollTop,
   fromTimelineRange,
   fromTimelineValue,
   resolveTimelineEventFilter,
@@ -252,6 +253,67 @@ describe("resolveVisibleHoursZoom (grid visibleHours -> hour-height zoom)", () =
     expect(hourHeightPx).toBe(80);
     expect(24 * hourHeightPx).toBe(1920);
     expect((zoom?.startHour ?? 0) * hourHeightPx).toBe(640);
+  });
+});
+
+describe("composedTimedScrollTop (day/week auto-scroll)", () => {
+  const timedHeightPx = 1920; // 80px/hour × 24
+  const timedViewportPx = 640; // 8 visible hours
+
+  it("centers the now marker when today is in range", () => {
+    // Noon → 960px down the timed grid; center in 640px viewport → scroll 960 - 320 = 640
+    expect(
+      composedTimedScrollTop({
+        timedHeightPx,
+        timedViewportPx,
+        nowDayFraction: 0.5,
+        fallbackStartHour: 8,
+      }),
+    ).toBe(640);
+  });
+
+  it("includes the timed gap above the grid when centering now", () => {
+    expect(
+      composedTimedScrollTop({
+        timedHeightPx,
+        timedViewportPx,
+        timedGapPx: 8,
+        nowDayFraction: 0.5,
+        fallbackStartHour: 8,
+      }),
+    ).toBe(648);
+  });
+
+  it("falls back to visibleHoursStart when today is out of range", () => {
+    expect(
+      composedTimedScrollTop({
+        timedHeightPx,
+        timedViewportPx,
+        nowDayFraction: null,
+        fallbackStartHour: 8,
+      }),
+    ).toBe(640);
+  });
+
+  it("clamps to [0, maxScrollTop] near day edges", () => {
+    expect(
+      composedTimedScrollTop({
+        timedHeightPx,
+        timedViewportPx,
+        nowDayFraction: 0,
+        fallbackStartHour: 8,
+        maxScrollTop: 1280,
+      }),
+    ).toBe(0);
+    expect(
+      composedTimedScrollTop({
+        timedHeightPx,
+        timedViewportPx,
+        nowDayFraction: 1,
+        fallbackStartHour: 8,
+        maxScrollTop: 1280,
+      }),
+    ).toBe(1280);
   });
 });
 

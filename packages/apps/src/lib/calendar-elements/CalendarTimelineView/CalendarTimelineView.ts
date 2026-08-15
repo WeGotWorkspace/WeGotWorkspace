@@ -39,6 +39,7 @@ import {
   alignedMonthGridStart,
   alignedWeekStart,
   compareDaySnappedRenderOrder,
+  composedTimedScrollTop,
   currentTimeMarkersAcrossDays,
   fromTimelineRange,
   fromTimelineValue,
@@ -179,7 +180,11 @@ export class CalendarTimelineView extends CalendarViewBase {
   #activeGestureLocks = new Set<string>();
   /** Active day column for the narrow-week swipe pager (grid-week `currentDayIndex` parity). */
   #currentDayIndex = 0;
-  /** Apply the `visibleHoursStart` scroll offset on the next layout pass of the composed view. */
+  /**
+   * Apply the initial timed-grid scroll on the next layout pass (once per mount / view change,
+   * not on the 30s now-indicator tick). Centers “now” when today is in range; otherwise
+   * `visibleHoursStart`.
+   */
   #pendingInitialScroll = true;
   /** Watches the composed layout + all-day shell to derive the timed viewport height. */
   #composedResizeObserver: ResizeObserver | null = null;
@@ -255,6 +260,18 @@ export class CalendarTimelineView extends CalendarViewBase {
       changedProperties.has("mode") ||
       changedProperties.has("visibleHours") ||
       changedProperties.has("visibleHoursStart")
+    ) {
+      this.#pendingInitialScroll = true;
+    }
+    // Date-window moves: re-center on now only when today is in range (e.g. goToday). Other
+    // weeks keep the user’s scroll so navigation does not fight them.
+    if (
+      this.#composedVertical &&
+      this.#nowIndicatorDayFraction != null &&
+      (changedProperties.has("startDate") ||
+        changedProperties.has("numDays") ||
+        changedProperties.has("daysPerWeek") ||
+        changedProperties.has("weekStart"))
     ) {
       this.#pendingInitialScroll = true;
     }
@@ -1586,7 +1603,13 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
   }
 
-  /** Scrolls the timed area so `visibleHoursStart` is the first visible hour (initial view). */
+  /**
+   * One-shot scroll for the composed timed grid: center the current-time marker when today is
+   * in the visible range; otherwise align to `visibleHoursStart`. Instant `scrollTop` (no
+   * smooth scroll) so reduced-motion preferences are respected. Does not re-run on the now
+   * tick — only when `#pendingInitialScroll` is set (mount / view / zoom / today-in-range
+   * date change).
+   */
   #applyInitialScrollPosition() {
     if (!this.#composedVertical || !this.#pendingInitialScroll) return;
     const layout = this.renderRoot.querySelector<HTMLElement>(".timeline-layout--composed");
@@ -1607,8 +1630,18 @@ export class CalendarTimelineView extends CalendarViewBase {
     layout.style.setProperty("--_lc-timeline-all-day-height", `${shellHeightPx}px`);
     const timedHeightPx = timed.getBoundingClientRect().height;
     if (!(timedHeightPx > 0)) return;
-    const startHour = this.#resolvedVisibleHours?.startHour ?? 0;
-    layout.scrollTop = (timedHeightPx * startHour) / 24;
+    const timedGapPx =
+      Number.parseFloat(getComputedStyle(layout).getPropertyValue("--_lc-timeline-timed-gap")) || 0;
+    const timedViewportPx = Math.max(0, layout.clientHeight - shellHeightPx - timedGapPx);
+    const maxScrollTop = Math.max(0, layout.scrollHeight - layout.clientHeight);
+    layout.scrollTop = composedTimedScrollTop({
+      timedHeightPx,
+      timedViewportPx,
+      timedGapPx,
+      nowDayFraction: this.#nowIndicatorDayFraction,
+      fallbackStartHour: this.#resolvedVisibleHours?.startHour ?? 0,
+      maxScrollTop,
+    });
     this.#pendingInitialScroll = false;
   }
 

@@ -241,6 +241,47 @@ export function resolveVisibleHoursZoom(
 }
 
 /**
+ * Vertical scroll offset for the composed day/week timed grid.
+ *
+ * When `nowDayFraction` is set (today is in the visible range, 0–1 through the day), centers
+ * the current-time marker in the timed viewport below the sticky all-day shell. Otherwise
+ * scrolls so `fallbackStartHour` is the first visible hour (`visibleHoursStart` parity).
+ * Instant assignment (no smooth scroll) — fine for `prefers-reduced-motion`.
+ */
+export function composedTimedScrollTop(options: {
+  timedHeightPx: number;
+  timedViewportPx: number;
+  timedGapPx?: number;
+  nowDayFraction: number | null;
+  fallbackStartHour: number;
+  maxScrollTop?: number;
+}): number {
+  const timedHeightPx = Math.max(0, Number(options.timedHeightPx) || 0);
+  const timedViewportPx = Math.max(0, Number(options.timedViewportPx) || 0);
+  const timedGapPx = Math.max(0, Number(options.timedGapPx) || 0);
+  const fallbackStartHour = Number(options.fallbackStartHour);
+  const startHour = Number.isFinite(fallbackStartHour)
+    ? Math.max(0, Math.min(24, fallbackStartHour))
+    : 0;
+
+  let scrollTop: number;
+  const fraction = options.nowDayFraction;
+  if (fraction != null && Number.isFinite(fraction)) {
+    const clampedFraction = Math.max(0, Math.min(1, fraction));
+    scrollTop = timedGapPx + timedHeightPx * clampedFraction - timedViewportPx / 2;
+  } else {
+    scrollTop = (timedHeightPx * startHour) / 24;
+  }
+
+  if (!Number.isFinite(scrollTop)) return 0;
+  const maxScroll =
+    options.maxScrollTop != null && Number.isFinite(options.maxScrollTop)
+      ? Math.max(0, options.maxScrollTop)
+      : Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.min(maxScroll, scrollTop));
+}
+
+/**
  * Maps the grid views' `visibleHours` concept (+ optional start hour) onto TimeLine's per-cell
  * axis window. Returns the full range (`start: 0, end: null`) when `visibleHours` is unset or
  * covers the whole day. The day/week calendar composition no longer uses this (it zooms via
