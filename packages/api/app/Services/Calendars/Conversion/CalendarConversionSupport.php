@@ -134,6 +134,75 @@ final class CalendarConversionSupport
     }
 
     /**
+     * ISO 8601 duration from two JMAP local/UTC date-times (or all-day dates).
+     * Used so DTEND-based CalDAV events also expose RFC 8984 `duration`.
+     */
+    public static function durationBetweenJmapDateTimes(string $start, string $end): ?string
+    {
+        $start = trim($start);
+        $end = trim($end);
+        if ($start === '' || $end === '') {
+            return null;
+        }
+
+        try {
+            $startDt = new \DateTimeImmutable(self::dateTimeImmutableInput($start));
+            $endDt = new \DateTimeImmutable(self::dateTimeImmutableInput($end));
+        } catch (\Exception) {
+            return null;
+        }
+
+        if ($endDt <= $startDt) {
+            return null;
+        }
+
+        $interval = $startDt->diff($endDt);
+        if ($interval->invert === 1) {
+            return null;
+        }
+
+        $parts = 'P';
+        if ($interval->y > 0) {
+            $parts .= $interval->y.'Y';
+        }
+        if ($interval->m > 0) {
+            $parts .= $interval->m.'M';
+        }
+        if ($interval->d > 0) {
+            $parts .= $interval->d.'D';
+        }
+
+        $hasTime = $interval->h > 0 || $interval->i > 0 || $interval->s > 0;
+        if ($hasTime) {
+            $parts .= 'T';
+            if ($interval->h > 0) {
+                $parts .= $interval->h.'H';
+            }
+            if ($interval->i > 0) {
+                $parts .= $interval->i.'M';
+            }
+            if ($interval->s > 0) {
+                $parts .= $interval->s.'S';
+            }
+        }
+
+        return $parts === 'P' ? null : $parts;
+    }
+
+    private static function dateTimeImmutableInput(string $value): string
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+            return $value.'T00:00:00';
+        }
+
+        if (str_ends_with($value, 'Z')) {
+            return substr($value, 0, -1).'+00:00';
+        }
+
+        return $value;
+    }
+
+    /**
      * @param  array<string, mixed>  $event
      */
     public static function writeDateTimeProperty(Component $component, string $name, mixed $value, bool $showWithoutTime, ?string $timeZone): void

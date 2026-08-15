@@ -66,6 +66,11 @@ export type JSCalendarEvent = {
   start: JSCalendarLocalDateTime;
   timeZone?: string | null;
   duration?: JSCalendarDuration;
+  /**
+   * Non-RFC convenience some servers emit from iCalendar DTEND (e.g. Apple CalDAV).
+   * Prefer `duration`; clients should derive duration from start→end when needed.
+   */
+  end?: JSCalendarLocalDateTime;
   showWithoutTime?: boolean;
   color?: string;
   status?: "confirmed" | "cancelled" | "tentative";

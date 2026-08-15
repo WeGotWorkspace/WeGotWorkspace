@@ -56,6 +56,49 @@ describe("jmapEventToInternalRows", () => {
     expect(exception.event.data.summary).toBe("Standup (moved)");
     expect(exception.event.data.start.toString()).toBe("2026-03-11T11:00:00");
   });
+
+  it("derives duration from end when CalDAV/Apple-style payload omits duration", () => {
+    // Mirrors Synct ie: DTSTART/DTEND → JMAP end without duration (Apple PRODID).
+    const appleStyle: JmapCalendarEvent = {
+      "@type": "Event",
+      id: "synct-ie-a85ff58a",
+      uid: "urn:uuid:880a4b2e-2a2e-4ea3-ac57-935b80844291",
+      title: "Synct ie",
+      start: "2026-08-10T10:00:00",
+      end: "2026-08-10T14:00:00",
+      calendarIds: { default: true },
+      recurrenceRules: [
+        {
+          "@type": "RecurrenceRule",
+          frequency: "weekly",
+          byDay: [
+            { "@type": "NDay", day: "mo" },
+            { "@type": "NDay", day: "tu" },
+            { "@type": "NDay", day: "we" },
+            { "@type": "NDay", day: "th" },
+            { "@type": "NDay", day: "fr" },
+          ],
+        },
+      ],
+      recurrenceOverrides: {
+        "2026-08-11T10:00:00": { excluded: true },
+      },
+    };
+    const [row] = jmapEventToInternalRows(appleStyle);
+    expect(row.event.data.duration?.toString()).toBe("PT4H");
+    expect(row.event.data.start.toString()).toBe("2026-08-10T10:00:00");
+    expect(row.event.data.exclusionDates).toEqual(new Set(["20260811T100000"]));
+  });
+
+  it("prefers explicit duration over end when both are present", () => {
+    const both: JmapCalendarEvent = {
+      ...timedEvent,
+      duration: "PT45M",
+      end: "2026-03-10T18:00:00",
+    };
+    const [row] = jmapEventToInternalRows(both);
+    expect(row.event.data.duration?.toString()).toBe("PT45M");
+  });
 });
 
 describe("internalGroupToJmapEvent", () => {

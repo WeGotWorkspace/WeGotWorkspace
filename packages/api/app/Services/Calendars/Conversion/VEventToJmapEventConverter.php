@@ -96,6 +96,15 @@ final class VEventToJmapEventConverter
             $event['end'] = $end['value'];
             $showWithoutTime = $showWithoutTime || $end['showWithoutTime'];
             $timeZone ??= $end['timeZone'];
+            if (isset($event['start']) && is_string($event['start'])) {
+                $duration = CalendarConversionSupport::durationBetweenJmapDateTimes(
+                    $event['start'],
+                    $end['value'],
+                );
+                if ($duration !== null) {
+                    $event['duration'] = $duration;
+                }
+            }
         } elseif (isset($vevent->DURATION)) {
             $event['duration'] = trim((string) $vevent->DURATION->getValue());
         }

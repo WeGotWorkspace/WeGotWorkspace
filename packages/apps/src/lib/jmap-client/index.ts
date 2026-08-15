@@ -36,6 +36,7 @@ export { jmapCalendarsToMap, jmapCalendarToInternal } from "./mapping/calendar.j
 export type { InternalEventGroup, InternalEventRow } from "./mapping/event.js";
 export {
   collectInternalGroup,
+  durationFromJmapEvent,
   internalGroupToJmapEvent,
   jmapEventToInternalRows,
 } from "./mapping/event.js";

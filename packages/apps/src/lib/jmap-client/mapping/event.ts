@@ -67,6 +67,61 @@ function resolveDuration(data: CalendarEventData): Temporal.Duration {
   return data.start.until(end, { largestUnit: "days" });
 }
 
+/**
+ * JSCalendar Event uses `duration` (RFC 8984). Our API also emits `end` when
+ * CalDAV ICS has DTEND (Apple Calendar, etc.). Prefer explicit duration; else
+ * derive from start→end so timed events are not mapped as PT0S (invisible).
+ */
+export function durationFromJmapEvent(
+  jmapEvent: Pick<JSCalendarEvent, "start" | "duration" | "showWithoutTime"> & {
+    end?: unknown;
+  },
+): Temporal.Duration {
+  if (typeof jmapEvent.duration === "string" && jmapEvent.duration.trim() !== "") {
+    return jsToDuration(jmapEvent.duration);
+  }
+  const endRaw = jmapEvent.end;
+  if (typeof endRaw === "string" && endRaw.trim() !== "") {
+    try {
+      const start = localToPlainDateTime(jmapEvent.start);
+      const end = localToPlainDateTime(endRaw);
+      const derived = start.until(end, { largestUnit: "days" });
+      if (derived.total({ unit: "seconds" }) > 0) {
+        return derived;
+      }
+    } catch {
+      // fall through to default
+    }
+  }
+  return jsToDuration(jmapEvent.showWithoutTime === true ? "P1D" : "PT0S");
+}
+
+function durationFromPatch(
+  patch: JSCalendarPatchObject,
+  occurrenceStart: Temporal.PlainDateTime,
+  fallback: Temporal.Duration,
+): Temporal.Duration {
+  if (typeof patch.duration === "string" && patch.duration.trim() !== "") {
+    return jsToDuration(patch.duration);
+  }
+  if (typeof patch.end === "string" && patch.end.trim() !== "") {
+    try {
+      const end = localToPlainDateTime(patch.end);
+      const start =
+        typeof patch.start === "string" && patch.start.trim() !== ""
+          ? localToPlainDateTime(patch.start)
+          : occurrenceStart;
+      const derived = start.until(end, { largestUnit: "days" });
+      if (derived.total({ unit: "seconds" }) > 0) {
+        return derived;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return fallback;
+}
+
 function isExcludedPatch(patch: JSCalendarPatchObject): boolean {
   return patch.excluded === true;
 }
@@ -83,7 +138,7 @@ export function jmapEventToInternalRows(
   const masterKey = options.masterKey ?? jmapEvent.id;
   const allDay = jmapEvent.showWithoutTime === true;
   const start = localToPlainDateTime(jmapEvent.start);
-  const duration = jsToDuration(jmapEvent.duration ?? (allDay ? "P1D" : "PT0S"));
+  const duration = durationFromJmapEvent(jmapEvent);
   const timeZone = jmapEvent.timeZone
     ? (toIANATimeZone(jmapEvent.timeZone) ?? undefined)
     : undefined;
@@ -132,7 +187,7 @@ export function jmapEventToInternalRows(
     const data: CalendarEventData = {
       start:
         patch.start !== undefined ? localToPlainDateTime(patch.start as string) : occurrenceStart,
-      duration: patch.duration !== undefined ? jsToDuration(patch.duration as string) : duration,
+      duration: durationFromPatch(patch, occurrenceStart, duration),
       ...((patch.showWithoutTime ?? allDay) ? { allDay: true } : {}),
       ...(timeZone || patch.timeZone
         ? {

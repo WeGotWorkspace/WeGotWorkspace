@@ -153,6 +153,20 @@ final class RecurrenceOverrideSupport
                 : null;
             if ($masterEnd === null || $overrideEnd['value'] !== $masterEnd['value']) {
                 $patch['end'] = $overrideEnd['value'];
+                $overrideStartValue = isset($override->DTSTART)
+                    ? CalendarConversionSupport::jmapDateTimeFromProperty($override->DTSTART)['value']
+                    : (isset($master->DTSTART)
+                        ? CalendarConversionSupport::jmapDateTimeFromProperty($master->DTSTART)['value']
+                        : null);
+                if (is_string($overrideStartValue)) {
+                    $overrideDuration = CalendarConversionSupport::durationBetweenJmapDateTimes(
+                        $overrideStartValue,
+                        $overrideEnd['value'],
+                    );
+                    if ($overrideDuration !== null) {
+                        $patch['duration'] = $overrideDuration;
+                    }
+                }
             }
         } elseif (isset($override->DURATION)) {
             $overrideDuration = trim((string) $override->DURATION->getValue());
