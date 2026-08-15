@@ -1,12 +1,15 @@
 @import "tailwindcss";
 @import "../styles/z-index.css";
 
+/* Own the pane scroll (day/week timeline does the same on .timeline-layout--composed).
+   Workspace `.calendar-main` uses overflow:hidden, so without this the agenda grows and
+   is clipped with no scroll. Sticky day headings need this as their scrollport. */
 :host {
-  @apply block w-full h-full min-h-0 [container-type:inline-size];
+  @apply block w-full h-full min-h-0 overflow-x-hidden overflow-y-auto [container-type:inline-size];
 }
 
 .agenda-shell {
-  @apply w-full;
+  @apply box-border w-full min-h-full;
 }
 
 .agenda-day {
