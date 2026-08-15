@@ -7,12 +7,12 @@
      those trees read --_lc-* with no fallback. In the old grid stack they came from
      CalendarGridView's host; here they must be declared on this host (custom properties
      inherit through the shadow boundary). Recipe mirrors CalendarGridView.css, with a
-     WCAG-safe outside-month ink (was 42% / opacity 0.45 — ~2:1 on white; ~55% keeps a
-     clear mute near ~4.5:1 AA for 12px day numbers in month and year mini-months). */
+     WCAG-safe outside-month ink (was 42% / opacity 0.45 — ~2:1 on white; 63% keeps a
+     clear mute near ~4.7:1 AA for 12px day numbers, matching the prior 0.85×72% floor). */
   --_lc-grid-line-width: 1px;
   --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
   --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
-  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 55%), rgb(255 255 255 / 55%));
+  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%));
   --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
 }
 
@@ -31,7 +31,7 @@
     );
     --_lc-outside-month-day-color: color-mix(
       in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 55%,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 63%,
       transparent
     );
     --_lc-grid-ghost-color: color-mix(
