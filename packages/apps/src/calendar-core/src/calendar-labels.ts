@@ -55,6 +55,11 @@ export type CalendarUILabels = {
   eventLocationLabel: string;
   eventNotesLabel: string;
   eventRepeatLabel: string;
+  eventRecurrenceEndsLabel: string;
+  eventRecurrenceEndsNever: string;
+  eventRecurrenceEndsOnDate: string;
+  eventRecurrenceEndsAfter: string;
+  eventRecurrenceEndsCountSuffix: string;
   save: string;
   cancel: string;
   delete: string;
@@ -118,6 +123,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventNotesLabel: "Notes",
   eventRepeatLabel: "Repeat",
+  eventRecurrenceEndsLabel: "Ends",
+  eventRecurrenceEndsNever: "Never",
+  eventRecurrenceEndsOnDate: "On date",
+  eventRecurrenceEndsAfter: "After",
+  eventRecurrenceEndsCountSuffix: "times",
   save: "Save",
   cancel: "Cancel",
   delete: "Delete",

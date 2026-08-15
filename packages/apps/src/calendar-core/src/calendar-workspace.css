@@ -359,6 +359,21 @@
   min-width: 7.5rem;
 }
 
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count input[type="number"] {
+  width: 4.5rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count-suffix {
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  font-size: 0.875rem;
+}
+
 .calendar-dialog-surface .calendar-sidebar-dot {
   display: inline-block;
   width: 0.65rem;

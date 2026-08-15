@@ -138,7 +138,16 @@ describe("CalendarEventDialog", () => {
       title: "Odd series",
       start: "2033-01-12T10:00:00",
       duration: "PT1H",
-      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 4 }],
+      recurrenceRules: [
+        {
+          "@type": "RecurrenceRule",
+          frequency: "weekly",
+          byDay: [
+            { "@type": "NDay", day: "mo" },
+            { "@type": "NDay", day: "we" },
+          ],
+        },
+      ],
     } as Parameters<typeof calendarEventToForm>[0]);
     expect(form.recurrencePreset).toBe("custom");
     renderDialog({ form, locale: "en-US" });
@@ -146,6 +155,27 @@ describe("CalendarEventDialog", () => {
     expect(repeat.textContent).toMatch(/Custom/i);
     expect(repeat.hasAttribute("disabled") || repeat.getAttribute("data-disabled") !== null).toBe(
       true,
+    );
+    expect(
+      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
+    ).toBeNull();
+  });
+
+  it("shows Ends controls for editable repeating presets", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      recurrencePreset: "daily" as const,
+    };
+    const { onChange } = renderDialog({ form, locale: "en-US" });
+    const ends = screen.getByRole("combobox", {
+      name: defaultCalendarLabels.eventRecurrenceEndsLabel,
+    });
+    expect(ends.textContent).toMatch(/Never/i);
+    fireEvent.click(ends);
+    fireEvent.click(screen.getByRole("option", { name: /After/i }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ recurrenceEnds: "count", recurrenceCount: 10 }),
     );
   });
 

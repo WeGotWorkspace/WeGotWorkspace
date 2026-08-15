@@ -22,7 +22,9 @@ import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
   calendarEventFormIsValid,
+  patchCalendarEventForm,
   type CalendarEventFormValue,
+  type RecurrenceEndsMode,
 } from "@/calendar-core/src/calendar-editor-model";
 import {
   EDITABLE_RECURRENCE_PRESET_IDS,
@@ -145,6 +147,7 @@ export function CalendarEventDialog({
     writableCalendars.find((calendar) => calendar.id === form.calendarId) ?? writableCalendars[0];
   const valid = calendarEventFormIsValid(form);
   const recurrenceLocked = form.recurrencePreset === "custom";
+  const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
   const recurrenceOptions = useMemo(() => {
     const ids: RecurrencePresetId[] = recurrenceLocked
       ? ["custom"]
@@ -164,15 +167,16 @@ export function CalendarEventDialog({
     key: K,
     value: CalendarEventFormValue[K],
   ) => {
-    onChange({ ...form, [key]: value });
+    onChange(patchCalendarEventForm(form, { [key]: value } as Partial<CalendarEventFormValue>));
   };
 
   const setRecurrencePreset = (preset: EditableRecurrencePresetId) => {
-    onChange({
-      ...form,
-      recurrencePreset: preset,
-      customRecurrenceRules: undefined,
-    });
+    onChange(
+      patchCalendarEventForm(form, {
+        recurrencePreset: preset,
+        customRecurrenceRules: undefined,
+      }),
+    );
   };
 
   /** Portaled DropdownMenu/Popover layers sit outside DialogContent in the DOM. */
@@ -348,6 +352,53 @@ export function CalendarEventDialog({
                 </SelectContent>
               </Select>
             </FieldLabelRow>
+
+            {showRecurrenceEnds ? (
+              <FieldLabelRow label={labels.eventRecurrenceEndsLabel}>
+                <div className="calendar-event-dialog__datetime calendar-event-dialog__recurrence-ends">
+                  <Select
+                    value={form.recurrenceEnds}
+                    onValueChange={(value) => set("recurrenceEnds", value as RecurrenceEndsMode)}
+                    disabled={busy}
+                  >
+                    <SelectTrigger aria-label={labels.eventRecurrenceEndsLabel}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="never">{labels.eventRecurrenceEndsNever}</SelectItem>
+                      <SelectItem value="until">{labels.eventRecurrenceEndsOnDate}</SelectItem>
+                      <SelectItem value="count">{labels.eventRecurrenceEndsAfter}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.recurrenceEnds === "until" ? (
+                    <LocaleDatePicker
+                      value={form.recurrenceUntilDate || form.startDate}
+                      locale={locale}
+                      label={labels.eventRecurrenceEndsOnDate}
+                      onChange={(next) => set("recurrenceUntilDate", next)}
+                    />
+                  ) : null}
+                  {form.recurrenceEnds === "count" ? (
+                    <div className="calendar-event-dialog__recurrence-count">
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={form.recurrenceCount}
+                        aria-label={labels.eventRecurrenceEndsAfter}
+                        onChange={(event) => {
+                          const parsed = Number.parseInt(event.target.value, 10);
+                          set("recurrenceCount", Number.isFinite(parsed) ? parsed : 0);
+                        }}
+                      />
+                      <span className="calendar-event-dialog__recurrence-count-suffix">
+                        {labels.eventRecurrenceEndsCountSuffix}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              </FieldLabelRow>
+            ) : null}
 
             <FieldLabelRow label={labels.eventNotesLabel}>
               <Textarea
