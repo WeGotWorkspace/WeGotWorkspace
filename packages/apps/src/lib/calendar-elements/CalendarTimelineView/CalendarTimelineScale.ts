@@ -205,6 +205,33 @@ export function yearMonthStarts(anchor: Temporal.PlainDate): Temporal.PlainDate[
   return Array.from({ length: 12 }, (_, index) => anchor.with({ month: index + 1, day: 1 }));
 }
 
+/** True when `day` is a leading/trailing cell outside `anchor`'s calendar month. */
+export function isOutsideVisibleMonth(
+  day: Temporal.PlainDate,
+  anchor: Temporal.PlainDate,
+): boolean {
+  return day.month !== anchor.month || day.year !== anchor.year;
+}
+
+/**
+ * Shadow-part list for a month-grid day header. Outside-month cells get
+ * `day-header-outside-month` (and never the weekend part — same exclusion as the old
+ * `.is-weekend:not(.is-outside-month)` rule).
+ */
+export function monthDayHeaderPartNames(options: {
+  outsideMonth: boolean;
+  isWeekend: boolean;
+}): string {
+  return [
+    "day-header",
+    "day-header-button",
+    options.outsideMonth ? "day-header-outside-month" : "",
+    options.isWeekend && !options.outsideMonth ? "day-header-weekend" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 /**
  * Whether a numeric timeline range overlaps day cell `cellIndex`
  * (cell `i` spans `[i * unitsPerDay, (i + 1) * unitsPerDay)`; ranges are `[start, end)`).

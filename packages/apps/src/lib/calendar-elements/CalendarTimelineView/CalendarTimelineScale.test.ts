@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import {
@@ -9,6 +12,8 @@ import {
   composedTimedScrollTop,
   fromTimelineRange,
   fromTimelineValue,
+  isOutsideVisibleMonth,
+  monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
   timelineGridMax,
@@ -413,6 +418,57 @@ describe("compareDaySnappedRenderOrder (conventional cell stacking)", () => {
     const engineeringSync = entry("2025-01-15T00:00", "2025-01-16T00:00", "Engineering Sync", true);
     const sorted = [designReview, drinks, engineeringSync].sort(compareDaySnappedRenderOrder);
     expect(sorted.map((e) => e.summary)).toEqual(["Design Review", "Engineering Sync", "Drinks"]);
+  });
+});
+
+describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", () => {
+  const monday = 1;
+  const january = Temporal.PlainDate.from("2026-01-01");
+
+  it("marks leading Dec 29–31 and trailing Feb 1–8 outside January 2026", () => {
+    const gridStart = alignedMonthGridStart(january, monday);
+    const days = Array.from({ length: 42 }, (_, cell) => gridStart.add({ days: cell }));
+    expect(days[0]?.toString()).toBe("2025-12-29");
+    expect(days[2]?.toString()).toBe("2025-12-31");
+    expect(days[3]?.toString()).toBe("2026-01-01");
+    expect(days[33]?.toString()).toBe("2026-01-31");
+    expect(days[34]?.toString()).toBe("2026-02-01");
+    expect(days[41]?.toString()).toBe("2026-02-08");
+
+    const outside = days.map((day) => isOutsideVisibleMonth(day, january));
+    expect(outside.slice(0, 3)).toEqual([true, true, true]);
+    expect(outside.slice(3, 34).every((flag) => flag === false)).toBe(true);
+    expect(outside.slice(34).every((flag) => flag === true)).toBe(true);
+  });
+
+  it("applies day-header-outside-month (and never weekend) on outside cells", () => {
+    expect(monthDayHeaderPartNames({ outsideMonth: true, isWeekend: true })).toBe(
+      "day-header day-header-button day-header-outside-month",
+    );
+    expect(monthDayHeaderPartNames({ outsideMonth: true, isWeekend: false })).toBe(
+      "day-header day-header-button day-header-outside-month",
+    );
+    expect(monthDayHeaderPartNames({ outsideMonth: false, isWeekend: true })).toBe(
+      "day-header day-header-button day-header-weekend",
+    );
+    expect(monthDayHeaderPartNames({ outsideMonth: false, isWeekend: false })).toBe(
+      "day-header day-header-button",
+    );
+  });
+
+  it("keeps outside-month ink clearly below in-month ink in CSS tokens", () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
+      "utf8",
+    );
+    const mixPercents = (token: string): number[] =>
+      [...css.matchAll(new RegExp(`${token}:[^;]*?(\\d+)%`, "g"))].map((match) => Number(match[1]));
+    const inMonth = mixPercents("--_lc-in-month-day-color");
+    const outside = mixPercents("--_lc-outside-month-day-color");
+    expect(inMonth.length).toBeGreaterThan(0);
+    expect(outside.length).toBeGreaterThan(0);
+    // 72% vs 63% (prior "WCAG AA" raise) is invisible at 12px; require a real mute gap.
+    expect(Math.min(...inMonth) - Math.max(...outside)).toBeGreaterThanOrEqual(40);
   });
 });
 

@@ -43,6 +43,8 @@ import {
   currentTimeMarkersAcrossDays,
   fromTimelineRange,
   fromTimelineValue,
+  isOutsideVisibleMonth,
+  monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
   timelineRangeOverlapsCell,
@@ -1039,7 +1041,7 @@ export class CalendarTimelineView extends CalendarViewBase {
   #monthDayHeaderTemplate = (cellIndex: number): TemplateResult => {
     const day = this.#gridStartDate.add({ days: cellIndex });
     const anchor = this.#parsedStartDate;
-    const outsideMonth = day.month !== anchor.month || day.year !== anchor.year;
+    const outsideMonth = isOutsideVisibleMonth(day, anchor);
     const isToday = Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) === 0;
     const isWeekend = this.#isWeekendDay(day);
     const dayDate = new Date(Date.UTC(day.year, day.month - 1, day.day));
@@ -1078,11 +1080,11 @@ export class CalendarTimelineView extends CalendarViewBase {
     const active = this.#activeHeaderPopoverCellIndex === cellIndex;
     // State variants as extra part names; weekend only inside the anchor month (parity with
     // the plain #dayHeaderTemplate and the old `.is-weekend:not(.is-outside-month)` rule).
-    const headerParts = [
-      "day-header",
-      "day-header-button",
-      outsideMonth ? "day-header-outside-month" : "",
-      isWeekend && !outsideMonth ? "day-header-weekend" : "",
+    const headerParts = monthDayHeaderPartNames({ outsideMonth, isWeekend });
+    const dayNumberParts = [
+      "day-number",
+      isToday ? "day-number-today" : "",
+      outsideMonth ? "day-number-outside-month" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -1097,7 +1099,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         @click=${(clickEvent: MouseEvent) =>
           this.#handleMonthDayHeaderClick(cellIndex, day, clickEvent)}
       >
-        <span part="day-number${isToday ? " day-number-today" : ""}">
+        <span part=${dayNumberParts}>
           ${dayNumberContent}
           ${dotColors.length
             ? html`
@@ -1195,8 +1197,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         .dayLabel=${new Intl.NumberFormat(this.#locale).format(day.day)}
         ?is-current-day=${Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) ===
         0}
-        ?outside-visible-month=${isMonthMode &&
-        (day.month !== anchor.month || day.year !== anchor.year)}
+        ?outside-visible-month=${isMonthMode && isOutsideVisibleMonth(day, anchor)}
         ?is-weekend=${this.#isWeekendDay(day)}
         .events=${popoverEvents}
         @day-label-selection=${(event: Event) =>

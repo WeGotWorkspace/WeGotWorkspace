@@ -6,13 +6,15 @@
   /* Grid-line / day-label tokens for <time-line> chrome and <day-overflow-popover>:
      those trees read --_lc-* with no fallback. In the old grid stack they came from
      CalendarGridView's host; here they must be declared on this host (custom properties
-     inherit through the shadow boundary). Recipe mirrors CalendarGridView.css, with a
-     WCAG-safe outside-month ink (was 42% / opacity 0.45 — ~2:1 on white; 63% keeps a
-     clear mute near ~4.7:1 AA for 12px day numbers, matching the prior 0.85×72% floor). */
+     inherit through the shadow boundary).
+     In-month numbers use near-full ink (primary text, AA). Weekday chrome stays at 72%
+     (slightly muted). Outside-month numbers use a clearly lower mix — 72% vs 63% was
+     indistinguishable at 12px, which is why prior mute commits did not show. */
   --_lc-grid-line-width: 1px;
   --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
   --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
-  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%));
+  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%));
+  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 40%), rgb(255 255 255 / 42%));
   --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
 }
 
@@ -27,12 +29,17 @@
     --_lc-grid-line-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 72%,
-      transparent
+      var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+    --_lc-in-month-day-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 92%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
     );
     --_lc-outside-month-day-color: color-mix(
       in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 63%,
-      transparent
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 40%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
     );
     --_lc-grid-ghost-color: color-mix(
       in srgb,
@@ -464,12 +471,13 @@ time-line::part(day-header) {
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
-  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%)));
 }
 
-time-line::part(day-header-outside-month) {
-  /* Color (not opacity): same cue as CalendarGridView `.outside-month-day-label`, and keeps
-     compact year event dots at full strength. Token is WCAG-tuned on :host above. */
+time-line::part(day-header-outside-month),
+time-line::part(day-number-outside-month) {
+  /* Color (not opacity) so compact year event dots stay at full strength. Must stay
+     clearly below in-month ink — do not raise this toward the 72% weekday token. */
   color: var(--_lc-outside-month-day-color);
 }
 
@@ -637,6 +645,15 @@ time-line::part(overflow-dot) {
     padding: 0;
   }
 
+  time-line.timeline-main::part(day-header-outside-month),
+  time-line.timeline-main::part(day-number-outside-month) {
+    color: var(--_lc-outside-month-day-color);
+  }
+
+  time-line.timeline-main::part(day-number-today) {
+    color: #fff;
+  }
+
   time-line.timeline-main::part(day-month-prefix) {
     display: none;
   }
@@ -674,6 +691,17 @@ time-line::part(overflow-dot) {
   gap: 0;
   min-height: 0;
   padding: 0;
+}
+
+/* Same specificity as the compact day-header rule above; later so outside ink cannot
+   lose if that block later sets color. Year mini-months always take this path. */
+:host([force-compact]) time-line.timeline-main::part(day-header-outside-month),
+:host([force-compact]) time-line.timeline-main::part(day-number-outside-month) {
+  color: var(--_lc-outside-month-day-color);
+}
+
+:host([force-compact]) time-line.timeline-main::part(day-number-today) {
+  color: #fff;
 }
 
 :host([force-compact]) time-line.timeline-main::part(day-month-prefix) {
