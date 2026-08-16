@@ -467,8 +467,11 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
     const outside = mixPercents("--_lc-outside-month-day-color");
     expect(inMonth.length).toBeGreaterThan(0);
     expect(outside.length).toBeGreaterThan(0);
-    // 72% vs 63% (prior "WCAG AA" raise) is invisible at 12px; require a real mute gap.
-    expect(Math.min(...inMonth) - Math.max(...outside)).toBeGreaterThanOrEqual(40);
+    // Mute must come from darkening in-month, not from dropping outside below AA.
+    // 72% vs 63% is invisible; 92% vs 63% is the visible AA-safe pairing.
+    expect(Math.min(...inMonth)).toBeGreaterThanOrEqual(90);
+    expect(Math.max(...outside)).toBeLessThanOrEqual(65);
+    expect(Math.min(...inMonth) - Math.max(...outside)).toBeGreaterThanOrEqual(25);
   });
 });
 
