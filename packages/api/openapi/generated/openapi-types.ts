@@ -9240,6 +9240,8 @@ export interface components {
          *       "sortOrder": 0,
          *       "isDefault": true,
          *       "isSubscribed": true,
+         *       "scope": "personal",
+         *       "groupSlug": null,
          *       "shareWith": null,
          *       "myRights": {
          *         "mayRead": true,
@@ -9258,6 +9260,13 @@ export interface components {
             sortOrder: number;
             isDefault: boolean;
             isSubscribed: boolean;
+            /**
+             * @description Storage scope: personal (principals/{username}) or group (principals/groups/{slug}).
+             * @enum {string}
+             */
+            scope: "personal" | "group";
+            /** @description Group slug when scope is group; null for personal calendars. */
+            groupSlug: string | null;
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -9478,6 +9487,8 @@ export interface components {
             timeZone?: string | null;
             color?: string | null;
             id?: components["schemas"]["JmapId"];
+            /** @description When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope. */
+            groupSlug?: string | null;
         };
         CalendarPatch: {
             name?: string;

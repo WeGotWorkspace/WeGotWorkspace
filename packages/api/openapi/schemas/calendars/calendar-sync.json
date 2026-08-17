@@ -7,7 +7,11 @@
       "description": { "type": ["string", "null"] },
       "timeZone": { "type": ["string", "null"] },
       "color": { "type": ["string", "null"] },
-      "id": { "$ref": "#/components/schemas/JmapId" }
+      "id": { "$ref": "#/components/schemas/JmapId" },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope."
+      }
     },
     "additionalProperties": false
   },

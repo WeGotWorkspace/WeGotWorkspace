@@ -26,6 +26,7 @@ final class CalendarEventRepository
         private readonly BestEffortSearchIndexSync $searchIndexSync,
         private readonly CalendarEventExpansionService $expansion,
         private readonly JmapCalendarEventStateService $eventStates,
+        private readonly CalendarRepository $calendars,
     ) {}
 
     /**
@@ -38,7 +39,7 @@ final class CalendarEventRepository
         ?string $before = null,
         bool $expandRecurrences = false,
     ): array {
-        $instance = $this->findOwnedCalendar($username, $calendarId);
+        $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
         if ($instance === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
@@ -95,11 +96,12 @@ final class CalendarEventRepository
         foreach ($instances as $instance) {
             foreach ($this->candidateObjects($instance, $window) as $object) {
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-                foreach ($this->mapper->toCalendarEvents($object, (string) $instance->uri, $username) as $event) {
+                $calendarApiId = $this->calendars->apiIdForInstance($instance);
+                foreach ($this->mapper->toCalendarEvents($object, $calendarApiId, $username) as $event) {
                     if ($title !== null && stripos((string) ($event['title'] ?? ''), $title) === false) {
                         continue;
                     }
-                    if ($window !== null && ! $this->eventIntersectsWindow($event, $raw, (string) $instance->uri, $window)) {
+                    if ($window !== null && ! $this->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
                         continue;
                     }
                     $matches[] = $event;
@@ -119,7 +121,7 @@ final class CalendarEventRepository
 
         $queryTokens = [];
         foreach ($instances as $instance) {
-            $queryTokens[(string) $instance->uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $queryTokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
         }
 
         return [
@@ -163,14 +165,9 @@ final class CalendarEventRepository
     public function calendarSyncTokens(string $username): array
     {
         $tokens = [];
-        $instances = CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->orderBy('uri')
-            ->get();
+        $instances = $this->calendars->accessibleVeventInstances($username);
         foreach ($instances as $instance) {
-            $tokens[(string) $instance->uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $tokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
         }
 
         return $tokens;
@@ -198,7 +195,7 @@ final class CalendarEventRepository
             if (! is_string($calendarId) || trim($calendarId) === '') {
                 throw new ApiHttpException(400, 'filter.inCalendars must contain calendar ids.', 'bad_request');
             }
-            $instance = $this->findOwnedCalendar($username, $calendarId);
+            $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
             if ($instance === null) {
                 throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
             }
@@ -407,7 +404,7 @@ final class CalendarEventRepository
      */
     public function changes(string $username, string $calendarId, ?string $since): array
     {
-        $instance = $this->findOwnedCalendar($username, $calendarId);
+        $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
         if ($instance === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
@@ -463,7 +460,7 @@ final class CalendarEventRepository
             }
 
             $ids = [];
-            foreach ($this->mapper->toCalendarEvents($object, (string) $instance->uri, $username) as $event) {
+            foreach ($this->mapper->toCalendarEvents($object, $this->calendars->apiIdForInstance($instance), $username) as $event) {
                 $id = (string) ($event['id'] ?? '');
                 if ($id !== '') {
                     $ids[] = $id;
@@ -597,7 +594,7 @@ final class CalendarEventRepository
             throw new ApiHttpException(500, 'Could not load created calendar event.', 'server_error');
         }
 
-        return $this->mapper->toCalendarEvent($object, (string) $instance->uri, null, $username);
+        return $this->mapper->toCalendarEvent($object, $this->calendars->apiIdForInstance($instance), null, $username);
     }
 
     /**
@@ -746,7 +743,7 @@ final class CalendarEventRepository
         $eventUri = (string) $object->uri;
         $existingEvent = $this->mapper->toCalendarEvent(
             $object,
-            (string) $instance->uri,
+            $this->calendars->apiIdForInstance($instance),
             $located['veventUid'],
             $username,
         );
@@ -763,7 +760,7 @@ final class CalendarEventRepository
         } else {
             $eventPayload['uid'] = $existingEvent['uid'] ?? $eventPayload['uid'] ?? null;
         }
-        $eventPayload['calendarIds'] = [(string) $instance->uri => true];
+        $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($instance) => true];
 
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
         $ics = $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']);
@@ -784,7 +781,7 @@ final class CalendarEventRepository
 
         return $this->mapper->toCalendarEvent(
             $updated,
-            (string) $instance->uri,
+            $this->calendars->apiIdForInstance($instance),
             $located['veventUid'],
             $username,
         );
@@ -812,7 +809,7 @@ final class CalendarEventRepository
             throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
         }
 
-        $instance = $this->findOwnedCalendar($username, $calendarUri);
+        $instance = $this->calendars->findAccessibleCalendar($username, $calendarUri);
         if ($instance === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
@@ -863,10 +860,11 @@ final class CalendarEventRepository
     {
         $parsed = CalendarConversionSupport::parseEventId($eventId);
         $eventUri = CalendarEventMapper::eventUriFromId($eventId);
+        $principalUris = $this->calendars->accessiblePrincipalUris($username);
         $object = CalendarObject::query()
             ->where('uri', $eventUri)
-            ->whereHas('calendar.instances', function ($query) use ($username): void {
-                $query->where('principaluri', $this->principalUri($username));
+            ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
+                $query->whereIn('principaluri', $principalUris);
             })
             ->first();
 
@@ -876,22 +874,23 @@ final class CalendarEventRepository
 
         $instance = CalendarInstance::query()
             ->where('calendarid', (int) $object->calendarid)
-            ->where('principaluri', $this->principalUri($username))
+            ->whereIn('principaluri', $principalUris)
             ->first();
 
         if ($instance === null) {
             return null;
         }
 
+        $calendarApiId = $this->calendars->apiIdForInstance($instance);
         $veventUid = $parsed['veventUid'];
         if ($veventUid === null) {
-            $events = $this->mapper->toCalendarEvents($object, (string) $instance->uri);
+            $events = $this->mapper->toCalendarEvents($object, $calendarApiId);
             if (count($events) > 1) {
                 return null;
             }
         } else {
             $found = false;
-            foreach ($this->mapper->toCalendarEvents($object, (string) $instance->uri) as $event) {
+            foreach ($this->mapper->toCalendarEvents($object, $calendarApiId) as $event) {
                 if (($event['uid'] ?? '') === $veventUid) {
                     $found = true;
                     break;
@@ -905,17 +904,9 @@ final class CalendarEventRepository
         return [
             'object' => $object,
             'instance' => $instance,
-            'calendarUri' => (string) $instance->uri,
+            'calendarUri' => $calendarApiId,
             'veventUid' => $veventUid,
         ];
-    }
-
-    private function findOwnedCalendar(string $username, string $calendarId): ?CalendarInstance
-    {
-        return CalendarInstance::query()
-            ->where('principaluri', $this->principalUri($username))
-            ->where('uri', $calendarId)
-            ->first();
     }
 
     private function findObjectInCalendar(int $calendarId, string $eventUri, bool $fresh = false): ?CalendarObject

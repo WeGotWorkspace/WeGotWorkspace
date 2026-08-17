@@ -53,7 +53,30 @@ final class CalendarCollectionUris
 
     public static function parseGroupTaskListApiId(string $taskListId): ?string
     {
-        if (preg_match('#^group-([A-Za-z0-9._-]{1,190})$#', $taskListId, $matches) !== 1) {
+        return self::parseGroupCollectionApiId($taskListId);
+    }
+
+    /**
+     * Provisioned group VEVENT collection URI is the group slug (see UserCalendarCollectionsProvisioner).
+     */
+    public static function groupCalendarCalDavUri(string $groupSlug): string
+    {
+        return $groupSlug;
+    }
+
+    public static function groupCalendarApiId(string $groupSlug): string
+    {
+        return 'group-'.$groupSlug;
+    }
+
+    public static function parseGroupCalendarApiId(string $calendarId): ?string
+    {
+        return self::parseGroupCollectionApiId($calendarId);
+    }
+
+    public static function parseGroupCollectionApiId(string $id): ?string
+    {
+        if (preg_match('#^group-([A-Za-z0-9._-]{1,190})$#', $id, $matches) !== 1) {
             return null;
         }
 
