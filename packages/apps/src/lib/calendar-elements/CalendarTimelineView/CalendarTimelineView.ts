@@ -1763,7 +1763,11 @@ export class CalendarTimelineView extends CalendarViewBase {
     const layout = this.renderRoot.querySelector<HTMLElement>(".timeline-layout--composed");
     const shell = this.renderRoot.querySelector<HTMLElement>(".timeline-all-day-shell");
     if (!layout || !shell) return;
-    const shellHeightPx = shell.getBoundingClientRect().height;
+    // offsetHeight is the untransformed layout box. getBoundingClientRect follows the
+    // range-zoom scale on `.content`, so a mid-animation measure would stick (ResizeObserver
+    // does not re-fire when only a transform is removed) and the sidebar divider would sit
+    // 1–2px off the grid until the next window resize.
+    const shellHeightPx = shell.offsetHeight;
     if (Number.isFinite(shellHeightPx) && shellHeightPx >= 0) {
       layout.style.setProperty("--_lc-timeline-all-day-height", `${shellHeightPx}px`);
     }
@@ -1795,9 +1799,9 @@ export class CalendarTimelineView extends CalendarViewBase {
     }[];
     if (shellStrips.some((strip) => strip.hasUpdated === false)) return;
     // Re-measure synchronously so the scroll target never uses a stale shell height.
-    const shellHeightPx = shell.getBoundingClientRect().height;
+    const shellHeightPx = shell.offsetHeight;
     layout.style.setProperty("--_lc-timeline-all-day-height", `${shellHeightPx}px`);
-    const timedHeightPx = timed.getBoundingClientRect().height;
+    const timedHeightPx = timed.offsetHeight;
     if (!(timedHeightPx > 0)) return;
     const timedGapPx =
       Number.parseFloat(getComputedStyle(layout).getPropertyValue("--_lc-timeline-timed-gap")) || 0;
