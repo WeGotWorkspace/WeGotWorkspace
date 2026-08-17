@@ -1,12 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PenSquare, Trash2 } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { ChevronLeft, ChevronRight, PenSquare, Trash2 } from "lucide-react";
+import { Button, IconButton } from "@/button/src/button";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
 const meta: Meta<typeof ViewHeader> = {
   title: "Shared/View Header",
   component: ViewHeader,
+  argTypes: {
+    layout: {
+      control: "select",
+      options: ["inline", "stacked", "responsive"],
+    },
+  },
 };
 
 export default meta;
@@ -66,4 +72,45 @@ export const WithoutSidebarToggle: Story = {
     subtitle: "Drafts · Today 14:32",
     hideSidebarToggle: true,
   },
+};
+
+const periodNav = (
+  <div className="view-header-story-nav">
+    <IconButton label="Previous period" icon={<ChevronLeft />} onClick={() => {}} />
+    <IconButton label="Next period" icon={<ChevronRight />} onClick={() => {}} />
+  </div>
+);
+
+const periodActions = (
+  <div className="view-header-story-actions flex items-center gap-2">
+    <Button label="Month" onClick={() => {}} variant="subtle" />
+    <Button label="Today" onClick={() => {}} variant="subtle" />
+  </div>
+);
+
+/** Title + prev/next on the first row; other actions on the second. */
+export const Stacked: Story = {
+  args: {
+    title: "August 2026",
+    sidebarOpen: true,
+    onToggleSidebar: () => {},
+    layout: "stacked",
+    titleLeading: periodNav,
+    actions: periodActions,
+  },
+};
+
+/** Same chrome as Stacked, but only stacks when the header column is narrow. */
+export const ResponsiveStacked: Story = {
+  args: {
+    ...Stacked.args,
+    layout: "responsive",
+  },
+  decorators: [
+    (Story) => (
+      <div className="view-header-story-narrow">
+        <Story />
+      </div>
+    ),
+  ],
 };

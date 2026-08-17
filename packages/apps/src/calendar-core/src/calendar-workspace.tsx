@@ -222,6 +222,7 @@ export function CalendarWorkspace({
         mainHeader={
           <ViewHeader
             title={title}
+            layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             titleLeading={
