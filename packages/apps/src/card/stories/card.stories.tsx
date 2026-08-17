@@ -3,6 +3,8 @@ import { Eraser, Globe2, RefreshCw } from "lucide-react";
 import { Input } from "@/ui/input";
 import { Button } from "@/button/src/button";
 import { Card } from "../src/card";
+import { CardPanel, CardRowDivider } from "../src/card-panel";
+import { CardRow } from "../src/card-row";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 
 const meta: Meta<typeof Card> = {
@@ -79,6 +81,26 @@ export const WithTitleIconAndDescription: Story = {
       <FormField label="Share URL" readOnly>
         <Input value="https://example.com/s/abc123" readOnly className="cursor-default" />
       </FormField>
+    </Card>
+  ),
+};
+
+/** Inner panel + rows used by share dialogs and the calendar event editor. */
+export const WithPanelRows: Story = {
+  render: () => (
+    <Card titleIcon={<Globe2 className="size-4" />} title="When">
+      <CardPanel>
+        <CardRow title="All day">
+          <Button label="On" variant="subtle" />
+        </CardRow>
+        <CardRow title="Starts">
+          <Button label="17 Aug" variant="outline" />
+        </CardRow>
+        <CardRowDivider />
+        <CardRow title="Time zone" subtitle="Used for timed events">
+          <Button label="UTC" variant="outline" />
+        </CardRow>
+      </CardPanel>
     </Card>
   ),
 };

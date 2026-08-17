@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
 import { Card } from "@/card/src/card";
+import { CardPanel, CardRowDivider } from "@/card/src/card-panel";
 import { buttonVariants } from "@/button/src/button";
 import {
   AlertDialog,
@@ -91,7 +92,7 @@ export function ShareTeamSection({
       title={shareLabels.teamSectionTitle}
       description={shareLabels.teamSectionHint}
     >
-      <div className="share-dialog__panel">
+      <CardPanel>
         {groupGrants.map((grant) => {
           const inherited = grant.source.inherited;
           const uiPermission = accessToUIPermission(grant.access);
@@ -135,9 +136,7 @@ export function ShareTeamSection({
           );
         })}
 
-        {groupGrants.length > 0 && directMemberAccess.length > 0 ? (
-          <div className="share-dialog__row-divider" />
-        ) : null}
+        {groupGrants.length > 0 && directMemberAccess.length > 0 ? <CardRowDivider /> : null}
 
         {directMemberAccess.map((member) => {
           const inherited = member.source.inherited;
@@ -207,7 +206,7 @@ export function ShareTeamSection({
             />
           </SharePrincipalSearchDropdown>
         </div>
-      </div>
+      </CardPanel>
 
       <AlertDialog
         open={!!pendingRemoval}
