@@ -157,6 +157,27 @@ export function createIntentToForm(
   };
 }
 
+/**
+ * Inverse of {@link createIntentToForm}: exclusive all-day end, wall-clock timed end.
+ * Used to keep the drag-create preview card aligned with the open create dialog.
+ */
+export function formToCreateIntent(form: CalendarEventFormValue): {
+  calendarId: string;
+  allDay: boolean;
+  start: Temporal.PlainDateTime;
+  end: Temporal.PlainDateTime;
+  title?: string;
+} {
+  const title = form.title.trim();
+  return {
+    calendarId: form.calendarId,
+    allDay: form.allDay,
+    start: formStart(form),
+    end: formEndExclusive(form),
+    ...(title ? { title } : {}),
+  };
+}
+
 function primaryLocationName(event: JmapCalendarEvent): string {
   const locations = event.locations ?? {};
   const key = Object.keys(locations)[0];

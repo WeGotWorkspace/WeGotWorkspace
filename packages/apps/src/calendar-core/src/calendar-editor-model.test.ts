@@ -6,6 +6,7 @@ import {
   calendarEventToForm,
   createIntentToForm,
   emptyCalendarEventForm,
+  formToCreateIntent,
   formToDraft,
   formToPatch,
   patchCalendarEventForm,
@@ -190,6 +191,34 @@ describe("createIntentToForm", () => {
       startDate: "2033-01-17",
       endDate: "2033-01-18",
       title: "",
+    });
+  });
+
+  it("formToCreateIntent round-trips timed and exclusive all-day ends", () => {
+    const timed = {
+      start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-12T15:30:00"),
+      allDay: false,
+    };
+    expect(formToCreateIntent(createIntentToForm("work", timed))).toEqual({
+      calendarId: "work",
+      allDay: false,
+      start: timed.start,
+      end: timed.end,
+    });
+
+    const allDay = {
+      start: Temporal.PlainDateTime.from("2033-01-17T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-19T00:00:00"),
+      allDay: true,
+      title: "Offsite",
+    };
+    expect(formToCreateIntent(createIntentToForm("default", allDay))).toEqual({
+      calendarId: "default",
+      allDay: true,
+      start: allDay.start,
+      end: allDay.end,
+      title: "Offsite",
     });
   });
 });

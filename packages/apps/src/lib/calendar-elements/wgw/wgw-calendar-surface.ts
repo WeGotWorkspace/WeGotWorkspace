@@ -1,6 +1,7 @@
 import { ContextProvider } from "@lit/context";
 import { css, html, LitElement } from "lit";
 import type { CalendarEventsMap as EventsMap } from "@/lib/calendar-engine";
+import type { PendingCreateGeometry } from "../CalendarTimelineView/pendingOccurrenceGeometry.js";
 import type { CalendarViewGroup } from "../CalendarViewGroup/CalendarViewGroup.js";
 import { eventsAPIContext, type EventsAPIContextValue } from "../context/EventsAPIContext.js";
 import "../CalendarViewGroup/CalendarViewGroup.js";
@@ -40,6 +41,7 @@ export class WgwCalendarSurface extends LitElement {
       selectedCalendarId: { type: String, attribute: false },
       events: { attribute: false },
       visibleCalendarIds: { attribute: false },
+      pendingCreateIntent: { attribute: false },
     } as const;
   }
 
@@ -51,6 +53,8 @@ export class WgwCalendarSurface extends LitElement {
   selectedCalendarId?: string;
   events: EventsMap = new Map();
   visibleCalendarIds?: string[];
+  /** Create-dialog range while the React editor is open (drag-create preview persist). */
+  pendingCreateIntent: PendingCreateGeometry | null = null;
   /**
    * React-provided resolver for Only-this / This-and-future (and All instances
    * on delete) when editing recurring occurrences via drag/delete in the Lit
@@ -107,6 +111,7 @@ export class WgwCalendarSurface extends LitElement {
         week-start=${this.weekStart}
         timezone=${this.timezone ?? ""}
         selected-calendar-id=${this.selectedCalendarId ?? ""}
+        .pendingCreateIntent=${this.pendingCreateIntent}
         @view-changed=${this.#syncFromViewGroup}
         @start-date-changed=${this.#syncFromViewGroup}
         @presentation-changed=${this.#syncFromViewGroup}

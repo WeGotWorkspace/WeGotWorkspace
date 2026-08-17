@@ -42,6 +42,11 @@ export type CalendarSurfaceProps = {
    * prevented so the adapter does not persist until the dialog saves.
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
+  /**
+   * Open create-dialog range. When set, the Lit timeline keeps the drag-create
+   * event-card in that slot until the dialog closes or a real event replaces it.
+   */
+  pendingCreateIntent?: CalendarSurfaceCreateIntent | null;
   /** Ask Only-this / This-and-future (delete also offers All instances). */
   requestRecurrenceScope?: (
     request: RecurrenceScopeRequest,
@@ -87,6 +92,7 @@ export function CalendarSurface({
   onViewChange,
   onStartDateChange,
   onCreateRequested,
+  pendingCreateIntent,
   requestRecurrenceScope,
   onRecurrenceFutureDelete,
   onRecurrenceFutureUpdate,
@@ -104,6 +110,7 @@ export function CalendarSurface({
     host.selectedCalendarId = selectedCalendarId;
     host.contextValue = contextValue;
     host.requestRecurrenceScope = requestRecurrenceScope;
+    host.pendingCreateIntent = pendingCreateIntent ?? null;
   }, [
     view,
     presentation,
@@ -113,6 +120,7 @@ export function CalendarSurface({
     selectedCalendarId,
     contextValue,
     requestRecurrenceScope,
+    pendingCreateIntent,
   ]);
 
   useEffect(() => {

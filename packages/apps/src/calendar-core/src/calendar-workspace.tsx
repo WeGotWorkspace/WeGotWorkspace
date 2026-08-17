@@ -18,6 +18,7 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
+import { formToCreateIntent } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
@@ -282,6 +283,9 @@ export function CalendarWorkspace({
                 onViewChange={selectView}
                 onStartDateChange={setAnchor}
                 onCreateRequested={canWrite ? openCreateFromSurface : undefined}
+                pendingCreateIntent={
+                  editor?.mode === "create" ? formToCreateIntent(editor.form) : null
+                }
               />
             </div>
           </div>

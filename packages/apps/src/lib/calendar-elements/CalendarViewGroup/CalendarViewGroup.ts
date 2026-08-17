@@ -17,6 +17,7 @@ import { clampDaysPerWeek, daysPerWeekFromInput } from "../utils/DaysPerWeek.js"
 import { resolveLocale } from "../utils/Locale.js";
 import { startOfWeekFor, weekNumberForDate } from "../utils/WeekNumber.js";
 import componentStyle from "./CalendarViewGroup.css?inline";
+import type { PendingCreateGeometry } from "../CalendarTimelineView/pendingOccurrenceGeometry.js";
 import { monthAnchorDate, yearAnchorDate } from "./timelineAnchorDates.js";
 
 type RangeLabelPart = {
@@ -36,6 +37,8 @@ export class CalendarViewGroup extends CalendarViewBase {
   snapInterval = 15;
   visibleHours?: number;
   rtl = false;
+  /** Create-dialog range from the React surface; forwarded to the timeline. */
+  pendingCreateIntent: PendingCreateGeometry | null = null;
 
   static get properties() {
     return {
@@ -63,6 +66,7 @@ export class CalendarViewGroup extends CalendarViewBase {
       snapInterval: { type: Number, attribute: "snap-interval" },
       visibleHours: { type: Number, attribute: "visible-hours" },
       rtl: { type: Boolean, reflect: true },
+      pendingCreateIntent: { attribute: false },
     } as const;
   }
 
@@ -289,6 +293,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .snapInterval=${this.snapInterval}
           .visibleHours=${this.visibleHours}
           .selectedCalendarId=${this.selectedCalendarId}
+          .pendingCreateIntent=${this.pendingCreateIntent}
           @active-date-changed=${this.#handleWeekActiveDateChanged}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
@@ -312,6 +317,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .timezone=${this.timezone}
           .currentTime=${this.#resolvedCurrentTime}
           .selectedCalendarId=${this.selectedCalendarId}
+          .pendingCreateIntent=${this.pendingCreateIntent}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
           @event-created=${this.forwardComposedCalendarEvent}
@@ -342,6 +348,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .timezone=${this.timezone}
           .currentTime=${this.#resolvedCurrentTime}
           .selectedCalendarId=${this.selectedCalendarId}
+          .pendingCreateIntent=${this.pendingCreateIntent}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
           @event-created=${this.forwardComposedCalendarEvent}
