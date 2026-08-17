@@ -5,6 +5,7 @@ import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
+import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 const toastApi = {
@@ -95,9 +96,9 @@ describe("useCalendarController view + create intent", () => {
         initialAnchor,
         initialPresentation,
       }: {
-        initialView: "month" | "week";
+        initialView: CalendarViewId;
         initialAnchor: string;
-        initialPresentation: "grid" | "list";
+        initialPresentation: CalendarPresentation;
       }) =>
         useCalendarController({
           data: bootstrap.data,
@@ -107,9 +108,9 @@ describe("useCalendarController view + create intent", () => {
         }),
       {
         initialProps: {
-          initialView: "month" as const,
+          initialView: "month" as CalendarViewId,
           initialAnchor: "2026-08-17",
-          initialPresentation: "grid" as const,
+          initialPresentation: "grid" as CalendarPresentation,
         },
       },
     );

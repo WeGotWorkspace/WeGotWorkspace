@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -75,6 +75,7 @@ export function useDocsCollabJoin({
   const documentFormat = collabDocumentFormat(room);
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
+  const meshJoinInFlightRef = useRef(false);
 
   const markDocReady = useCallback(() => {
     refs.seedDoneRef.current = true;
@@ -110,6 +111,7 @@ export function useDocsCollabJoin({
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
+    meshJoinInFlightRef.current = false;
     void meshSession?.leave();
     const persistence = refs.persistenceRef.current;
     refs.persistenceRef.current = null;
@@ -208,9 +210,10 @@ export function useDocsCollabJoin({
 
   const connectMeshInBackground = useCallback(
     async (generation: number, name: string, authToken: string) => {
+      if (refs.meshRef.current || meshJoinInFlightRef.current) return;
+      meshJoinInFlightRef.current = true;
       setDocStatus((prev) => prev || "Connecting to collaborators…");
       setStatus("Connecting to mesh…");
-      if (refs.meshRef.current) return;
       try {
         const meshPeers = await joinMesh(name, authToken);
         if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
@@ -223,6 +226,8 @@ export function useDocsCollabJoin({
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
         setDocStatus(error instanceof Error ? error.message : String(error));
+      } finally {
+        meshJoinInFlightRef.current = false;
       }
     },
     [

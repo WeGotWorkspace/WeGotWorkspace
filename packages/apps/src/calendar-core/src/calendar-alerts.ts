@@ -117,8 +117,10 @@ export function nextAlertId(existing: CalendarEventAlertFormValue[]): string {
   return `alert${index}`;
 }
 
-function triggerRelatedTo(trigger: { relativeTo?: unknown; relatedTo?: unknown }): "start" | "end" {
-  if (trigger.relativeTo === "end" || trigger.relatedTo === "end") return "end";
+function triggerRelatedTo(trigger: object): "start" | "end" {
+  const relativeTo = "relativeTo" in trigger ? trigger.relativeTo : undefined;
+  const relatedTo = "relatedTo" in trigger ? trigger.relatedTo : undefined;
+  if (relativeTo === "end" || relatedTo === "end") return "end";
   return "start";
 }
 

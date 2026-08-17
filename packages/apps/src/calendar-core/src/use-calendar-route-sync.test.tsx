@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const navigate = vi.fn(async () => undefined);
+const navigate = vi.fn(async (_opts?: unknown) => undefined);
 const historyFlush = vi.fn();
 let mockPathname = "/calendar/month/2026-08-17";
 let mockParams: Record<string, string> = { view: "month", date: "2026-08-17" };
