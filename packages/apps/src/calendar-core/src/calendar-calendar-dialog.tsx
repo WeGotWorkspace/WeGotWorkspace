@@ -2,6 +2,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/button/src/button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import {
+  groupSlugFromOwnerScopeValue,
+  OwnerScopeField,
+  ownerScopeValueFromDirectory,
+  PERSONAL_SCOPE_VALUE,
+} from "@/ui/owner-scope-field";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import {
   AlertDialog,
@@ -15,6 +21,7 @@ import {
 } from "@/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { cn } from "@/lib/utils";
+import type { CalendarDirectoryGroup } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 import "./calendar-calendar-dialog.css";
@@ -41,16 +48,21 @@ export type CalendarCalendarDialogState =
       name: string;
       color: string;
       mayDelete: boolean;
+      scope?: "personal" | "group";
+      groupSlug?: string | null;
     };
 
 export type CalendarCalendarDialogConfirmInput = {
   name: string;
   color: string;
+  groupSlug?: string | null;
 };
 
 type CalendarCalendarDialogProps = {
   dialog: CalendarCalendarDialogState;
   labels: CalendarUILabels;
+  groups?: CalendarDirectoryGroup[];
+  personalOwnerLabel?: string;
   busy?: boolean;
   onClose: () => void;
   onConfirm: (input: CalendarCalendarDialogConfirmInput) => void;
@@ -136,6 +148,8 @@ function ColorPicker({
 export function CalendarCalendarDialog({
   dialog,
   labels,
+  groups = [],
+  personalOwnerLabel = "Me",
   busy = false,
   onClose,
   onConfirm,
@@ -143,6 +157,7 @@ export function CalendarCalendarDialog({
 }: CalendarCalendarDialogProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(DEFAULT_CALENDAR_COLOR);
+  const [scopeValue, setScopeValue] = useState(PERSONAL_SCOPE_VALUE);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const open = dialog !== null;
   const isCreate = dialog?.mode === "create";
@@ -155,10 +170,12 @@ export function CalendarCalendarDialog({
     if (dialog.mode === "create") {
       setName("");
       setColor(DEFAULT_CALENDAR_COLOR);
+      setScopeValue(PERSONAL_SCOPE_VALUE);
       return;
     }
     setName(dialog.name);
     setColor(dialog.color || DEFAULT_CALENDAR_COLOR);
+    setScopeValue(ownerScopeValueFromDirectory(dialog.scope, dialog.groupSlug));
   }, [dialog]);
 
   const trimmedName = name.trim();
@@ -169,6 +186,12 @@ export function CalendarCalendarDialog({
     selectedColor.toLowerCase() === dialog.color.trim().toLowerCase();
   const canSubmit = Boolean(trimmedName) && (isCreate || !unchangedEdit) && !busy;
   const canDelete = dialog?.mode === "edit" && dialog.mayDelete && Boolean(onDelete);
+  const ownerLabels = {
+    label: labels.calendarDirectoryLabel,
+    personal: labels.calendarDirectoryPersonal,
+    group: labels.calendarDirectoryGroup,
+    readOnlyLabel: labels.calendarDirectoryReadOnlyLabel,
+  };
 
   /** Portaled popover / native color picker sit outside DialogContent in the DOM. */
   const keepOpenForPortaledLayer = (event: Event) => {
@@ -202,7 +225,11 @@ export function CalendarCalendarDialog({
             onSubmit={(event) => {
               event.preventDefault();
               if (!canSubmit) return;
-              onConfirm({ name: trimmedName, color: selectedColor });
+              onConfirm({
+                name: trimmedName,
+                color: selectedColor,
+                ...(isCreate ? { groupSlug: groupSlugFromOwnerScopeValue(scopeValue) } : {}),
+              });
             }}
           >
             <FieldLabelRow label={labels.calendarNameLabel} htmlFor="calendar-calendar-name">
@@ -222,6 +249,16 @@ export function CalendarCalendarDialog({
                 />
               </div>
             </FieldLabelRow>
+
+            <OwnerScopeField
+              id="calendar-calendar-directory"
+              value={scopeValue}
+              onValueChange={setScopeValue}
+              groups={groups}
+              personalOwnerLabel={personalOwnerLabel}
+              labels={ownerLabels}
+              disabled={!isCreate || busy}
+            />
 
             <DialogFooter className="calendar-calendar-dialog__footer">
               {canDelete ? (

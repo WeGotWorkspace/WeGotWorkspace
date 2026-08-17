@@ -646,6 +646,8 @@ export function useCalendarController({
         name: calendar.name,
         color: calendar.color || DEFAULT_CALENDAR_COLOR,
         mayDelete,
+        scope: calendar.scope === "group" ? "group" : "personal",
+        groupSlug: calendar.groupSlug ?? null,
       });
     },
     [calendars, operations?.deleteCalendar],
@@ -667,7 +669,11 @@ export function useCalendarController({
         try {
           if (calendarDialog.mode === "create") {
             if (!operations.createCalendar) return;
-            const created = await operations.createCalendar({ name, color });
+            const created = await operations.createCalendar({
+              name,
+              color,
+              ...(input.groupSlug?.trim() ? { groupSlug: input.groupSlug.trim() } : {}),
+            });
             setCalendars((prev) => sortCalendarsForSidebar([...prev, created]));
             selectDefaultCalendar(created.id);
             show(L.toastCalendarCreated);

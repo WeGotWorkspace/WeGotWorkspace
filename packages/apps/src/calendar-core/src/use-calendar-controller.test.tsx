@@ -1019,3 +1019,62 @@ describe("useCalendarController recurring scopes", () => {
     );
   });
 });
+
+describe("useCalendarController create calendar directory", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
+  it("forwards groupSlug when creating a calendar in a group directory", async () => {
+    const createCalendar = vi.fn().mockResolvedValue({
+      id: "roadmap",
+      name: "Roadmap",
+      color: "#22c55e",
+      scope: "group",
+      groupSlug: "team",
+      mayWrite: true,
+      mayDelete: true,
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          createCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openCreateCalendarDialog();
+    });
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Roadmap",
+        color: "#22c55e",
+        groupSlug: "team",
+      });
+    });
+
+    expect(createCalendar).toHaveBeenCalledWith({
+      name: "Roadmap",
+      color: "#22c55e",
+      groupSlug: "team",
+    });
+  });
+});

@@ -3,6 +3,8 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
+import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
+import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 
 export type CalendarAppBootstrap = {
   data: CalendarUIData;
@@ -67,7 +69,18 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
           mayDelete: false,
           sortOrder: 2,
         },
+        {
+          id: "group-editorial",
+          name: "Editorial",
+          color: "#22c55e",
+          scope: "group",
+          groupSlug: "editorial",
+          mayWrite: true,
+          mayDelete: false,
+          sortOrder: 0,
+        },
       ],
+      groups: mapCalendarDirectoryGroups(createSettingsAppBootstrap().data.groups),
       events: [
         mockEvent("standup", "work", "Team standup", day(0, "09:30:00"), "PT30M", {
           recurrenceRules: [

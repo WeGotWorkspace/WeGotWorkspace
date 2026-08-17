@@ -61,6 +61,8 @@ function createMockJmapServer(): MockJmapServer {
         mayDelete: calendar.mayDelete !== false,
       },
       ...(typeof calendar.sortOrder === "number" ? { sortOrder: calendar.sortOrder } : {}),
+      ...(calendar.scope ? { scope: calendar.scope } : {}),
+      ...(calendar.groupSlug ? { groupSlug: calendar.groupSlug } : {}),
     } as JmapCalendar);
   }
   for (const event of bootstrap.data.events) {

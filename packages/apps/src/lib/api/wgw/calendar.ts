@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
+import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   JmapCalendarsClient,
   JmapClient,
@@ -8,12 +8,14 @@ import {
 } from "@/lib/jmap-client";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type {
+  CalendarDirectoryGroup,
   CalendarDraft,
   CalendarEventDraft,
   CalendarEventPatch,
   CalendarInfo,
   CalendarPatch,
 } from "@/calendar-core/src/calendar-types";
+import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
 import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
 
 /**
@@ -79,6 +81,10 @@ async function connectedCalendars(client: JmapClient = calendarJmapClient()): Pr
 }
 
 function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
+  const groupSlug =
+    typeof calendar.groupSlug === "string" && calendar.groupSlug.trim()
+      ? calendar.groupSlug.trim()
+      : null;
   return {
     id: calendar.id,
     name: calendar.name,
@@ -88,6 +94,8 @@ function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
     ...(calendar.isDefault ? { isDefault: true } : {}),
     mayWrite: calendar.myRights ? calendar.myRights.mayWriteAll === true : true,
     mayDelete: calendar.myRights ? calendar.myRights.mayDelete === true : true,
+    scope: calendar.scope === "group" || groupSlug ? "group" : "personal",
+    groupSlug,
   };
 }
 
@@ -118,8 +126,22 @@ export async function fetchCalendarBootstrapForClient(
     data: {
       calendars: calendarGet.list.map(toCalendarInfo),
       events: events.list,
+      groups: await loadCalendarDirectoryGroups(),
     },
   };
+}
+
+async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGroup[]> {
+  try {
+    const settingsRes = await wgwFetch("/settings/state");
+    if (!settingsRes.ok) return [];
+    const settings = (await wgwReadJson(settingsRes)) as {
+      groups?: { id: string; displayName: string }[];
+    };
+    return Array.isArray(settings.groups) ? mapCalendarDirectoryGroups(settings.groups) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchCalendarLiveBootstrap(): Promise<CalendarAppBootstrap> {
@@ -175,6 +197,7 @@ export async function createCalendarLive(
       "create-1": {
         name: draft.name,
         color: draft.color,
+        ...(draft.groupSlug?.trim() ? { groupSlug: draft.groupSlug.trim() } : {}),
       } as JmapCalendar,
     },
   });

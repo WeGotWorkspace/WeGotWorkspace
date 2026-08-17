@@ -1,3 +1,5 @@
+import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
+
 export type CalendarUILabels = {
   appTitle: string;
   viewMonth: string;
@@ -12,6 +14,12 @@ export type CalendarUILabels = {
   nextPeriod: string;
   newEvent: string;
   calendarsSection: string;
+  myCalendarsSection: string;
+  teamCalendarsSection: string;
+  calendarDirectoryLabel: string;
+  calendarDirectoryPersonal: (ownerLabel: string) => string;
+  calendarDirectoryGroup: (name: string) => string;
+  calendarDirectoryReadOnlyLabel: string;
   newCalendar: string;
   editCalendar: string;
   editCalendarTitle: string;
@@ -81,6 +89,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   nextPeriod: "Next",
   newEvent: "New event",
   calendarsSection: "Calendars",
+  myCalendarsSection: "My calendars",
+  teamCalendarsSection: "Team calendars",
+  calendarDirectoryLabel: defaultOwnerScopeLabels.label,
+  calendarDirectoryPersonal: defaultOwnerScopeLabels.personal,
+  calendarDirectoryGroup: defaultOwnerScopeLabels.group,
+  calendarDirectoryReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
   newCalendar: "New calendar",
   editCalendar: "Edit calendar",
   editCalendarTitle: "Edit calendar",

@@ -9,6 +9,11 @@ import type {
  * (`JmapCalendarEvent` — plain JSON, safe for Dexie and mocks); views convert
  * to the calendar-engine's Temporal model via calendar-event-model.ts.
  */
+export type CalendarDirectoryGroup = {
+  slug: string;
+  displayName: string;
+};
+
 export type CalendarInfo = {
   id: string;
   name: string;
@@ -19,11 +24,14 @@ export type CalendarInfo = {
   isDefault?: boolean;
   mayWrite?: boolean;
   mayDelete?: boolean;
+  scope?: "personal" | "group";
+  groupSlug?: string | null;
 };
 
 export type CalendarUIData = {
   calendars: CalendarInfo[];
   events: JmapCalendarEvent[];
+  groups?: CalendarDirectoryGroup[];
 };
 
 export type CalendarViewId = "month" | "week" | "day" | "year";
@@ -64,6 +72,7 @@ export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">>
 export type CalendarDraft = {
   name: string;
   color: string;
+  groupSlug?: string | null;
 };
 
 export type CalendarPatch = {

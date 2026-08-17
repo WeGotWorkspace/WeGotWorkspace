@@ -21,7 +21,15 @@ import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recu
 import { formToCreateIntent } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import {
+  calendarDirectoryGroupsFromBootstrap,
+  personalOwnerLabel,
+} from "@/calendar-core/src/calendar-workspace-props";
+import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import {
+  personalCalendarsForSidebar,
+  teamCalendarsForSidebar,
+} from "@/calendar-core/src/calendar-sidebar-order";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
@@ -32,6 +40,74 @@ const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year"];
 function closeSidebarOnMobile(close: () => void) {
   if (!isSidebarOverlayViewport()) return;
   close();
+}
+
+function CalendarSidebarRows({
+  calendars,
+  hiddenCalendarIds,
+  defaultCalendarId,
+  canDeleteCalendars,
+  editLabel,
+  onToggleVisibility,
+  onSelectDefault,
+  onEdit,
+}: {
+  calendars: CalendarInfo[];
+  hiddenCalendarIds: ReadonlySet<string>;
+  defaultCalendarId?: string;
+  canDeleteCalendars: boolean;
+  editLabel: string;
+  onToggleVisibility: (calendarId: string) => void;
+  onSelectDefault: (calendarId: string) => void;
+  onEdit: (calendarId: string) => void;
+}) {
+  return (
+    <>
+      {calendars.map((calendar) => {
+        const visible = !hiddenCalendarIds.has(calendar.id);
+        const mayEdit = calendar.mayWrite !== false;
+        const mayDelete = calendar.mayDelete !== false && canDeleteCalendars;
+        const canManage = mayEdit || mayDelete;
+        const selected = calendar.id === defaultCalendarId;
+        return (
+          <li
+            key={calendar.id}
+            className={cn("calendar-sidebar-row", selected && "calendar-sidebar-row--selected")}
+            style={
+              {
+                "--calendar-row-color": calendar.color || "var(--color-ink)",
+              } as CSSProperties
+            }
+          >
+            <Checkbox
+              checked={visible}
+              aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
+              className="calendar-sidebar-row__visibility"
+              onCheckedChange={() => onToggleVisibility(calendar.id)}
+              onClick={(event) => event.stopPropagation()}
+            />
+            <button
+              type="button"
+              className="calendar-sidebar-row__select"
+              onClick={() => onSelectDefault(calendar.id)}
+            >
+              <span className="calendar-sidebar-row__name">{calendar.name}</span>
+            </button>
+            {canManage ? (
+              <IconButton
+                label={editLabel}
+                icon={<Pencil className="size-3.5" aria-hidden />}
+                size="sm"
+                variant="ghost"
+                className="calendar-sidebar-row__edit"
+                onClick={() => onEdit(calendar.id)}
+              />
+            ) : null}
+          </li>
+        );
+      })}
+    </>
+  );
 }
 
 export function CalendarWorkspace({
@@ -109,6 +185,10 @@ export function CalendarWorkspace({
   } = controller;
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
+  const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
+  const ownerLabel = personalOwnerLabel(session);
+  const myCalendars = personalCalendarsForSidebar(calendars);
+  const teamCalendars = teamCalendarsForSidebar(calendars);
 
   const viewLabels: Record<CalendarViewId, string> = {
     month: L.viewMonth,
@@ -166,58 +246,35 @@ export function CalendarWorkspace({
             }
           >
             <SidebarSection
-              title={L.calendarsSection}
+              title={L.myCalendarsSection}
               onAdd={canCreateCalendar ? openCreateCalendarDialog : undefined}
               addLabel={L.newCalendar}
             >
-              {calendars.map((calendar) => {
-                const visible = !hiddenCalendarIds.has(calendar.id);
-                const mayEdit = calendar.mayWrite !== false;
-                const mayDelete =
-                  calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
-                const canManage = mayEdit || mayDelete;
-                const selected = calendar.id === defaultCalendarId;
-                return (
-                  <li
-                    key={calendar.id}
-                    className={cn(
-                      "calendar-sidebar-row",
-                      selected && "calendar-sidebar-row--selected",
-                    )}
-                    style={
-                      {
-                        "--calendar-row-color": calendar.color || "var(--color-ink)",
-                      } as CSSProperties
-                    }
-                  >
-                    <Checkbox
-                      checked={visible}
-                      aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
-                      className="calendar-sidebar-row__visibility"
-                      onCheckedChange={() => toggleCalendarVisibility(calendar.id)}
-                      onClick={(event) => event.stopPropagation()}
-                    />
-                    <button
-                      type="button"
-                      className="calendar-sidebar-row__select"
-                      onClick={() => selectDefaultCalendar(calendar.id)}
-                    >
-                      <span className="calendar-sidebar-row__name">{calendar.name}</span>
-                    </button>
-                    {canManage ? (
-                      <IconButton
-                        label={L.editCalendar}
-                        icon={<Pencil className="size-3.5" aria-hidden />}
-                        size="sm"
-                        variant="ghost"
-                        className="calendar-sidebar-row__edit"
-                        onClick={() => openEditCalendarDialog(calendar.id)}
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
+              <CalendarSidebarRows
+                calendars={myCalendars}
+                hiddenCalendarIds={hiddenCalendarIds}
+                defaultCalendarId={defaultCalendarId}
+                canDeleteCalendars={Boolean(operations?.deleteCalendar)}
+                editLabel={L.editCalendar}
+                onToggleVisibility={toggleCalendarVisibility}
+                onSelectDefault={selectDefaultCalendar}
+                onEdit={openEditCalendarDialog}
+              />
             </SidebarSection>
+            {teamCalendars.length > 0 ? (
+              <SidebarSection title={L.teamCalendarsSection}>
+                <CalendarSidebarRows
+                  calendars={teamCalendars}
+                  hiddenCalendarIds={hiddenCalendarIds}
+                  defaultCalendarId={defaultCalendarId}
+                  canDeleteCalendars={Boolean(operations?.deleteCalendar)}
+                  editLabel={L.editCalendar}
+                  onToggleVisibility={toggleCalendarVisibility}
+                  onSelectDefault={selectDefaultCalendar}
+                  onEdit={openEditCalendarDialog}
+                />
+              </SidebarSection>
+            ) : null}
           </AppSidebar>
         }
         mainHeader={
@@ -309,6 +366,8 @@ export function CalendarWorkspace({
       <CalendarCalendarDialog
         dialog={calendarDialog}
         labels={L}
+        groups={directoryGroups}
+        personalOwnerLabel={ownerLabel}
         busy={calendarDialogBusy}
         onClose={closeCalendarDialog}
         onConfirm={saveCalendarDialog}

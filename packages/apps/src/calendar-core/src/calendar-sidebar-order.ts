@@ -16,3 +16,15 @@ export function sortCalendarsForSidebar<T extends Pick<CalendarInfo, "name" | "s
 ): T[] {
   return [...calendars].sort(compareCalendarsForSidebar);
 }
+
+export function isGroupCalendar(calendar: Pick<CalendarInfo, "scope" | "groupSlug">): boolean {
+  return calendar.scope === "group" && Boolean(calendar.groupSlug?.trim());
+}
+
+export function personalCalendarsForSidebar<T extends CalendarInfo>(calendars: readonly T[]): T[] {
+  return sortCalendarsForSidebar(calendars.filter((calendar) => !isGroupCalendar(calendar)));
+}
+
+export function teamCalendarsForSidebar<T extends CalendarInfo>(calendars: readonly T[]): T[] {
+  return sortCalendarsForSidebar(calendars.filter((calendar) => isGroupCalendar(calendar)));
+}
