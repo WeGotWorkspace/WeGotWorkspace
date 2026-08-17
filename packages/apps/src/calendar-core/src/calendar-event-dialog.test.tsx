@@ -161,6 +161,40 @@ describe("CalendarEventDialog", () => {
     ).toBeNull();
   });
 
+  it("groups schedule and recurrence fields into cards", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      recurrencePreset: "daily" as const,
+    };
+    renderDialog({ form, locale: "en-US" });
+    const whenTitle = screen.getByRole("heading", {
+      name: defaultCalendarLabels.eventWhenSectionTitle,
+    });
+    const repeatTitle = screen.getByRole("heading", {
+      name: defaultCalendarLabels.eventRepeatLabel,
+    });
+    const whenCard = whenTitle.closest(".card");
+    const repeatCard = repeatTitle.closest(".card");
+    expect(whenCard).not.toBeNull();
+    expect(repeatCard).not.toBeNull();
+    expect(whenCard!.querySelector(".card__panel")).toBeNull();
+    expect(repeatCard!.querySelector(".card__panel")).toBeNull();
+    expect(whenCard!.querySelector(".card__row")).not.toBeNull();
+    expect(
+      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventAllDayLabel}"]`),
+    ).not.toBeNull();
+    expect(
+      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventTimeZoneLabel}"]`),
+    ).not.toBeNull();
+    expect(
+      repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRepeatLabel}"]`),
+    ).not.toBeNull();
+    expect(
+      repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRecurrenceEndsLabel}"]`),
+    ).not.toBeNull();
+  });
+
   it("shows Ends controls for editable repeating presets", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
@@ -172,6 +206,10 @@ describe("CalendarEventDialog", () => {
       name: defaultCalendarLabels.eventRecurrenceEndsLabel,
     });
     expect(ends.textContent).toMatch(/Never/i);
+    const untilDate = screen.getByRole("button", {
+      name: new RegExp(defaultCalendarLabels.eventRecurrenceEndsOnDate, "i"),
+    });
+    expect(untilDate.hasAttribute("disabled")).toBe(true);
     fireEvent.click(ends);
     fireEvent.click(screen.getByRole("option", { name: /After/i }));
     expect(onChange).toHaveBeenCalledWith(

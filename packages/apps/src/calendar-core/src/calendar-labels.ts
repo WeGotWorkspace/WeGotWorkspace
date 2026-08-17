@@ -49,6 +49,8 @@ export type CalendarUILabels = {
   eventStartLabel: string;
   eventEndLabel: string;
   eventAllDayLabel: string;
+  /** Card heading for all-day, start, end, and time zone. */
+  eventWhenSectionTitle: string;
   eventTimeZoneLabel: string;
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
@@ -118,6 +120,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventStartLabel: "Starts",
   eventEndLabel: "Ends",
   eventAllDayLabel: "All day",
+  eventWhenSectionTitle: "When",
   eventTimeZoneLabel: "Time zone",
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",

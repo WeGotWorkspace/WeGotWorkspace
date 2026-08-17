@@ -9,12 +9,18 @@
 }
 
 .calendar-calendar-dialog__footer {
-  @apply mt-4;
+  @apply mt-4 gap-2 sm:gap-0;
 }
 
-.calendar-calendar-dialog__delete {
-  margin-inline-end: auto;
+.calendar-calendar-dialog__footer .calendar-calendar-dialog__delete {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
   color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .calendar-calendar-dialog__footer .calendar-calendar-dialog__delete {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
 }
 
 .calendar-calendar-dialog__color-content {

@@ -87,7 +87,7 @@
   @apply size-9 shrink-0;
 }
 
-/* Prev/next sit tight against the range title (ViewHeader titleLeading). */
+/* Prev/next (ViewHeader titleLeading): inline before the title; stacked at row end. */
 .calendar-workspace .calendar-header-nav {
   @apply flex shrink-0 items-center gap-0;
 }
@@ -265,18 +265,40 @@
   --primary: var(--calendar-accent-strong);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --card-title-icon-color: var(--calendar-accent);
+  --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+}
+
+.calendar-dialog-surface.calendar-event-dialog {
+  @apply flex max-h-[min(90dvh,56rem)] flex-col overflow-hidden;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__form {
-  display: flex;
-  flex-direction: column;
+  @apply flex min-h-0 flex-1 flex-col;
   gap: 0.9rem;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
+  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto;
+  overscroll-behavior: contain;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__fields > .field-label-row {
+  @apply mb-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__card {
+  @apply mb-0 p-4;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__card .card__header {
+  @apply mb-3;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__repeat-trigger,
+.calendar-dialog-surface .calendar-event-dialog__timezone-trigger {
+  @apply w-full min-w-0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__title-row {
@@ -346,8 +368,12 @@
   cursor: pointer;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__date-trigger:hover {
+.calendar-dialog-surface .calendar-event-dialog__date-trigger:hover:not(:disabled) {
   background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-trigger:disabled {
+  @apply cursor-not-allowed opacity-50;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__date-popover {
@@ -357,6 +383,26 @@
 .calendar-dialog-surface .calendar-event-dialog__datetime input[type="time"] {
   width: auto;
   min-width: 7.5rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends {
+  @apply grid items-center gap-2;
+  grid-template-columns: minmax(6.5rem, 1fr) minmax(8.5rem, 1fr);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends > .select-trigger {
+  @apply w-full min-w-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra {
+  @apply flex min-h-9 min-w-0 items-center gap-1;
+}
+
+.calendar-dialog-surface
+  .calendar-event-dialog__recurrence-ends-extra
+  .calendar-event-dialog__date-trigger,
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count {
+  @apply w-full;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-count {
@@ -381,9 +427,20 @@
   border-radius: 9999px;
 }
 
+.calendar-dialog-surface .calendar-event-dialog__footer {
+  /* DialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
+  @apply shrink-0 gap-2 sm:gap-0;
+}
+
 .calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {
-  margin-inline-end: auto;
+  @apply w-full justify-center sm:w-auto sm:me-auto;
   color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
 }
 
 .calendar-dialog-surface.calendar-recurrence-scope-dialog {
