@@ -11,6 +11,9 @@ docker/install/.env
 /packages/api/.phpunit.cache/
 /packages/api/.phpunit.result.cache
 /packages/api/.env
+# Timestamped copies from WgwConfigMigrator (contain secrets)
+.env.bak*
+wgw-config.php.bak*
 /packages/api/bootstrap/cache/*
 !/packages/api/bootstrap/cache/.gitignore
 /packages/api/storage/logs/*.log
