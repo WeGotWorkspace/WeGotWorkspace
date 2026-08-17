@@ -199,7 +199,7 @@ export function CalendarWorkspace({
     year: L.viewYear,
   };
 
-  useDocumentTitle(`${L.appTitle} — ${title}`);
+  useDocumentTitle(title);
 
   return (
     <TooltipProvider delayDuration={300}>
