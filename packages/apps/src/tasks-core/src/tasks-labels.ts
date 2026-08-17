@@ -1,3 +1,5 @@
+import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
+
 export type TasksUILabels = {
   appName: string;
   sidebarStatus: string;
@@ -161,10 +163,10 @@ export const defaultTasksLabels: TasksUILabels = {
   renameProject: "Rename list",
   projectNameLabel: "List name",
   projectColorLabel: "Color",
-  projectScopeLabel: "Owner",
-  projectScopePersonal: () => "Only Me",
-  projectScopeGroup: (name) => `${name} (Group)`,
-  projectScopeReadOnlyLabel: "Owner",
+  projectScopeLabel: defaultOwnerScopeLabels.label,
+  projectScopePersonal: defaultOwnerScopeLabels.personal,
+  projectScopeGroup: defaultOwnerScopeLabels.group,
+  projectScopeReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
   createProjectButton: "Create",
   saveProjectButton: "Save",
   toastProjectCreated: "List created",
