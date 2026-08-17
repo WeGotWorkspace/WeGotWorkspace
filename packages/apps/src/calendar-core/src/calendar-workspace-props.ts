@@ -8,6 +8,7 @@ import type {
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
 
 export type CalendarWorkspaceProps = {
   data: CalendarUIData;
@@ -20,6 +21,7 @@ export type CalendarWorkspaceProps = {
   initialPresentation?: CalendarPresentation;
   initialAnchor?: string;
   onViewChange?: (view: CalendarViewId) => void;
+  onRouteStateChange?: (state: CalendarRouteState, options?: { replace?: boolean }) => void;
   onLogout?: () => void;
   className?: string;
 };

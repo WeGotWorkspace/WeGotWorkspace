@@ -41,6 +41,10 @@ describe("sanitizeWgwReturnPath", () => {
     expect(sanitizeWgwReturnPath("/apps/office/")).toBe("/apps/office");
     expect(sanitizeWgwReturnPath("/contacts")).toBe("/contacts");
     expect(sanitizeWgwReturnPath("/tasks/inbox")).toBe("/tasks/inbox");
+    expect(sanitizeWgwReturnPath("/calendar/week/2026-08-17")).toBe("/calendar/week/2026-08-17");
+    expect(sanitizeWgwReturnPath("/calendar/list/month/2026-08-17")).toBe(
+      "/calendar/list/month/2026-08-17",
+    );
   });
 
   it("rejects external and unknown paths", () => {

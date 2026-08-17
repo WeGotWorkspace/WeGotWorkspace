@@ -16,6 +16,7 @@ const ALLOWED_RETURN_PREFIXES = [
   "/",
   "/admin",
   "/apps",
+  "/calendar",
   "/contacts",
   "/docs",
   "/drive",

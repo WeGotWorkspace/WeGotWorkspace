@@ -120,6 +120,7 @@ export function CalendarWorkspace({
   initialPresentation,
   initialAnchor,
   onViewChange,
+  onRouteStateChange,
   onLogout,
   className,
 }: CalendarWorkspaceProps) {
@@ -131,6 +132,7 @@ export function CalendarWorkspace({
     initialPresentation,
     initialAnchor,
     onViewChange,
+    onRouteStateChange, // App-owned URL sync — must reach the controller
     surfaceEvents: surface?.events,
     resolveEventId: surface?.resolveJmapId,
     onMutated: () => {

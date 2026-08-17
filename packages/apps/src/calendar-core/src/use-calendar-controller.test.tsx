@@ -71,6 +71,104 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.presentation).toBe("list");
   });
 
+  it("hydrates view, date, and list mode from a path-equivalent initial state", () => {
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        initialView: "week",
+        initialAnchor: "2026-08-17",
+        initialPresentation: "list",
+      }),
+    );
+
+    expect(result.current.view).toBe("week");
+    expect(result.current.anchor).toBe("2026-08-17");
+    expect(result.current.presentation).toBe("list");
+    expect(result.current.litSurface).toEqual({ view: "week", presentation: "list" });
+  });
+
+  it("syncs view, date, and presentation when the URL initial state changes", () => {
+    const { result, rerender } = renderHook(
+      ({
+        initialView,
+        initialAnchor,
+        initialPresentation,
+      }: {
+        initialView: "month" | "week";
+        initialAnchor: string;
+        initialPresentation: "grid" | "list";
+      }) =>
+        useCalendarController({
+          data: bootstrap.data,
+          initialView,
+          initialAnchor,
+          initialPresentation,
+        }),
+      {
+        initialProps: {
+          initialView: "month" as const,
+          initialAnchor: "2026-08-17",
+          initialPresentation: "grid" as const,
+        },
+      },
+    );
+
+    rerender({
+      initialView: "week",
+      initialAnchor: "2026-08-10",
+      initialPresentation: "list",
+    });
+
+    expect(result.current.view).toBe("week");
+    expect(result.current.anchor).toBe("2026-08-10");
+    expect(result.current.presentation).toBe("list");
+  });
+
+  it("pushes route state on view, prev/next, today, and list toggle; replaces surface date tweaks", () => {
+    const onRouteStateChange = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        initialView: "week",
+        initialAnchor: "2026-08-17",
+        initialPresentation: "grid",
+        onRouteStateChange,
+      }),
+    );
+
+    act(() => {
+      result.current.selectView("day");
+    });
+    expect(onRouteStateChange).toHaveBeenLastCalledWith(
+      { view: "day", date: "2026-08-17", presentation: "grid" },
+      { replace: false },
+    );
+
+    act(() => {
+      result.current.setPresentation("list");
+    });
+    expect(onRouteStateChange).toHaveBeenLastCalledWith(
+      { view: "day", date: "2026-08-17", presentation: "list" },
+      { replace: false },
+    );
+
+    act(() => {
+      result.current.goNext();
+    });
+    expect(onRouteStateChange).toHaveBeenLastCalledWith(
+      { view: "day", date: "2026-08-18", presentation: "list" },
+      { replace: false },
+    );
+
+    act(() => {
+      result.current.setAnchor("2026-08-20");
+    });
+    expect(onRouteStateChange).toHaveBeenLastCalledWith(
+      { view: "day", date: "2026-08-20", presentation: "list" },
+      { replace: true },
+    );
+  });
+
   it("selectView is a no-op when the view is unchanged (no duplicate onViewChange)", () => {
     const onViewChange = vi.fn();
     const { result } = renderHook(() =>

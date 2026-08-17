@@ -11,6 +11,12 @@ import type {
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
 import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/calendar-event-model";
+import {
+  calendarRouteKey,
+  DEFAULT_CALENDAR_PRESENTATION,
+  DEFAULT_CALENDAR_VIEW,
+  type CalendarRouteState,
+} from "@/calendar-core/src/calendar-route-search";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import {
   calendarEventToForm,
@@ -74,6 +80,8 @@ export type UseCalendarControllerOptions = {
   initialPresentation?: CalendarPresentation;
   initialAnchor?: string;
   onViewChange?: (view: CalendarViewId) => void;
+  /** App-owned path sync — do not call router APIs from this hook. */
+  onRouteStateChange?: (state: CalendarRouteState, options?: { replace?: boolean }) => void;
   /** Adapter-backed engine events — editor fallback for events not yet in the bootstrap. */
   surfaceEvents?: CalendarEventsMap;
   /** Resolves an engine key to its server-side JMAP id (adapter-created events). */
@@ -129,9 +137,10 @@ export function useCalendarController({
   labels,
   operations,
   initialView,
-  initialPresentation = "grid",
+  initialPresentation = DEFAULT_CALENDAR_PRESENTATION,
   initialAnchor,
   onViewChange,
+  onRouteStateChange,
   surfaceEvents,
   resolveEventId,
   onMutated,
@@ -140,11 +149,23 @@ export function useCalendarController({
   const { show, showError } = useAppToast();
   const locale = useMemo(() => resolveLocale(undefined), []);
 
-  const [view, setView] = useState<CalendarViewId>(initialView ?? "month");
-  const [presentation, setPresentation] = useState<CalendarPresentation>(initialPresentation);
-  const [anchor, setAnchor] = useState<string>(initialAnchor ?? todayISODate());
+  const [view, setView] = useState<CalendarViewId>(initialView ?? DEFAULT_CALENDAR_VIEW);
+  const [presentation, setPresentationState] = useState<CalendarPresentation>(initialPresentation);
+  const [anchor, setAnchorState] = useState<string>(initialAnchor ?? todayISODate());
   const viewRef = useRef(view);
   viewRef.current = view;
+  const presentationRef = useRef(presentation);
+  presentationRef.current = presentation;
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
+  const pendingRouteKeyRef = useRef<string | null>(null);
+  const lastInitialRouteKeyRef = useRef(
+    calendarRouteKey({
+      view: initialView ?? DEFAULT_CALENDAR_VIEW,
+      date: initialAnchor ?? todayISODate(),
+      presentation: initialPresentation,
+    }),
+  );
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [calendars, setCalendars] = useState<CalendarInfo[]>(() =>
     sortCalendarsForSidebar(data.calendars),
@@ -190,6 +211,51 @@ export function useCalendarController({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [undoLatest]);
 
+  const currentRouteState = useCallback((): CalendarRouteState => {
+    return {
+      view: viewRef.current,
+      date: anchorRef.current,
+      presentation: presentationRef.current,
+    };
+  }, []);
+
+  const onRouteStateChangeRef = useRef(onRouteStateChange);
+  onRouteStateChangeRef.current = onRouteStateChange;
+
+  const emitRouteState = useCallback((next: CalendarRouteState, replace = false) => {
+    pendingRouteKeyRef.current = calendarRouteKey(next);
+    onRouteStateChangeRef.current?.(next, { replace });
+  }, []);
+
+  useEffect(() => {
+    const incoming: CalendarRouteState = {
+      view: initialView ?? DEFAULT_CALENDAR_VIEW,
+      date: initialAnchor ?? todayISODate(),
+      presentation: initialPresentation,
+    };
+    const incomingKey = calendarRouteKey(incoming);
+    const pending = pendingRouteKeyRef.current;
+    const initialsChanged = lastInitialRouteKeyRef.current !== incomingKey;
+    lastInitialRouteKeyRef.current = incomingKey;
+
+    if (pending !== null) {
+      if (incomingKey === pending) {
+        pendingRouteKeyRef.current = null;
+        return;
+      }
+      if (!initialsChanged) return;
+      pendingRouteKeyRef.current = null;
+    }
+    if (!initialsChanged) return;
+
+    viewRef.current = incoming.view;
+    presentationRef.current = incoming.presentation;
+    anchorRef.current = incoming.date;
+    setView(incoming.view);
+    setPresentationState(incoming.presentation);
+    setAnchorState(incoming.date);
+  }, [initialView, initialPresentation, initialAnchor]);
+
   const selectView = useCallback(
     (next: CalendarViewId) => {
       if (viewRef.current === next) return;
@@ -200,16 +266,54 @@ export function useCalendarController({
         setSidebarOpen(false);
       }
       onViewChange?.(next);
+      emitRouteState(currentRouteState());
     },
-    [onViewChange],
+    [onViewChange, emitRouteState, currentRouteState],
   );
 
-  const goToday = useCallback(() => setAnchor(todayISODate()), []);
-  const goPrevious = useCallback(
-    () => setAnchor((current) => shiftAnchor(view, current, -1)),
-    [view],
+  const setPresentation = useCallback(
+    (next: CalendarPresentation) => {
+      if (presentationRef.current === next) return;
+      presentationRef.current = next;
+      setPresentationState(next);
+      emitRouteState(currentRouteState());
+    },
+    [emitRouteState, currentRouteState],
   );
-  const goNext = useCallback(() => setAnchor((current) => shiftAnchor(view, current, 1)), [view]);
+
+  const setAnchor = useCallback(
+    (next: string) => {
+      if (anchorRef.current === next) return;
+      anchorRef.current = next;
+      setAnchorState(next);
+      emitRouteState(currentRouteState(), true);
+    },
+    [emitRouteState, currentRouteState],
+  );
+
+  const goToday = useCallback(() => {
+    const next = todayISODate();
+    if (anchorRef.current === next) return;
+    anchorRef.current = next;
+    setAnchorState(next);
+    emitRouteState(currentRouteState());
+  }, [emitRouteState, currentRouteState]);
+
+  const goPrevious = useCallback(() => {
+    const next = shiftAnchor(viewRef.current, anchorRef.current, -1);
+    if (anchorRef.current === next) return;
+    anchorRef.current = next;
+    setAnchorState(next);
+    emitRouteState(currentRouteState());
+  }, [emitRouteState, currentRouteState]);
+
+  const goNext = useCallback(() => {
+    const next = shiftAnchor(viewRef.current, anchorRef.current, 1);
+    if (anchorRef.current === next) return;
+    anchorRef.current = next;
+    setAnchorState(next);
+    emitRouteState(currentRouteState());
+  }, [emitRouteState, currentRouteState]);
 
   const ensureCalendarVisible = useCallback((calendarId: string) => {
     setHiddenCalendarIds((current) => {

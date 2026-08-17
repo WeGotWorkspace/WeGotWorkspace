@@ -3,6 +3,7 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
+import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
 
 export type CalendarAppProps = {
@@ -10,6 +11,8 @@ export type CalendarAppProps = {
 };
 
 export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
+  const { initialView, initialPresentation, initialAnchor, handleRouteStateChange } =
+    useCalendarRouteSync();
   const { phase, error, retry, successVersion, data, session, operations, jmapClient } =
     useCalendarAPI(apiSource);
 
@@ -29,6 +32,10 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
           session={session}
           operations={operations}
           surface={surface}
+          initialView={initialView}
+          initialPresentation={initialPresentation}
+          initialAnchor={initialAnchor}
+          onRouteStateChange={handleRouteStateChange}
           onLogout={() => {
             window.location.assign("/logout");
           }}

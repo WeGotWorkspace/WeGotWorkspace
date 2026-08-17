@@ -523,11 +523,50 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: TasksComponent,
   });
 
-  const calendarRoute = createRoute({
+  const CalendarComponent = isLive ? withWeGotWorkspaceAuth(CalendarApp) : MockCalendarRoute;
+
+  // Each calendar path is a root-level route with its own component so `useParams`
+  // in CalendarApp resolves view/date on direct page loads (same as notes/tasks).
+  const calendarIndexRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/calendar",
     head: calendarPwaHead,
-    component: isLive ? withWeGotWorkspaceAuth(CalendarApp) : MockCalendarRoute,
+    component: CalendarComponent,
+  });
+
+  const calendarViewDateRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/$view/$date",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarViewRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/$view",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarListIndexRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/list",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarListViewRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/list/$view",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarListViewDateRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/list/$view/$date",
+    head: calendarPwaHead,
+    component: CalendarComponent,
   });
 
   const installRoute = createRoute({
@@ -582,7 +621,12 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     tasksTagRoute,
     tasksListRoute,
     tasksPriorityRoute,
-    calendarRoute,
+    calendarIndexRoute,
+    calendarListViewDateRoute,
+    calendarListViewRoute,
+    calendarListIndexRoute,
+    calendarViewDateRoute,
+    calendarViewRoute,
     installRoute,
     sharePublicRoute,
   ]);
