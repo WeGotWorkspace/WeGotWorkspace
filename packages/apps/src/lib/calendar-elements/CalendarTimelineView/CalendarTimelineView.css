@@ -130,6 +130,8 @@ time-line.timeline-main {
     --_lc-week-section-divider-color,
     light-dark(rgb(15 23 42 / 22%), rgb(255 255 255 / 28%))
   );
+  /* Shared by the time-gutter hour rules and <time-line> `.cell-main--grid`. */
+  --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
 }
 
 .timeline-sidebar {
@@ -146,19 +148,12 @@ time-line.timeline-main {
   --_lc-time-sidebar-sticky-top-base: 0px;
   --_lc-time-sidebar-all-day-height: var(--_lc-timeline-all-day-height, 0px);
   --_lc-time-sidebar-timed-height: var(--_lc-timeline-timed-height);
+  --_lc-time-sidebar-timed-gap: var(--_lc-timeline-timed-gap);
   --_lc-time-sidebar-all-day-divider-width: var(--_lc-timeline-section-divider-width);
   --_lc-time-sidebar-all-day-divider-color: var(--_lc-timeline-section-divider-color);
-  /* Center each hour label on the timed timeline's hour gridlines (grid-week parity):
-     the timed <time-line>'s .viewport carries a 0.5px border, so its gridline area is 1px
-     shorter than the timed height and starts 0.5px lower — size the hour rows against that,
-     then pull the rows up by half the 12px label height so label centers land on the lines. */
-  --_lc-time-sidebar-hour-cell-height: calc((var(--_lc-timeline-timed-height) - 1px) / 24);
-  /* The timed grid sits --_lc-timeline-timed-gap below the (measured) shell in the scrolled
-     flow; shift the label column down by the same gap so label centers keep landing on the
-     gridlines. The sidebar's own all-day slot stays shell-height, keeping its divider on the
-     same line as the shell's. */
-  --_lc-time-sidebar-timed-top-offset: calc(-5.5px + var(--_lc-timeline-timed-gap));
-  --_lc-hour-labels-margin-top: 0px;
+  /* Same hour slot as the timed grid (no 0.5px-border / -1px fudge). Labels center on the
+     row-top line via translateY on the text, not by shifting this column. */
+  --_lc-time-sidebar-hour-cell-height: var(--_lc-timeline-hour-height);
 }
 
 /* Top-start corner cell (sidebar column x day-header row): the visible week's number.
@@ -302,6 +297,8 @@ time-line.timeline-timed {
   min-height: var(--_lc-timeline-timed-height);
   /* The flow gap below the sticky shell (see --_lc-timeline-timed-gap on the layout). */
   margin-top: var(--_lc-timeline-timed-gap, 0px);
+  /* Tile hour lines with the same length as the gutter rows (not a % of a bordered box). */
+  --time-line-grid-size: var(--_lc-timeline-hour-height);
   flex: none;
   /* Floor for very short events (grid parity: event-card's own min-height in the grid stack is
      --_lc-event-height, default 32px, 28px on fine pointers — same token family as the all-day
@@ -330,7 +327,15 @@ time-line.timeline-timed {
   --time-line-event-inline-inset: 4px;
 }
 
+/* Drop the 0.5px block-axis viewport border so hour tiles are exactly
+   --_lc-timeline-hour-height tall (same as the gutter). Keep the inline edge
+   as the vertical divider next to the time column. */
+time-line.timeline-timed::part(viewport) {
+  border-block-width: 0;
+}
+
 @supports (color: color-mix(in srgb, black, white)) {
+  .timeline-layout--composed,
   time-line.timeline-timed {
     --time-line-grid-color: color-mix(
       in srgb,

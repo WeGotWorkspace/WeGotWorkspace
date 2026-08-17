@@ -3,6 +3,7 @@ import { html, nothing, type TemplateResult, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { styleMap } from "lit/directives/style-map.js";
+import { CALENDAR_RANGE_TRANSITION_END_EVENT } from "@/calendar-core/src/calendar-range-transition";
 import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
 import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
 import "../EventCard/EventCard.js";
@@ -208,6 +209,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   /** Watches the composed layout + all-day shell to derive the timed viewport height. */
   #composedResizeObserver: ResizeObserver | null = null;
   #observedComposedElements = new Set<Element>();
+  /** `.content` (or parent) that plays the range-zoom scale; re-sync when it ends. */
+  #rangeTransitionScope: HTMLElement | null = null;
   /** Keeps the now-indicator line + clock badge moving while the view is connected. */
   #nowTickTimer: ReturnType<typeof setInterval> | null = null;
   /**
@@ -274,6 +277,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     this.#composedResizeObserver?.disconnect();
     this.#composedResizeObserver = null;
     this.#observedComposedElements.clear();
+    this.#unbindRangeTransitionScope();
     // Gestures can leave transient locks active if the view unmounts mid-drag; reset so swipe
     // is re-enabled when returning to this view (grid-week parity).
     this.#activeGestureLocks.clear();
@@ -1757,7 +1761,42 @@ export class CalendarTimelineView extends CalendarViewBase {
       this.#observedComposedElements.add(element);
     }
     this.#syncComposedMetrics();
+    this.#bindRangeTransitionScope();
   }
+
+  #bindRangeTransitionScope() {
+    const scope =
+      this.parentElement?.closest<HTMLElement>(".content") ?? this.parentElement ?? null;
+    if (scope === this.#rangeTransitionScope) return;
+    this.#unbindRangeTransitionScope();
+    this.#rangeTransitionScope = scope;
+    scope?.addEventListener(CALENDAR_RANGE_TRANSITION_END_EVENT, this.#handleRangeTransitionEnd);
+    scope?.addEventListener("animationend", this.#handleRangeAnimationEnd);
+  }
+
+  #unbindRangeTransitionScope() {
+    this.#rangeTransitionScope?.removeEventListener(
+      CALENDAR_RANGE_TRANSITION_END_EVENT,
+      this.#handleRangeTransitionEnd,
+    );
+    this.#rangeTransitionScope?.removeEventListener("animationend", this.#handleRangeAnimationEnd);
+    this.#rangeTransitionScope = null;
+  }
+
+  #handleRangeAnimationEnd = (event: Event) => {
+    if (event.target !== this.#rangeTransitionScope) return;
+    this.#handleRangeTransitionEnd();
+  };
+
+  #handleRangeTransitionEnd = () => {
+    requestAnimationFrame(() => {
+      this.#syncComposedMetrics();
+      const swipe = this.renderRoot.querySelector<HTMLElement & { remeasure?: () => void }>(
+        "swipe-container",
+      );
+      swipe?.remeasure?.();
+    });
+  };
 
   #syncComposedMetrics() {
     const layout = this.renderRoot.querySelector<HTMLElement>(".timeline-layout--composed");

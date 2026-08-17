@@ -78,7 +78,9 @@
     var(--__grid-line-color) calc(var(--__grid-pos, 100%) - 1px) var(--__grid-pos, 100%),
     transparent var(--__grid-pos, 100%) 100%
   );
-  background-size: 100% var(--__grid-size, 100%);
+  /* --time-line-grid-size: consumer length (e.g. hour height) so tiles match a
+     composed axis; otherwise the inline % from #gridLineVars. */
+  background-size: 100% var(--time-line-grid-size, var(--__grid-size, 100%));
   background-repeat: repeat;
 }
 

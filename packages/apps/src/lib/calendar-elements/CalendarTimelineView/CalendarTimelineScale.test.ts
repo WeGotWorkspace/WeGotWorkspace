@@ -597,3 +597,71 @@ describe("now-badge x-alignment with hour labels", () => {
     expect(nowBadge).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
   });
 });
+
+describe("composed timeline hour-line geometry", () => {
+  const timelineCss = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
+    "utf8",
+  );
+  const sidebarCss = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "../CalendarTimeSidebar/CalendarTimeSidebar.css"),
+    "utf8",
+  );
+  const timeLineCss = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
+    "utf8",
+  );
+
+  it("uses the same hour slot on the gutter and the timed grid", () => {
+    expect(timelineCss).toContain(
+      "--_lc-time-sidebar-hour-cell-height: var(--_lc-timeline-hour-height)",
+    );
+    expect(timelineCss).toContain("--_lc-time-sidebar-timed-gap: var(--_lc-timeline-timed-gap)");
+    expect(timelineCss).toContain("--time-line-grid-size: var(--_lc-timeline-hour-height)");
+    expect(timelineCss).not.toContain("(var(--_lc-timeline-timed-height) - 1px)");
+    expect(timelineCss).not.toContain("-5.5px");
+  });
+
+  it("does not let the timed viewport border shrink the hour tiles", () => {
+    expect(timelineCss).toContain("time-line.timeline-timed::part(viewport)");
+    expect(timelineCss).toContain("border-block-width: 0");
+  });
+
+  it("paints gutter hour lines with the same end-of-tile gradient as TimeLine", () => {
+    expect(sidebarCss).toContain("grid-row: 4");
+    expect(sidebarCss).toContain("--_lc-time-sidebar-timed-gap, 0px)");
+    expect(sidebarCss).toContain("transparent 0 calc(100% - 1px)");
+    expect(sidebarCss).toContain(
+      "background-size: 100% var(--_lc-time-sidebar-hour-cell-height, calc(100% / 24))",
+    );
+    expect(sidebarCss).toContain("transform: translateY(-50%)");
+    expect(sidebarCss).not.toContain("--_lc-time-sidebar-timed-top-offset");
+  });
+
+  it("lets the composed view size TimeLine hour tiles with a length token", () => {
+    expect(timeLineCss).toContain("var(--time-line-grid-size, var(--__grid-size, 100%))");
+  });
+});
+
+describe("week swipe page measure ignores range-zoom transform", () => {
+  const swipeTs = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "../SwipeContainer/SwipeContainer.ts"),
+    "utf8",
+  );
+  const timelineTs = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.ts"),
+    "utf8",
+  );
+
+  it("measures page width with offsetWidth, not getBoundingClientRect", () => {
+    expect(swipeTs).toContain("page.offsetWidth");
+    expect(swipeTs).toContain("probe.offsetWidth");
+    expect(swipeTs).not.toContain("page.getBoundingClientRect().width");
+    expect(swipeTs).not.toContain("probe.getBoundingClientRect().width");
+  });
+
+  it("re-measures the week pager when the range-zoom animation ends", () => {
+    expect(timelineTs).toContain("CALENDAR_RANGE_TRANSITION_END_EVENT");
+    expect(timelineTs).toContain("swipe?.remeasure");
+  });
+});

@@ -260,18 +260,31 @@ export class SwipeContainer extends LitElement {
     }
   }
 
+  /**
+   * Re-read page widths and re-apply the snap transform. Call after an ancestor
+   * scale/opacity animation: `getBoundingClientRect` follows that transform while
+   * `clientWidth` does not, so a mid-animation measure leaves a stale translate.
+   */
+  remeasure(): void {
+    this.#updatePages();
+    this.#measurePages();
+    this.#applyCurrentIndex(false);
+  }
+
   #measurePages(): void {
-    const widths = this.#pages.map((page) => Math.max(1, page.getBoundingClientRect().width));
-    const containerRect = this.#container?.getBoundingClientRect() ?? this.getBoundingClientRect();
-    const isRtl = this.#isRtl();
-    const offsets = this.#pages.map((page) => {
-      const pageRect = page.getBoundingClientRect();
-      const offset = isRtl
-        ? containerRect.right - pageRect.right
-        : pageRect.left - containerRect.left;
-      return Math.max(0, offset);
+    // offsetWidth / clientWidth ignore CSS transforms on ancestors (range-zoom
+    // scale on `.content`). getBoundingClientRect does not — a measure during
+    // day→week zoom-out made the 7-day stack look ~3% wider than the swipe
+    // viewport, invented a leftover maxOffsetX, and left translate3d(-28px)
+    // on the grid after the scale was removed (sidebar is outside this host).
+    const widths = this.#pages.map((page) => Math.max(1, page.offsetWidth));
+    let acc = 0;
+    const offsets = widths.map((width) => {
+      const offset = acc;
+      acc += width;
+      return offset;
     });
-    const contentWidth = widths.reduce((sum, width) => sum + width, 0);
+    const contentWidth = acc;
     const viewportWidth = this.clientWidth || 1;
     const maxOffsetX = Math.max(0, contentWidth - viewportWidth);
 
@@ -312,7 +325,7 @@ export class SwipeContainer extends LitElement {
     probe.style.pointerEvents = "none";
     probe.style.inlineSize = value;
     this.renderRoot.append(probe);
-    const measuredWidth = probe.getBoundingClientRect().width;
+    const measuredWidth = probe.offsetWidth;
     probe.remove();
     return Number.isFinite(measuredWidth) ? measuredWidth : 0;
   }

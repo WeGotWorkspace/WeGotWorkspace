@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  CALENDAR_RANGE_TRANSITION_END_EVENT,
   CALENDAR_RANGE_ZOOM_IN_CLASS,
   CALENDAR_RANGE_ZOOM_OUT_CLASS,
   calendarRangeZoomDirection,
@@ -66,6 +67,21 @@ describe("restartCalendarRangeTransition", () => {
     restartCalendarRangeTransition(node, "in");
     expect(node.classList.contains(CALENDAR_RANGE_ZOOM_IN_CLASS)).toBe(false);
     expect(node.classList.contains(CALENDAR_RANGE_ZOOM_OUT_CLASS)).toBe(false);
+  });
+
+  it("dispatches calendar-range-transition-end after animationend", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({ matches: false, media: "(prefers-reduced-motion: reduce)" }),
+    );
+    const node = document.createElement("div");
+    const ended = vi.fn();
+    node.addEventListener(CALENDAR_RANGE_TRANSITION_END_EVENT, ended);
+    restartCalendarRangeTransition(node, "out");
+    expect(node.classList.contains(CALENDAR_RANGE_ZOOM_OUT_CLASS)).toBe(true);
+    node.dispatchEvent(new Event("animationend"));
+    expect(node.classList.contains(CALENDAR_RANGE_ZOOM_OUT_CLASS)).toBe(false);
+    expect(ended).toHaveBeenCalledOnce();
   });
 
   it("replaces a prior direction class when restarting", () => {

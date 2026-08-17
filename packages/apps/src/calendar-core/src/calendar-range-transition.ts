@@ -9,6 +9,11 @@ export const CALENDAR_RANGE_TRANSITION_CLASSES = [
   CALENDAR_RANGE_ZOOM_OUT_CLASS,
 ] as const;
 
+/** Fired on the range scope after the enter animation class is removed (transform gone). */
+export const CALENDAR_RANGE_TRANSITION_END_EVENT = "calendar-range-transition-end";
+
+const RANGE_ANIMATION_MS = 360;
+
 /** Narrower → wider time span zooms out; wider → narrower zooms in. */
 export type CalendarRangeZoomDirection = "in" | "out";
 
@@ -64,11 +69,23 @@ export function restartCalendarRangeTransition(
   node.classList.add(
     direction === "out" ? CALENDAR_RANGE_ZOOM_OUT_CLASS : CALENDAR_RANGE_ZOOM_IN_CLASS,
   );
-  const clear = () => {
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    window.clearTimeout(fallback);
     clearCalendarRangeTransition(node);
-    node.removeEventListener("animationend", clear);
+    node.removeEventListener("animationend", onEnd);
+    node.dispatchEvent(
+      new CustomEvent(CALENDAR_RANGE_TRANSITION_END_EVENT, { bubbles: true, composed: true }),
+    );
   };
-  node.addEventListener("animationend", clear);
+  const onEnd = (event: Event) => {
+    if (event.target !== node) return;
+    settle();
+  };
+  node.addEventListener("animationend", onEnd);
+  const fallback = window.setTimeout(settle, RANGE_ANIMATION_MS + 50);
 }
 
 /**
