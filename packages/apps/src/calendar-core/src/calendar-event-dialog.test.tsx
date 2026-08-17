@@ -161,7 +161,7 @@ describe("CalendarEventDialog", () => {
     ).toBeNull();
   });
 
-  it("groups schedule and recurrence fields into cards", () => {
+  it("groups schedule, recurrence, show-as, and alarms into cards", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Standup",
@@ -174,13 +174,28 @@ describe("CalendarEventDialog", () => {
     const repeatTitle = screen.getByRole("heading", {
       name: defaultCalendarLabels.eventRepeatLabel,
     });
+    const showAsTitle = screen.getByRole("heading", {
+      name: defaultCalendarLabels.eventShowAs,
+    });
+    const alarmsTitle = screen.getByRole("heading", {
+      name: defaultCalendarLabels.eventAlarmsLabel,
+    });
     const whenCard = whenTitle.closest(".card");
     const repeatCard = repeatTitle.closest(".card");
+    const showAsCard = showAsTitle.closest(".card");
+    const alarmsCard = alarmsTitle.closest(".card");
     expect(whenCard).not.toBeNull();
     expect(repeatCard).not.toBeNull();
+    expect(showAsCard).not.toBeNull();
+    expect(alarmsCard).not.toBeNull();
+    expect(showAsCard).not.toBe(whenCard);
+    expect(showAsCard).not.toBe(repeatCard);
+    expect(showAsCard).not.toBe(alarmsCard);
     expect(whenCard!.querySelector(".card__panel")).toBeNull();
     expect(repeatCard!.querySelector(".card__panel")).toBeNull();
+    expect(showAsCard!.querySelector(".card__panel")).toBeNull();
     expect(whenCard!.querySelector(".card__row")).not.toBeNull();
+    expect(showAsCard!.querySelector(".card__row")).not.toBeNull();
     expect(
       whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventAllDayLabel}"]`),
     ).not.toBeNull();
@@ -188,11 +203,27 @@ describe("CalendarEventDialog", () => {
       whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventTimeZoneLabel}"]`),
     ).not.toBeNull();
     expect(
+      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventShowAs}"]`),
+    ).toBeNull();
+    expect(
+      showAsCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventShowAs}"]`),
+    ).not.toBeNull();
+    expect(
       repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRepeatLabel}"]`),
     ).not.toBeNull();
     expect(
       repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRecurrenceEndsLabel}"]`),
     ).not.toBeNull();
+
+    const cards = document.querySelectorAll(
+      ".calendar-event-dialog__fields > .calendar-event-dialog__card",
+    );
+    expect([...cards].map((card) => card.querySelector(".card__title")?.textContent)).toEqual([
+      defaultCalendarLabels.eventWhenSectionTitle,
+      defaultCalendarLabels.eventRepeatLabel,
+      defaultCalendarLabels.eventShowAs,
+      defaultCalendarLabels.eventAlarmsLabel,
+    ]);
   });
 
   it("shows Ends controls for editable repeating presets", () => {
@@ -214,6 +245,88 @@ describe("CalendarEventDialog", () => {
     fireEvent.click(screen.getByRole("option", { name: /After/i }));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ recurrenceEnds: "count", recurrenceCount: 10 }),
+    );
+  });
+
+  it("shows Show as as Busy/Free only and persists Free through onChange", () => {
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    const { onChange } = renderDialog({ form, locale: "en-US" });
+    const showAsTitle = screen.getByRole("heading", { name: defaultCalendarLabels.eventShowAs });
+    const showAsCard = showAsTitle.closest(".card");
+    const whenCard = screen
+      .getByRole("heading", { name: defaultCalendarLabels.eventWhenSectionTitle })
+      .closest(".card");
+    expect(showAsCard).not.toBeNull();
+    expect(showAsCard).not.toBe(whenCard);
+    const showAs = screen.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs });
+    expect(showAsCard!.contains(showAs)).toBe(true);
+    expect(showAs.textContent).toMatch(/Busy/i);
+    fireEvent.click(showAs);
+    expect(
+      screen.getByRole("option", { name: defaultCalendarLabels.eventShowAsBusy }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("option", { name: defaultCalendarLabels.eventShowAsFree }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Tentative/i })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventShowAsFree }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ freeBusyStatus: "free" }));
+  });
+
+  it("shows the alarms card, adds an alarm, and forwards offset changes", () => {
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    const { onChange } = renderDialog({ form, locale: "en-US" });
+    expect(
+      screen.getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel }),
+    ).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventAlarmsNone)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventAlarmAdd }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT15M" })],
+      }),
+    );
+
+    const withAlarm = {
+      ...form,
+      alerts: [{ id: "alert1", action: "display" as const, offset: "-PT15M" }],
+    };
+    cleanup();
+    const next = renderDialog({ form: withAlarm, locale: "en-US" });
+    const offset = screen.getByRole("combobox", { name: defaultCalendarLabels.eventAlarmsLabel });
+    expect(offset.textContent).toMatch(/15 minutes/i);
+    expect(screen.queryByRole("option", { name: /Email/i })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Notification/i })).toBeNull();
+    fireEvent.click(offset);
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm1Hour }));
+    expect(next.onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT1H" })],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventAlarmRemove }));
+    expect(next.onChange).toHaveBeenCalledWith(expect.objectContaining({ alerts: [] }));
+  });
+
+  it("shows leftover email alarms without an action menu and keeps offset editable", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      alerts: [{ id: "alert1", action: "display" as const, offset: "-PT15M" }],
+    };
+    const { onChange } = renderDialog({ form, locale: "en-US" });
+    const offset = screen.getByRole("combobox", { name: defaultCalendarLabels.eventAlarmsLabel });
+    expect(offset.textContent).toMatch(/15 minutes/i);
+    expect(screen.queryByRole("combobox", { name: /Action/i })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Email/i })).toBeNull();
+    fireEvent.click(offset);
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm30Min }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT30M" })],
+      }),
     );
   });
 

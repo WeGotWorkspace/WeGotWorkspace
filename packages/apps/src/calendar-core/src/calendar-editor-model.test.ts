@@ -49,6 +49,92 @@ describe("calendarEventToForm", () => {
       endTime: "15:30",
       timeZone: "UTC",
       location: "Room 2.1",
+      freeBusyStatus: "busy",
+      alerts: [],
+    });
+  });
+
+  it("loads freeBusyStatus and relative alerts", () => {
+    const form = calendarEventToForm({
+      ...timedEvent,
+      freeBusyStatus: "free",
+      alerts: {
+        alert1: {
+          "@type": "Alert",
+          action: "display",
+          trigger: { "@type": "RelativeAlert", offset: "-PT15M" },
+        },
+      },
+    });
+    expect(form.freeBusyStatus).toBe("free");
+    expect(form.alerts).toEqual([{ id: "alert1", action: "display", offset: "-PT15M" }]);
+  });
+
+  it("maps leftover wire freeBusyStatus tentative to busy", () => {
+    const original = { ...timedEvent, freeBusyStatus: "tentative" as const };
+    const form = calendarEventToForm(original);
+    expect(form.freeBusyStatus).toBe("busy");
+    expect(formToDraft(form).freeBusyStatus).toBe("busy");
+    expect(formToPatch({ ...form, title: "Renamed" }, original)).toEqual({ title: "Renamed" });
+  });
+
+  it("maps leftover wire alert action audio to display", () => {
+    const original = {
+      ...timedEvent,
+      alerts: {
+        alert1: {
+          "@type": "Alert" as const,
+          action: "audio" as const,
+          trigger: { "@type": "RelativeAlert" as const, offset: "-PT15M" },
+        },
+      },
+    };
+    const form = calendarEventToForm(original);
+    expect(form.alerts).toEqual([{ id: "alert1", action: "display", offset: "-PT15M" }]);
+    expect(formToDraft(form).alerts).toEqual({
+      alert1: {
+        "@type": "Alert",
+        action: "display",
+        trigger: { "@type": "RelativeAlert", offset: "-PT15M" },
+      },
+    });
+    expect(formToPatch({ ...form, title: "Renamed" }, original)).toEqual({ title: "Renamed" });
+  });
+
+  it("maps leftover wire alert action email to display and leaves it unwritten unless alarms change", () => {
+    const original = {
+      ...timedEvent,
+      alerts: {
+        alert1: {
+          "@type": "Alert" as const,
+          action: "email" as const,
+          trigger: { "@type": "RelativeAlert" as const, offset: "-PT15M" },
+        },
+      },
+    };
+    const form = calendarEventToForm(original);
+    expect(form.alerts).toEqual([{ id: "alert1", action: "display", offset: "-PT15M" }]);
+    expect(formToDraft(form).alerts).toEqual({
+      alert1: {
+        "@type": "Alert",
+        action: "display",
+        trigger: { "@type": "RelativeAlert", offset: "-PT15M" },
+      },
+    });
+    expect(formToPatch({ ...form, title: "Renamed" }, original)).toEqual({ title: "Renamed" });
+    expect(
+      formToPatch(
+        { ...form, alerts: [{ id: "alert1", action: "display" as const, offset: "-PT1H" }] },
+        original,
+      ),
+    ).toEqual({
+      alerts: {
+        alert1: {
+          "@type": "Alert",
+          action: "display",
+          trigger: { "@type": "RelativeAlert", offset: "-PT1H" },
+        },
+      },
     });
   });
 
@@ -136,6 +222,34 @@ describe("formToDraft", () => {
   it("omits recurrenceRules for does-not-repeat", () => {
     const form = { ...emptyCalendarEventForm("work", "2033-01-12"), title: "Once" };
     expect(formToDraft(form).recurrenceRules).toBeUndefined();
+  });
+
+  it("defaults new events to busy and omits empty alerts", () => {
+    const form = { ...emptyCalendarEventForm("work", "2033-01-12"), title: "Once" };
+    expect(form.freeBusyStatus).toBe("busy");
+    expect(form.alerts).toEqual([]);
+    const draft = formToDraft(form);
+    expect(draft.freeBusyStatus).toBe("busy");
+    expect(draft.alerts).toBeUndefined();
+  });
+
+  it("round-trips freeBusyStatus and alerts on create", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12"),
+      title: "Blocked",
+      freeBusyStatus: "free" as const,
+      alerts: [{ id: "alert1", action: "display" as const, offset: "-PT15M" }],
+    };
+    expect(formToDraft(form)).toMatchObject({
+      freeBusyStatus: "free",
+      alerts: {
+        alert1: {
+          "@type": "Alert",
+          action: "display",
+          trigger: { "@type": "RelativeAlert", offset: "-PT15M" },
+        },
+      },
+    });
   });
 });
 
@@ -432,6 +546,39 @@ describe("formToPatch", () => {
   it("emits only changed fields", () => {
     const form = { ...calendarEventToForm(timedEvent), title: "Renamed" };
     expect(formToPatch(form, timedEvent)).toEqual({ title: "Renamed" });
+  });
+
+  it("emits freeBusyStatus and alerts when they change", () => {
+    const form = {
+      ...calendarEventToForm(timedEvent),
+      freeBusyStatus: "free" as const,
+      alerts: [{ id: "alert1", action: "display" as const, offset: "-PT30M" }],
+    };
+    expect(formToPatch(form, timedEvent)).toEqual({
+      freeBusyStatus: "free",
+      alerts: {
+        alert1: {
+          "@type": "Alert",
+          action: "display",
+          trigger: { "@type": "RelativeAlert", offset: "-PT30M" },
+        },
+      },
+    });
+  });
+
+  it("clears alerts with null when the last alarm is removed", () => {
+    const original = {
+      ...timedEvent,
+      alerts: {
+        alert1: {
+          "@type": "Alert" as const,
+          action: "display" as const,
+          trigger: { "@type": "RelativeAlert" as const, offset: "-PT15M" },
+        },
+      },
+    };
+    const form = { ...calendarEventToForm(original), alerts: [] };
+    expect(formToPatch(form, original)).toEqual({ alerts: null });
   });
 
   it("emits calendarId when the event moves to another calendar", () => {

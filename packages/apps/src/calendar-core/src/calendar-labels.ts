@@ -64,6 +64,26 @@ export type CalendarUILabels = {
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
   eventNotesLabel: string;
+  /** Standalone card heading and select label for busy/free availability. */
+  eventShowAs: string;
+  eventShowAsBusy: string;
+  eventShowAsFree: string;
+  eventAlarmsLabel: string;
+  eventAlarmsNone: string;
+  eventAlarmAdd: string;
+  eventAlarmRemove: string;
+  eventAlarmAtStart: string;
+  eventAlarm5Min: string;
+  eventAlarm10Min: string;
+  eventAlarm15Min: string;
+  eventAlarm30Min: string;
+  eventAlarm1Hour: string;
+  eventAlarm1Day: string;
+  eventAlarmCustom: string;
+  eventAlarmCustomAmount: string;
+  eventAlarmUnitMinutes: string;
+  eventAlarmUnitHours: string;
+  eventAlarmUnitDays: string;
   eventRepeatLabel: string;
   eventRecurrenceEndsLabel: string;
   eventRecurrenceEndsNever: string;
@@ -139,6 +159,25 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
   eventNotesLabel: "Notes",
+  eventShowAs: "Show as",
+  eventShowAsBusy: "Busy",
+  eventShowAsFree: "Free",
+  eventAlarmsLabel: "Alarms",
+  eventAlarmsNone: "No alarms",
+  eventAlarmAdd: "Add alarm",
+  eventAlarmRemove: "Remove alarm",
+  eventAlarmAtStart: "At time of event",
+  eventAlarm5Min: "5 minutes before",
+  eventAlarm10Min: "10 minutes before",
+  eventAlarm15Min: "15 minutes before",
+  eventAlarm30Min: "30 minutes before",
+  eventAlarm1Hour: "1 hour before",
+  eventAlarm1Day: "1 day before",
+  eventAlarmCustom: "Custom",
+  eventAlarmCustomAmount: "Time before",
+  eventAlarmUnitMinutes: "minutes",
+  eventAlarmUnitHours: "hours",
+  eventAlarmUnitDays: "days",
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
   eventRecurrenceEndsNever: "Never",

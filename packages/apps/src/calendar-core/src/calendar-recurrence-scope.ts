@@ -13,6 +13,11 @@ import {
 } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
+import {
+  alertMapsEqual,
+  alertsToWire,
+  freeBusyStatusFromWire,
+} from "@/calendar-core/src/calendar-alerts";
 import { formRecurrenceRules, formToDraft } from "@/calendar-core/src/calendar-editor-model";
 
 /** User choice for editing/moving/resizing a recurring occurrence. */
@@ -524,6 +529,15 @@ export function occurrenceRecurrenceOverrides(
   const originalDescription = typeof original.description === "string" ? original.description : "";
   if (form.description.trim() !== originalDescription) {
     patch.description = form.description.trim();
+  }
+
+  if (form.freeBusyStatus !== freeBusyStatusFromWire(original.freeBusyStatus)) {
+    patch.freeBusyStatus = form.freeBusyStatus;
+  }
+
+  const nextAlerts = alertsToWire(form.alerts);
+  if (!alertMapsEqual(nextAlerts, original.alerts)) {
+    patch.alerts = nextAlerts;
   }
 
   if (Object.keys(patch).length === 0) return null;

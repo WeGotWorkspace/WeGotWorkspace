@@ -27,6 +27,8 @@ export {
   type SetResponse,
 } from "./core/types.js";
 export type {
+  JSCalendarAlert,
+  JSCalendarAlertAction,
   JSCalendarEvent,
   JSCalendarLocalDateTime,
   JSCalendarPatchObject,

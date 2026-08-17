@@ -22,6 +22,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import { alertsFromWire, freeBusyStatusFromWire } from "@/calendar-core/src/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import {
   defaultCalendarLabels,
@@ -856,6 +857,10 @@ export function useCalendarController({
           typeof original?.description === "string"
             ? original.description
             : (engineForm?.description ?? ""),
+        freeBusyStatus: original
+          ? freeBusyStatusFromWire(original.freeBusyStatus)
+          : (engineForm?.freeBusyStatus ?? "busy"),
+        alerts: original ? alertsFromWire(original.alerts) : (engineForm?.alerts ?? []),
         recurrencePreset: seriesRules?.length ? "custom" : (engineForm?.recurrencePreset ?? "none"),
         recurrenceEnds: engineForm?.recurrenceEnds ?? "never",
         recurrenceUntilDate: engineForm?.recurrenceUntilDate ?? startDate,

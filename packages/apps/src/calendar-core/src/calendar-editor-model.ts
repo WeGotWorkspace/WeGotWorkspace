@@ -7,12 +7,26 @@ import {
 } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 import {
+  alertMapsEqual,
+  alertsFromWire,
+  alertsToWire,
+  DEFAULT_FREE_BUSY_STATUS,
+  freeBusyStatusFromWire,
+  type CalendarEventAlertFormValue,
+  type CalendarFreeBusyStatus,
+} from "@/calendar-core/src/calendar-alerts";
+import {
   matchRecurrencePreset,
   recurrencePresetToRule,
   recurrenceRulesEqual,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
+
+export type {
+  CalendarEventAlertFormValue,
+  CalendarFreeBusyStatus,
+} from "@/calendar-core/src/calendar-alerts";
 
 /**
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.
@@ -41,6 +55,10 @@ export type CalendarEventFormValue = {
   timeZone: string | null;
   location: string;
   description: string;
+  /** JSCalendar `freeBusyStatus`. New events default to busy. */
+  freeBusyStatus: CalendarFreeBusyStatus;
+  /** Editor rows for the JSCalendar `alerts` map (empty = none). */
+  alerts: CalendarEventAlertFormValue[];
   recurrencePreset: RecurrencePresetId;
   /**
    * How a repeating series ends. Ignored when preset is `"none"` or `"custom"`.
@@ -92,6 +110,8 @@ export function emptyCalendarEventForm(
     timeZone: null,
     location: "",
     description: "",
+    freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
+    alerts: [],
     recurrencePreset: "none",
     ...defaultRecurrenceEndsFields(dateISO),
   };
@@ -152,6 +172,8 @@ export function createIntentToForm(
     timeZone: null,
     location: "",
     description: "",
+    freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
+    alerts: [],
     recurrencePreset: "none",
     ...defaultRecurrenceEndsFields(startDate),
   };
@@ -281,6 +303,8 @@ export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventForm
     timeZone: normalizeEventTimeZone(event.timeZone),
     location: primaryLocationName(event),
     description: typeof event.description === "string" ? event.description : "",
+    freeBusyStatus: freeBusyStatusFromWire(event.freeBusyStatus),
+    alerts: alertsFromWire(event.alerts),
     ...recurrenceFieldsFromRules(event.recurrenceRules, startDate),
   };
 }
@@ -463,6 +487,7 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
   const start = formStart(form);
   const recurrenceRules = formRecurrenceRules(form);
   const timeZone = formWireTimeZone(form);
+  const alerts = alertsToWire(form.alerts);
   return {
     calendarId: form.calendarId,
     title: form.title.trim(),
@@ -472,6 +497,8 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
     ...(timeZone ? { timeZone } : {}),
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
     ...(form.description.trim() ? { description: form.description.trim() } : {}),
+    freeBusyStatus: form.freeBusyStatus,
+    ...(alerts ? { alerts } : {}),
     ...(recurrenceRules?.length ? { recurrenceRules } : {}),
   };
 }
@@ -497,6 +524,13 @@ export function formToPatch(
   if (form.location.trim() !== originalForm.location) patch.location = form.location.trim();
   if (form.description.trim() !== originalForm.description) {
     patch.description = form.description.trim();
+  }
+  if (form.freeBusyStatus !== originalForm.freeBusyStatus) {
+    patch.freeBusyStatus = form.freeBusyStatus;
+  }
+  const nextAlerts = alertsToWire(form.alerts);
+  if (!alertMapsEqual(nextAlerts, original.alerts)) {
+    patch.alerts = nextAlerts;
   }
   const nextRules = formRecurrenceRules(form);
   const prevRules = original.recurrenceRules ?? null;
@@ -543,6 +577,8 @@ export function engineEventToForm(event: EngineCalendarEvent): CalendarEventForm
     timeZone: normalizeEventTimeZone(event.data.timeZone),
     location: event.data.location ?? "",
     description: "",
+    freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
+    alerts: [],
     ...recurrenceFieldsFromRules(wireRules, startDate),
   };
 }
@@ -559,6 +595,8 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     timeZone: form.allDay ? null : normalizeEventTimeZone(form.timeZone),
     ...(form.location.trim() ? { location: form.location.trim() } : {}),
     ...(form.description.trim() ? { description: form.description.trim() } : {}),
+    freeBusyStatus: form.freeBusyStatus,
+    alerts: alertsToWire(form.alerts),
     recurrenceRules: formRecurrenceRules(form),
   };
 }

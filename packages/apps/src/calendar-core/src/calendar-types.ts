@@ -1,5 +1,6 @@
 import type {
   JmapCalendarEvent,
+  JSCalendarAlert,
   JSCalendarPatchObject,
   JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
@@ -56,6 +57,13 @@ export type CalendarEventDraft = {
   description?: string;
   /** JSCalendar recurrence; `null` clears an existing rule on patch. */
   recurrenceRules?: JSCalendarRecurrenceRule[] | null;
+  /** JSCalendar `freeBusyStatus`. Default on create is `"busy"`. */
+  freeBusyStatus?: "busy" | "free";
+  /**
+   * JSCalendar `alerts` map. Omit on create when empty; `null` on patch clears
+   * existing alarms.
+   */
+  alerts?: Record<string, JSCalendarAlert> | null;
   /**
    * JSCalendar single-instance patches / exclusions keyed by LocalDateTime.
    * On patch: `null` clears the map; a key mapped to `null` removes that override

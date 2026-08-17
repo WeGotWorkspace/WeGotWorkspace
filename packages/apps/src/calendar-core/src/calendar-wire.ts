@@ -17,6 +17,8 @@ export function draftToJmapEvent(draft: CalendarEventDraft): Omit<JmapCalendarEv
       ? { locations: { primary: { "@type": "Location", name: draft.location } } }
       : {}),
     ...(draft.description ? { description: draft.description } : {}),
+    ...(draft.freeBusyStatus ? { freeBusyStatus: draft.freeBusyStatus } : {}),
+    ...(draft.alerts && Object.keys(draft.alerts).length ? { alerts: draft.alerts } : {}),
     ...(draft.recurrenceRules?.length ? { recurrenceRules: draft.recurrenceRules } : {}),
     ...(draft.recurrenceOverrides && Object.keys(draft.recurrenceOverrides).length
       ? { recurrenceOverrides: draft.recurrenceOverrides }
@@ -36,6 +38,8 @@ export function patchToJmapPartial(patch: CalendarEventPatch): Partial<JmapCalen
       ? { locations: { primary: { "@type": "Location", name: patch.location } } }
       : {}),
     ...(patch.description !== undefined ? { description: patch.description } : {}),
+    ...(patch.freeBusyStatus !== undefined ? { freeBusyStatus: patch.freeBusyStatus } : {}),
+    ...(patch.alerts !== undefined ? { alerts: patch.alerts } : {}),
     ...(patch.recurrenceRules !== undefined
       ? { recurrenceRules: patch.recurrenceRules as JSCalendarRecurrenceRule[] | null }
       : {}),

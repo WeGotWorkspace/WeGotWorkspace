@@ -52,6 +52,39 @@ export type JSCalendarLocation = {
 };
 
 /**
+ * RFC 8984 `Alert.action` is `"display"` | `"email"`.
+ * `"audio"` is leftover interop only; the editor maps it to display.
+ */
+export type JSCalendarAlertAction = "display" | "email" | "audio";
+
+/** RFC 8984 OffsetTrigger, or this API's OpenAPI `RelativeAlert`. */
+export type JSCalendarOffsetTrigger = {
+  "@type"?: "OffsetTrigger" | "RelativeAlert";
+  offset: JSCalendarDuration;
+  /** RFC 8984 */
+  relativeTo?: "start" | "end";
+  /** OpenAPI CalendarEventRelativeAlertTrigger */
+  relatedTo?: "start" | "end";
+  [key: string]: unknown;
+};
+
+/** RFC 8984 AbsoluteTrigger, or this API's OpenAPI `AbsoluteAlert`. */
+export type JSCalendarAbsoluteTrigger = {
+  "@type"?: "AbsoluteTrigger" | "AbsoluteAlert";
+  when: JSCalendarLocalDateTime | JSCalendarUTCDateTime;
+  [key: string]: unknown;
+};
+
+export type JSCalendarAlertTrigger = JSCalendarOffsetTrigger | JSCalendarAbsoluteTrigger;
+
+export type JSCalendarAlert = {
+  "@type"?: "Alert";
+  trigger: JSCalendarAlertTrigger;
+  action?: JSCalendarAlertAction;
+  [key: string]: unknown;
+};
+
+/**
  * A recurrence override: a patch of the base event keyed by JSON pointer-ish paths
  * (RFC 8984 section 4.3.4). `{ excluded: true }` marks a removed occurrence.
  */
@@ -74,6 +107,13 @@ export type JSCalendarEvent = {
   showWithoutTime?: boolean;
   color?: string;
   status?: "confirmed" | "cancelled" | "tentative";
+  /**
+   * RFC 8984 §4.4.2 — `"busy"` | `"free"` (default `"busy"`).
+   * `"tentative"` is leftover interop only; the editor maps it to busy.
+   */
+  freeBusyStatus?: "busy" | "free" | "tentative";
+  /** RFC 8984 §4.5.2 / JMAP CalendarEventAlert (RelativeAlert | AbsoluteAlert). */
+  alerts?: Record<string, JSCalendarAlert> | null;
   locations?: Record<string, JSCalendarLocation> | null;
   recurrenceRules?: JSCalendarRecurrenceRule[] | null;
   excludedRecurrenceRules?: JSCalendarRecurrenceRule[] | null;

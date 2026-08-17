@@ -343,6 +343,32 @@ describe("calendar-recurrence-scope", () => {
     });
   });
 
+  it("includes freeBusyStatus on a this-instance override", () => {
+    const original = {
+      id: "ev-1",
+      "@type": "Event",
+      uid: "u1",
+      title: "Standup",
+      start: "2026-03-09T09:00:00",
+      duration: "PT30M",
+      calendarIds: { "cal-work": true },
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly" }],
+    } as JmapCalendarEvent;
+    const form: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("cal-work", "2026-03-11", "09:00"),
+      title: "Standup",
+      endDate: "2026-03-11",
+      endTime: "09:30",
+      freeBusyStatus: "free",
+      recurrencePreset: "weekly",
+    };
+    expect(occurrenceRecurrenceOverrides(form, original, "20260311T090000")).toEqual({
+      "2026-03-11T09:00:00": {
+        freeBusyStatus: "free",
+      },
+    });
+  });
+
   it("splits recurrenceOverrides before vs at-or-after the this-and-future occurrence", () => {
     const overrides = {
       "2033-01-10T09:30:00": { title: "Past override" },
