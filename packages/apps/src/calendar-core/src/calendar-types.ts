@@ -50,6 +50,7 @@ export type CalendarEventDraft = {
   /**
    * JSCalendar `timeZone`: IANA id when fixed; omit on create / `null` on patch
    * for floating (local wall) time. All-day events omit a timed zone.
+   * Timed creates send the device IANA id (`defaultTimedEventTimeZone`).
    */
   timeZone?: string | null;
   allDay?: boolean;

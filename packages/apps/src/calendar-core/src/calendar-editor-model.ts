@@ -21,7 +21,10 @@ import {
   recurrenceRulesEqual,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
-import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
+import {
+  defaultTimedEventTimeZone,
+  normalizeEventTimeZone,
+} from "@/calendar-core/src/calendar-timezones";
 
 export type {
   CalendarEventAlertFormValue,
@@ -50,6 +53,7 @@ export type CalendarEventFormValue = {
   endTime: string;
   /**
    * Timed events: IANA id, or `null` for floating/local wall (omit on create).
+   * New timed events default to {@link defaultTimedEventTimeZone}.
    * Ignored on the wire when `allDay` (kept in the form so toggling all-day back restores it).
    */
   timeZone: string | null;
@@ -107,7 +111,7 @@ export function emptyCalendarEventForm(
     startTime,
     endDate: end.toPlainDate().toString(),
     endTime: end.toPlainTime().toString({ smallestUnit: "minute" }),
-    timeZone: null,
+    timeZone: defaultTimedEventTimeZone(),
     location: "",
     description: "",
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
@@ -169,7 +173,7 @@ export function createIntentToForm(
     startTime: intent.start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
-    timeZone: null,
+    timeZone: allDay ? null : defaultTimedEventTimeZone(),
     location: "",
     description: "",
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
@@ -418,14 +422,16 @@ export function patchCalendarEventForm(
   }
 
   if (becameTimed) {
+    const timed: CalendarEventFormValue = {
+      ...next,
+      allDay: false,
+      timeZone: next.timeZone ?? defaultTimedEventTimeZone(),
+    };
     try {
-      const start = formStart({ ...next, allDay: false });
-      return withTimedEnd(
-        { ...next, allDay: false },
-        start.add({ minutes: MIN_TIMED_DURATION_MINUTES }),
-      );
+      const start = formStart(timed);
+      return withTimedEnd(timed, start.add({ minutes: MIN_TIMED_DURATION_MINUTES }));
     } catch {
-      return { ...next, allDay: false };
+      return timed;
     }
   }
 

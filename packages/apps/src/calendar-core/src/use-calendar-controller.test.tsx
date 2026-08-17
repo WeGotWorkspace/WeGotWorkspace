@@ -4,6 +4,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
+import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 const toastApi = {
@@ -228,6 +229,7 @@ describe("useCalendarController view + create intent", () => {
         startTime: "10:00",
         endDate: "2033-01-12",
         endTime: "11:00",
+        timeZone: defaultTimedEventTimeZone(),
       },
     });
   });
@@ -347,7 +349,11 @@ describe("useCalendarController view + create intent", () => {
 
     expect(result.current.editor).toMatchObject({
       mode: "create",
-      form: { calendarId: "work", startDate: "2033-01-12" },
+      form: {
+        calendarId: "work",
+        startDate: "2033-01-12",
+        timeZone: defaultTimedEventTimeZone(),
+      },
     });
   });
 
@@ -382,7 +388,12 @@ describe("useCalendarController view + create intent", () => {
     });
 
     await vi.waitFor(() => {
-      expect(createEvent).toHaveBeenCalled();
+      expect(createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Hidden target",
+          timeZone: defaultTimedEventTimeZone(),
+        }),
+      );
     });
     expect(result.current.hiddenCalendarIds.has("work")).toBe(false);
   });

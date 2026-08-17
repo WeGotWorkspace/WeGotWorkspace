@@ -1,7 +1,10 @@
 /**
  * Curated IANA time zones for the event editor, plus floating/local wall time.
  * Wire shape follows JSCalendar: omit/`null` = floating; IANA id (incl. UTC) = fixed zone.
+ * New timed events default to {@link defaultTimedEventTimeZone} (device IANA), not floating.
  */
+
+import { Temporal } from "@js-temporal/polyfill";
 
 /** Select sentinel for floating / wall-clock local (no fixed TZID). */
 export const FLOATING_TIME_ZONE_VALUE = "floating";
@@ -37,6 +40,15 @@ export function normalizeEventTimeZone(timeZone: string | null | undefined): str
   const trimmed = timeZone.trim();
   if (trimmed === "Etc/UTC" || trimmed === "Etc/GMT" || trimmed === "GMT") return "UTC";
   return trimmed;
+}
+
+/**
+ * Default IANA zone for new timed events: the device timezone.
+ * Uses `Temporal.Now.timeZoneId()` — not locale-derived, not floating.
+ * All-day creates stay date-only / floating as JSCalendar requires.
+ */
+export function defaultTimedEventTimeZone(): string {
+  return normalizeEventTimeZone(Temporal.Now.timeZoneId()) ?? "UTC";
 }
 
 export function eventTimeZoneSelectValue(timeZone: string | null | undefined): string {

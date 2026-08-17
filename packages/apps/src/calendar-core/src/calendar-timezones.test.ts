@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   COMMON_EVENT_TIME_ZONES,
   FLOATING_TIME_ZONE_VALUE,
+  defaultTimedEventTimeZone,
   eventTimeZoneFromSelectValue,
   eventTimeZoneOptions,
   eventTimeZoneSelectValue,
@@ -14,6 +16,22 @@ describe("normalizeEventTimeZone", () => {
     expect(normalizeEventTimeZone("")).toBeNull();
     expect(normalizeEventTimeZone("Etc/UTC")).toBe("UTC");
     expect(normalizeEventTimeZone("Europe/Amsterdam")).toBe("Europe/Amsterdam");
+  });
+});
+
+describe("defaultTimedEventTimeZone", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the device IANA timezone from Temporal.Now.timeZoneId", () => {
+    vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("Europe/Amsterdam");
+    expect(defaultTimedEventTimeZone()).toBe("Europe/Amsterdam");
+  });
+
+  it("normalizes device Etc/UTC to UTC", () => {
+    vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("Etc/UTC");
+    expect(defaultTimedEventTimeZone()).toBe("UTC");
   });
 });
 

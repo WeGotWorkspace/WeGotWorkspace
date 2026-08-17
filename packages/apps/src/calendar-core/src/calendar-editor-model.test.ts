@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
@@ -12,6 +12,7 @@ import {
   patchCalendarEventForm,
   resolveCreateIntentAllDay,
 } from "@/calendar-core/src/calendar-editor-model";
+import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 
 const timedEvent = {
   "@type": "Event",
@@ -158,6 +159,20 @@ describe("calendarEventToForm", () => {
   });
 });
 
+describe("emptyCalendarEventForm", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("defaults timed creates to Temporal.Now.timeZoneId", () => {
+    vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("America/Los_Angeles");
+    const form = emptyCalendarEventForm("work", "2033-01-12", "14:00");
+    expect(form.allDay).toBe(false);
+    expect(form.timeZone).toBe("America/Los_Angeles");
+    expect(formToDraft({ ...form, title: "Lunch" }).timeZone).toBe("America/Los_Angeles");
+  });
+});
+
 describe("formToDraft", () => {
   it("round-trips a timed form to start + duration and preserves timeZone", () => {
     const draft = formToDraft(calendarEventToForm(timedEvent));
@@ -184,6 +199,16 @@ describe("formToDraft", () => {
       timeZone: "Europe/Amsterdam",
     };
     expect(formToDraft(form).timeZone).toBe("Europe/Amsterdam");
+  });
+
+  it("emits the device IANA timeZone for a default timed create", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12", "14:00"),
+      title: "Lunch",
+    };
+    expect(form.timeZone).toBe(defaultTimedEventTimeZone());
+    expect(form.timeZone).toEqual(expect.any(String));
+    expect(formToDraft(form).timeZone).toBe(form.timeZone);
   });
 
   it("round-trips an all-day form to an exclusive-end day duration without timeZone", () => {
@@ -276,6 +301,10 @@ describe("resolveCreateIntentAllDay", () => {
 });
 
 describe("createIntentToForm", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("prefills a timed drag range with all-day off", () => {
     const form = createIntentToForm("work", {
       start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
@@ -293,6 +322,17 @@ describe("createIntentToForm", () => {
     });
   });
 
+  it("defaults timed drag-create to the device IANA timezone", () => {
+    vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("Pacific/Auckland");
+    const form = createIntentToForm("work", {
+      start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-12T15:30:00"),
+      allDay: false,
+    });
+    expect(form.timeZone).toBe("Pacific/Auckland");
+    expect(formToDraft({ ...form, title: "Drag" }).timeZone).toBe("Pacific/Auckland");
+  });
+
   it("uses inclusive last day for all-day ranges", () => {
     const form = createIntentToForm("default", {
       start: Temporal.PlainDateTime.from("2033-01-17T00:00:00"),
@@ -305,7 +345,9 @@ describe("createIntentToForm", () => {
       startDate: "2033-01-17",
       endDate: "2033-01-18",
       title: "",
+      timeZone: null,
     });
+    expect(formToDraft({ ...form, title: "Offsite" }).timeZone).toBeUndefined();
   });
 
   it("formToCreateIntent round-trips timed and exclusive all-day ends", () => {
@@ -367,7 +409,13 @@ describe("patchCalendarEventForm", () => {
       startTime: "00:00",
       endDate: "2033-01-17",
       endTime: "00:30",
+      timeZone: defaultTimedEventTimeZone(),
     });
+  });
+
+  it("keeps a stored timezone when leaving all-day", () => {
+    const form = { ...calendarEventToForm(allDayEvent), timeZone: "Europe/Berlin" };
+    expect(patchCalendarEventForm(form, { allDay: false }).timeZone).toBe("Europe/Berlin");
   });
 
   it("moves end to preserve duration when start time changes", () => {
