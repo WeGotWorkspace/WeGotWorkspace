@@ -20,14 +20,27 @@
   --_lc-event-card-touch-action: pan-x pan-y;
 }
 
-/* Hover state for all segments when any segment is hovered. */
-:host .interaction-surface:has(event-card:hover):not(:focus):not(:focus-visible) event-card {
-  --_lc-event-card-bg-active: var(--_lc-event-bg-hover);
-  --_lc-event-card-past-opacity: 0.85;
+/* Press/drag cursor: :active fires on mousedown (capture lives on the surface, so the
+   card :active can drop). data-dragging covers the live drag after the move threshold. */
+@media (hover: hover) and (pointer: fine) {
+  :host .interaction-surface:active,
+  :host .interaction-surface:active event-card {
+    @apply cursor-grab;
+  }
 }
 
-/* Pressed state between hover and focus brightness (desktop/fine pointers only). */
+:host([data-dragging]) .interaction-surface,
+:host([data-dragging]) event-card {
+  @apply cursor-grabbing;
+}
+
+/* Hover / pressed: desktop/fine pointers only so touch does not stick a hover tint. */
 @media (hover: hover) and (pointer: fine) {
+  :host .interaction-surface:has(event-card:hover):not(:focus):not(:focus-visible) event-card {
+    --_lc-event-card-bg-active: var(--_lc-event-bg-hover);
+    --_lc-event-card-past-opacity: 0.85;
+  }
+
   :host .interaction-surface:has(event-card:active):not(:focus):not(:focus-visible) event-card {
     --_lc-event-card-bg-active: var(--_lc-event-bg-active, var(--_lc-event-bg-hover));
     --_lc-event-card-past-opacity: 1;
