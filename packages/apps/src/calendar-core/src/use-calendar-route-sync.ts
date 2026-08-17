@@ -4,6 +4,7 @@ import {
   calendarNavigateTarget,
   calendarPathFromState,
   calendarStateFromLocation,
+  isCalendarPathname,
   type CalendarRouteParams,
   type CalendarRouteState,
 } from "@/calendar-core/src/calendar-route-search";
@@ -21,8 +22,12 @@ export function useCalendarRouteSync() {
 
   const writeState = useCallback(
     (state: CalendarRouteState, replace: boolean) => {
+      const livePath = router.state.location.pathname;
+      // Leaving calendar (app switcher, back) must not rewrite the new app
+      // onto `/calendar/...`. Parse treats foreign paths as "defaults".
+      if (!isCalendarPathname(livePath)) return;
       const path = calendarPathFromState(state);
-      if (router.state.location.pathname === path) return;
+      if (livePath === path) return;
       // Must go through navigate() so TanStack builds a new location (same
       // `/calendar/$view/$date` route, new params). Raw history.push updates
       // the in-memory history object but createBrowserHistory coalesces a
@@ -37,6 +42,7 @@ export function useCalendarRouteSync() {
 
   useEffect(() => {
     const livePath = router.state.location.pathname;
+    if (!isCalendarPathname(livePath)) return;
     const canonical = calendarPathFromState(calendarStateFromLocation(livePath));
     if (livePath === canonical) return;
     writeState(calendarStateFromLocation(livePath), true);

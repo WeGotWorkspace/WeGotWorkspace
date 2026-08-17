@@ -150,6 +150,18 @@ describe("useCalendarRouteSync", () => {
     });
   });
 
+  it("does not rewrite the URL when leaving calendar for another app", () => {
+    const { rerender } = renderHook(() => useCalendarRouteSync());
+    navigate.mockClear();
+
+    mockPathname = "/contacts";
+    livePathname = "/contacts";
+    mockParams = {};
+    rerender();
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("does not navigate when the path already matches", () => {
     const { result } = renderHook(() => useCalendarRouteSync());
 

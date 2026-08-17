@@ -40,6 +40,11 @@ export function isCalendarViewId(value: string): value is CalendarViewId {
   return CALENDAR_VIEWS.has(value as CalendarViewId);
 }
 
+/** True only for the calendar app prefix — never `/contacts`, `/notes`, etc. */
+export function isCalendarPathname(pathname: string): boolean {
+  return pathname === "/calendar" || pathname.startsWith("/calendar/");
+}
+
 /** Accept only real ISO calendar dates (`YYYY-MM-DD`), not locale strings. */
 export function parseCalendarISODate(value: string): string | null {
   if (!ISO_DATE_RE.test(value)) return null;

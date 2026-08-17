@@ -6,6 +6,7 @@ import {
   calendarRouteKey,
   calendarStateFromLocation,
   DEFAULT_CALENDAR_VIEW,
+  isCalendarPathname,
   isCalendarViewId,
   parseCalendarISODate,
 } from "@/calendar-core/src/calendar-route-search";
@@ -118,6 +119,15 @@ describe("calendar-route-search", () => {
     ]) {
       expect(calendarPathFromState(calendarStateFromLocation(path))).toBe(path);
     }
+  });
+
+  it("recognizes only /calendar paths", () => {
+    expect(isCalendarPathname("/calendar")).toBe(true);
+    expect(isCalendarPathname("/calendar/week/2026-08-17")).toBe(true);
+    expect(isCalendarPathname("/calendar/list/month/2026-08-17")).toBe(true);
+    expect(isCalendarPathname("/contacts")).toBe(false);
+    expect(isCalendarPathname("/notes/all")).toBe(false);
+    expect(isCalendarPathname("/calendars")).toBe(false);
   });
 
   it("validates view ids and ISO dates", () => {

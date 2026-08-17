@@ -107,4 +107,15 @@ describe("CalendarApp real header click → URL", () => {
       expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
     });
   });
+
+  it("does not snap back to calendar after navigating to another app", async () => {
+    const { history, router } = await renderCalendarApp("/calendar/month/2026-08-17");
+
+    await router.navigate({ to: "/contacts" });
+
+    await waitFor(() => {
+      expect(history.location.pathname.startsWith("/contacts")).toBe(true);
+      expect(history.location.pathname.startsWith("/calendar")).toBe(false);
+    });
+  });
 });
