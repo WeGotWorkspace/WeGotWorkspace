@@ -40,6 +40,7 @@ import {
   alignedWeekStart,
   compareDaySnappedRenderOrder,
   composedTimedScrollTop,
+  currentTimeMarkerTodayCell,
   currentTimeMarkersAcrossDays,
   fromTimelineRange,
   fromTimelineValue,
@@ -447,16 +448,22 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
   }
 
-  /** Current-time marker on the absolute axis, only when it falls within the rendered range.
-   * One value per day column at the same time-of-day so the line spans the full timed grid. */
+  /** Current-time markers: one value per day column at the same time-of-day so the line
+   * spans the full timed grid, including weeks that do not contain today. */
   get #currentTimeMarkers(): number[] {
     const value = toTimelineValue(this.#currentDateTime, this.#scale);
     return currentTimeMarkersAcrossDays(value, this.#resolvedTimelineMax, this.#resolvedNumDays);
   }
 
-  /** Fraction of the day (0–1) for the now badge / line; `null` when today is out of range. */
+  /** Day-column index of today when it is in the rendered range; `null` otherwise. */
+  get #nowMarkerTodayCell(): number | null {
+    const value = toTimelineValue(this.#currentDateTime, this.#scale);
+    return currentTimeMarkerTodayCell(value, this.#resolvedTimelineMax, this.#resolvedNumDays);
+  }
+
+  /** Fraction of the day (0–1) for the now badge / scroll-to-now; `null` when today is out of range. */
   get #nowIndicatorDayFraction(): number | null {
-    if (this.#currentTimeMarkers.length === 0) return null;
+    if (this.#nowMarkerTodayCell == null) return null;
     const now = this.#currentDateTime;
     const minutes = now.hour * 60 + now.minute + now.second / 60 + now.millisecond / 60_000;
     return minutes / MINUTES_PER_DAY;
@@ -1378,6 +1385,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         .layout=${this.#resolvedLayout}
         .height=${this.#resolvedHeight}
         .markers=${variant === "timed" ? this.#currentTimeMarkers : []}
+        .markerTodayCell=${variant === "timed" ? (this.#nowMarkerTodayCell ?? -1) : -1}
         .eventTemplate=${variant === "all-day"
           ? this.#renderAllDayTimelineEvent
           : this.#renderTimedTimelineEvent}
@@ -1506,6 +1514,7 @@ export class CalendarTimelineView extends CalendarViewBase {
             .layout=${this.#resolvedLayout}
             .gridInterval=${unitsPerDay / 24}
             .markers=${this.#currentTimeMarkers}
+            .markerTodayCell=${this.#nowMarkerTodayCell ?? -1}
             .eventTemplate=${this.#renderTimedTimelineEvent}
             @timeline-event-move=${(event: Event) => this.#handleTimelineMoveCommit(event, "timed")}
             @timeline-event-resize=${(event: Event) =>

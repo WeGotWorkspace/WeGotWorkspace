@@ -8,6 +8,7 @@ import {
   alignedMonthGridStart,
   alignedWeekStart,
   compareDaySnappedRenderOrder,
+  currentTimeMarkerTodayCell,
   currentTimeMarkersAcrossDays,
   composedTimedScrollTop,
   fromTimelineRange,
@@ -85,10 +86,42 @@ describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
     expect(currentTimeMarkersAcrossDays(value, unitsPerDay, 1)).toEqual([value]);
   });
 
-  it("returns [] when now falls outside the rendered range", () => {
+  it("still places a marker per day when now is outside the rendered range", () => {
     const unitsPerDay = MINUTES_PER_DAY;
-    expect(currentTimeMarkersAcrossDays(-1, unitsPerDay, 7)).toEqual([]);
-    expect(currentTimeMarkersAcrossDays(7 * unitsPerDay, unitsPerDay, 7)).toEqual([]);
+    const timeOfDay = 19 * 60 + 37;
+    expect(currentTimeMarkersAcrossDays(-unitsPerDay + timeOfDay, unitsPerDay, 7)).toEqual(
+      Array.from({ length: 7 }, (_, day) => day * unitsPerDay + timeOfDay),
+    );
+    expect(currentTimeMarkersAcrossDays(7 * unitsPerDay + timeOfDay, unitsPerDay, 7)).toEqual(
+      Array.from({ length: 7 }, (_, day) => day * unitsPerDay + timeOfDay),
+    );
+  });
+
+  it("returns [] for a non-finite now", () => {
+    expect(currentTimeMarkersAcrossDays(Number.NaN, MINUTES_PER_DAY, 7)).toEqual([]);
+  });
+
+  it("dims non-today markers in TimeLine CSS", () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
+      "utf8",
+    );
+    expect(css).toMatch(/\.marker\.marker--dimmed\s*\{[^}]*opacity:\s*0\.35/);
+  });
+});
+
+describe("currentTimeMarkerTodayCell (today-column emphasis)", () => {
+  it("returns the in-range day index", () => {
+    const unitsPerDay = MINUTES_PER_DAY;
+    const wednesday = 2 * unitsPerDay + 19 * 60 + 37;
+    expect(currentTimeMarkerTodayCell(wednesday, unitsPerDay, 7)).toBe(2);
+    expect(currentTimeMarkerTodayCell(10 * 60 + 15, unitsPerDay, 1)).toBe(0);
+  });
+
+  it("returns null when now is outside the rendered range", () => {
+    const unitsPerDay = MINUTES_PER_DAY;
+    expect(currentTimeMarkerTodayCell(-1, unitsPerDay, 7)).toBeNull();
+    expect(currentTimeMarkerTodayCell(7 * unitsPerDay, unitsPerDay, 7)).toBeNull();
   });
 });
 
@@ -545,5 +578,22 @@ describe("visibleHoursWindow (grid visibleHours -> axis window)", () => {
 
   it("scales with non-minute axis units", () => {
     expect(visibleHoursWindow(24, 6, 9)).toEqual({ windowStart: 9, windowEnd: 15 });
+  });
+});
+
+describe("now-badge x-alignment with hour labels", () => {
+  it("uses the same inline padding token and no extra inset", () => {
+    const css = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../CalendarTimeSidebar/CalendarTimeSidebar.css",
+      ),
+      "utf8",
+    );
+    const hourLabels = css.match(/\.hour-labels\s*\{[^}]+\}/)?.[0] ?? "";
+    const nowBadge = css.match(/\.now-badge\s*\{[^}]+\}/)?.[0] ?? "";
+    expect(hourLabels).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
+    expect(nowBadge).toContain("inset-inline-end: 0");
+    expect(nowBadge).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
   });
 });

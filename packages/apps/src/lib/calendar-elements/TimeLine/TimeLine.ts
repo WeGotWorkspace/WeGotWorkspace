@@ -206,10 +206,18 @@ export class TimeLine extends LitElement {
    * spans `[i * max, (i + 1) * max)`). Each renders a thin line inside its cell, themeable via
    * `--time-line-marker-color`. Values outside `[0, cells * max)` are ignored. Pass one value
    * per cell at the same local time (see `currentTimeMarkersAcrossDays`) for a full-width
-   * now-indicator; the leftmost cell’s marker also gets a lead dot (`.marker--anchor`).
+   * now-indicator. The cell in `markerTodayCell` gets full emphasis + a lead dot
+   * (`.marker--anchor`); every other marker is dimmed (`.marker--dimmed`).
    */
   @property({ type: Array })
   accessor markers: number[] = [];
+
+  /**
+   * Day-column index whose marker is today’s (full color + lead dot). Other markers render
+   * dimmed. `-1` (default) means today is not in view — every marker is dimmed, no lead dot.
+   */
+  @property({ type: Number, attribute: "marker-today-cell" })
+  accessor markerTodayCell = -1;
 
   /**
    * Axis units between subdivision gridlines inside each cell, drawn perpendicular to the flow
@@ -1681,10 +1689,14 @@ export class TimeLine extends LitElement {
       if (Math.floor(m / span) !== cell) continue;
       const pct = this.#axisPct(m - cell * span, w0, w1);
       if (pct < 0 || pct > 100) continue;
-      // Anchor dot on the first (inline-start) day column for full-width now indicators.
-      const anchorClass = cell === 0 ? " marker--anchor" : "";
+      const isToday = this.markerTodayCell === cell;
+      const emphasisClass = isToday ? " marker--anchor" : " marker--dimmed";
       frags.push(
-        html`<div class="marker${anchorClass}" part="marker" style="--__marker-pos:${pct}%"></div>`,
+        html`<div
+          class="marker${emphasisClass}"
+          part="marker${isToday ? "" : " marker-dimmed"}"
+          style="--__marker-pos:${pct}%"
+        ></div>`,
       );
     }
     return frags;

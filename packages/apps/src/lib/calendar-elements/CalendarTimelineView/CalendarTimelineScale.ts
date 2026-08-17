@@ -31,8 +31,9 @@ export function toTimelineValue(
 
 /**
  * Expands a single absolute “now” value into one marker per day column at the same
- * time-of-day, so the indicator spans the full timed grid (day and week). Returns `[]`
- * when `absoluteValue` falls outside the rendered range (today not in view).
+ * time-of-day, so the indicator spans the full timed grid (day and week). Uses the
+ * time-of-day even when `absoluteValue` is outside the rendered range (past/future
+ * weeks still show the line). Returns `[]` only for non-finite values.
  */
 export function currentTimeMarkersAcrossDays(
   absoluteValue: number,
@@ -41,12 +42,30 @@ export function currentTimeMarkersAcrossDays(
 ): number[] {
   const dayUnits = Math.max(1, Math.floor(Number(unitsPerDay) || 1));
   const days = Math.max(1, Math.floor(Number(numDays) || 1));
-  const gridMax = dayUnits * days;
-  if (!Number.isFinite(absoluteValue) || absoluteValue < 0 || absoluteValue >= gridMax) {
+  if (!Number.isFinite(absoluteValue)) {
     return [];
   }
   const timeOfDay = ((absoluteValue % dayUnits) + dayUnits) % dayUnits;
   return Array.from({ length: days }, (_, day) => day * dayUnits + timeOfDay);
+}
+
+/**
+ * Day-column index of “now” when it falls inside the rendered range; `null` when
+ * today is not in view (past/future weeks). Used to emphasize today’s marker and
+ * keep scroll-to-now / the sidebar clock badge off other weeks.
+ */
+export function currentTimeMarkerTodayCell(
+  absoluteValue: number,
+  unitsPerDay: number,
+  numDays: number,
+): number | null {
+  const dayUnits = Math.max(1, Math.floor(Number(unitsPerDay) || 1));
+  const days = Math.max(1, Math.floor(Number(numDays) || 1));
+  const gridMax = dayUnits * days;
+  if (!Number.isFinite(absoluteValue) || absoluteValue < 0 || absoluteValue >= gridMax) {
+    return null;
+  }
+  return Math.floor(absoluteValue / dayUnits);
 }
 
 /** Converts timeline units back to a wall-clock datetime from `scale.startDate`. */
