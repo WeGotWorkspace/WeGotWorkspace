@@ -55,6 +55,17 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(/\.event\.event--dragging[\s\S]*cursor:\s*grabbing/);
   });
 
+  it("renders TimeLine create-preview as a card slot, not a dashed ghost", () => {
+    const css = readCss("../TimeLine/TimeLine.css");
+    const previewBlock = css.match(/\.create-preview\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(previewBlock).toMatch(/container-type:\s*size/);
+    expect(previewBlock).toMatch(/pointer-events:\s*none/);
+    expect(previewBlock).not.toMatch(/dashed/);
+    expect(previewBlock).not.toMatch(/dotted/);
+    expect(css).not.toMatch(/--time-line-create-preview-border/);
+    expect(css).not.toMatch(/--time-line-create-preview-background/);
+  });
+
   it("keeps EventBase multi-segment hover/press off sticky touch hover", () => {
     const css = readCss("../EventBase/EventBase.css");
     expect(css).toMatch(

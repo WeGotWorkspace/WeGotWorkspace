@@ -182,32 +182,39 @@
   top: calc(var(--__lane, 0) * var(--__event-height));
 }
 
-/* Drag-to-create preview (placeholder look; positioned like an event segment). */
+/* Drag-to-create preview: same slot geometry as an event; the card chrome comes from
+   `createPreviewTemplate` / `eventTemplate` (a real event-card), not a dashed ghost. */
 .create-preview {
   position: absolute;
   z-index: 500;
   pointer-events: none;
-  border-radius: 4px;
-  background: var(
-    --time-line-create-preview-background,
-    light-dark(rgb(59 130 246 / 0.18), rgb(96 165 250 / 0.25))
-  );
-  border: var(--time-line-create-preview-border, 1.5px dashed light-dark(#3b82f6, #60a5fa));
+  display: flex;
+  flex: 1;
+  /* Size container so an event-card's height breakpoints resolve against this wrapper. */
+  container-type: size;
+  container-name: event-card;
 }
 
 :host([flow="vertical"]) .create-preview {
   inset-inline: var(--time-line-event-inline-inset, 0px);
   top: var(--__start, 0);
   bottom: var(--__end, 0);
+  min-height: var(--time-line-event-min-size, 0px);
 }
 
-/* Horizontal events always render one lane tall (see `.event` below), so the create ghost
+/* Horizontal events always render one lane tall (see `.event` below), so the create card
    previews the event that will actually be created: first-lane position, one lane height. */
 :host([flow="horizontal"]) .create-preview {
   top: 0;
   height: var(--__event-height);
   inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inline-inset, 0px));
   inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inline-inset, 0px));
+}
+
+.create-preview > * {
+  flex: 1;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .event {

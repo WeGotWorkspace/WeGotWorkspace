@@ -168,6 +168,22 @@ export class TimeLine extends LitElement {
     preview?: TimelineEventPreviewRange,
   ) => TemplateResult = () => html``;
 
+  /**
+   * Drag-to-create preview content (same slot geometry as an event). When unset, `eventTemplate`
+   * is invoked with a synthetic `{ start, end }` event so consumers can render a real card.
+   */
+  @property({ attribute: false })
+  accessor createPreviewTemplate:
+    | ((preview: TimelineEventPreviewRange) => TemplateResult)
+    | undefined;
+
+  /**
+   * Parent-held create range after pointer-up (create dialog open). Combined with the live
+   * `createPreview` so the card stays in the slot until cancel or the real event arrives.
+   */
+  @property({ attribute: false })
+  accessor heldCreatePreview: TimelineEventPreviewRange | null = null;
+
   @property({ attribute: false })
   accessor footerTemplate:
     | ((
@@ -847,11 +863,15 @@ export class TimeLine extends LitElement {
     const preview = cancelled ? undefined : this.resizePreviewByIndex?.get(session.eventIndex);
     const previousStart = session.initialStart;
     const previousEnd = session.initialEnd;
-    this.resizePreviewByIndex = null;
 
-    if (cancelled || !preview) return;
-    if (preview.start === previousStart && preview.end === previousEnd) return;
+    if (cancelled || !preview || (preview.start === previousStart && preview.end === previousEnd)) {
+      this.resizePreviewByIndex = null;
+      return;
+    }
 
+    // Keep the suggested range painted until the parent events map updates (recurring
+    // scope dialog) or the gesture is replaced. Clearing here would snap the card back
+    // before the user confirms.
     this.#emitTimelineResizeCommit({
       index: session.eventIndex,
       edge: session.edge,
@@ -944,11 +964,15 @@ export class TimeLine extends LitElement {
     const preview = cancelled ? undefined : this.resizePreviewByIndex?.get(session.eventIndex);
     const previousStart = session.initialStart;
     const previousEnd = session.initialEnd;
-    this.resizePreviewByIndex = null;
 
-    if (cancelled || !preview) return;
-    if (preview.start === previousStart && preview.end === previousEnd) return;
+    if (cancelled || !preview || (preview.start === previousStart && preview.end === previousEnd)) {
+      this.resizePreviewByIndex = null;
+      return;
+    }
 
+    // Keep the suggested range painted until the parent events map updates (recurring
+    // scope dialog) or the gesture is replaced. Clearing here would snap the card back
+    // before the user confirms.
     this.#emitTimelineMoveCommit({
       index: session.eventIndex,
       start: preview.start,
@@ -1027,9 +1051,17 @@ export class TimeLine extends LitElement {
     if (session.dragging) this.#emitGestureSignal("end", "create", session.gestureId);
 
     const range = cancelled || !session.dragging ? null : this.createPreview;
-    this.createPreview = null;
-    if (!range) return;
+    if (cancelled || !session.dragging) {
+      this.createPreview = null;
+      return;
+    }
+    if (!range) {
+      this.createPreview = null;
+      return;
+    }
 
+    // Keep the create card painted until the parent takes over (`heldCreatePreview`)
+    // or events update. Clearing here would empty the slot while the create dialog opens.
     this.#emitTimelineCreateCommit({ start: range.start, end: range.end });
   }
 
@@ -1247,6 +1279,27 @@ export class TimeLine extends LitElement {
       this.#attachGestureTouchMoveBlocker();
       this.#emitGestureSignal("start", "create", session.gestureId);
       this.createPreview = this.#createRangeForPointer(session, session.originT);
+    }
+  }
+
+  protected willUpdate(changed: PropertyValues) {
+    super.willUpdate(changed);
+    // After a committed move/resize the preview stays until the parent re-renders with
+    // updated (or reverted) event data. Ignore events churn while a gesture is live.
+    if (
+      changed.has("events") &&
+      !this.#moveSession &&
+      !this.#resizeSession &&
+      this.resizePreviewByIndex
+    ) {
+      this.resizePreviewByIndex = null;
+    }
+    if (this.#createSession) return;
+    if (changed.has("heldCreatePreview")) {
+      // Parent owns the post-commit card (dialog open) or dismissed it (cancel / saved).
+      this.createPreview = null;
+    } else if (changed.has("events") && !this.heldCreatePreview && this.createPreview) {
+      this.createPreview = null;
     }
   }
 
@@ -1712,7 +1765,7 @@ export class TimeLine extends LitElement {
     w0: number,
     w1: number,
   ) {
-    const preview = this.createPreview;
+    const preview = this.createPreview ?? this.heldCreatePreview;
     if (!preview) return nothing;
     const segs = this.#collectSegmentsForEventInCell(
       { start: preview.start, end: preview.end },
@@ -1723,6 +1776,9 @@ export class TimeLine extends LitElement {
       span,
       gridMax,
     );
+    const content = this.createPreviewTemplate
+      ? this.createPreviewTemplate(preview)
+      : this.renderEventTemplate({ start: preview.start, end: preview.end }, preview);
     return segs.map((seg) => {
       const endPct = this.#axisPct(seg.segEnd, w0, w1);
       const endInset =
@@ -1731,7 +1787,9 @@ export class TimeLine extends LitElement {
         class="create-preview"
         part="create-preview"
         style="--__start:${this.#axisPct(seg.segStart, w0, w1)}%;--__end:${endInset};"
-      ></div>`;
+      >
+        ${content}
+      </div>`;
     });
   }
 

@@ -30,8 +30,9 @@ export interface StaggerEventLayout {
 }
 
 /**
- * Live numeric range (absolute axis units) of an in-progress move/resize gesture, passed as the
- * second `eventTemplate` argument for the dragged event so templates can render live labels.
+ * Live numeric range (absolute axis units) of an in-progress move/resize/create gesture.
+ * Passed as the second `eventTemplate` argument for the dragged event, and to
+ * `createPreviewTemplate` so drag-to-create can render a real event-card.
  */
 export interface TimelineEventPreviewRange {
   start: number;

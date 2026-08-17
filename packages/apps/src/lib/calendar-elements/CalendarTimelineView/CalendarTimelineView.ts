@@ -54,7 +54,18 @@ import {
   toTimelineValue,
   yearMonthStarts,
 } from "./CalendarTimelineScale.js";
+import {
+  occurrenceTimesWithPending,
+  pendingCreateRetention,
+  pendingOccurrenceRetention,
+  shouldRevertPendingGeometry,
+  type PendingCreateGeometry,
+  type PendingOccurrenceGeometry,
+} from "./pendingOccurrenceGeometry.js";
 import componentStyle from "./CalendarTimelineView.css?inline";
+
+/** Placeholder title on the drag-to-create event-card (matches calendar-labels `newEvent`). */
+const CREATE_PREVIEW_SUMMARY = "New event";
 
 const MINUTES_PER_DAY = 24 * 60;
 const SECONDS_PER_DAY = MINUTES_PER_DAY * 60;
@@ -162,6 +173,11 @@ export class CalendarTimelineView extends CalendarViewBase {
   /** First visible hour when `visibleHours` is active: the initial scroll offset (default 0). */
   visibleHoursStart?: number;
   rtl = false;
+  /**
+   * Create-dialog range from React (`formToCreateIntent`). Present only while the create
+   * editor is open; Lit uses it to keep the drag-create card after pointer-up.
+   */
+  pendingCreateIntent: PendingCreateGeometry | null = null;
 
   /** Events passed to the timed `<time-line>` in the latest render; commit indexes point here. */
   #renderedTimedEvents: CalendarTimelineEvent[] = [];
@@ -194,6 +210,18 @@ export class CalendarTimelineView extends CalendarViewBase {
   #observedComposedElements = new Set<Element>();
   /** Keeps the now-indicator line + clock badge moving while the view is connected. */
   #nowTickTimer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Suggested start/end for a recurring occurrence while the series-scope dialog is open.
+   * Cleared on cancel, or once the engine map matches / replaces the occurrence.
+   */
+  #pendingOccurrenceGeometry: PendingOccurrenceGeometry | null = null;
+  /**
+   * Drag-create slot kept while the create dialog is open. Seeded on pointer-up; React
+   * `pendingCreateIntent` takes over (and follows form edits) until cancel or save.
+   */
+  #pendingCreateGeometry: PendingCreateGeometry | null = null;
+  /** True once the surface has published a create intent for this drag (dialog opened). */
+  #sawSurfaceCreateIntent = false;
 
   static get properties() {
     return {
@@ -216,6 +244,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       visibleHours: { type: Number, attribute: "visible-hours" },
       visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       rtl: { type: Boolean, reflect: true },
+      pendingCreateIntent: { attribute: false },
     } as const;
   }
 
@@ -248,6 +277,9 @@ export class CalendarTimelineView extends CalendarViewBase {
     // Gestures can leave transient locks active if the view unmounts mid-drag; reset so swipe
     // is re-enabled when returning to this view (grid-week parity).
     this.#activeGestureLocks.clear();
+    this.#pendingOccurrenceGeometry = null;
+    this.#pendingCreateGeometry = null;
+    this.#sawSurfaceCreateIntent = false;
     super.disconnectedCallback();
   }
 
@@ -294,6 +326,16 @@ export class CalendarTimelineView extends CalendarViewBase {
       }).days;
       const maxIndex = Math.max(0, this.#resolvedNumDays - 1);
       this.#currentDayIndex = Math.max(0, Math.min(maxIndex, Math.floor(dayOffset)));
+    }
+    if (changedProperties.has("events") && this.#pendingOccurrenceGeometry) {
+      this.#syncPendingOccurrenceGeometry();
+    }
+    if (
+      changedProperties.has("pendingCreateIntent") ||
+      changedProperties.has("events") ||
+      this.#pendingCreateGeometry
+    ) {
+      this.#syncPendingCreateGeometry();
     }
   }
 
@@ -480,9 +522,15 @@ export class CalendarTimelineView extends CalendarViewBase {
     variant: TimelineVariant,
   ): CalendarTimelineEvent[] {
     const now = this.#currentDateTime;
+    const pending = this.#pendingOccurrenceGeometry;
     return entries.map(([key, event]) => {
-      const originalStart = event.data.start;
-      const originalEnd = resolvedDataEnd(event.data);
+      const engineStart = event.data.start;
+      const engineEnd = resolvedDataEnd(event.data);
+      const { start: originalStart, end: originalEnd } = occurrenceTimesWithPending(
+        key,
+        { start: engineStart, end: engineEnd },
+        pending,
+      );
       const range =
         variant === "all-day"
           ? toTimelineAllDayRange(originalStart, originalEnd, this.#scale)
@@ -502,6 +550,24 @@ export class CalendarTimelineView extends CalendarViewBase {
         exception: isCalendarEventException(event),
       };
     });
+  }
+
+  /** Drop the dialog-time overlay once the engine map matches or the occurrence is gone. */
+  #syncPendingOccurrenceGeometry() {
+    const pending = this.#pendingOccurrenceGeometry;
+    if (!pending) return;
+    const rangeStart = this.#gridStartDate.toPlainDateTime(Temporal.PlainTime.from("00:00"));
+    const rangeEnd = rangeStart.add({ days: this.#resolvedNumDays });
+    const rendered = this.getRenderedEvents({ start: rangeStart, end: rangeEnd });
+    const engineTimes = new Map(
+      Array.from(rendered.entries()).map(([key, event]) => [
+        key,
+        { start: event.data.start, end: resolvedDataEnd(event.data) },
+      ]),
+    );
+    if (pendingOccurrenceRetention(pending, engineTimes) === "clear") {
+      this.#pendingOccurrenceGeometry = null;
+    }
   }
 
   #renderedEventsFor(variant: TimelineVariant): CalendarTimelineEvent[] {
@@ -548,7 +614,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       const endDay = Math.max(startDay + 1, Math.ceil(detail.end / unitsPerDay - 1e-9));
       const dayStart = this.#gridStartDate.add({ days: startDay });
       const dayEndExclusive = this.#gridStartDate.add({ days: endDay });
-      this.#emitEventCreateRequested({
+      this.#holdCreatePreview({
         start: dayStart.toPlainDateTime(Temporal.PlainTime.from("00:00")),
         end: dayEndExclusive.toPlainDateTime(Temporal.PlainTime.from("00:00")),
         allDay: true,
@@ -557,7 +623,56 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
     const range = fromTimelineRange(detail.start, detail.end, this.#scale);
     // Timed grid / day-week body: never omit the flag — consumers treat missing as ambiguous.
-    this.#emitEventCreateRequested({ start: range.start, end: range.end, allDay: false });
+    this.#holdCreatePreview({ start: range.start, end: range.end, allDay: false });
+  }
+
+  /** Keep the create card in-slot, then open the dialog (or persist when no interceptor). */
+  #holdCreatePreview(input: PendingCreateGeometry) {
+    this.#pendingCreateGeometry = input;
+    this.#sawSurfaceCreateIntent = false;
+    this.requestUpdate();
+    this.#emitEventCreateRequested(input);
+    this.#syncPendingCreateGeometry();
+    if (!this.#pendingCreateGeometry) this.requestUpdate();
+  }
+
+  /**
+   * Follow the open create dialog, drop on cancel, or drop once a real event fills the slot.
+   */
+  #syncPendingCreateGeometry() {
+    const surfaceIntent = this.pendingCreateIntent;
+    if (surfaceIntent && this.#pendingCreateGeometry) {
+      this.#pendingCreateGeometry = surfaceIntent;
+      this.#sawSurfaceCreateIntent = true;
+    } else if (this.#sawSurfaceCreateIntent && !surfaceIntent) {
+      this.#pendingCreateGeometry = null;
+      this.#sawSurfaceCreateIntent = false;
+      return;
+    }
+    const pending = this.#pendingCreateGeometry;
+    if (!pending) return;
+    const rangeStart = this.#gridStartDate.toPlainDateTime(Temporal.PlainTime.from("00:00"));
+    const rangeEnd = rangeStart.add({ days: this.#resolvedNumDays });
+    const rendered = this.getRenderedEvents({ start: rangeStart, end: rangeEnd });
+    const engineEvents = Array.from(rendered.values()).map((event) => ({
+      start: event.data.start,
+      end: resolvedDataEnd(event.data),
+      allDay: event.data.allDay === true,
+    }));
+    if (pendingCreateRetention(pending, engineEvents) === "clear") {
+      this.#pendingCreateGeometry = null;
+      this.#sawSurfaceCreateIntent = false;
+    }
+  }
+
+  #heldCreatePreviewFor(variant: TimelineVariant): TimelineEventPreviewRange | null {
+    const pending = this.#pendingCreateGeometry;
+    if (!pending) return null;
+    if (pending.allDay !== (variant === "all-day")) return null;
+    const range = pending.allDay
+      ? toTimelineAllDayRange(pending.start, pending.end, this.#scale)
+      : toTimelineRange(pending.start, pending.end, this.#scale);
+    return { start: range.start, end: range.end };
   }
 
   #emitEventCreateRequested(input: {
@@ -670,12 +785,20 @@ export class CalendarTimelineView extends CalendarViewBase {
         location: current?.data.location,
       },
     };
+    this.#pendingOccurrenceGeometry = {
+      key: timelineEvent.key,
+      start: next.start,
+      end: next.end,
+    };
+    this.requestUpdate();
     const result = await this.applyUpdateRequestToEventsAPI(detail);
-    if (!result.handled || !result.accepted) {
-      // Rejected or unhandled: re-render from the unchanged events map so the
-      // timeline snaps back to the pre-gesture range.
+    if (shouldRevertPendingGeometry(result)) {
+      this.#pendingOccurrenceGeometry = null;
       this.requestUpdate();
+      return;
     }
+    this.#syncPendingOccurrenceGeometry();
+    if (!this.#pendingOccurrenceGeometry) this.requestUpdate();
   }
 
   async #requestDeleteForKey(key: string) {
@@ -799,6 +922,34 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   #renderAllDayTimelineEvent = (event: TimelineEvent, preview?: TimelineEventPreviewRange) =>
     this.#renderTimelineEvent("all-day", event, preview);
+
+  #renderTimedCreatePreview = (preview: TimelineEventPreviewRange) =>
+    this.#renderCreatePreviewEvent("timed", preview);
+
+  #renderAllDayCreatePreview = (preview: TimelineEventPreviewRange) =>
+    this.#renderCreatePreviewEvent("all-day", preview);
+
+  /** Real event-card for drag-to-create (same chrome as a timed / all-day event). */
+  #renderCreatePreviewEvent(
+    variant: TimelineVariant,
+    preview: TimelineEventPreviewRange,
+  ): TemplateResult {
+    const daySnapped = variant === "all-day";
+    const range = fromTimelineRange(preview.start, preview.end, this.#scale);
+    const timeLabel = daySnapped ? "" : formatShortTimeRange(this.lang, range.start, range.end);
+    const calendarId = this.calendarIdForNewEvent();
+    return html`
+      <event-card
+        layout="flow"
+        inert
+        aria-hidden="true"
+        part="event-card"
+        .summary=${CREATE_PREVIEW_SUMMARY}
+        .time=${timeLabel}
+        .color=${this.resolveNewEventColor(calendarId)}
+      ></event-card>
+    `;
+  }
 
   #renderTimelineEvent(
     variant: TimelineVariant,
@@ -1389,6 +1540,10 @@ export class CalendarTimelineView extends CalendarViewBase {
         .eventTemplate=${variant === "all-day"
           ? this.#renderAllDayTimelineEvent
           : this.#renderTimedTimelineEvent}
+        .createPreviewTemplate=${variant === "all-day"
+          ? this.#renderAllDayCreatePreview
+          : this.#renderTimedCreatePreview}
+        .heldCreatePreview=${this.#heldCreatePreviewFor(variant)}
         .headerTemplate=${this.mode === "month"
           ? this.#monthDayHeaderTemplate
           : this.#dayHeaderTemplate}
@@ -1461,6 +1616,8 @@ export class CalendarTimelineView extends CalendarViewBase {
             layout="masonry"
             height="auto"
             .eventTemplate=${this.#renderAllDayTimelineEvent}
+            .createPreviewTemplate=${this.#renderAllDayCreatePreview}
+            .heldCreatePreview=${this.#heldCreatePreviewFor("all-day")}
             .footerTemplate=${this.#overflowFooterTemplate}
             @timeline-event-move=${(event: Event) =>
               this.#handleTimelineMoveCommit(event, "all-day")}
@@ -1516,6 +1673,8 @@ export class CalendarTimelineView extends CalendarViewBase {
             .markers=${this.#currentTimeMarkers}
             .markerTodayCell=${this.#nowMarkerTodayCell ?? -1}
             .eventTemplate=${this.#renderTimedTimelineEvent}
+            .createPreviewTemplate=${this.#renderTimedCreatePreview}
+            .heldCreatePreview=${this.#heldCreatePreviewFor("timed")}
             @timeline-event-move=${(event: Event) => this.#handleTimelineMoveCommit(event, "timed")}
             @timeline-event-resize=${(event: Event) =>
               this.#handleTimelineResizeCommit(event, "timed")}

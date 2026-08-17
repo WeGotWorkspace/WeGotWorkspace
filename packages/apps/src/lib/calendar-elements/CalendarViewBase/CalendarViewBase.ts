@@ -330,7 +330,8 @@ export abstract class CalendarViewBase extends BaseElement {
       }
 
       // thisAndFuture: React truncates the master and creates a forked series.
-      // Revert the optimistic drag; the controller applies the split then syncs.
+      // Keep the suggested geometry (`accepted: true`); the view drops its overlay
+      // once the engine map reflects the fork. Cancel is the only revert path.
       this.dispatchEvent(
         new CustomEvent("recurrence-future-update", {
           detail: {
@@ -347,7 +348,7 @@ export abstract class CalendarViewBase extends BaseElement {
           composed: true,
         }),
       );
-      return { handled: true, accepted: false };
+      return { handled: true, accepted: true };
     }
 
     if (updateKind === "move") {

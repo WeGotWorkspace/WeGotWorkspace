@@ -128,6 +128,11 @@ describe("calendar-recurrence-scope", () => {
     expect(viewBase).not.toMatch(
       /recurrence-future-delete[\s\S]*masterId:\s*detail\.envelope\.eventId/,
     );
+    // Confirm (this-and-future) must not look like a rejected drag — keep the
+    // suggested geometry until the engine map reflects the fork.
+    expect(viewBase).toMatch(
+      /recurrence-future-update[\s\S]*?return \{ handled: true, accepted: true \}/,
+    );
   });
 
   it("detects recurring series from wire rules", () => {
