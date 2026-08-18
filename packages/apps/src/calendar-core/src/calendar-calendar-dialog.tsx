@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, buttonVariants } from "@/button/src/button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -19,8 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import { cn } from "@/lib/utils";
+import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import type { CalendarDirectoryGroup } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
@@ -68,82 +67,6 @@ type CalendarCalendarDialogProps = {
   onConfirm: (input: CalendarCalendarDialogConfirmInput) => void;
   onDelete?: () => void;
 };
-
-function ColorPicker({
-  value,
-  onChange,
-  colorLabel,
-}: {
-  value: string;
-  onChange: (color: string) => void;
-  colorLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const customColorInputRef = useRef<HTMLInputElement>(null);
-  const customColorInputId = useId();
-  const colorLabelId = useId();
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <CalendarColorSwatchTrigger color={value} label={colorLabel} aria-haspopup="dialog" />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="calendar-calendar-dialog__color-content">
-        <div
-          className="calendar-calendar-dialog__swatches"
-          role="radiogroup"
-          aria-labelledby={colorLabelId}
-        >
-          <span id={colorLabelId} className="sr-only">
-            {colorLabel}
-          </span>
-          {CALENDAR_COLOR_SWATCHES.map((swatch) => {
-            const selected = value.toLowerCase() === swatch.toLowerCase();
-            return (
-              <button
-                key={swatch}
-                type="button"
-                className={cn(
-                  "calendar-calendar-dialog__swatch",
-                  selected && "calendar-calendar-dialog__swatch--selected",
-                )}
-                style={{ backgroundColor: swatch }}
-                aria-label={swatch}
-                aria-checked={selected}
-                role="radio"
-                onClick={() => {
-                  onChange(swatch);
-                  setOpen(false);
-                }}
-              />
-            );
-          })}
-          <button
-            type="button"
-            className="calendar-calendar-dialog__swatch calendar-calendar-dialog__swatch--custom"
-            aria-label="Custom color"
-            onClick={() => customColorInputRef.current?.click()}
-          >
-            <span className="calendar-calendar-dialog__custom-marker" aria-hidden />
-          </button>
-          <input
-            ref={customColorInputRef}
-            id={customColorInputId}
-            type="color"
-            className="calendar-calendar-dialog__native-color"
-            value={value}
-            tabIndex={-1}
-            aria-hidden
-            onChange={(event) => {
-              onChange(event.target.value);
-              setOpen(false);
-            }}
-          />
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export function CalendarCalendarDialog({
   dialog,
@@ -193,29 +116,10 @@ export function CalendarCalendarDialog({
     readOnlyLabel: labels.calendarDirectoryReadOnlyLabel,
   };
 
-  /** Portaled popover / native color picker sit outside DialogContent in the DOM. */
-  const keepOpenForPortaledLayer = (event: Event) => {
-    const target = event.target as Element | null;
-    const active = document.activeElement;
-    if (
-      target?.closest("[data-radix-popper-content-wrapper]") ||
-      (target instanceof HTMLInputElement && target.type === "color") ||
-      target?.closest(".calendar-calendar-dialog__native-color") ||
-      (active instanceof HTMLInputElement && active.type === "color")
-    ) {
-      event.preventDefault();
-    }
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-        <DialogContent
-          className="calendar-dialog-surface"
-          onPointerDownOutside={keepOpenForPortaledLayer}
-          onInteractOutside={keepOpenForPortaledLayer}
-          onFocusOutside={keepOpenForPortaledLayer}
-        >
+        <DialogContent className="calendar-dialog-surface" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>
               {isCreate ? labels.createCalendarTitle : labels.editCalendarTitle}
@@ -242,11 +146,18 @@ export function CalendarCalendarDialog({
                   disabled={busy}
                   onChange={(event) => setName(event.target.value)}
                 />
-                <ColorPicker
+                <SwatchColorPicker
                   value={selectedColor}
                   onChange={setColor}
                   colorLabel={labels.calendarColorLabel}
-                />
+                  swatches={CALENDAR_COLOR_SWATCHES}
+                >
+                  <CalendarColorSwatchTrigger
+                    color={selectedColor}
+                    label={labels.calendarColorLabel}
+                    aria-haspopup="dialog"
+                  />
+                </SwatchColorPicker>
               </div>
             </FieldLabelRow>
 

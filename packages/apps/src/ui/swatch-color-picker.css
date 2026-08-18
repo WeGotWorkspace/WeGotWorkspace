@@ -1,0 +1,35 @@
+@import "../styles.css" reference;
+
+.swatch-color-picker__content {
+  @apply w-auto p-3;
+}
+
+.swatch-color-picker__swatches {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.swatch-color-picker__swatch {
+  @apply inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent p-0 transition-shadow;
+}
+
+.swatch-color-picker__swatch:hover {
+  @apply ring-2 ring-offset-2;
+  ring-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
+}
+
+.swatch-color-picker__swatch--selected {
+  @apply ring-2 ring-offset-2;
+  ring-color: var(--color-ink);
+}
+
+.swatch-color-picker__swatch--custom {
+  background: conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+
+.swatch-color-picker__custom-marker {
+  @apply size-3 rounded-full border border-white/80 bg-white/20;
+}
+
+.swatch-color-picker__native-color {
+  @apply sr-only;
+}

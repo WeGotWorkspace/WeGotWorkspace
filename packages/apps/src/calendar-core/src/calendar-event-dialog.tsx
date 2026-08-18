@@ -328,23 +328,12 @@ export function CalendarEventDialog({
     setAlerts(form.alerts.map((alert) => (alert.id === id ? { ...alert, ...patch } : alert)));
   };
 
-  /** Portaled DropdownMenu/Popover layers sit outside DialogContent in the DOM. */
-  const keepOpenForPortaledLayer = (event: Event) => {
-    const target = event.target as Element | null;
-    if (target?.closest("[data-radix-popper-content-wrapper]")) {
-      event.preventDefault();
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
       <DialogContent
         className="calendar-dialog-surface calendar-event-dialog"
         lang={locale}
         aria-describedby={undefined}
-        onPointerDownOutside={keepOpenForPortaledLayer}
-        onInteractOutside={keepOpenForPortaledLayer}
-        onFocusOutside={keepOpenForPortaledLayer}
       >
         <DialogHeader>
           <DialogTitle>
