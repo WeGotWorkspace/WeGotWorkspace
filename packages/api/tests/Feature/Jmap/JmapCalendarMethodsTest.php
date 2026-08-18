@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Jmap;
 
 use App\Models\CalendarObject;
+use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarColorPalette;
+use App\Services\Calendars\DefaultCalendarColorMigrator;
+use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Testing\TestResponse;
@@ -342,5 +346,226 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         ])->assertOk()
             ->assertJsonPath('methodResponses.0.0', 'error')
             ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
+    }
+
+    public function test_provisioned_personal_calendars_have_distinct_colors(): void
+    {
+        app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
+        app(DefaultCalendarColorMigrator::class)->migrateAll();
+
+        $list = $this->jmap([
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list');
+        $calendars = collect($list);
+
+        $colors = [];
+        foreach ([
+            CalendarCollectionUris::EVENT_DEFAULT,
+            CalendarCollectionUris::EVENT_HOME,
+            CalendarCollectionUris::EVENT_WORK,
+        ] as $id) {
+            $calendar = $calendars->firstWhere('id', $id);
+            $this->assertIsArray($calendar);
+            $this->assertSame(CalendarColorPalette::forUri($id), $calendar['color']);
+            $colors[] = strtolower((string) $calendar['color']);
+        }
+
+        $this->assertCount(3, array_unique($colors));
+    }
+
+    public function test_calendar_set_create_accepts_description_and_ignores_share_with(): void
+    {
+        $create = $this->jmap([
+            ['Calendar/set', ['accountId' => 'bob', 'create' => ['c' => [
+                'name' => 'Work calendar',
+                'id' => 'work',
+                'description' => 'Work-only events',
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.c');
+        $this->assertSame('work', $create['id']);
+        $this->assertSame('Work-only events', $create['description']);
+        $this->assertTrue($create['myRights']['mayDelete']);
+
+        $updated = $this->jmap([
+            ['Calendar/set', ['accountId' => 'bob', 'update' => ['default' => [
+                'shareWith' => ['alice' => ['mayRead' => true]],
+            ]]], 'c0'],
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => ['default']], 'c1'],
+        ])->assertOk();
+        $this->assertNull($updated->json('methodResponses.0.1.notUpdated.default'));
+        $this->assertNull($updated->json('methodResponses.1.1.list.0.shareWith'));
+    }
+
+    public function test_calendar_event_query_time_range_title_sort_and_recurrence(): void
+    {
+        $inWindow = $this->seedEventViaPdo('bob', 'in-window.ics', $this->sampleIcs(
+            'Quarterly Planning',
+            null,
+            '20260901T100000Z',
+            '20260901T110000Z',
+        ));
+        $outOfWindow = $this->seedEventViaPdo('bob', 'out-window.ics', $this->sampleIcs(
+            'Daily Standup',
+            null,
+            '20261001T100000Z',
+            '20261001T110000Z',
+        ));
+        $straddling = $this->seedEventViaPdo('bob', 'straddle-window.ics', $this->sampleIcs(
+            'Straddling',
+            null,
+            '20260831T230000Z',
+            '20260901T010000Z',
+        ));
+        $recurringId = $this->seedEventViaPdo('bob', 'weekly.ics', $this->recurringIcs(
+            'Weekly Standup',
+            '20260106T090000Z',
+            '20260106T093000Z',
+        ));
+
+        $range = $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => [
+                'inCalendars' => ['default'],
+                'after' => '2026-09-01T00:00:00Z',
+                'before' => '2026-09-08T00:00:00Z',
+            ]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.ids');
+        $this->assertContains($inWindow, $range);
+        $this->assertContains($straddling, $range);
+        $this->assertNotContains($outOfWindow, $range);
+        $this->assertContains($recurringId, $range);
+
+        $missedRecurrence = $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => [
+                'inCalendars' => ['default'],
+                'after' => '2026-09-02T00:00:00Z',
+                'before' => '2026-09-04T00:00:00Z',
+            ]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.ids');
+        $this->assertNotContains($recurringId, $missedRecurrence);
+
+        $title = $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => [
+                'inCalendars' => ['default'],
+                'title' => 'quarterly',
+            ]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.ids');
+        $this->assertContains($inWindow, $title);
+        $this->assertNotContains($outOfWindow, $title);
+
+        $first = $this->seedEventViaPdo('bob', 'sorted-a.ics', $this->sampleIcs('Sorted A', null, '20260901T090000Z', '20260901T100000Z'));
+        $second = $this->seedEventViaPdo('bob', 'sorted-b.ics', $this->sampleIcs('Sorted B', null, '20260902T090000Z', '20260902T100000Z'));
+        $third = $this->seedEventViaPdo('bob', 'sorted-c.ics', $this->sampleIcs('Sorted C', null, '20260903T090000Z', '20260903T100000Z'));
+        $window = [
+            'inCalendars' => ['default'],
+            'after' => '2026-09-01T00:00:00Z',
+            'before' => '2026-09-05T00:00:00Z',
+        ];
+        $ascending = $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => $window, 'sort' => [['property' => 'start', 'isAscending' => true]]], 'c0'],
+        ])->assertOk();
+        $this->assertSame([$first, $inWindow, $second, $third], array_values(array_intersect(
+            $ascending->json('methodResponses.0.1.ids'),
+            [$first, $inWindow, $second, $third],
+        )));
+
+        $paged = $this->jmap([
+            ['CalendarEvent/query', [
+                'accountId' => 'bob',
+                'filter' => [
+                    'inCalendars' => ['default'],
+                    'after' => '2026-09-01T00:00:00Z',
+                    'before' => '2026-09-04T00:00:00Z',
+                    'title' => 'Sorted',
+                ],
+                'sort' => [['property' => 'start', 'isAscending' => false]],
+                'position' => 1,
+                'limit' => 1,
+            ], 'c0'],
+        ])->assertOk();
+        $this->assertSame(1, $paged->json('methodResponses.0.1.position'));
+        $this->assertSame([$second], $paged->json('methodResponses.0.1.ids'));
+    }
+
+    public function test_calendar_event_query_multi_vevent_isolation_and_after_without_before(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n"
+            ."BEGIN:VEVENT\r\nUID:uid-in\r\nSUMMARY:Sub In Window\r\nDTSTART:20260902T100000Z\r\nDTEND:20260902T110000Z\r\nEND:VEVENT\r\n"
+            ."BEGIN:VEVENT\r\nUID:uid-out\r\nSUMMARY:Sub Out Of Window\r\nDTSTART:20261002T100000Z\r\nDTEND:20261002T110000Z\r\nEND:VEVENT\r\n"
+            ."END:VCALENDAR\r\n";
+        $this->seedEventViaPdo('bob', 'multi-query.ics', $ics);
+
+        $ids = $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => [
+                'inCalendars' => ['default'],
+                'after' => '2026-09-01T00:00:00Z',
+                'before' => '2026-09-08T00:00:00Z',
+            ]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.ids');
+        $this->assertContains('multi-query#uid-in', $ids);
+        $this->assertNotContains('multi-query#uid-out', $ids);
+
+        $secondCalendarId = (string) $this->jmap([
+            ['Calendar/set', ['accountId' => 'bob', 'create' => ['c' => ['name' => 'Second']]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.c.id');
+        $defaultEvent = $this->seedEventViaPdo('bob', 'iso-default.ics', $this->sampleIcs('Iso Default'));
+        $secondEvent = $this->seedEventViaPdo('bob', 'iso-second.ics', $this->sampleIcs('Iso Second'), $secondCalendarId);
+        $carolEvent = $this->seedEventViaPdo('carol', 'iso-carol.ics', $this->sampleIcs('Iso Carol'));
+
+        $both = $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => [
+                'inCalendars' => ['default', $secondCalendarId],
+            ]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.ids');
+        $this->assertContains($defaultEvent, $both);
+        $this->assertContains($secondEvent, $both);
+        $this->assertNotContains($carolEvent, $both);
+
+        $this->jmap([
+            ['CalendarEvent/query', ['accountId' => 'bob', 'filter' => [
+                'inCalendars' => ['default'],
+                'after' => '2026-09-01T00:00:00Z',
+            ]], 'c0'],
+        ])->assertOk()
+            ->assertJsonPath('methodResponses.0.0', 'error')
+            ->assertJsonPath('methodResponses.0.1.type', 'invalidArguments');
+    }
+
+    public function test_calendar_event_get_returns_rrule_overrides_and_composite_ids(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:recur-1\r\nSUMMARY:Weekly Standup\r\nDTSTART:20260610T090000Z\r\nDTEND:20260610T093000Z\r\nRRULE:FREQ=WEEKLY;BYDAY=MO\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $eventId = $this->seedEventViaPdo('bob', 'weekly-standup.ics', $ics);
+        $event = $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('Weekly Standup', $event['title']);
+        $this->assertSame('weekly', $event['recurrenceRules'][0]['frequency']);
+        $this->assertSame([['@type' => 'NDay', 'day' => 'mo']], $event['recurrenceRules'][0]['byDay']);
+        $this->assertArrayNotHasKey('instances', $event);
+
+        $overrideIcs = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:series-api\r\nSUMMARY:Weekly Sync\r\nDTSTART:20260610T090000Z\r\nDTEND:20260610T093000Z\r\nRRULE:FREQ=WEEKLY;BYDAY=MO\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:series-api\r\nRECURRENCE-ID:20260617T090000Z\r\nDTSTART:20260617T140000Z\r\nDTEND:20260617T143000Z\r\nSUMMARY:Weekly Sync (moved)\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $overrideId = $this->seedEventViaPdo('bob', 'weekly-sync.ics', $overrideIcs);
+        $override = $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$overrideId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('series-api', $override['uid']);
+        $this->assertSame('2026-06-17T14:00:00Z', $override['recurrenceOverrides']['2026-06-17T09:00:00Z']['start']);
+        $this->assertSame('Weekly Sync (moved)', $override['recurrenceOverrides']['2026-06-17T09:00:00Z']['title']);
+
+        $multi = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:first\r\nSUMMARY:Primary Event\r\nDTSTART:20260610T090000Z\r\nDTEND:20260610T100000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:second\r\nSUMMARY:Secondary Event\r\nDTSTART:20260611T090000Z\r\nDTEND:20260611T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $this->seedEventViaPdo('bob', 'multi-event.ics', $multi);
+        $list = $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list');
+        $ids = array_column($list, 'id');
+        $this->assertContains('multi-event#first', $ids);
+        $this->assertContains('multi-event#second', $ids);
+    }
+
+    private function recurringIcs(string $summary, string $start, string $end): string
+    {
+        $uid = 'urn:uuid:recurring-'.md5($summary);
+
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:{$summary}\r\n"
+            ."DTSTART:{$start}\r\nDTEND:{$end}\r\nRRULE:FREQ=WEEKLY\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
     }
 }

@@ -8,11 +8,13 @@ use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarColorPalette;
 use App\Services\Jmap\JmapCapabilities;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
  * Membership group VEVENT calendars under principals/groups/{slug}.
+ * REST twins were lifted onto Calendar/* and CalendarEvent/* .
  */
 final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
 {
@@ -30,13 +32,28 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
         $this->addPrincipalToGroup($team, $bob);
     }
 
+    /**
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $methodCalls
+     */
+    private function jmapAs(string $username, array $methodCalls): TestResponse
+    {
+        $token = $username === 'bob'
+            ? $this->userBearerToken()
+            : $this->issueBearerTokenFor($username);
+
+        return $this->withBearer($token)->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+            'methodCalls' => $methodCalls,
+        ]);
+    }
+
     public function test_list_includes_personal_and_group_calendars(): void
     {
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/calendars');
+        $args = $this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
 
-        $response->assertOk();
-        $calendars = collect($response->json('list'));
+        $calendars = collect($args['list']);
 
         $personal = $calendars->firstWhere('id', 'default');
         $this->assertIsArray($personal);
@@ -54,107 +71,88 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
 
     public function test_non_member_does_not_see_group_calendar(): void
     {
-        $response = $this->withBearer($this->issueBearerTokenFor('carol'))
-            ->getJson('/api/v1/calendars/calendars');
+        $args = $this->jmapAs('carol', [
+            ['Calendar/get', ['accountId' => 'carol', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
 
-        $response->assertOk();
-        $ids = collect($response->json('list'))->pluck('id')->all();
+        $ids = array_column($args['list'], 'id');
         $this->assertNotContains(CalendarCollectionUris::groupCalendarApiId(self::TEAM), $ids);
     }
 
     public function test_show_group_calendar(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
-        $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/calendars/'.$calendarId)
-            ->assertOk()
-            ->assertJsonPath('id', $calendarId)
-            ->assertJsonPath('scope', 'group')
-            ->assertJsonPath('groupSlug', self::TEAM);
+        $args = $this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame($calendarId, $args['list'][0]['id']);
+        $this->assertSame('group', $args['list'][0]['scope']);
+        $this->assertSame(self::TEAM, $args['list'][0]['groupSlug']);
     }
 
     public function test_create_group_scoped_calendar(): void
     {
-        $response = $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/calendars', [
+        $response = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'create' => ['new-cal' => [
                 'name' => 'Roadmap',
                 'color' => '#22c55e',
                 'groupSlug' => self::TEAM,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('name', 'Roadmap')
-            ->assertJsonPath('color', '#22c55e')
-            ->assertJsonPath('scope', 'group')
-            ->assertJsonPath('groupSlug', self::TEAM)
-            ->assertJsonPath('id', 'roadmap');
+                'id' => 'roadmap',
+            ]]], 'c0'],
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => ['roadmap']], 'c1'],
+        ])->assertOk();
 
-        $calendarId = (string) $response->json('id');
-        $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/calendars/'.$calendarId)
-            ->assertOk()
-            ->assertJsonPath('scope', 'group')
-            ->assertJsonPath('groupSlug', self::TEAM);
+        $created = $response->json('methodResponses.0.1.created.new-cal');
+        $this->assertSame('roadmap', $created['id']);
+        $this->assertSame('Roadmap', $created['name']);
+        $this->assertSame('#22c55e', $created['color']);
+        $this->assertSame('group', $created['scope']);
+        $this->assertSame(self::TEAM, $created['groupSlug']);
+
+        $this->assertSame('group', $response->json('methodResponses.1.1.list.0.scope'));
+        $this->assertSame(self::TEAM, $response->json('methodResponses.1.1.list.0.groupSlug'));
     }
 
     public function test_create_into_group_requires_membership(): void
     {
-        $this->withBearer($this->issueBearerTokenFor('carol'))
-            ->postJson('/api/v1/calendars/calendars', [
+        $args = $this->jmapAs('carol', [
+            ['Calendar/set', ['accountId' => 'carol', 'create' => ['secret' => [
                 'name' => 'Secret',
                 'groupSlug' => self::TEAM,
-            ])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'forbidden');
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame([], $args['created']);
+        $this->assertSame('forbidden', $args['notCreated']['secret']['type']);
     }
 
     public function test_member_can_create_event_in_group_calendar(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
-        $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/events', array_merge(
+        $eventId = (string) $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['e' => array_merge(
                 $this->sampleCalendarEventPayload($calendarId),
                 ['title' => 'Team standup'],
-            ))
-            ->assertCreated()
-            ->assertJsonPath('title', 'Team standup')
-            ->assertJsonPath('calendarIds.'.$calendarId, true);
-    }
+            )]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.e.id');
+        $this->assertNotSame('', $eventId);
 
-    public function test_patch_group_calendar_updates_name_and_color(): void
-    {
-        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+        $event = $this->jmapAs('bob', [
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
 
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/calendars/calendars/'.$calendarId, [
-                'name' => 'Team planning',
-                'color' => '#ec4899',
-            ])
-            ->assertOk()
-            ->assertJsonPath('id', $calendarId)
-            ->assertJsonPath('name', 'Team planning')
-            ->assertJsonPath('color', '#ec4899')
-            ->assertJsonPath('scope', 'group')
-            ->assertJsonPath('groupSlug', self::TEAM)
-            ->assertJsonPath('myRights.mayWrite', true)
-            ->assertJsonPath('myRights.mayDelete', false);
-
-        $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/calendars/'.$calendarId)
-            ->assertOk()
-            ->assertJsonPath('name', 'Team planning')
-            ->assertJsonPath('color', '#ec4899');
+        $this->assertSame('Team standup', $event['title']);
+        $this->assertTrue($event['calendarIds'][$calendarId]);
     }
 
     public function test_jmap_calendar_set_updates_group_calendar_name_and_color(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
 
-        $response = $this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
-            'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
-            'methodCalls' => [
-                ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => ['name' => 'Squad', 'color' => '#22c55e']]], 'c0'],
-                ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
-            ],
+        $response = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => ['name' => 'Squad', 'color' => '#22c55e']]], 'c0'],
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
         ])->assertOk();
 
         $this->assertNull($response->json('methodResponses.0.1.notUpdated.'.$calendarId));
@@ -164,46 +162,74 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
         $this->assertSame($calendarId, $response->json('methodResponses.1.1.list.0.id'));
     }
 
+    public function test_patch_group_calendar_updates_name_and_color(): void
+    {
+        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+
+        $response = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
+                'name' => 'Team planning',
+                'color' => '#ec4899',
+            ]]], 'c0'],
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
+        ])->assertOk();
+
+        $calendar = $response->json('methodResponses.1.1.list.0');
+        $this->assertSame($calendarId, $calendar['id']);
+        $this->assertSame('Team planning', $calendar['name']);
+        $this->assertSame('#ec4899', $calendar['color']);
+        $this->assertSame('group', $calendar['scope']);
+        $this->assertSame(self::TEAM, $calendar['groupSlug']);
+        $this->assertTrue($calendar['myRights']['mayWriteAll']);
+        $this->assertFalse($calendar['myRights']['mayDelete']);
+    }
+
     public function test_non_member_cannot_patch_group_calendar(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
 
-        $this->withBearer($this->issueBearerTokenFor('carol'))
-            ->patchJson('/api/v1/calendars/calendars/'.$calendarId, [
-                'name' => 'Hijacked',
-            ])
-            ->assertNotFound();
+        $args = $this->jmapAs('carol', [
+            ['Calendar/set', ['accountId' => 'carol', 'update' => [$calendarId => ['name' => 'Hijacked']]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame('notFound', $args['notUpdated'][$calendarId]['type']);
     }
 
     public function test_delete_provisioned_group_calendar_is_forbidden(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
 
-        $this->withBearer($this->userBearerToken())
-            ->deleteJson('/api/v1/calendars/calendars/'.$calendarId)
-            ->assertForbidden();
+        $args = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'destroy' => [$calendarId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame([], $args['destroyed']);
+        $this->assertSame('forbidden', $args['notDestroyed'][$calendarId]['type']);
     }
 
     public function test_patch_extra_group_calendar_updates_name_and_color(): void
     {
-        $calendarId = $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/calendars', [
+        $create = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'create' => ['new-cal' => [
                 'name' => 'Roadmap',
                 'groupSlug' => self::TEAM,
-            ])
-            ->assertCreated()
-            ->json('id');
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.new-cal');
+        $calendarId = (string) $create['id'];
 
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/calendars/calendars/'.$calendarId, [
+        $response = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
                 'name' => 'Roadmap 2026',
                 'color' => '#0ea5e9',
-            ])
-            ->assertOk()
-            ->assertJsonPath('id', $calendarId)
-            ->assertJsonPath('name', 'Roadmap 2026')
-            ->assertJsonPath('color', '#0ea5e9')
-            ->assertJsonPath('scope', 'group')
-            ->assertJsonPath('groupSlug', self::TEAM);
+            ]]], 'c0'],
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
+        ])->assertOk();
+
+        $calendar = $response->json('methodResponses.1.1.list.0');
+        $this->assertSame($calendarId, $calendar['id']);
+        $this->assertSame('Roadmap 2026', $calendar['name']);
+        $this->assertSame('#0ea5e9', $calendar['color']);
+        $this->assertSame('group', $calendar['scope']);
+        $this->assertSame(self::TEAM, $calendar['groupSlug']);
     }
 }
