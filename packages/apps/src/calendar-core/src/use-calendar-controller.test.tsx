@@ -1187,4 +1187,47 @@ describe("useCalendarController create calendar directory", () => {
       groupSlug: "team",
     });
   });
+
+  it("patches a team calendar name and color", async () => {
+    const patchCalendar = vi.fn().mockResolvedValue({
+      id: "group-editorial",
+      name: "Desk",
+      color: "#ec4899",
+      scope: "group",
+      groupSlug: "editorial",
+      mayWrite: true,
+      mayDelete: false,
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          patchCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("group-editorial");
+    });
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Desk",
+        color: "#ec4899",
+      });
+    });
+
+    expect(patchCalendar).toHaveBeenCalledWith("group-editorial", {
+      name: "Desk",
+      color: "#ec4899",
+    });
+    expect(result.current.calendars.find((entry) => entry.id === "group-editorial")).toMatchObject({
+      name: "Desk",
+      color: "#ec4899",
+    });
+  });
 });

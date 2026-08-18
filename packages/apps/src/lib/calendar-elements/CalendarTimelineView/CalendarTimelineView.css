@@ -77,6 +77,12 @@ time-line {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Ancestor stacking context for TimeLine overlays. Isolating the custom-element host
+     does not contain that host's own shadow z-index (create-preview 500 vs dialog z-50);
+     a regular box around the host does, matching week/day's swipe-container trap.
+     Isolation, not transform, so sticky all-day and overflow popovers keep their
+     containing blocks. */
+  isolation: isolate;
 }
 
 time-line.timeline-main {

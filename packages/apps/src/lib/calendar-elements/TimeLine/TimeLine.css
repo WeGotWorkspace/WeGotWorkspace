@@ -9,6 +9,8 @@
 
 .viewport {
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   width: 100%;
   min-height: 100%;
   border: var(--border);
@@ -108,7 +110,11 @@
 }
 
 /* Overlay z-order (events < create-preview < dragging < marker) leaves headroom below 500 so
-   stagger depths (z = 2 + depth per overlap level) can never climb past the overlays. */
+   stagger depths (z = 2 + depth per overlap level) can never climb past the overlays.
+   Those values are local to `.viewport` (isolation + z-index 0 above). Isolating `:host`
+   does not contain this shadow tree versus portaled UI — create-preview 500 would beat
+   Radix dialog z-50. Week/day also get an ancestor trap from swipe-container's
+   transformed `.container`. */
 .marker {
   position: absolute;
   z-index: 700;

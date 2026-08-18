@@ -73,7 +73,7 @@ final class UserCalendarCollectionsProvisioner
         ];
 
         foreach ($eventCollections as [$uri, $displayName]) {
-            if ($this->ensureEventCalendar($caldav, $principalUri, $uri, $displayName, $existingUris)) {
+            if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VEVENT', 'VJOURNAL'], $existingUris)) {
                 $created++;
             }
         }
@@ -91,7 +91,7 @@ final class UserCalendarCollectionsProvisioner
         ];
 
         foreach ($taskCollections as [$uri, $displayName]) {
-            if ($this->ensureTaskList($caldav, $principalUri, $uri, $displayName, $existingUris)) {
+            if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VTODO'], $existingUris)) {
                 $created++;
             }
         }
@@ -144,14 +144,15 @@ final class UserCalendarCollectionsProvisioner
         $name = trim($displayName) !== '' ? trim($displayName) : $slug;
 
         $created = false;
-        if ($this->ensureEventCalendar($caldav, $groupPrincipalUri, $slug, $name, $existingUris)) {
+        if ($this->ensureCalendar($caldav, $groupPrincipalUri, $slug, $name, ['VEVENT', 'VJOURNAL'], $existingUris)) {
             $created = true;
         }
-        if ($this->ensureTaskList(
+        if ($this->ensureCalendar(
             $caldav,
             $groupPrincipalUri,
             CalendarCollectionUris::groupTaskListCalDavUri($slug),
             $name,
+            ['VTODO'],
             $existingUris,
         )) {
             $created = true;
@@ -161,13 +162,15 @@ final class UserCalendarCollectionsProvisioner
     }
 
     /**
+     * @param  list<string>  $components
      * @param  array<string, true>  $existingUris
      */
-    private function ensureEventCalendar(
+    private function ensureCalendar(
         CalPDO $caldav,
         string $principalUri,
         string $uri,
         string $displayName,
+        array $components,
         array &$existingUris,
     ): bool {
         if (array_key_exists($uri, $existingUris)) {
@@ -176,30 +179,8 @@ final class UserCalendarCollectionsProvisioner
 
         $caldav->createCalendar($principalUri, $uri, [
             '{DAV:}displayname' => $displayName,
-            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
-        ]);
-        $existingUris[$uri] = true;
-
-        return true;
-    }
-
-    /**
-     * @param  array<string, true>  $existingUris
-     */
-    private function ensureTaskList(
-        CalPDO $caldav,
-        string $principalUri,
-        string $uri,
-        string $displayName,
-        array &$existingUris,
-    ): bool {
-        if (array_key_exists($uri, $existingUris)) {
-            return false;
-        }
-
-        $caldav->createCalendar($principalUri, $uri, [
-            '{DAV:}displayname' => $displayName,
-            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet($components),
+            CalendarColorPalette::PROPERTY => CalendarColorPalette::forUri($uri),
         ]);
         $existingUris[$uri] = true;
 

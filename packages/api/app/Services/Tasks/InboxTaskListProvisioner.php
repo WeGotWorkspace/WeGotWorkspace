@@ -6,6 +6,7 @@ namespace App\Services\Tasks;
 
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Calendars\CalendarColorPalette;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -71,6 +72,7 @@ final class InboxTaskListProvisioner
         $caldav->createCalendar($principalUri, self::URI, [
             '{DAV:}displayname' => self::DISPLAY_NAME,
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
+            CalendarColorPalette::PROPERTY => CalendarColorPalette::forUri(self::URI),
         ]);
 
         return true;
