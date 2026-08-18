@@ -6,11 +6,14 @@ import {
   type JmapRequest,
 } from "@/lib/jmap-client";
 
-const { wgwFetch, wgwReadJson, wgwIsGuestSession } = vi.hoisted(() => ({
-  wgwFetch: vi.fn(),
-  wgwReadJson: vi.fn(),
-  wgwIsGuestSession: vi.fn(() => false),
-}));
+const { wgwFetch, wgwReadJson, wgwIsGuestSession, wgwGuestSharePath, wgwFetchPrincipal } =
+  vi.hoisted(() => ({
+    wgwFetch: vi.fn(),
+    wgwReadJson: vi.fn(),
+    wgwIsGuestSession: vi.fn(() => false),
+    wgwGuestSharePath: vi.fn(() => null as string | null),
+    wgwFetchPrincipal: vi.fn(),
+  }));
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwFetch,
@@ -18,9 +21,9 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwIsGuestSession,
   wgwApiBaseUrl: () => "/api/v1",
   wgwErrorMessageFromBody: (_body: string, status: number) => String(status),
-  wgwFetchPrincipal: vi.fn(),
+  wgwFetchPrincipal,
   wgwEnsurePluginSession: vi.fn(),
-  wgwGuestSharePath: vi.fn(),
+  wgwGuestSharePath,
 }));
 
 vi.mock("@/lib/api/wgw/plugins", () => ({
@@ -31,7 +34,11 @@ vi.mock("@/lib/api/wgw/search", () => ({
   downloadWgwUnifiedSearchRecord: vi.fn(),
 }));
 
-import { createWgwDriveOperations, resetDriveJmapSessionForTests } from "@/lib/api/wgw/drive";
+import {
+  createWgwDriveOperations,
+  fetchDriveLiveBootstrap,
+  resetDriveJmapSessionForTests,
+} from "@/lib/api/wgw/drive";
 
 const ACCOUNT_ID = "bob";
 const HOME_ID = "fn-home";
@@ -211,6 +218,7 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     vi.clearAllMocks();
     resetDriveJmapSessionForTests();
     wgwIsGuestSession.mockReturnValue(false);
+    wgwGuestSharePath.mockReturnValue(null);
     mockSignedInFetch();
   });
 
@@ -243,52 +251,93 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(paths.some((path) => path.includes("/files/content"))).toBe(false);
   });
 
+  function guestFileEntry(dir: string, name: string) {
+    return {
+      type: "file" as const,
+      path: `${dir}/${name}`,
+      name,
+      size: 1,
+      time: 0,
+      permissions: 0,
+      myRights: {
+        mayView: true,
+        mayComment: false,
+        mayReview: false,
+        mayEditContent: false,
+        mayManageStructure: false,
+        mayShare: false,
+      },
+    };
+  }
+
   it("keeps guest tree I/O on REST children and content", async () => {
     wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
     wgwFetch.mockImplementation(async (path: string) => {
       if (path.startsWith("/files/children")) {
         return jsonResponse({
           data: {
-            location: "/users/bob",
-            files: [
-              {
-                type: "file",
-                path: "/users/bob/readme.md",
-                name: "readme.md",
-                size: 1,
-                time: 0,
-                permissions: 0,
-                myRights: {
-                  mayView: true,
-                  mayComment: false,
-                  mayReview: false,
-                  mayEditContent: false,
-                  mayManageStructure: false,
-                  mayShare: false,
-                },
-              },
-            ],
+            location: "/users/bob/Test",
+            files: [guestFileEntry("/users/bob/Test", "readme.md")],
           },
         });
       }
       if (path.startsWith("/files/content")) return new Response("guest", { status: 200 });
-      if (path === "/files/context") {
-        return jsonResponse({
-          data: { username: "bob", name: "", role: "user", roots: ["/users"] },
-        });
+      if (path === "/files/context" || path === "/files/starred") {
+        return new Response("forbidden", { status: 403 });
       }
       return jsonResponse({});
     });
 
-    const ops = createWgwDriveOperations("/users/bob");
-    const listed = await ops.listDirectory("/users/bob");
+    const ops = createWgwDriveOperations("/users/bob/Test");
+    const listed = await ops.listDirectory("/users/bob/Test");
     expect(listed.directory.files[0]?.name).toBe("readme.md");
-    const blob = await ops.readFileBlob("/users/bob/readme.md");
+    expect(listed.user.role).toBe("guest");
+    const blob = await ops.readFileBlob("/users/bob/Test/readme.md");
     expect(await blob.text()).toBe("guest");
+    await expect(ops.listStars()).resolves.toEqual([]);
 
     const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
     expect(paths.some((path) => path.includes("/files/children"))).toBe(true);
     expect(paths.some((path) => path.includes("/files/content"))).toBe(true);
     expect(paths.some((path) => path === "/jmap")).toBe(false);
+    expect(paths.some((path) => path === "/files/context")).toBe(false);
+    expect(paths.some((path) => path === "/files/starred")).toBe(false);
+  });
+
+  it("bootstraps a folder share by listing the shared directory", async () => {
+    wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
+    wgwFetchPrincipal.mockResolvedValue({
+      user: { username: "share:abc", displayName: "Guest", initials: "G" },
+    });
+    wgwFetch.mockImplementation(async (path: string) => {
+      if (path === "/files/children?path=%2Fusers%2Fbob%2FTest") {
+        return jsonResponse({
+          data: {
+            location: "/users/bob/Test",
+            files: [guestFileEntry("/users/bob/Test", "inside.md")],
+          },
+        });
+      }
+      if (
+        path.startsWith("/files/children?path=%2Fusers%2Fbob&") ||
+        path === "/files/children?path=%2Fusers%2Fbob"
+      ) {
+        return new Response("denied", { status: 400 });
+      }
+      if (path === "/files/context" || path === "/files/starred") {
+        return new Response("forbidden", { status: 403 });
+      }
+      return jsonResponse({});
+    });
+
+    const bootstrap = await fetchDriveLiveBootstrap();
+    expect(bootstrap.data.directory.files.map((entry) => entry.name)).toEqual(["inside.md"]);
+    expect(bootstrap.data.user.username).toBe("bob");
+
+    const childPaths = wgwFetch.mock.calls.map((call) => String(call[0]));
+    expect(childPaths.some((path) => path.includes("path=%2Fusers%2Fbob%2FTest"))).toBe(true);
+    expect(childPaths.some((path) => path === "/files/children?path=%2Fusers%2Fbob")).toBe(false);
   });
 });

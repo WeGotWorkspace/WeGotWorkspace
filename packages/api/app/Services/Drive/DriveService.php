@@ -265,7 +265,10 @@ final class DriveService
         return 'Updated';
     }
 
-    public function downloadResponse(array $principal, string $path): StreamedResponse
+    /**
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function assertReadableFile(array $principal, string $path): void
     {
         $this->assertFilesEnabled();
         $virtual = $this->paths->normalizeVirtualPath($path);
@@ -276,6 +279,15 @@ final class DriveService
         if (! $disk->fileExists($key)) {
             throw new \InvalidArgumentException('File not found.');
         }
+    }
+
+    public function downloadResponse(array $principal, string $path): StreamedResponse
+    {
+        $this->assertReadableFile($principal, $path);
+        $virtual = $this->paths->normalizeVirtualPath($path);
+
+        $disk = $this->disk();
+        $key = $this->paths->virtualToStorageKey($virtual);
 
         $name = basename($virtual);
         $mime = $disk->mimeType($key) ?: 'application/octet-stream';

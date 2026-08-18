@@ -55,10 +55,28 @@ final class FilesController
     public function content(Request $request): Response
     {
         if ($request->isMethod('HEAD')) {
+            $path = $request->query('path');
+            if (is_string($path) && trim($path) !== '') {
+                return $this->headContent($request);
+            }
+
             return $this->uploadProbe();
         }
 
         return $this->download($request);
+    }
+
+    public function headContent(Request $request): Response
+    {
+        try {
+            $this->drive->assertReadableFile($this->principal($request), $this->requirePath($request));
+
+            return response('', 200);
+        } catch (\InvalidArgumentException $e) {
+            throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
+        } catch (\RuntimeException $e) {
+            throw new ApiHttpException(404, $e->getMessage(), 'not_found');
+        }
     }
 
     public function download(Request $request): Response

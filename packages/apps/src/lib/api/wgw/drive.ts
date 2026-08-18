@@ -25,6 +25,7 @@ import type {
 } from "@/drive-core/src/drive-types";
 
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
+import { isShareTargetFile } from "@/share-ui/share-destination";
 import {
   createFileNodeFile,
   createFileNodeFolder,
@@ -71,48 +72,32 @@ async function fetchAllDirectoryEntries(dir: string, opts?: { signal?: AbortSign
   return payload.data.files;
 }
 
-async function fetchGuestState(
-  dir: string,
-  opts?: { signal?: AbortSignal },
-  plugins: WgwPluginDescriptor[] = [],
-): Promise<DriveUIData> {
-  const user = await fetchDriveUser(opts);
-  const userRoot = normalizePath(`/users/${user.username}`);
-  const requested = normalizePath(dir);
-  const targetDir = requested === "/" || requested === "/users" ? userRoot : requested;
-  const directory = await fetchListing(targetDir, opts);
-
-  if (normalizePath(directory.location) === userRoot) {
-    try {
-      const groupsDir = await fetchListing("/groups", opts);
-      const existing = new Set(directory.files.map((entry) => normalizePath(entry.path)));
-      const groupFolders = groupsDir.files.filter(
-        (entry) => entry.type === "dir" && !existing.has(normalizePath(entry.path)),
-      );
-      return {
-        user,
-        cwd: directory.location,
-        directory: { ...directory, files: [...directory.files, ...groupFolders] },
-        plugins,
-      };
-    } catch {
-      // Group merge is additive only; keep user root listing if /groups fetch fails.
-    }
-  }
-
-  return { user, cwd: directory.location, directory, plugins };
-}
-
 function guestShareOwnerUsername(sharePath: string): string {
   const normalized = normalizePath(sharePath);
   const match = normalized.match(/^\/users\/([^/]+)/);
   return match?.[1] ?? "guest";
 }
 
+/** Folder shares list the share root; file shares list the parent (single-file fallback). */
 function guestShareListingPath(sharePath: string): string {
   const normalized = normalizePath(sharePath);
+  if (!isShareTargetFile(normalized)) {
+    return normalized;
+  }
   const { destination } = parentAndName(normalized);
   return destination === "/" ? normalized : destination;
+}
+
+async function fetchGuestState(
+  dir: string,
+  opts?: { signal?: AbortSignal },
+  plugins: WgwPluginDescriptor[] = [],
+): Promise<DriveUIData> {
+  const sharePath = wgwGuestSharePath();
+  const requested = normalizePath(dir);
+  const listingRoot = sharePath ? guestShareListingPath(sharePath) : requested;
+  const targetDir = requested === "/" || requested === "/users" ? listingRoot : requested;
+  return fetchGuestDriveState(sharePath ?? targetDir, opts, plugins, targetDir);
 }
 
 /**
@@ -132,10 +117,12 @@ function guestDriveUser(username: string, rootPath: string): WgwDriveUserData {
 async function fetchGuestDriveState(
   sharePath: string,
   opts?: { signal?: AbortSignal },
+  plugins: WgwPluginDescriptor[] = [],
+  listingOverride?: string,
 ): Promise<DriveUIData> {
   const normalized = normalizePath(sharePath);
   const ownerUsername = guestShareOwnerUsername(normalized);
-  const listingPath = guestShareListingPath(normalized);
+  const listingPath = listingOverride ?? guestShareListingPath(normalized);
 
   try {
     const directory = await fetchListing(listingPath, opts);
@@ -143,11 +130,11 @@ async function fetchGuestDriveState(
       user: guestDriveUser(ownerUsername, listingPath),
       cwd: directory.location,
       directory,
-      plugins: [],
+      plugins,
     };
   } catch (error) {
     const { destination, from } = parentAndName(normalized);
-    if (!from || destination === normalized) {
+    if (!from || destination === normalized || !isShareTargetFile(normalized)) {
       throw error;
     }
 
@@ -185,7 +172,7 @@ async function fetchGuestDriveState(
           },
         ],
       },
-      plugins: [],
+      plugins,
     };
   }
 }
@@ -321,6 +308,15 @@ function createGuestWgwDriveOperations(
 
   return {
     ...shared,
+    async search() {
+      return [];
+    },
+    async listStars() {
+      return [];
+    },
+    async setStar() {
+      // Stars are signed-in only (`wgw.role:user`).
+    },
     async refreshState(opts) {
       const state = await fetchGuestState(cwd, opts, plugins);
       cwd = state.cwd;

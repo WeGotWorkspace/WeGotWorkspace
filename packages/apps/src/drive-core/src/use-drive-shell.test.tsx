@@ -242,4 +242,39 @@ describe("useDriveShell folder listing sync", () => {
 
     unmount();
   });
+
+  it("does not load starred paths for guest share sessions", async () => {
+    const changeDir = vi.fn().mockResolvedValue(driveData(["inside.md"]));
+    const listStars = vi.fn().mockRejectedValue(new Error("GET /files/starred failed (403)"));
+    const operations = {
+      ...createOperations(changeDir),
+      listStars,
+    };
+    const guestData: DriveUIData = {
+      ...driveData(["inside.md"]),
+      user: {
+        username: USER,
+        name: "",
+        role: "guest" as DriveUIData["user"]["role"],
+        roots: ["/users"],
+      },
+    };
+
+    const { unmount } = renderHook(() =>
+      useDriveShell({
+        data: guestData,
+        session,
+        operations,
+        view: { type: "folder", path: "My Drive/Test" },
+        onViewChange: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(changeDir).toHaveBeenCalled();
+    });
+    expect(listStars).not.toHaveBeenCalled();
+
+    unmount();
+  });
 });
