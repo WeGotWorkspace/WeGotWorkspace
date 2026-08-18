@@ -67,9 +67,11 @@ Indexed and exposed: the account's personal tree (`users/{username}/…`) and me
 - `.notes/` subtrees (notes are their own app surface with their own sharing rules; exposing them as generic files would bypass `NotesPathShare` semantics);
 - collab sidecars (`.{name}.yjs`) and other dot-file internals — mirror `DriveService` listing visibility so REST and FileNode agree on what exists.
 
+**Exception:** the product trash directory `.Trash` (and its children) is a FileNode. Drive “Move to Trash” is a FileNode create/move into that folder; browse listings still hide dot names client-side.
+
 ## Decision 5 — rights, visibility, and shared nodes
 
-- **`myRights`** is derived at read time by resolving the node's current path through the existing `DriveShareAuthorizer` / `DriveShareAccess::rightsFor()` and mapping onto the draft's 8-boolean `FilesRights` (`mayRead`, `mayWrite` split per draft-14 into `mayAddChildren`/`mayRename`/`mayDelete`/`mayModifyContent`, `mayShare`, `mayReadItems` analogs). No new rights storage; inheritance is the authorizer's deepest-grant-wins walk, which matches the draft's ancestor-derived model.
+- **`myRights`** is derived at read time by resolving the node's current path through the existing `DriveShareAuthorizer` / `DriveShareAccess::rightsFor()` and mapping onto the draft's 8-boolean `FilesRights` (`mayRead`, `mayWrite` split per draft-14 into `mayAddChildren`/`mayRename`/`mayDelete`/`mayModifyContent`, `mayShare`, `mayReadItems` analogs). No new rights storage; inheritance is the authorizer's deepest-grant-wins walk, which matches the draft's ancestor-derived model. `mayShare` follows the authorizer (owners can share children; drive roots cannot) so the REST share dialog can show; `shareWith` writes stay off the envelope.
 - **Phase-1 visible set = own tree + member group trees.** Shared-with-me subtrees (`drive_shares` grants) are **deferred**: the draft's discoverability rules (a grant appearing = a flood of `created` in `/changes`, derived-rights change propagation) interact with the per-account filtering of a global change sequence, and drive shares today are path-rooted rather than node-rooted. Revisit after the core envelope lands; `shareWith` writes stay out of scope entirely (roadmap non-goal).
 
 ## Decision 6 — nodeType, blobs, and content

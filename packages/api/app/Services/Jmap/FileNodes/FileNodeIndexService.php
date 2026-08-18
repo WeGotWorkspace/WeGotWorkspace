@@ -25,6 +25,9 @@ final class FileNodeIndexService
     /** Dot-prefixed segments are internal (.notes trees, collab sidecars). */
     private const HIDDEN_SEGMENT_PREFIX = '.';
 
+    /** Product trash is hidden from browse listings but is a FileNode. */
+    private const PRODUCT_TRASH_DIR = '.Trash';
+
     public function __construct(private readonly WgwStorage $storage) {}
 
     // ---------------------------------------------------------------
@@ -97,6 +100,9 @@ final class FileNodeIndexService
     private function isHiddenKey(string $key): bool
     {
         foreach (explode('/', $key) as $segment) {
+            if ($segment === '' || $segment === self::PRODUCT_TRASH_DIR) {
+                continue;
+            }
             if (str_starts_with($segment, self::HIDDEN_SEGMENT_PREFIX)) {
                 return true;
             }
