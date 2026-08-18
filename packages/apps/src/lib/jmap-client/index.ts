@@ -2,6 +2,15 @@ export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
 export { JmapCalendarsClient } from "./calendars/JmapCalendarsClient.js";
+export { JmapFileNodePathCache } from "./filenodes/JmapFileNodePathCache.js";
+export { FILENODE_USING, JmapFileNodesClient } from "./filenodes/JmapFileNodesClient.js";
+export type {
+  JmapFileNode,
+  JmapFileNodeCreate,
+  JmapFileNodeFilter,
+  JmapFileNodeType,
+  JmapFilesRights,
+} from "./filenodes/types.js";
 export type {
   JmapCalendar,
   JmapCalendarEvent,
@@ -23,6 +32,7 @@ export {
   CONTACTS_CAPABILITY,
   type ChangesResponse,
   CORE_CAPABILITY,
+  FILENODE_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,
