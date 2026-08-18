@@ -11,9 +11,9 @@ Worktree: `feat/mail-delivery` at `../sabre-installer-mail-delivery` (`tools/wor
 
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
-| `mail-delivery-api` | builder | api | `packages/api/app/Services/MailDelivery/`, `SettingKeys`, OpenAPI admin state/settings/test-send | `pnpm test:api-done-gate` | pending |
-| `mail-delivery-admin-ui` | builder | workspace | `packages/apps/src/admin-core/` (new pane, not `admin-mail-pane.tsx`) | targeted Vitest / Storybook; later `pnpm test:apps-done-gate` | pending |
-| `mail-delivery-docs` | documenter | document | `packages/api/docs/mail-delivery.md` | AC docs bullets on #473 | pending |
+| `mail-delivery-api` | builder | api | `packages/api/app/Services/MailDelivery/`, `SettingKeys`, OpenAPI admin state/settings/test-send | `pnpm test:api-done-gate` | done |
+| `mail-delivery-admin-ui` | builder | workspace | `packages/apps/src/admin-core/` (new pane, not `admin-mail-pane.tsx`) | targeted Vitest / Storybook; later `pnpm test:apps-done-gate` | done |
+| `mail-delivery-docs` | documenter | document | `packages/api/docs/mail-delivery.md` | AC docs bullets on #473 | done |
 
 ## Notes
 

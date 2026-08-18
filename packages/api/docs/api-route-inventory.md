@@ -79,6 +79,7 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 | `POST/PATCH/DELETE /api/v1/admin/groups/{group}` | admin |
 | `PUT/DELETE /api/v1/admin/groups/{group}/members/{username}` | admin |
 | `PUT /api/v1/admin/settings` | admin |
+| `POST /api/v1/admin/mail-delivery/test` | admin |
 | `GET /api/v1/admin/updates/state` | admin |
 | `GET/DELETE /api/v1/admin/updates/log` | admin |
 | `POST/DELETE /api/v1/admin/update-jobs/{jobId}` | admin |

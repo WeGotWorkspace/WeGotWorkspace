@@ -67,11 +67,11 @@ Ship platform outbound mail (Goal #471 / Task #473): internal `MailDeliveryServi
 
 ## Test plan
 
-- [ ] API: OpenAPI → failing feature tests → implement → `composer done-gate`
-- [ ] Unit: smtp-eligible matrix; From validation; timeout on mailer config
-- [ ] Feature: admin save/state/test-send via real `send()`; `Mail::fake()`; password omit vs clear
-- [ ] UI: Storybook mock-tier for capability vs lastTestSend
-- [ ] No live SMTP / inbox assert in CI
+- [x] API: OpenAPI → failing feature tests → implement → `composer done-gate`
+- [x] Unit: smtp-eligible matrix; From validation; timeout on mailer config
+- [x] Feature: admin save/state/test-send via real `send()`; `Mail::fake()`; password omit vs clear
+- [x] UI: Storybook mock-tier for capability vs lastTestSend
+- [x] No live SMTP / inbox assert in CI
 
 ## Doc updates
 

@@ -5,19 +5,29 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\MailDelivery\MailDeliverySettingsStore;
 use App\Services\Settings\SettingKeys;
 use App\Support\TimezoneNormalizer;
 
 final class AdminSettingsService
 {
+    public function __construct(private MailDeliverySettingsStore $mailDelivery) {}
+
     /**
      * @param  array<string, mixed>  $values
      * @return array{ok: true, saved: list<string>}
      */
-    public function save(array $values): array
+    public function save(array $values, bool $clearSmtpPassword = false): array
     {
+        $passwordInPayload = array_key_exists(SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD, $values);
+        $this->mailDelivery->persistAdminSave($values, $clearSmtpPassword);
+        unset($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD], $values[SettingKeys::MAIL_DELIVERY_LAST_TEST_SEND]);
+
         $allowed = array_flip(SettingKeys::all());
         $saved = [];
+        if ($clearSmtpPassword || ($passwordInPayload && is_string($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD] ?? null) && $values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD] !== '')) {
+            // Password key is handled separately so plaintext never reaches AppSetting.
+        }
         foreach ($values as $key => $value) {
             if (! is_string($key) || ! isset($allowed[$key])) {
                 continue;
