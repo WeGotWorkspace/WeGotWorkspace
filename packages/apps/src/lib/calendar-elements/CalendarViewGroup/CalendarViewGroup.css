@@ -61,7 +61,7 @@
    no weekday row of its own — grid month view parity, where the header lived inside
    CalendarMonthView). */
 .timeline-month-layout {
-  @apply grid min-h-0;
+  @apply grid min-h-0 isolate;
   grid-template-rows: auto minmax(0, 1fr);
 }
 
