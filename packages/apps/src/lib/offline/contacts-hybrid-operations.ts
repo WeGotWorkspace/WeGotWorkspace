@@ -11,13 +11,8 @@ import {
   deleteCardWithState,
   patchCardWithState,
 } from "@/lib/api/wgw/contacts-mutations";
-import {
-  downloadCardVcf,
-  getCard,
-  importVcards,
-  listAddressBooks,
-  listCards,
-} from "@/lib/api/wgw/contacts";
+import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
+import { getCard, importVcards, listAddressBooks, listCards } from "@/lib/api/wgw/contacts";
 import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
 import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
@@ -214,7 +209,11 @@ export function createHybridContactsOperations(username: string): ContactsAPIOpe
         await queueOfflineDelete(username, cardId, token);
       }
     },
-    downloadCardVcf,
+    downloadCardVcf: async (cardId, opts) => {
+      const card = await resolveCachedCard(username, cardId, opts);
+      if (!card) throw new Error("Contact not found");
+      return contactCardToVCard(card);
+    },
     importVcards: async (vcardText, opts) => {
       if (!readBrowserOnline()) {
         throw new Error("vCard import requires an internet connection");

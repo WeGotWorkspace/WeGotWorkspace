@@ -7,12 +7,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContactCard } from "./contacts-types";
 import { useContactPhotoSrc } from "./use-contact-photo-src";
 
-const { wgwFetchMock } = vi.hoisted(() => ({
-  wgwFetchMock: vi.fn(),
+const { downloadContactBlobMock } = vi.hoisted(() => ({
+  downloadContactBlobMock: vi.fn(),
 }));
 
-vi.mock("@/lib/api/wgw/http", () => ({
-  wgwFetch: wgwFetchMock,
+vi.mock("@/lib/api/wgw/contacts", () => ({
+  downloadContactBlob: downloadContactBlobMock,
 }));
 
 const janeCard = {
@@ -23,7 +23,7 @@ const janeCard = {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  wgwFetchMock.mockReset();
+  downloadContactBlobMock.mockReset();
 });
 
 describe("useContactPhotoSrc", () => {
@@ -42,7 +42,7 @@ describe("useContactPhotoSrc", () => {
     const { result } = renderHook(() => useContactPhotoSrc(card));
 
     expect(result.current).toBe("https://example.com/photo.jpg");
-    expect(wgwFetchMock).not.toHaveBeenCalled();
+    expect(downloadContactBlobMock).not.toHaveBeenCalled();
   });
 
   it("fetches blob-backed photos with bearer auth and exposes an object URL", async () => {
@@ -67,7 +67,7 @@ describe("useContactPhotoSrc", () => {
       revokeObjectURL,
     });
 
-    wgwFetchMock.mockResolvedValue(
+    downloadContactBlobMock.mockResolvedValue(
       new Response(new Blob(["jpeg-bytes"], { type: "image/jpeg" }), { status: 200 }),
     );
 
@@ -77,7 +77,7 @@ describe("useContactPhotoSrc", () => {
       expect(result.current).toBe("blob:contact-photo");
     });
 
-    expect(wgwFetchMock).toHaveBeenCalledWith(`/contacts/blobs/${blobId}`);
+    expect(downloadContactBlobMock).toHaveBeenCalledWith(blobId);
     expect(createObjectURL).toHaveBeenCalledTimes(1);
 
     unmount();

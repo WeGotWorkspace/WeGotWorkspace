@@ -1,6 +1,13 @@
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
-import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
-import { getAddressBook, getCard, listAddressBooks } from "@/lib/api/wgw/contacts";
+import {
+  addressBookChanges,
+  connectedContacts,
+  contactCardChanges,
+  getAddressBook,
+  getCard,
+  isCannotCalculateChanges,
+  listAddressBooks,
+  listCards,
+} from "@/lib/api/wgw/contacts";
 import {
   listCachedAddressBookIds,
   readAddressBooksSyncToken,
@@ -16,6 +23,9 @@ import {
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
+/** Envelope empty compose — REST used `"0"`, which cannotCalculateChanges. */
+const INITIAL_JMAP_STATE = "0:";
+
 type JmapChangesResponse = {
   oldState: string;
   newState: string;
@@ -29,24 +39,23 @@ export async function pullContactCardChangesForBook(
   addressBookId: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const since = (await readSyncToken(username, addressBookId)) ?? "0";
-  const query = new URLSearchParams({
-    addressBookId,
-    since,
-  });
-  const res = await wgwFetch(`/contacts/cards/changes?${query.toString()}`, {
-    signal: opts?.signal,
-  });
-  if (!res.ok) {
-    if (res.status === 400) {
+  const since = (await readSyncToken(username, addressBookId)) ?? INITIAL_JMAP_STATE;
+  try {
+    const changes = await contactCardChanges(since, opts);
+    await applyContactCardChanges(username, changes, opts);
+    await writeSyncToken(username, addressBookId, changes.newState);
+  } catch (error) {
+    if (isCannotCalculateChanges(error)) {
       await fullResyncBook(username, addressBookId, opts);
       return;
     }
-    throw new Error(`GET /contacts/cards/changes failed (${res.status})`);
+    throw error;
   }
-  const changes = (await wgwReadJson(res)) as JmapChangesResponse;
-  await applyContactCardChanges(username, addressBookId, changes, opts);
-  await writeSyncToken(username, addressBookId, changes.newState);
+}
+
+async function currentTypeState(type: "AddressBook" | "ContactCard"): Promise<string> {
+  const { client, accountId } = await connectedContacts();
+  return client.getState(accountId, type) ?? INITIAL_JMAP_STATE;
 }
 
 async function fullResyncBook(
@@ -54,21 +63,15 @@ async function fullResyncBook(
   addressBookId: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const res = await wgwFetch(`/contacts/cards?addressBookId=${encodeURIComponent(addressBookId)}`, {
-    signal: opts?.signal,
-  });
-  if (!res.ok) throw new Error(`GET /contacts/cards failed (${res.status})`);
-  const json = (await wgwReadJson(res)) as { list?: ContactCard[] };
-  const list = json.list ?? [];
+  const list = await listCards({ addressBookId, signal: opts?.signal });
   for (const card of list) {
     await upsertContactCardInCache(username, card, false);
   }
-  await pullContactCardChangesForBook(username, addressBookId, opts);
+  await writeSyncToken(username, addressBookId, await currentTypeState("ContactCard"));
 }
 
 async function applyContactCardChanges(
   username: string,
-  addressBookId: string,
   changes: JmapChangesResponse,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
@@ -92,21 +95,18 @@ export async function pullAddressBookChanges(
   username: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const since = (await readAddressBooksSyncToken(username)) ?? "0";
-  const query = new URLSearchParams({ since });
-  const res = await wgwFetch(`/contacts/addressbooks/changes?${query.toString()}`, {
-    signal: opts?.signal,
-  });
-  if (!res.ok) {
-    if (res.status === 400) {
+  const since = (await readAddressBooksSyncToken(username)) ?? INITIAL_JMAP_STATE;
+  try {
+    const changes = await addressBookChanges(since, opts);
+    await applyAddressBookChanges(username, changes, opts);
+    await writeAddressBooksSyncToken(username, changes.newState);
+  } catch (error) {
+    if (isCannotCalculateChanges(error)) {
       await fullResyncAddressBooks(username, opts);
       return;
     }
-    throw new Error(`GET /contacts/addressbooks/changes failed (${res.status})`);
+    throw error;
   }
-  const changes = (await wgwReadJson(res)) as JmapChangesResponse;
-  await applyAddressBookChanges(username, changes, opts);
-  await writeAddressBooksSyncToken(username, changes.newState);
 }
 
 async function fullResyncAddressBooks(
@@ -115,8 +115,7 @@ async function fullResyncAddressBooks(
 ): Promise<void> {
   const books = await listAddressBooks(opts);
   await replaceAllAddressBooksInCache(username, books);
-  await writeAddressBooksSyncToken(username, "0");
-  await pullAddressBookChanges(username, opts);
+  await writeAddressBooksSyncToken(username, await currentTypeState("AddressBook"));
 }
 
 async function applyAddressBookChanges(
