@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Models\CalendarObject;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Testing\TestResponse;
@@ -200,5 +201,133 @@ final class JmapEventSetTest extends WgwDatabaseTestCase
         $error = $args['notCreated']['bad'];
         $this->assertSame('invalidProperties', $error['type']);
         $this->assertArrayHasKey('properties', $error);
+    }
+
+    public function test_set_destroy_unknown_event_reports_not_destroyed(): void
+    {
+        $args = $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => ['does-not-exist']], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame('notFound', $args['notDestroyed']['does-not-exist']['type']);
+        $this->assertSame([], $args['destroyed']);
+    }
+
+    public function test_set_create_missing_start_reports_invalid_properties(): void
+    {
+        $payload = $this->sampleCalendarEventPayload();
+        unset($payload['start']);
+
+        $args = $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['no-start' => $payload]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame('invalidProperties', $args['notCreated']['no-start']['type']);
+        $this->assertSame(['start'], $args['notCreated']['no-start']['properties']);
+    }
+
+    public function test_set_partial_success_reports_all_six_buckets(): void
+    {
+        $eventId = (string) $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => $this->sampleCalendarEventPayload()]], 'c'],
+        ])->assertOk()->json('methodResponses.0.1.created.d.id');
+
+        $args = $this->jmap([
+            ['CalendarEvent/set', [
+                'accountId' => 'bob',
+                'create' => [
+                    'ok-create' => $this->sampleCalendarEventPayload(),
+                    'bad-create' => ['calendarIds' => ['nope' => true], 'title' => 'Broken', 'start' => '2026-09-01T10:00:00Z'],
+                ],
+                'update' => [
+                    $eventId => ['ifInState' => 'stale-token', 'title' => 'Nope'],
+                ],
+                'destroy' => ['missing-event'],
+            ], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertNotSame('', (string) $args['created']['ok-create']['id']);
+        $this->assertSame('notFound', $args['notCreated']['bad-create']['type']);
+        $this->assertSame('stateMismatch', $args['notUpdated'][$eventId]['type']);
+        $this->assertSame('notFound', $args['notDestroyed']['missing-event']['type']);
+        $this->assertSame([], $args['updated']);
+        $this->assertSame([], $args['destroyed']);
+    }
+
+    public function test_set_updates_and_destroys_only_the_target_vevent_in_a_composite_object(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:first\r\nSUMMARY:Primary Event\r\nDTSTART:20260610T090000Z\r\nDTEND:20260610T100000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:second\r\nSUMMARY:Secondary Event\r\nDTSTART:20260611T090000Z\r\nDTEND:20260611T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $this->seedEventViaPdo('bob', 'multi-event.ics', $ics);
+
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => ['multi-event#second' => ['title' => 'Patched Secondary']]], 'u'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.notUpdated.multi-event#second', null);
+
+        $stored = CalendarObject::query()->where('uri', 'multi-event.ics')->first();
+        $this->assertNotNull($stored);
+        $blob = is_string($stored->calendardata) ? $stored->calendardata : (string) $stored->calendardata;
+        $this->assertStringContainsString('SUMMARY:Primary Event', $blob);
+        $this->assertStringContainsString('SUMMARY:Patched Secondary', $blob);
+        $this->assertStringNotContainsString('SUMMARY:Secondary Event', $blob);
+
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => ['multi-event#second']], 'd'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.destroyed.0', 'multi-event#second');
+
+        $stored = CalendarObject::query()->where('uri', 'multi-event.ics')->first();
+        $this->assertNotNull($stored);
+        $blob = is_string($stored->calendardata) ? $stored->calendardata : (string) $stored->calendardata;
+        $this->assertStringContainsString('SUMMARY:Primary Event', $blob);
+        $this->assertStringNotContainsString('UID:second', $blob);
+    }
+
+    public function test_set_destroy_last_vevent_removes_the_calendar_object(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:only\r\nSUMMARY:Solo Event\r\nDTSTART:20260610T090000Z\r\nDTEND:20260610T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $eventId = $this->seedEventViaPdo('bob', 'solo-event.ics', $ics);
+
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => [$eventId]], 'd'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.destroyed.0', $eventId);
+
+        $this->assertNull(CalendarObject::query()->where('uri', 'solo-event.ics')->first());
+    }
+
+    public function test_set_recurrence_overrides_updates_a_single_instance_in_ics(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:series-patch\r\nSUMMARY:Daily Standup\r\nDTSTART:20260610T090000Z\r\nDTEND:20260610T093000Z\r\nRRULE:FREQ=DAILY\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $eventId = $this->seedEventViaPdo('bob', 'daily-standup.ics', $ics);
+
+        $event = $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => [
+                'recurrenceOverrides' => [
+                    '2026-06-12T09:00:00Z' => [
+                        'start' => '2026-06-12T14:00:00Z',
+                        'end' => '2026-06-12T14:30:00Z',
+                        'title' => 'Daily Standup (rescheduled)',
+                    ],
+                    '2026-06-13T09:00:00Z' => [
+                        'excluded' => true,
+                    ],
+                ],
+            ]]], 'u'],
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'g'],
+        ])->assertOk();
+
+        $this->assertSame(
+            '2026-06-12T14:00:00Z',
+            $event->json('methodResponses.1.1.list.0.recurrenceOverrides.2026-06-12T09:00:00Z.start'),
+        );
+        $this->assertTrue($event->json('methodResponses.1.1.list.0.recurrenceOverrides.2026-06-13T09:00:00Z.excluded'));
+
+        $stored = CalendarObject::query()->where('uri', 'daily-standup.ics')->first();
+        $this->assertNotNull($stored);
+        $blob = is_string($stored->calendardata) ? $stored->calendardata : (string) $stored->calendardata;
+        $this->assertStringContainsString('RRULE:FREQ=DAILY', $blob);
+        $this->assertStringContainsString('RECURRENCE-ID:20260612T090000Z', $blob);
+        $this->assertStringContainsString('DTSTART:20260612T140000Z', $blob);
+        $this->assertStringContainsString('SUMMARY:Daily Standup (rescheduled)', $blob);
+        $this->assertStringContainsString('RECURRENCE-ID:20260613T090000Z', $blob);
+        $this->assertStringContainsString('STATUS:CANCELLED', $blob);
     }
 }
