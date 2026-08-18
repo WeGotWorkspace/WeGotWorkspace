@@ -1,6 +1,7 @@
 import { JmapMethodError, JmapRequestError } from "./errors.js";
 import {
   CALENDARS_CAPABILITY,
+  CONTACTS_CAPABILITY,
   CORE_CAPABILITY,
   type JmapId,
   type JmapInvocation,
@@ -62,9 +63,11 @@ export class JmapClient {
     if (!session.capabilities || !(CORE_CAPABILITY in session.capabilities)) {
       throw new JmapRequestError("Server is not a JMAP server (missing core capability)");
     }
-    if (!(CALENDARS_CAPABILITY in session.capabilities)) {
+    const hasCalendars = CALENDARS_CAPABILITY in session.capabilities;
+    const hasContacts = CONTACTS_CAPABILITY in session.capabilities;
+    if (!hasCalendars && !hasContacts) {
       throw new JmapRequestError(
-        `Server does not advertise ${CALENDARS_CAPABILITY}; JMAP calendars are unsupported`,
+        `Server does not advertise ${CALENDARS_CAPABILITY} or ${CONTACTS_CAPABILITY}`,
       );
     }
     this.#session = session;
@@ -152,13 +155,17 @@ export class JmapClient {
   async call<TResponse>(
     name: string,
     args: Record<string, unknown>,
-    options?: { using?: string[]; signal?: AbortSignal },
+    usingOrOptions?: string[] | { using?: string[]; signal?: AbortSignal },
   ): Promise<TResponse> {
+    const using = Array.isArray(usingOrOptions)
+      ? usingOrOptions
+      : (usingOrOptions?.using ?? [CORE_CAPABILITY, CALENDARS_CAPABILITY]);
+    const signal = Array.isArray(usingOrOptions) ? undefined : usingOrOptions?.signal;
     const callId = this.nextCallId();
     const response = await this.request(
       [[name, args, callId]],
-      options?.using ?? [CORE_CAPABILITY, CALENDARS_CAPABILITY],
-      options?.signal ? { signal: options.signal } : undefined,
+      using,
+      signal ? { signal } : undefined,
     );
     const invocation = response.methodResponses.find(([, , id]) => id === callId);
     if (!invocation) {
