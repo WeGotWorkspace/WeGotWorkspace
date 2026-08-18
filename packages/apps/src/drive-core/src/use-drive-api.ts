@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { wgwIsGuestSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createDefaultDriveApiSource,
@@ -77,7 +77,7 @@ export function useDriveAPI(source?: DriveApiSource) {
     const bootstrap = await resolvedSource.loadBootstrap();
     bootstrapRef.current = bootstrap;
     cacheDriveSession(bootstrap.session);
-    if (liveEnabled) {
+    if (liveEnabled && !wgwIsGuestSession()) {
       const accountUsername = bootstrap.session.user.username;
       if (accountUsername) {
         await writeDriveBootstrapToCache(accountUsername, bootstrap);
@@ -120,13 +120,13 @@ export function useDriveAPI(source?: DriveApiSource) {
   }, []);
 
   useEffect(() => {
-    if (phase !== "ready" || !offlineUsername || !data) return;
+    if (wgwIsGuestSession() || phase !== "ready" || !offlineUsername || !data) return;
     bootstrapRef.current = data;
     return triggerOfflineSync(offlineUsername, data);
   }, [data, offlineUsername, phase, successVersion, triggerOfflineSync]);
 
   useEffect(() => {
-    if (!offlineUsername || phase !== "ready" || !data) return;
+    if (wgwIsGuestSession() || !offlineUsername || phase !== "ready" || !data) return;
     return subscribeOfflineDeviceContentSettings(() => {
       triggerOfflineSync(offlineUsername, data);
     });
@@ -134,13 +134,13 @@ export function useDriveAPI(source?: DriveApiSource) {
 
   useOnReconnect(
     useCallback(() => {
-      if (!offlineUsername || !data) return;
+      if (wgwIsGuestSession() || !offlineUsername || !data) return;
       triggerOfflineSync(offlineUsername, data);
     }, [data, offlineUsername, triggerOfflineSync]),
   );
 
   const operations = useMemo(() => {
-    if (!liveEnabled || !offlineUsername) {
+    if (!liveEnabled || !offlineUsername || wgwIsGuestSession()) {
       return resolvedSource.createOperations(data ?? undefined);
     }
     return createHybridDriveOperations(offlineUsername, data ?? undefined);

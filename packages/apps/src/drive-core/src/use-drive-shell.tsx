@@ -332,8 +332,13 @@ export function useDriveShell({
       setStarredItems(null);
       return;
     }
+    if ((data.user.role as string) === "guest") {
+      setStarred((previous) => (Object.keys(previous).length === 0 ? previous : {}));
+      setStarredItems((previous) => (previous?.length === 0 ? previous : []));
+      return;
+    }
     reloadStarredFromServer();
-  }, [operations, currentUsername, reloadStarredFromServer]);
+  }, [data.user.role, operations, currentUsername, reloadStarredFromServer]);
 
   useEffect(() => {
     if (!shareOperations) {
