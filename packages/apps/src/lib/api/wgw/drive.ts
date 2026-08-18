@@ -14,7 +14,6 @@ import type {
   WgwDriveListingResponse,
   WgwDriveStarsResponse,
   WgwDriveUserData,
-  WgwDriveUserResponse,
   WgwPluginDescriptor,
 } from "@/lib/api/wgw/types";
 import type {
@@ -26,6 +25,19 @@ import type {
 } from "@/drive-core/src/drive-types";
 
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
+import {
+  createFileNodeFile,
+  createFileNodeFolder,
+  destroyFileNodes,
+  downloadFileNodeBlob,
+  driveJmapSession,
+  fetchDriveUser,
+  fetchSignedInDriveState,
+  listFileNodeEntries,
+  listFileNodeEntriesByPaths,
+  renameFileNode,
+  uploadFileNodes,
+} from "@/lib/api/wgw/drive-jmap";
 
 function pathQuery(path: string): string {
   return `path=${encodeURIComponent(normalizePath(path))}`;
@@ -41,13 +53,6 @@ function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
 }
 
 const DRIVE_UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024; // Stay below stricter upload_max_filesize defaults.
-
-async function fetchDriveUser(opts?: { signal?: AbortSignal }) {
-  const res = await wgwFetch("/files/context", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /files/context failed (${res.status})`);
-  const payload = (await wgwReadJson(res)) as WgwDriveUserResponse;
-  return payload.data;
-}
 
 async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
   const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal: opts?.signal });
@@ -66,7 +71,7 @@ async function fetchAllDirectoryEntries(dir: string, opts?: { signal?: AbortSign
   return payload.data.files;
 }
 
-async function fetchState(
+async function fetchGuestState(
   dir: string,
   opts?: { signal?: AbortSignal },
   plugins: WgwPluginDescriptor[] = [],
@@ -77,7 +82,6 @@ async function fetchState(
   const targetDir = requested === "/" || requested === "/users" ? userRoot : requested;
   const directory = await fetchListing(targetDir, opts);
 
-  // Expose member groups under My Drive root by merging /groups folders there.
   if (normalizePath(directory.location) === userRoot) {
     try {
       const groupsDir = await fetchListing("/groups", opts);
@@ -199,7 +203,7 @@ export async function fetchDriveLiveBootstrap(): Promise<DriveAppBootstrap> {
   }
 
   const [driveState, plugins] = await Promise.all([
-    fetchState("/"),
+    fetchSignedInDriveState("/"),
     fetchWgwPlugins().catch(() => []),
   ]);
   return {
@@ -259,29 +263,20 @@ async function deleteJson(path: string, body: object, opts?: { signal?: AbortSig
   if (!res.ok) throw new Error(`DELETE ${path} failed (${res.status})`);
 }
 
-export function createWgwDriveOperations(
-  initialCwd = "/",
-  initialPlugins: WgwPluginDescriptor[] = [],
-): DriveAPIOperations {
-  let cwd = normalizePath(initialCwd);
-  const plugins: WgwPluginDescriptor[] = initialPlugins;
-
+function emptyState(cwd: string, plugins: WgwPluginDescriptor[]): DriveUIData {
   return {
-    async refreshState(opts) {
-      const state = await fetchState(cwd, opts, plugins);
-      cwd = state.cwd;
-      return state;
-    },
-    async changeDir(to, opts) {
-      cwd = normalizePath(to);
-      return fetchState(cwd, opts, plugins);
-    },
-    async listDirectory(at, opts) {
-      return fetchState(normalizePath(at), opts, plugins);
-    },
-    async listAllDirectoryEntries(at, opts) {
-      return fetchAllDirectoryEntries(normalizePath(at), opts);
-    },
+    user: { username: "", name: "", role: "user", roots: [] },
+    cwd,
+    directory: { location: cwd, files: [] },
+    plugins,
+  };
+}
+
+function createSharedDriveOperations(): Pick<
+  DriveAPIOperations,
+  "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord" | "ensurePluginSession"
+> {
+  return {
     async search(query, opts) {
       const params = new URLSearchParams();
       params.set("search", query.trim());
@@ -291,33 +286,69 @@ export function createWgwDriveOperations(
       const payload = (await wgwReadJson(res)) as WgwDriveListingResponse;
       return payload.data.files.filter(isVisibleDriveEntry);
     },
+    async listStars(opts) {
+      const res = await wgwFetch("/files/starred", { method: "GET", signal: opts?.signal });
+      if (!res.ok) throw new Error(`GET /files/starred failed (${res.status})`);
+      const payload = (await wgwReadJson(res)) as WgwDriveStarsResponse;
+      return payload.data.paths ?? [];
+    },
+    async setStar(input, opts) {
+      const target = `/files/star?${pathQuery(input.path)}`;
+      if (input.starred) {
+        await postJson(target, {}, opts);
+      } else {
+        const res = await wgwFetch(target, { method: "DELETE", signal: opts?.signal });
+        if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
+      }
+    },
+    async downloadUnifiedSearchRecord(input, opts) {
+      await downloadWgwUnifiedSearchRecord({ ...input, signal: opts?.signal });
+    },
+    async ensurePluginSession(sessionApiPath, opts) {
+      void opts;
+      await wgwEnsurePluginSession(sessionApiPath);
+    },
+  };
+}
+
+function createGuestWgwDriveOperations(
+  initialCwd: string,
+  initialPlugins: WgwPluginDescriptor[],
+): DriveAPIOperations {
+  let cwd = normalizePath(initialCwd);
+  const plugins: WgwPluginDescriptor[] = initialPlugins;
+  const shared = createSharedDriveOperations();
+
+  return {
+    ...shared,
+    async refreshState(opts) {
+      const state = await fetchGuestState(cwd, opts, plugins);
+      cwd = state.cwd;
+      return state;
+    },
+    async changeDir(to, opts) {
+      cwd = normalizePath(to);
+      return fetchGuestState(cwd, opts, plugins);
+    },
+    async listDirectory(at, opts) {
+      return fetchGuestState(normalizePath(at), opts, plugins);
+    },
+    async listAllDirectoryEntries(at, opts) {
+      return fetchAllDirectoryEntries(normalizePath(at), opts);
+    },
     async createFolder(input, opts) {
       const parent = normalizePath(input.cwd);
       const name = input.name.trim();
       await postJson(`/files/directories?${pathQuery(parent)}`, { name }, opts);
-      if (opts?.refreshState === false) {
-        return {
-          user: { username: "", name: "", role: "user", roots: [] },
-          cwd,
-          directory: { location: parent, files: [] },
-          plugins,
-        };
-      }
-      return fetchState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd, plugins);
+      return fetchGuestState(cwd, opts, plugins);
     },
     async createFile(input, opts) {
       const parent = normalizePath(input.cwd);
       const name = input.name.trim();
       await postJson(`/files/directories?${pathQuery(parent)}`, { name, type: "file" }, opts);
-      if (opts?.refreshState === false) {
-        return {
-          user: { username: "", name: "", role: "user", roots: [] },
-          cwd,
-          directory: { location: parent, files: [] },
-          plugins,
-        };
-      }
-      return fetchState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd, plugins);
+      return fetchGuestState(cwd, opts, plugins);
     },
     async renameItem(input, opts) {
       const fromPath = input.from.includes("/")
@@ -332,15 +363,8 @@ export function createWgwDriveOperations(
         body.destination = destination;
       }
       await patchJson(`/files?${pathQuery(fromPath)}`, body, opts);
-      if (opts?.refreshState === false) {
-        return {
-          user: { username: "", name: "", role: "user", roots: [] },
-          cwd,
-          directory: { location: cwd, files: [] },
-          plugins,
-        };
-      }
-      return fetchState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd, plugins);
+      return fetchGuestState(cwd, opts, plugins);
     },
     async deleteItems(paths, opts) {
       const normalized = paths.map((path) => normalizePath(path));
@@ -354,23 +378,13 @@ export function createWgwDriveOperations(
       } else {
         await deleteJson("/files", { paths: normalized }, opts);
       }
-      return fetchState(cwd, opts, plugins);
+      return fetchGuestState(cwd, opts, plugins);
     },
     async downloadFile(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
       if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      try {
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = path.split("/").pop() || "download";
-        document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      triggerBrowserDownload(blob, path.split("/").pop() || "download");
     },
     async readFileBlob(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
@@ -380,12 +394,6 @@ export function createWgwDriveOperations(
     async checkUploadReady(opts) {
       const res = await wgwFetch("/files/content", { method: "HEAD", signal: opts?.signal });
       if (!res.ok) throw new Error(`HEAD /files/content failed (${res.status})`);
-    },
-    async listStars(opts) {
-      const res = await wgwFetch("/files/starred", { method: "GET", signal: opts?.signal });
-      if (!res.ok) throw new Error(`GET /files/starred failed (${res.status})`);
-      const payload = (await wgwReadJson(res)) as WgwDriveStarsResponse;
-      return payload.data.paths ?? [];
     },
     async listEntriesByPaths(paths, opts) {
       const normalized = Array.from(
@@ -418,15 +426,6 @@ export function createWgwDriveOperations(
       return normalized
         .map((path) => entriesByPath.get(path))
         .filter((entry): entry is WgwDriveDirectoryEntry => !!entry);
-    },
-    async setStar(input, opts) {
-      const target = `/files/star?${pathQuery(input.path)}`;
-      if (input.starred) {
-        await postJson(target, {}, opts);
-      } else {
-        const res = await wgwFetch(target, { method: "DELETE", signal: opts?.signal });
-        if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
-      }
     },
     async uploadFiles(input, opts) {
       const targetCwd = normalizePath(input.cwd);
@@ -481,18 +480,127 @@ export function createWgwDriveOperations(
         filesCompleted += 1;
         publishProgress(file.name);
       }
-      const state = await fetchState(targetCwd, opts, plugins);
+      const state = await fetchGuestState(targetCwd, opts, plugins);
       cwd = normalizePath(state.cwd);
       return state;
-    },
-    async downloadUnifiedSearchRecord(input, opts) {
-      await downloadWgwUnifiedSearchRecord({ ...input, signal: opts?.signal });
-    },
-    async ensurePluginSession(sessionApiPath, opts) {
-      void opts;
-      await wgwEnsurePluginSession(sessionApiPath);
     },
   };
 }
 
+function triggerBrowserDownload(blob: Blob, filename: string): void {
+  if (typeof document === "undefined") return;
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function createSignedInWgwDriveOperations(
+  initialCwd: string,
+  initialPlugins: WgwPluginDescriptor[],
+): DriveAPIOperations {
+  let cwd = normalizePath(initialCwd);
+  const plugins: WgwPluginDescriptor[] = initialPlugins;
+  const shared = createSharedDriveOperations();
+
+  return {
+    ...shared,
+    async refreshState(opts) {
+      const state = await fetchSignedInDriveState(cwd, opts, plugins);
+      cwd = state.cwd;
+      return state;
+    },
+    async changeDir(to, opts) {
+      cwd = normalizePath(to);
+      return fetchSignedInDriveState(cwd, opts, plugins);
+    },
+    async listDirectory(at, opts) {
+      return fetchSignedInDriveState(normalizePath(at), opts, plugins);
+    },
+    async listAllDirectoryEntries(at, opts) {
+      const session = await driveJmapSession();
+      const user = await fetchDriveUser(opts);
+      return listFileNodeEntries(session, normalizePath(at), user.username, {
+        includeHidden: true,
+        signal: opts?.signal,
+      });
+    },
+    async createFolder(input, opts) {
+      return createFileNodeFolder(normalizePath(input.cwd), input.name.trim(), opts, cwd, plugins);
+    },
+    async createFile(input, opts) {
+      return createFileNodeFile(normalizePath(input.cwd), input.name.trim(), opts, cwd, plugins);
+    },
+    async renameItem(input, opts) {
+      const fromPath = input.from.includes("/")
+        ? normalizePath(input.from)
+        : (() => {
+            const parent = normalizePath(input.destination);
+            return parent === "/" ? `/${input.from}` : `${parent}/${input.from}`;
+          })();
+      return renameFileNode(
+        fromPath,
+        normalizePath(input.destination),
+        input.to,
+        opts,
+        cwd,
+        plugins,
+      );
+    },
+    async deleteItems(paths, opts) {
+      return destroyFileNodes(
+        paths.map((path) => normalizePath(path)),
+        opts,
+        cwd,
+        plugins,
+      );
+    },
+    async downloadFile(path, opts) {
+      const session = await driveJmapSession();
+      const user = await fetchDriveUser(opts);
+      const blob = await downloadFileNodeBlob(
+        session,
+        normalizePath(path),
+        user.username,
+        opts?.signal,
+      );
+      triggerBrowserDownload(blob, path.split("/").pop() || "download");
+    },
+    async readFileBlob(path, opts) {
+      const session = await driveJmapSession();
+      const user = await fetchDriveUser(opts);
+      return downloadFileNodeBlob(session, normalizePath(path), user.username, opts?.signal);
+    },
+    async checkUploadReady() {
+      await driveJmapSession();
+    },
+    async listEntriesByPaths(paths, opts) {
+      return listFileNodeEntriesByPaths(paths, opts);
+    },
+    async uploadFiles(input, opts) {
+      const state = await uploadFileNodes(normalizePath(input.cwd), input.files, opts, plugins);
+      cwd = normalizePath(state.cwd);
+      return state;
+    },
+  };
+}
+
+export function createWgwDriveOperations(
+  initialCwd = "/",
+  initialPlugins: WgwPluginDescriptor[] = [],
+): DriveAPIOperations {
+  if (wgwIsGuestSession()) {
+    return createGuestWgwDriveOperations(initialCwd, initialPlugins);
+  }
+  return createSignedInWgwDriveOperations(initialCwd, initialPlugins);
+}
+
 export { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";
+export { resetDriveJmapSessionForTests } from "@/lib/api/wgw/drive-jmap";
