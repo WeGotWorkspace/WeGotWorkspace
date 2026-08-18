@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import type {
   JmapCalendar,
   JmapCalendarEvent,
@@ -42,15 +43,11 @@ function toMillis(local: string): number {
 
 function durationToMillis(duration: string | undefined): number {
   if (!duration) return 0;
-  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(duration) ?? [];
-  const [, days, hours, minutes, seconds] = match;
-  return (
-    (Number(days ?? 0) * 24 * 3600 +
-      Number(hours ?? 0) * 3600 +
-      Number(minutes ?? 0) * 60 +
-      Number(seconds ?? 0)) *
-    1000
-  );
+  try {
+    return Temporal.Duration.from(duration).total({ unit: "milliseconds" });
+  } catch {
+    return 0;
+  }
 }
 
 /**

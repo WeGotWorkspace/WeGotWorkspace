@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import type { JSCalendarAlert, JSCalendarEvent } from "@/lib/jmap-client";
 
 /** JSCalendar `freeBusyStatus` (RFC 8984 §4.4.2). Default is busy. */
@@ -77,27 +78,36 @@ export function parseCustomOffset(offset: string): {
   amount: number;
   unit: CalendarAlertCustomUnit;
 } {
-  const match = offset.trim().match(/^-?P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i);
-  if (!match) return { amount: 15, unit: "minutes" };
-  const days = Number.parseInt(match[1] ?? "0", 10);
-  const hours = Number.parseInt(match[2] ?? "0", 10);
-  const minutes = Number.parseInt(match[3] ?? "0", 10);
-  const seconds = Number.parseInt(match[4] ?? "0", 10);
-  if (days > 0 && hours === 0 && minutes === 0 && seconds === 0) {
-    return { amount: days, unit: "days" };
+  try {
+    const duration = Temporal.Duration.from(offset.replace(/^-/, ""));
+    if (
+      duration.days > 0 &&
+      duration.hours === 0 &&
+      duration.minutes === 0 &&
+      duration.seconds === 0
+    ) {
+      return { amount: duration.days, unit: "days" };
+    }
+    if (
+      duration.hours > 0 &&
+      duration.days === 0 &&
+      duration.minutes === 0 &&
+      duration.seconds === 0
+    ) {
+      return { amount: duration.hours, unit: "hours" };
+    }
+    const totalMinutes = Math.round(duration.total({ unit: "minutes" }));
+    return { amount: totalMinutes > 0 ? totalMinutes : 15, unit: "minutes" };
+  } catch {
+    return { amount: 15, unit: "minutes" };
   }
-  if (hours > 0 && days === 0 && minutes === 0 && seconds === 0) {
-    return { amount: hours, unit: "hours" };
-  }
-  const totalMinutes = days * 24 * 60 + hours * 60 + minutes + Math.round(seconds / 60);
-  return { amount: totalMinutes > 0 ? totalMinutes : 15, unit: "minutes" };
 }
 
 export function formatCustomOffset(amount: number, unit: CalendarAlertCustomUnit): string {
   const safe = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 1;
-  if (unit === "days") return `-P${safe}D`;
-  if (unit === "hours") return `-PT${safe}H`;
-  return `-PT${safe}M`;
+  return Temporal.Duration.from({ [unit]: safe })
+    .negated()
+    .toString();
 }
 
 export function defaultEventAlert(
