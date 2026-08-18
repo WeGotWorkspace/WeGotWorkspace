@@ -66,6 +66,15 @@ final class AddressBookSetMethod implements JmapMethodInterface
                 continue;
             }
             try {
+                if (array_key_exists('shareWith', $payload)) {
+                    $notCreated[(string) $creationId] = [
+                        'type' => 'invalidProperties',
+                        'description' => 'shareWith is not supported.',
+                        'properties' => ['shareWith'],
+                    ];
+
+                    continue;
+                }
                 $created[(string) $creationId] = $this->books->create($username, $payload);
             } catch (ApiHttpException $e) {
                 $notCreated[(string) $creationId] = JmapSetErrors::fromApiException($e);
@@ -83,6 +92,15 @@ final class AddressBookSetMethod implements JmapMethodInterface
                 continue;
             }
             try {
+                if (array_key_exists('shareWith', $patch)) {
+                    $notUpdated[(string) $bookId] = [
+                        'type' => 'invalidProperties',
+                        'description' => 'shareWith is not supported.',
+                        'properties' => ['shareWith'],
+                    ];
+
+                    continue;
+                }
                 $this->books->update($username, (string) $bookId, $patch);
                 $updated[(string) $bookId] = null;
             } catch (ApiHttpException $e) {

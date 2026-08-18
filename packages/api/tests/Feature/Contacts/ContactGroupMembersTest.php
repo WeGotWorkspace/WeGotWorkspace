@@ -13,13 +13,11 @@ use Illuminate\Support\Facades\Artisan;
 use Sabre\HTTP\Request;
 use Sabre\HTTP\Response;
 use Tests\Support\ContactsTestFixtures;
-use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class ContactGroupMembersTest extends WgwDatabaseTestCase
 {
     use ContactsTestFixtures;
-    use OptimisticConcurrencyTestHelpers;
 
     protected function setUp(): void
     {
@@ -59,13 +57,10 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
-
-        $response->assertJsonPath('kind', 'group');
-        $response->assertJsonPath('memberCardIds.urn:uuid:'.$janeUid, $janeId);
-        $response->assertJsonPath('memberCardIds.urn:uuid:'.$joeUid, $joeId);
+        $card = $this->jmapGetContactCard($groupId);
+        $this->assertSame('group', $card['kind'] ?? null);
+        $this->assertSame($janeId, $card['memberCardIds']['urn:uuid:'.$janeUid] ?? null);
+        $this->assertSame($joeId, $card['memberCardIds']['urn:uuid:'.$joeUid] ?? null);
     }
 
     public function test_carddav_put_adding_group_member_persists(): void
@@ -131,13 +126,10 @@ VCARD);
         $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:'.$joeUid, $raw);
         $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:'.$newUid, $raw);
 
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
-
-        $response->assertJsonPath('kind', 'group');
-        $this->assertCount(3, $response->json('members') ?? []);
-        $this->assertCount(3, $response->json('memberCardIds') ?? []);
+        $card = $this->jmapGetContactCard($groupId);
+        $this->assertSame('group', $card['kind'] ?? null);
+        $this->assertCount(3, $card['members'] ?? []);
+        $this->assertCount(3, $card['memberCardIds'] ?? []);
     }
 
     public function test_rest_name_patch_after_carddav_member_add_preserves_members(): void
@@ -171,9 +163,8 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $stale = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
+        $stale = $this->jmapGetContactCard($groupId);
+        $staleState = (string) ($stale['state'] ?? '');
 
         $this->updateCardViaPdo('bob', 'friends-group.vcf', <<<VCARD
 BEGIN:VCARD
@@ -186,32 +177,33 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
+                'ifInState' => $staleState,
                 'name' => [
                     '@type' => 'Name',
                     'isOrdered' => false,
                     'full' => 'Close Friends',
                 ],
-            ], $this->ifMatchFromResponse($stale))
-            ->assertStatus(412);
+            ]]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.notUpdated.'.$groupId.'.type', 'stateMismatch');
 
-        $current = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
-
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $current = $this->jmapGetContactCard($groupId);
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
+                'ifInState' => (string) ($current['state'] ?? ''),
                 'name' => [
                     '@type' => 'Name',
                     'isOrdered' => false,
                     'full' => 'Close Friends',
                 ],
-            ], $this->ifMatchFromResponse($current))
-            ->assertOk()
-            ->assertJsonPath('name.full', 'Close Friends')
-            ->assertJsonCount(2, 'members')
-            ->assertJsonCount(2, 'memberCardIds');
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $patched = $this->jmapGetContactCard($groupId);
+        $this->assertSame('Close Friends', $patched['name']['full'] ?? null);
+        $this->assertCount(2, $patched['members'] ?? []);
+        $this->assertCount(2, $patched['memberCardIds'] ?? []);
     }
 
     public function test_macos_corrupt_group_members_resolve_to_member_card_ids(): void
@@ -246,13 +238,10 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
-
-        $response->assertJsonPath('kind', 'group');
-        $response->assertJsonPath('memberCardIds.urn:uuid:'.$janeUid, $janeId);
-        $response->assertJsonPath('memberCardIds.urn:uuid:'.$joeUid, $joeId);
+        $card = $this->jmapGetContactCard($groupId);
+        $this->assertSame('group', $card['kind'] ?? null);
+        $this->assertSame($janeId, $card['memberCardIds']['urn:uuid:'.$janeUid] ?? null);
+        $this->assertSame($joeId, $card['memberCardIds']['urn:uuid:'.$joeUid] ?? null);
     }
 
     public function test_carddav_put_sanitizes_macos_corrupt_group_member_uris(): void
@@ -297,12 +286,9 @@ VCARD);
         $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:'.$janeUid, $raw);
         $this->assertStringNotContainsString('"urn:uuid:', $raw);
 
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
-
-        $response->assertJsonPath('kind', 'group');
-        $this->assertCount(1, $response->json('memberCardIds') ?? []);
+        $card = $this->jmapGetContactCard($groupId);
+        $this->assertSame('group', $card['kind'] ?? null);
+        $this->assertCount(1, $card['memberCardIds'] ?? []);
     }
 
     public function test_carddav_get_sanitizes_corrupt_group_member_uris_without_persisting(): void
@@ -400,22 +386,20 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $show = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk()
-            ->assertJsonPath('name.full', 'Friends');
+        $show = $this->jmapGetContactCard($groupId);
+        $this->assertSame('Friends', $show['name']['full'] ?? null);
 
-        $patch = $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
                 'name' => [
                     '@type' => 'Name',
                     'isOrdered' => false,
                     'full' => 'Close Friends',
                 ],
-            ], $this->ifMatchFromResponse($show));
+            ]]], 'c0'],
+        ])->assertOk();
 
-        $patch->assertOk()
-            ->assertJsonPath('name.full', 'Close Friends');
+        $this->assertSame('Close Friends', $this->jmapGetContactCard($groupId)['name']['full'] ?? null);
 
         $stored = $this->findBobCard($groupId);
         $this->assertNotNull($stored);
@@ -457,25 +441,24 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $show = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk()
-            ->assertJsonPath('kind', 'group')
-            ->assertJsonCount(1, 'members');
+        $show = $this->jmapGetContactCard($groupId);
+        $this->assertSame('group', $show['kind'] ?? null);
+        $this->assertCount(1, $show['members'] ?? []);
 
-        $patch = $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
                 'members' => [
                     'urn:uuid:'.$joeUid => true,
                 ],
-            ], $this->ifMatchFromResponse($show));
+            ]]], 'c0'],
+        ])->assertOk();
 
-        $patch->assertOk()
-            ->assertJsonPath('kind', 'group')
-            ->assertJsonCount(2, 'members')
-            ->assertJsonCount(2, 'memberCardIds')
-            ->assertJsonPath('memberCardIds.urn:uuid:'.$janeUid, $janeId)
-            ->assertJsonPath('memberCardIds.urn:uuid:'.$joeUid, $joeId);
+        $patch = $this->jmapGetContactCard($groupId);
+        $this->assertSame('group', $patch['kind'] ?? null);
+        $this->assertCount(2, $patch['members'] ?? []);
+        $this->assertCount(2, $patch['memberCardIds'] ?? []);
+        $this->assertSame($janeId, $patch['memberCardIds']['urn:uuid:'.$janeUid] ?? null);
+        $this->assertSame($joeId, $patch['memberCardIds']['urn:uuid:'.$joeUid] ?? null);
 
         $stored = $this->findBobCard($groupId);
         $this->assertNotNull($stored);
@@ -488,108 +471,94 @@ VCARD);
     {
         [$groupId] = $this->seedGroupWithJaneAndJoeMembers();
 
-        $initial = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/changes?addressBookId=default')
-            ->assertOk();
-
-        $state = $initial->json('newState');
+        $initial = $this->jmapContacts([
+            ['ContactCard/changes', ['accountId' => 'bob', 'sinceState' => '0:'], 'c0'],
+        ])->assertOk();
+        $state = $initial->json('methodResponses.0.1.newState');
         $this->assertNotSame('', (string) $state);
 
-        $show = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk()
-            ->assertJsonCount(1, 'members');
+        $show = $this->jmapGetContactCard($groupId);
+        $this->assertCount(1, $show['members'] ?? []);
 
         $joeUid = '07d442ce-49b5-4a59-bc01-d75b17b92c9a';
 
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
                 'members' => [
                     'urn:uuid:'.$joeUid => true,
                 ],
-            ], $this->ifMatchFromResponse($show))
-            ->assertOk();
+            ]]], 'c0'],
+        ])->assertOk();
 
-        $changes = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/changes?addressBookId=default&since='.$state)
-            ->assertOk();
-
-        $this->assertContains($groupId, $changes->json('updated') ?? []);
+        $changes = $this->jmapContacts([
+            ['ContactCard/changes', ['accountId' => 'bob', 'sinceState' => $state], 'c1'],
+        ])->assertOk();
+        $this->assertContains($groupId, $changes->json('methodResponses.0.1.updated') ?? []);
     }
 
     public function test_contact_set_adding_group_member_reports_updated_in_card_changes(): void
     {
         [$groupId] = $this->seedGroupWithJaneAndJoeMembers();
 
-        $initial = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/changes?addressBookId=default')
-            ->assertOk();
-
-        $state = $initial->json('newState');
+        $initial = $this->jmapContacts([
+            ['ContactCard/changes', ['accountId' => 'bob', 'sinceState' => '0:'], 'c0'],
+        ])->assertOk();
+        $state = $initial->json('methodResponses.0.1.newState');
         $this->assertNotSame('', (string) $state);
 
-        $show = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk()
-            ->assertJsonCount(1, 'members');
-
-        $cardState = (string) $show->json('state');
+        $show = $this->jmapGetContactCard($groupId);
+        $this->assertCount(1, $show['members'] ?? []);
+        $cardState = (string) ($show['state'] ?? '');
         $this->assertNotSame('', $cardState);
 
         $joeUid = '07d442ce-49b5-4a59-bc01-d75b17b92c9a';
 
-        $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/contacts/cards/set', [
-                'update' => [
-                    $groupId => [
-                        'ifInState' => $cardState,
-                        'members' => [
-                            'urn:uuid:'.$joeUid => true,
-                        ],
-                    ],
+        $set = $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
+                'ifInState' => $cardState,
+                'members' => [
+                    'urn:uuid:'.$joeUid => true,
                 ],
-            ])
-            ->assertOk()
-            ->assertJsonPath('updated.'.$groupId, fn ($next) => is_string($next) && $next !== '' && $next !== $cardState);
+            ]]], 'c0'],
+        ])->assertOk();
+        $nextState = $set->json('methodResponses.0.1.updated.'.$groupId.'.state');
+        $this->assertIsString($nextState);
+        $this->assertNotSame('', $nextState);
+        $this->assertNotSame($cardState, $nextState);
 
-        $changes = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/changes?addressBookId=default&since='.$state)
-            ->assertOk();
-
-        $this->assertContains($groupId, $changes->json('updated') ?? []);
+        $changes = $this->jmapContacts([
+            ['ContactCard/changes', ['accountId' => 'bob', 'sinceState' => $state], 'c1'],
+        ])->assertOk();
+        $this->assertContains($groupId, $changes->json('methodResponses.0.1.updated') ?? []);
     }
 
     public function test_rest_patch_adding_group_member_bumps_addressbook_synctoken(): void
     {
         [$groupId] = $this->seedGroupWithJaneAndJoeMembers();
 
-        $initial = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/addressbooks/changes')
-            ->assertOk();
-
-        $state = $initial->json('newState');
+        $initial = $this->jmapContacts([
+            ['AddressBook/changes', ['accountId' => 'bob', 'sinceState' => '0:'], 'c0'],
+        ])->assertOk();
+        $state = $initial->json('methodResponses.0.1.newState');
         $this->assertNotSame('', (string) $state);
 
-        $show = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk()
-            ->assertJsonCount(1, 'members');
+        $show = $this->jmapGetContactCard($groupId);
+        $this->assertCount(1, $show['members'] ?? []);
 
         $joeUid = '07d442ce-49b5-4a59-bc01-d75b17b92c9a';
 
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
                 'members' => [
                     'urn:uuid:'.$joeUid => true,
                 ],
-            ], $this->ifMatchFromResponse($show))
-            ->assertOk();
+            ]]], 'c0'],
+        ])->assertOk();
 
-        $changes = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/addressbooks/changes?since='.$state)
-            ->assertOk();
-
-        $this->assertContains('default', $changes->json('updated') ?? []);
+        $changes = $this->jmapContacts([
+            ['AddressBook/changes', ['accountId' => 'bob', 'sinceState' => $state], 'c1'],
+        ])->assertOk();
+        $this->assertContains('default', $changes->json('methodResponses.0.1.updated') ?? []);
     }
 
     public function test_rest_patch_add_member_with_stale_etag_returns_412(): void
@@ -632,9 +601,7 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $stale = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$groupId)
-            ->assertOk();
+        $stale = $this->jmapGetContactCard($groupId);
 
         $this->updateCardViaPdo('bob', 'friends-group.vcf', <<<VCARD
 BEGIN:VCARD
@@ -647,13 +614,14 @@ UID:08430ef3-a2ce-4568-9d6c-f50a6cfd32ae
 END:VCARD
 VCARD);
 
-        $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/contacts/cards/'.$groupId, [
+        $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$groupId => [
+                'ifInState' => (string) ($stale['state'] ?? ''),
                 'members' => [
                     'urn:uuid:'.$newUid => true,
                 ],
-            ], $this->ifMatchFromResponse($stale))
-            ->assertStatus(412);
+            ]]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.notUpdated.'.$groupId.'.type', 'stateMismatch');
     }
 
     /**

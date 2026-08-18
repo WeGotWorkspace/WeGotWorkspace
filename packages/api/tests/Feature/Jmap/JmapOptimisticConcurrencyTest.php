@@ -6,7 +6,6 @@ namespace Tests\Feature\Jmap;
 
 use App\Models\CalendarObject;
 use Tests\Support\CalendarsTestFixtures;
-use Tests\Support\ContactsTestFixtures;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -14,67 +13,16 @@ use Tests\Support\WgwDatabaseTestCase;
 final class JmapOptimisticConcurrencyTest extends WgwDatabaseTestCase
 {
     use CalendarsTestFixtures;
-    use ContactsTestFixtures;
     use OptimisticConcurrencyTestHelpers;
     use TasksTestFixtures;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpContactsFixtures();
         $this->setUpCalendarsFixtures();
         $this->setUpTasksFixtures();
-        $this->seedDefaultAddressBookFor('bob');
         $this->seedDefaultCalendarFor('bob');
         $this->seedInboxTaskListFor('bob');
-    }
-
-    public function test_contact_show_returns_etag_header_and_body_field(): void
-    {
-        $cardId = $this->seedCardViaPdo('bob', 'jane-doe.vcf', $this->sampleVcard('Jane Doe'));
-
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards/'.$cardId);
-
-        $response->assertOk();
-        $this->assertNotEmpty($response->headers->get('ETag') ?? $response->json('etag'));
-        $this->assertSame($response->headers->get('ETag'), $response->json('etag'));
-    }
-
-    public function test_contact_stale_if_match_returns_412(): void
-    {
-        $cardId = $this->seedCardViaPdo('bob', 'jane-doe.vcf', $this->sampleVcard('Jane Doe'));
-        $url = '/api/v1/contacts/cards/'.$cardId;
-        $staleEtag = $this->fetchEtagFromGet($url);
-
-        $this->withBearer($this->userBearerToken())
-            ->patchJson($url, ['name' => ['full' => 'First update']], $this->withIfMatch($staleEtag))
-            ->assertOk();
-
-        $this->withBearer($this->userBearerToken())
-            ->patchJson($url, ['name' => ['full' => 'Lost update']], $this->withIfMatch($staleEtag))
-            ->assertStatus(412)
-            ->assertJsonPath('code', 'precondition_failed');
-    }
-
-    public function test_contact_fresh_if_match_succeeds_after_prior_update(): void
-    {
-        $cardId = $this->seedCardViaPdo('bob', 'jane-doe.vcf', $this->sampleVcard('Jane Doe'));
-        $url = '/api/v1/contacts/cards/'.$cardId;
-        $etag = $this->fetchEtagFromGet($url);
-
-        $this->withBearer($this->userBearerToken())
-            ->patchJson($url, ['name' => ['full' => 'Updated once']], $this->withIfMatch($etag))
-            ->assertOk()
-            ->assertJsonPath('name.full', 'Updated once');
-
-        $freshEtag = $this->fetchEtagFromGet($url);
-        $this->assertNotSame($etag, $freshEtag);
-
-        $this->withBearer($this->userBearerToken())
-            ->patchJson($url, ['name' => ['full' => 'Updated twice']], $this->withIfMatch($freshEtag))
-            ->assertOk()
-            ->assertJsonPath('name.full', 'Updated twice');
     }
 
     public function test_calendar_event_stale_if_match_returns_412(): void
