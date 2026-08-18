@@ -7,6 +7,7 @@ namespace Tests\Support;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Drive\DriveService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -100,24 +101,68 @@ trait DriveTestFixtures
         );
     }
 
+    /**
+     * @return array{username: string, role: string}
+     */
+    protected function drivePrincipal(string $username): array
+    {
+        return [
+            'username' => $username,
+            'role' => $username === 'alice' ? 'admin' : 'user',
+        ];
+    }
+
+    /**
+     * @return array{username: string, role: string}
+     */
+    protected function drivePrincipalForPath(string $parentPath): array
+    {
+        $username = 'bob';
+        if (preg_match('#^/users/([^/]+)#', $parentPath, $matches) === 1) {
+            $username = $matches[1];
+        }
+
+        return $this->drivePrincipal($username);
+    }
+
+    protected function createDriveDirectory(string $parentPath, string $name): void
+    {
+        $result = app(DriveService::class)->createItem(
+            $this->drivePrincipalForPath($parentPath),
+            $name,
+            'dir',
+            $parentPath,
+        );
+        $this->assertSame('Created', $result);
+    }
+
     protected function createDriveFile(string $token, string $parentPath, string $name): void
     {
-        $this->withBearer($token)->postJson('/api/v1/files/directories?path='.$parentPath, [
-            'name' => $name,
-            'type' => 'file',
-        ])->assertOk()->assertJsonPath('data', 'Created');
+        $this->assertNotSame('', $token);
+        $result = app(DriveService::class)->createItem(
+            $this->drivePrincipalForPath($parentPath),
+            $name,
+            'file',
+            $parentPath,
+        );
+        $this->assertSame('Created', $result);
     }
 
     protected function ensureTrashDirectory(string $token, string $username): void
     {
-        $parent = '/users/'.$username;
-        $listing = $this->withBearer($token)->getJson('/api/v1/files/children?path='.$parent);
-        $names = array_column((array) $listing->json('data.files'), 'name');
-        if (! in_array('.Trash', $names, true)) {
-            $this->withBearer($token)->postJson('/api/v1/files/directories?path='.$parent, [
-                'name' => '.Trash',
-            ])->assertOk();
+        $this->assertNotSame('', $token);
+        $disk = app(WgwStorage::class)->files();
+        $key = 'users/'.$username.'/.Trash';
+        if ($disk->directoryExists($key)) {
+            return;
         }
+        $result = app(DriveService::class)->createItem(
+            $this->drivePrincipal($username),
+            '.Trash',
+            'dir',
+            '/users/'.$username,
+        );
+        $this->assertSame('Created', $result);
     }
 
     protected function seedPrivateFile(string $username, string $filename, string $content = 'content'): string

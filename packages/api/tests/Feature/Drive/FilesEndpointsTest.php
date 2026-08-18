@@ -39,7 +39,7 @@ final class FilesEndpointsTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_files_context_listing_create_and_star_flow(): void
+    public function test_files_context_listing_and_star_flow(): void
     {
         $token = $this->issueBearerToken();
 
@@ -53,11 +53,6 @@ final class FilesEndpointsTest extends WgwDatabaseTestCase
         $listing->assertOk()
             ->assertJsonPath('data.location', '/users/alice/')
             ->assertJsonFragment(['name' => 'welcome.txt', 'type' => 'file']);
-
-        $create = $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/alice', [
-            'name' => 'Projects',
-        ]);
-        $create->assertOk()->assertJsonPath('data', 'Created');
 
         $star = $this->withBearer($token)->postJson('/api/v1/files/star?path=/users/alice/welcome.txt');
         $star->assertOk()->assertJsonPath('data', 'Updated');
@@ -80,40 +75,27 @@ final class FilesEndpointsTest extends WgwDatabaseTestCase
         $this->assertSame('hello', $response->streamedContent());
     }
 
-    public function test_files_patch_renames_in_place(): void
+    public function test_post_files_content_returns_method_not_allowed(): void
     {
         $token = $this->issueBearerToken();
 
-        $rename = $this->withBearer($token)->patchJson('/api/v1/files?path=/users/alice/welcome.txt', [
-            'name' => 'hello.txt',
-        ]);
-        $rename->assertOk()->assertJsonPath('data', 'Renamed');
-
-        $listing = $this->withBearer($token)->getJson('/api/v1/files/children?path=/users/alice');
-        $listing->assertOk()
-            ->assertJsonFragment(['name' => 'hello.txt', 'type' => 'file'])
-            ->assertJsonMissing(['name' => 'welcome.txt']);
+        $this->withBearer($token)
+            ->post('/api/v1/files/content?path=/users/alice', [])
+            ->assertStatus(405);
     }
 
-    public function test_files_patch_moves_to_destination(): void
+    public function test_deleted_dual_rest_write_routes_are_gone(): void
     {
         $token = $this->issueBearerToken();
 
-        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/alice', [
-            'name' => 'Archive',
-        ])->assertOk();
-
-        $move = $this->withBearer($token)->patchJson('/api/v1/files?path=/users/alice/welcome.txt', [
-            'name' => 'welcome.txt',
-            'destination' => '/users/alice/Archive',
-        ]);
-        $move->assertOk()->assertJsonPath('data', 'Renamed');
-
-        $source = $this->withBearer($token)->getJson('/api/v1/files/children?path=/users/alice');
-        $source->assertOk()->assertJsonMissing(['name' => 'welcome.txt']);
-
-        $dest = $this->withBearer($token)->getJson('/api/v1/files/children?path=/users/alice/Archive');
-        $dest->assertOk()
-            ->assertJsonFragment(['name' => 'welcome.txt', 'type' => 'file']);
+        $this->withBearer($token)
+            ->postJson('/api/v1/files/directories?path=/users/alice', ['name' => 'Projects'])
+            ->assertNotFound();
+        $this->withBearer($token)
+            ->patchJson('/api/v1/files?path=/users/alice/welcome.txt', ['name' => 'hello.txt'])
+            ->assertStatus(405);
+        $this->withBearer($token)
+            ->deleteJson('/api/v1/files?path=/users/alice/welcome.txt')
+            ->assertStatus(405);
     }
 }

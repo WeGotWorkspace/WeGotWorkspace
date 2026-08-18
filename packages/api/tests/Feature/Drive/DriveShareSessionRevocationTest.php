@@ -22,9 +22,7 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $token = $this->userBearerToken();
-        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
-            'name' => 'shared',
-        ])->assertOk();
+        $this->createDriveDirectory('/users/bob', 'shared');
         $this->createDriveFile($token, self::SHARE_ROOT, 'revoke.md');
     }
 

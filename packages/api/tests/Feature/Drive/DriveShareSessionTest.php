@@ -21,9 +21,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $token = $this->userBearerToken();
-        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
-            'name' => 'shared',
-        ])->assertOk();
+        $this->createDriveDirectory('/users/bob', 'shared');
         $this->createDriveFile($token, self::SHARE_ROOT, 'guest-note.md');
     }
 
@@ -67,7 +65,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         $this->withBearer($guestJwt)->postJson('/api/v1/files/directories?path='.self::SHARE_ROOT, [
             'name' => 'blocked.md',
             'type' => 'file',
-        ])->assertStatus(400);
+        ])->assertNotFound();
     }
 
     public function test_public_share_password_protects_session_exchange(): void
