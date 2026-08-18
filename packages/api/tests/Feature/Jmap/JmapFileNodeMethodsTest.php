@@ -123,6 +123,9 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
 
         $roots = array_values(array_filter($nodes, static fn (array $n): bool => $n['parentId'] === null));
         $this->assertEqualsCanonicalizing(['bob', 'team'], array_column($roots, 'name'));
+        foreach ($roots as $root) {
+            $this->assertFalse($root['myRights']['mayShare']);
+        }
 
         $fileId = $this->nodeIdByName($nodes, 'hello.txt');
         $file = $nodes[$fileId];
@@ -132,6 +135,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->assertStringStartsWith('text/plain', $file['type']);
         $this->assertTrue($file['myRights']['mayRead']);
         $this->assertTrue($file['myRights']['mayModifyContent']);
+        $this->assertTrue($file['myRights']['mayShare']);
         $this->assertNull($file['shareWith']);
         // Its parent chain reaches bob's root.
         $this->assertSame($this->nodeIdByName($nodes, 'bob'), $file['parentId']);
@@ -407,6 +411,36 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->assertNotContains('secret.md', $names);
         $this->assertNotContains('.hidden.yjs', $names);
         $this->assertNotContains('.notes', $names);
+    }
+
+    public function test_product_trash_is_a_file_node_and_can_receive_moves(): void
+    {
+        $this->seedPrivateFile('bob', 'toss.txt', 'bye');
+        $nodes = $this->getAll();
+        $homeId = $this->nodeIdByName($nodes, 'bob');
+        $fileId = $this->nodeIdByName($nodes, 'toss.txt');
+
+        $created = $this->jmap([
+            ['FileNode/set', ['accountId' => 'bob', 'create' => [
+                't0' => ['parentId' => $homeId, 'name' => '.Trash'],
+            ]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.t0');
+        $this->assertSame('directory', $created['nodeType']);
+        $this->assertSame('.Trash', $created['name']);
+        $trashId = $created['id'];
+
+        $this->jmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [
+                $fileId => ['parentId' => $trashId],
+            ]], 'c1'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.updated.'.$fileId, null);
+
+        $this->assertFalse(app(WgwStorage::class)->files()->fileExists('users/bob/toss.txt'));
+        $this->assertTrue(app(WgwStorage::class)->files()->fileExists('users/bob/.Trash/toss.txt'));
+
+        $after = $this->getAll();
+        $this->assertContains('.Trash', array_column(array_values($after), 'name'));
+        $this->assertSame($trashId, $after[$fileId]['parentId']);
     }
 
     public function test_group_visibility_and_cross_account_scoping(): void

@@ -130,6 +130,7 @@ final class FileNodeMapper
         $mayView = (bool) ($rights['mayView'] ?? false);
         $mayEdit = (bool) ($rights['mayEditContent'] ?? false);
         $mayStructure = (bool) ($rights['mayManageStructure'] ?? false);
+        $mayShare = (bool) ($rights['mayShare'] ?? false);
 
         return [
             'mayRead' => $mayView,
@@ -137,9 +138,9 @@ final class FileNodeMapper
             'mayRename' => $mayStructure,
             'mayDelete' => $mayStructure,
             'mayModifyContent' => $mayEdit,
-            // Sharing writes are out of scope for the envelope (roadmap
-            // non-goal); consistent with shareWith: null.
-            'mayShare' => false,
+            // shareWith writes stay off the envelope; mayShare still
+            // reflects DriveShareAuthorizer so the REST share dialog shows.
+            'mayShare' => $mayShare,
         ];
     }
 
