@@ -290,10 +290,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
 Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
-        Route::post('files/directories', [FilesController::class, 'storeDirectory']);
-        Route::patch('files', [FilesController::class, 'patch']);
-        Route::delete('files', [FilesController::class, 'destroy']);
-        Route::match(['GET', 'HEAD', 'POST'], 'files/content', [FilesController::class, 'content']);
+        Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
         Route::get('files/collaboration', [FilesController::class, 'showCollaboration']);
         Route::put('files/collaboration', [FilesController::class, 'updateCollaboration']);
     });

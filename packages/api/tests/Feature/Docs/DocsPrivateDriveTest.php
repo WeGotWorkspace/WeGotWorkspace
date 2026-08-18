@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Docs;
 
+use App\Services\Drive\DriveService;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\DocsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -37,26 +38,24 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/docs/report.md'));
     }
 
-    public function test_save_markdown_via_resumable_upload(): void
+    public function test_save_markdown_via_drive_service(): void
     {
         $token = $this->userBearerToken();
 
-        $upload = $this->uploadDoc($token, '/users/bob/docs', 'note.md', "# Draft\n\nFirst save.");
-        $upload->assertOk();
-        $this->assertSame('Stored', $upload->getContent());
+        $this->assertSame('Stored', $this->storeDoc('bob', '/users/bob/docs', 'note.md', "# Draft\n\nFirst save."));
 
         $download = $this->getDocContent($token, '/users/bob/docs/note.md');
         $download->assertOk();
         $this->assertStringContainsString('First save.', $download->streamedContent());
     }
 
-    public function test_second_upload_overwrites_prior_markdown(): void
+    public function test_second_store_overwrites_prior_markdown(): void
     {
         $token = $this->userBearerToken();
         $parent = '/users/bob/docs';
 
-        $this->uploadDoc($token, $parent, 'note.md', "# Draft\n\nVersion one.")->assertOk();
-        $this->uploadDoc($token, $parent, 'note.md', "# Draft\n\nVersion two.", 'overwrite-id')->assertOk();
+        $this->storeDoc('bob', $parent, 'note.md', "# Draft\n\nVersion one.");
+        $this->storeDoc('bob', $parent, 'note.md', "# Draft\n\nVersion two.");
 
         $download = $this->getDocContent($token, '/users/bob/docs/note.md');
         $download->assertOk();
@@ -69,7 +68,7 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
     {
         $token = $this->userBearerToken();
 
-        $this->uploadDoc($token, '/users/bob/docs', 'readme.txt', "Plain text doc.\n")->assertOk();
+        $this->storeDoc('bob', '/users/bob/docs', 'readme.txt', "Plain text doc.\n");
 
         $download = $this->getDocContent($token, '/users/bob/docs/readme.txt');
         $download->assertOk()
@@ -82,9 +81,12 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
         $token = $this->userBearerToken();
         $this->seedDocFile('bob', 'old.md', '# Old title');
 
-        $this->withBearer($token)->patchJson('/api/v1/files?path=/users/bob/docs/old.md', [
-            'name' => 'new.md',
-        ])->assertOk()->assertJsonPath('data', 'Renamed');
+        $this->assertSame('Renamed', app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob/docs',
+            '/users/bob/docs/old.md',
+            'new.md',
+        ));
 
         $this->assertFalse(Storage::disk('wgw_files')->exists('users/bob/docs/old.md'));
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/docs/new.md'));
@@ -101,7 +103,7 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
     {
         $token = $this->adminBearerToken();
 
-        $this->uploadDoc($token, '/users/alice/docs', 'admin-note.md', "# Admin doc\n")->assertOk();
+        $this->storeDoc('alice', '/users/alice/docs', 'admin-note.md', "# Admin doc\n");
 
         $download = $this->getDocContent($token, '/users/alice/docs/admin-note.md');
         $download->assertOk();

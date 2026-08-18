@@ -19,9 +19,7 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $this->ownerToken = $this->userBearerToken();
-        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/directories?path=/users/bob', [
-            'name' => 'bulk',
-        ])->assertOk();
+        $this->createDriveDirectory('/users/bob', 'bulk');
         for ($i = 0; $i < 25; $i++) {
             $this->createDriveFile($this->ownerToken, '/users/bob/bulk', 'bulk-'.$i.'.md');
         }

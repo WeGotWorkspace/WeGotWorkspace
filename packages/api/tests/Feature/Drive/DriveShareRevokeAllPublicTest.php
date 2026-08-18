@@ -21,12 +21,8 @@ final class DriveShareRevokeAllPublicTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $this->ownerToken = $this->userBearerToken();
-        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/directories?path=/users/bob', [
-            'name' => 'projects',
-        ])->assertOk();
-        $this->withBearer($this->ownerToken)->postJson('/api/v1/files/directories?path=/users/bob/projects', [
-            'name' => 'q3',
-        ])->assertOk();
+        $this->createDriveDirectory('/users/bob', 'projects');
+        $this->createDriveDirectory('/users/bob/projects', 'q3');
         $this->createDriveFile($this->ownerToken, '/users/bob/projects/q3', 'draft.md');
     }
 

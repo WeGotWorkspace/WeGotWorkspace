@@ -12,9 +12,8 @@ use Tests\Support\WgwDatabaseTestCase;
 /**
  * Files envelope lifecycle contract (#450), modeled on the other domains'
  * contract tests: connect → initial sync → batched query+get via a
- * ResultReference → writes → incremental sync — plus REST-drive writes
- * surfacing in /changes (both write paths maintain the index) and the
- * mixed-domain no-state-bleed case.
+ * ResultReference → writes → incremental sync — plus a second FileNode/set
+ * write surfacing in /changes and the mixed-domain no-state-bleed case.
  */
 final class JmapFileNodesClientContractTest extends WgwDatabaseTestCase
 {
@@ -117,22 +116,25 @@ final class JmapFileNodesClientContractTest extends WgwDatabaseTestCase
         $this->assertSame([$fileId], $batch->json('methodResponses.0.1.ids'));
         $this->assertSame('readme.md', $batch->json('methodResponses.1.1.list.0.name'));
 
-        // A REST-drive write (the other write path) surfaces in /changes too.
-        $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/files/directories?path=/users/bob', ['name' => 'FromRest'])
-            ->assertOk();
-        $afterRest = $this->jmap([
-            ['FileNode/changes', ['accountId' => $accountId, 'sinceState' => $stateS1], 'c6'],
+        // A second FileNode/set write still surfaces in /changes.
+        $extra = $this->jmap([
+            ['FileNode/set', ['accountId' => $accountId, 'create' => [
+                'd1' => ['parentId' => $homeId, 'name' => 'FromSet'],
+            ]], 'c6'],
         ])->assertOk();
-        $this->assertCount(1, $afterRest->json('methodResponses.0.1.created'));
-        $stateS2 = $afterRest->json('methodResponses.0.1.newState');
+        $extraId = $extra->json('methodResponses.0.1.created.d1.id');
+        $afterSet = $this->jmap([
+            ['FileNode/changes', ['accountId' => $accountId, 'sinceState' => $stateS1], 'c7'],
+        ])->assertOk();
+        $this->assertContains($extraId, $afterSet->json('methodResponses.0.1.created'));
+        $stateS2 = $afterSet->json('methodResponses.0.1.newState');
 
         // Destroy, then sync incrementally from S2.
         $this->jmap([
-            ['FileNode/set', ['accountId' => $accountId, 'destroy' => [$fileId]], 'c7'],
+            ['FileNode/set', ['accountId' => $accountId, 'destroy' => [$fileId]], 'c8'],
         ])->assertOk();
         $afterDestroy = $this->jmap([
-            ['FileNode/changes', ['accountId' => $accountId, 'sinceState' => $stateS2], 'c8'],
+            ['FileNode/changes', ['accountId' => $accountId, 'sinceState' => $stateS2], 'c9'],
         ])->assertOk();
         $this->assertContains($fileId, $afterDestroy->json('methodResponses.0.1.destroyed'));
     }

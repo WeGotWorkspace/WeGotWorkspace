@@ -2621,72 +2621,6 @@
           }
         },
         "x-wgw-access": "user"
-      },
-      "patch": {
-        "tags": [
-          "Files"
-        ],
-        "summary": "Rename or move file or directory",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "path",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "destination": {
-                    "type": "string",
-                    "description": "Target parent directory; omit to rename in place"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Renamed"
-          }
-        },
-        "x-wgw-access": "guest"
-      },
-      "delete": {
-        "tags": [
-          "Files"
-        ],
-        "summary": "Delete files",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted"
-          }
-        },
-        "x-wgw-access": "guest"
       }
     },
     "/files/children": {
@@ -2812,32 +2746,6 @@
           }
         },
         "x-wgw-access": "guest"
-      },
-      "post": {
-        "tags": [
-          "Files"
-        ],
-        "summary": "Upload file content",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "path",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Accepted"
-          }
-        },
-        "x-wgw-access": "guest"
       }
     },
     "/files/context": {
@@ -2854,35 +2762,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        },
-        "x-wgw-access": "user"
-      }
-    },
-    "/files/directories": {
-      "post": {
-        "tags": [
-          "Files"
-        ],
-        "summary": "Create directory",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "path",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created"
           }
         },
         "x-wgw-access": "user"
