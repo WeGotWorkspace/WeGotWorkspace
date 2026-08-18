@@ -64,10 +64,12 @@ The plugin work also surfaces two **pre-existing** drive bugs this design does n
 
 Indexed and exposed: the account's personal tree (`users/{username}/…`) and member group trees (`groups/{slug}/…`), **excluding**:
 
-- `.notes/` subtrees (notes are their own app surface with their own sharing rules; exposing them as generic files would bypass `NotesPathShare` semantics);
-- collab sidecars (`.{name}.yjs`) and other dot-file internals — mirror `DriveService` listing visibility so REST and FileNode agree on what exists.
+- collab sidecars (`.{name}.yjs`) and other dot-file internals — Drive browse and FileNode still agree that these are not listing entries.
 
-**Exception:** the product trash directory `.Trash` (and its children) is a FileNode. Drive “Move to Trash” is a FileNode create/move into that folder; browse listings still hide dot names client-side.
+**Exceptions** (indexed as FileNodes; Drive browse still hides them):
+
+- the product trash directory `.Trash` (and its children). Drive “Move to Trash” is a FileNode create/move into that folder;
+- the product notes tree `.notes` (personal and group) and `.archive` **only** when it lives under `.notes`. Notes stay a collection UI; Drive children listings still omit `.notes` via `DriveService::isHiddenNotesPath`. Other `.archive` directories stay hidden.
 
 ## Decision 5 — rights, visibility, and shared nodes
 
@@ -88,7 +90,7 @@ Indexed and exposed: the account's personal tree (`users/{username}/…`) and me
 3. `wgw:jmap:filenodes-reindex` backfill/reconcile command.
 4. Envelope methods `FileNode/get|changes|set|copy|query` (+ `queryChanges` → `cannotCalculateChanges`) behind `urn:ietf:params:jmap:filenode` with a `FilesCapabilityProvider` (gate: `files_enabled`); `onExists` (null/`replace`/`rename`/`newest`), `onDestroyRemoveChildren`, `alreadyExists` + `existingId` per draft-14.
 5. Download resolver for `fnb-…` ids.
-6. Tests: rename/move id-stability (one `updated`, same id); WebDAV-side write visible in `/changes`; tombstone pruning → `cannotCalculateChanges`; `.notes`/sidecar exclusion; `onExists` matrix; group-tree visibility; lifecycle contract test per the spec folder.
+6. Tests: rename/move id-stability (one `updated`, same id); WebDAV-side write visible in `/changes`; tombstone pruning → `cannotCalculateChanges`; `.notes` (and `.archive` under it) indexed while Drive browse still hides `.notes`; sidecar / other-dot exclusion; `onExists` matrix; group-tree visibility; lifecycle contract test per the spec folder.
 7. Docs: envelope dispatch rows, deviations (out-of-band rename changes ids; shared-with-me deferred; no symlinks), draft revision pinned.
 
 ## Open questions (explicitly deferred, not blockers)
