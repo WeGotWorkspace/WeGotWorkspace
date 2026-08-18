@@ -46,6 +46,7 @@ import {
   fromTimelineRange,
   fromTimelineValue,
   isOutsideVisibleMonth,
+  monthDayHeaderClassNames,
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
@@ -1243,6 +1244,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     // State variants as extra part names; weekend only inside the anchor month (parity with
     // the plain #dayHeaderTemplate and the old `.is-weekend:not(.is-outside-month)` rule).
     const headerParts = monthDayHeaderPartNames({ outsideMonth, isWeekend });
+    const headerClass = monthDayHeaderClassNames({ outsideMonth });
     const dayNumberParts = [
       "day-number",
       isToday ? "day-number-today" : "",
@@ -1250,18 +1252,23 @@ export class CalendarTimelineView extends CalendarViewBase {
     ]
       .filter(Boolean)
       .join(" ");
+    // Ink is per-cell data (in vs outside month). Set it inline so year mini-months
+    // cannot lose the mute when outer-tree `::part()` fails to paint TimeLine's tree.
+    const headerInk = isToday
+      ? ""
+      : `;color:var(--_lc-${outsideMonth ? "outside" : "in"}-month-day-color)`;
     return html`
       <button
         type="button"
-        class="timeline-day-header"
+        class=${headerClass}
         part=${headerParts}
-        style=${`anchor-name:${anchorName}`}
+        style=${`anchor-name:${anchorName}${headerInk}`}
         .ariaLabel=${fullDateLabel}
         .ariaCurrent=${isToday ? "date" : null}
         @click=${(clickEvent: MouseEvent) =>
           this.#handleMonthDayHeaderClick(cellIndex, day, clickEvent)}
       >
-        <span part=${dayNumberParts}>
+        <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
           ${dayNumberContent}
           ${dotColors.length
             ? html`

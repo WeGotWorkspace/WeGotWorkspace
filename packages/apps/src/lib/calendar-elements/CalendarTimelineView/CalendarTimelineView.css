@@ -7,13 +7,15 @@
      those trees read --_lc-* with no fallback. In the old grid stack they came from
      CalendarGridView's host; here they must be declared on this host (custom properties
      inherit through the shadow boundary).
-     In-month numbers use near-full ink (primary text, AA). Weekday chrome stays at 72%
-     (slightly muted). Outside-month stays at the AA floor (~63% / ~4.5:1) — that mute
-     only reads against 92% ink; 72% vs 63% was indistinguishable at 12px. */
+     In-month numbers use full ink (primary text, AA). Weekday chrome stays at 72%
+     (slightly muted). Outside-month stays at the AA floor (~63% / ~4.5:1).
+     72% vs 63% was indistinguishable at 12px; the mute is vs full in-month ink.
+     These tokens are consumed inside <time-line>'s shadow (classes + inline color)
+     because outer-tree `::part()` color does not paint year mini-month numbers. */
   --_lc-grid-line-width: 1px;
   --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
   --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
-  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%));
+  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%));
   --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%));
   --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
 }
@@ -33,7 +35,7 @@
     );
     --_lc-in-month-day-color: color-mix(
       in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 92%,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 100%,
       var(--_lc-surface-bg, light-dark(#fff, #222))
     );
     --_lc-outside-month-day-color: color-mix(
@@ -476,13 +478,15 @@ time-line::part(day-header) {
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
-  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%)));
+  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
 }
 
 time-line::part(day-header-outside-month),
 time-line::part(day-number-outside-month) {
   /* Color (not opacity) so compact year event dots stay at full strength. Mute is
-     vs in-month 92% ink, not vs the 72% weekday token (that pairing is invisible). */
+     vs in-month 100% ink, not vs the 72% weekday token (that pairing is invisible).
+     Year mini-months also set this via TimeLine.css + inline color — `::part()`
+     alone does not paint those numbers. */
   color: var(--_lc-outside-month-day-color);
 }
 

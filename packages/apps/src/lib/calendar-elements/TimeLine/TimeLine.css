@@ -349,3 +349,18 @@
   flex: 1;
   pointer-events: auto;
 }
+
+/* Month/year day headers are rendered into this shadow via headerTemplate.
+   CalendarTimelineView's `time-line::part(...)` color rules do not paint these
+   numbers in year mini-months, so the mute must live here (same tree as the
+   buttons). Tokens inherit from calendar-timeline-view's host. */
+.timeline-day-header {
+  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
+}
+
+.timeline-day-header.is-outside-month {
+  color: var(
+    --_lc-outside-month-day-color,
+    light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%))
+  );
+}

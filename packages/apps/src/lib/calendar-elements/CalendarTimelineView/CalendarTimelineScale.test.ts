@@ -14,6 +14,7 @@ import {
   fromTimelineRange,
   fromTimelineValue,
   isOutsideVisibleMonth,
+  monthDayHeaderClassNames,
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
@@ -489,6 +490,13 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
     );
   });
 
+  it("marks outside cells with is-outside-month for TimeLine shadow CSS", () => {
+    expect(monthDayHeaderClassNames({ outsideMonth: true })).toBe(
+      "timeline-day-header is-outside-month",
+    );
+    expect(monthDayHeaderClassNames({ outsideMonth: false })).toBe("timeline-day-header");
+  });
+
   it("keeps outside-month ink clearly below in-month ink in CSS tokens", () => {
     const css = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
@@ -501,10 +509,21 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
     expect(inMonth.length).toBeGreaterThan(0);
     expect(outside.length).toBeGreaterThan(0);
     // Mute must come from darkening in-month, not from dropping outside below AA.
-    // 72% vs 63% is invisible; 92% vs 63% is the visible AA-safe pairing.
-    expect(Math.min(...inMonth)).toBeGreaterThanOrEqual(90);
+    // 72% vs 63% is invisible; 100% vs 63% is the visible AA-safe pairing.
+    expect(Math.min(...inMonth)).toBeGreaterThanOrEqual(100);
     expect(Math.max(...outside)).toBeLessThanOrEqual(65);
     expect(Math.min(...inMonth) - Math.max(...outside)).toBeGreaterThanOrEqual(25);
+  });
+
+  it("mutes outside days from inside TimeLine's shadow, not only via ::part()", () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
+      "utf8",
+    );
+    expect(css).toMatch(
+      /\.timeline-day-header\.is-outside-month\s*\{[^}]*--_lc-outside-month-day-color/,
+    );
+    expect(css).toMatch(/\.timeline-day-header\s*\{[^}]*--_lc-in-month-day-color/);
   });
 });
 
