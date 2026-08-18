@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Calendars;
 
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarColorPalette;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Tasks\InboxTaskListProvisioner;
@@ -46,6 +47,16 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri[CalendarCollectionUris::TASK_HOME]));
         $this->assertSame('Home', (string) ($byUri[CalendarCollectionUris::EVENT_HOME]['{DAV:}displayname'] ?? ''));
         $this->assertSame('Home', (string) ($byUri[CalendarCollectionUris::TASK_HOME]['{DAV:}displayname'] ?? ''));
+
+        $eventColors = [
+            $this->colorFor($byUri[CalendarCollectionUris::EVENT_DEFAULT]),
+            $this->colorFor($byUri[CalendarCollectionUris::EVENT_HOME]),
+            $this->colorFor($byUri[CalendarCollectionUris::EVENT_WORK]),
+        ];
+        $this->assertSame(CalendarColorPalette::forUri(CalendarCollectionUris::EVENT_DEFAULT), $eventColors[0]);
+        $this->assertSame(CalendarColorPalette::forUri(CalendarCollectionUris::EVENT_HOME), $eventColors[1]);
+        $this->assertSame(CalendarColorPalette::forUri(CalendarCollectionUris::EVENT_WORK), $eventColors[2]);
+        $this->assertCount(3, array_unique($eventColors));
     }
 
     public function test_provisioner_is_idempotent(): void
@@ -80,6 +91,11 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey('tasks-engineering', $byUri);
         $this->assertSame(['VEVENT', 'VJOURNAL'], $this->componentSetFor($byUri['engineering']));
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri['tasks-engineering']));
+        $this->assertSame(CalendarColorPalette::forUri('engineering'), $this->colorFor($byUri['engineering']));
+        $this->assertSame(
+            CalendarColorPalette::forUri(CalendarCollectionUris::groupTaskListCalDavUri('engineering')),
+            $this->colorFor($byUri['tasks-engineering']),
+        );
     }
 
     /**
@@ -92,5 +108,17 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertInstanceOf(SupportedCalendarComponentSet::class, $property);
 
         return $property->getValue();
+    }
+
+    /**
+     * @param  array<string, mixed>  $calendar
+     */
+    private function colorFor(array $calendar): string
+    {
+        $color = $calendar[CalendarColorPalette::PROPERTY] ?? null;
+        $this->assertIsString($color);
+        $this->assertNotSame('', trim($color));
+
+        return trim($color);
     }
 }

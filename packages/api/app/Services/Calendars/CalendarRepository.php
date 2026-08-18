@@ -173,10 +173,13 @@ final class CalendarRepository
         if ($resolved === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
-        [$instance] = $resolved;
+        [$instance, $groupSlug] = $resolved;
 
         if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
+        }
+        if ($this->isProvisionedGroupCalendar($instance, $groupSlug)) {
+            throw new ApiHttpException(403, 'The group calendar cannot be deleted.', 'forbidden');
         }
 
         $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
@@ -328,33 +331,28 @@ final class CalendarRepository
     }
 
     /**
+     * Calendars the user may update (name, color, …). Provisioned group calendars
+     * are included; {@see delete()} separately forbids destroying them.
+     *
      * @return array{0: CalendarInstance, 1: ?string}|null
      */
     private function resolveWritableCalendar(string $username, string $calendarId): ?array
     {
-        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId);
-        if ($groupSlug !== null) {
+        $instance = $this->findAccessibleCalendar($username, $calendarId);
+        if ($instance === null) {
             return null;
         }
 
-        $owned = $this->findCalendarInstance($this->principalUri($username), $calendarId);
-        if ($owned !== null) {
-            return [$owned, null];
-        }
+        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId)
+            ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findCalendarInstance(AdminConstants::GROUP_PREFIX.$slug, $calendarId);
-            if ($instance !== null) {
-                $uri = (string) $instance->uri;
-                if ($uri === CalendarCollectionUris::groupCalendarCalDavUri($slug)) {
-                    return null;
-                }
+        return [$instance, $groupSlug];
+    }
 
-                return [$instance, $slug];
-            }
-        }
-
-        return null;
+    private function isProvisionedGroupCalendar(CalendarInstance $instance, ?string $groupSlug): bool
+    {
+        return $groupSlug !== null
+            && (string) $instance->uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug);
     }
 
     private function allocateCalendarUri(string $principalUri, ?string $requestedId, string $name, ?string $groupSlug): string
@@ -439,7 +437,7 @@ final class CalendarRepository
         }
 
         $isGroup = $groupSlug !== null;
-        $isProvisionedGroup = $isGroup && $uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug);
+        $isProvisionedGroup = $this->isProvisionedGroupCalendar($instance, $groupSlug);
 
         $rights = match ((int) ($instance->access ?? 1)) {
             2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => false],

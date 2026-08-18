@@ -6,6 +6,8 @@ namespace Tests\Feature\Calendars;
 
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarColorPalette;
+use App\Services\Jmap\JmapCapabilities;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -46,6 +48,7 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
         $this->assertSame('group', $groupCalendar['scope']);
         $this->assertSame(self::TEAM, $groupCalendar['groupSlug']);
         $this->assertSame('Team', $groupCalendar['name']);
+        $this->assertSame(CalendarColorPalette::forUri(self::TEAM), $groupCalendar['color']);
         $this->assertFalse($groupCalendar['myRights']['mayDelete']);
     }
 
@@ -115,5 +118,92 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
             ->assertCreated()
             ->assertJsonPath('title', 'Team standup')
             ->assertJsonPath('calendarIds.'.$calendarId, true);
+    }
+
+    public function test_patch_group_calendar_updates_name_and_color(): void
+    {
+        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+
+        $this->withBearer($this->userBearerToken())
+            ->patchJson('/api/v1/calendars/calendars/'.$calendarId, [
+                'name' => 'Team planning',
+                'color' => '#ec4899',
+            ])
+            ->assertOk()
+            ->assertJsonPath('id', $calendarId)
+            ->assertJsonPath('name', 'Team planning')
+            ->assertJsonPath('color', '#ec4899')
+            ->assertJsonPath('scope', 'group')
+            ->assertJsonPath('groupSlug', self::TEAM)
+            ->assertJsonPath('myRights.mayWrite', true)
+            ->assertJsonPath('myRights.mayDelete', false);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/calendars/calendars/'.$calendarId)
+            ->assertOk()
+            ->assertJsonPath('name', 'Team planning')
+            ->assertJsonPath('color', '#ec4899');
+    }
+
+    public function test_jmap_calendar_set_updates_group_calendar_name_and_color(): void
+    {
+        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+
+        $response = $this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+            'methodCalls' => [
+                ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => ['name' => 'Squad', 'color' => '#22c55e']]], 'c0'],
+                ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
+            ],
+        ])->assertOk();
+
+        $this->assertNull($response->json('methodResponses.0.1.notUpdated.'.$calendarId));
+        $this->assertNull($response->json('methodResponses.0.1.updated.'.$calendarId));
+        $this->assertSame('Squad', $response->json('methodResponses.1.1.list.0.name'));
+        $this->assertSame('#22c55e', $response->json('methodResponses.1.1.list.0.color'));
+        $this->assertSame($calendarId, $response->json('methodResponses.1.1.list.0.id'));
+    }
+
+    public function test_non_member_cannot_patch_group_calendar(): void
+    {
+        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+
+        $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->patchJson('/api/v1/calendars/calendars/'.$calendarId, [
+                'name' => 'Hijacked',
+            ])
+            ->assertNotFound();
+    }
+
+    public function test_delete_provisioned_group_calendar_is_forbidden(): void
+    {
+        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+
+        $this->withBearer($this->userBearerToken())
+            ->deleteJson('/api/v1/calendars/calendars/'.$calendarId)
+            ->assertForbidden();
+    }
+
+    public function test_patch_extra_group_calendar_updates_name_and_color(): void
+    {
+        $calendarId = $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/calendars/calendars', [
+                'name' => 'Roadmap',
+                'groupSlug' => self::TEAM,
+            ])
+            ->assertCreated()
+            ->json('id');
+
+        $this->withBearer($this->userBearerToken())
+            ->patchJson('/api/v1/calendars/calendars/'.$calendarId, [
+                'name' => 'Roadmap 2026',
+                'color' => '#0ea5e9',
+            ])
+            ->assertOk()
+            ->assertJsonPath('id', $calendarId)
+            ->assertJsonPath('name', 'Roadmap 2026')
+            ->assertJsonPath('color', '#0ea5e9')
+            ->assertJsonPath('scope', 'group')
+            ->assertJsonPath('groupSlug', self::TEAM);
     }
 }
