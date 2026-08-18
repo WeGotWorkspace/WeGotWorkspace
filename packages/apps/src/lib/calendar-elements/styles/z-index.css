@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/*
+  Shared z-index layer tokens for component styles.
+  Override on :host where needed.
+*/
+:host {
+  --_lc-z-base: 1;
+  --_lc-z-overlay: 2;
+  --_lc-z-overlay-raised: 3;
+  --_lc-z-focus: 11;
+  --_lc-z-sticky: 30;
+  --_lc-z-popover: 120;
+}

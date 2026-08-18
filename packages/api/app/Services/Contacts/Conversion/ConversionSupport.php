@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
+use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\ICalendarUid;
 use Illuminate\Support\Str;
 use Sabre\VObject\DateTimeParser;
 use Sabre\VObject\InvalidDataException;
@@ -598,28 +600,12 @@ final class ConversionSupport
 
     public static function normalizeUtcDateTime(string $value): string
     {
-        $trimmed = trim($value);
-        if ($trimmed === '') {
-            return $trimmed;
-        }
-
-        if (preg_match('/^\d{8}T\d{6}Z$/', $trimmed) === 1) {
-            $trimmed = substr($trimmed, 0, 4).'-'
-                .substr($trimmed, 4, 2).'-'
-                .substr($trimmed, 6, 2).'T'
-                .substr($trimmed, 9, 2).':'
-                .substr($trimmed, 11, 2).':'
-                .substr($trimmed, 13, 2).'Z';
-        }
-
-        return strtoupper($trimmed);
+        return strtoupper(ICalendarDateTime::toJmap($value));
     }
 
     public static function utcDateTimeToVCard(string $value): string
     {
-        $normalized = self::normalizeUtcDateTime($value);
-
-        return str_replace(['-', ':'], '', $normalized);
+        return strtoupper(ICalendarDateTime::toIcs(ICalendarDateTime::toJmap($value)));
     }
 
     public static function isDerived(Property $property): bool
@@ -904,16 +890,7 @@ final class ConversionSupport
      */
     public static function generateUid(string $seed): string
     {
-        $hash = hash('sha256', $seed);
-
-        return sprintf(
-            'urn:uuid:%s-%s-%s-%s-%s',
-            substr($hash, 0, 8),
-            substr($hash, 8, 4),
-            substr($hash, 12, 4),
-            substr($hash, 16, 4),
-            substr($hash, 20, 12),
-        );
+        return ICalendarUid::fromSeed($seed);
     }
 
     /**

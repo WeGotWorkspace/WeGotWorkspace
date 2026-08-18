@@ -147,8 +147,11 @@ describe("TaskProjectDialog", () => {
       />,
     );
 
-    expect(screen.getByText("Only Me")).toBeTruthy();
-    expect(screen.queryByLabelText(defaultTasksLabels.projectScopeLabel)).toBeNull();
+    const ownerSelect = screen.getByRole("combobox", {
+      name: defaultTasksLabels.projectScopeLabel,
+    });
+    expect(ownerSelect).toHaveProperty("disabled", true);
+    expect(ownerSelect.textContent).toContain("Only Me");
 
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.projectNameLabel), {
       target: { value: "Client work" },
@@ -186,7 +189,7 @@ describe("TaskProjectDialog", () => {
       screen.getByText(defaultTasksLabels.projectNameLabel, { selector: "label" }),
     ).toBeTruthy();
     expect(
-      screen.getByText(defaultTasksLabels.projectScopeReadOnlyLabel, { selector: "label" }),
+      screen.getByText(defaultTasksLabels.projectScopeLabel, { selector: "label" }),
     ).toBeTruthy();
     const nameInput = screen.getByLabelText(
       defaultTasksLabels.projectNameLabel,

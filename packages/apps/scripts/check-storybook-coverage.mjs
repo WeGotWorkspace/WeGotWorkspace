@@ -105,6 +105,13 @@ function discoverSurfaces() {
 
   for (const indexPath of walkFiles(srcRoot, (file) => basename(file) === "index.ts")) {
     const moduleDir = relative(srcRoot, dirname(indexPath));
+    // src/lib/** is non-UI infrastructure (api clients, offline stores, the
+    // vendored calendar engine/jmap client) — classes exported there are not
+    // catalog surfaces. UI files under lib would still be caught by the
+    // *-app/*-workspace/*-pane walk below.
+    if (moduleDir === "lib" || moduleDir.startsWith("lib/")) {
+      continue;
+    }
     for (const component of parseIndexExports(indexPath)) {
       const id = `${moduleDir}::${component}`;
       surfaces.set(id, { id, component, module: moduleDir });

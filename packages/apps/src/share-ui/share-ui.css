@@ -21,6 +21,10 @@
     var(--border, oklch(0.929 0.013 255.508)) 70%,
     transparent
   );
+  --card-row-hover-bg: var(--share-dialog-row-hover);
+  --card-panel-border-color: var(--share-dialog-panel-border);
+  --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream, #ffffff)) 60%, transparent);
+  --card-row-subtitle-color: var(--share-dialog-muted);
   max-width: 36rem;
   --input-height: 2.25rem;
   /* Match outline IconButtons to Input/Select (--control-border-color). */
@@ -76,48 +80,10 @@
   @apply mb-0;
 }
 
-.share-dialog__panel {
-  @apply flex flex-col gap-1 rounded-xl border border-border/70 bg-card/60 p-2;
-}
-
-.share-dialog__row {
-  @apply flex items-center gap-2 rounded-lg px-2 py-1.5;
-}
-
-.share-dialog__row:hover {
-  background: var(--share-dialog-row-hover);
-}
-
-.share-dialog__row-main {
-  @apply min-w-0 flex-1;
-}
-
-.share-dialog__row-title-line {
-  @apply flex min-w-0 items-center gap-1.5;
-}
-
-.share-dialog__row-title-group {
-  @apply flex min-w-0 flex-1 items-center gap-1;
-}
-
-.share-dialog__row-title {
-  @apply min-w-0 truncate text-sm font-medium;
-}
-
-.share-dialog__row-title-line .tag {
+.share-dialog .card__row-title-line .tag {
   @apply shrink-0;
   background-color: var(--share-dialog-tag-bg);
   color: var(--share-dialog-tag-fg);
-}
-
-.share-dialog__row-subtitle {
-  @apply truncate text-xs;
-  color: var(--share-dialog-muted);
-}
-
-.share-dialog__row-divider {
-  @apply my-1 border-t;
-  border-color: var(--share-dialog-panel-border);
 }
 
 .share-dialog__group-mark,

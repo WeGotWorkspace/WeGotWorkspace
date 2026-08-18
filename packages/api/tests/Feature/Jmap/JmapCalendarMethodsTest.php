@@ -97,6 +97,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertSame('bob', $create['accountId']);
         $createdCalendar = $create['created']['new-cal'];
         $this->assertSame('Projects', $createdCalendar['name']);
+        $this->assertSame('#336699', $createdCalendar['color']);
         $this->assertArrayHasKey('mayWriteAll', $createdCalendar['myRights']);
         $calendarId = (string) $createdCalendar['id'];
 
@@ -106,11 +107,12 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey($calendarId, $newTokens);
 
         $update = $this->jmap([
-            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => ['name' => 'Projects 2026']]], 'c0'],
+            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => ['name' => 'Projects 2026', 'color' => '#ec4899']]], 'c0'],
             ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
         ])->assertOk();
         $this->assertNull($update->json('methodResponses.0.1.updated.'.$calendarId));
         $this->assertSame('Projects 2026', $update->json('methodResponses.1.1.list.0.name'));
+        $this->assertSame('#ec4899', $update->json('methodResponses.1.1.list.0.color'));
 
         $destroy = $this->jmap([
             ['Calendar/set', ['accountId' => 'bob', 'destroy' => [$calendarId]], 'c0'],

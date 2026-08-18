@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  :host {
+    display: block;
+    --_lc-surface-bg: var(
+      --_lc-app-header-bg-color,
+      var(--lg-background-color, light-dark(#fff, #222))
+    );
+  }
+}

@@ -1,0 +1,79 @@
+@import "tailwindcss";
+@import "../styles/z-index.css";
+
+/* Own the pane scroll (day/week timeline does the same on .timeline-layout--composed).
+   Workspace `.calendar-main` uses overflow:hidden, so without this the agenda grows and
+   is clipped with no scroll. Sticky day headings need this as their scrollport. */
+:host {
+  @apply block w-full h-full min-h-0 overflow-x-hidden overflow-y-auto [container-type:inline-size];
+}
+
+.agenda-shell {
+  @apply box-border w-full min-h-full;
+}
+
+.agenda-day {
+  @apply border-t py-2.5;
+  border-top-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 14%));
+}
+
+.agenda-day:first-child {
+  @apply border-t-0 pt-1;
+}
+
+.agenda-day-heading {
+  @apply box-border m-0 flex items-baseline gap-2.5 w-full px-1.5 pt-1 pb-2.5 text-sm font-normal sticky top-0;
+  color: light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%));
+  z-index: var(--_lc-z-sticky);
+  /* Opaque surface so event cards scrolling underneath don't show through. */
+  background-color: var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)));
+}
+
+.agenda-day-weekday {
+  @apply text-sm font-[650] leading-[1.2];
+}
+
+.agenda-day-date {
+  @apply text-[13px] font-[450] leading-[1.2] opacity-[0.82];
+}
+
+@container (min-width: 420px) {
+  .agenda-day-weekday {
+    @apply text-[15px];
+  }
+
+  .agenda-day-date {
+    @apply text-sm;
+  }
+}
+
+.agenda-event-list {
+  @apply m-0 p-0 list-none grid gap-2;
+  /* Skip layout/paint for off-screen days. On the list (not .agenda-day) so the sticky
+     heading stays outside the contained subtree — sticky inside a skipped container can
+     misbehave. The 130px fallback ≈ a median day (2 flow cards: 2×62px + 8px gap);
+     `auto` keeps the browser's last-rendered size once a day has been shown, so the
+     estimate only matters before first render. */
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 130px;
+}
+
+.agenda-event-item {
+  @apply min-w-0;
+}
+
+.agenda-event-item event-card {
+  --_lc-event-card-bg-default: var(--_lc-event-bg);
+  --_lc-event-card-bg-active: var(--_lc-event-bg-active, var(--_lc-event-bg));
+  --_lc-event-card-accent-color: var(--_lc-event-accent-color);
+  --_lc-event-card-text-color: var(--_lc-event-text-color, CanvasText);
+}
+
+.agenda-empty {
+  @apply h-full min-h-[180px] grid place-content-center p-4;
+  color: light-dark(rgb(51 65 85), rgb(226 232 240 / 0.9));
+}
+
+.agenda-empty-icon {
+  @apply w-14 h-14 opacity-[0.48];
+}

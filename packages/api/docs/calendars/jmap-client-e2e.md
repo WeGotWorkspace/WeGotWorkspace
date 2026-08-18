@@ -1,6 +1,6 @@
 # Testing the JMAP envelope against the real frontend client
 
-How to point the **unmodified** `@lit-calendar/jmap-client` (separate repo, e.g. `~/Sites/lit-calendar`) at this backend — the plan's "option (a)" live-client verification that `tests/Feature/Jmap/JmapClientContractTest.php` replicates backend-side. The client needs **zero code changes**: auth is pure configuration (`JmapClientOptions.headers`), and the Session resource emits absolute URLs built from the request `Host`, which is what makes both setups below work.
+How to test the jmap client against this backend. The client originated as `@lit-calendar/jmap-client` (external repo, now archived into `packages/apps/src/lib/jmap-client/` as vendored first-class code) and needs **zero code changes**: auth is pure configuration (`JmapClientOptions.headers`), and the Session resource emits absolute URLs built from the request `Host`, which is what makes both setups below work. `tests/Feature/Jmap/JmapClientContractTest.php` replicates the same lifecycle backend-side.
 
 Envelope reference: [jmap-envelope.md](./jmap-envelope.md).
 
@@ -65,14 +65,9 @@ Point the app's session URL at `/api/v1/jmap/session` (relative is fine in the b
 pnpm test:jmap-client-e2e
 ```
 
-`tools/test-jmap-client-e2e.sh` does everything: locates the client repo (`$LIT_CALENDAR_DIR` for a local working copy, otherwise clones the public repo into `.cache/lit-calendar` and keeps it updated), installs its dependencies, starts a local API on `:9080` if none is running (and stops it again on exit — an already-running `pnpm dev:api` is reused), mints a token, copies the canonical test from `tools/jmap-client-e2e/wgw-backend.e2e.test.ts` into the client's `src/tests/`, runs it with the client's own vitest, and removes the copy afterwards. The client repo itself is never modified permanently.
+The jmap client is **vendored into this monorepo** (`packages/apps/src/lib/jmap-client/`, copied verbatim from lit-calendar with its tests and `MockJmapServer`), so no cloning is involved. `tools/test-jmap-client-e2e.sh` starts a local API on `:9080` if none is running (and stops it again on exit — an already-running `pnpm dev:api` is reused), mints a token, and runs the gated suite with the apps vitest setup.
 
-```bash
-# use your local working copy instead of the cached clone:
-LIT_CALENDAR_DIR=~/Sites/lit-calendar pnpm test:jmap-client-e2e
-```
-
-The test itself lives at [`tools/jmap-client-e2e/wgw-backend.e2e.test.ts`](../../../../tools/jmap-client-e2e/wgw-backend.e2e.test.ts) — the single canonical copy; imports verified against the shipped client (`JmapClientOptions` with `sessionUrl`/`headers`, `DateRange` with `utcStart`/`utcEnd` Date objects). It is a gated Vitest suite: Node `fetch` has no browser origin, so no proxy/CORS is involved, auth header only. It skips unless `JMAP_E2E_URL` is set, so the client's normal offline run against `MockJmapServer` is untouched.
+The test lives at [`packages/apps/src/lib/jmap-client/tests/wgw-backend.e2e.test.ts`](../../../apps/src/lib/jmap-client/tests/wgw-backend.e2e.test.ts). It is a gated Vitest suite: Node `fetch` has no browser origin, so no proxy/CORS is involved, auth header only. It skips unless `JMAP_E2E_URL` is set, so the normal offline run against `MockJmapServer` is untouched.
 
 Notes:
 
@@ -81,4 +76,4 @@ Notes:
 
 ## CI direction (when ready)
 
-Run `pnpm test:jmap-client-e2e` in this repo's CI against branches that touch `app/Services/Jmap/` or `app/Http/Controllers/Api/V1/Jmap/` — the script already handles clone, boot, token, and cleanup (the client repo is public, no token needed). That direction catches backend regressions before merge — the backend is the moving part.
+Run `pnpm test:jmap-client-e2e` in this repo's CI against branches that touch `app/Services/Jmap/` or `app/Http/Controllers/Api/V1/Jmap/` — the script handles API boot, token, and cleanup, and the client is in-repo, so no secrets or checkouts are needed. That direction catches backend regressions before merge.

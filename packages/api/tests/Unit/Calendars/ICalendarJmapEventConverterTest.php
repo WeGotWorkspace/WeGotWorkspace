@@ -27,6 +27,7 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertSame('Simple Event', $event['title']);
         $this->assertSame('2026-06-15T10:00:00Z', $event['start']);
         $this->assertSame('2026-06-15T11:00:00Z', $event['end']);
+        $this->assertSame('PT1H', $event['duration']);
         $this->assertSame('Notes here', $event['description']);
         $this->assertSame('Room A', $event['locations']['loc1']['name']);
 
@@ -36,6 +37,20 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertStringContainsString('SUMMARY:Simple Event', $roundTrip);
         $this->assertStringContainsString('UID:test-uid-1', $roundTrip);
         $this->assertStringContainsString('LOCATION:Room A', $roundTrip);
+    }
+
+    public function test_floating_dtend_emits_duration_for_apple_style_ics(): void
+    {
+        // Apple Calendar writes DTSTART/DTEND without DURATION; web client needs duration.
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Apple Inc.//macOS 26.0.1//EN\r\n"
+            ."BEGIN:VEVENT\r\nUID:urn:uuid:synct-ie\r\nSUMMARY:Synct ie\r\n"
+            ."DTSTART:20260810T100000\r\nDTEND:20260810T140000\r\n"
+            ."RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame('2026-08-10T10:00:00', $event['start']);
+        $this->assertSame('2026-08-10T14:00:00', $event['end']);
+        $this->assertSame('PT4H', $event['duration']);
     }
 
     public function test_recurring_event_preserves_rrule(): void
@@ -59,6 +74,21 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $event = $this->converter->eventFromIcs($ics);
         $this->assertTrue($event['showWithoutTime']);
         $this->assertSame('2026-07-04', $event['start']);
+        $this->assertSame('P1D', $event['duration']);
+    }
+
+    /**
+     * RFC 8984 §1.4.6 Duration ABNF allows only weeks/days before T — never years
+     * or months (months have no fixed length). A sabbatical-length all-day span
+     * must emit P{n}D, not DateInterval's calendar P2M5D.
+     */
+    public function test_multi_month_all_day_duration_uses_days_not_months(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sabbatical\r\nSUMMARY:Sabbatical\r\nDTSTART;VALUE=DATE:20260101\r\nDTEND;VALUE=DATE:20260306\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame('P64D', $event['duration']);
+        $this->assertDoesNotMatchRegularExpression('/P[^T]*[YM]/', $event['duration']);
     }
 
     public function test_multi_vevent_reads_all_events(): void

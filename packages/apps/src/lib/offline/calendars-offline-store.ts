@@ -1,0 +1,170 @@
+import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import type { CalendarEventPatch, CalendarInfo } from "@/calendar-core/src/calendar-types";
+import { rememberOfflineCalendarsUsername } from "@/lib/offline/offline-session";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import {
+  isRetryableOutboxRow,
+  listOutboxMutationsForDomain,
+} from "@/lib/offline/core/outbox-store";
+import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import {
+  CALENDARS_DOMAIN,
+  calendarsCalendarsTable,
+  calendarsEventsTable,
+  type OfflineCalendarEventRow,
+} from "@/lib/offline/calendars/calendars-schema";
+import { coalesceCalendarEventPatches } from "@/lib/offline/calendars/calendars-patch-merge";
+
+export {
+  enqueueOutboxMutation,
+  listOutboxMutations,
+  markOutboxError,
+  removeOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
+
+const META_SESSION = "calendars:session";
+const META_SYNC_TOKEN_PREFIX = "calendars:sync:";
+
+function eventCalendarId(event: JmapCalendarEvent): string {
+  return Object.keys(event.calendarIds ?? {})[0] ?? "";
+}
+
+function eventRow(event: JmapCalendarEvent, pendingSync: boolean): OfflineCalendarEventRow {
+  return {
+    id: event.id,
+    calendarId: eventCalendarId(event),
+    data: JSON.stringify(event),
+    pendingSync,
+    updatedAt: Date.now(),
+  };
+}
+
+export async function readCalendarBootstrapFromCache(
+  username: string,
+): Promise<CalendarAppBootstrap | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const sessionRow = await db.meta.get(META_SESSION);
+  if (!sessionRow?.value) return null;
+
+  const calendars = await calendarsCalendarsTable(db).toArray();
+  const events = await calendarsEventsTable(db).toArray();
+  if (calendars.length === 0 && events.length === 0) return null;
+
+  return {
+    session: JSON.parse(sessionRow.value) as CalendarAppBootstrap["session"],
+    data: {
+      calendars: calendars.map((row) => JSON.parse(row.data) as CalendarInfo),
+      events: events.map((row) => JSON.parse(row.data) as JmapCalendarEvent),
+    },
+  };
+}
+
+export async function writeCalendarBootstrapToCache(
+  username: string,
+  bootstrap: CalendarAppBootstrap,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const events = calendarsEventsTable(db);
+  const calendars = calendarsCalendarsTable(db);
+  const pendingRows = await events.filter((row) => row.pendingSync).toArray();
+  await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+  rememberOfflineCalendarsUsername(username);
+  await calendars.clear();
+  await calendars.bulkPut(
+    bootstrap.data.calendars.map((calendar) => ({
+      id: calendar.id,
+      data: JSON.stringify(calendar),
+    })),
+  );
+  await events.clear();
+  await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
+  if (pendingRows.length > 0) {
+    await events.bulkPut(pendingRows);
+  }
+}
+
+export async function upsertCalendarEventInCache(
+  username: string,
+  event: JmapCalendarEvent,
+  pendingSync = false,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await calendarsEventsTable(db).put(eventRow(event, pendingSync));
+}
+
+export async function removeCalendarEventFromCache(
+  username: string,
+  eventId: string,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await calendarsEventsTable(db).delete(eventId);
+}
+
+export async function readCalendarSyncToken(
+  username: string,
+  scope: string,
+): Promise<string | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await db.meta.get(`${META_SYNC_TOKEN_PREFIX}${scope}`);
+  return row?.value ?? null;
+}
+
+export async function writeCalendarSyncToken(
+  username: string,
+  scope: string,
+  token: string,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.meta.put({ key: `${META_SYNC_TOKEN_PREFIX}${scope}`, value: token });
+}
+
+export async function listFailedCalendarOutbox(username: string): Promise<OfflineOutboxRow[]> {
+  const rows = await listOutboxMutationsForDomain(username, CALENDARS_DOMAIN);
+  return rows.filter(isRetryableOutboxRow);
+}
+
+export async function listPendingCalendarEventIds(username: string): Promise<string[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await calendarsEventsTable(db)
+    .filter((row) => row.pendingSync)
+    .toArray();
+  return rows.map((row) => row.id);
+}
+
+export function calendarsOutboxEventId(row: OfflineOutboxRow): string | null {
+  if (row.domain !== CALENDARS_DOMAIN) return null;
+  try {
+    const payload = JSON.parse(row.payload) as {
+      eventId?: string;
+      tempEventId?: string;
+      creationId?: string;
+    };
+    return payload.eventId ?? payload.tempEventId ?? payload.creationId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function enqueueCoalescedCalendarEventUpdate(
+  username: string,
+  eventId: string,
+  patch: CalendarEventPatch,
+): Promise<void> {
+  await enqueueCoalescedOutboxUpdate({
+    username,
+    domain: CALENDARS_DOMAIN,
+    entityId: eventId,
+    patch,
+    ifInState: undefined,
+    mergePatches: coalesceCalendarEventPatches,
+    entityIdFromRow: calendarsOutboxEventId,
+    buildUpdatePayload: (entityId, mergedPatch) => ({ eventId: entityId, patch: mergedPatch }),
+    readPatchFromPayload: (payload) => payload.patch as CalendarEventPatch,
+  });
+}
+
+export function createTempCalendarEventId(): string {
+  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
+}

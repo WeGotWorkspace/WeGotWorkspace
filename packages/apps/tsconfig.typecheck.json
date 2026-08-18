@@ -1,4 +1,12 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The vendored lit calendar elements (src/lib/calendar-elements) use lit's
+    // experimental decorators; imports pull them into this program, so the
+    // whole typecheck project runs with lit-compatible class semantics. Vite,
+    // esbuild, and vitest still transform per-file via the nearest tsconfig.
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false
+  },
   "exclude": ["**/*.stories.tsx", "**/*.stories.ts", "**/stories/**"]
 }

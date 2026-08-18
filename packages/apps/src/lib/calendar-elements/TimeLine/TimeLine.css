@@ -1,0 +1,351 @@
+* {
+  box-sizing: border-box;
+}
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  border: var(--border);
+  /* Consumers composing the timeline into a scroll/swipe context can relax this (e.g. pan-y);
+     active gestures still block native panning via a touchmove blocker while they run. */
+  touch-action: var(--time-line-touch-action, none);
+  user-select: none;
+  display: flex;
+  --__event-height: var(--event-height, 32px);
+  --border: 0.5px solid light-dark(#d0d0d0, #505050);
+  pointer-events: none;
+}
+
+/* cells container */
+.cells {
+  width: 100%;
+  flex: 1;
+  display: grid;
+  grid-auto-flow: row;
+  grid-auto-rows: 1fr;
+  grid-template-columns: var(--time-line-grid-rows, 1fr);
+}
+
+.cell {
+  outline: var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cell-header,
+.cell-footer {
+  flex-shrink: 0;
+}
+
+/* Events anchor to this region (absolute; vertical uses top/bottom % of height). */
+/* pointer-events auto so the drag-to-create gesture can start on the empty cell background. */
+.cell-main {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  pointer-events: auto;
+}
+
+/* Axis window active: clip content outside the visible sub-range. */
+.cell-main--windowed {
+  overflow: hidden;
+}
+
+/* Subdivision gridlines (gridInterval): pure-CSS 1px lines perpendicular to the flow.
+   Each background tile spans gridInterval of the visible axis window (--__grid-size, set
+   inline); the line is a 1px hard stop ending at --__grid-pos (100% = tile end, i.e. on the
+   next interval boundary; earlier when the window starts off-interval). Background renders
+   behind events/markers/create-preview by nature. */
+.cell-main--grid {
+  --__grid-line-color: var(
+    --time-line-grid-color,
+    light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%))
+  );
+}
+
+:host([flow="vertical"]) .cell-main--grid {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0 calc(var(--__grid-pos, 100%) - 1px),
+    var(--__grid-line-color) calc(var(--__grid-pos, 100%) - 1px) var(--__grid-pos, 100%),
+    transparent var(--__grid-pos, 100%) 100%
+  );
+  /* --time-line-grid-size: consumer length (e.g. hour height) so tiles match a
+     composed axis; otherwise the inline % from #gridLineVars. */
+  background-size: 100% var(--time-line-grid-size, var(--__grid-size, 100%));
+  background-repeat: repeat;
+}
+
+:host([flow="horizontal"]) .cell-main--grid {
+  background-image: linear-gradient(
+    to right,
+    transparent 0 calc(var(--__grid-pos, 100%) - 1px),
+    var(--__grid-line-color) calc(var(--__grid-pos, 100%) - 1px) var(--__grid-pos, 100%),
+    transparent var(--__grid-pos, 100%) 100%
+  );
+  background-size: var(--__grid-size, 100%) 100%;
+  background-repeat: repeat;
+}
+
+/* Horizontal flow is RTL-aware (time increases towards the left), so mirror the gradient and
+   anchor the tiling to the inline start (right edge). */
+:host([flow="horizontal"]) .cell-main--grid:dir(rtl) {
+  background-image: linear-gradient(
+    to left,
+    transparent 0 calc(var(--__grid-pos, 100%) - 1px),
+    var(--__grid-line-color) calc(var(--__grid-pos, 100%) - 1px) var(--__grid-pos, 100%),
+    transparent var(--__grid-pos, 100%) 100%
+  );
+  background-position: 100% 0;
+}
+
+/* Overlay z-order (events < create-preview < dragging < marker) leaves headroom below 500 so
+   stagger depths (z = 2 + depth per overlap level) can never climb past the overlays. */
+.marker {
+  position: absolute;
+  z-index: 700;
+  pointer-events: none;
+}
+
+:host([flow="vertical"]) .marker {
+  inset-inline: 0;
+  height: 0;
+  top: var(--__marker-pos, 0);
+  border-top: 2px solid var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+}
+
+.marker.marker--dimmed {
+  opacity: 0.35;
+}
+
+/* Lead dot where the now-line meets the first day column (full-width indicators). */
+:host([flow="vertical"]) .marker.marker--anchor::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+  transform: translate(-50%, -50%);
+}
+
+/* Horizontal flow uses logical insets so the time axis follows the inline direction (RTL-aware). */
+:host([flow="horizontal"]) .marker {
+  top: 0;
+  bottom: 0;
+  width: 0;
+  inset-inline-start: var(--__marker-pos, 0);
+  border-inline-start: 2px solid var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+}
+
+/* Snapped drop-target ghost during a move gesture: plain translucent tint at the snapped
+   placement (grid-view parity with `--_lc-grid-ghost-color`) while the dragged card follows
+   the pointer freely above it. Sits above resting events (z 2…) and below the lifted card (600). */
+.move-ghost {
+  position: absolute;
+  z-index: 500;
+  pointer-events: none;
+  border-radius: 4px;
+  background: var(
+    --time-line-move-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+:host([flow="vertical"]) .move-ghost {
+  /* Match event gutters so the drop target aligns with the card, not the column edges. */
+  inset-inline: var(--time-line-event-inline-inset, 0px);
+  top: var(--__start, 0);
+  bottom: var(--__end, 0);
+}
+
+:host([flow="horizontal"]) .move-ghost {
+  top: 0;
+  height: var(--__event-height);
+  /* Same end-of-bar gutter as horizontal events (whole span, not per day). */
+  inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inline-inset, 0px));
+  inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inline-inset, 0px));
+}
+
+/* Horizontal lane layouts: park the ghost on the dragged event's (frozen) lane. */
+:host([flow="horizontal"][layout="timeline"]) .move-ghost,
+:host([flow="horizontal"][layout="masonry"]) .move-ghost,
+:host([flow="horizontal"][layout="stagger"]) .move-ghost {
+  top: calc(var(--__lane, 0) * var(--__event-height));
+}
+
+/* Drag-to-create preview: same slot geometry as an event; the card chrome comes from
+   `createPreviewTemplate` / `eventTemplate` (a real event-card), not a dashed ghost. */
+.create-preview {
+  position: absolute;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  flex: 1;
+  /* Size container so an event-card's height breakpoints resolve against this wrapper. */
+  container-type: size;
+  container-name: event-card;
+}
+
+:host([flow="vertical"]) .create-preview {
+  inset-inline: var(--time-line-event-inline-inset, 0px);
+  top: var(--__start, 0);
+  bottom: var(--__end, 0);
+  min-height: var(--time-line-event-min-size, 0px);
+}
+
+/* Horizontal events always render one lane tall (see `.event` below), so the create card
+   previews the event that will actually be created: first-lane position, one lane height. */
+:host([flow="horizontal"]) .create-preview {
+  top: 0;
+  height: var(--__event-height);
+  inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inline-inset, 0px));
+  inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inline-inset, 0px));
+}
+
+.create-preview > * {
+  flex: 1;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.event {
+  position: absolute;
+  will-change: transform;
+  display: flex;
+  flex: 1;
+  z-index: 2;
+  /* Rest/hover: pointer (edit). Press/drag cursors below; event-card is targeted so its
+     :host { cursor-pointer } does not win while the button is down. */
+  cursor: pointer;
+  /* Size container so an event-card's height breakpoints (@container (max-height: …) in
+     EventCard.css) resolve against this wrapper's laid-out size: flow cards are inline-size
+     containers themselves, so height queries skip them and land here via the flat tree. */
+  container-type: size;
+  container-name: event-card;
+}
+
+.event:active,
+.event:active event-card {
+  cursor: grab;
+}
+
+.event.event--dragging event-card {
+  cursor: grabbing;
+}
+
+.event.event--dragging {
+  cursor: grabbing;
+  z-index: 600;
+  /* Subtle lift for the free-following card (follows the card's shape, not the wrapper box). */
+  filter: drop-shadow(0 3px 8px light-dark(rgb(15 23 42 / 22%), rgb(0 0 0 / 45%)));
+}
+
+/* Time axis in vertical flow: % on top/bottom resolve against .cell-main height (not margin-% which uses width). */
+/* --time-line-event-min-size: consumer-set floor for very short events (default 0 = pure
+   geometry). The event keeps its true start (top); when the time range resolves shorter than
+   the floor, min-height wins over the bottom inset and the card extends downward only —
+   visual/hit area grows, the underlying range (and gesture math, which reads event data and
+   .cell-main rects, never this element's height) is untouched. */
+:host([flow="vertical"]) .event {
+  /* --time-line-event-inline-inset: horizontal gutter so day-column separators stay visible
+     beside cards (Google Calendar–style). Default 0; CalendarTimelineView sets it on timed
+     day/week. Applied on the wrapper (and matching ghosts), not box-shadow. */
+  inset-inline: var(--time-line-event-inline-inset, 0px);
+  top: var(--__start, 0);
+  bottom: var(--__end, 0);
+  height: auto;
+  min-height: var(--time-line-event-min-size, 0px);
+}
+
+/* Vertical: split cell width across overlap lanes (see `masonryLanes` / timeline in TimeLine.ts). */
+:host([flow="vertical"][layout="timeline"]) .event,
+:host([flow="vertical"][layout="masonry"]) .event {
+  inset-inline-start: calc(
+    var(--__lane, 0) * 100% / var(--__lane-count, 1) + var(--time-line-event-inline-inset, 0px)
+  );
+  inset-inline-end: calc(
+    (var(--__lane-count, 1) - var(--__lane, 0) - 1) * 100% / var(--__lane-count, 1) +
+      var(--time-line-event-inline-inset, 0px)
+  );
+}
+
+/* Vertical stagger (calendar-style overlaps, see `verticalCellStaggerLayouts` in TimeLine.ts):
+   same-start events split the width via the lane vars (indent is 0 there); a later-starting
+   overlap keeps --__lane-count 1 and shifts by --__indent overlap levels at the inline start,
+   stacking above the earlier events (z = 2 + depth) so their summaries stay readable. */
+:host([flow="vertical"][layout="stagger"]) .event {
+  inset-inline-start: calc(
+    var(--__lane, 0) * 100% / var(--__lane-count, 1) + var(--__indent, 0) *
+      var(--time-line-stagger-indent, 12px) + var(--time-line-event-inline-inset, 0px)
+  );
+  inset-inline-end: calc(
+    (var(--__lane-count, 1) - var(--__lane, 0) - 1) * 100% / var(--__lane-count, 1) +
+      var(--time-line-event-inline-inset, 0px)
+  );
+  z-index: calc(2 + var(--__indent, 0));
+}
+
+/* The :host([...]) rule above outranks `.event--dragging`; keep the dragged event on top. */
+:host([flow="vertical"][layout="stagger"]) .event.event--dragging {
+  z-index: 600;
+}
+
+/* Horizontal: --__start/--__end are the time-axis placement (%, or a multi-day calc for
+   --__end when rowSpan > 0). Adding --time-line-event-inline-inset insets only the bar's
+   overall start/end — mid-span day boundaries stay flush so a multi-day bar reads continuous
+   (Google Calendar–style). */
+:host([flow="horizontal"]) .event {
+  top: 0;
+  min-height: var(--__event-height);
+  max-height: var(--__event-height);
+  height: var(--__event-height);
+  inset-inline-start: calc(var(--__start) + var(--time-line-event-inline-inset, 0px));
+  inset-inline-end: calc(var(--__end) + var(--time-line-event-inline-inset, 0px));
+}
+
+/* Horizontal flow has no stagger geometry; [layout="stagger"] falls back to masonry lanes
+   (see `horizLaneMode` in TimeLine.ts), so it shares the horizontal lane rules below. */
+:host([flow="horizontal"][layout="timeline"]) .cell-main,
+:host([flow="horizontal"][layout="masonry"]) .cell-main,
+:host([flow="horizontal"][layout="stagger"]) .cell-main {
+  min-height: var(--cell-height, var(--__lane-stack));
+}
+
+/* height="auto": cell height is container-driven by default — no min-height (`auto` via the
+   invalid-at-computed-value-time var() below), so cells shrink and overflowing lanes are
+   clipped behind the "+N" footer. Consumers can set --cell-min-height (a length) to opt
+   a row back into growth: the cell then keeps at least that floor and still grows with the
+   per-cell lane stack. The floor must be combined with --__lane-stack here at the cell level;
+   substituting it on the host would resolve --__lane-stack to its fallback before the per-cell
+   value exists. */
+:host([flow="horizontal"][height="auto"][layout="timeline"]) .cell-main,
+:host([flow="horizontal"][height="auto"][layout="masonry"]) .cell-main,
+:host([flow="horizontal"][height="auto"][layout="stagger"]) .cell-main {
+  min-height: max(var(--cell-min-height), var(--__lane-stack, 0px));
+}
+
+:host([flow="horizontal"][layout="timeline"]) .event,
+:host([flow="horizontal"][layout="masonry"]) .event,
+:host([flow="horizontal"][layout="stagger"]) .event {
+  top: calc(var(--__lane, 0) * var(--__event-height));
+  min-height: var(--__event-height);
+  max-height: var(--__event-height);
+  height: var(--__event-height);
+  bottom: auto;
+}
+
+.event > * {
+  flex: 1;
+  pointer-events: auto;
+}

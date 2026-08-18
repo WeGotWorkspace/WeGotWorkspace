@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:host {
+  @apply block w-full h-full min-h-0;
+}
+
+.calendar-view-group {
+  @apply block w-full h-full min-h-0;
+}
+
+.content {
+  @apply relative min-h-0 h-full;
+  /* VT name lives on light-DOM `.calendar-main__range` — shadow names do not
+     participate reliably, and root animation is disabled during range zoom. */
+  transform-origin: center center;
+}
+
+.content > * {
+  @apply w-full h-full;
+}
+
+/* Fallback enter animation for day/week/month/year swaps (no View Transitions API). */
+.content.calendar-range--animate-in {
+  animation: calendar-range-fallback-zoom-in 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
+}
+
+.content.calendar-range--animate-out {
+  animation: calendar-range-fallback-zoom-out 360ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
+}
+
+@keyframes calendar-range-fallback-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes calendar-range-fallback-zoom-out {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content.calendar-range--animate-in,
+  .content.calendar-range--animate-out {
+    animation: none;
+  }
+}
+
+/* Month composition: shared weekday header above the timeline month (which intentionally has
+   no weekday row of its own — grid month view parity, where the header lived inside
+   CalendarMonthView). */
+.timeline-month-layout {
+  @apply grid min-h-0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.timeline-month-layout > .timeline-month-view {
+  @apply min-h-0;
+}

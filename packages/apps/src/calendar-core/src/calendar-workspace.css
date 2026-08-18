@@ -1,0 +1,486 @@
+@import "../../styles.css" reference;
+@import "../../workspace-shell/src/workspace-split-app.css";
+
+/**
+ * Calendar product shell: cream main pane + light indigo sidebar tint.
+ * Nav text stays ink-on-tint; primary CTA and app switcher lockup use the
+ * indigo accent with white glyphs. Import only from {@link CalendarWorkspace}.
+ * The calendar surface itself is the vendored lit-calendar view stack
+ * (shadow DOM, own styles); this file styles the React chrome around it.
+ */
+.calendar-workspace {
+  --calendar-accent: #6366f1;
+  /* CTA background: darker indigo so white 16px text clears WCAG AA 4.5:1
+     (the raw accent measures 4.46:1 and fails the Storybook a11y gate). */
+  --calendar-accent-strong: #5558e8;
+  --calendar-sidebar: color-mix(in oklab, var(--calendar-accent) 10%, var(--color-cream, #ffffff));
+  --calendar-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+
+  --workspace-accent: var(--calendar-accent);
+  --color-emerald: var(--calendar-accent);
+  --workspace-root-bg: var(--color-cream, #ffffff);
+  --workspace-detail-bg: var(--color-cream, #ffffff);
+
+  --app-sidebar-bg: var(--calendar-sidebar);
+  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --app-sidebar-color: var(--color-ink);
+  --sidebar-logo-close-button-color: var(--color-ink);
+  --sidebar-badge-fg: var(--calendar-accent);
+  --workspace-sidebar-toggle-color: var(--color-ink);
+  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
+
+  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --workspace-user-footer-avatar-color: var(--color-ink);
+  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --button-primary-bg: var(--calendar-accent-strong);
+  --button-primary-fg: #ffffff;
+  --primary: var(--calendar-accent-strong);
+  --primary-foreground: #ffffff;
+
+  /* Full-bleed main column (drive/docs pattern): the lit calendar surface
+     fills the viewport instead of the default centered 42rem measure. */
+  --workspace-main-content-max-width: none;
+
+  /* The lit views highlight "today" and previews with this. */
+  --lc-higlight-color: var(--calendar-accent);
+}
+
+.calendar-workspace .app-sidebar__scroll {
+  --button-primary-bg: var(--calendar-accent-strong);
+  --button-primary-fg: #ffffff;
+  --button-subtle-color: var(--color-ink);
+  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
+}
+
+/**
+ * App switcher lockup: same calendar.svg as the homescreen tile.
+ * Do not mono-map --wai-detail / --wai-detail-muted to white — that washes the
+ * day grid into a blank white square on the indigo tile.
+ */
+.calendar-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--calendar-accent);
+  background-color: var(--app-switch-icon-bg);
+}
+
+.calendar-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: #ffffff;
+  --wai-detail: #4f46e5;
+  --wai-detail-muted: #c7d2fe;
+}
+
+/* Header IconButtons match {@link WorkspaceSidebarToggle}; leave labeled Buttons alone. */
+.calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+.calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+  @apply size-9 shrink-0;
+}
+
+/* Prev/next (ViewHeader titleLeading): inline before the title; stacked at row end. */
+.calendar-workspace .calendar-header-nav {
+  @apply flex shrink-0 items-center gap-0;
+}
+
+.calendar-workspace .calendar-header-actions {
+  @apply flex items-center gap-1;
+}
+
+.calendar-workspace .calendar-header-actions .calendar-view-select {
+  width: auto;
+  min-width: 7rem;
+  height: 2.25rem;
+  background-color: var(--color-cream, #ffffff);
+}
+
+.calendar-workspace .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+}
+
+/* Full-width row: checkbox + name + overflow share one hover/selected surface.
+   Inline padding matches SidebarSection heading / MenuItem (px-4) so ⋯ lines up with +. */
+.calendar-workspace .calendar-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 2rem;
+  padding-block: 0.25rem;
+  padding-inline: 1rem;
+  border-radius: 0.25rem;
+  color: color-mix(in oklab, var(--color-ink) 75%, transparent);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-workspace .calendar-sidebar-row:hover {
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.calendar-workspace .calendar-sidebar-row--selected {
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  color: var(--color-ink);
+}
+
+.calendar-workspace .calendar-sidebar-row__visibility {
+  --primary: var(--calendar-row-color, var(--color-ink));
+  --primary-foreground: #ffffff;
+  flex-shrink: 0;
+  border-color: var(--calendar-row-color, var(--color-ink));
+}
+
+.calendar-workspace .calendar-sidebar-row__visibility[data-state="checked"] {
+  background-color: var(--calendar-row-color, var(--color-ink));
+  border-color: var(--calendar-row-color, var(--color-ink));
+  color: #ffffff;
+}
+
+.calendar-workspace .calendar-sidebar-row__visibility[data-state="unchecked"] {
+  background-color: transparent;
+  opacity: 0.85;
+}
+
+.calendar-workspace .calendar-sidebar-row__select {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.calendar-workspace .calendar-sidebar-row__select:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
+  outline-offset: 1px;
+  border-radius: 0.125rem;
+}
+
+.calendar-workspace .calendar-sidebar-row__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Match `.sidebar-section__add` (size-6); muted so it stays lighter than row text. */
+.calendar-workspace .calendar-sidebar-row__edit.button {
+  @apply size-6 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-workspace .calendar-sidebar-row__edit:hover,
+.calendar-workspace .calendar-sidebar-row__edit:focus-visible {
+  color: var(--color-ink);
+}
+
+/* Fine pointers: hide until row hover / focus-within. Touch keeps pencils visible. */
+@media (hover: hover) and (pointer: fine) {
+  .calendar-workspace .calendar-sidebar-row__edit.button {
+    opacity: 0;
+  }
+
+  .calendar-workspace .calendar-sidebar-row:hover .calendar-sidebar-row__edit.button,
+  .calendar-workspace .calendar-sidebar-row:focus-within .calendar-sidebar-row__edit.button {
+    opacity: 1;
+  }
+}
+
+/* Calendar color dots render at full color. */
+.calendar-workspace .calendar-sidebar-row .calendar-sidebar-dot {
+  opacity: 1;
+}
+
+.calendar-workspace .workspace-app-layout__main-scroll {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-workspace .workspace-app-layout__main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.calendar-workspace .calendar-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0.5rem 1rem 1rem;
+  /* Clip the slight zoom so scale does not spill into the header. */
+  overflow: hidden;
+}
+
+.calendar-workspace .calendar-main__range {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  transform-origin: center center;
+}
+
+.calendar-workspace .calendar-main wgw-calendar-surface {
+  flex: 1;
+  min-height: 0;
+}
+
+/**
+ * Portaled event dialog sits outside `.calendar-workspace`; repeat the accent
+ * tokens so {@link Button} and form chrome match the calendar shell.
+ */
+.calendar-dialog-surface {
+  --calendar-accent: #6366f1;
+  --calendar-accent-strong: #5558e8;
+  --color-emerald: var(--calendar-accent);
+  --button-primary-bg: var(--calendar-accent-strong);
+  --button-primary-fg: #ffffff;
+  --primary: var(--calendar-accent-strong);
+  --primary-foreground: #ffffff;
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --card-title-icon-color: var(--calendar-accent);
+  --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+}
+
+.calendar-dialog-surface.calendar-event-dialog {
+  @apply flex max-h-[min(90dvh,56rem)] flex-col overflow-hidden;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__form {
+  @apply flex min-h-0 flex-1 flex-col;
+  gap: 0.9rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__fields {
+  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto;
+  overscroll-behavior: contain;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__fields > .field-label-row {
+  @apply mb-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__card {
+  @apply mb-0 p-4;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__card .card__header {
+  @apply mb-3;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__card .card__header-row .button {
+  @apply shrink-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__repeat-trigger,
+.calendar-dialog-surface .calendar-event-dialog__timezone-trigger,
+.calendar-dialog-surface .calendar-event-dialog__show-as-trigger {
+  @apply w-full min-w-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarm-row {
+  @apply flex min-w-0 flex-wrap items-center gap-2;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarm-offset {
+  @apply min-w-36 flex-1;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarm-custom {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarm-custom input[type="number"] {
+  @apply w-20;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarm-when {
+  @apply min-w-44 flex-1;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__title-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__calendar-trigger {
+  /* Shared CalendarColorSwatchTrigger sizing; keep title-row alignment. */
+  flex-shrink: 0;
+}
+
+/* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
+.calendar-event-dialog__calendar-menu {
+  min-width: 12rem;
+}
+
+.calendar-event-dialog__calendar-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-event-dialog__calendar-option .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  opacity: 1;
+}
+
+.calendar-event-dialog__calendar-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-event-dialog__calendar-check {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__datetime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-trigger {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
+  background: var(--color-cream, #ffffff);
+  color: var(--color-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-trigger:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-trigger:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__date-popover {
+  z-index: 80;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__datetime input[type="time"] {
+  width: auto;
+  min-width: 7.5rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends {
+  @apply grid items-center gap-2;
+  grid-template-columns: minmax(6.5rem, 1fr) minmax(8.5rem, 1fr);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends > .select-trigger {
+  @apply w-full min-w-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra {
+  @apply flex min-h-9 min-w-0 items-center gap-1;
+}
+
+.calendar-dialog-surface
+  .calendar-event-dialog__recurrence-ends-extra
+  .calendar-event-dialog__date-trigger,
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count {
+  @apply w-full;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count input[type="number"] {
+  width: 4.5rem;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__recurrence-count-suffix {
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  font-size: 0.875rem;
+}
+
+.calendar-dialog-surface .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__footer {
+  /* DialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
+  @apply shrink-0 gap-2 sm:gap-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
+  color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
+}
+
+.calendar-dialog-surface.calendar-recurrence-scope-dialog {
+  max-inline-size: 24rem;
+}
+
+.calendar-dialog-surface .calendar-recurrence-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-block-start: 0.25rem;
+  min-inline-size: 0;
+}
+
+.calendar-dialog-surface .calendar-recurrence-scope__action {
+  inline-size: 100%;
+  justify-content: center;
+}

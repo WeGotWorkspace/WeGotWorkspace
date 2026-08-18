@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+:host .interaction-surface {
+  @apply m-0 text-[0px] relative w-full h-full border-0 bg-none outline-none p-0;
+}
+
+:host .keyboard-hint {
+  @apply sr-only;
+}

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\ICalendarDateList;
+use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\ICalendarRecurrence;
+use App\Services\VObject\ICalendarUid;
 use App\Services\VObject\VObjectPayloadGuard;
 use Sabre\VObject\Component\VAlarm;
 use Sabre\VObject\Component\VCalendar;
@@ -67,7 +71,7 @@ final class VEventToJmapEventConverter
         if (isset($vevent->UID)) {
             $event['uid'] = trim((string) $vevent->UID->getValue());
         } else {
-            $event['uid'] = CalendarConversionSupport::generateUid((string) $vevent->serialize());
+            $event['uid'] = ICalendarUid::fromSeed((string) $vevent->serialize());
         }
 
         if (isset($vevent->SUMMARY)) {
@@ -85,17 +89,26 @@ final class VEventToJmapEventConverter
         $timeZone = null;
 
         if (isset($vevent->DTSTART)) {
-            $start = CalendarConversionSupport::jmapDateTimeFromProperty($vevent->DTSTART);
+            $start = ICalendarDateTime::fromProperty($vevent->DTSTART);
             $event['start'] = $start['value'];
             $showWithoutTime = $start['showWithoutTime'];
             $timeZone = $start['timeZone'];
         }
 
         if (isset($vevent->DTEND)) {
-            $end = CalendarConversionSupport::jmapDateTimeFromProperty($vevent->DTEND);
+            $end = ICalendarDateTime::fromProperty($vevent->DTEND);
             $event['end'] = $end['value'];
             $showWithoutTime = $showWithoutTime || $end['showWithoutTime'];
             $timeZone ??= $end['timeZone'];
+            if (isset($event['start']) && is_string($event['start'])) {
+                $duration = CalendarConversionSupport::durationBetweenJmapDateTimes(
+                    $event['start'],
+                    $end['value'],
+                );
+                if ($duration !== null) {
+                    $event['duration'] = $duration;
+                }
+            }
         } elseif (isset($vevent->DURATION)) {
             $event['duration'] = trim((string) $vevent->DURATION->getValue());
         }
@@ -111,7 +124,7 @@ final class VEventToJmapEventConverter
         if (isset($vevent->RRULE)) {
             $rules = [];
             foreach ($vevent->select('RRULE') as $property) {
-                $rules[] = CalendarConversionSupport::recurrenceRuleFromProperty($property);
+                $rules[] = ICalendarRecurrence::ruleFromProperty($property);
             }
             if ($rules !== []) {
                 $event['recurrenceRules'] = $rules;
@@ -121,7 +134,7 @@ final class VEventToJmapEventConverter
         if (isset($vevent->EXRULE)) {
             $excludedRules = [];
             foreach ($vevent->select('EXRULE') as $property) {
-                $excludedRules[] = CalendarConversionSupport::recurrenceRuleFromProperty($property);
+                $excludedRules[] = ICalendarRecurrence::ruleFromProperty($property);
             }
             if ($excludedRules !== []) {
                 $event['excludedRecurrenceRules'] = $excludedRules;
@@ -131,11 +144,8 @@ final class VEventToJmapEventConverter
         if (isset($vevent->EXDATE)) {
             $excluded = [];
             foreach ($vevent->select('EXDATE') as $property) {
-                foreach (explode(',', (string) $property->getValue()) as $part) {
-                    $part = trim($part);
-                    if ($part !== '') {
-                        $excluded[] = CalendarConversionSupport::normalizeUtcDateTime($part);
-                    }
+                foreach (ICalendarDateList::jmapValuesFromProperty($property) as $part) {
+                    $excluded[] = $part;
                 }
             }
             if ($excluded !== []) {
@@ -146,13 +156,9 @@ final class VEventToJmapEventConverter
         if (isset($vevent->RDATE)) {
             $overrides = $event['recurrenceOverrides'] ?? [];
             foreach ($vevent->select('RDATE') as $property) {
-                foreach (explode(',', (string) $property->getValue()) as $part) {
-                    $part = trim($part);
-                    if ($part !== '') {
-                        $key = CalendarConversionSupport::normalizeUtcDateTime($part);
-                        if (! isset($overrides[$key])) {
-                            $overrides[$key] = [];
-                        }
+                foreach (ICalendarDateList::jmapValuesFromProperty($property) as $key) {
+                    if (! isset($overrides[$key])) {
+                        $overrides[$key] = [];
                     }
                 }
             }
@@ -187,13 +193,13 @@ final class VEventToJmapEventConverter
         }
 
         if (isset($vevent->CREATED)) {
-            $event['created'] = CalendarConversionSupport::normalizeUtcDateTime((string) $vevent->CREATED->getValue());
+            $event['created'] = ICalendarDateTime::fromProperty($vevent->CREATED)['value'];
         }
 
         if (isset($vevent->{'LAST-MODIFIED'})) {
-            $event['updated'] = CalendarConversionSupport::normalizeUtcDateTime((string) $vevent->{'LAST-MODIFIED'}->getValue());
+            $event['updated'] = ICalendarDateTime::fromProperty($vevent->{'LAST-MODIFIED'})['value'];
         } elseif (isset($vevent->DTSTAMP)) {
-            $event['updated'] = CalendarConversionSupport::normalizeUtcDateTime((string) $vevent->DTSTAMP->getValue());
+            $event['updated'] = ICalendarDateTime::fromProperty($vevent->DTSTAMP)['value'];
         }
 
         if (isset($vevent->SEQUENCE)) {

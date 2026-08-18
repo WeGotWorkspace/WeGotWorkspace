@@ -34,6 +34,7 @@ const pwaDir = join(publicDir, "pwa-icons");
 
 const WORKSPACE_APPS = [
   "admin",
+  "calendar",
   "contacts",
   "docs",
   "drive",
@@ -43,7 +44,7 @@ const WORKSPACE_APPS = [
   "settings",
   "tasks",
 ];
-const FUTURE_APPS = ["calendar", "reminders"];
+const FUTURE_APPS = ["reminders"];
 /** Shell / suite PWA manifest (home.webmanifest) — vector only, no workspace grid tile. */
 const SHELL_APPS = ["home"];
 const ALL_APPS = [...WORKSPACE_APPS, ...FUTURE_APPS, ...SHELL_APPS];

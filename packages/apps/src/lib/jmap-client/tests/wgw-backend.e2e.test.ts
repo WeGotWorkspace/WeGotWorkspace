@@ -1,10 +1,9 @@
-// Live e2e: the UNMODIFIED @lit-calendar/jmap-client against the WeGotWorkspace
-// JMAP envelope (docs/calendars/jmap-envelope.md). Canonical copy lives in the
-// backend repo at tools/jmap-client-e2e/; tools/test-jmap-client-e2e.sh copies
-// it into the client's src/tests/ for the run and removes it afterwards.
+// Live e2e: the vendored jmap-client against the JMAP envelope
+// (packages/api/docs/calendars/jmap-envelope.md), run by
+// tools/test-jmap-client-e2e.sh against a local API.
 //
-// Skips unless JMAP_E2E_URL + JMAP_E2E_TOKEN are set, so it never runs in the
-// client repo's normal offline suite.
+// Skips unless JMAP_E2E_URL + JMAP_E2E_TOKEN are set, so the normal offline
+// suite (MockJmapServer) is untouched.
 import { describe, expect, it } from "vitest";
 import { JmapCalendarsClient } from "../calendars/JmapCalendarsClient.js";
 import { JmapClient } from "../core/JmapClient.js";

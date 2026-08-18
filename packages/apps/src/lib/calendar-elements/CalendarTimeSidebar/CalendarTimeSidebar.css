@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@import "../styles/z-index.css";
+
+:host {
+  @apply block h-full;
+  width: var(--_lc-time-sidebar-width, max-content);
+  min-width: max-content;
+  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+}
+
+.time-sidebar {
+  @apply grid h-full min-h-0 relative;
+  /* Same tracks as the composed column (header / all-day / timed-gap / 24h).
+     align-content:start so leftover host height cannot stretch the hour rows. */
+  align-content: start;
+  grid-template-rows:
+    var(--_lc-time-sidebar-header-height, 0px)
+    var(--_lc-time-sidebar-all-day-height, 0px)
+    var(--_lc-time-sidebar-timed-gap, 0px)
+    var(--_lc-time-sidebar-timed-height, 100%);
+  background-color: var(--_lc-time-sidebar-bg, transparent);
+  --_lc-time-sidebar-layer-bg: var(
+    --_lc-time-sidebar-bg,
+    var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)))
+  );
+}
+
+.weekday-header-slot {
+  @apply min-h-0 sticky;
+  grid-row: 1;
+  z-index: var(--_lc-z-overlay-raised);
+  top: var(--_lc-time-sidebar-sticky-top-base, 0px);
+  background-color: var(--_lc-time-sidebar-layer-bg);
+}
+
+.all-day-slot {
+  @apply sticky;
+  grid-row: 2;
+  z-index: var(--_lc-z-overlay);
+  top: calc(
+    var(--_lc-time-sidebar-sticky-top-base, 0px) + var(--_lc-time-sidebar-header-height, 0px)
+  );
+  background-color: var(--_lc-time-sidebar-layer-bg);
+  border-bottom: var(--_lc-time-sidebar-all-day-divider-width, 0px) solid
+    var(--_lc-time-sidebar-all-day-divider-color, transparent);
+}
+
+.timed-slot {
+  @apply flex flex-col min-w-0 min-h-0 relative;
+  /* Row 3 is the timed gap (empty track); the hour column starts on the same
+     pixel row as <time-line class="timeline-timed">. */
+  grid-row: 4;
+  z-index: var(--_lc-z-base);
+}
+
+.hour-labels {
+  @apply block h-full min-h-0 pointer-events-none;
+  padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
+  /* Same 1px-at-end-of-hour-tile paint as TimeLine `.cell-main--grid`. */
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0 calc(100% - 1px),
+    var(--time-line-grid-color, transparent) calc(100% - 1px) 100%,
+    transparent 100% 100%
+  );
+  background-size: 100% var(--_lc-time-sidebar-hour-cell-height, calc(100% / 24));
+  background-repeat: repeat;
+}
+
+.hour-label-row:last-child {
+  height: auto;
+}
+
+.hour-label-row {
+  @apply flex justify-end items-start;
+  height: var(--_lc-time-sidebar-hour-cell-height, calc(100% / var(--_lc-time-sidebar-hours, 24)));
+}
+
+.hour-label {
+  @apply text-inherit block text-xs leading-none font-medium whitespace-nowrap text-end tabular-nums;
+  /* Sit the 12px label on the hour line (end of the previous tile) without moving the line. */
+  transform: translateY(-50%);
+}
+
+/* Current-time clock pill: vertically centered on --_lc-now-badge-top (set by the composed
+   timeline as a % of the timed slot, matching the TimeLine marker). The timed slot and
+   timed grid share the same top, so no extra offset. Inline inset is 0 and padding-inline
+   uses the same token as `.hour-labels`, so the digits share the hour labels' x-position. */
+.now-badge {
+  @apply text-end tabular-nums whitespace-nowrap;
+  position: absolute;
+  inset-inline-end: 0;
+  top: var(--_lc-now-badge-top, 0%);
+  z-index: var(--_lc-z-overlay-raised);
+  transform: translateY(-50%);
+  pointer-events: none;
+  padding-block: 2px;
+  padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
+  border-radius: 999px;
+  background: var(--lc-higlight-color, #ff0000);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 0 1px var(--_lc-time-sidebar-layer-bg, transparent);
+}

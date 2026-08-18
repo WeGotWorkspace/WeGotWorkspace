@@ -6208,6 +6208,8 @@
                     "sortOrder",
                     "isDefault",
                     "isSubscribed",
+                    "scope",
+                    "groupSlug",
                     "myRights"
                 ],
                 "properties": {
@@ -6248,6 +6250,21 @@
                     "isSubscribed": {
                         "type": "boolean"
                     },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ],
+                        "description": "Storage scope: personal (principals/{username}) or group (principals/groups/{slug})."
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Group slug when scope is group; null for personal calendars."
+                    },
                     "shareWith": {
                         "oneOf": [
                             {
@@ -6279,6 +6296,8 @@
                     "sortOrder": 0,
                     "isDefault": true,
                     "isSubscribed": true,
+                    "scope": "personal",
+                    "groupSlug": null,
                     "shareWith": null,
                     "myRights": {
                         "mayRead": true,
@@ -7099,6 +7118,13 @@
                     },
                     "id": {
                         "$ref": "#/components/schemas/JmapId"
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope."
                     }
                 },
                 "additionalProperties": false

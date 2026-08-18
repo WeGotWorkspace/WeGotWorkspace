@@ -58,3 +58,57 @@
   @apply mt-1 text-xs;
   color: var(--card-description-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }
+
+.card__panel {
+  @apply flex flex-col gap-1 rounded-xl border p-2;
+  border-color: var(
+    --card-panel-border-color,
+    color-mix(in oklab, var(--color-ink) 12%, transparent)
+  );
+  background-color: var(--card-panel-bg, color-mix(in oklab, var(--color-ink) 3%, transparent));
+}
+
+.card__row {
+  @apply flex items-center gap-2 rounded-lg px-2 py-1.5;
+}
+
+.card__row:hover {
+  background: var(--card-row-hover-bg, color-mix(in oklab, var(--color-ink) 5%, transparent));
+}
+
+.card__row-main {
+  @apply min-w-0 flex-1;
+}
+
+.card__row-title-line {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.card__row-title-group {
+  @apply flex min-w-0 flex-1 items-center gap-1;
+}
+
+.card__row-title {
+  @apply min-w-0 truncate text-sm font-medium;
+}
+
+.card__row-subtitle {
+  @apply truncate text-xs;
+  color: var(--card-row-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
+}
+
+.card__row-action {
+  @apply flex shrink-0 items-center gap-2;
+}
+
+.card__row--fill .card__row-action {
+  @apply min-w-0 flex-1;
+}
+
+.card__row-divider {
+  @apply my-1 border-t;
+  border-color: var(
+    --card-panel-border-color,
+    color-mix(in oklab, var(--color-ink) 12%, transparent)
+  );
+}

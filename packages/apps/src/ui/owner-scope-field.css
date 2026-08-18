@@ -1,0 +1,10 @@
+@import "../styles.css" reference;
+
+.owner-scope-field__trigger {
+  @apply w-full;
+}
+
+.owner-scope-field__trigger:disabled,
+.owner-scope-field__trigger[data-disabled] {
+  @apply pointer-events-none;
+}

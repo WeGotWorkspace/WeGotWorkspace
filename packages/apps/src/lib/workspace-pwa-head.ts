@@ -50,6 +50,12 @@ const WORKSPACE_PWA_META: Record<WorkspacePwaAppKey, WorkspacePwaMeta> = {
     appTitle: "Docs",
     manifest: "/manifests/docs.webmanifest",
   },
+  calendar: {
+    title: "Calendar",
+    description: "Your schedule — month, week, and day views.",
+    appTitle: "Calendar",
+    manifest: "/manifests/calendar.webmanifest",
+  },
   contacts: {
     title: "Contacts",
     description: "People and groups in your workspace.",

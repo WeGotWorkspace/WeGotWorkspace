@@ -6,6 +6,10 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
+use App\Models\Principal;
+use App\Services\Admin\AdminConstants;
+use App\Services\Drive\DriveGroupResolver;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -16,32 +20,43 @@ use Sabre\DAV\PropPatch;
 
 final class CalendarRepository
 {
+    /** Sabre CalDAV PDO maps this Apple property onto `calendarinstances.calendarcolor`. */
+    private const CALENDAR_COLOR_PROPERTY = '{http://apple.com/ns/ical/}calendar-color';
+
+    public function __construct(
+        private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
+        private readonly DriveGroupResolver $groups,
+    ) {}
+
     public function list(string $username): array
     {
-        $instances = CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->orderBy('calendarorder')
-            ->orderBy('id')
-            ->get();
+        $instances = $this->personalVeventInstances($username);
 
-        return [
-            'list' => $instances
-                ->map(fn (CalendarInstance $instance): array => $this->mapCalendar($instance))
-                ->values()
-                ->all(),
-        ];
+        $calendars = $instances
+            ->map(fn (CalendarInstance $instance): array => $this->mapCalendar($instance))
+            ->values()
+            ->all();
+
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            foreach ($this->groupVeventInstances($slug) as $instance) {
+                $calendars[] = $this->mapCalendar($instance, $slug);
+            }
+        }
+
+        return ['list' => $calendars];
     }
 
     public function show(string $username, string $calendarId): array
     {
-        $instance = $this->findOwnedCalendar($username, $calendarId);
+        $instance = $this->findAccessibleCalendar($username, $calendarId);
         if ($instance === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
 
-        return $this->mapCalendar($instance);
+        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId)
+            ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+
+        return $this->mapCalendar($instance, $groupSlug);
     }
 
     public function create(string $username, array $payload): array
@@ -51,10 +66,35 @@ final class CalendarRepository
             throw new ApiHttpException(400, 'name is required.', 'bad_request');
         }
 
+        $groupSlug = isset($payload['groupSlug']) && is_string($payload['groupSlug'])
+            ? trim($payload['groupSlug'])
+            : null;
+        if ($groupSlug === '') {
+            $groupSlug = null;
+        }
+
+        if ($groupSlug !== null) {
+            if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
+                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+            }
+            $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
+            $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
+            if ($group === null) {
+                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+            }
+            $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
+                (string) $group->uri,
+                (string) ($group->displayname ?? $groupSlug),
+            );
+        } else {
+            $principalUri = $this->principalUri($username);
+        }
+
         $uri = $this->allocateCalendarUri(
-            $username,
+            $principalUri,
             isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null,
             $name,
+            $groupSlug,
         );
 
         $properties = [
@@ -67,32 +107,33 @@ final class CalendarRepository
             $properties['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($description) ? $description : null;
         }
         if (array_key_exists('color', $payload) && is_string($payload['color']) && trim($payload['color']) !== '') {
-            $properties['{'.CalDAVPlugin::NS_CALDAV.'}calendar-color'] = trim($payload['color']);
+            $properties[self::CALENDAR_COLOR_PROPERTY] = trim($payload['color']);
         }
         if (array_key_exists('timeZone', $payload) && is_string($payload['timeZone']) && trim($payload['timeZone']) !== '') {
             $properties['{'.CalDAVPlugin::NS_CALDAV.'}calendar-timezone'] = trim($payload['timeZone']);
         }
 
         try {
-            $this->calBackend()->createCalendar($this->principalUri($username), $uri, $properties);
+            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
 
-        $instance = $this->findOwnedCalendar($username, $uri);
+        $instance = $this->findCalendarInstance($principalUri, $uri);
         if ($instance === null) {
             throw new ApiHttpException(500, 'Could not load created calendar.', 'server_error');
         }
 
-        return $this->mapCalendar($instance);
+        return $this->mapCalendar($instance, $groupSlug);
     }
 
     public function update(string $username, string $calendarId, array $payload): array
     {
-        $instance = $this->findOwnedCalendar($username, $calendarId);
-        if ($instance === null) {
+        $resolved = $this->resolveWritableCalendar($username, $calendarId);
+        if ($resolved === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
+        [$instance, $groupSlug] = $resolved;
 
         $mutations = [];
         if (array_key_exists('name', $payload)) {
@@ -108,7 +149,7 @@ final class CalendarRepository
         }
         if (array_key_exists('color', $payload)) {
             $color = $payload['color'];
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-color'] = is_string($color) && trim($color) !== '' ? trim($color) : null;
+            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
         }
         if (array_key_exists('timeZone', $payload)) {
             $timeZone = $payload['timeZone'];
@@ -123,17 +164,18 @@ final class CalendarRepository
 
         $instance->refresh();
 
-        return $this->mapCalendar($instance);
+        return $this->mapCalendar($instance, $groupSlug);
     }
 
     public function delete(string $username, string $calendarId, array $options = []): array
     {
-        $instance = $this->findOwnedCalendar($username, $calendarId);
-        if ($instance === null) {
+        $resolved = $this->resolveWritableCalendar($username, $calendarId);
+        if ($resolved === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
+        [$instance] = $resolved;
 
-        if ((string) $instance->uri === 'default') {
+        if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
         }
 
@@ -149,12 +191,13 @@ final class CalendarRepository
 
     public function changes(string $username, ?string $since): array
     {
-        $instances = CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->orderBy('uri')
-            ->get();
+        $instances = $this->personalVeventInstances($username);
+
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            foreach ($this->groupVeventInstances($slug) as $groupInstance) {
+                $instances->push($groupInstance);
+            }
+        }
 
         $currentState = $this->computeInstancesState($instances);
         $previous = $this->parseInstancesState($since);
@@ -164,7 +207,7 @@ final class CalendarRepository
                 'oldState' => '0',
                 'newState' => $currentState,
                 'hasMoreChanges' => false,
-                'created' => $instances->pluck('uri')->map(fn ($uri): string => (string) $uri)->all(),
+                'created' => $this->apiIdsForInstances($instances),
                 'updated' => [],
                 'destroyed' => [],
             ];
@@ -180,7 +223,7 @@ final class CalendarRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[(string) $instance->uri] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar?->synctoken ?? 1);
         }
 
         $created = [];
@@ -203,20 +246,125 @@ final class CalendarRepository
         return ['oldState' => $since, 'newState' => $currentState, 'hasMoreChanges' => false, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    private function findOwnedCalendar(string $username, string $calendarId): ?CalendarInstance
+    public function findAccessibleCalendar(string $username, string $calendarId): ?CalendarInstance
+    {
+        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId);
+        if ($groupSlug !== null) {
+            if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
+                return null;
+            }
+
+            return $this->ensureGroupCalendarInstance($groupSlug);
+        }
+
+        $owned = $this->findCalendarInstance($this->principalUri($username), $calendarId);
+        if ($owned !== null) {
+            return $owned;
+        }
+
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            $instance = $this->findCalendarInstance(AdminConstants::GROUP_PREFIX.$slug, $calendarId);
+            if ($instance !== null) {
+                return $instance;
+            }
+        }
+
+        return null;
+    }
+
+    public function apiIdForInstance(CalendarInstance $instance): string
+    {
+        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+        if ($groupSlug !== null) {
+            $uri = (string) $instance->uri;
+            if ($uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
+                return CalendarCollectionUris::groupCalendarApiId($groupSlug);
+            }
+        }
+
+        return (string) $instance->uri;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function accessiblePrincipalUris(string $username): array
+    {
+        $uris = [$this->principalUri($username)];
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            $uris[] = AdminConstants::GROUP_PREFIX.$slug;
+        }
+
+        return $uris;
+    }
+
+    /**
+     * @return Collection<int, CalendarInstance>
+     */
+    public function accessibleVeventInstances(string $username)
+    {
+        $instances = $this->personalVeventInstances($username);
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            foreach ($this->groupVeventInstances($slug) as $groupInstance) {
+                $instances->push($groupInstance);
+            }
+        }
+
+        return $instances;
+    }
+
+    /**
+     * @return Collection<int, CalendarInstance>
+     */
+    private function personalVeventInstances(string $username)
     {
         return CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $this->principalUri($username))
-            ->where('uri', $calendarId)
             ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->first();
+            ->orderBy('calendarorder')
+            ->orderBy('id')
+            ->get();
     }
 
-    private function allocateCalendarUri(string $username, ?string $requestedId, string $name): string
+    /**
+     * @return array{0: CalendarInstance, 1: ?string}|null
+     */
+    private function resolveWritableCalendar(string $username, string $calendarId): ?array
+    {
+        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId);
+        if ($groupSlug !== null) {
+            return null;
+        }
+
+        $owned = $this->findCalendarInstance($this->principalUri($username), $calendarId);
+        if ($owned !== null) {
+            return [$owned, null];
+        }
+
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            $instance = $this->findCalendarInstance(AdminConstants::GROUP_PREFIX.$slug, $calendarId);
+            if ($instance !== null) {
+                $uri = (string) $instance->uri;
+                if ($uri === CalendarCollectionUris::groupCalendarCalDavUri($slug)) {
+                    return null;
+                }
+
+                return [$instance, $slug];
+            }
+        }
+
+        return null;
+    }
+
+    private function allocateCalendarUri(string $principalUri, ?string $requestedId, string $name, ?string $groupSlug): string
     {
         if ($requestedId !== null && $requestedId !== '') {
-            if ($requestedId === 'default' || $this->findOwnedCalendar($username, $requestedId) !== null) {
+            if (
+                $requestedId === CalendarCollectionUris::EVENT_DEFAULT
+                || CalendarCollectionUris::parseGroupCalendarApiId($requestedId) !== null
+                || $this->findCalendarInstance($principalUri, $requestedId) !== null
+            ) {
                 throw new ApiHttpException(409, 'Calendar id already exists.', 'alreadyExists');
             }
 
@@ -224,9 +372,18 @@ final class CalendarRepository
         }
 
         $base = Str::slug($name, '-') ?: 'calendar';
+        if (str_starts_with($base, 'group-')) {
+            $base = 'calendar-'.substr($base, strlen('group-'));
+        }
+        if ($base === '' || in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
+            $base = 'calendar';
+        }
+        if ($groupSlug !== null && $base === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
+            $base = 'calendar';
+        }
         $candidate = $base;
         $suffix = 2;
-        while ($this->findOwnedCalendar($username, $candidate) !== null) {
+        while ($this->findCalendarInstance($principalUri, $candidate) !== null) {
             $candidate = $base.'-'.$suffix;
             $suffix++;
         }
@@ -238,7 +395,7 @@ final class CalendarRepository
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = (string) $instance->uri.':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar?->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);
@@ -273,7 +430,7 @@ final class CalendarRepository
         return [(int) $instance->calendarid, (int) $instance->id];
     }
 
-    private function mapCalendar(CalendarInstance $instance): array
+    private function mapCalendar(CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? ''));
@@ -281,24 +438,106 @@ final class CalendarRepository
             $name = $uri;
         }
 
+        $isGroup = $groupSlug !== null;
+        $isProvisionedGroup = $isGroup && $uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug);
+
         $rights = match ((int) ($instance->access ?? 1)) {
             2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => false],
             3 => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => false],
-            default => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => $uri !== 'default'],
+            default => [
+                'mayRead' => true,
+                'mayWrite' => true,
+                'mayShare' => false,
+                'mayDelete' => ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
+            ],
         };
 
         return [
-            'id' => $uri,
+            'id' => $isProvisionedGroup ? CalendarCollectionUris::groupCalendarApiId($groupSlug) : $uri,
             'name' => $name,
             'description' => is_string($instance->description) && trim($instance->description) !== '' ? trim($instance->description) : null,
             'timeZone' => is_string($instance->timezone) && trim($instance->timezone) !== '' ? trim($instance->timezone) : null,
             'color' => is_string($instance->calendarcolor) && trim($instance->calendarcolor) !== '' ? trim($instance->calendarcolor) : null,
             'sortOrder' => (int) ($instance->calendarorder ?? 0),
-            'isDefault' => $uri === 'default',
+            'isDefault' => ! $isGroup && $uri === CalendarCollectionUris::EVENT_DEFAULT,
             'isSubscribed' => true,
+            'scope' => $isGroup ? 'group' : 'personal',
+            'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => null,
             'myRights' => $rights,
         ];
+    }
+
+    /**
+     * @return list<CalendarInstance>
+     */
+    private function groupVeventInstances(string $groupSlug): array
+    {
+        $groupUri = AdminConstants::GROUP_PREFIX.$groupSlug;
+        $group = Principal::query()->where('uri', $groupUri)->first(['uri', 'displayname']);
+        if ($group === null) {
+            return [];
+        }
+
+        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
+            (string) $group->uri,
+            (string) ($group->displayname ?? $groupSlug),
+        );
+
+        return CalendarInstance::query()
+            ->with('calendar')
+            ->where('principaluri', $groupUri)
+            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
+            ->orderBy('calendarorder')
+            ->orderBy('id')
+            ->get()
+            ->all();
+    }
+
+    private function findCalendarInstance(string $principalUri, string $calendarUri): ?CalendarInstance
+    {
+        return CalendarInstance::query()
+            ->with('calendar')
+            ->where('principaluri', $principalUri)
+            ->where('uri', $calendarUri)
+            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
+            ->first();
+    }
+
+    private function ensureGroupCalendarInstance(string $groupSlug): ?CalendarInstance
+    {
+        foreach ($this->groupVeventInstances($groupSlug) as $instance) {
+            if ((string) $instance->uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
+                return $instance;
+            }
+        }
+
+        return null;
+    }
+
+    private function groupSlugFromPrincipalUri(string $principalUri): ?string
+    {
+        if (! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
+            return null;
+        }
+
+        $slug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
+
+        return $slug !== '' ? $slug : null;
+    }
+
+    /**
+     * @param  iterable<CalendarInstance>  $instances
+     * @return list<string>
+     */
+    private function apiIdsForInstances(iterable $instances): array
+    {
+        $ids = [];
+        foreach ($instances as $instance) {
+            $ids[] = $this->apiIdForInstance($instance);
+        }
+
+        return $ids;
     }
 
     private function principalUri(string $username): string

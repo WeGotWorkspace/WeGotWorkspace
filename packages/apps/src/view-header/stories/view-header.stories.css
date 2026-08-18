@@ -5,3 +5,11 @@
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
 }
+
+.view-header-story-nav {
+  @apply flex shrink-0 items-center gap-0;
+}
+
+.view-header-story-narrow {
+  @apply w-80 max-w-full;
+}

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Mail, Send, Trash2 } from "lucide-react";
 import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
 import { Card } from "@/card/src/card";
+import { CardPanel } from "@/card/src/card-panel";
+import { CardRow } from "@/card/src/card-row";
 import { IconButton } from "@/button/src/icon-button";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
@@ -45,21 +47,21 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
       title={shareLabels.guestSectionTitle}
       description={shareLabels.guestSectionHint}
     >
-      <div className="share-dialog__panel">
+      <CardPanel>
         {guestGrants.map((grant) => {
           const permission = accessToUIPermission(grant.access) ?? "view";
           const pending = grant.status === "pending";
           return (
-            <div key={grant.principal} className="share-dialog__row">
-              <div className="share-dialog__guest-mark share-dialog__group-mark--idle">
-                {initialsFromDisplayName(grant.principal)}
-              </div>
-              <div className="share-dialog__row-main">
-                <div className="share-dialog__row-title-line">
-                  <span className="share-dialog__row-title">{grant.principal}</span>
-                  {pending ? <SharePendingTag /> : null}
+            <CardRow
+              key={grant.principal}
+              leading={
+                <div className="share-dialog__guest-mark share-dialog__group-mark--idle">
+                  {initialsFromDisplayName(grant.principal)}
                 </div>
-              </div>
+              }
+              title={grant.principal}
+              titleEnd={pending ? <SharePendingTag /> : null}
+            >
               <SharePermissionSelect
                 value={permission}
                 disabled={disabled || pending || !grant.removal}
@@ -94,7 +96,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
                   }}
                 />
               ) : null}
-            </div>
+            </CardRow>
           );
         })}
 
@@ -126,7 +128,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
             onClick={addGuest}
           />
         </div>
-      </div>
+      </CardPanel>
     </Card>
   );
 }

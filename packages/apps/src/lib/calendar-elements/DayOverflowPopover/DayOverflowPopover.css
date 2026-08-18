@@ -1,0 +1,123 @@
+@import "tailwindcss";
+@import "../styles/z-index.css";
+
+:host {
+  --_lc-overflow-popover-gap: 8px;
+  --_lc-event-height: var(--_lc-default-event-height, 32px);
+  --_lc-event-card-compact-label-display: block;
+  @apply hidden m-0 rounded-[10px] border-0 overflow-hidden p-0 fixed h-auto text-inherit;
+  z-index: var(--_lc-z-popover);
+  inset: auto;
+  background: var(--_lc-surface-bg, Canvas);
+  box-shadow:
+    0 14px 28px -16px rgb(15 23 42 / 38%),
+    0 10px 16px -14px rgb(15 23 42 / 24%);
+  min-inline-size: min(260px, calc(100vi - 24px));
+  max-inline-size: min(300px, calc(100vi - 24px));
+  max-block-size: none;
+  top: calc(anchor(bottom) + var(--_lc-overflow-popover-gap));
+  left: anchor(center);
+  translate: -50% 0;
+  position-try-fallbacks: flip-block;
+  --_lc-popover-day-number-space: calc(var(--_lc-all-day-day-number-space) - 6px);
+}
+
+:host([data-inline-align="start"]) {
+  left: anchor(left);
+  translate: 0 0;
+}
+
+:host([data-inline-align="end"]) {
+  left: anchor(right);
+  translate: -100% 0;
+}
+
+.day-label {
+  color: var(--_lc-grid-line-day-color);
+  --_lc-focus-outline-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  --_lc-focus-ring-color: light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%));
+  --_lc-focus-ring-offset-color: light-dark(rgb(255 255 255), rgb(2 6 23));
+}
+
+.day-label.outside-month-day-label,
+.day-label.outside-month-day-label time {
+  color: var(--_lc-outside-month-day-color);
+}
+
+:host(:popover-open) {
+  @apply block;
+  /* Opt back into hits when hosted under a pointer-events:none ancestor (e.g. time-line
+     .viewport). Without this, the day-number button and events are not clickable. */
+  pointer-events: auto;
+  animation: day-overflow-popover-fade-in 140ms ease-out;
+}
+
+:host([data-measuring]) {
+  @apply block invisible pointer-events-none;
+}
+
+@keyframes day-overflow-popover-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+:host::backdrop {
+  background: transparent;
+}
+
+.day-overflow-popover-cell {
+  @apply relative w-full min-w-full overflow-hidden rounded-[inherit];
+  --_lc-popover-cell-padding: 8px;
+  min-height: calc(
+    var(--_lc-popover-day-number-space) +
+      (var(--_lc-event-height) * var(--_lc-popover-event-count, 1)) +
+      (var(--_lc-popover-cell-padding) * 2)
+  );
+  padding: var(--_lc-popover-cell-padding);
+  background: var(--_lc-surface-bg);
+  border: var(--_lc-grid-line-width) solid var(--_lc-grid-line-color);
+  box-shadow: 0 8px 18px -14px rgb(15 23 42 / 45%);
+}
+
+.day-overflow-popover-cell-weekend {
+  background: var(--_lc-weekend-bg-color);
+}
+
+.day-overflow-popover-events {
+  @apply flex flex-col gap-0;
+  padding-top: var(--_lc-popover-day-number-space);
+}
+
+.day-overflow-popover-event {
+  @apply relative;
+  block-size: var(--_lc-event-height);
+}
+
+.day-overflow-popover-event > all-day-event {
+  @apply static block w-full h-full;
+  inset: auto;
+}
+
+.day-overflow-popover-day-number {
+  @apply absolute p-1 text-sm z-10 font-medium rounded-full flex justify-center items-center cursor-pointer border-0 bg-transparent text-inherit leading-none min-w-6 px-2 h-6 [inset-inline-start:6px] top-0 mt-1.5;
+  pointer-events: auto;
+}
+
+.day-overflow-popover-day-number:hover:not(:focus-visible):not(.current-day) {
+  background-color: var(--_lc-grid-ghost-color);
+}
+
+.day-overflow-popover-day-number:focus-visible {
+  background-color: var(--_lc-grid-ghost-color);
+  outline: 2px solid var(--_lc-focus-outline-color);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--_lc-focus-ring-offset-color),
+    0 0 0 4px var(--_lc-focus-ring-color);
+}

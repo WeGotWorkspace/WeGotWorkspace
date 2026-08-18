@@ -57,6 +57,7 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | Package            | Shell                    | Entry file                                                                                                       |
 | ------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `admin-core`       | Split                    | `admin-core/src/admin-workspace.tsx`                                                                             |
+| `calendar-core`    | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                       |
 | `docs-core`        | Split                    | `docs-core/src/docs-workspace.tsx`                                                                               |
 | `drive-core`       | Split                    | `drive-core/src/drive-workspace.tsx`                                                                             |
 | `install-core`     | Split                    | `install-core/src/install-workspace.tsx`                                                                         |

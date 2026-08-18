@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => {
           navigateFallback: "index.html",
           navigateFallbackDenylist: [/^\/api\//, /^\/apps\//],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
+          // Lit calendar CE graph is large; keep precache when the main chunk grows past 2 MiB.
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
         manifest: false,
       }),
@@ -95,6 +97,10 @@ export default defineConfig(({ mode }) => {
               id.includes("/docs-collab/use-docs-comments")
             ) {
               return "docs-comments";
+            }
+            // Keep Lit calendar custom-element registration out of the main chunk.
+            if (id.includes("/lib/calendar-elements/")) {
+              return "calendar-elements";
             }
           },
         },

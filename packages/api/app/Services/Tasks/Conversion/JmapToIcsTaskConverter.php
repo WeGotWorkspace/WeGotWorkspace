@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks\Conversion;
 
-use App\Services\Calendars\Conversion\CalendarConversionSupport;
+use App\Services\VObject\ICalendarDateList;
+use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\ICalendarRecurrence;
 use App\Services\VObject\VObjectPayloadGuard;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VTodo;
@@ -117,7 +119,7 @@ final class JmapToIcsTaskConverter
         ];
 
         if ($recurrenceId !== null) {
-            $properties['RECURRENCE-ID'] = TaskConversionSupport::toIcalDateTime($recurrenceId);
+            $properties['RECURRENCE-ID'] = ICalendarDateTime::toIcs($recurrenceId);
         }
 
         if (isset($task['title']) && is_string($task['title']) && trim($task['title']) !== '') {
@@ -149,10 +151,10 @@ final class JmapToIcsTaskConverter
         }
 
         if (isset($task['created']) && is_string($task['created']) && trim($task['created']) !== '') {
-            $properties['CREATED'] = CalendarConversionSupport::utcDateTimeToIcs($task['created']);
+            $properties['CREATED'] = ICalendarDateTime::toIcs($task['created']);
         }
         if (isset($task['updated']) && is_string($task['updated']) && trim($task['updated']) !== '') {
-            $properties['LAST-MODIFIED'] = CalendarConversionSupport::utcDateTimeToIcs($task['updated']);
+            $properties['LAST-MODIFIED'] = ICalendarDateTime::toIcs($task['updated']);
         }
 
         $todo = $calendar->add('VTODO', $properties);
@@ -168,7 +170,7 @@ final class JmapToIcsTaskConverter
         }
 
         if (isset($task['alerts']) && is_array($task['alerts']) && $task['alerts'] !== []) {
-            CalendarConversionSupport::writeValarmComponents($todo, $task['alerts']);
+            TaskConversionSupport::writeValarmComponents($todo, $task['alerts']);
         }
 
         TaskConversionSupport::writeParticipantsToVtodo($todo, $task);
@@ -185,29 +187,19 @@ final class JmapToIcsTaskConverter
         if (isset($task['recurrenceRules']) && is_array($task['recurrenceRules'])) {
             foreach ($task['recurrenceRules'] as $rule) {
                 if (is_array($rule)) {
-                    $todo->add('RRULE', CalendarConversionSupport::recurrenceRuleToIcs($rule));
+                    $todo->add('RRULE', ICalendarRecurrence::ruleToIcs($rule));
                 }
             }
         }
 
         $excluded = TaskConversionSupport::excludedDatesFromRecurrenceOverrides($task);
         if ($excluded !== []) {
-            $values = array_values(array_filter(array_map(
-                static fn (mixed $value): string => is_string($value)
-                    ? (TaskConversionSupport::toIcalDateTime($value) ?? '')
-                    : '',
-                $excluded,
-            ), static fn (string $value): bool => $value !== ''));
+            $values = ICalendarDateList::toIcsValues($excluded);
             if ($values !== []) {
                 $todo->add('EXDATE', implode(',', $values));
             }
         } elseif (isset($task['excludedRecurrenceDates']) && is_array($task['excludedRecurrenceDates']) && $task['excludedRecurrenceDates'] !== []) {
-            $values = array_values(array_filter(array_map(
-                static fn (mixed $value): string => is_string($value)
-                    ? (TaskConversionSupport::toIcalDateTime($value) ?? '')
-                    : '',
-                $task['excludedRecurrenceDates'],
-            ), static fn (string $value): bool => $value !== ''));
+            $values = ICalendarDateList::toIcsValues($task['excludedRecurrenceDates']);
             if ($values !== []) {
                 $todo->add('EXDATE', implode(',', $values));
             }

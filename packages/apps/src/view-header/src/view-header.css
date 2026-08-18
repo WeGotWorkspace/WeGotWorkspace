@@ -6,6 +6,7 @@
 /** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
+  container: view-header-main / inline-size;
 }
 
 /**
@@ -18,6 +19,17 @@
   align-items: center;
   column-gap: 0.75rem;
   min-height: var(--view-header-title-row-min-height, 2.25rem);
+}
+
+/** Title + optional period controls as one unit. */
+.view-header__title-cluster {
+  @apply flex min-w-0 items-center gap-1;
+  justify-content: var(--view-header-cluster-justify, flex-start);
+}
+
+.view-header__title-leading {
+  @apply flex shrink-0 items-center;
+  order: var(--view-header-leading-order, 0);
 }
 
 /** Default: large serif display title. */
@@ -35,6 +47,50 @@
 
 .view-header__actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
+}
+
+/**
+ * Stacked variant: title cluster on row 1 (title at start, prev/next at end),
+ * actions on row 2. Used as-is for `layout="stacked"`, and by the
+ * container-query / viewport fallback for `layout="responsive"`.
+ */
+.view-header__title-row--stacked {
+  --view-header-cluster-justify: space-between;
+  --view-header-leading-order: 1;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 0.5rem;
+}
+
+.view-header__title-row--stacked .view-header__actions {
+  @apply w-full flex-wrap;
+}
+
+@container view-header-main (max-width: 40rem) {
+  .view-header__title-row--responsive {
+    --view-header-cluster-justify: space-between;
+    --view-header-leading-order: 1;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0.5rem;
+  }
+
+  .view-header__title-row--responsive .view-header__actions {
+    @apply w-full flex-wrap;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (max-width: 40rem) {
+    .view-header__title-row--responsive {
+      --view-header-cluster-justify: space-between;
+      --view-header-leading-order: 1;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 0.5rem;
+    }
+
+    .view-header__title-row--responsive .view-header__actions {
+      @apply w-full flex-wrap;
+    }
+  }
 }
 
 .view-header__subtitle {

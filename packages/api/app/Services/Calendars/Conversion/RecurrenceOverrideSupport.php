@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\ICalendarSeries;
+use App\Services\VObject\ICalendarUid;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
@@ -23,39 +26,31 @@ final class RecurrenceOverrideSupport
      */
     public static function groupRecurrenceSeries(array $vevents): array
     {
-        /** @var array<string, list<VEvent>> $byUid */
-        $byUid = [];
-        foreach ($vevents as $vevent) {
-            $uid = isset($vevent->UID) ? trim((string) $vevent->UID->getValue()) : '';
-            if ($uid === '') {
-                $uid = CalendarConversionSupport::generateUid((string) $vevent->serialize());
-            }
-            $byUid[$uid][] = $vevent;
-        }
-
         $series = [];
-        foreach ($byUid as $group) {
-            $masters = [];
-            $overrides = [];
-            foreach ($group as $vevent) {
-                if (isset($vevent->{'RECURRENCE-ID'})) {
-                    $overrides[] = $vevent;
-
-                    continue;
-                }
-                $masters[] = $vevent;
-            }
+        foreach (ICalendarSeries::groupByUid(
+            $vevents,
+            static fn (VEvent $vevent): string => ICalendarUid::fromSeed((string) $vevent->serialize()),
+        ) as $group) {
+            ['masters' => $masters, 'overrides' => $overrides] = ICalendarSeries::partitionMastersAndOverrides($group);
 
             if ($masters === [] && $overrides !== []) {
                 foreach ($overrides as $override) {
-                    $series[] = ['master' => $override, 'overrides' => []];
+                    if ($override instanceof VEvent) {
+                        $series[] = ['master' => $override, 'overrides' => []];
+                    }
                 }
 
                 continue;
             }
 
+            $eventOverrides = array_values(array_filter(
+                $overrides,
+                static fn (mixed $component): bool => $component instanceof VEvent,
+            ));
             foreach ($masters as $master) {
-                $series[] = ['master' => $master, 'overrides' => $overrides];
+                if ($master instanceof VEvent) {
+                    $series[] = ['master' => $master, 'overrides' => $eventOverrides];
+                }
             }
         }
 
@@ -130,9 +125,9 @@ final class RecurrenceOverrideSupport
         }
 
         if (isset($override->DTSTART)) {
-            $overrideStart = CalendarConversionSupport::jmapDateTimeFromProperty($override->DTSTART);
+            $overrideStart = ICalendarDateTime::fromProperty($override->DTSTART);
             $masterStart = isset($master->DTSTART)
-                ? CalendarConversionSupport::jmapDateTimeFromProperty($master->DTSTART)
+                ? ICalendarDateTime::fromProperty($master->DTSTART)
                 : null;
             if ($masterStart === null || $overrideStart['value'] !== $masterStart['value']) {
                 $patch['start'] = $overrideStart['value'];
@@ -147,12 +142,26 @@ final class RecurrenceOverrideSupport
         }
 
         if (isset($override->DTEND)) {
-            $overrideEnd = CalendarConversionSupport::jmapDateTimeFromProperty($override->DTEND);
+            $overrideEnd = ICalendarDateTime::fromProperty($override->DTEND);
             $masterEnd = isset($master->DTEND)
-                ? CalendarConversionSupport::jmapDateTimeFromProperty($master->DTEND)
+                ? ICalendarDateTime::fromProperty($master->DTEND)
                 : null;
             if ($masterEnd === null || $overrideEnd['value'] !== $masterEnd['value']) {
                 $patch['end'] = $overrideEnd['value'];
+                $overrideStartValue = isset($override->DTSTART)
+                    ? ICalendarDateTime::fromProperty($override->DTSTART)['value']
+                    : (isset($master->DTSTART)
+                        ? ICalendarDateTime::fromProperty($master->DTSTART)['value']
+                        : null);
+                if (is_string($overrideStartValue)) {
+                    $overrideDuration = CalendarConversionSupport::durationBetweenJmapDateTimes(
+                        $overrideStartValue,
+                        $overrideEnd['value'],
+                    );
+                    if ($overrideDuration !== null) {
+                        $patch['duration'] = $overrideDuration;
+                    }
+                }
             }
         } elseif (isset($override->DURATION)) {
             $overrideDuration = trim((string) $override->DURATION->getValue());
@@ -216,7 +225,7 @@ final class RecurrenceOverrideSupport
 
     public static function recurrenceIdKeyFromProperty(Property $property): string
     {
-        return CalendarConversionSupport::jmapDateTimeFromProperty($property)['value'];
+        return ICalendarDateTime::fromProperty($property)['value'];
     }
 
     /**
@@ -228,7 +237,7 @@ final class RecurrenceOverrideSupport
             $vevent->remove('RECURRENCE-ID');
         }
 
-        CalendarConversionSupport::writeDateTimeProperty(
+        ICalendarDateTime::writeProperty(
             $vevent,
             'RECURRENCE-ID',
             $recurrenceIdKey,
@@ -250,7 +259,7 @@ final class RecurrenceOverrideSupport
      */
     public static function populateExcludedOverrideVEvent(VEvent $vevent, array $masterEvent, string $recurrenceIdKey): void
     {
-        $uid = (string) ($masterEvent['uid'] ?? CalendarConversionSupport::generateUid($recurrenceIdKey));
+        $uid = (string) ($masterEvent['uid'] ?? ICalendarUid::fromSeed($recurrenceIdKey));
         if (isset($vevent->UID)) {
             $vevent->UID->setValue($uid);
         } else {
@@ -260,7 +269,7 @@ final class RecurrenceOverrideSupport
         $showWithoutTime = (bool) ($masterEvent['showWithoutTime'] ?? false);
         $timeZone = isset($masterEvent['timeZone']) && is_string($masterEvent['timeZone']) ? $masterEvent['timeZone'] : null;
 
-        CalendarConversionSupport::writeDateTimeProperty(
+        ICalendarDateTime::writeProperty(
             $vevent,
             'DTSTART',
             $recurrenceIdKey,

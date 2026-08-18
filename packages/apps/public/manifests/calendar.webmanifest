@@ -1,0 +1,24 @@
+{
+  "name": "Calendar",
+  "short_name": "Calendar",
+  "start_url": "/calendar",
+  "scope": "/calendar",
+  "id": "/calendar",
+  "display": "standalone",
+  "background_color": "#6366F1",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "/app-icons/calendar.svg?v=3",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icons/calendar-180.png?v=3",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

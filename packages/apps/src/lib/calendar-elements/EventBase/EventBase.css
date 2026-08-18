@@ -1,0 +1,124 @@
+@import "tailwindcss";
+@import "../styles/z-index.css";
+
+:host {
+  @apply pointer-events-none select-none absolute inset-0;
+  inset: 0;
+}
+
+/* Raise z-index while dragging and briefly after drop so event is on top */
+:host([data-dragging]),
+:host([data-just-dropped]) {
+  z-index: calc(var(--_lc-z-focus) - 1);
+}
+
+/* Palette is on each event-card (`color`); surface only carries interaction chrome. */
+:host .interaction-surface {
+  --_lc-event-focus-ring-width: 0px;
+  --_lc-event-focus-ring-color: transparent;
+  /* Allow native panning unless an interaction becomes active. */
+  --_lc-event-card-touch-action: pan-x pan-y;
+}
+
+/* Press/drag cursor: :active fires on mousedown (capture lives on the surface, so the
+   card :active can drop). data-dragging covers the live drag after the move threshold. */
+@media (hover: hover) and (pointer: fine) {
+  :host .interaction-surface:active,
+  :host .interaction-surface:active event-card {
+    @apply cursor-grab;
+  }
+}
+
+:host([data-dragging]) .interaction-surface,
+:host([data-dragging]) event-card {
+  @apply cursor-grabbing;
+}
+
+/* Hover / pressed: desktop/fine pointers only so touch does not stick a hover tint. */
+@media (hover: hover) and (pointer: fine) {
+  :host .interaction-surface:has(event-card:hover):not(:focus):not(:focus-visible) event-card {
+    --_lc-event-card-bg-active: var(--_lc-event-bg-hover);
+    --_lc-event-card-past-opacity: 0.85;
+  }
+
+  :host .interaction-surface:has(event-card:active):not(:focus):not(:focus-visible) event-card {
+    --_lc-event-card-bg-active: var(--_lc-event-bg-active, var(--_lc-event-bg-hover));
+    --_lc-event-card-past-opacity: 1;
+  }
+}
+
+/* Apply the same visual focus state for keyboard and pointer focus. */
+:host .interaction-surface:focus event-card,
+:host .interaction-surface:focus-visible event-card {
+  --_lc-event-card-bg-active: var(--_lc-event-bg-focus, var(--_lc-event-bg-hover));
+  --_lc-event-card-past-opacity: 1;
+}
+
+/* Keyboard-only focus ring, rendered by event-card segments. */
+:host .interaction-surface:focus-visible {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-focus-ring-color: var(
+    --_lc-focus-ring-color,
+    light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%))
+  );
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+}
+
+/* Primary keyboard ring: target segment internals via event-card CSS vars. */
+:host .interaction-surface:focus-visible event-card {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-focus-ring-color: var(
+    --_lc-focus-ring-color,
+    light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%))
+  );
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+  z-index: var(--_lc-z-focus);
+}
+
+/* Fallback propagation for browsers with partial :focus-visible behavior in nested trees. */
+:host(:has(.interaction-surface:focus-visible)) {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-focus-ring-color: var(
+    --_lc-focus-ring-color,
+    light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%))
+  );
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+}
+
+:host(:has(.interaction-surface:focus-visible)) event-card {
+  --_lc-event-card-bg-active: var(--_lc-event-bg-focus, var(--_lc-event-bg-hover));
+  --_lc-event-card-past-opacity: 1;
+}
+
+/* Show the same ring while active touch drag/resize is in progress. */
+:host([data-dragging-touch]) .interaction-surface {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+}
+
+:host([data-dragging-touch]) .interaction-surface event-card {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-focus-ring-color: var(--_lc-event-accent-color);
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+}
+
+:host([data-touch-interacting]) .interaction-surface {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+}
+
+:host([data-touch-interacting]) .interaction-surface event-card {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-focus-ring-color: var(--_lc-event-accent-color);
+  --_lc-event-card-overlap-shadow: 0 0 0 transparent;
+}
+
+/* Touch interactions keep an overlaid ring to avoid a double border beside the accent edge. */
+:host([data-dragging-touch]) .interaction-surface,
+:host([data-dragging-touch]) .interaction-surface event-card,
+:host([data-touch-interacting]) .interaction-surface,
+:host([data-touch-interacting]) .interaction-surface event-card {
+  --_lc-event-focus-ring-width: 3px;
+  --_lc-event-focus-ring-gap: -2px;
+  --_lc-event-focus-ring-inset-width: 0px;
+}

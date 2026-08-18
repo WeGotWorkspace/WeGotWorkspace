@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 use App\Database\Migrations\WgwMigration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 
 return new class extends WgwMigration
 {
     public function up(): void
     {
         if (! $this->wgwHasTable('jmap_file_nodes')) {
-            $this->wgw()->create('jmap_file_nodes', function (Blueprint $table): void {
+            $driver = DB::connection('wgw')->getDriverName();
+            $this->wgw()->create('jmap_file_nodes', function (Blueprint $table) use ($driver): void {
                 $table->id();
                 // Stable FileNode id (fn- + uuid): survives rename/move.
                 $table->string('node_id', 64)->unique();
@@ -32,7 +34,12 @@ return new class extends WgwMigration
                 $table->timestamp('deleted_at')->nullable();
                 $table->timestamps();
 
-                $table->index(['storage_key', 'deleted_at']);
+                if ($driver === 'mysql') {
+                    // utf8mb4 varchar(1024)+timestamp exceeds InnoDB's 3072-byte key limit.
+                    $table->rawIndex('`storage_key`(760), `deleted_at`', 'jmap_file_nodes_storage_key_deleted_at_index');
+                } else {
+                    $table->index(['storage_key', 'deleted_at']);
+                }
             });
         }
 

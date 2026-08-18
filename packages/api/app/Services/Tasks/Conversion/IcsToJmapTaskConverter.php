@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Tasks\Conversion;
 
 use App\Exceptions\ApiHttpException;
-use App\Services\Calendars\Conversion\CalendarConversionSupport;
+use App\Services\VObject\ICalendarDateList;
+use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\ICalendarRecurrence;
+use App\Services\VObject\ICalendarSeries;
 use App\Services\VObject\VObjectPayloadGuard;
 use Sabre\VObject\Component\VTodo;
 
@@ -45,16 +48,8 @@ final class IcsToJmapTaskConverter
      */
     private function tasksFromComponents(array $components): array
     {
-        /** @var array<string, list<VTodo>> $grouped */
-        $grouped = [];
-        foreach ($components as $index => $component) {
-            $uid = isset($component->UID) ? trim((string) $component->UID->getValue()) : '';
-            $key = $uid !== '' ? $uid : '__anonymous_'.$index;
-            $grouped[$key][] = $component;
-        }
-
         $tasks = [];
-        foreach ($grouped as $group) {
+        foreach (ICalendarSeries::groupByUid($components) as $group) {
             $tasks[] = $this->convertGroupedComponents($group);
         }
 
@@ -71,20 +66,15 @@ final class IcsToJmapTaskConverter
             return $this->convertComponent($group[0]);
         }
 
+        ['masters' => $masters, 'overrides' => $overrides] = ICalendarSeries::partitionMastersAndOverrides($group);
         $master = null;
-        $overrides = [];
-        foreach ($group as $todo) {
-            if (isset($todo->{'RECURRENCE-ID'})) {
-                $overrides[] = $todo;
-
-                continue;
-            }
-            if ($master === null || isset($todo->RRULE)) {
-                $master = $todo;
+        foreach ($masters as $candidate) {
+            if ($master === null || isset($candidate->RRULE)) {
+                $master = $candidate;
             }
         }
 
-        if ($master === null) {
+        if (! $master instanceof VTodo) {
             $master = $group[0];
         }
 
@@ -92,8 +82,11 @@ final class IcsToJmapTaskConverter
         if ($overrides !== []) {
             $recurrenceOverrides = [];
             foreach ($overrides as $override) {
+                if (! $override instanceof VTodo) {
+                    continue;
+                }
                 $recurrenceId = isset($override->{'RECURRENCE-ID'})
-                    ? TaskConversionSupport::formatIcalDateTime((string) $override->{'RECURRENCE-ID'}->getValue())
+                    ? ICalendarDateTime::fromProperty($override->{'RECURRENCE-ID'})['value']
                     : null;
                 if ($recurrenceId === null || $recurrenceId === '') {
                     continue;
@@ -160,10 +153,10 @@ final class IcsToJmapTaskConverter
             'categories' => array_values(array_filter(array_map('trim', $categories), static fn (string $v): bool => $v !== '')),
             'privacy' => TaskConversionSupport::privacyFromClass($class),
             'created' => isset($todo->CREATED)
-                ? CalendarConversionSupport::normalizeUtcDateTime((string) $todo->CREATED->getValue())
+                ? ICalendarDateTime::fromProperty($todo->CREATED)['value']
                 : null,
             'updated' => isset($todo->{'LAST-MODIFIED'})
-                ? CalendarConversionSupport::normalizeUtcDateTime((string) $todo->{'LAST-MODIFIED'}->getValue())
+                ? ICalendarDateTime::fromProperty($todo->{'LAST-MODIFIED'})['value']
                 : null,
         ];
 
@@ -193,7 +186,7 @@ final class IcsToJmapTaskConverter
             foreach ($todo->select('RRULE') as $property) {
                 // Tasks keep the pre-RFC-8984 wire types (byMonth Int[], byDay iCal
                 // strings) — shipped consumers; alignment is a documented follow-up.
-                $rules[] = CalendarConversionSupport::recurrenceRuleFromProperty($property, legacyWireTypes: true);
+                $rules[] = ICalendarRecurrence::ruleFromProperty($property, legacyWireTypes: true);
             }
             if ($rules !== []) {
                 $task['recurrenceRules'] = $rules;
@@ -203,11 +196,8 @@ final class IcsToJmapTaskConverter
         if (isset($todo->EXDATE)) {
             $excluded = [];
             foreach ($todo->select('EXDATE') as $property) {
-                foreach (explode(',', (string) $property->getValue()) as $part) {
-                    $part = trim($part);
-                    if ($part !== '') {
-                        $excluded[] = TaskConversionSupport::formatIcalDateTime($part) ?? CalendarConversionSupport::normalizeUtcDateTime($part);
-                    }
+                foreach (ICalendarDateList::jmapValuesFromProperty($property) as $part) {
+                    $excluded[] = $part;
                 }
             }
             if ($excluded !== []) {
@@ -224,7 +214,7 @@ final class IcsToJmapTaskConverter
         $alerts = [];
         $index = 0;
         foreach ($todo->getComponents('VALARM') as $valarm) {
-            $alert = CalendarConversionSupport::taskAlertFromValarm($valarm);
+            $alert = TaskConversionSupport::alertFromValarm($valarm);
             if ($alert !== null) {
                 $alerts['alert'.(++$index)] = $alert;
             }

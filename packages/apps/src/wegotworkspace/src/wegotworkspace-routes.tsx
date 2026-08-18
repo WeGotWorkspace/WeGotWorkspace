@@ -7,6 +7,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { AdminApp } from "@/admin-core/src/admin-app";
+import { CalendarApp } from "@/calendar-core/src/calendar-app";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
 import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
@@ -89,6 +90,7 @@ const sharePublicPwaHead = () =>
 const adminPwaHead = () => createWorkspacePwaHead("admin");
 const contactsPwaHead = () => createWorkspacePwaHead("contacts");
 const tasksPwaHead = () => createWorkspacePwaHead("tasks");
+const calendarPwaHead = () => createWorkspacePwaHead("calendar");
 
 const STORY_SYSTEM_MAILBOXES = [
   "Inbox",
@@ -209,6 +211,12 @@ function MockTasksRoute() {
       onViewChange={handleViewChange}
     />
   );
+}
+
+// The default calendar source resolves to the MockJmapServer-backed source in
+// mock mode, so the mock route runs the full adapter-driven app.
+function MockCalendarRoute() {
+  return <CalendarApp />;
 }
 
 function MockAdminRoute() {
@@ -515,6 +523,52 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: TasksComponent,
   });
 
+  const CalendarComponent = isLive ? withWeGotWorkspaceAuth(CalendarApp) : MockCalendarRoute;
+
+  // Each calendar path is a root-level route with its own component so `useParams`
+  // in CalendarApp resolves view/date on direct page loads (same as notes/tasks).
+  const calendarIndexRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarViewDateRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/$view/$date",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarViewRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/$view",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarListIndexRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/list",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarListViewRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/list/$view",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
+  const calendarListViewDateRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/list/$view/$date",
+    head: calendarPwaHead,
+    component: CalendarComponent,
+  });
+
   const installRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/install",
@@ -567,6 +621,12 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     tasksTagRoute,
     tasksListRoute,
     tasksPriorityRoute,
+    calendarIndexRoute,
+    calendarListViewDateRoute,
+    calendarListViewRoute,
+    calendarListIndexRoute,
+    calendarViewDateRoute,
+    calendarViewRoute,
     installRoute,
     sharePublicRoute,
   ]);

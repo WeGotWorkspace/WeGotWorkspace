@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
 import { IconButton } from "@/button/src/icon-button";
+import { CardRow } from "@/card/src/card-row";
 import {
   SHARE_UI_PERMISSIONS,
   accessToSelectableUIPermission,
@@ -52,18 +53,13 @@ export function SharePrincipalRow({
     : undefined;
 
   return (
-    <div className="share-dialog__row">
-      {mark}
-      <div className="share-dialog__row-main">
-        <div className="share-dialog__row-title-line">
-          <div className="share-dialog__row-title-group">
-            <p className="share-dialog__row-title">{title}</p>
-            {inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null}
-          </div>
-          {pending ? <SharePendingTag /> : null}
-        </div>
-        {subtitle ? <p className="share-dialog__row-subtitle">{subtitle}</p> : null}
-      </div>
+    <CardRow
+      leading={mark}
+      title={title}
+      subtitle={subtitle}
+      titleExtra={inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null}
+      titleEnd={pending ? <SharePendingTag /> : null}
+    >
       {canEdit && uiPermission ? (
         <SharePermissionSelect
           value={uiPermission}
@@ -97,6 +93,6 @@ export function SharePrincipalRow({
           onClick={canRemove ? onRemove : undefined}
         />
       ) : null}
-    </div>
+    </CardRow>
   );
 }

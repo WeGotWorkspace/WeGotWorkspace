@@ -134,6 +134,7 @@ final class UiStaticServer
         return [
             '/',
             '/admin',
+            '/calendar',
             '/contacts',
             '/docs',
             '/drive',

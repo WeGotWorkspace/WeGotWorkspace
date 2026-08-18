@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+/* tailwind-exception: Uses host attribute selectors and tokenized button variables for Shadow DOM API compatibility. */
+:host {
+  --_lc-button-bg-default: light-dark(rgb(255 255 255 / 94%), rgb(255 255 255 / 24%));
+  --_lc-button-hover-bg-default: light-dark(rgb(255 255 255 / 98%), rgb(255 255 255 / 30%));
+  --_lc-button-checked-bg-default: var(--_lc-button-bg-default);
+  --_lc-button-checked-hover-bg-default: var(--_lc-button-hover-bg-default);
+  --_lc-button-border-color: light-dark(
+    var(--_lc-grid-line-color, rgb(15 23 42 / 14%)),
+    var(--_lc-grid-line-color, rgb(255 255 255 / 16%))
+  );
+  --_lc-focus-outline-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  --_lc-focus-ring-color: light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%));
+  --_lc-focus-ring-offset-color: light-dark(rgb(255 255 255), rgb(2 6 23));
+}
+
+.lc-button {
+  @apply inline-flex h-9 items-center rounded-lg border border-solid text-sm leading-5 transition-colors duration-200;
+  @apply focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2;
+  @apply focus-visible:ring-2 focus-visible:ring-offset-2;
+  border-color: var(--_lc-button-border-color);
+  color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 95%));
+  background: var(--_lc-button-bg, var(--lc-button-bg, var(--_lc-button-bg-default)));
+  cursor: pointer;
+  outline-color: var(--_lc-focus-outline-color);
+  --tw-ring-color: var(--_lc-focus-ring-color);
+  --tw-ring-offset-color: var(--_lc-focus-ring-offset-color);
+}
+
+.lc-button:hover {
+  background: var(
+    --_lc-button-hover-bg,
+    var(--lc-button-hover-bg, var(--_lc-button-hover-bg-default))
+  );
+}
+
+:host(:not([compact])) .lc-button {
+  @apply px-4;
+}
+
+:host([compact]) .lc-button {
+  @apply min-w-9 justify-center px-[9.2px];
+}
+
+.lc-button:disabled {
+  @apply cursor-not-allowed opacity-55;
+}
+
+.lc-button:disabled:hover {
+  background: var(--_lc-button-bg, var(--lc-button-bg, var(--_lc-button-bg-default)));
+}
+
+:host .lc-button > span {
+  @apply inline-flex items-center gap-2;
+}
+
+:host .lc-button [data-hotkey-badge] {
+  @apply inline-flex items-center rounded-md border border-solid px-1.5 py-0.5 text-[10px] font-medium leading-none;
+  border-color: light-dark(rgb(15 23 42 / 22%), rgb(255 255 255 / 25%));
+  color: light-dark(rgb(15 23 42 / 68%), rgb(255 255 255 / 74%));
+}
+
+@media (max-width: 54rem) {
+  :host([raised]) .lc-button {
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    box-shadow:
+      0 10px 28px rgb(15 23 42 / 20%),
+      0 1px 0 rgb(255 255 255 / 58%) inset;
+    --_lc-button-bg: var(
+      --lc-button-raised-bg,
+      light-dark(rgb(255 255 255 / 78%), rgb(15 23 42 / 52%))
+    );
+    --_lc-button-hover-bg: var(
+      --lc-button-raised-hover-bg,
+      light-dark(rgb(255 255 255 / 88%), rgb(15 23 42 / 62%))
+    );
+    --_lc-button-border-color: var(
+      --lc-button-raised-border-color,
+      light-dark(rgb(15 23 42 / 18%), rgb(255 255 255 / 24%))
+    );
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :host([raised]) .lc-button {
+      box-shadow:
+        0 12px 30px rgb(0 0 0 / 58%),
+        0 1px 0 rgb(255 255 255 / 10%) inset;
+    }
+  }
+
+  :host([raised][disabled]) .lc-button {
+    box-shadow: none;
+  }
+}

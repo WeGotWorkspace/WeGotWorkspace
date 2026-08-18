@@ -1,0 +1,718 @@
+:host {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  /* Grid-line / day-label tokens for <time-line> chrome and <day-overflow-popover>:
+     those trees read --_lc-* with no fallback. In the old grid stack they came from
+     CalendarGridView's host; here they must be declared on this host (custom properties
+     inherit through the shadow boundary).
+     In-month numbers use near-full ink (primary text, AA). Weekday chrome stays at 72%
+     (slightly muted). Outside-month stays at the AA floor (~63% / ~4.5:1) — that mute
+     only reads against 92% ink; 72% vs 63% was indistinguishable at 12px. */
+  --_lc-grid-line-width: 1px;
+  --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
+  --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
+  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%));
+  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%));
+  --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+  :host {
+    /* Same recipe as CalendarGridView.css (--_lc-grid-base-color at 14% over the surface). */
+    --_lc-grid-line-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 14%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+    --_lc-grid-line-day-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 72%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+    --_lc-in-month-day-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 92%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+    --_lc-outside-month-day-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 63%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+    --_lc-grid-ghost-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 10%,
+      transparent
+    );
+  }
+}
+
+:host([hidden]) {
+  display: none !important;
+}
+
+time-line {
+  /* Current-time indicator uses the same calendar token as the grid stack. */
+  --time-line-marker-color: var(--lc-higlight-color, #ff0000);
+  /* Compact month flag: flipped by the lc-timeline-month container query below; inherits into
+     <time-line>'s shadow content so click handlers can read it via getComputedStyle (same
+     pattern as the grid's --_lc-compact-month-view). */
+  --_lc-timeline-compact-month: 0;
+}
+
+/* Month mode: the layout wrapper is the query container driving the compact treatment for
+   standalone month views that shrink. Cells are 1/7th of it, so 504px = 7 x 72px cells. Months
+   composed by year mode do NOT rely on this query — year-grid column breakpoints leave
+   card-width windows above 504px (1-column cards up to 512px; 4-column cards past ~2208px
+   grids), so those instances are forced compact via `forceCompact` instead (see the
+   :host([force-compact]) compact block below). */
+.timeline-layout--month {
+  container: lc-timeline-month / inline-size;
+}
+
+.timeline-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+time-line.timeline-main {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ============================================================================================
+   Day/week composition: the layout wrapper is the scroll container (grid-week parity — the
+   grid stack scrolls in EventCalendar's outer overflow; here the view owns its scroll). It is
+   also a size query container: descendants derive the timed viewport from 100cqb minus the
+   measured all-day shell height (--_lc-timeline-all-day-height, set inline by a
+   ResizeObserver in CalendarTimelineView.ts). The timed timeline always renders the full 24h
+   at --_lc-timeline-hour-height per hour (set inline: viewport / visibleHours, or a 72px
+   floor when visibleHours is unset), so it grows taller than the viewport and scrolls while
+   the all-day shell (day headers + all-day row) sticks to the top and the time sidebar
+   scrolls with the timed grid. A swipe-container wraps the day columns for the narrow-week
+   pager (touch): container queries below shrink the visible column count, the stack grows
+   wider than the viewport, and swiping translates it.
+   ============================================================================================ */
+.timeline-layout--composed {
+  container: lc-timeline-composed / size;
+  /* Height must come from the flex context (host), never from the scrolled content, or the
+     hour-height math would feed back into itself in auto-height hosts. */
+  flex-basis: 0px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Breathing room between the sticky all-day shell and the timed grid, in the SCROLLED flow
+     (a margin above the timed timeline, not shell padding — the shell stays a fully opaque
+     sticky cover, so scrolled cards never peek through). At scrollTop 0 the first gridline
+     sits this far below the shell's divider, keeping the first hour label (centered on the
+     line, extending ~6px above it) fully visible. */
+  --_lc-timeline-timed-gap: 8px;
+  --_lc-timeline-timed-viewport: max(
+    0px,
+    calc(100cqb - var(--_lc-timeline-all-day-height, 0px) - var(--_lc-timeline-timed-gap))
+  );
+  --_lc-timeline-timed-height: calc(
+    24 * var(--_lc-timeline-hour-height, calc(var(--_lc-timeline-timed-viewport) / 24))
+  );
+  --_lc-timeline-content-height: calc(
+    var(--_lc-timeline-all-day-height, 0px) + var(--_lc-timeline-timed-gap) +
+      var(--_lc-timeline-timed-height)
+  );
+  /* Divider between the sticky all-day shell and the timed area (grid-week parity). */
+  --_lc-timeline-section-divider-width: var(--_lc-week-section-divider-width, 3px);
+  --_lc-timeline-section-divider-color: var(
+    --_lc-week-section-divider-color,
+    light-dark(rgb(15 23 42 / 22%), rgb(255 255 255 / 28%))
+  );
+  /* Shared by the time-gutter hour rules and <time-line> `.cell-main--grid`. */
+  --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
+}
+
+.timeline-sidebar {
+  grid-row: 1;
+  grid-column: 1;
+  height: var(--_lc-timeline-content-height);
+  min-height: var(--_lc-timeline-content-height);
+  background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
+  --_lc-time-sidebar-inline-padding: 6px;
+  /* Internal layout mirrors the composed column: no weekday header row, an all-day slot as
+     tall as the (measured) sticky shell — itself sticky, so it covers the top-left corner
+     while scrolling — and the timed hour labels below. */
+  --_lc-time-sidebar-header-height: 0px;
+  --_lc-time-sidebar-sticky-top-base: 0px;
+  --_lc-time-sidebar-all-day-height: var(--_lc-timeline-all-day-height, 0px);
+  --_lc-time-sidebar-timed-height: var(--_lc-timeline-timed-height);
+  --_lc-time-sidebar-timed-gap: var(--_lc-timeline-timed-gap);
+  --_lc-time-sidebar-all-day-divider-width: var(--_lc-timeline-section-divider-width);
+  --_lc-time-sidebar-all-day-divider-color: var(--_lc-timeline-section-divider-color);
+  /* Same hour slot as the timed grid (no 0.5px-border / -1px fudge). Labels center on the
+     row-top line via translateY on the text, not by shifting this column. */
+  --_lc-time-sidebar-hour-cell-height: var(--_lc-timeline-hour-height);
+}
+
+/* Top-start corner cell (sidebar column x day-header row): the visible week's number.
+   Overlaps the sidebar's grid cell (both are explicitly placed at row 1 / column 1) and
+   sticks with the shell; grid column 1 is the inline-start column, so the corner flips to
+   the right edge automatically under RTL. It paints above the sidebar's sticky slots
+   (z 2/3 in its shadow tree) and the all-day shell (z 3). Metrics mirror the weekday-header
+   row (26px min-height + 4px bottom padding = 30px) so the number centers on it. */
+.timeline-week-number {
+  grid-row: 1;
+  grid-column: 1;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  align-self: start;
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  /* WGW a11y: was opacity 0.75 — compounded to ~3.85:1 contrast on white; full-strength
+     72% ink keeps the muted look at ~7:1 (WCAG AA needs 4.5:1 at this 11px size). */
+  pointer-events: none;
+  user-select: none;
+}
+
+.timeline-swipe {
+  grid-row: 1;
+  grid-column: 2;
+  --_lc-swipe-height: auto;
+  --_lc-swipe-min-height: var(--_lc-timeline-content-height);
+  --_lc-swipe-overflow-x: clip;
+  --_lc-swipe-overflow-y: visible;
+  /* Narrow-week pager: how many day columns fit the viewport. Declared here (not on the
+     layout) so the container-query overrides of --_lc-timeline-visible-columns on this same
+     element actually feed the computation. */
+  --_lc-timeline-effective-visible-columns: max(
+    1,
+    min(var(--_lc-timeline-visible-columns, 7), var(--_lc-timeline-days, 7))
+  );
+  /* Virtual page width for the pager's snap points (one day column). */
+  --column-width: calc(100% / var(--_lc-timeline-effective-visible-columns));
+}
+
+.timeline-stack {
+  display: flex;
+  flex-direction: column;
+  /* Wider than the viewport when fewer columns are visible; swiping pans across it. */
+  min-width: calc(
+    (100% * var(--_lc-timeline-days, 7)) / var(--_lc-timeline-effective-visible-columns)
+  );
+}
+
+.timeline-all-day-shell {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: none;
+  min-height: 0;
+  background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
+  border-bottom: var(--_lc-timeline-section-divider-width) solid
+    var(--_lc-timeline-section-divider-color);
+}
+
+/* Narrow-week pager breakpoints (grid-week parity: CalendarWeekView.css). Touch-first: the
+   pointer:fine override below restores all columns on desktop, where there is no swipe. */
+@container lc-timeline-composed (max-width: 1100px) {
+  .timeline-swipe {
+    --_lc-timeline-visible-columns: 6;
+  }
+}
+
+@container lc-timeline-composed (max-width: 980px) {
+  .timeline-swipe {
+    --_lc-timeline-visible-columns: 5;
+  }
+}
+
+@container lc-timeline-composed (max-width: 840px) {
+  .timeline-swipe {
+    --_lc-timeline-visible-columns: 4;
+  }
+}
+
+@container lc-timeline-composed (max-width: 700px) {
+  .timeline-swipe {
+    --_lc-timeline-visible-columns: 3;
+  }
+}
+
+@container lc-timeline-composed (max-width: 540px) {
+  .timeline-swipe {
+    --_lc-timeline-visible-columns: 2;
+  }
+}
+
+@media (pointer: fine) {
+  .timeline-swipe {
+    --_lc-timeline-visible-columns: var(--_lc-timeline-days, 7);
+  }
+}
+
+/* Dedicated day-header row: the shared calendar-weekday-header in its date mode (weekday
+   name + day-number day-selection buttons) — same type scale and borderless look as the
+   month/year weekday headers, no per-cell borders. Zero the component's edge padding so its
+   1fr day columns line up exactly with the time-line cell columns below (which span the
+   full stack width edge to edge). */
+calendar-weekday-header.timeline-day-header-row {
+  --_lc-weekday-header-inline-padding: 0px;
+}
+
+/* Keep at least one event lane of empty drag surface so all-day drag-to-create works on days
+   without events (TimeLine collapses empty height="auto" cells otherwise), while the row still
+   grows when overlapping events stack more lanes: TimeLine combines this floor with the
+   per-cell lane stack inside its own stylesheet (see --cell-min-height in TimeLine.css). */
+time-line.timeline-all-day {
+  --cell-min-height: var(--event-height, 32px);
+  /* Let vertical touch pans reach the composed scroll container; drags still work via
+     TimeLine's touch long-press activation. */
+  --time-line-touch-action: pan-y;
+  /* Match timed day/week cards: 4px gutter so all-day bars and timed cards share inline edges
+     within a day column (see --time-line-event-inline-inset on .timeline-timed). */
+  --time-line-event-inline-inset: 4px;
+}
+
+/* Standalone all-day presentation (variant="all-day", class timeline-main): same gutter. */
+:host([variant="all-day"]) time-line.timeline-main {
+  --time-line-event-inline-inset: 4px;
+}
+
+time-line.timeline-timed {
+  /* Full scrollable 24h at the derived hour height (taller than the viewport when zoomed). */
+  height: var(--_lc-timeline-timed-height);
+  min-height: var(--_lc-timeline-timed-height);
+  /* The flow gap below the sticky shell (see --_lc-timeline-timed-gap on the layout). */
+  margin-top: var(--_lc-timeline-timed-gap, 0px);
+  /* Tile hour lines with the same length as the gutter rows (not a % of a bordered box). */
+  --time-line-grid-size: var(--_lc-timeline-hour-height);
+  flex: none;
+  /* Floor for very short events (grid parity: event-card's own min-height in the grid stack is
+     --_lc-event-height, default 32px, 28px on fine pointers — same token family as the all-day
+     lane floor above). Both land in EventCard's compact single-line tier (≤47px) and clear the
+     WCAG 2.2 24px minimum touch target; 32px on touch keeps the bigger finger target. The card
+     keeps its true start; only the visual/hit area extends downward (see TimeLine.css). */
+  --time-line-event-min-size: var(--event-height, 32px);
+  /* Contain the timeline's internal z-order (markers z 700 etc.) so the sticky all-day shell
+     always paints above the scrolled timed content. */
+  isolation: isolate;
+  /* Let vertical touch pans reach the composed scroll container (see .timeline-all-day). */
+  --time-line-touch-action: pan-y;
+  /* Hour gridlines: same look as the grid stack's timed horizontal lines
+     (CalendarGridView.css `--_lc-grid-line-color-horizontal`, timed variant). */
+  --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
+  /* Separation for staggered overlaps: a thin surface-colored "cutout" ring around each timed
+     card (see --_lc-event-card-cutout-ring in EventCard.css). Same-color cards stacked by the
+     stagger layout get a crisp gap; against the plain surface background the ring is invisible,
+     so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
+     each event-card. */
+  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, light-dark(#fff, #222));
+  /* Horizontal gutter beside timed cards so day-column separators stay visible (the cutout ring
+     alone only separates overlaps; solo cards were flush to the column edges). 4px clears the
+     1.5px cutout ring and leaves a thin surface strip over the cell outline. Same token on
+     .timeline-all-day so all-day bars line up with timed cards in the composed day/week view. */
+  --time-line-event-inline-inset: 4px;
+}
+
+/* Drop the 0.5px block-axis viewport border so hour tiles are exactly
+   --_lc-timeline-hour-height tall (same as the gutter). Keep the inline edge
+   as the vertical divider next to the time column. */
+time-line.timeline-timed::part(viewport) {
+  border-block-width: 0;
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+  .timeline-layout--composed,
+  time-line.timeline-timed {
+    --time-line-grid-color: color-mix(
+      in srgb,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 8%,
+      var(--_lc-surface-bg, light-dark(#fff, #222))
+    );
+  }
+}
+
+/* Fine pointers tighten the short-event floor to 28px (grid parity: the grid stack's
+   --_lc-default-event-height drops from 32px to 28px under the same media query). */
+@media (pointer: fine) {
+  time-line.timeline-timed {
+    --time-line-event-min-size: var(--event-height, 28px);
+  }
+}
+
+/* Year mode: responsive grid of twelve month-mode instances, mirroring the grid stack's
+   CalendarYearView layout (4/3/2/1 columns, month titles, square month blocks). */
+:host([mode="year"]) {
+  overflow: auto;
+  container: lc-timeline-year / inline-size;
+}
+
+.year-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(var(--_lc-year-grid-effective-columns, 4), minmax(0, 1fr));
+  gap: var(--_lc-year-grid-gap, 64px);
+  width: 100%;
+  height: max-content;
+  min-height: 100%;
+  align-content: start;
+}
+
+.month-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+/* Square month blocks (grid-year parity); the outer-tree min-height wins over the nested
+   instance's own :host floor. */
+.month-card calendar-timeline-view {
+  aspect-ratio: 1 / 1;
+  height: auto;
+  min-height: 0;
+}
+
+.month-title {
+  margin: 0;
+  padding: 0 2px 14px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: start;
+  color: var(--lc-higlight-color, #ff0000);
+}
+
+@container lc-timeline-year (max-width: 1280px) {
+  .year-grid {
+    --_lc-year-grid-effective-columns: 3;
+  }
+}
+
+@container lc-timeline-year (max-width: 1040px) {
+  .year-grid {
+    --_lc-year-grid-effective-columns: 2;
+  }
+}
+
+@container lc-timeline-year (max-width: 512px) {
+  .year-grid {
+    --_lc-year-grid-effective-columns: 1;
+  }
+}
+
+/* Weekday initials above each composed month card: the shared calendar-weekday-header (same
+   component the view group composes above the regular timeline month), forced to its narrow
+   one-letter variant — year cards are compact regardless of measured width, so the header's
+   own width-based container query cannot be relied on (same rationale as forceCompact).
+   Compact-treatment metrics via the component's theming tokens. */
+.month-card calendar-weekday-header {
+  --_lc-weekday-header-height: 20px;
+  --_lc-weekday-header-font-size: 11px;
+}
+
+/* ============================================================================================
+   Chrome rendered into <time-line>'s shadow root (day headers, overflow footer, event cards).
+   These elements are produced by this component's header/footer/event templates but live in
+   TimeLine's shadow tree, out of reach of plain selectors here — so the templates tag them
+   with `part` attributes and everything static is styled below via time-line::part(...).
+   Outer-tree ::part declarations override TimeLine's own shadow styles for normal rules, so
+   no specificity tricks are needed. Per-cell/per-event dynamic values (event colors, anchor
+   names, lane variables) stay inline in the templates — that is the data channel, not styling.
+   ============================================================================================ */
+
+/* Button chrome for the interactive month day header (the day/week/gantt header is a plain
+   div and only gets the shared `day-header` rules below). `font: inherit` is overridden back
+   to the shared 12px/500 metrics by the later day-header rule. TimeLine's .viewport disables
+   pointer events; re-enable for the interactive header (same as the overflow footer button). */
+time-line::part(day-header-button) {
+  pointer-events: auto;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  width: 100%;
+  text-align: start;
+}
+
+time-line::part(day-header-button):hover {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+  border-radius: 4px;
+}
+
+time-line::part(day-header-button):focus-visible {
+  outline: 2px solid light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+/* Per-cell day header (today highlight, month-outside dimming, weekend tint). */
+time-line::part(day-header) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%)));
+}
+
+time-line::part(day-header-outside-month),
+time-line::part(day-number-outside-month) {
+  /* Color (not opacity) so compact year event dots stay at full strength. Mute is
+     vs in-month 92% ink, not vs the 72% weekday token (that pairing is invisible). */
+  color: var(--_lc-outside-month-day-color);
+}
+
+/* The templates only set the weekend part on days inside the anchor month, encoding the old
+   `.is-weekend:not(.is-outside-month)` exclusion in the part list itself. */
+time-line::part(day-header-weekend) {
+  color: var(--lc-weekend-day-label-color, light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%)));
+}
+
+/* position: relative anchors the compact event-day bullets under the number. */
+time-line::part(day-number) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+time-line::part(day-number-today) {
+  background: var(--lc-higlight-color, #ff0000);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Keep the locale's spacing around the day number ("Jan 1"): flex items trim edge spaces. */
+time-line::part(day-month-prefix) {
+  white-space: pre;
+}
+
+/* Event-day bullets: hidden at regular size, shown by the compact treatment below. Absolute
+   under the day number so it stays perfectly centered in the compact cell. */
+time-line::part(day-dots) {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 3px;
+  margin-top: 1px;
+  pointer-events: none;
+}
+
+/* Bullet colors are per-event data and stay inline (background-color on the part). */
+time-line::part(day-dot) {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  opacity: 0.9;
+  flex: none;
+}
+
+/* "+N" overflow affordance, ported from the grid month view (CalendarGridView.css:
+   `.day-overflow-button` / `.day-overflow-dots` / `.day-overflow-dot`): colored per-event dots
+   next to the count, ghost hover background and a focus ring. */
+time-line::part(overflow-button) {
+  pointer-events: auto;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+  user-select: none;
+  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  background: transparent;
+}
+
+/* Hover and focus paint the same ghost background, so no :not(:focus-visible) guard is needed
+   on the hover rule; focus-visible only adds the ring on top. */
+time-line::part(overflow-button):hover {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+time-line::part(overflow-button):focus-visible {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+  outline: 2px solid light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  outline-offset: -2px;
+}
+
+time-line::part(overflow-dots) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+
+/* Dot colors are per-event data and stay inline (background-color on the part). */
+time-line::part(overflow-dot) {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--lc-event-card-radius, 4px);
+  opacity: 0.85;
+  flex: none;
+}
+
+/* Selection deliberately has no persistent ring (grid-view parity): the selected card is
+   exposed via aria-pressed/part=event-card-selected, and keyboard users see the
+   :focus-visible ring. */
+
+/* ---- Compact (year-style) month treatment -------------------------------------------------
+   Applied behind the lc-timeline-month size container query for standalone month views that
+   shrink (504px = 7 x 72px minimum cells; the container is .timeline-layout--month above —
+   container lookup follows the flat tree, so it resolves for parts inside <time-line>'s
+   shadow root too), and unconditionally under the reflected force-compact attribute for the
+   twelve months composed by year mode. Keep both blocks in sync. */
+
+@container lc-timeline-month (max-width: 504px) {
+  /* Compact flag: inherits into <time-line>'s shadow content so click handlers can read it
+     via getComputedStyle (same pattern as the grid's --_lc-compact-month-view). */
+  time-line.timeline-main {
+    --_lc-timeline-compact-month: 1;
+  }
+
+  /* Chrome off: no outer border, no per-cell borders. */
+  time-line.timeline-main::part(viewport) {
+    border: none;
+  }
+
+  time-line.timeline-main::part(cell) {
+    outline: none;
+  }
+
+  /* No chips, markers or drag-create surface in tiny cells; the "+N" footer goes too. */
+  time-line.timeline-main::part(cell-main),
+  time-line.timeline-main::part(cell-footer) {
+    display: none;
+  }
+
+  /* The header becomes the whole cell so the day number centers in it. */
+  time-line.timeline-main::part(cell-header) {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  time-line.timeline-main::part(day-header) {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 0;
+    min-height: 0;
+    padding: 0;
+  }
+
+  time-line.timeline-main::part(day-header-outside-month),
+  time-line.timeline-main::part(day-number-outside-month) {
+    color: var(--_lc-outside-month-day-color);
+  }
+
+  time-line.timeline-main::part(day-number-today) {
+    color: #fff;
+  }
+
+  time-line.timeline-main::part(day-month-prefix) {
+    display: none;
+  }
+
+  time-line.timeline-main::part(day-dots) {
+    display: inline-flex;
+  }
+}
+
+/* force-compact duplicate of the container-query block above (year mode cannot rely on the
+   size query — see the .timeline-layout--month comment). The flag custom property is not set
+   here: #isCompactMonthPresentation short-circuits on the forceCompact property. */
+:host([force-compact]) time-line.timeline-main::part(viewport) {
+  border: none;
+}
+
+:host([force-compact]) time-line.timeline-main::part(cell) {
+  outline: none;
+}
+
+:host([force-compact]) time-line.timeline-main::part(cell-main),
+:host([force-compact]) time-line.timeline-main::part(cell-footer) {
+  display: none;
+}
+
+:host([force-compact]) time-line.timeline-main::part(cell-header) {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:host([force-compact]) time-line.timeline-main::part(day-header) {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+/* Same specificity as the compact day-header rule above; later so outside ink cannot
+   lose if that block later sets color. Year mini-months always take this path. */
+:host([force-compact]) time-line.timeline-main::part(day-header-outside-month),
+:host([force-compact]) time-line.timeline-main::part(day-number-outside-month) {
+  color: var(--_lc-outside-month-day-color);
+}
+
+:host([force-compact]) time-line.timeline-main::part(day-number-today) {
+  color: #fff;
+}
+
+:host([force-compact]) time-line.timeline-main::part(day-month-prefix) {
+  display: none;
+}
+
+:host([force-compact]) time-line.timeline-main::part(day-dots) {
+  display: inline-flex;
+}

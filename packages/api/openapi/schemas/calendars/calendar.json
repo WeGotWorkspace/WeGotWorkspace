@@ -13,7 +13,7 @@
   },
   "Calendar": {
     "type": "object",
-    "required": ["id", "name", "sortOrder", "isDefault", "isSubscribed", "myRights"],
+    "required": ["id", "name", "sortOrder", "isDefault", "isSubscribed", "scope", "groupSlug", "myRights"],
     "properties": {
       "id": {
         "$ref": "#/components/schemas/JmapId",
@@ -26,6 +26,15 @@
       "sortOrder": { "type": "integer", "minimum": 0 },
       "isDefault": { "type": "boolean" },
       "isSubscribed": { "type": "boolean" },
+      "scope": {
+        "type": "string",
+        "enum": ["personal", "group"],
+        "description": "Storage scope: personal (principals/{username}) or group (principals/groups/{slug})."
+      },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "Group slug when scope is group; null for personal calendars."
+      },
       "shareWith": {
         "oneOf": [
           {
@@ -49,6 +58,8 @@
       "sortOrder": 0,
       "isDefault": true,
       "isSubscribed": true,
+      "scope": "personal",
+      "groupSlug": null,
       "shareWith": null,
       "myRights": {
         "mayRead": true,

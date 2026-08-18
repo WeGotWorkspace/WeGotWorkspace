@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks\Conversion;
 
-use App\Services\Calendars\Conversion\CalendarConversionSupport;
+use App\Services\VObject\ICalendarAlarmTrigger;
+use App\Services\VObject\ICalendarDateTime;
+use Sabre\VObject\Component;
 use Sabre\VObject\Component\VTodo;
 use Sabre\VObject\Property;
 
@@ -186,14 +188,14 @@ final class TaskConversionSupport
         $timeZone = null;
 
         if (isset($todo->DTSTART)) {
-            $start = CalendarConversionSupport::jmapDateTimeFromProperty($todo->DTSTART);
+            $start = ICalendarDateTime::fromProperty($todo->DTSTART);
             $task['start'] = $start['value'];
             $showWithoutTime = $start['showWithoutTime'];
             $timeZone = $start['timeZone'];
         }
 
         if (isset($todo->DUE)) {
-            $due = CalendarConversionSupport::jmapDateTimeFromProperty($todo->DUE);
+            $due = ICalendarDateTime::fromProperty($todo->DUE);
             $task['due'] = $due['value'];
             $showWithoutTime = $showWithoutTime || $due['showWithoutTime'];
             $timeZone ??= $due['timeZone'];
@@ -221,7 +223,7 @@ final class TaskConversionSupport
         $timeZone = isset($task['timeZone']) && is_string($task['timeZone']) ? $task['timeZone'] : null;
 
         if (isset($task['start']) && is_string($task['start']) && trim($task['start']) !== '') {
-            CalendarConversionSupport::writeDateTimeProperty(
+            ICalendarDateTime::writeProperty(
                 $todo,
                 'DTSTART',
                 $task['start'],
@@ -231,7 +233,7 @@ final class TaskConversionSupport
         }
 
         if (isset($task['due']) && is_string($task['due']) && trim($task['due']) !== '') {
-            CalendarConversionSupport::writeDateTimeProperty(
+            ICalendarDateTime::writeProperty(
                 $todo,
                 'DUE',
                 $task['due'],
@@ -361,7 +363,7 @@ final class TaskConversionSupport
             return null;
         }
 
-        $normalized = CalendarConversionSupport::normalizeUtcDateTime(trim($value));
+        $normalized = ICalendarDateTime::toJmap(trim($value));
         if (str_ends_with($normalized, 'Z')) {
             return $normalized;
         }
@@ -375,7 +377,7 @@ final class TaskConversionSupport
     {
         $utc = self::formatCompletedUtc($value);
 
-        return CalendarConversionSupport::utcDateTimeToIcs($utc ?? $value);
+        return ICalendarDateTime::toIcs($utc ?? $value);
     }
 
     /**
@@ -398,7 +400,7 @@ final class TaskConversionSupport
             }
         }
         if (isset($todo->DTSTART)) {
-            $start = CalendarConversionSupport::jmapDateTimeFromProperty($todo->DTSTART);
+            $start = ICalendarDateTime::fromProperty($todo->DTSTART);
             $override['start'] = $start['value'];
             if ($start['showWithoutTime']) {
                 $override['showWithoutTime'] = true;
@@ -408,7 +410,7 @@ final class TaskConversionSupport
             }
         }
         if (isset($todo->DUE)) {
-            $due = CalendarConversionSupport::jmapDateTimeFromProperty($todo->DUE);
+            $due = ICalendarDateTime::fromProperty($todo->DUE);
             $override['due'] = $due['value'];
             if ($due['showWithoutTime']) {
                 $override['showWithoutTime'] = true;
@@ -487,51 +489,77 @@ final class TaskConversionSupport
         return $writable;
     }
 
-    public static function formatIcalDateTime(?string $value): ?string
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function alertFromValarm(Component $valarm): ?array
     {
-        if ($value === null || trim($value) === '') {
+        $parsed = ICalendarAlarmTrigger::fromValarm($valarm);
+        if ($parsed === null) {
             return null;
         }
 
-        $trimmed = trim($value);
-        if (preg_match('/^\d{8}T\d{6}Z$/', $trimmed) === 1) {
-            $dt = \DateTimeImmutable::createFromFormat('Ymd\THis\Z', $trimmed, new \DateTimeZone('UTC'));
+        $trigger = $parsed['kind'] === 'absolute'
+            ? [
+                '@type' => 'AbsoluteTrigger',
+                'when' => $parsed['when'],
+            ]
+            : [
+                '@type' => 'OffsetTrigger',
+                'offset' => $parsed['offset'],
+                'relativeTo' => $parsed['relatedTo'],
+            ];
 
-            return $dt !== false ? $dt->format('Y-m-d\TH:i:s\Z') : CalendarConversionSupport::normalizeUtcDateTime($trimmed);
+        $alert = [
+            '@type' => 'Alert',
+            'trigger' => $trigger,
+        ];
+
+        if (isset($valarm->ACTION)) {
+            $action = strtolower(trim((string) $valarm->ACTION->getValue()));
+            if (in_array($action, ['display', 'email'], true)) {
+                $alert['action'] = $action;
+            }
         }
-        if (preg_match('/^\d{8}T\d{6}$/', $trimmed) === 1) {
-            $dt = \DateTimeImmutable::createFromFormat('Ymd\THis', $trimmed);
 
-            return $dt !== false ? $dt->format('Y-m-d\TH:i:s') : CalendarConversionSupport::normalizeUtcDateTime($trimmed);
-        }
-        if (preg_match('/^\d{8}$/', $trimmed) === 1) {
-            $dt = \DateTimeImmutable::createFromFormat('Ymd', $trimmed);
-
-            return $dt !== false ? $dt->format('Y-m-d') : $trimmed;
+        if (isset($valarm->ACKNOWLEDGED)) {
+            $alert['acknowledged'] = ICalendarDateTime::fromProperty($valarm->ACKNOWLEDGED)['value'];
         }
 
-        return CalendarConversionSupport::normalizeUtcDateTime($trimmed);
+        return $alert;
     }
 
-    public static function toIcalDateTime(?string $value): ?string
+    /**
+     * @param  array<string, mixed>  $alerts
+     */
+    public static function writeValarmComponents(Component $parent, array $alerts): void
     {
-        if ($value === null || trim($value) === '') {
-            return null;
+        foreach ($alerts as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $trigger = $entry['trigger'] ?? null;
+            if (! is_array($trigger)) {
+                continue;
+            }
+
+            $parts = ICalendarAlarmTrigger::toIcsParts($trigger);
+            if ($parts === null) {
+                continue;
+            }
+
+            $valarm = $parent->add('VALARM');
+            $action = isset($entry['action']) && is_string($entry['action'])
+                ? strtoupper($entry['action'])
+                : 'DISPLAY';
+            $valarm->add('ACTION', $action);
+            $valarm->add('TRIGGER', $parts['value'], $parts['params']);
+
+            if (isset($entry['acknowledged']) && is_string($entry['acknowledged']) && trim($entry['acknowledged']) !== '') {
+                $valarm->add('ACKNOWLEDGED', ICalendarDateTime::toIcs($entry['acknowledged']));
+            }
         }
-
-        $trimmed = trim($value);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trimmed) === 1) {
-            return str_replace('-', '', $trimmed);
-        }
-        if (str_ends_with($trimmed, 'Z')) {
-            $dt = new \DateTimeImmutable($trimmed);
-
-            return $dt->setTimezone(new \DateTimeZone('UTC'))->format('Ymd\THis\Z');
-        }
-
-        $dt = new \DateTimeImmutable($trimmed);
-
-        return $dt->format('Ymd\THis');
     }
 
     private static function participantNameFromProperty(Property $property): ?string

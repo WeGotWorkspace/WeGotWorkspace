@@ -7,11 +7,23 @@ import { cn } from "@/lib/utils";
 import "./view-header.css";
 
 type ViewHeaderTitleSize = "default" | "sm";
+type ViewHeaderLayout = "inline" | "stacked" | "responsive";
 
 type ViewHeaderProps = {
   title: string;
   /** "default" = large serif display; "sm" = medium sans-serif title (e.g. doc editor file name). */
   titleSize?: ViewHeaderTitleSize;
+  /**
+   * Title-row layout for `view-header__title-cluster` + `view-header__actions`.
+   * "inline" (default) = one row; "stacked" = cluster then actions; "responsive" =
+   * stacked when the header main column is narrow (container query).
+   */
+  layout?: ViewHeaderLayout;
+  /**
+   * Optional period controls (e.g. calendar prev/next). Inline: before the title.
+   * Stacked / narrow responsive: at the end of the title row.
+   */
+  titleLeading?: ReactNode;
   subtitle?: string;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
@@ -29,6 +41,8 @@ type ViewHeaderProps = {
 export function ViewHeader({
   title,
   titleSize = "default",
+  layout = "inline",
+  titleLeading,
   subtitle,
   hideSidebarToggle = false,
   sidebarOpen = false,
@@ -60,12 +74,23 @@ export function ViewHeader({
           <WorkspaceSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar ?? (() => {})} />
         )}
         <div className="view-header__main">
-          <div className="view-header__title-row">
-            <h2
-              className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
-            >
-              {title}
-            </h2>
+          <div
+            className={cn(
+              "view-header__title-row",
+              layout === "stacked" && "view-header__title-row--stacked",
+              layout === "responsive" && "view-header__title-row--responsive",
+            )}
+          >
+            <div className="view-header__title-cluster">
+              {titleLeading ? (
+                <div className="view-header__title-leading">{titleLeading}</div>
+              ) : null}
+              <h2
+                className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
+              >
+                {title}
+              </h2>
+            </div>
             <div className="view-header__actions">{actions}</div>
           </div>
           {subtitle ? (
