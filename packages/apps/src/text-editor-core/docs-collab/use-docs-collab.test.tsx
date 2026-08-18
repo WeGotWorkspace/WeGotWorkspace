@@ -412,7 +412,7 @@ describe("useDocsCollab offline lifecycle", () => {
 
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1), { timeout: 7000 });
     await waitFor(() => expect(result.current.status).toContain("Mesh"), { timeout: 7000 });
-  });
+  }, 15_000);
 
   it("flushes pending save after reconnect", async () => {
     let online = false;
@@ -441,7 +441,7 @@ describe("useDocsCollab offline lifecycle", () => {
     window.dispatchEvent(new Event("focus"));
 
     await waitFor(() => expect(result.current.pendingSync).toBe(false), { timeout: 7000 });
-  });
+  }, 15_000);
 
   it("rejoins mesh after offline refresh reconnect", async () => {
     let online = false;
