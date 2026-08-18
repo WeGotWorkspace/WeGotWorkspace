@@ -6,19 +6,19 @@ namespace Tests\Feature\Calendars;
 
 use App\Models\CalendarObject;
 use App\Services\Calendars\CalendarEventMapper;
+use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
-use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * CalDAV ↔ REST round-trip interoperability for the calendars domain.
+ * CalDAV ↔ JMAP round-trip interoperability for the calendars domain.
  */
 final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
 {
     use CalendarsTestFixtures;
-    use OptimisticConcurrencyTestHelpers;
 
     protected function setUp(): void
     {
@@ -26,7 +26,18 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
         $this->setUpCalendarsFixtures();
     }
 
-    public function test_rest_create_persists_readable_ics_in_caldav_storage(): void
+    /**
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $methodCalls
+     */
+    private function jmap(array $methodCalls): TestResponse
+    {
+        return $this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+            'methodCalls' => $methodCalls,
+        ]);
+    }
+
+    public function test_jmap_create_persists_readable_ics_in_caldav_storage(): void
     {
         $uid = 'urn:uuid:'.Str::uuid()->toString();
         $payload = [
@@ -37,11 +48,11 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
             'end' => '2026-07-01T10:00:00Z',
         ];
 
-        $response = $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/events', $payload);
+        $eventId = (string) $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => $payload]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.d.id');
+        $this->assertNotSame('', $eventId);
 
-        $response->assertCreated();
-        $eventId = (string) $response->json('id');
         $stored = $this->findBobEvent($eventId);
         $this->assertNotNull($stored);
 
@@ -54,11 +65,11 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
         );
     }
 
-    public function test_rest_create_with_alerts_persists_valarm_in_caldav_blob(): void
+    public function test_jmap_create_with_alerts_persists_valarm_in_caldav_blob(): void
     {
         $uid = 'urn:uuid:'.Str::uuid()->toString();
-        $response = $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/events', [
+        $eventId = (string) $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => [
                 'uid' => $uid,
                 'calendarIds' => ['default' => true],
                 'title' => 'Reminder Event',
@@ -74,12 +85,13 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
                         ],
                     ],
                 ],
-            ]);
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.d.id');
 
-        $response->assertCreated()
-            ->assertJsonPath('alerts.alert1.trigger.offset', '-PT15M');
-
-        $eventId = (string) $response->json('id');
+        $event = $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('-PT15M', $event['alerts']['alert1']['trigger']['offset']);
         $stored = $this->findBobEvent($eventId);
         $this->assertNotNull($stored);
 
@@ -89,34 +101,34 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('ACTION:DISPLAY', $ics);
     }
 
-    public function test_caldav_valarm_readable_via_rest(): void
+    public function test_caldav_valarm_readable_via_jmap(): void
     {
         $uid = 'urn:uuid:'.Str::uuid()->toString();
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:CalDAV Reminder\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT30M\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
         $eventId = $this->seedEventViaPdo('bob', 'caldav-reminder.ics', $ics);
 
-        $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/events/'.$eventId)
-            ->assertOk()
-            ->assertJsonPath('uid', $uid)
-            ->assertJsonPath('alerts.alert1.action', 'display')
-            ->assertJsonPath('alerts.alert1.trigger.offset', '-PT30M');
+        $event = $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertSame($uid, $event['uid']);
+        $this->assertSame('display', $event['alerts']['alert1']['action']);
+        $this->assertSame('-PT30M', $event['alerts']['alert1']['trigger']['offset']);
     }
 
-    public function test_rest_create_updates_caldav_search_index(): void
+    public function test_jmap_create_updates_caldav_search_index(): void
     {
         $uid = 'urn:uuid:'.Str::uuid()->toString();
-        $response = $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/events', [
+        $eventId = (string) $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => [
                 'uid' => $uid,
                 'calendarIds' => ['default' => true],
                 'title' => 'Searchable Event',
                 'start' => '2026-07-01T09:00:00Z',
                 'end' => '2026-07-01T10:00:00Z',
-            ]);
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.d.id');
 
-        $response->assertCreated();
-        $eventId = (string) $response->json('id');
         $stored = $this->findBobEvent($eventId);
         $this->assertNotNull($stored);
 
@@ -126,7 +138,7 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
             ->where('source_key', $sourceKey)
             ->first();
 
-        $this->assertNotNull($row, 'REST create should index the CalDAV event.');
+        $this->assertNotNull($row, 'JMAP create should index the CalDAV event.');
         $this->assertSame('calendar', $row->category);
         $this->assertSame('bob', $row->owner_username);
         $this->assertStringContainsString('Searchable Event', (string) $row->title);
@@ -146,31 +158,30 @@ final class CalendarsCalDavInteropTest extends WgwDatabaseTestCase
         $this->assertContains('caldav', $sourceTypes);
     }
 
-    public function test_caldav_seeded_event_readable_via_rest(): void
+    public function test_caldav_seeded_event_readable_via_jmap(): void
     {
         $uid = 'urn:uuid:'.Str::uuid()->toString();
         $eventId = $this->seedEventViaPdo('bob', 'caldav-seeded.ics', $this->sampleIcs('CalDAV Seeded', $uid));
 
-        $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/events/'.$eventId)
-            ->assertOk()
-            ->assertJsonPath('uid', $uid)
-            ->assertJsonPath('title', 'CalDAV Seeded');
+        $event = $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertSame($uid, $event['uid']);
+        $this->assertSame('CalDAV Seeded', $event['title']);
     }
 
-    public function test_rest_update_rewrites_stored_ics(): void
+    public function test_jmap_update_rewrites_stored_ics(): void
     {
         $eventId = $this->seedEventViaPdo('bob', 'update-me.ics', $this->sampleIcs('Before Update'));
-        $url = '/api/v1/calendars/events/'.$eventId;
 
-        $this->withBearer($this->userBearerToken())
-            ->putJson($url, [
-                'calendarIds' => ['default' => true],
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => [
                 'title' => 'After Update',
                 'start' => '2026-08-01T09:00:00Z',
                 'end' => '2026-08-01T10:00:00Z',
-            ], $this->withIfMatch($this->fetchEtagFromGet($url)))
-            ->assertOk();
+            ]]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.notUpdated.'.$eventId, null);
 
         $stored = $this->findBobEvent($eventId);
         $this->assertNotNull($stored);
