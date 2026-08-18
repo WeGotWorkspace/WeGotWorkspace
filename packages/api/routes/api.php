@@ -18,8 +18,6 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
-use App\Http\Controllers\Api\V1\Calendars\CalendarEventsController;
-use App\Http\Controllers\Api\V1\Calendars\CalendarsController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -218,31 +216,6 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
 
     Route::middleware('wgw.contacts')->group(function (): void {
         Route::post('contacts/cards/import', ContactCardImportController::class);
-    });
-
-    Route::middleware('wgw.calendars')->group(function (): void {
-        Route::get('calendars/calendars/changes', [CalendarsController::class, 'changes']);
-        Route::get('calendars/calendars', [CalendarsController::class, 'index']);
-        Route::post('calendars/calendars', [CalendarsController::class, 'store']);
-        Route::get('calendars/calendars/{calendarId}', [CalendarsController::class, 'show'])
-            ->where('calendarId', '[a-z0-9_-]+');
-        Route::patch('calendars/calendars/{calendarId}', [CalendarsController::class, 'update'])
-            ->where('calendarId', '[a-z0-9_-]+');
-        Route::delete('calendars/calendars/{calendarId}', [CalendarsController::class, 'destroy'])
-            ->where('calendarId', '[a-z0-9_-]+');
-        Route::get('calendars/events/changes', [CalendarEventsController::class, 'changes']);
-        Route::post('calendars/events/set', [CalendarEventsController::class, 'set']);
-        Route::post('calendars/events/query', [CalendarEventsController::class, 'query']);
-        Route::get('calendars/events', [CalendarEventsController::class, 'index']);
-        Route::post('calendars/events', [CalendarEventsController::class, 'store']);
-        Route::get('calendars/events/{eventId}', [CalendarEventsController::class, 'show'])
-            ->where('eventId', '[a-z0-9_#%-]+');
-        Route::put('calendars/events/{eventId}', [CalendarEventsController::class, 'update'])
-            ->where('eventId', '[a-z0-9_#%-]+');
-        Route::patch('calendars/events/{eventId}', [CalendarEventsController::class, 'patch'])
-            ->where('eventId', '[a-z0-9_#%-]+');
-        Route::delete('calendars/events/{eventId}', [CalendarEventsController::class, 'destroy'])
-            ->where('eventId', '[a-z0-9_#%-]+');
     });
 
     // JMAP transport envelope (RFC 8620) — deliberately outside any domain
