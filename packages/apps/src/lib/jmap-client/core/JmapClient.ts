@@ -112,6 +112,7 @@ export class JmapClient {
   async request(
     methodCalls: JmapInvocation[],
     using: string[] = [CORE_CAPABILITY, CALENDARS_CAPABILITY],
+    init?: { signal?: AbortSignal },
   ): Promise<JmapResponse> {
     const body: JmapRequest = { using, methodCalls };
     const response = await this.#fetch(this.session.apiUrl, {
@@ -122,6 +123,7 @@ export class JmapClient {
         ...this.#options.headers,
       },
       body: JSON.stringify(body),
+      ...(init?.signal ? { signal: init.signal } : {}),
     });
     if (!response.ok) {
       let detail: unknown;
@@ -147,9 +149,17 @@ export class JmapClient {
   }
 
   /** Sends a single method call and returns its response args; throws on method error. */
-  async call<TResponse>(name: string, args: Record<string, unknown>): Promise<TResponse> {
+  async call<TResponse>(
+    name: string,
+    args: Record<string, unknown>,
+    options?: { using?: string[]; signal?: AbortSignal },
+  ): Promise<TResponse> {
     const callId = this.nextCallId();
-    const response = await this.request([[name, args, callId]]);
+    const response = await this.request(
+      [[name, args, callId]],
+      options?.using ?? [CORE_CAPABILITY, CALENDARS_CAPABILITY],
+      options?.signal ? { signal: options.signal } : undefined,
+    );
     const invocation = response.methodResponses.find(([, , id]) => id === callId);
     if (!invocation) {
       throw new JmapRequestError(`No response for method call ${name} (${callId})`);
