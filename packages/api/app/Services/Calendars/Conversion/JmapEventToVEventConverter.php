@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\ICalendarDateList;
+use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\ICalendarRecurrence;
 use App\Services\VObject\VObjectPayloadGuard;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
@@ -122,7 +125,7 @@ final class JmapEventToVEventConverter
             }
 
             if (self::isRdateOnlyOverride($patch)) {
-                $rdateValues[] = CalendarConversionSupport::utcDateTimeToIcs($recurrenceIdKey);
+                $rdateValues[] = ICalendarDateTime::toIcs($recurrenceIdKey);
 
                 continue;
             }
@@ -151,7 +154,7 @@ final class JmapEventToVEventConverter
                 if (isset($overrideVevent->DTSTART)) {
                     $overrideVevent->remove('DTSTART');
                 }
-                CalendarConversionSupport::writeDateTimeProperty(
+                ICalendarDateTime::writeProperty(
                     $overrideVevent,
                     'DTSTART',
                     $recurrenceIdKey,
@@ -222,7 +225,7 @@ final class JmapEventToVEventConverter
         $timeZone = isset($event['timeZone']) && is_string($event['timeZone']) ? $event['timeZone'] : null;
 
         if (isset($event['start'])) {
-            CalendarConversionSupport::writeDateTimeProperty(
+            ICalendarDateTime::writeProperty(
                 $vevent,
                 'DTSTART',
                 $event['start'],
@@ -232,7 +235,7 @@ final class JmapEventToVEventConverter
         }
 
         if (isset($event['end'])) {
-            CalendarConversionSupport::writeDateTimeProperty(
+            ICalendarDateTime::writeProperty(
                 $vevent,
                 'DTEND',
                 $event['end'],
@@ -246,7 +249,7 @@ final class JmapEventToVEventConverter
         if (isset($event['recurrenceRules']) && is_array($event['recurrenceRules'])) {
             foreach ($event['recurrenceRules'] as $rule) {
                 if (is_array($rule)) {
-                    $vevent->add('RRULE', CalendarConversionSupport::recurrenceRuleToIcs($rule));
+                    $vevent->add('RRULE', ICalendarRecurrence::ruleToIcs($rule));
                 }
             }
         }
@@ -254,19 +257,13 @@ final class JmapEventToVEventConverter
         if (isset($event['excludedRecurrenceRules']) && is_array($event['excludedRecurrenceRules'])) {
             foreach ($event['excludedRecurrenceRules'] as $rule) {
                 if (is_array($rule)) {
-                    $vevent->add('EXRULE', CalendarConversionSupport::recurrenceRuleToIcs($rule));
+                    $vevent->add('EXRULE', ICalendarRecurrence::ruleToIcs($rule));
                 }
             }
         }
 
         if (isset($event['excludedRecurrenceDates']) && is_array($event['excludedRecurrenceDates']) && $event['excludedRecurrenceDates'] !== []) {
-            $values = array_map(
-                static fn (mixed $value): string => is_string($value)
-                    ? CalendarConversionSupport::utcDateTimeToIcs($value)
-                    : '',
-                $event['excludedRecurrenceDates']
-            );
-            $values = array_values(array_filter($values, static fn (string $v): bool => $v !== ''));
+            $values = ICalendarDateList::toIcsValues($event['excludedRecurrenceDates']);
             if ($values !== []) {
                 $vevent->add('EXDATE', implode(',', $values));
             }
@@ -331,11 +328,11 @@ final class JmapEventToVEventConverter
     private function writeTimestamps(VEvent $vevent, array $event): void
     {
         if (isset($event['created']) && is_string($event['created'])) {
-            $vevent->add('CREATED', CalendarConversionSupport::utcDateTimeToIcs($event['created']));
+            $vevent->add('CREATED', ICalendarDateTime::toIcs($event['created']));
         }
 
         if (isset($event['updated']) && is_string($event['updated'])) {
-            $vevent->add('LAST-MODIFIED', CalendarConversionSupport::utcDateTimeToIcs($event['updated']));
+            $vevent->add('LAST-MODIFIED', ICalendarDateTime::toIcs($event['updated']));
         }
     }
 

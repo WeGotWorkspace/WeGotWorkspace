@@ -77,6 +77,20 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertSame('P1D', $event['duration']);
     }
 
+    /**
+     * RFC 8984 §1.4.6 Duration ABNF allows only weeks/days before T — never years
+     * or months (months have no fixed length). A sabbatical-length all-day span
+     * must emit P{n}D, not DateInterval's calendar P2M5D.
+     */
+    public function test_multi_month_all_day_duration_uses_days_not_months(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sabbatical\r\nSUMMARY:Sabbatical\r\nDTSTART;VALUE=DATE:20260101\r\nDTEND;VALUE=DATE:20260306\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame('P64D', $event['duration']);
+        $this->assertDoesNotMatchRegularExpression('/P[^T]*[YM]/', $event['duration']);
+    }
+
     public function test_multi_vevent_reads_all_events(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:a\r\nSUMMARY:First\r\nDTSTART:20260601T080000Z\r\nDTEND:20260601T090000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:b\r\nSUMMARY:Second\r\nDTSTART:20260602T080000Z\r\nDTEND:20260602T090000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";

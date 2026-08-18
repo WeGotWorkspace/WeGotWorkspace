@@ -4,45 +4,24 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\ICalendarAlarmTrigger;
 use Illuminate\Support\Str;
-use Sabre\VObject\Component;
 use Sabre\VObject\Component\VAlarm;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
-use Sabre\VObject\Property;
 
 /**
- * Shared helpers for iCalendar VEVENT ↔ JMAP CalendarEvent conversion.
+ * Event-only helpers for iCalendar VEVENT ↔ JMAP CalendarEvent conversion.
  *
- * Multi-VEVENT ICS: CalDAV stores one .ics blob per calendar object URI. When a
- * resource contains multiple VEVENT components, each maps to its own JMAP
- * CalendarEvent with composite id `{objectUri}#{veventUid}`. POST always writes
- * a single-VEVENT object; PUT/PATCH/DELETE on a composite id target one VEVENT.
+ * Shared DATE-TIME / RRULE / EXDATE / UID / VALARM TRIGGER live in
+ * App\Services\VObject\. Multi-VEVENT ICS: CalDAV stores one .ics blob per
+ * calendar object URI. When a resource contains multiple VEVENT components,
+ * each maps to its own JMAP CalendarEvent with composite id
+ * `{objectUri}#{veventUid}`. POST always writes a single-VEVENT object;
+ * PUT/PATCH/DELETE on a composite id target one VEVENT.
  */
 final class CalendarConversionSupport
 {
-    /** @var array<string, string> */
-    private const FREQUENCY_MAP = [
-        'SECONDLY' => 'secondly',
-        'MINUTELY' => 'minutely',
-        'HOURLY' => 'hourly',
-        'DAILY' => 'daily',
-        'WEEKLY' => 'weekly',
-        'MONTHLY' => 'monthly',
-        'YEARLY' => 'yearly',
-    ];
-
-    /** @var array<string, string> */
-    private const FREQUENCY_TO_ICS = [
-        'secondly' => 'SECONDLY',
-        'minutely' => 'MINUTELY',
-        'hourly' => 'HOURLY',
-        'daily' => 'DAILY',
-        'weekly' => 'WEEKLY',
-        'monthly' => 'MONTHLY',
-        'yearly' => 'YEARLY',
-    ];
-
     /**
      * @return list<VEvent>
      */
@@ -63,79 +42,13 @@ final class CalendarConversionSupport
         return self::veventsFromCalendar($calendar)[0] ?? null;
     }
 
-    public static function normalizeUtcDateTime(string $value): string
-    {
-        $trimmed = trim($value);
-        if ($trimmed === '') {
-            return $trimmed;
-        }
-
-        if (preg_match('/^\d{8}T\d{6}Z$/', $trimmed) === 1) {
-            $trimmed = substr($trimmed, 0, 4).'-'
-                .substr($trimmed, 4, 2).'-'
-                .substr($trimmed, 6, 2).'T'
-                .substr($trimmed, 9, 2).':'
-                .substr($trimmed, 11, 2).':'
-                .substr($trimmed, 13, 2).'Z';
-        }
-
-        if (preg_match('/^\d{8}T\d{6}$/', $trimmed) === 1) {
-            $trimmed = substr($trimmed, 0, 4).'-'
-                .substr($trimmed, 4, 2).'-'
-                .substr($trimmed, 6, 2).'T'
-                .substr($trimmed, 9, 2).':'
-                .substr($trimmed, 11, 2).':'
-                .substr($trimmed, 13, 2);
-        }
-
-        return $trimmed;
-    }
-
-    public static function utcDateTimeToIcs(string $value): string
-    {
-        $trimmed = trim($value);
-        if ($trimmed === '') {
-            return $trimmed;
-        }
-
-        if (str_ends_with($trimmed, 'Z')) {
-            return str_replace(['-', ':'], '', substr($trimmed, 0, -1)).'Z';
-        }
-
-        return str_replace(['-', ':'], '', $trimmed);
-    }
-
     /**
-     * @return array{value: string, showWithoutTime: bool, timeZone: string|null}
-     */
-    public static function jmapDateTimeFromProperty(Property $property): array
-    {
-        $raw = trim((string) $property->getValue());
-        $isDate = isset($property['VALUE']) && strtoupper((string) $property['VALUE']) === 'DATE';
-        $tzid = isset($property['TZID']) ? trim((string) $property['TZID']) : null;
-
-        if ($isDate) {
-            $normalized = strlen($raw) === 8
-                ? substr($raw, 0, 4).'-'.substr($raw, 4, 2).'-'.substr($raw, 6, 2)
-                : self::normalizeUtcDateTime($raw);
-
-            return [
-                'value' => $normalized,
-                'showWithoutTime' => true,
-                'timeZone' => $tzid,
-            ];
-        }
-
-        return [
-            'value' => self::normalizeUtcDateTime($raw),
-            'showWithoutTime' => false,
-            'timeZone' => $tzid,
-        ];
-    }
-
-    /**
-     * ISO 8601 duration from two JMAP local/UTC date-times (or all-day dates).
-     * Used so DTEND-based CalDAV events also expose RFC 8984 `duration`.
+     * RFC 8984 §1.4.6 duration from two JMAP local/UTC date-times (or all-day dates).
+     * Used so DTEND-based CalDAV events also expose `duration`.
+     *
+     * The ABNF allows only weeks/days before T — never years or months, because
+     * months have no fixed length. DateInterval's y/m/d split is therefore unused;
+     * the span is total days plus leftover hours/minutes/seconds.
      */
     public static function durationBetweenJmapDateTimes(string $start, string $end): ?string
     {
@@ -157,19 +70,13 @@ final class CalendarConversionSupport
         }
 
         $interval = $startDt->diff($endDt);
-        if ($interval->invert === 1) {
+        if ($interval->invert === 1 || ! is_int($interval->days) || $interval->days < 0) {
             return null;
         }
 
         $parts = 'P';
-        if ($interval->y > 0) {
-            $parts .= $interval->y.'Y';
-        }
-        if ($interval->m > 0) {
-            $parts .= $interval->m.'M';
-        }
-        if ($interval->d > 0) {
-            $parts .= $interval->d.'D';
+        if ($interval->days > 0) {
+            $parts .= $interval->days.'D';
         }
 
         $hasTime = $interval->h > 0 || $interval->i > 0 || $interval->s > 0;
@@ -200,238 +107,6 @@ final class CalendarConversionSupport
         }
 
         return $value;
-    }
-
-    /**
-     * @param  array<string, mixed>  $event
-     */
-    public static function writeDateTimeProperty(Component $component, string $name, mixed $value, bool $showWithoutTime, ?string $timeZone): void
-    {
-        if (! is_string($value) || trim($value) === '') {
-            return;
-        }
-
-        $params = [];
-        if ($showWithoutTime) {
-            $params['VALUE'] = 'DATE';
-            $icsValue = str_replace('-', '', substr($value, 0, 10));
-        } else {
-            $icsValue = self::utcDateTimeToIcs($value);
-            if (! str_ends_with($value, 'Z') && $timeZone !== null && $timeZone !== '') {
-                $params['TZID'] = $timeZone;
-            }
-        }
-
-        $component->add($name, $icsValue, $params);
-    }
-
-    /**
-     * Parse an RRULE/EXRULE property into a JSCalendar RecurrenceRule (RFC 8984 §4.3.3):
-     * byMonth is String[] (leap-month suffix "3L"), byDay is NDay[] objects, and
-     * byHour/byMinute/bySecond are UnsignedInt[].
-     *
-     * $legacyWireTypes keeps the pre-RFC-8984 shapes (byMonth Int[], byDay iCal
-     * strings, no byHour/byMinute/bySecond) for the tasks domain, which has shipped
-     * consumers of the legacy wire format.
-     *
-     * @return array<string, mixed>
-     */
-    public static function recurrenceRuleFromProperty(Property $property, bool $legacyWireTypes = false): array
-    {
-        $parts = $property->getParts();
-        $frequency = strtoupper((string) ($parts['FREQ'] ?? ''));
-        $rule = [
-            '@type' => 'RecurrenceRule',
-            'frequency' => self::FREQUENCY_MAP[$frequency] ?? strtolower($frequency),
-        ];
-
-        if (isset($parts['INTERVAL'])) {
-            $rule['interval'] = (int) $parts['INTERVAL'];
-        }
-        if (isset($parts['COUNT'])) {
-            $rule['count'] = (int) $parts['COUNT'];
-        }
-        if (isset($parts['UNTIL'])) {
-            $until = (string) $parts['UNTIL'];
-            $rule['until'] = str_contains($until, 'T')
-                ? self::normalizeUtcDateTime($until)
-                : (strlen($until) === 8
-                    ? substr($until, 0, 4).'-'.substr($until, 4, 2).'-'.substr($until, 6, 2)
-                    : $until);
-        }
-        if (isset($parts['BYDAY'])) {
-            $days = self::rulePartValues($parts['BYDAY']);
-            $rule['byDay'] = $legacyWireTypes
-                ? $days
-                : array_values(array_filter(
-                    array_map(self::nDayFromIcs(...), $days),
-                    static fn (?array $nDay): bool => $nDay !== null,
-                ));
-        }
-        if (isset($parts['BYMONTH'])) {
-            $months = self::rulePartValues($parts['BYMONTH']);
-            $rule['byMonth'] = $legacyWireTypes
-                ? array_map('intval', $months)
-                : array_map(self::normalizeByMonthValue(...), $months);
-        }
-        if (isset($parts['BYMONTHDAY'])) {
-            $rule['byMonthDay'] = array_map('intval', self::rulePartValues($parts['BYMONTHDAY']));
-        }
-        if (isset($parts['BYYEARDAY'])) {
-            $rule['byYearDay'] = array_map('intval', self::rulePartValues($parts['BYYEARDAY']));
-        }
-        if (isset($parts['BYWEEKNO'])) {
-            $rule['byWeekNo'] = array_map('intval', self::rulePartValues($parts['BYWEEKNO']));
-        }
-        if (isset($parts['BYSETPOS'])) {
-            $rule['bySetPosition'] = array_map('intval', self::rulePartValues($parts['BYSETPOS']));
-        }
-        if (! $legacyWireTypes) {
-            foreach (['BYHOUR' => 'byHour', 'BYMINUTE' => 'byMinute', 'BYSECOND' => 'bySecond'] as $icsPart => $jmapKey) {
-                if (isset($parts[$icsPart])) {
-                    $rule[$jmapKey] = array_map('intval', self::rulePartValues($parts[$icsPart]));
-                }
-            }
-        }
-        if (isset($parts['WKST'])) {
-            $rule['firstDayOfWeek'] = strtolower((string) $parts['WKST']);
-        }
-
-        return $rule;
-    }
-
-    /**
-     * Sabre's Recur property exposes multi-value rule parts (BYDAY=MO,TU) as arrays
-     * and single values as strings; normalize both to a clean list of strings.
-     *
-     * @return list<string>
-     */
-    private static function rulePartValues(mixed $part): array
-    {
-        $values = is_array($part) ? $part : explode(',', (string) $part);
-        $values = array_map(static fn (mixed $value): string => trim((string) $value), $values);
-
-        return array_values(array_filter($values, static fn (string $value): bool => $value !== ''));
-    }
-
-    /**
-     * iCal BYDAY value ("MO", "+2MO", "-1SU") → RFC 8984 NDay object.
-     *
-     * @return array{'@type': string, day: string, nthOfPeriod?: int}|null
-     */
-    private static function nDayFromIcs(string $value): ?array
-    {
-        if (preg_match('/^([+-]?\d{1,2})?(MO|TU|WE|TH|FR|SA|SU)$/i', trim($value), $matches) !== 1) {
-            return null;
-        }
-
-        $nDay = ['@type' => 'NDay', 'day' => strtolower($matches[2])];
-        if ($matches[1] !== '') {
-            $nDay['nthOfPeriod'] = (int) $matches[1];
-        }
-
-        return $nDay;
-    }
-
-    /**
-     * Canonicalize an iCal BYMONTH value to the RFC 8984 string form: strip leading
-     * zeros, uppercase the leap-month suffix ("03" → "3", "3l" → "3L").
-     */
-    private static function normalizeByMonthValue(string $value): string
-    {
-        if (preg_match('/^0*(\d+)(l?)$/i', trim($value), $matches) === 1) {
-            return $matches[1].strtoupper($matches[2]);
-        }
-
-        return trim($value);
-    }
-
-    /**
-     * NDay object (RFC 8984) or legacy iCal day string → iCal BYDAY value.
-     */
-    private static function byDayValueToIcs(mixed $value): ?string
-    {
-        if (is_array($value)) {
-            $day = $value['day'] ?? null;
-            if (! is_string($day) || trim($day) === '') {
-                return null;
-            }
-            $ordinal = isset($value['nthOfPeriod']) && is_numeric($value['nthOfPeriod'])
-                ? (string) (int) $value['nthOfPeriod']
-                : '';
-
-            return $ordinal.strtoupper(trim($day));
-        }
-
-        if (is_string($value) && trim($value) !== '') {
-            return strtoupper(trim($value));
-        }
-
-        return null;
-    }
-
-    /**
-     * Serialize a JSCalendar RecurrenceRule to an RRULE/EXRULE value. Accepts both
-     * RFC 8984 wire shapes (byMonth String[], byDay NDay[]) and the legacy shapes
-     * still produced by the tasks domain (byMonth Int[], byDay iCal strings).
-     *
-     * @param  array<string, mixed>  $rule
-     */
-    public static function recurrenceRuleToIcs(array $rule): string
-    {
-        $parts = [];
-        $frequency = strtolower((string) ($rule['frequency'] ?? ''));
-        $parts[] = 'FREQ='.(self::FREQUENCY_TO_ICS[$frequency] ?? strtoupper($frequency));
-
-        if (isset($rule['interval']) && (int) $rule['interval'] > 1) {
-            $parts[] = 'INTERVAL='.(int) $rule['interval'];
-        }
-        if (isset($rule['count'])) {
-            $parts[] = 'COUNT='.(int) $rule['count'];
-        }
-        if (isset($rule['until']) && is_string($rule['until'])) {
-            $until = $rule['until'];
-            $parts[] = 'UNTIL='.(str_contains($until, 'T')
-                ? self::utcDateTimeToIcs($until)
-                : str_replace('-', '', substr($until, 0, 10)));
-        }
-        if (isset($rule['byDay']) && is_array($rule['byDay']) && $rule['byDay'] !== []) {
-            $days = array_values(array_filter(
-                array_map(self::byDayValueToIcs(...), $rule['byDay']),
-                static fn (?string $day): bool => $day !== null,
-            ));
-            if ($days !== []) {
-                $parts[] = 'BYDAY='.implode(',', $days);
-            }
-        }
-        if (isset($rule['byMonth']) && is_array($rule['byMonth']) && $rule['byMonth'] !== []) {
-            $parts[] = 'BYMONTH='.implode(',', array_map(
-                static fn (mixed $value): string => strtoupper((string) $value),
-                $rule['byMonth'],
-            ));
-        }
-        if (isset($rule['byMonthDay']) && is_array($rule['byMonthDay']) && $rule['byMonthDay'] !== []) {
-            $parts[] = 'BYMONTHDAY='.implode(',', array_map('strval', $rule['byMonthDay']));
-        }
-        if (isset($rule['byYearDay']) && is_array($rule['byYearDay']) && $rule['byYearDay'] !== []) {
-            $parts[] = 'BYYEARDAY='.implode(',', array_map('strval', $rule['byYearDay']));
-        }
-        if (isset($rule['byWeekNo']) && is_array($rule['byWeekNo']) && $rule['byWeekNo'] !== []) {
-            $parts[] = 'BYWEEKNO='.implode(',', array_map('strval', $rule['byWeekNo']));
-        }
-        if (isset($rule['bySetPosition']) && is_array($rule['bySetPosition']) && $rule['bySetPosition'] !== []) {
-            $parts[] = 'BYSETPOS='.implode(',', array_map('strval', $rule['bySetPosition']));
-        }
-        foreach (['byHour' => 'BYHOUR', 'byMinute' => 'BYMINUTE', 'bySecond' => 'BYSECOND'] as $jmapKey => $icsPart) {
-            if (isset($rule[$jmapKey]) && is_array($rule[$jmapKey]) && $rule[$jmapKey] !== []) {
-                $parts[] = $icsPart.'='.implode(',', array_map('intval', $rule[$jmapKey]));
-            }
-        }
-        if (isset($rule['firstDayOfWeek']) && is_string($rule['firstDayOfWeek']) && $rule['firstDayOfWeek'] !== '') {
-            $parts[] = 'WKST='.strtoupper($rule['firstDayOfWeek']);
-        }
-
-        return implode(';', $parts);
     }
 
     /**
@@ -519,20 +194,6 @@ final class CalendarConversionSupport
         return 'event';
     }
 
-    public static function generateUid(string $seed): string
-    {
-        $hash = hash('sha256', $seed);
-
-        return sprintf(
-            'urn:uuid:%s-%s-%s-%s-%s',
-            substr($hash, 0, 8),
-            substr($hash, 8, 4),
-            substr($hash, 12, 4),
-            substr($hash, 16, 4),
-            substr($hash, 20, 12),
-        );
-    }
-
     /**
      * @return array{objectId: string, veventUid: string|null}
      */
@@ -560,13 +221,8 @@ final class CalendarConversionSupport
      */
     public static function alertFromValarm(VAlarm $valarm): ?array
     {
-        if (! isset($valarm->TRIGGER)) {
-            return null;
-        }
-
-        $trigger = $valarm->TRIGGER;
-        $triggerValue = trim((string) $trigger->getValue());
-        if ($triggerValue === '') {
+        $parsed = ICalendarAlarmTrigger::fromValarm($valarm);
+        if ($parsed === null) {
             return null;
         }
 
@@ -582,28 +238,21 @@ final class CalendarConversionSupport
             'action' => $action,
         ];
 
-        $isDateTime = isset($trigger['VALUE'])
-            && strtoupper((string) $trigger['VALUE']) === 'DATE-TIME';
-        if ($isDateTime || preg_match('/^\d{8}T\d{6}Z?$/', $triggerValue) === 1) {
+        if ($parsed['kind'] === 'absolute') {
             $alert['trigger'] = [
                 '@type' => 'AbsoluteAlert',
-                'when' => self::normalizeUtcDateTime($triggerValue),
+                'when' => $parsed['when'],
             ];
 
             return $alert;
         }
 
-        $relatedTo = isset($trigger['RELATED'])
-            && strtoupper((string) $trigger['RELATED']) === 'END'
-            ? 'end'
-            : 'start';
-
         $relative = [
             '@type' => 'RelativeAlert',
-            'offset' => $triggerValue,
+            'offset' => $parsed['offset'],
         ];
-        if ($relatedTo !== 'start') {
-            $relative['relatedTo'] = $relatedTo;
+        if ($parsed['relatedTo'] !== 'start') {
+            $relative['relatedTo'] = $parsed['relatedTo'];
         }
         $alert['trigger'] = $relative;
 
@@ -620,7 +269,7 @@ final class CalendarConversionSupport
             return;
         }
 
-        $triggerProps = self::valarmTriggerFromJmap($triggerData);
+        $triggerProps = ICalendarAlarmTrigger::toIcsParts($triggerData);
         if ($triggerProps === null) {
             return;
         }
@@ -646,145 +295,6 @@ final class CalendarConversionSupport
                 : 'Reminder';
             $valarm->add('SUMMARY', $summary);
             $valarm->add('ATTENDEE', 'mailto:organizer@invalid');
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $trigger
-     * @return array{value: string, params: array<string, string>}|null
-     */
-    private static function valarmTriggerFromJmap(array $trigger): ?array
-    {
-        $type = $trigger['@type'] ?? '';
-
-        if ($type === 'AbsoluteAlert' || isset($trigger['when'])) {
-            $when = $trigger['when'] ?? null;
-            if (! is_string($when) || trim($when) === '') {
-                return null;
-            }
-
-            return [
-                'value' => self::utcDateTimeToIcs($when),
-                'params' => ['VALUE' => 'DATE-TIME'],
-            ];
-        }
-
-        if ($type === 'RelativeAlert' || isset($trigger['offset'])) {
-            $offset = $trigger['offset'] ?? null;
-            if (! is_string($offset) || trim($offset) === '') {
-                return null;
-            }
-
-            $params = [];
-            $relatedTo = isset($trigger['relatedTo']) && is_string($trigger['relatedTo'])
-                ? strtolower($trigger['relatedTo'])
-                : 'start';
-            if ($relatedTo === 'end') {
-                $params['RELATED'] = 'END';
-            }
-
-            return [
-                'value' => $offset,
-                'params' => $params,
-            ];
-        }
-
-        return null;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public static function taskAlertFromValarm(Component $valarm): ?array
-    {
-        if (! isset($valarm->TRIGGER)) {
-            return null;
-        }
-
-        $triggerValue = trim((string) $valarm->TRIGGER->getValue());
-        if ($triggerValue === '') {
-            return null;
-        }
-
-        $related = isset($valarm->TRIGGER['RELATED'])
-            ? strtoupper(trim((string) $valarm->TRIGGER['RELATED']))
-            : 'START';
-        $relativeTo = $related === 'END' ? 'end' : 'start';
-
-        if (preg_match('/^-?P/i', $triggerValue) === 1) {
-            $trigger = [
-                '@type' => 'OffsetTrigger',
-                'offset' => $triggerValue,
-                'relativeTo' => $relativeTo,
-            ];
-        } else {
-            $trigger = [
-                '@type' => 'AbsoluteTrigger',
-                'when' => self::normalizeUtcDateTime($triggerValue),
-            ];
-        }
-
-        $alert = [
-            '@type' => 'Alert',
-            'trigger' => $trigger,
-        ];
-
-        if (isset($valarm->ACTION)) {
-            $action = strtolower(trim((string) $valarm->ACTION->getValue()));
-            if (in_array($action, ['display', 'email'], true)) {
-                $alert['action'] = $action;
-            }
-        }
-
-        if (isset($valarm->ACKNOWLEDGED)) {
-            $alert['acknowledged'] = self::normalizeUtcDateTime((string) $valarm->ACKNOWLEDGED->getValue());
-        }
-
-        return $alert;
-    }
-
-    /**
-     * @param  array<string, mixed>  $alerts
-     */
-    public static function writeValarmComponents(Component $parent, array $alerts): void
-    {
-        foreach ($alerts as $entry) {
-            if (! is_array($entry)) {
-                continue;
-            }
-
-            $trigger = $entry['trigger'] ?? null;
-            if (! is_array($trigger)) {
-                continue;
-            }
-
-            $valarm = $parent->add('VALARM');
-            $action = isset($entry['action']) && is_string($entry['action'])
-                ? strtoupper($entry['action'])
-                : 'DISPLAY';
-            $valarm->add('ACTION', $action);
-
-            if (($trigger['@type'] ?? '') === 'OffsetTrigger' && isset($trigger['offset']) && is_string($trigger['offset'])) {
-                $params = [];
-                $relativeTo = strtolower((string) ($trigger['relativeTo'] ?? 'start'));
-                if ($relativeTo === 'end') {
-                    $params['RELATED'] = 'END';
-                }
-                $valarm->add('TRIGGER', $trigger['offset'], $params);
-            } elseif (($trigger['@type'] ?? '') === 'AbsoluteTrigger'
-                && isset($trigger['when'])
-                && is_string($trigger['when'])
-                && trim($trigger['when']) !== '') {
-                $valarm->add('TRIGGER', self::utcDateTimeToIcs($trigger['when']));
-            } else {
-                $parent->remove($valarm);
-
-                continue;
-            }
-
-            if (isset($entry['acknowledged']) && is_string($entry['acknowledged']) && trim($entry['acknowledged']) !== '') {
-                $valarm->add('ACKNOWLEDGED', self::utcDateTimeToIcs($entry['acknowledged']));
-            }
         }
     }
 
