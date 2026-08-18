@@ -8,9 +8,8 @@ use Tests\Support\DriveTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * Cross-drive move HTTP writes were dual-REST. Authenticated twins live on
- * {@see \Tests\Feature\Jmap\JmapFileNodeAclTest}. This file stays as a
- * pointer so the former suite name still greps.
+ * Cross-drive move HTTP writes were dual-REST. Authenticated twins live in
+ * JmapFileNodeAclTest. This file stays so the former suite name still greps.
  */
 final class FilesCrossDriveMoveTest extends WgwDatabaseTestCase
 {
