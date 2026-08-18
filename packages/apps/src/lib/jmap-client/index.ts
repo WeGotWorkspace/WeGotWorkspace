@@ -17,11 +17,19 @@ export type {
   JmapCalendarEventFilterCondition,
   JmapCalendarRights,
 } from "./calendars/types.js";
+export { CONTACTS_USING, JmapContactsClient } from "./contacts/JmapContactsClient.js";
+export type {
+  JmapAddressBook,
+  JmapAddressBookRights,
+  JmapContactCard,
+  JmapContactCardFilterCondition,
+} from "./contacts/types.js";
 export { JmapMethodError, JmapRequestError, JmapSetItemError } from "./core/errors.js";
 export type { JmapClientOptions, JmapFetch } from "./core/JmapClient.js";
 export { JmapClient } from "./core/JmapClient.js";
 export {
   CALENDARS_CAPABILITY,
+  CONTACTS_CAPABILITY,
   type ChangesResponse,
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,

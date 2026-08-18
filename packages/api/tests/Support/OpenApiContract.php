@@ -241,14 +241,8 @@ final class OpenApiContract
         if ($openApiPath === '/rooms/{roomId}/events' && $method === 'GET') {
             return 'peerId=peer-alpha';
         }
-        if ($openApiPath === '/contacts/cards' && $method === 'GET') {
+        if ($openApiPath === '/contacts/cards/import' && $method === 'POST') {
             return 'addressBookId=default';
-        }
-        if ($openApiPath === '/contacts/addressbooks/changes' && $method === 'GET') {
-            return 'since=0';
-        }
-        if ($openApiPath === '/contacts/cards/changes' && $method === 'GET') {
-            return 'addressBookId=default&since=0';
         }
         if ($openApiPath === '/calendars/events' && $method === 'GET') {
             return 'calendarId=default';

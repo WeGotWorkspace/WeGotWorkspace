@@ -18,11 +18,7 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
-use App\Http\Controllers\Api\V1\Contacts\AddressBooksController as ContactsAddressBooksController;
-use App\Http\Controllers\Api\V1\Contacts\ContactBlobsController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
-use App\Http\Controllers\Api\V1\Contacts\ContactCardsController;
-use App\Http\Controllers\Api\V1\Contacts\ContactCardVcfController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
 use App\Http\Controllers\Api\V1\Files\DriveShareSessionsController;
@@ -219,34 +215,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     });
 
     Route::middleware('wgw.contacts')->group(function (): void {
-        Route::get('contacts/addressbooks/changes', [ContactsAddressBooksController::class, 'changes']);
-        Route::get('contacts/addressbooks', [ContactsAddressBooksController::class, 'index']);
-        Route::post('contacts/addressbooks', [ContactsAddressBooksController::class, 'store']);
-        Route::get('contacts/addressbooks/{addressBookId}', [ContactsAddressBooksController::class, 'show'])
-            ->where('addressBookId', '[a-z0-9_-]+');
-        Route::patch('contacts/addressbooks/{addressBookId}', [ContactsAddressBooksController::class, 'update'])
-            ->where('addressBookId', '[a-z0-9_-]+');
-        Route::delete('contacts/addressbooks/{addressBookId}', [ContactsAddressBooksController::class, 'destroy'])
-            ->where('addressBookId', '[a-z0-9_-]+');
-        Route::post('contacts/cards/set', [ContactCardsController::class, 'set']);
-        Route::get('contacts/cards/changes', [ContactCardsController::class, 'changes']);
-        Route::post('contacts/cards/query', [ContactCardsController::class, 'query']);
         Route::post('contacts/cards/import', ContactCardImportController::class);
-        Route::get('contacts/cards', [ContactCardsController::class, 'index']);
-        Route::post('contacts/cards', [ContactCardsController::class, 'store']);
-        Route::get('contacts/cards/{cardId}/vcf', ContactCardVcfController::class)
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::get('contacts/cards/{cardId}', [ContactCardsController::class, 'show'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::put('contacts/cards/{cardId}', [ContactCardsController::class, 'update'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::patch('contacts/cards/{cardId}', [ContactCardsController::class, 'patch'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::delete('contacts/cards/{cardId}', [ContactCardsController::class, 'destroy'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::post('contacts/blobs', [ContactBlobsController::class, 'store']);
-        Route::get('contacts/blobs/{blobId}', [ContactBlobsController::class, 'show'])
-            ->where('blobId', '[0-9a-f-]+');
     });
 
     // JMAP transport envelope (RFC 8620) — deliberately outside any domain

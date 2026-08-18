@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddressBook } from "@/contacts-core/src/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { JmapMethodError } from "@/lib/jmap-client";
 import {
   readAddressBooksSyncToken,
   readCachedAddressBooks,
@@ -39,19 +40,20 @@ const newBook: AddressBook = {
   isDefault: false,
 };
 
-const { wgwFetch, wgwReadJson } = vi.hoisted(() => ({
-  wgwFetch: vi.fn(),
-  wgwReadJson: vi.fn(),
-}));
-
-const { getAddressBook, listAddressBooks } = vi.hoisted(() => ({
+const {
+  getAddressBook,
+  listAddressBooks,
+  addressBookChanges,
+  contactCardChanges,
+  listCards,
+  connectedContacts,
+} = vi.hoisted(() => ({
   getAddressBook: vi.fn(),
   listAddressBooks: vi.fn(),
-}));
-
-vi.mock("@/lib/api/wgw/http", () => ({
-  wgwFetch,
-  wgwReadJson,
+  addressBookChanges: vi.fn(),
+  contactCardChanges: vi.fn(),
+  listCards: vi.fn(),
+  connectedContacts: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
@@ -61,10 +63,14 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
     getAddressBook,
     listAddressBooks,
     getCard: vi.fn(),
+    listCards,
+    addressBookChanges,
+    contactCardChanges,
+    connectedContacts,
   };
 });
 
-import { pullAddressBookChanges } from "@/lib/api/wgw/contacts-sync";
+import { pullAddressBookChanges, pullContactCardChangesForBook } from "@/lib/api/wgw/contacts-sync";
 
 type JmapChangesResponse = {
   oldState: string;
@@ -74,24 +80,13 @@ type JmapChangesResponse = {
   destroyed: string[];
 };
 
-function mockOkJson(payload: unknown): void {
-  wgwFetch.mockResolvedValueOnce({ ok: true, status: 200 });
-  wgwReadJson.mockResolvedValueOnce(payload);
-}
-
-function mockEmptyCardChanges(): void {
-  mockOkJson({
-    oldState: "0",
-    newState: "1",
-    created: [],
-    updated: [],
-    destroyed: [],
-  });
-}
-
 describe("pullAddressBookChanges", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    connectedContacts.mockResolvedValue({
+      client: { getState: () => "1:default:3" },
+      accountId: username,
+    });
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await contactsBooksTable(db).clear();
     await db.meta.clear();
@@ -106,8 +101,8 @@ describe("pullAddressBookChanges", () => {
   });
 
   it("advances the address books sync token after a successful changes response", async () => {
-    mockOkJson({
-      oldState: "0",
+    addressBookChanges.mockResolvedValueOnce({
+      oldState: "0:",
       newState: "1:default:3",
       created: [],
       updated: [],
@@ -117,15 +112,12 @@ describe("pullAddressBookChanges", () => {
     await pullAddressBookChanges(username);
 
     expect(await readAddressBooksSyncToken(username)).toBe("1:default:3");
-    expect(wgwFetch).toHaveBeenCalledWith(
-      "/contacts/addressbooks/changes?since=0",
-      expect.objectContaining({ signal: undefined }),
-    );
+    expect(addressBookChanges).toHaveBeenCalledWith("0:", undefined);
   });
 
   it("persists the token on empty changes without mutating cached books", async () => {
     await writeAddressBooksSyncToken(username, "1:default:2");
-    mockOkJson({
+    addressBookChanges.mockResolvedValueOnce({
       oldState: "1:default:2",
       newState: "1:default:3",
       created: [],
@@ -146,7 +138,7 @@ describe("pullAddressBookChanges", () => {
     await writeSyncToken(username, "extra-book", "5");
     await writeAddressBooksSyncToken(username, "2:default:1,extra-book:1");
 
-    mockOkJson({
+    addressBookChanges.mockResolvedValueOnce({
       oldState: "2:default:1,extra-book:1",
       newState: "3:default:1,new-book:1",
       created: ["new-book"],
@@ -155,7 +147,13 @@ describe("pullAddressBookChanges", () => {
     } satisfies JmapChangesResponse);
 
     getAddressBook.mockResolvedValueOnce(newBook);
-    mockEmptyCardChanges();
+    contactCardChanges.mockResolvedValueOnce({
+      oldState: "0:",
+      newState: "1",
+      created: [],
+      updated: [],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
 
     await pullAddressBookChanges(username);
 
@@ -164,5 +162,42 @@ describe("pullAddressBookChanges", () => {
     expect(getAddressBook).toHaveBeenCalledWith("new-book", undefined);
     expect(await readSyncToken(username, "extra-book")).toBeNull();
     expect(await readAddressBooksSyncToken(username)).toBe("3:default:1,new-book:1");
+  });
+
+  it("full-resyncs address books when changes cannot be calculated", async () => {
+    addressBookChanges.mockRejectedValueOnce(
+      new JmapMethodError("AddressBook/changes", "c0", { type: "cannotCalculateChanges" }),
+    );
+    listAddressBooks.mockResolvedValueOnce([defaultBook]);
+
+    await pullAddressBookChanges(username);
+
+    expect(listAddressBooks).toHaveBeenCalledOnce();
+    expect(await readAddressBooksSyncToken(username)).toBe("1:default:3");
+  });
+});
+
+describe("pullContactCardChangesForBook", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    connectedContacts.mockResolvedValue({
+      client: { getState: () => "card-state-1" },
+      accountId: username,
+    });
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await contactsBooksTable(db).clear();
+    await db.meta.clear();
+  });
+
+  it("full-resyncs a book when ContactCard/changes cannot be calculated", async () => {
+    contactCardChanges.mockRejectedValueOnce(
+      new JmapMethodError("ContactCard/changes", "c0", { type: "cannotCalculateChanges" }),
+    );
+    listCards.mockResolvedValueOnce([]);
+
+    await pullContactCardChangesForBook(username, "default");
+
+    expect(listCards).toHaveBeenCalledWith({ addressBookId: "default", signal: undefined });
+    expect(await readSyncToken(username, "default")).toBe("card-state-1");
   });
 });

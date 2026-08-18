@@ -9,9 +9,11 @@ use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
+use App\Services\Jmap\JmapCapabilities;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 /**
@@ -159,6 +161,43 @@ trait ContactsTestFixtures
         unset($card['@type'], $card['version'], $card['id']);
 
         return $card;
+    }
+
+    /**
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $methodCalls
+     */
+    protected function jmapContacts(array $methodCalls, ?string $bearerToken = null): TestResponse
+    {
+        return $this->withBearer($bearerToken ?? $this->userBearerToken())->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::CONTACTS],
+            'methodCalls' => $methodCalls,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function jmapGetContactCard(string $cardId, string $accountId = 'bob', ?string $bearerToken = null): array
+    {
+        $card = $this->jmapContacts([
+            ['ContactCard/get', ['accountId' => $accountId, 'ids' => [$cardId]], 'c0'],
+        ], $bearerToken)->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertIsArray($card);
+
+        return $card;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function jmapCreateContactCard(array $payload, string $accountId = 'bob', ?string $bearerToken = null): string
+    {
+        $cardId = $this->jmapContacts([
+            ['ContactCard/set', ['accountId' => $accountId, 'create' => ['k0' => $payload]], 'c0'],
+        ], $bearerToken)->assertOk()->json('methodResponses.0.1.created.k0.id');
+        $this->assertIsString($cardId);
+
+        return $cardId;
     }
 
     private function resolveAddressBookId(string $username, string $bookUri): int

@@ -173,10 +173,9 @@ VCARD;
         $this->assertSame($joeId, $group['memberCardIds']['urn:uuid:'.$joeUid] ?? null);
 
         $groupId = (string) $group['id'];
-        $list = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/contacts/cards?addressBookId=default')
-            ->assertOk()
-            ->json('list');
+        $list = $this->jmapContacts([
+            ['ContactCard/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list');
         $listedGroup = collect($list)
             ->first(fn (array $card): bool => ($card['id'] ?? null) === $groupId);
         $this->assertIsArray($listedGroup);
@@ -329,7 +328,7 @@ VCARD;
 
         $blobId = (string) $entry['blobId'];
         $this->withBearer($this->userBearerToken())
-            ->get('/api/v1/contacts/blobs/'.$blobId)
+            ->get('/api/v1/jmap/download/bob/'.$blobId.'/photo.jpg')
             ->assertOk()
             ->assertHeader('Content-Type', 'image/jpeg');
 
