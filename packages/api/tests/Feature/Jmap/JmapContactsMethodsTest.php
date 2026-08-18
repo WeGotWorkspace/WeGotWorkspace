@@ -404,4 +404,276 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         ])->assertOk();
         $this->assertContains($cardId, $changes->json('methodResponses.0.1.destroyed'));
     }
+
+    public function test_address_book_destroy_of_default_is_forbidden(): void
+    {
+        $response = $this->jmap([
+            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => ['default']], 'c0'],
+        ])->assertOk();
+
+        $response->assertJsonPath('methodResponses.0.1.notDestroyed.default.type', 'forbidden');
+        $this->assertSame([], $response->json('methodResponses.0.1.destroyed'));
+    }
+
+    public function test_address_book_set_rejects_share_with(): void
+    {
+        $response = $this->jmap([
+            ['AddressBook/set', [
+                'accountId' => 'bob',
+                'update' => ['default' => ['shareWith' => ['alice' => ['mayRead' => true]]]],
+            ], 'c0'],
+        ])->assertOk();
+
+        $response->assertJsonPath('methodResponses.0.1.notUpdated.default.type', 'invalidProperties');
+        $this->assertSame(['shareWith'], $response->json('methodResponses.0.1.notUpdated.default.properties'));
+    }
+
+    public function test_contact_card_create_accepts_name_components_without_full(): void
+    {
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'kind' => 'individual',
+            'name' => [
+                'isOrdered' => false,
+                'components' => [
+                    ['kind' => 'given', 'value' => 'Wouter'],
+                    ['kind' => 'surname', 'value' => 'Vendrik'],
+                ],
+            ],
+        ]);
+
+        $card = $this->jmapGetContactCard($cardId);
+        $this->assertSame('Wouter Vendrik', $card['name']['full'] ?? null);
+        $this->assertSame('Wouter', $card['name']['components'][0]['value'] ?? null);
+        $this->assertSame('Vendrik', $card['name']['components'][1]['value'] ?? null);
+    }
+
+    public function test_contact_card_create_accepts_empty_name_full_with_components(): void
+    {
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'kind' => 'individual',
+            'name' => [
+                'isOrdered' => false,
+                'components' => [
+                    ['kind' => 'given', 'value' => 'Jane'],
+                    ['kind' => 'surname', 'value' => 'Doe'],
+                ],
+                'full' => '',
+            ],
+        ]);
+
+        $this->assertSame('Jane Doe', $this->jmapGetContactCard($cardId)['name']['full'] ?? null);
+    }
+
+    /**
+     * @dataProvider sparseCreateCardProvider
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    public function test_contact_card_create_accepts_sparse_body(array $extra, string $assertPath, mixed $assertValue): void
+    {
+        $cardId = $this->jmapCreateContactCard(array_merge(
+            ['addressBookIds' => ['default' => true]],
+            $extra,
+        ));
+
+        $card = $this->jmapGetContactCard($cardId);
+        $this->assertSame('Card', $card['@type'] ?? null);
+        $this->assertSame($assertValue, data_get($card, $assertPath));
+    }
+
+    /**
+     * @return array<string, array{0: array<string, mixed>, 1: string, 2: mixed}>
+     */
+    public static function sparseCreateCardProvider(): array
+    {
+        $phoneId = '550e8400-e29b-41d4-a716-446655440010';
+        $emailId = '550e8400-e29b-41d4-a716-446655440011';
+        $noteId = '550e8400-e29b-41d4-a716-446655440012';
+        $orgId = '550e8400-e29b-41d4-a716-446655440013';
+        $linkId = '550e8400-e29b-41d4-a716-446655440014';
+        $addrId = '550e8400-e29b-41d4-a716-446655440015';
+
+        return [
+            'phone only' => [
+                ['phones' => [$phoneId => ['number' => '+1-555-0200']]],
+                'phones.'.$phoneId.'.number',
+                '+1-555-0200',
+            ],
+            'email only' => [
+                ['emails' => [$emailId => ['address' => 'solo@example.com']]],
+                'emails.'.$emailId.'.address',
+                'solo@example.com',
+            ],
+            'note only' => [
+                ['notes' => [$noteId => ['note' => 'Just a note']]],
+                'notes.'.$noteId.'.note',
+                'Just a note',
+            ],
+            'organization only' => [
+                ['organizations' => [$orgId => ['name' => 'Acme Inc']]],
+                'organizations.'.$orgId.'.name',
+                'Acme Inc',
+            ],
+            'url only' => [
+                ['links' => [$linkId => ['uri' => 'https://example.org']]],
+                'links.'.$linkId.'.uri',
+                'https://example.org',
+            ],
+            'address only' => [
+                ['addresses' => [$addrId => ['full' => '42 Sparse Lane']]],
+                'addresses.'.$addrId.'.full',
+                '42 Sparse Lane',
+            ],
+        ];
+    }
+
+    public function test_contact_card_set_update_replaces_name(): void
+    {
+        $cardId = $this->seedCardViaPdo('bob', 'jane-doe.vcf', $this->sampleVcard('Jane Doe'));
+
+        $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => [
+                'name' => ['full' => 'Jane Smith'],
+                'emails' => [
+                    '550e8400-e29b-41d4-a716-446655440001' => ['address' => 'jane.smith@example.com'],
+                ],
+            ]]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.updated.'.$cardId.'.state', fn ($state) => is_string($state) && $state !== '');
+
+        $this->assertSame('Jane Smith', $this->jmapGetContactCard($cardId)['name']['full'] ?? null);
+    }
+
+    public function test_contact_card_set_update_changes_single_email_leaving_others_unchanged(): void
+    {
+        $emailOne = '550e8400-e29b-41d4-a716-446655440001';
+        $emailTwo = '550e8400-e29b-41d4-a716-446655440002';
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'name' => ['full' => 'Patch Email Contact'],
+            'emails' => [
+                $emailOne => ['address' => 'primary@example.com'],
+                $emailTwo => ['address' => 'secondary@example.com'],
+            ],
+        ]);
+
+        $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => [
+                'emails' => [$emailOne => ['address' => 'updated-primary@example.com']],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $card = $this->jmapGetContactCard($cardId);
+        $this->assertSame('updated-primary@example.com', $card['emails'][$emailOne]['address'] ?? null);
+        $this->assertSame('secondary@example.com', $card['emails'][$emailTwo]['address'] ?? null);
+    }
+
+    public function test_contact_card_set_update_removes_phone_via_null_map_entry(): void
+    {
+        $phoneId = '550e8400-e29b-41d4-a716-446655440002';
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'name' => ['full' => 'Patch Phone Contact'],
+            'phones' => [$phoneId => ['number' => '+1-555-0100']],
+        ]);
+
+        $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => [
+                'phones' => [$phoneId => null],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $this->assertArrayNotHasKey($phoneId, $this->jmapGetContactCard($cardId)['phones'] ?? []);
+    }
+
+    public function test_contact_card_set_preserves_fields_not_in_update(): void
+    {
+        $emailId = '550e8400-e29b-41d4-a716-446655440001';
+        $phoneId = '550e8400-e29b-41d4-a716-446655440002';
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'name' => ['full' => 'Preserve Fields Contact'],
+            'emails' => [$emailId => ['address' => 'keep@example.com']],
+            'phones' => [$phoneId => ['number' => '+1-555-0199']],
+        ]);
+
+        $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => [
+                'name' => ['full' => 'Renamed Contact'],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $card = $this->jmapGetContactCard($cardId);
+        $this->assertSame('Renamed Contact', $card['name']['full'] ?? null);
+        $this->assertSame('keep@example.com', $card['emails'][$emailId]['address'] ?? null);
+        $this->assertSame('+1-555-0199', $card['phones'][$phoneId]['number'] ?? null);
+    }
+
+    public function test_contact_card_updated_advances_and_state_changes_after_set(): void
+    {
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'name' => ['full' => 'ETag Test Contact'],
+        ]);
+        $created = $this->jmapGetContactCard($cardId);
+        $this->assertNotEmpty($created['state'] ?? null);
+        $this->assertNotEmpty($created['updated'] ?? null);
+
+        sleep(1);
+
+        $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => [
+                'name' => ['full' => 'ETag Test Contact Renamed'],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $updated = $this->jmapGetContactCard($cardId);
+        $this->assertNotSame($created['state'], $updated['state']);
+        $this->assertGreaterThan(
+            strtotime((string) $created['updated']),
+            strtotime((string) $updated['updated']),
+        );
+    }
+
+    public function test_contact_card_updated_ignores_stale_vcard_rev(): void
+    {
+        $oldRev = '20200101T000000Z';
+        $vcard = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:rev-test-001\r\nFN:REV Test\r\nREV:{$oldRev}\r\nEND:VCARD\r\n";
+        $cardId = $this->seedCardViaPdo('bob', 'rev-test.vcf', $vcard);
+
+        $show = $this->jmapGetContactCard($cardId);
+        $this->assertNotSame('2020-01-01T00:00:00Z', $show['updated'] ?? null);
+
+        sleep(1);
+
+        $this->jmap([
+            ['ContactCard/set', ['accountId' => 'bob', 'update' => [$cardId => [
+                'name' => ['full' => 'REV Test Patched'],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $patched = $this->jmapGetContactCard($cardId);
+        $this->assertNotSame('2020-01-01T00:00:00Z', $patched['updated'] ?? null);
+        $this->assertGreaterThan(
+            strtotime((string) $show['updated']),
+            strtotime((string) $patched['updated']),
+        );
+    }
+
+    public function test_contact_card_create_does_not_honor_client_supplied_id(): void
+    {
+        $cardId = $this->jmapCreateContactCard([
+            'addressBookIds' => ['default' => true],
+            'id' => 'client-supplied-id',
+            '@type' => 'Card',
+            'version' => '1.0',
+            'name' => ['full' => 'Rejected Field'],
+        ]);
+
+        $this->assertNotSame('client-supplied-id', $cardId);
+        $card = $this->jmapGetContactCard($cardId);
+        $this->assertSame('Card', $card['@type'] ?? null);
+        $this->assertSame('1.0', $card['version'] ?? null);
+    }
 }
