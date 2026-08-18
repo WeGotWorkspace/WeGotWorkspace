@@ -31,8 +31,8 @@ The full JMAP protocol envelope — previously an explicit non-goal of the REST 
 
 - **Event id charset:** composite multi-VEVENT ids (`{objectId}#{veventUid}`) contain `#`, outside the RFC 8620 §1.2 `Id` charset; ids pass through unchanged for parity with REST.
 - **`Calendar/changes` over-reports:** Sabre bumps a calendar's synctoken on event activity, so event-only changes also mark the calendar `updated` (harmless refetch); pure metadata updates **are** reported (empirically pinned in `JmapChangesTest`).
-- **No Push** (RFC 8620 §7): `eventSourceUrl`/upload/download are 501 stubs; clients poll.
-- **Contacts and tasks are not behind the envelope** — calendars only.
+- **No Push** (RFC 8620 §7): `eventSourceUrl` is a 501 stub; clients poll. Blob upload/download are **real** since #438 (RFC 8620 §6, content-addressed envelope store + reference-protected GC).
+- **Contacts are behind the envelope** (#437): `AddressBook/get|changes|set` and `ContactCard/get|changes|set|query|queryChanges` per RFC 9610, with the legacy REST shapes normalized at the adapter layer (REST untouched). **Files too** (#450, draft-ietf-jmap-filenode-14 pinned): `FileNode/get|changes|set|copy|query|queryChanges` over a node-identity index (`jmap_file_nodes`) maintained from both drive write paths. Tasks are **not** — the tasks envelope is explicitly out of scope (`draft-ietf-jmap-tasks-06` is an expired, immature draft). Remaining roadmap (phased mail RFC 8621, gated on the IMAP CI fixture #451): [.agents/specs/000-jmap-envelope-multidomain/](../../../.agents/specs/000-jmap-envelope-multidomain/spec.md).
 
 ## Priority
 

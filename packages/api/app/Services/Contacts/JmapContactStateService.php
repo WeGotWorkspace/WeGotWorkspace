@@ -72,6 +72,26 @@ final class JmapContactStateService
     }
 
     /**
+     * Every card id ever surfaced for an address book — used by the JMAP
+     * envelope's account-wide ContactCard/changes to expand a deleted (or
+     * no-longer-visible) book into destroyed ids. Rows survive book deletion
+     * because Sabre removes the cards directly, without the per-card REST
+     * delete path that clears state rows.
+     *
+     * @return list<string>
+     */
+    public function recordedCardIdsForBook(string $username, string $addressBookUri): array
+    {
+        return JmapContactState::query()
+            ->where('username', $username)
+            ->where('address_book_uri', $addressBookUri)
+            ->orderBy('card_id')
+            ->pluck('card_id')
+            ->map(fn ($id): string => (string) $id)
+            ->all();
+    }
+
+    /**
      * Ensures a state row exists and rotates state_token when the CardDAV etag changes (read path).
      */
     private function ensureStateRow(string $username, Card $card, string $addressBookUri): JmapContactState

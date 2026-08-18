@@ -6,12 +6,14 @@ namespace App\Services\Drive;
 
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class DriveService
@@ -26,7 +28,21 @@ final class DriveService
         private DriveStarService $stars,
         private AdminRoleResolver $adminRoles,
         private SearchIndexerService $search,
+        private FileNodeIndexService $fileNodes,
     ) {}
+
+    /**
+     * FileNode index maintenance is best-effort (the SearchIndexPlugin
+     * posture): failures log and never fail the user's write.
+     */
+    private function syncFileNodeIndex(callable $operation): void
+    {
+        try {
+            $operation();
+        } catch (\Throwable $e) {
+            Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
+        }
+    }
 
     public function assertFilesEnabled(): void
     {
@@ -146,6 +162,7 @@ final class DriveService
             $disk->put($key, '');
         }
         $this->search->indexFileStorageKey($key);
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key));
 
         return 'Created';
     }
@@ -190,6 +207,7 @@ final class DriveService
         if ($disk->directoryExists($toKey)) {
             $this->reindexSubtree($toKey);
         }
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMove($fromKey, $toKey));
 
         return 'Renamed';
     }
@@ -212,9 +230,11 @@ final class DriveService
             if ($disk->directoryExists($key)) {
                 $disk->deleteDirectory($key);
                 $this->search->deleteDavPath('files/'.$key);
+                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
             } elseif ($disk->exists($key)) {
                 $disk->delete($key);
                 $this->search->deleteDavPath('files/'.$key);
+                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
             }
         }
 
@@ -305,8 +325,10 @@ final class DriveService
         }
 
         if ($totalChunks <= 1) {
-            $disk->put($targetKey, $file->get());
+            $contents = $file->get();
+            $disk->put($targetKey, $contents);
             $this->search->indexFileStorageKey($targetKey);
+            $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', $contents)));
 
             return 'Stored';
         }
@@ -325,9 +347,11 @@ final class DriveService
             return 'Uploaded';
         }
 
-        $disk->put($targetKey, $tempDisk->get($partKey));
+        $assembled = $tempDisk->get($partKey);
+        $disk->put($targetKey, $assembled);
         $tempDisk->delete($partKey);
         $this->search->indexFileStorageKey($targetKey);
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', (string) $assembled)));
 
         return 'Stored';
     }

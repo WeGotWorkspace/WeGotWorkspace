@@ -233,6 +233,27 @@ final class AddressBookRepository
         ];
     }
 
+    /**
+     * Current Sabre sync token per owned address book uri — the contacts
+     * analog of CalendarEventRepository::calendarSyncTokens(), feeding the
+     * JMAP envelope's account-wide state codec.
+     *
+     * @return array<string, string>
+     */
+    public function syncTokens(string $username): array
+    {
+        $tokens = [];
+        $books = Addressbook::query()
+            ->where('principaluri', $this->principalUri($username))
+            ->orderBy('uri')
+            ->get(['uri', 'synctoken']);
+        foreach ($books as $book) {
+            $tokens[(string) $book->uri] = (string) (int) ($book->synctoken ?? 1);
+        }
+
+        return $tokens;
+    }
+
     private function findOwnedBook(string $username, string $addressBookId): ?Addressbook
     {
         return Addressbook::query()

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Jmap;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Jmap\Methods\AddressBookChangesMethod;
+use App\Services\Jmap\Methods\AddressBookGetMethod;
+use App\Services\Jmap\Methods\AddressBookSetMethod;
 use App\Services\Jmap\Methods\CalendarChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventGetMethod;
@@ -13,7 +16,18 @@ use App\Services\Jmap\Methods\CalendarEventQueryMethod;
 use App\Services\Jmap\Methods\CalendarEventSetMethod;
 use App\Services\Jmap\Methods\CalendarGetMethod;
 use App\Services\Jmap\Methods\CalendarSetMethod;
+use App\Services\Jmap\Methods\ContactCardChangesMethod;
+use App\Services\Jmap\Methods\ContactCardGetMethod;
+use App\Services\Jmap\Methods\ContactCardQueryChangesMethod;
+use App\Services\Jmap\Methods\ContactCardQueryMethod;
+use App\Services\Jmap\Methods\ContactCardSetMethod;
 use App\Services\Jmap\Methods\CoreEchoMethod;
+use App\Services\Jmap\Methods\FileNodeChangesMethod;
+use App\Services\Jmap\Methods\FileNodeCopyMethod;
+use App\Services\Jmap\Methods\FileNodeGetMethod;
+use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
+use App\Services\Jmap\Methods\FileNodeQueryMethod;
+use App\Services\Jmap\Methods\FileNodeSetMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
 
 /**
@@ -24,34 +38,78 @@ use App\Services\Jmap\Methods\JmapMethodInterface;
  */
 final class JmapMethodDispatcher
 {
+    /**
+     * Registered method handlers per domain; new envelope domains append
+     * their classes here (multidomain spec constraint 3: a class list beats
+     * a 17-parameter constructor).
+     *
+     * @var list<class-string<JmapMethodInterface>>
+     */
+    public const METHODS = [
+        CoreEchoMethod::class,
+        // urn:ietf:params:jmap:calendars
+        CalendarGetMethod::class,
+        CalendarChangesMethod::class,
+        CalendarSetMethod::class,
+        CalendarEventGetMethod::class,
+        CalendarEventChangesMethod::class,
+        CalendarEventSetMethod::class,
+        CalendarEventQueryMethod::class,
+        CalendarEventQueryChangesMethod::class,
+        // urn:ietf:params:jmap:contacts (RFC 9610)
+        AddressBookGetMethod::class,
+        AddressBookChangesMethod::class,
+        AddressBookSetMethod::class,
+        ContactCardGetMethod::class,
+        ContactCardChangesMethod::class,
+        ContactCardSetMethod::class,
+        ContactCardQueryMethod::class,
+        ContactCardQueryChangesMethod::class,
+        // urn:ietf:params:jmap:filenode (draft-ietf-jmap-filenode-14)
+        FileNodeGetMethod::class,
+        FileNodeChangesMethod::class,
+        FileNodeSetMethod::class,
+        FileNodeCopyMethod::class,
+        FileNodeQueryMethod::class,
+        FileNodeQueryChangesMethod::class,
+    ];
+
     /** @var array<string, JmapMethodInterface> */
     private array $methods = [];
 
-    public function __construct(
-        CoreEchoMethod $coreEcho,
-        CalendarGetMethod $calendarGet,
-        CalendarChangesMethod $calendarChanges,
-        CalendarSetMethod $calendarSet,
-        CalendarEventGetMethod $calendarEventGet,
-        CalendarEventChangesMethod $calendarEventChanges,
-        CalendarEventSetMethod $calendarEventSet,
-        CalendarEventQueryMethod $calendarEventQuery,
-        CalendarEventQueryChangesMethod $calendarEventQueryChanges,
-    ) {
-        $this->register($coreEcho);
-        $this->register($calendarGet);
-        $this->register($calendarChanges);
-        $this->register($calendarSet);
-        $this->register($calendarEventGet);
-        $this->register($calendarEventChanges);
-        $this->register($calendarEventSet);
-        $this->register($calendarEventQuery);
-        $this->register($calendarEventQueryChanges);
+    /**
+     * Resolved from self::METHODS by the container binding in
+     * WgwServiceProvider — autowiring cannot construct a handler list.
+     *
+     * @param  list<JmapMethodInterface>  $methods
+     */
+    public function __construct(array $methods)
+    {
+        foreach ($methods as $method) {
+            $this->register($method);
+        }
     }
 
     private function register(JmapMethodInterface $method): void
     {
         $this->methods[$method->name()] = $method;
+    }
+
+    /**
+     * Capability URNs with at least one registered method. The supported
+     * `using` set is derived from this (via JmapCapabilitySet), so route
+     * wiring and capability advertisement cannot drift apart.
+     *
+     * @return list<string>
+     */
+    public function capabilityUrns(): array
+    {
+        $urns = [];
+        foreach ($this->methods as $method) {
+            $urns[$method->capability()] = true;
+        }
+
+        return array_keys($urns);
     }
 
     /**

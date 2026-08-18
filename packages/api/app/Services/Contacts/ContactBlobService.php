@@ -86,7 +86,16 @@ final class ContactBlobService
             return null;
         }
 
-        $raw = $this->storage->data()->get($this->blobKey($username, $blobId));
+        $key = $this->blobKey($username, $blobId);
+        // The wgw_data disk is configured with 'throw' => true, so get() on
+        // a missing file throws UnableToReadFile instead of returning null —
+        // which turned every unknown-blobId lookup into a server error
+        // instead of the intended invalid_blob 400. Check existence first.
+        if (! $this->storage->data()->exists($key)) {
+            return null;
+        }
+
+        $raw = $this->storage->data()->get($key);
         if (! is_string($raw) || $raw === '') {
             return null;
         }

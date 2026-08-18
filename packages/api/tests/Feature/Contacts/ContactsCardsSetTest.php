@@ -40,6 +40,29 @@ final class ContactsCardsSetTest extends WgwDatabaseTestCase
             ->assertJsonPath('state', fn ($state) => is_string($state) && $state !== '');
     }
 
+    public function test_set_create_with_unknown_media_blob_id_keeps_the_legacy_invalid_blob_type(): void
+    {
+        // Regression: the wgw_data disk throws on missing files, which used
+        // to turn an unknown media blobId into serverError instead of the
+        // resolver's intended invalid_blob 400. REST keeps its legacy shape;
+        // the envelope normalizes to invalidProperties (JmapContactsMethodsTest).
+        $response = $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/contacts/cards/set', [
+                'create' => [
+                    'new-1' => [
+                        'addressBookIds' => ['default' => true],
+                        'name' => ['full' => 'Broken Photo'],
+                        'media' => [
+                            'm1' => ['kind' => 'photo', 'blobId' => 'ffffffff-ffff-ffff-ffff-ffffffffffff'],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('notCreated.new-1.type', 'invalid_blob');
+    }
+
     public function test_set_update_with_if_in_state(): void
     {
         $create = $this->withBearer($this->userBearerToken())

@@ -10,19 +10,19 @@ Spec: `.agents/specs/000-jmap-envelope-calendars/` · Tests: `tests/Feature/Jmap
 |-------|---------|
 | `GET /api/v1/jmap/session` | Session resource (RFC 8620 §2) |
 | `POST /api/v1/jmap` | Batched method calls (§3) |
-| `GET /api/v1/jmap/download/{accountId}/{blobId}/{name}` | 501 stub — structurally required by the Session, unused by the calendar client |
-| `POST /api/v1/jmap/upload/{accountId}` | 501 stub |
+| `GET /api/v1/jmap/download/{accountId}/{blobId}/{name}` | Blob download (RFC 8620 §6.2, #438) — serves envelope-store ids (`jb-…`) **and** contacts REST blob-store ids; `type` query param overrides Content-Type |
+| `POST /api/v1/jmap/upload/{accountId}` | Blob upload (§6.1, #438) — content-addressed (sha-256), dedupes per account, TTL-expiring unless domain-referenced; enforces the advertised `maxSizeUpload` |
 | `GET /api/v1/jmap/events/{types}/{closeafter}/{ping}` | 501 stub — Push is a non-goal; the client polls |
 
-All behind `wgw.auth` + `wgw.role:user` + `wgw.calendars` (same gates as the calendars REST group).
+All behind `wgw.auth` + `wgw.role:user` — deliberately **outside** any domain feature-gate middleware (#436). Domain availability is expressed through the advertised capabilities and the `using` guard (`JmapCapabilitySet` + per-domain `JmapCapabilityProviderInterface` providers): a gated-off domain (e.g. `calendar_enabled: false`) is absent from the Session resource, rejected in `using` with a request-level `unknownCapability`, and its methods are `unknownMethod` — the envelope itself stays up for the other domains.
 
 ## Session resource
 
 - **One account per authenticated principal; `accountId` = the raw username.** Usernames (`^[a-z0-9][a-z0-9_-]{1,62}$`) are a strict subset of the JMAP `Id` charset — no encoding. `primaryAccounts` maps both `urn:ietf:params:jmap:core` and `urn:ietf:params:jmap:calendars` to it.
 - **Capability placement per draft-ietf-jmap-calendars-27 §1.5.1:** the session-level calendars capability is the **empty object**; the six-property object (`maxCalendarsPerEvent: 1`, `minDateTime`, `maxDateTime`, `maxExpandedQueryDuration`, `maxParticipantsPerEvent`, `mayCreateCalendar`) lives in `accountCapabilities`.
 - **All URLs are absolute** (built from the request): the client fetches `apiUrl` verbatim with no base-URL resolution.
-- `state` is the constant `JmapCapabilities::SESSION_STATE`, echoed as `sessionState` on every `POST /jmap` response; the client only reacts to it changing.
-- Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (500) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`.
+- `state` is derived: the `JmapCapabilities::SESSION_STATE` document version plus a digest of the enabled capability URNs (`JmapCapabilitySet::sessionState()`), echoed as `sessionState` on every `POST /jmap` response. Toggling a domain feature gate changes the session document, so the state changes with it (RFC 8620 §2); the client reacts via `onSessionStateChange`.
+- Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (500) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`, and `maxSizeUpload` (config `wgw.jmap.max_size_upload`, default 25 MB, enforced by `POST /jmap/upload` — #438).
 
 ## Batch endpoint
 
@@ -43,8 +43,24 @@ ResultReferences (§3.7): every `#key` argument is resolved against the matching
 | `CalendarEvent/set` | `CalendarEventSetService::set()` | True top-level `ifInState`; account-wide state recomposition (below) |
 | `CalendarEvent/query` | `CalendarEventRepository::query()` | Injects `filter.inCalendars` = all owned VEVENT calendars when absent (the shipped adapter never sends it) |
 | `CalendarEvent/queryChanges` | — | Always `cannotCalculateChanges` (matches `canCalculateChanges: false`); part of the advertised capability, so `unknownMethod` would be a lie |
+| `AddressBook/get` | `AddressBookRepository::list()` | REST already emits the RFC 9610 shape incl. the 4-property `AddressBookRights` — no remapping (#437) |
+| `AddressBook/changes` | `AddressBookRepository::syncTokens()` | Existence/token diff via the envelope codec; card activity over-reports books as `updated` (same Sabre behavior as calendars) |
+| `AddressBook/set` | `AddressBookRepository::create/update/delete` | Top-level `ifInState`; `onDestroyRemoveContents` → `addressBookHasContents` SetError when refused; `onSuccessSetIsDefault` → `invalidArguments` (default book is fixed) |
+| `ContactCard/get` | `ContactCardRepository::show()` per id / `list()` per book | Multi-id loop lives in the dispatcher; per-card `state` tokens attached by the mapper |
+| `ContactCard/changes` | per-book `ContactCardRepository::changes()` | Account-wide fan-out (same algorithm as `CalendarEvent/changes`); deleted books expand via `JmapContactStateService::recordedCardIdsForBook()` |
+| `ContactCard/set` | `ContactCardSetService::set()` | True top-level `ifInState`; **legacy shapes normalized at the adapter**: `created` id-strings → `{id, state}`, `updated` state-strings → `{state}`, snake_case error types → RFC vocabulary (`JmapSetErrors::fromLegacyShape()`); REST untouched |
+| `ContactCard/query` | `ContactCardRepository::query()` per book | Book-less filters fan out over all owned books; supported conditions `inAddressBook` + `uid`, everything else → `unsupportedFilter`; non-empty `sort` → `unsupportedSort` (backing query only orders by id) |
+| `ContactCard/queryChanges` | — | Always `cannotCalculateChanges`, same rationale as calendars |
+| `FileNode/get` | `FileNodeIndexService` + `FileNodeMapper` (#450) | Node-identity index over the drive; get-all reconciles the visible tree (lazy self-heal); supports draft-14 `fetchParents` |
+| `FileNode/changes` | global change sequence + tombstones | State = bare sequence number (not the Sabre codec); pruned tombstones → `cannotCalculateChanges` |
+| `FileNode/set` | `FileNodeSetService` (disk + index) | Top-level `ifInState`; `onExists` null/`replace`/`rename`/`newest`; `onDestroyRemoveChildren` → `nodeHasChildren` when refused; `alreadyExists` carries `existingId`; content via uploaded `jb-` blobs (copy-on-consume) |
+| `FileNode/copy` | — | Single account per principal: same-account → `invalidArguments` (RFC 8620 §5.4), other → `fromAccountNotFound` |
+| `FileNode/query` | node index | Supported filters `isTopLevel`/`parentId`/`ancestorId`/`nodeType`/`name`/`nameMatch` + `depth` recursion; sorts `name`/`nodeType`; rest → `unsupportedFilter`/`unsupportedSort` |
+| `FileNode/queryChanges` | — | Always `cannotCalculateChanges`, same rationale |
 
-Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary; unknown internal codes normalize to `serverFail` instead of inventing types.
+Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `unsupportedFilter`, `unsupportedSort`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary (calendars) or are normalized from the legacy snake_case shapes at the adapter layer (contacts); unknown internal codes normalize to `serverFail` instead of inventing types.
+
+Contacts states compose over address-book sync tokens (`AddressBookRepository::syncTokens()`) with the same `JmapAccountStateCodec`; calendar and contacts states never mix (pinned in `JmapContactsClientContractTest`). FileNode states are a **bare global sequence number** from the node index (`jmap_file_node_meta.seq`) — a different substrate needs a different codec (pinned in `JmapFileNodesClientContractTest`). The index is maintained from both write paths (`DriveService` + the DAV `FileNodeIndexPlugin`), reconciled lazily on reads, and rebuilt with `php artisan wgw:jmap:filenodes-reindex`.
 
 ## Envelope state codec + `CalendarEvent/changes` fan-out
 
@@ -82,3 +98,7 @@ Sabre's 3-level access maps onto the draft's 8-property `CalendarRights` (`Calen
 - **Push** (RFC 8620 §7) is not implemented; `eventSourceUrl` is a 501 stub. The shipped client polls.
 - **`createdIds`** request/response maps are ignored/omitted (the client never sends them).
 - **Update payloads are plain partial objects**, not RFC 8620 PatchObjects with `/`-separated paths — matching what the shipped adapter sends and what the underlying set service accepts.
+- **Contact photo blobs**: `media` blobIds resolve from the contacts REST blob store **or** the envelope blob store (#438 superseded the #437 deviation) — clients may upload photos through `POST /jmap/upload` or `POST /contacts/blobs`; on read, media surfaces contacts-store ids that download through the envelope endpoint.
+- **Blob GC**: unreferenced envelope blobs expire after `wgw.jmap.blob_ttl_hours` (default 24h; re-upload refreshes); `php artisan wgw:jmap:blobs-gc` deletes expired blobs unless a registered domain reference checker (`JmapBlobGarbageCollector::CHECKERS` — the filenode seam) claims them. Contacts registers no checker: card media is copied into the vCard on write.
+- **`ContactCard/query` sorting** is not supported (`unsupportedSort`); RFC 9610 says servers MUST support `created`/`updated` sorts — deferred until the backing query grows ordering, rather than silently returning wrongly-ordered results.
+- **FileNode (#450, draft-ietf-jmap-filenode-14 pinned):** out-of-band renames (direct disk writes) are indistinguishable from delete+create, so the node id changes — inherent to indexing a plain filesystem. Shared-with-me subtrees are deferred (visible set = own tree + member group trees); `.notes/` and dot-file internals are not FileNodes; no symlink nodes; no client-controlled `modified`/`accessed` timestamps (`modified` is accepted on create only for `onExists: "newest"` comparisons); `FileNode/copy` is unusable with one account per principal; content blobIds are node-derived (`fnb-…`, streamed from disk, change with content) and `FileNode/set` consumes uploaded `jb-` blobs by copying bytes into the file — no blob-GC reference checker needed.

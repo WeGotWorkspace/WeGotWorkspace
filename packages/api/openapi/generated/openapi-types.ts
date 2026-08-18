@@ -6654,7 +6654,7 @@ export interface paths {
         };
         /**
          * JMAP Session resource
-         * @description RFC 8620 §2 Session resource for the calendars JMAP envelope. One account per authenticated principal (accountId = username); all URLs absolute; session-level calendars capability is the empty object per draft-ietf-jmap-calendars-27 §1.5.1.
+         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
          */
         get: {
             parameters: {
@@ -6693,12 +6693,15 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * JMAP blob download (not implemented)
-         * @description Structurally required by the Session resource (RFC 8620 §6.2) but unused by the calendars client; returns 501.
+         * JMAP blob download
+         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Overrides the response Content-Type. */
+                    type?: string;
+                };
                 header?: never;
                 path: {
                     accountId: string;
@@ -6709,14 +6712,23 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                403: components["responses"]["JmapForbidden"];
-                /** @description Not implemented */
-                501: {
+                /** @description Blob content */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Error"];
+                        "application/octet-stream": string;
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description Unknown blob, or accountId does not match the authenticated principal (problem+json). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
                     };
                 };
             };
@@ -6739,8 +6751,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * JMAP blob upload (not implemented)
-         * @description Structurally required by the Session resource (RFC 8620 §6.1) but unused by the calendars client; returns 501.
+         * JMAP blob upload
+         * @description Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.
          */
         post: {
             parameters: {
@@ -6751,17 +6763,38 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "*/*": string;
+                };
+            };
             responses: {
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                /** @description Not implemented */
-                501: {
+                /** @description Upload response (RFC 8620 §6.1) */
+                201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Error"];
+                        "application/json": components["schemas"]["JmapBlobUploadResponse"];
+                    };
+                };
+                /** @description Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description accountId does not match the authenticated principal (problem+json). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
                     };
                 };
             };
@@ -10097,7 +10130,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` is the empty object (draft-ietf-jmap-calendars-27 §1.5.1). */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };
@@ -10139,6 +10172,13 @@ export interface components {
             status: number;
             detail: string;
             limit?: string;
+        };
+        /** @description JMAP blob upload response (RFC 8620 §6.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it. */
+        JmapBlobUploadResponse: {
+            accountId: string;
+            blobId: string;
+            type: string;
+            size: number;
         };
     };
     responses: {
