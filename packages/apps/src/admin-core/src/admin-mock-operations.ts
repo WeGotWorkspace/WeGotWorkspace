@@ -36,6 +36,7 @@ function cloneData(data: AdminUIData): AdminUIData {
 function applySettingsMap(
   data: AdminUIData,
   values: Record<string, string | number | boolean | null>,
+  opts?: { clearSmtpPassword?: boolean },
 ): void {
   const readString = (key: string) => {
     const v = values[key];
@@ -85,6 +86,59 @@ function applySettingsMap(
   if (baseUri !== undefined) data.webdav.baseUri = baseUri;
   const authRealm = readString("auth_realm");
   if (authRealm !== undefined) data.webdav.authRealm = authRealm;
+
+  const deliveryFrom = readString("mail_delivery_from");
+  if (deliveryFrom !== undefined) data.mailDelivery.config.from = deliveryFrom;
+  const deliveryTransport = readString("mail_delivery_transport");
+  if (
+    deliveryTransport === "auto" ||
+    deliveryTransport === "smtp" ||
+    deliveryTransport === "php" ||
+    deliveryTransport === "sendmail"
+  ) {
+    data.mailDelivery.config.transport = deliveryTransport;
+  }
+  const deliveryHost = readString("mail_delivery_smtp_host");
+  if (deliveryHost !== undefined) data.mailDelivery.config.smtpHost = deliveryHost;
+  const deliveryPort = readNumber("mail_delivery_smtp_port");
+  if (deliveryPort !== undefined) data.mailDelivery.config.smtpPort = deliveryPort;
+  const deliverySecurity = readString("mail_delivery_smtp_security");
+  if (deliverySecurity !== undefined) data.mailDelivery.config.smtpSecurity = deliverySecurity;
+  const deliveryUser = readString("mail_delivery_smtp_username");
+  if (deliveryUser !== undefined) data.mailDelivery.config.smtpUsername = deliveryUser;
+  const deliveryPassword = readString("mail_delivery_smtp_password");
+  if (opts?.clearSmtpPassword) {
+    data.mailDelivery.config.smtpPasswordSet = false;
+  } else if (deliveryPassword) {
+    data.mailDelivery.config.smtpPasswordSet = true;
+  }
+
+  const fromConfigured = data.mailDelivery.config.from.includes("@");
+  const smtpEligible =
+    data.mailDelivery.config.smtpHost !== "" &&
+    (data.mailDelivery.config.smtpUsername !== "" ||
+      data.mailDelivery.config.smtpSecurity === "none");
+  const selected =
+    data.mailDelivery.config.transport === "smtp"
+      ? smtpEligible || data.mailDelivery.config.smtpUsername !== ""
+        ? "smtp"
+        : null
+      : data.mailDelivery.config.transport === "auto"
+        ? smtpEligible
+          ? "smtp"
+          : "php"
+        : data.mailDelivery.config.transport;
+  data.mailDelivery.capability = {
+    canSubmit: fromConfigured && selected !== null,
+    selectedTransport: selected,
+    probes: {
+      fromConfigured,
+      smtpEligible,
+      smtpAuthRequired: data.mailDelivery.config.smtpSecurity !== "none",
+      phpMailAvailable: true,
+      sendmailAvailable: false,
+    },
+  };
 }
 
 /**
@@ -104,7 +158,29 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
     },
     saveSettings: async (values, opts) => {
       await sleep(150, opts?.signal);
-      applySettingsMap(current, values);
+      applySettingsMap(current, values, opts);
+      return snapshot();
+    },
+    sendMailDeliveryTest: async (opts) => {
+      await sleep(150, opts?.signal);
+      const now = new Date().toISOString();
+      if (!current.mailDelivery.capability.canSubmit) {
+        current.mailDelivery.lastTestSend = {
+          accepted: false,
+          status: "unavailable",
+          transport: current.mailDelivery.capability.selectedTransport ?? "",
+          at: now,
+          message: "Cannot submit with the current settings.",
+        };
+        return snapshot();
+      }
+      current.mailDelivery.lastTestSend = {
+        accepted: true,
+        status: "accepted_by_transport",
+        transport: current.mailDelivery.capability.selectedTransport ?? "php",
+        at: now,
+        message: null,
+      };
       return snapshot();
     },
     checkUpdates: async (opts) => {

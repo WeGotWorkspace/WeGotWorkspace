@@ -1,5 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
 import type { AdminUIData, AdminUpdateCheck } from "@/admin-core/src/admin-types";
 
 const DEFAULT_SERVER_CHECKS: AdminUpdateCheck[] = [
@@ -39,6 +40,28 @@ const DEFAULT_DATA: AdminUIData = {
     smtpPort: 465,
     smtpSecurity: "ssl",
   },
+  mailDelivery: defaultMailDeliveryState({
+    config: {
+      from: "ops@example.test",
+      transport: "auto",
+      smtpHost: "smtp.example.test",
+      smtpPort: 587,
+      smtpSecurity: "starttls",
+      smtpUsername: "relay",
+      smtpPasswordSet: true,
+    },
+    capability: {
+      canSubmit: true,
+      selectedTransport: "smtp",
+      probes: {
+        fromConfigured: true,
+        smtpEligible: true,
+        smtpAuthRequired: true,
+        phpMailAvailable: true,
+        sendmailAvailable: false,
+      },
+    },
+  }),
   rtc: {
     stunUrls: "",
     turnUrls: "",

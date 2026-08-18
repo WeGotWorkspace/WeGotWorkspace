@@ -18,6 +18,13 @@ export type AdminSettingsFormState = {
   timezone: string;
   baseUri: string;
   authRealm: string;
+  mailDeliveryFrom: string;
+  mailDeliveryTransport: string;
+  mailDeliverySmtpHost: string;
+  mailDeliverySmtpPort: number;
+  mailDeliverySmtpSecurity: string;
+  mailDeliverySmtpUsername: string;
+  mailDeliverySmtpPassword: string;
 };
 
 /** Keep the progress card visible during POST /apply while merging poll snapshots. */
@@ -64,13 +71,26 @@ export function buildAdminSettingsFormState(
     timezone: data.webdav.timezone,
     baseUri: data.webdav.baseUri,
     authRealm: data.webdav.authRealm,
+    mailDeliveryFrom: data.mailDelivery.config.from,
+    mailDeliveryTransport: data.mailDelivery.config.transport,
+    mailDeliverySmtpHost: data.mailDelivery.config.smtpHost || data.mail.smtpHost,
+    mailDeliverySmtpPort: data.mailDelivery.config.smtpHost
+      ? data.mailDelivery.config.smtpPort
+      : data.mail.smtpPort,
+    mailDeliverySmtpSecurity: normalizeSecurity(
+      data.mailDelivery.config.smtpHost
+        ? data.mailDelivery.config.smtpSecurity
+        : data.mail.smtpSecurity,
+    ),
+    mailDeliverySmtpUsername: data.mailDelivery.config.smtpUsername,
+    mailDeliverySmtpPassword: "",
   };
 }
 
 export function adminSettingsFormToMap(
   state: AdminSettingsFormState,
 ): Record<string, string | number | boolean> {
-  return {
+  const values: Record<string, string | number | boolean> = {
     mail_imap_host: state.imapHost,
     mail_imap_port: state.imapPort,
     mail_imap_security: state.imapSecurity,
@@ -87,5 +107,15 @@ export function adminSettingsFormToMap(
     timezone: state.timezone,
     base_uri: state.baseUri,
     auth_realm: state.authRealm,
+    mail_delivery_from: state.mailDeliveryFrom,
+    mail_delivery_transport: state.mailDeliveryTransport,
+    mail_delivery_smtp_host: state.mailDeliverySmtpHost,
+    mail_delivery_smtp_port: state.mailDeliverySmtpPort,
+    mail_delivery_smtp_security: state.mailDeliverySmtpSecurity,
+    mail_delivery_smtp_username: state.mailDeliverySmtpUsername,
   };
+  if (state.mailDeliverySmtpPassword.trim() !== "") {
+    values.mail_delivery_smtp_password = state.mailDeliverySmtpPassword;
+  }
+  return values;
 }

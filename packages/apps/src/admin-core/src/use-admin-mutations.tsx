@@ -32,6 +32,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     setUpdateLogLines,
     applyAdminData,
     applyRequestPendingRef,
+    setMailDelivery,
   } = shell;
 
   const saveSettings = async () => {
@@ -42,11 +43,54 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     try {
       const next = await operations.saveSettings(adminSettingsFormToMap(settingsForm));
       setSettingsForm(buildAdminSettingsFormState(next));
+      setMailDelivery(next.mailDelivery);
       setUpdates(next.updates);
       setUpdateLogLines(next.updateLogLines);
       showSuccess("Admin settings saved");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not save admin settings";
+      showError(message);
+    }
+  };
+
+  const clearMailDeliverySmtpPassword = async () => {
+    if (!operations?.saveSettings) {
+      showError("Admin API is not ready yet");
+      return;
+    }
+    try {
+      const next = await operations.saveSettings(
+        adminSettingsFormToMap({
+          ...settingsForm,
+          mailDeliverySmtpPassword: "",
+        }),
+        { clearSmtpPassword: true },
+      );
+      setSettingsForm(buildAdminSettingsFormState(next));
+      setMailDelivery(next.mailDelivery);
+      showSuccess("Stored SMTP password cleared");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not clear SMTP password";
+      showError(message);
+    }
+  };
+
+  const sendMailDeliveryTest = async () => {
+    if (!operations?.sendMailDeliveryTest) {
+      showError("Admin API is not ready yet");
+      return;
+    }
+    try {
+      const next = await operations.sendMailDeliveryTest();
+      applyAdminData(next);
+      const last = next.mailDelivery.lastTestSend;
+      if (last?.accepted) {
+        showSuccess("Test send accepted by the transport (not inbox placement)");
+        return;
+      }
+      showError(last?.message || `Test send failed (${last?.status ?? "unavailable"})`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send a test email";
       showError(message);
     }
   };
@@ -573,6 +617,8 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     refreshingServerChecks,
     actions: {
       saveSettings,
+      clearMailDeliverySmtpPassword,
+      sendMailDeliveryTest,
       refresh,
       checkUpdates,
       refreshServerChecks,

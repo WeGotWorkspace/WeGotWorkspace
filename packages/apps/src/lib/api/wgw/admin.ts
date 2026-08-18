@@ -1,3 +1,4 @@
+import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
 import type { AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import type {
@@ -146,6 +147,7 @@ export function mapWgwAdminStateToUI(
       smtpPort: state.mail.smtpPort,
       smtpSecurity: state.mail.smtpSecurity,
     },
+    mailDelivery: state.mailDelivery ?? defaultMailDeliveryState(),
     rtc: {
       stunUrls: state.rtc.stunUrls,
       turnUrls: state.rtc.turnUrls,
@@ -325,7 +327,10 @@ export function createWgwAdminOperations(): AdminAPIOperations {
   return {
     refreshState: (opts) => fetchAdminUiData(opts),
     saveSettings: async (values, opts) => {
-      const payload: WgwAdminSettingsSaveRequest = { values };
+      const payload: WgwAdminSettingsSaveRequest = {
+        values,
+        ...(opts?.clearSmtpPassword ? { clearSmtpPassword: true } : {}),
+      };
       const res = await wgwFetch("/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -333,6 +338,22 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         signal: opts?.signal,
       });
       if (!res.ok) throw new Error(`PUT /admin/settings failed (${res.status})`);
+      return fetchAdminUiData(opts);
+    },
+    sendMailDeliveryTest: async (opts) => {
+      const res = await wgwFetch("/admin/mail-delivery/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(opts?.to ? { to: opts.to } : {}),
+        signal: opts?.signal,
+      });
+      if (!res.ok) {
+        const message = await readApiError(
+          res,
+          `POST /admin/mail-delivery/test failed (${res.status})`,
+        );
+        throw new Error(message);
+      }
       return fetchAdminUiData(opts);
     },
     checkUpdates: async (opts) => {
