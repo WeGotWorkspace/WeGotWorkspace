@@ -9,8 +9,9 @@ import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
  * - `personal` → `users/{username}/.notes/{notebook}/{id}.md`
  * - `group`    → `groups/{slug}/.notes/{notebook}/{id}.md`
  *
- * Body collab reuses the Docs stack keyed by this virtual path; frontmatter
- * (title/tags/starred/notebook) stays in the Notes metadata domain.
+ * Body collab reuses the Docs stack keyed by this virtual path. Title/tags
+ * and notebook/archive moves go through FileNode/set; starring is Drive
+ * `POST|DELETE /files/star`.
  */
 export type NoteCollabScope =
   | { kind: "personal"; username: string }
