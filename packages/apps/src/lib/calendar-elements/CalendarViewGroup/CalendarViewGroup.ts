@@ -1,7 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { html, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
-import { cache } from "lit/directives/cache.js";
+import { keyed } from "lit/directives/keyed.js";
 import {
   calendarRangeZoomDirection,
   restartCalendarRangeTransition,
@@ -87,9 +87,14 @@ export class CalendarViewGroup extends CalendarViewBase {
   }
 
   render() {
+    // `cache()` keys by template identity. Day and week share one timeline
+    // template, so cache reused the day instance on week (stale numDays=1,
+    // swipe pager) and fought React route sync — UI freeze. `keyed` remounts.
     return html`
       <div class="calendar-view-group">
-        <section class="content" role="tabpanel">${cache(this.#renderViewFor(this.view))}</section>
+        <section class="content" role="tabpanel">
+          ${keyed(`${this.presentation}:${this.view}`, this.#renderViewFor(this.view))}
+        </section>
       </div>
     `;
   }
@@ -207,7 +212,10 @@ export class CalendarViewGroup extends CalendarViewBase {
         : value instanceof Temporal.PlainDate
           ? value.toString()
           : Temporal.PlainDate.from(value).toString();
+    if (this.#startDate === nextValue) return;
+    const previous = this.#startDate;
     this.#startDate = nextValue;
+    this.requestUpdate("startDate", previous);
   }
 
   get nextDay(): string {
@@ -273,36 +281,7 @@ export class CalendarViewGroup extends CalendarViewBase {
     }
 
     if (view === "day" || view === "week") {
-      // The timeline week mode week-aligns a full-week window itself (weekStart/locale);
-      // partial weeks (daysPerWeek < 7) keep the raw sliding anchor — same contract the
-      // grid week view had, so the raw resolved start date is passed either way.
-      const startDate = this.#resolvedStartDate;
-      const daysPerWeek = view === "day" ? 1 : this.daysPerWeek;
-      return html`
-        <calendar-timeline-view
-          mode=${view}
-          all-day-row
-          .startDate=${startDate.toString()}
-          .weekStart=${this.weekStart}
-          .daysPerWeek=${daysPerWeek}
-          .events=${this.events}
-          .rtl=${this.rtl}
-          .lang=${this.lang}
-          .timezone=${this.timezone}
-          .currentTime=${this.pinnedCurrentTime}
-          .snapInterval=${this.snapInterval}
-          .visibleHours=${this.visibleHours}
-          .selectedCalendarId=${this.selectedCalendarId}
-          .pendingCreateIntent=${this.pendingCreateIntent}
-          @active-date-changed=${this.#handleWeekActiveDateChanged}
-          @day-selection=${this.#handleDaySelectionRequested}
-          @event-create-requested=${this.forwardComposedCalendarEvent}
-          @event-created=${this.forwardComposedCalendarEvent}
-          @event-selected=${this.forwardComposedCalendarEvent}
-          @event-updated=${this.forwardComposedCalendarEvent}
-          @event-deleted=${this.forwardComposedCalendarEvent}
-        ></calendar-timeline-view>
-      `;
+      return this.#renderDayWeekTimeline(view);
     }
 
     if (view === "year") {
@@ -357,6 +336,39 @@ export class CalendarViewGroup extends CalendarViewBase {
           @event-deleted=${this.forwardComposedCalendarEvent}
         ></calendar-timeline-view>
       </div>
+    `;
+  }
+
+  #renderDayWeekTimeline(view: "day" | "week") {
+    // The timeline week mode week-aligns a full-week window itself (weekStart/locale);
+    // partial weeks (daysPerWeek < 7) keep the raw sliding anchor — same contract the
+    // grid week view had, so the raw resolved start date is passed either way.
+    const startDate = this.#resolvedStartDate;
+    const daysPerWeek = view === "day" ? 1 : this.daysPerWeek;
+    return html`
+      <calendar-timeline-view
+        mode=${view}
+        all-day-row
+        .startDate=${startDate.toString()}
+        .weekStart=${this.weekStart}
+        .daysPerWeek=${daysPerWeek}
+        .events=${this.events}
+        .rtl=${this.rtl}
+        .lang=${this.lang}
+        .timezone=${this.timezone}
+        .currentTime=${this.pinnedCurrentTime}
+        .snapInterval=${this.snapInterval}
+        .visibleHours=${this.visibleHours}
+        .selectedCalendarId=${this.selectedCalendarId}
+        .pendingCreateIntent=${this.pendingCreateIntent}
+        @active-date-changed=${this.#handleWeekActiveDateChanged}
+        @day-selection=${this.#handleDaySelectionRequested}
+        @event-create-requested=${this.forwardComposedCalendarEvent}
+        @event-created=${this.forwardComposedCalendarEvent}
+        @event-selected=${this.forwardComposedCalendarEvent}
+        @event-updated=${this.forwardComposedCalendarEvent}
+        @event-deleted=${this.forwardComposedCalendarEvent}
+      ></calendar-timeline-view>
     `;
   }
 

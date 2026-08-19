@@ -120,6 +120,11 @@
   background-color: var(--app-sidebar-bg);
 }
 
+/* Closed dock still occupies a translated flex slot over the grid; inert + no hits. */
+.calendar-workspace .calendar-workspace__invitations-panel[data-open="false"] {
+  @apply pointer-events-none;
+}
+
 .calendar-workspace .calendar-invitations-trigger {
   @apply relative;
 }
@@ -277,6 +282,12 @@
   padding: 0.5rem 1rem 1rem;
   /* Clip the slight zoom so scale does not spill into the header. */
   overflow: hidden;
+}
+
+/* Portaled view dropdown sits over the grid; ignore hits so choosing Week
+   cannot click-through onto a weekday header (day-selection → day bounce). */
+.calendar-workspace .calendar-main[data-view-select-open="true"] {
+  @apply pointer-events-none;
 }
 
 .calendar-workspace .calendar-main__range {

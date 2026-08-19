@@ -88,6 +88,27 @@ describe("CalendarApp real header click → URL", () => {
     });
   });
 
+  it("stays interactive after switching from day to week in the ViewHeader select", async () => {
+    const { history } = await renderCalendarApp("/calendar/day/2026-08-17");
+    expect(history.location.pathname).toBe("/calendar/day/2026-08-17");
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Calendar view" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Week" }));
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/calendar/week/2026-08-17");
+    });
+
+    const viewSelect = screen.getByRole("combobox", { name: "Calendar view" });
+    expect(viewSelect.getAttribute("aria-disabled")).not.toBe("true");
+    fireEvent.click(viewSelect);
+    fireEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/calendar/month/2026-08-17");
+    });
+  });
+
   it("changes the router path when the user clicks List, Next, and Today", async () => {
     const { history } = await renderCalendarApp("/calendar/month/2026-08-17");
 

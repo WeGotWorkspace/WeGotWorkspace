@@ -241,6 +241,7 @@ export function CalendarWorkspace({
   const invitationsLayout = useDocsCommentsLayout();
   const useInvitationsDrawer = invitationsLayout === "drawer";
   const [invitationsOpen, setInvitationsOpen] = useState(false);
+  const [viewSelectOpen, setViewSelectOpen] = useState(false);
   const toggleInvitationsOpen = () => {
     if (!invitationsOpen) {
       void invitations.refreshIfIdle().catch(() => undefined);
@@ -438,7 +439,11 @@ export function CalendarWorkspace({
             }
             actions={
               <div className="calendar-header-actions">
-                <Select value={view} onValueChange={(next) => selectView(next as CalendarViewId)}>
+                <Select
+                  value={view}
+                  onOpenChange={setViewSelectOpen}
+                  onValueChange={(next) => selectView(next as CalendarViewId)}
+                >
                   <SelectTrigger className="calendar-view-select" aria-label={L.viewSelectLabel}>
                     <SelectValue />
                   </SelectTrigger>
@@ -468,7 +473,11 @@ export function CalendarWorkspace({
           />
         }
         main={
-          <div className="calendar-main" data-view={view}>
+          <div
+            className="calendar-main"
+            data-view={view}
+            data-view-select-open={viewSelectOpen ? "true" : undefined}
+          >
             <div className="calendar-main__range">
               <CalendarSurface
                 view={litSurface.view}

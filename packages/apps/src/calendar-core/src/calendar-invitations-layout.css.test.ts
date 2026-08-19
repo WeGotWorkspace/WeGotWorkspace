@@ -25,6 +25,9 @@ describe("calendar invitations dock width", () => {
     expect(workspace).toMatch(
       /\.calendar-workspace \.workspace-app-layout__panel[\s\S]*background-color:\s*var\(--app-sidebar-bg\)/,
     );
+    expect(workspace).toMatch(
+      /\.calendar-workspace__invitations-panel\[data-open="false"\][\s\S]*pointer-events-none/,
+    );
   });
 
   it("keeps the inbox drawer width aligned with the dock", () => {
