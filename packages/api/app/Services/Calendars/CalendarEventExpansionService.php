@@ -84,6 +84,7 @@ final class CalendarEventExpansionService
             $instance['recurrenceRules'] = null;
             unset($instance['recurrenceOverrides']);
             $instance['calendarIds'] = [$calendarUri => true];
+            $instance = $this->inheritMasterDeclinedPartstat($masterEvent, $instance);
 
             $instances[] = $instance;
             $iterator->next();
@@ -114,6 +115,59 @@ final class CalendarEventExpansionService
         }
 
         return false;
+    }
+
+    /**
+     * Series decline lives on the master. Exception VEVENTs often still carry
+     * ACCEPTED/NEEDS-ACTION; treat those as declined unless the instance is an
+     * explicit later this-instance accept/tentative.
+     *
+     * @param  array<string, mixed>  $master
+     * @param  array<string, mixed>  $instance
+     * @return array<string, mixed>
+     */
+    private function inheritMasterDeclinedPartstat(array $master, array $instance): array
+    {
+        $masterParticipants = is_array($master['participants'] ?? null) ? $master['participants'] : [];
+        $instanceParticipants = is_array($instance['participants'] ?? null) ? $instance['participants'] : [];
+        if ($masterParticipants === [] || $instanceParticipants === []) {
+            return $instance;
+        }
+
+        $masterByEmail = [];
+        foreach ($masterParticipants as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $email = strtolower(trim((string) ($entry['email'] ?? '')));
+            if ($email === '') {
+                continue;
+            }
+            $masterByEmail[$email] = strtolower(trim((string) ($entry['participationStatus'] ?? '')));
+        }
+
+        $changed = false;
+        foreach ($instanceParticipants as $id => $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $email = strtolower(trim((string) ($entry['email'] ?? '')));
+            if ($email === '' || ($masterByEmail[$email] ?? '') !== 'declined') {
+                continue;
+            }
+            $instanceStatus = strtolower(trim((string) ($entry['participationStatus'] ?? 'needs-action')));
+            if (in_array($instanceStatus, ['accepted', 'tentative'], true)) {
+                continue;
+            }
+            $entry['participationStatus'] = 'declined';
+            $instanceParticipants[$id] = $entry;
+            $changed = true;
+        }
+        if ($changed) {
+            $instance['participants'] = $instanceParticipants;
+        }
+
+        return $instance;
     }
 
     /**

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isTasksPathname,
   normalizeTasksView,
   tasksNavigateTarget,
   tasksViewFromLocation,
@@ -7,6 +8,15 @@ import {
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
 
 describe("tasks-route-search", () => {
+  it("recognizes only the tasks app prefix", () => {
+    expect(isTasksPathname("/tasks")).toBe(true);
+    expect(isTasksPathname("/tasks/state/today")).toBe(true);
+    expect(isTasksPathname("/tasks/lists/inbox")).toBe(true);
+    expect(isTasksPathname("/calendar")).toBe(false);
+    expect(isTasksPathname("/contacts")).toBe(false);
+    expect(isTasksPathname("/task")).toBe(false);
+  });
+
   it("maps state and list paths to controller view keys", () => {
     expect(tasksViewFromLocation("/tasks/state/all", {})).toBe("state:all");
     expect(tasksViewFromLocation("/tasks/state/today", { stateSlug: "today" })).toBe("state:today");

@@ -24,6 +24,11 @@ type TaskListRouteEntry = {
   name?: string | null;
 };
 
+/** True only for the tasks app prefix — never `/calendar`, `/contacts`, etc. */
+export function isTasksPathname(pathname: string): boolean {
+  return pathname === "/tasks" || pathname.startsWith("/tasks/");
+}
+
 /** Derive the controller `view` string from the matched path and params. */
 export function tasksViewFromLocation(pathname: string, params: TasksRouteParams): string {
   const parts = pathname.split("/").filter(Boolean);

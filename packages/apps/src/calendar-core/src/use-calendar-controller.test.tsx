@@ -171,6 +171,33 @@ describe("useCalendarController view + create intent", () => {
     );
   });
 
+  it("selectView day then week emits one route write each (no bounce)", () => {
+    const onRouteStateChange = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        initialView: "day",
+        initialAnchor: "2026-08-17",
+        onRouteStateChange,
+      }),
+    );
+
+    act(() => {
+      result.current.selectView("week");
+    });
+    expect(result.current.view).toBe("week");
+    expect(onRouteStateChange).toHaveBeenCalledTimes(1);
+    expect(onRouteStateChange).toHaveBeenCalledWith(
+      { view: "week", date: "2026-08-17", presentation: "grid" },
+      { replace: false },
+    );
+
+    act(() => {
+      result.current.selectView("week");
+    });
+    expect(onRouteStateChange).toHaveBeenCalledTimes(1);
+  });
+
   it("selectView is a no-op when the view is unchanged (no duplicate onViewChange)", () => {
     const onViewChange = vi.fn();
     const { result } = renderHook(() =>

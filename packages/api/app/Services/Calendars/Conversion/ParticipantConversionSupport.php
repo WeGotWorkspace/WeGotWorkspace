@@ -93,7 +93,7 @@ final class ParticipantConversionSupport
                 continue;
             }
 
-            $roles = is_array($entry['roles'] ?? null) ? $entry['roles'] : [];
+            $roles = self::roleIds($entry['roles'] ?? null);
             $params = [];
             if (isset($entry['name']) && is_string($entry['name']) && trim($entry['name']) !== '') {
                 $params['CN'] = trim($entry['name']);
@@ -218,6 +218,38 @@ final class ParticipantConversionSupport
                 ? $delegatedFrom
                 : 'mailto:'.$delegatedFrom;
         }
+    }
+
+    /**
+     * JSCalendar {@code roles} is a map ({@code {owner: true}}); REST tests and
+     * ICS round-trips also send a list ({@code ['owner']}).
+     *
+     * @return list<string>
+     */
+    public static function roleIds(mixed $roles): array
+    {
+        if (! is_array($roles) || $roles === []) {
+            return [];
+        }
+        if (array_is_list($roles)) {
+            $ids = [];
+            foreach ($roles as $role) {
+                if (is_string($role) && $role !== '') {
+                    $ids[] = $role;
+                }
+            }
+
+            return $ids;
+        }
+
+        $ids = [];
+        foreach ($roles as $role => $enabled) {
+            if ($enabled === true && is_string($role) && $role !== '') {
+                $ids[] = $role;
+            }
+        }
+
+        return $ids;
     }
 
     /**

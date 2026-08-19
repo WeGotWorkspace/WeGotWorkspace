@@ -43,6 +43,18 @@ describe("wegotworkspace calendar routes", () => {
     expect(router.state.location.pathname).toBe("/calendar/week/2026-08-17");
   });
 
+  it("matches the public RSVP route without treating rsvp as a view", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/calendar/rsvp/demo-token"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/calendar/rsvp/demo-token");
+    const match = router.state.matches.find((entry) => entry.params.token);
+    expect(match?.params).toMatchObject({ token: "demo-token" });
+  });
+
   it("matches the /calendar index so missing view/date can hydrate defaults", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar"],

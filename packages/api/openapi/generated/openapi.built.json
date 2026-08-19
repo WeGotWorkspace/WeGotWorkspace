@@ -9659,6 +9659,213 @@
             },
             "AdminMailDeliveryTestResponse": {
                 "$ref": "#/components/schemas/AdminMailDeliveryLastTestSend"
+            },
+            "CalendarSchedulingNotification": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "uid",
+                    "method",
+                    "title",
+                    "organizerEmail",
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "description": "One iTIP scheduling-inbox row (RFC 6638), later-mappable to JMAP CalendarEventNotification.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Scheduling object URI (inbox resource name)."
+                    },
+                    "uid": {
+                        "type": "string",
+                        "description": "VEVENT UID the notification refers to."
+                    },
+                    "method": {
+                        "type": "string",
+                        "enum": [
+                            "REQUEST",
+                            "CANCEL",
+                            "REPLY",
+                            "ADD",
+                            "REFRESH",
+                            "COUNTER",
+                            "DECLINECOUNTER"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "organizerEmail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "organizerName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "start": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "UTC start instant when DTSTART is a date-time."
+                    },
+                    "end": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "recurring": {
+                        "type": "boolean",
+                        "description": "True when the VEVENT has RRULE or RECURRENCE-ID."
+                    },
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "needs-action",
+                            "accepted",
+                            "tentative",
+                            "declined",
+                            "delegated"
+                        ]
+                    },
+                    "eventId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Attendee calendar event id when a local VEVENT copy exists."
+                    },
+                    "etag": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CalendarSchedulingNotificationListResponse": {
+                "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarSchedulingNotification"
+                        }
+                    }
+                }
+            },
+            "CalendarSchedulingNotificationRespond": {
+                "type": "object",
+                "required": [
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "accepted",
+                            "tentative",
+                            "declined"
+                        ]
+                    },
+                    "calendarId": {
+                        "type": "string",
+                        "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
+                    },
+                    "recurrenceId": {
+                        "type": "string",
+                        "description": "JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "this",
+                            "future"
+                        ],
+                        "description": "this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events."
+                    }
+                }
+            },
+            "CalendarSchedulingInvitee": {
+                "type": "object",
+                "required": [
+                    "username",
+                    "email",
+                    "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "username": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CalendarSchedulingInviteeListResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "canSubmitEmail"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarSchedulingInvitee"
+                        }
+                    },
+                    "canSubmitEmail": {
+                        "type": "boolean",
+                        "description": "When false, Calendar must not send iMIP to external attendees."
+                    }
+                }
+            },
+            "CalendarRsvpResponse": {
+                "type": "object",
+                "required": [
+                    "title",
+                    "attendeeEmail",
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "attendeeEmail": {
+                        "type": "string"
+                    },
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "needs-action",
+                            "accepted",
+                            "tentative",
+                            "declined"
+                        ]
+                    }
+                }
             }
         },
         "responses": {
@@ -14465,6 +14672,236 @@
                     }
                 },
                 "x-wgw-access": "admin"
+            }
+        },
+        "/calendars/scheduling/notifications": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "List own calendar scheduling inbox",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Scheduling notifications for the signed-in user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingNotificationListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/scheduling/notifications/{notificationId}": {
+            "delete": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Dismiss a scheduling notification without sending a REPLY",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Notification dismissed"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/scheduling/notifications/{notificationId}/respond": {
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "RSVP to a scheduling invitation",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated notification after REPLY",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingNotification"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/scheduling/invitees": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "List instance users who can be invited",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitee directory",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingInviteeListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendar/rsvp/{token}": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Show a public RSVP invitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "RSVP target",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "guest"
+            },
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Respond to a public RSVP invitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated RSVP",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "guest"
             }
         }
     }

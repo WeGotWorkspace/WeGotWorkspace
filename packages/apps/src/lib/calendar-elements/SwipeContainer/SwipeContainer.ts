@@ -228,7 +228,11 @@ export class SwipeContainer extends LitElement {
     if (changedProperties.has("currentIndex")) {
       this.#applyCurrentIndex(this.#pendingAnimate);
       this.#pendingAnimate = false;
-      this.dispatchEvent(new CustomEvent("change"));
+      // First paint (undefined → 0/N) is not a user swipe. Emitting `change` on
+      // week remount wrote Monday back through React/URL and fought the dropdown.
+      if (changedProperties.get("currentIndex") !== undefined) {
+        this.dispatchEvent(new CustomEvent("change"));
+      }
     }
   }
 

@@ -3,10 +3,12 @@ import { calendarBootstrapWindow } from "@/lib/api/wgw/calendar";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { JmapEventsAdapter, type JmapClient } from "@/lib/jmap-client";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
+import {
+  applyOwnRsvpToEngineEvents,
+  calendarEventsToEngineMap,
+} from "@/calendar-core/src/calendar-event-model";
+import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
-
-const SYNC_POLL_MS = 30_000;
 
 export type CalendarSurfaceStore = {
   /** Engine-model events for the lit views (adapter state, or cache fallback). */
@@ -31,6 +33,7 @@ export type CalendarSurfaceStore = {
 export function useCalendarSurface(
   client: JmapClient | undefined,
   data: CalendarUIData,
+  sessionEmail?: string,
 ): CalendarSurfaceStore {
   const [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false);
@@ -56,7 +59,7 @@ export function useCalendarSurface(
       .initialize(calendarBootstrapWindow())
       .then(() => {
         if (cancelled) return;
-        adapter.startPolling(SYNC_POLL_MS);
+        adapter.startPolling(CALENDAR_BACKGROUND_POLL_MS);
         setReady(true);
         setRevision((current) => current + 1);
       })
@@ -75,13 +78,10 @@ export function useCalendarSurface(
   const adapter = ready ? adapterRef.current : undefined;
 
   const events = useMemo<CalendarEventsMap>(() => {
-    if (adapter) {
-      // revision invalidates this memo on every adapter change.
-      void revision;
-      return new Map(adapter.getEvents());
-    }
-    return calendarEventsToEngineMap(data.events);
-  }, [adapter, revision, data.events]);
+    void revision;
+    const raw = adapter ? new Map(adapter.getEvents()) : calendarEventsToEngineMap(data.events);
+    return applyOwnRsvpToEngineEvents(raw, data.events, sessionEmail);
+  }, [adapter, revision, data.events, sessionEmail]);
 
   return {
     events,

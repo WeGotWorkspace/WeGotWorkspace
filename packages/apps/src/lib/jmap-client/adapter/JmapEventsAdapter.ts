@@ -73,6 +73,7 @@ export class JmapEventsAdapter {
   #dirtyMasters = new Set<string>();
   #pushChain: Promise<void> = Promise.resolve();
   #pollTimer: ReturnType<typeof setInterval> | undefined;
+  #pollInFlight = false;
   #lastRange: DateRange | undefined;
 
   constructor(options: JmapEventsAdapterOptions) {
@@ -172,7 +173,12 @@ export class JmapEventsAdapter {
   startPolling(intervalMs: number): void {
     this.stopPolling();
     this.#pollTimer = setInterval(() => {
-      void this.sync();
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (this.#pollInFlight) return;
+      this.#pollInFlight = true;
+      void this.sync().finally(() => {
+        this.#pollInFlight = false;
+      });
     }, intervalMs);
   }
 

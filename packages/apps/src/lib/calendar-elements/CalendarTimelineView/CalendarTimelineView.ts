@@ -115,6 +115,7 @@ type CalendarTimelineEvent = TimelineEvent & {
   past: boolean;
   recurring: boolean;
   exception: boolean;
+  rsvp: "" | "needs-action" | "tentative";
 };
 
 /* Header/footer/event templates render inside <time-line>'s shadow root, out of reach of this
@@ -552,6 +553,10 @@ export class CalendarTimelineView extends CalendarViewBase {
         past: Temporal.PlainDateTime.compare(originalEnd, now) <= 0,
         recurring: isCalendarEventRecurring(event),
         exception: isCalendarEventException(event),
+        rsvp:
+          event.participationStatus === "needs-action" || event.participationStatus === "tentative"
+            ? event.participationStatus
+            : "",
       };
     });
   }
@@ -976,6 +981,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?past=${timelineEvent.past}
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
+        .rsvp=${timelineEvent.rsvp}
         .summary=${timelineEvent.summary}
         .location=${timelineEvent.location}
         .time=${timeLabel}
@@ -1163,6 +1169,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       summary: ev.summary,
       color: ev.color,
       hidden: false,
+      rsvp: ev.rsvp,
     }));
   }
 

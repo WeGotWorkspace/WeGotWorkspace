@@ -21,6 +21,7 @@ export type {
   CalendarEvent,
   CalendarEventData,
   CalendarEventEnvelope,
+  CalendarEventParticipationStatus,
   CalendarEventPendingOperation,
   CalendarEventsMap,
   CalendarEventTimeSpan,

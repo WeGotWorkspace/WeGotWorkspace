@@ -33,7 +33,7 @@ export type CalendarSurfaceProps = {
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
   onEventSelected?: (key: string) => void | Promise<void>;
-  /** Lit navigated (day-number click, swipe) — keep React view/dropdown in sync. */
+  /** User picked a day number in Lit — React owns the dropdown/URL view write. */
   onViewChange?: (view: CalendarSurfaceViewId) => void;
   /** Lit changed the anchor date (day click, week swipe, …). */
   onStartDateChange?: (isoDate: string) => void;
@@ -70,10 +70,6 @@ export type CalendarSurfaceProps = {
   }) => void;
 };
 
-function isSurfaceViewId(value: string): value is CalendarSurfaceViewId {
-  return value === "day" || value === "week" || value === "month" || value === "year";
-}
-
 /**
  * React boundary for the vendored lit calendar views: sets properties
  * imperatively on the `wgw-calendar-surface` host and listens for the
@@ -98,6 +94,14 @@ export function CalendarSurface({
   onRecurrenceFutureUpdate,
 }: CalendarSurfaceProps) {
   const hostRef = useRef<WgwCalendarSurface | null>(null);
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const startDateRef = useRef(startDate);
+  startDateRef.current = startDate;
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+  const onStartDateChangeRef = useRef(onStartDateChange);
+  onStartDateChangeRef.current = onStartDateChange;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -138,29 +142,35 @@ export function CalendarSurface({
     const host = hostRef.current;
     if (!host) return;
 
+    // `view-changed` is a Lit property echo, not user intent. Honoring it after the
+    // dropdown writes week let a leftover day remount bounce React/URL forever.
+    // Day-number clicks are `day-selection`; swipe is `start-date-changed`.
     const handleStartDateChanged = () => {
-      if (!onStartDateChange) return;
+      const onStart = onStartDateChangeRef.current;
+      if (!onStart) return;
       const next = host.startDate;
-      if (typeof next === "string" && next !== "" && next !== startDate) {
-        onStartDateChange(next);
+      if (typeof next === "string" && next !== "" && next !== startDateRef.current) {
+        onStart(next);
       }
     };
 
-    const handleViewChanged = () => {
-      if (!onViewChange) return;
-      const next = host.view;
-      if (typeof next === "string" && isSurfaceViewId(next) && next !== view) {
-        onViewChange(next);
+    const handleDaySelection = (event: Event) => {
+      const date = (event as CustomEvent<{ date?: string }>).detail?.date;
+      if (typeof date === "string" && date !== "" && date !== startDateRef.current) {
+        onStartDateChangeRef.current?.(date);
+      }
+      if (viewRef.current !== "day") {
+        onViewChangeRef.current?.("day");
       }
     };
 
-    host.addEventListener("view-changed", handleViewChanged);
     host.addEventListener("start-date-changed", handleStartDateChanged);
+    host.addEventListener("day-selection", handleDaySelection);
     return () => {
-      host.removeEventListener("view-changed", handleViewChanged);
       host.removeEventListener("start-date-changed", handleStartDateChanged);
+      host.removeEventListener("day-selection", handleDaySelection);
     };
-  }, [onViewChange, onStartDateChange, view, startDate]);
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;

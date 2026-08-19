@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { useCallback, useMemo } from "react";
+import { useLocation, useParams, useRouter } from "@tanstack/react-router";
 import {
+  isTasksPathname,
   tasksNavigateTarget,
   tasksViewFromLocation,
   type TasksRouteParams,
@@ -8,33 +9,30 @@ import {
 
 /** Sync tasks workspace view with path-based `/tasks/...` routes. */
 export function useTasksRouteSync() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const location = useLocation();
   const params = useParams({ strict: false }) as TasksRouteParams;
 
   const initialView = useMemo(
-    () => tasksViewFromLocation(location.pathname, params),
+    () =>
+      isTasksPathname(location.pathname)
+        ? tasksViewFromLocation(location.pathname, params)
+        : undefined,
     [location.pathname, params],
   );
 
-  const currentViewRef = useRef<string>(initialView);
-
-  useEffect(() => {
-    currentViewRef.current = initialView;
-  }, [initialView]);
-
   const handleViewChange = useCallback(
     (view: string) => {
-      const routeView = tasksViewFromLocation(location.pathname, params);
-      if (view === routeView) {
-        currentViewRef.current = view;
-        return;
-      }
-      currentViewRef.current = view;
+      const livePath = router.state.location.pathname;
+      // Leaving tasks (app switcher, back) must not rewrite the new app onto
+      // `/tasks/...`. Parse treats foreign paths as the inbox default.
+      if (!isTasksPathname(livePath)) return;
+      const routeView = tasksViewFromLocation(livePath, params);
+      if (view === routeView) return;
       const target = tasksNavigateTarget(view);
-      void navigate({ ...target, replace: true });
+      void router.navigate({ ...target, replace: true });
     },
-    [location.pathname, navigate, params],
+    [params, router],
   );
 
   return {

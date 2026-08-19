@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Bell, Check, Clock, Eye, Repeat, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, Clock, Repeat, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Temporal } from "@js-temporal/polyfill";
 import { Button } from "@/button/src/button";
@@ -12,16 +12,21 @@ import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
 import { Calendar } from "@/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-import { cn } from "@/lib/utils";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
+import {
+  isSessionEventInvitee,
+  isSessionEventOrganizer,
+  sessionEventInviteeStatus,
+  type CalendarInvitee,
+} from "@/calendar-core/src/calendar-attendees";
+import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
+import {
+  calendarRespondStatus,
+  CalendarRsvpSelect,
+} from "@/calendar-core/src/calendar-rsvp-actions";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
   calendarEventFormIsValid,
@@ -51,7 +56,7 @@ import {
   eventTimeZoneOptions,
   eventTimeZoneSelectValue,
 } from "@/calendar-core/src/calendar-timezones";
-import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
+import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 
 export type CalendarEventDialogProps = {
   open: boolean;
@@ -66,6 +71,10 @@ export type CalendarEventDialogProps = {
   onClose: () => void;
   onSave: () => void;
   onDelete?: () => void;
+  invitees?: CalendarInvitee[];
+  canSubmitEmail?: boolean;
+  sessionEmail?: string;
+  onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
 };
 
 function isoToJsDate(iso: string): Date | undefined {
@@ -281,11 +290,30 @@ export function CalendarEventDialog({
   onClose,
   onSave,
   onDelete,
+  invitees = [],
+  canSubmitEmail = true,
+  sessionEmail,
+  onRsvp,
 }: CalendarEventDialogProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
-  const writableCalendars = calendars.filter((calendar) => calendar.mayWrite !== false);
-  const selectedCalendar =
-    writableCalendars.find((calendar) => calendar.id === form.calendarId) ?? writableCalendars[0];
+  const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail, invitees);
+  const isInvitee = isSessionEventInvitee(form.attendees, sessionEmail, invitees);
+  const inviteeRsvp = sessionEventInviteeStatus(form.attendees, sessionEmail, invitees);
+  const incomingRsvp = calendarRespondStatus(inviteeRsvp);
+  const readOnly = mode === "edit" && !isOrganizer;
+  const fieldsDisabled = busy || readOnly;
+  const showInviteeRsvp = mode === "edit" && Boolean(onRsvp) && isInvitee;
+  const showSaveCancel = !readOnly || showInviteeRsvp;
+  const [draftCalendarId, setDraftCalendarId] = useState(form.calendarId);
+  const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
+    incomingRsvp ?? "",
+  );
+
+  useEffect(() => {
+    setDraftCalendarId(form.calendarId);
+    setDraftRsvp(incomingRsvp ?? "");
+  }, [form.calendarId, incomingRsvp, open]);
+
   const valid = calendarEventFormIsValid(form);
   const recurrenceLocked = form.recurrencePreset === "custom";
   const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
@@ -344,7 +372,17 @@ export function CalendarEventDialog({
           className="calendar-event-dialog__form"
           onSubmit={(event) => {
             event.preventDefault();
-            if (valid && !busy) onSave();
+            if (busy) return;
+            if (showInviteeRsvp) {
+              if (!draftRsvp) return;
+              const previous = incomingRsvp ?? "";
+              void Promise.resolve(onRsvp?.(draftRsvp, draftCalendarId || undefined)).catch(() => {
+                setDraftRsvp(previous);
+              });
+              return;
+            }
+            if (readOnly || !valid) return;
+            onSave();
           }}
         >
           <div className="calendar-event-dialog__fields">
@@ -355,44 +393,22 @@ export function CalendarEventDialog({
                 onChange={(event) => set("title", event.target.value)}
                 placeholder={labels.eventTitleLabel}
                 aria-label={labels.eventTitleLabel}
-                autoFocus
+                disabled={fieldsDisabled}
+                autoFocus={!readOnly}
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <CalendarColorSwatchTrigger
-                    color={selectedCalendar?.color ?? "transparent"}
-                    label={
-                      selectedCalendar
-                        ? `${labels.eventCalendarLabel}: ${selectedCalendar.name}`
-                        : labels.eventCalendarLabel
-                    }
-                    className="calendar-event-dialog__calendar-trigger"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
-                  {writableCalendars.map((calendar) => (
-                    <DropdownMenuItem
-                      key={calendar.id}
-                      className="calendar-event-dialog__calendar-option"
-                      onSelect={() => set("calendarId", calendar.id)}
-                    >
-                      <span
-                        className="calendar-sidebar-dot"
-                        style={{ backgroundColor: calendar.color }}
-                        aria-hidden
-                      />
-                      <span className="calendar-event-dialog__calendar-name">{calendar.name}</span>
-                      <Check
-                        className={cn(
-                          "calendar-event-dialog__calendar-check",
-                          form.calendarId === calendar.id ? "opacity-100" : "opacity-0",
-                        )}
-                        aria-hidden
-                      />
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CalendarEventCalendarPicker
+                calendars={calendars}
+                calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
+                labels={labels}
+                disabled={busy || (readOnly && !showInviteeRsvp)}
+                onCalendarIdChange={(calendarId) => {
+                  if (showInviteeRsvp) {
+                    setDraftCalendarId(calendarId);
+                    return;
+                  }
+                  set("calendarId", calendarId);
+                }}
+              />
             </div>
 
             <FieldLabelRow label={labels.eventLocationLabel}>
@@ -400,6 +416,7 @@ export function CalendarEventDialog({
                 value={form.location}
                 onChange={(event) => set("location", event.target.value)}
                 placeholder={labels.eventLocationLabel}
+                disabled={fieldsDisabled}
               />
             </FieldLabelRow>
 
@@ -413,6 +430,7 @@ export function CalendarEventDialog({
                   checked={form.allDay}
                   onCheckedChange={(checked) => set("allDay", checked === true)}
                   aria-label={labels.eventAllDayLabel}
+                  disabled={fieldsDisabled}
                 />
               </CardRow>
               <CardRow title={labels.eventStartLabel}>
@@ -422,6 +440,7 @@ export function CalendarEventDialog({
                     locale={locale}
                     label={labels.eventStartLabel}
                     onChange={(next) => set("startDate", next)}
+                    disabled={fieldsDisabled}
                   />
                   {!form.allDay ? (
                     <Input
@@ -429,6 +448,7 @@ export function CalendarEventDialog({
                       lang={locale}
                       value={form.startTime}
                       aria-label={`${labels.eventStartLabel} time`}
+                      disabled={fieldsDisabled}
                       onChange={(event) => set("startTime", event.target.value)}
                     />
                   ) : null}
@@ -441,6 +461,7 @@ export function CalendarEventDialog({
                     locale={locale}
                     label={labels.eventEndLabel}
                     onChange={(next) => set("endDate", next)}
+                    disabled={fieldsDisabled}
                   />
                   {!form.allDay ? (
                     <Input
@@ -448,6 +469,7 @@ export function CalendarEventDialog({
                       lang={locale}
                       value={form.endTime}
                       aria-label={`${labels.eventEndLabel} time`}
+                      disabled={fieldsDisabled}
                       onChange={(event) => set("endTime", event.target.value)}
                     />
                   ) : null}
@@ -458,7 +480,7 @@ export function CalendarEventDialog({
                   <Select
                     value={eventTimeZoneSelectValue(form.timeZone)}
                     onValueChange={(value) => set("timeZone", eventTimeZoneFromSelectValue(value))}
-                    disabled={busy}
+                    disabled={fieldsDisabled}
                   >
                     <SelectTrigger
                       className="calendar-event-dialog__timezone-trigger"
@@ -489,7 +511,7 @@ export function CalendarEventDialog({
                   onValueChange={(value) =>
                     setRecurrencePreset(value as EditableRecurrencePresetId)
                   }
-                  disabled={recurrenceLocked || busy}
+                  disabled={recurrenceLocked || fieldsDisabled}
                 >
                   <SelectTrigger
                     className="calendar-event-dialog__repeat-trigger"
@@ -512,7 +534,7 @@ export function CalendarEventDialog({
                     <Select
                       value={form.recurrenceEnds}
                       onValueChange={(value) => set("recurrenceEnds", value as RecurrenceEndsMode)}
-                      disabled={busy}
+                      disabled={fieldsDisabled}
                     >
                       <SelectTrigger aria-label={labels.eventRecurrenceEndsLabel}>
                         <SelectValue />
@@ -530,7 +552,7 @@ export function CalendarEventDialog({
                           locale={locale}
                           label={labels.eventRecurrenceEndsOnDate}
                           onChange={(next) => set("recurrenceUntilDate", next)}
-                          disabled={form.recurrenceEnds !== "until" || busy}
+                          disabled={form.recurrenceEnds !== "until" || fieldsDisabled}
                         />
                       ) : null}
                       {form.recurrenceEnds === "count" ? (
@@ -541,6 +563,7 @@ export function CalendarEventDialog({
                             step={1}
                             value={form.recurrenceCount}
                             aria-label={labels.eventRecurrenceEndsAfter}
+                            disabled={fieldsDisabled}
                             onChange={(event) => {
                               const parsed = Number.parseInt(event.target.value, 10);
                               set("recurrenceCount", Number.isFinite(parsed) ? parsed : 0);
@@ -557,44 +580,32 @@ export function CalendarEventDialog({
               ) : null}
             </Card>
 
-            <Card
-              className="calendar-event-dialog__card"
-              titleIcon={<Eye className="size-4" />}
-              title={labels.eventShowAs}
-            >
-              <CardRow fill>
-                <Select
-                  value={form.freeBusyStatus}
-                  onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
-                  disabled={busy}
-                >
-                  <SelectTrigger
-                    className="calendar-event-dialog__show-as-trigger"
-                    aria-label={labels.eventShowAs}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
-                    <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </CardRow>
-            </Card>
+            <CalendarInviteesCard
+              attendees={form.attendees}
+              invitees={invitees}
+              labels={labels}
+              busy={busy}
+              readOnly={readOnly}
+              canSubmitEmail={canSubmitEmail}
+              sessionEmail={sessionEmail}
+              onChange={(attendees) => set("attendees", attendees)}
+            />
 
             <Card
               className="calendar-event-dialog__card"
               titleIcon={<Bell className="size-4" />}
               title={labels.eventAlarmsLabel}
               action={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => setAlerts([...form.alerts, defaultEventAlert(form.alerts)])}
-                >
-                  {labels.eventAlarmAdd}
-                </Button>
+                readOnly ? undefined : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={fieldsDisabled}
+                    onClick={() => setAlerts([...form.alerts, defaultEventAlert(form.alerts)])}
+                  >
+                    {labels.eventAlarmAdd}
+                  </Button>
+                )
               }
             >
               {form.alerts.length === 0 ? (
@@ -605,7 +616,7 @@ export function CalendarEventDialog({
                     <AlarmRow
                       alert={alert}
                       labels={labels}
-                      disabled={busy}
+                      disabled={fieldsDisabled}
                       onChange={(patch) => updateAlert(alert.id, patch)}
                       onRemove={() => setAlerts(form.alerts.filter((row) => row.id !== alert.id))}
                     />
@@ -614,18 +625,47 @@ export function CalendarEventDialog({
               )}
             </Card>
 
+            <FieldLabelRow label={labels.eventShowAs}>
+              <Select
+                value={form.freeBusyStatus}
+                onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
+                disabled={fieldsDisabled}
+              >
+                <SelectTrigger
+                  className="calendar-event-dialog__show-as-trigger"
+                  aria-label={labels.eventShowAs}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
+                  <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
+                </SelectContent>
+              </Select>
+            </FieldLabelRow>
+
             <FieldLabelRow label={labels.eventNotesLabel}>
               <Textarea
                 value={form.description}
                 onChange={(event) => set("description", event.target.value)}
                 placeholder={labels.eventNotesLabel}
+                disabled={fieldsDisabled}
                 rows={3}
               />
             </FieldLabelRow>
           </div>
 
           <DialogFooter className="calendar-event-dialog__footer">
-            {mode === "edit" && onDelete ? (
+            {showInviteeRsvp ? (
+              <CalendarRsvpSelect
+                className="calendar-event-dialog__rsvp"
+                value={draftRsvp}
+                labels={labels}
+                busy={busy}
+                onChange={setDraftRsvp}
+              />
+            ) : null}
+            {mode === "edit" && onDelete && !readOnly ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -636,12 +676,19 @@ export function CalendarEventDialog({
                 {labels.delete}
               </Button>
             ) : null}
-            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              {labels.cancel}
-            </Button>
-            <Button type="submit" disabled={!valid || busy}>
-              {labels.save}
-            </Button>
+            {showSaveCancel ? (
+              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+                {labels.cancel}
+              </Button>
+            ) : null}
+            {showSaveCancel ? (
+              <Button
+                type="submit"
+                disabled={showInviteeRsvp ? !draftRsvp || busy : !valid || busy}
+              >
+                {labels.save}
+              </Button>
+            ) : null}
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,9 +1,10 @@
 import { Users2 } from "lucide-react";
-import type { DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
 import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
 
+export type SharePrincipalKind = "user" | "group";
+
 type SharePrincipalMarkProps = {
-  principalType: DriveSharePrincipalEntry["principalType"];
+  principalType: SharePrincipalKind;
   displayName: string;
   active?: boolean;
 };

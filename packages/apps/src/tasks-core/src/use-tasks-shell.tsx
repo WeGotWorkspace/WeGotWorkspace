@@ -48,6 +48,8 @@ export function useTasksShell({
 
   const pendingViewRef = useRef<string | null>(null);
   const lastInitialViewRef = useRef(initialView);
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
 
   useEffect(() => {
     if (initialView === undefined) return;
@@ -60,12 +62,12 @@ export function useTasksShell({
       if (normalized === pending) {
         pendingViewRef.current = null;
       } else if (initialViewChanged) {
-        onViewChange?.(pending);
+        onViewChangeRef.current?.(pending);
       }
       return;
     }
     setView((current) => (current === normalized ? current : normalized));
-  }, [initialView, onViewChange, taskLists]);
+  }, [initialView, taskLists]);
 
   const viewLabel = useMemo(() => {
     if (view === "state:all") return L.stateAll;
@@ -110,8 +112,8 @@ export function useTasksShell({
       viewSyncedRef.current = true;
       return;
     }
-    onViewChange?.(view);
-  }, [view, onViewChange]);
+    onViewChangeRef.current?.(view);
+  }, [view]);
 
   const showCompletedToggle = useMemo(() => shouldApplyCompletedTaskFilter(view), [view]);
 

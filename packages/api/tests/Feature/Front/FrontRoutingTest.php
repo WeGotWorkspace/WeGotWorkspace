@@ -96,6 +96,7 @@ final class FrontRoutingTest extends TestCase
         return [
             'admin' => ['/admin'],
             'calendar' => ['/calendar'],
+            'calendar rsvp' => ['/calendar/rsvp/demo-token'],
             'contacts' => ['/contacts'],
             'docs' => ['/docs'],
             'drive' => ['/drive'],

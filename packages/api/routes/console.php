@@ -147,7 +147,7 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
     ));
 
     return self::SUCCESS;
-})->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
+})->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/tasks-inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
 
 Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
     $result = $index->reindexAll();

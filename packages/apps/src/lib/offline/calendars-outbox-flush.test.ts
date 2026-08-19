@@ -12,6 +12,7 @@ import {
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
+import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { flushCalendarsOutbox } from "@/lib/offline/calendars-outbox-flush";
 
 const username = "bob";
@@ -37,19 +38,31 @@ const bootstrap = {
   },
 } satisfies CalendarAppBootstrap;
 
-const { createCalendarEventLive, patchCalendarEventLive, deleteCalendarEventLive } = vi.hoisted(
-  () => ({
-    createCalendarEventLive: vi.fn(),
-    patchCalendarEventLive: vi.fn(),
-    deleteCalendarEventLive: vi.fn(),
-  }),
-);
+const {
+  createCalendarEventLive,
+  patchCalendarEventLive,
+  deleteCalendarEventLive,
+  respondCalendarSchedulingNotification,
+} = vi.hoisted(() => ({
+  createCalendarEventLive: vi.fn(),
+  patchCalendarEventLive: vi.fn(),
+  deleteCalendarEventLive: vi.fn(),
+  respondCalendarSchedulingNotification: vi.fn(),
+}));
 
 vi.mock("@/lib/api/wgw/calendar", () => ({
   createCalendarEventLive,
   patchCalendarEventLive,
   deleteCalendarEventLive,
 }));
+
+vi.mock("@/lib/api/wgw/calendar-scheduling", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/wgw/calendar-scheduling")>();
+  return {
+    ...actual,
+    respondCalendarSchedulingNotification,
+  };
+});
 
 describe("flushCalendarsOutbox", () => {
   beforeEach(async () => {
@@ -92,6 +105,7 @@ describe("flushCalendarsOutbox", () => {
     const result = await flushCalendarsOutbox(username);
 
     expect(result.conflicts).toEqual([]);
+    expect(result.schedulingConflicts).toEqual([]);
     expect(createCalendarEventLive).toHaveBeenCalledTimes(1);
     expect(patchCalendarEventLive).toHaveBeenCalledWith("ev-1", { title: "Patched" });
     expect(deleteCalendarEventLive).toHaveBeenCalledWith("ev-gone");
@@ -120,6 +134,7 @@ describe("flushCalendarsOutbox", () => {
     const result = await flushCalendarsOutbox(username);
 
     expect(result.conflicts).toEqual(["ev-1"]);
+    expect(result.schedulingConflicts).toEqual([]);
     const rows = await listOutboxMutations(username);
     expect(rows).toHaveLength(1);
     expect(rows[0].lastError).toBe("conflict");
@@ -137,8 +152,51 @@ describe("flushCalendarsOutbox", () => {
     const result = await flushCalendarsOutbox(username);
 
     expect(result.conflicts).toEqual([]);
+    expect(result.schedulingConflicts).toEqual([]);
     const rows = await listOutboxMutations(username);
     expect(rows).toHaveLength(1);
     expect(rows[0].lastError).toBe("boom");
+  });
+
+  it("uses notificationId when a queued RSVP hits a set conflict", async () => {
+    respondCalendarSchedulingNotification.mockRejectedValue(
+      new JmapSetItemError("update", "invite-1.ics", { type: "notFound" }),
+    );
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "respond-scheduling",
+      payload: JSON.stringify({
+        notificationId: "invite-1.ics",
+        participationStatus: "declined",
+      }),
+    });
+
+    const result = await flushCalendarsOutbox(username);
+
+    expect(result.conflicts).toEqual([]);
+    expect(result.schedulingConflicts).toEqual(["invite-1.ics"]);
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("drops a queued RSVP when the invitation is gone and reports the notification id", async () => {
+    respondCalendarSchedulingNotification.mockRejectedValue(
+      new CalendarSchedulingGoneError("invite-1.ics"),
+    );
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "respond-scheduling",
+      payload: JSON.stringify({
+        notificationId: "invite-1.ics",
+        participationStatus: "accepted",
+      }),
+    });
+
+    const result = await flushCalendarsOutbox(username);
+
+    expect(result.conflicts).toEqual([]);
+    expect(result.schedulingConflicts).toEqual(["invite-1.ics"]);
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
 });

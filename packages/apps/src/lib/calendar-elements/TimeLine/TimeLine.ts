@@ -492,10 +492,13 @@ export class TimeLine extends LitElement {
   private measureLaneCaps() {
     if (!this.laneClip()) return;
     const n = Math.max(1, this.cells);
-    const br = this.renderRoot?.querySelector(".event")?.getBoundingClientRect();
+    const ev = this.renderRoot?.querySelector(".event") as HTMLElement | null;
+    // offsetHeight ignores ancestor range-zoom scale. getBoundingClientRect does not —
+    // a mid day→week measure fed clipped lane caps back into auto-height cells and
+    // retriggered ResizeObserver forever.
     let lh =
-      br && br.height > 0
-        ? br.height
+      ev && ev.offsetHeight > 0
+        ? ev.offsetHeight
         : parseFloat(getComputedStyle(this).getPropertyValue("--__event-height")) || 32;
     lh = Math.max(lh, 1);
     const next = new Array<number>(n).fill(Infinity);

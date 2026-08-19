@@ -49,6 +49,16 @@
 
   /* The lit views highlight "today" and previews with this. */
   --lc-higlight-color: var(--calendar-accent);
+
+  /* Docs comments/review panel tokens reused by the invitations inbox. */
+  --docs-surface: var(--color-cream, #ffffff);
+  --docs-text: var(--color-ink);
+  --docs-muted: var(--calendar-muted);
+  --docs-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --docs-accent: var(--calendar-accent);
+  /* 23rem fits Accept | Maybe | Decline on one line inside invitation cards. */
+  --calendar-invitations-column-width: 23rem;
+  --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
 .calendar-workspace .app-sidebar__scroll {
@@ -94,6 +104,40 @@
 
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
+}
+
+.calendar-workspace .workspace-app-layout__main {
+  @apply min-w-0;
+}
+
+.calendar-workspace .workspace-app-layout__panel,
+.calendar-workspace .calendar-workspace__invitations-panel {
+  @apply flex min-h-0 flex-col overflow-hidden border-l;
+  flex: 0 0 var(--calendar-invitations-column-width);
+  width: var(--calendar-invitations-column-width);
+  max-width: var(--calendar-invitations-column-width);
+  border-color: var(--docs-border);
+  background-color: var(--app-sidebar-bg);
+}
+
+/* Closed dock still occupies a translated flex slot over the grid; inert + no hits. */
+.calendar-workspace .calendar-workspace__invitations-panel[data-open="false"] {
+  @apply pointer-events-none;
+}
+
+.calendar-workspace .calendar-invitations-trigger {
+  @apply relative;
+}
+
+.calendar-workspace .calendar-invitations-trigger::after {
+  content: attr(data-count);
+  @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
+  background-color: var(--calendar-accent-strong);
+  color: #ffffff;
+}
+
+.calendar-workspace .calendar-invitations-trigger:not([data-count])::after {
+  display: none;
 }
 
 .calendar-workspace .calendar-header-actions .calendar-view-select {
@@ -233,10 +277,17 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   padding: 0.5rem 1rem 1rem;
   /* Clip the slight zoom so scale does not spill into the header. */
   overflow: hidden;
+}
+
+/* Portaled view dropdown sits over the grid; ignore hits so choosing Week
+   cannot click-through onto a weekday header (day-selection → day bounce). */
+.calendar-workspace .calendar-main[data-view-select-open="true"] {
+  @apply pointer-events-none;
 }
 
 .calendar-workspace .calendar-main__range {
@@ -256,6 +307,10 @@
  * Portaled event dialog sits outside `.calendar-workspace`; repeat the accent
  * tokens so {@link Button} and form chrome match the calendar shell.
  */
+.calendar-dialog-surface .share-access-card {
+  --share-dialog-accent: var(--calendar-accent);
+}
+
 .calendar-dialog-surface {
   --calendar-accent: #6366f1;
   --calendar-accent-strong: #5558e8;
@@ -455,6 +510,10 @@
 .calendar-dialog-surface .calendar-event-dialog__footer {
   /* DialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
   @apply shrink-0 gap-2 sm:gap-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__rsvp {
+  @apply me-auto;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {

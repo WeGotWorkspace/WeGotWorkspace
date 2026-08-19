@@ -52,7 +52,7 @@
 }
 
 .workspace-app-layout__panel[data-open="false"] {
-  @apply translate-x-full border-l-0;
+  @apply translate-x-full border-l-0 pointer-events-none;
   margin-right: calc(-1 * var(--workspace-panel-width, 0px));
 }
 

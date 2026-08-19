@@ -99,6 +99,17 @@ export function createMockCalendarApiSource(): CalendarApiSource {
       createCalendar: (draft) => createCalendarLive(draft, opsClient),
       patchCalendar: (calendarId, patch) => patchCalendarLive(calendarId, patch, opsClient),
       deleteCalendar: (calendarId) => deleteCalendarLive(calendarId, opsClient),
+      listSchedulingNotifications: async () => [],
+      listInvitees: async () => ({
+        list: [
+          { username: "alice", email: "alice@example.test", name: "Alice" },
+          { username: "bob", email: "bob@example.test", name: "Bob" },
+          { username: "carol", email: "carol@example.test", name: "Carol" },
+        ],
+        canSubmitEmail: true,
+      }),
+      respondSchedulingNotification: async () => {},
+      dismissSchedulingNotification: async () => {},
     }),
     // Separate client for the adapter — independent sync-state tracking.
     createJmapClient: clientFor,

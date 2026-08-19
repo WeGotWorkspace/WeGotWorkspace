@@ -1,6 +1,8 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@/button/src/button";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
@@ -16,6 +18,13 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
+import {
+  filterInviteeNotifications,
+  pendingInvitationCount,
+} from "@/calendar-core/src/calendar-invitation-event";
+import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
+import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
+import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import { formToCreateIntent } from "@/calendar-core/src/calendar-editor-model";
@@ -25,12 +34,25 @@ import {
   calendarDirectoryGroupsFromBootstrap,
   personalOwnerLabel,
 } from "@/calendar-core/src/calendar-workspace-props";
+import {
+  organizerAddress,
+  sessionEventInviteeStatus,
+} from "@/calendar-core/src/calendar-attendees";
+import {
+  eventIsRecurringForRsvp,
+  persistInviteeRsvp,
+  rsvpRecurrenceIdForEvent,
+  type CalendarRsvpPersistSource,
+} from "@/calendar-core/src/calendar-rsvp-scope";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import {
   personalCalendarsForSidebar,
   teamCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
+import { SideDrawer } from "@/ui/side-drawer";
+import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
 
@@ -138,8 +160,9 @@ export function CalendarWorkspace({
     onMutated: () => {
       surface?.syncNow();
     },
+    sessionEmail: organizerAddress(session.user)?.email,
+    sessionName: session.user.displayName,
   });
-
   const {
     L,
     locale,
@@ -185,6 +208,46 @@ export function CalendarWorkspace({
     truncateSeriesFromOccurrence,
     splitSeriesFromDrag,
   } = controller;
+  const { showError } = useAppToast();
+  const handleInvitationResponded = useCallback(() => {
+    surface?.syncNow();
+  }, [surface]);
+  const handleInvitationError = useCallback(
+    (error: unknown) => {
+      showError(
+        error instanceof CalendarSchedulingGoneError
+          ? L.toastInvitationCancelled
+          : L.toastRsvpFailed,
+      );
+    },
+    [L.toastInvitationCancelled, L.toastRsvpFailed, showError],
+  );
+  const handleSchedulingConflict = useCallback(() => {
+    showError(L.toastInvitationCancelled);
+  }, [L.toastInvitationCancelled, showError]);
+  const invitations = useCalendarInvitations(operations, {
+    onResponded: handleInvitationResponded,
+    onError: handleInvitationError,
+    onSchedulingConflict: handleSchedulingConflict,
+  });
+  const inviteeNotifications = useMemo(
+    () =>
+      filterInviteeNotifications(invitations.notifications, [
+        session.user.email ?? "",
+        session.user.username ?? "",
+      ]),
+    [invitations.notifications, session.user.email, session.user.username],
+  );
+  const invitationsLayout = useDocsCommentsLayout();
+  const useInvitationsDrawer = invitationsLayout === "drawer";
+  const [invitationsOpen, setInvitationsOpen] = useState(false);
+  const [viewSelectOpen, setViewSelectOpen] = useState(false);
+  const toggleInvitationsOpen = () => {
+    if (!invitationsOpen) {
+      void invitations.refreshIfIdle().catch(() => undefined);
+    }
+    setInvitationsOpen((open) => !open);
+  };
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
   const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
@@ -200,6 +263,81 @@ export function CalendarWorkspace({
   };
 
   useDocumentTitle(title);
+
+  const persistRsvp = useCallback(
+    (
+      id: string,
+      status: CalendarSchedulingRespondStatus,
+      calendarId: string | undefined,
+      persist: { source: CalendarRsvpPersistSource; editorRecurrenceId?: string },
+    ) => {
+      const notification =
+        inviteeNotifications.find((row) => row.id === id) ??
+        inviteeNotifications.find((row) => row.eventId === id);
+      const eventId =
+        notification?.eventId ?? (editor?.mode === "edit" ? editor.eventId : undefined) ?? id;
+      const event = data.events.find((entry) => entry.id === eventId);
+      const editorRecurrenceId = persist.editorRecurrenceId;
+      const recurrenceId = rsvpRecurrenceIdForEvent({
+        editorRecurrenceId,
+        event,
+        notification,
+      });
+      const previousStatus =
+        (editor?.mode === "edit"
+          ? sessionEventInviteeStatus(
+              editor.form.attendees,
+              organizerAddress(session.user)?.email,
+              invitations.invitees,
+            )
+          : undefined) ?? notification?.participationStatus;
+      return persistInviteeRsvp({
+        source: persist.source,
+        recurring: eventIsRecurringForRsvp(event, notification?.recurring, editorRecurrenceId),
+        previousStatus,
+        masterId: eventId,
+        recurrenceId,
+        askScope: askRecurrenceScope,
+        respond: (scopeOptions) =>
+          invitations.respond(notification?.id ?? id, status, {
+            ...(calendarId ? { calendarId } : {}),
+            ...scopeOptions,
+          }),
+      });
+    },
+    [askRecurrenceScope, data.events, editor, invitations, inviteeNotifications, session.user],
+  );
+
+  const invitationsPanel = useMemo(
+    () => (
+      <CalendarInvitationsPanel
+        notifications={inviteeNotifications}
+        labels={L}
+        locale={locale}
+        calendars={calendars}
+        defaultCalendarId={defaultCalendarId}
+        busy={invitations.busy}
+        showCloseButton={useInvitationsDrawer}
+        onClose={() => setInvitationsOpen(false)}
+        onRespond={async (id, status, calendarId) => {
+          await persistRsvp(id, status, calendarId, { source: "sidebar" });
+        }}
+        onOpenEvent={canWrite ? openEditEventKey : undefined}
+      />
+    ),
+    [
+      L,
+      calendars,
+      canWrite,
+      defaultCalendarId,
+      invitations.busy,
+      inviteeNotifications,
+      locale,
+      openEditEventKey,
+      persistRsvp,
+      useInvitationsDrawer,
+    ],
+  );
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -301,7 +439,11 @@ export function CalendarWorkspace({
             }
             actions={
               <div className="calendar-header-actions">
-                <Select value={view} onValueChange={(next) => selectView(next as CalendarViewId)}>
+                <Select
+                  value={view}
+                  onOpenChange={setViewSelectOpen}
+                  onValueChange={(next) => selectView(next as CalendarViewId)}
+                >
                   <SelectTrigger className="calendar-view-select" aria-label={L.viewSelectLabel}>
                     <SelectValue />
                   </SelectTrigger>
@@ -320,12 +462,22 @@ export function CalendarWorkspace({
                   listLabel={L.showAsList}
                 />
                 <Button label={L.today} onClick={goToday} variant="subtle" />
+                <CalendarInvitationsTrigger
+                  count={pendingInvitationCount(inviteeNotifications)}
+                  open={invitationsOpen}
+                  labels={L}
+                  onToggle={toggleInvitationsOpen}
+                />
               </div>
             }
           />
         }
         main={
-          <div className="calendar-main" data-view={view}>
+          <div
+            className="calendar-main"
+            data-view={view}
+            data-view-select-open={viewSelectOpen ? "true" : undefined}
+          >
             <div className="calendar-main__range">
               <CalendarSurface
                 view={litSurface.view}
@@ -349,7 +501,29 @@ export function CalendarWorkspace({
             </div>
           </div>
         }
+        panel={
+          useInvitationsDrawer ? undefined : (
+            <div
+              className="workspace-app-layout__panel calendar-workspace__invitations-panel"
+              data-open={invitationsOpen ? "true" : "false"}
+              aria-hidden={!invitationsOpen}
+              inert={!invitationsOpen || undefined}
+            >
+              {invitationsPanel}
+            </div>
+          )
+        }
       />
+      {useInvitationsDrawer ? (
+        <SideDrawer
+          open={invitationsOpen}
+          onClose={() => setInvitationsOpen(false)}
+          title={L.invitationsSection}
+          className="calendar-invitations-panel-drawer"
+        >
+          {invitationsPanel}
+        </SideDrawer>
+      ) : null}
       {editor ? (
         <CalendarEventDialog
           open
@@ -358,11 +532,30 @@ export function CalendarWorkspace({
           calendars={calendars}
           labels={L}
           locale={locale}
-          busy={editorBusy}
+          busy={editorBusy || invitations.busy}
           onChange={setEditorForm}
           onClose={closeEditor}
           onSave={saveEditor}
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
+          invitees={invitations.invitees}
+          canSubmitEmail={invitations.canSubmitEmail}
+          sessionEmail={organizerAddress(session.user)?.email}
+          onRsvp={
+            editor.mode === "edit"
+              ? (status, calendarId) => {
+                  const notification = inviteeNotifications.find(
+                    (row) => row.eventId === editor.eventId,
+                  );
+                  const id = notification?.id ?? editor.eventId;
+                  return persistRsvp(id, status, calendarId, {
+                    source: "dialog",
+                    editorRecurrenceId: editor.recurrenceId,
+                  }).then((persisted) => {
+                    if (persisted) closeEditor();
+                  });
+                }
+              : undefined
+          }
         />
       ) : null}
       <CalendarCalendarDialog

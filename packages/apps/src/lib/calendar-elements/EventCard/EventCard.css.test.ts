@@ -55,6 +55,17 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(/\.event\.event--dragging[\s\S]*cursor:\s*grabbing/);
   });
 
+  it("uses a dashed accent edge and lighter fill for awaiting-reply RSVP", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /:host\(\[rsvp="needs-action"\]\)\s*\.event-card-shell::before[\s\S]*border:\s*1\.5px\s+dashed/,
+    );
+    expect(css).toMatch(/:host\(\[rsvp="tentative"\]\)\s*\.event-card-shell::before/);
+    expect(css).toMatch(
+      /:host\(\[rsvp="needs-action"\]\)\s*\.event-card-shell::before[\s\S]*color-mix\(in srgb,\s*var\(--_lc-event-card-bg\)\s*42%/,
+    );
+  });
+
   it("renders TimeLine create-preview as a card slot, not a dashed ghost", () => {
     const css = readCss("../TimeLine/TimeLine.css");
     const previewBlock = css.match(/\.create-preview\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
