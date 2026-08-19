@@ -16,6 +16,8 @@ use Sabre\Uri;
  * Uses {@see GroupPrincipalContainer} for the {@see AdminConstants::GROUP_CONTAINER_URI} branch
  * so nested group principals appear in the DAV tree (stock CalDAV {@code User} only exposes proxies).
  * Listing under {@code principals/} is limited to the signed-in account plus the {@code groups} container.
+ * {@see getChild} still resolves any account principal so CalDAV scheduling (RFC 6638) can
+ * read the attendee inbox and default calendar without enumerating other users.
  */
 final class AppCalDAVPrincipalCollection extends CalDAVPrincipalCollection
 {
@@ -63,15 +65,8 @@ final class AppCalDAVPrincipalCollection extends CalDAVPrincipalCollection
             return $this->getChildForPrincipal($principalInfo);
         }
 
-        $current = $this->authPlugin->getCurrentPrincipal();
-        if ($current === null || $current === '') {
-            throw new DAV\Exception\NotFound('Node with name '.$name.' was not found');
-        }
         $principalInfo = $this->principalBackend->getPrincipalByPath($this->principalPrefix.'/'.$name);
         if (! $principalInfo || ! AccountPrincipalFilter::isAccountPrincipal($principalInfo)) {
-            throw new DAV\Exception\NotFound('Node with name '.$name.' was not found');
-        }
-        if (($principalInfo['uri'] ?? '') !== $current) {
             throw new DAV\Exception\NotFound('Node with name '.$name.' was not found');
         }
 
@@ -83,17 +78,12 @@ final class AppCalDAVPrincipalCollection extends CalDAVPrincipalCollection
         if ($name === $this->groupsDirectoryName()) {
             return (bool) $this->principalBackend->getPrincipalByPath(AdminConstants::GROUP_CONTAINER_URI);
         }
-        $current = $this->authPlugin->getCurrentPrincipal();
-        if ($current === null || $current === '') {
-            return false;
-        }
         $principalInfo = $this->principalBackend->getPrincipalByPath($this->principalPrefix.'/'.$name);
         if (! $principalInfo) {
             return false;
         }
 
-        return AccountPrincipalFilter::isAccountPrincipal($principalInfo)
-            && ($principalInfo['uri'] ?? '') === $current;
+        return AccountPrincipalFilter::isAccountPrincipal($principalInfo);
     }
 
     /**

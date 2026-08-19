@@ -40,6 +40,8 @@ final class InboxTaskListProvisionerTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey('default', $byUri);
         $this->assertArrayHasKey(CalendarCollectionUris::EVENT_HOME, $byUri);
         $this->assertArrayHasKey(InboxTaskListProvisioner::URI, $byUri);
+        $this->assertSame('tasks-inbox', InboxTaskListProvisioner::URI);
+        $this->assertArrayNotHasKey(InboxTaskListProvisioner::LEGACY_URI, $byUri);
         $this->assertArrayHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
         $this->assertSame(
             ['VEVENT', 'VJOURNAL'],
@@ -100,6 +102,27 @@ final class InboxTaskListProvisionerTest extends WgwDatabaseTestCase
 
         $exitCode = Artisan::call('wgw:tasks:provision-inbox');
         $this->assertSame(0, $exitCode);
+    }
+
+    public function test_provisioner_migrates_legacy_inbox_uri_to_tasks_inbox(): void
+    {
+        $this->seedWgwUser('legacy-inbox', password: 'longpassword');
+        $principalUri = 'principals/legacy-inbox';
+
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $caldav->createCalendar($principalUri, InboxTaskListProvisioner::LEGACY_URI, [
+            '{DAV:}displayname' => InboxTaskListProvisioner::DISPLAY_NAME,
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
+        ]);
+
+        $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::LEGACY_URI));
+        $this->assertNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::URI));
+
+        $provisioner = app(InboxTaskListProvisioner::class);
+        $this->assertFalse($provisioner->ensureForPrincipal($principalUri));
+        $this->assertTrue($provisioner->hasInboxCalendar($principalUri));
+        $this->assertNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::LEGACY_URI));
+        $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::URI));
     }
 
     /**

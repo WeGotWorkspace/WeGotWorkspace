@@ -27,6 +27,7 @@ final class CalendarEventRepository
         private readonly CalendarEventExpansionService $expansion,
         private readonly JmapCalendarEventStateService $eventStates,
         private readonly CalendarRepository $calendars,
+        private readonly CalendarSchedulingService $scheduling,
     ) {}
 
     /**
@@ -576,11 +577,12 @@ final class CalendarEventRepository
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);
-        $eventPayload = $this->normalizeEventPayload($payload);
+        $eventPayload = $this->scheduling->withOrganizer($username, $this->normalizeEventPayload($payload));
         $eventUri = $this->allocateEventUri((int) $instance->calendarid, $eventPayload);
         $ics = $this->mapper->toIcs($eventPayload);
 
         $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+        $this->scheduling->scheduleAfterWrite($username, null, $ics);
         $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
         $this->searchIndexSync->sync(
             'calendars',
@@ -681,12 +683,14 @@ final class CalendarEventRepository
         $object = $located['object'];
         $eventUri = (string) $object->uri;
         $veventUid = $located['veventUid'];
+        $oldIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
 
         if ($veventUid !== null) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
             $remaining = $this->mapper->removeVEventFromIcs($raw, $veventUid);
             if ($remaining === null) {
                 $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
+                $this->scheduling->scheduleAfterDelete($username, $oldIcs);
                 $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
                     'calendars',
@@ -696,6 +700,7 @@ final class CalendarEventRepository
                 );
             } else {
                 $this->calBackend()->updateCalendarObject($this->calBackendCalendarId($instance), $eventUri, $remaining);
+                $this->scheduling->scheduleAfterWrite($username, $oldIcs, $remaining);
                 $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
                     'calendars',
@@ -706,6 +711,7 @@ final class CalendarEventRepository
             }
         } else {
             $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
+            $this->scheduling->scheduleAfterDelete($username, $oldIcs);
             $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
             $this->searchIndexSync->sync(
                 'calendars',
@@ -747,12 +753,15 @@ final class CalendarEventRepository
             $located['veventUid'],
             $username,
         );
-        $eventPayload = $deepMerge
-            ? $this->normalizeEventPayload(
-                CalendarConversionSupport::deepMergeEventPatch($existingEvent, $payload),
-                $existingEvent,
-            )
-            : $this->normalizeEventPayload($payload, $existingEvent);
+        $eventPayload = $this->scheduling->withOrganizer(
+            $username,
+            $deepMerge
+                ? $this->normalizeEventPayload(
+                    CalendarConversionSupport::deepMergeEventPatch($existingEvent, $payload),
+                    $existingEvent,
+                )
+                : $this->normalizeEventPayload($payload, $existingEvent),
+        );
 
         $eventPayload['id'] = $existingEvent['id'] ?? $eventId;
         if ($located['veventUid'] !== null) {
@@ -763,9 +772,13 @@ final class CalendarEventRepository
         $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($instance) => true];
 
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        if (isset($existingEvent['sequence']) || isset($eventPayload['participants'])) {
+            $eventPayload['sequence'] = ((int) ($existingEvent['sequence'] ?? 0)) + 1;
+        }
         $ics = $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']);
         $calendarId = (int) $object->calendarid;
         $this->calBackend()->updateCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+        $this->scheduling->scheduleAfterWrite($username, $raw, $ics);
         $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
         $this->searchIndexSync->sync(
             'calendars',

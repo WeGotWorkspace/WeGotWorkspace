@@ -1,0 +1,109 @@
+{
+  "CalendarSchedulingNotification": {
+    "type": "object",
+    "required": ["id", "uid", "method", "title", "organizerEmail", "participationStatus"],
+    "additionalProperties": false,
+    "description": "One iTIP scheduling-inbox row (RFC 6638), later-mappable to JMAP CalendarEventNotification.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Scheduling object URI (inbox resource name)."
+      },
+      "uid": {
+        "type": "string",
+        "description": "VEVENT UID the notification refers to."
+      },
+      "method": {
+        "type": "string",
+        "enum": ["REQUEST", "CANCEL", "REPLY", "ADD", "REFRESH", "COUNTER", "DECLINECOUNTER"]
+      },
+      "title": {
+        "type": "string"
+      },
+      "organizerEmail": {
+        "type": ["string", "null"]
+      },
+      "organizerName": {
+        "type": ["string", "null"]
+      },
+      "start": {
+        "type": ["string", "null"],
+        "description": "UTC start instant when DTSTART is a date-time."
+      },
+      "end": {
+        "type": ["string", "null"]
+      },
+      "participationStatus": {
+        "type": "string",
+        "enum": ["needs-action", "accepted", "tentative", "declined", "delegated"]
+      },
+      "eventId": {
+        "type": ["string", "null"],
+        "description": "Attendee calendar event id when a local VEVENT copy exists."
+      },
+      "etag": {
+        "type": "string"
+      }
+    }
+  },
+  "CalendarSchedulingNotificationListResponse": {
+    "type": "object",
+    "required": ["list"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/CalendarSchedulingNotification" }
+      }
+    }
+  },
+  "CalendarSchedulingInvitee": {
+    "type": "object",
+    "required": ["username", "email", "name"],
+    "additionalProperties": false,
+    "properties": {
+      "username": { "type": "string" },
+      "email": { "type": "string" },
+      "name": { "type": "string" }
+    }
+  },
+  "CalendarSchedulingInviteeListResponse": {
+    "type": "object",
+    "required": ["list", "canSubmitEmail"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/CalendarSchedulingInvitee" }
+      },
+      "canSubmitEmail": {
+        "type": "boolean",
+        "description": "When false, Calendar must not send iMIP to external attendees."
+      }
+    }
+  },
+  "CalendarRsvpResponse": {
+    "type": "object",
+    "required": ["title", "attendeeEmail", "participationStatus"],
+    "additionalProperties": false,
+    "properties": {
+      "title": { "type": "string" },
+      "attendeeEmail": { "type": "string" },
+      "participationStatus": {
+        "type": "string",
+        "enum": ["needs-action", "accepted", "tentative", "declined"]
+      }
+    }
+  },
+  "CalendarSchedulingNotificationRespond": {
+    "type": "object",
+    "required": ["participationStatus"],
+    "additionalProperties": false,
+    "properties": {
+      "participationStatus": {
+        "type": "string",
+        "enum": ["accepted", "tentative", "declined"]
+      }
+    }
+  }
+}

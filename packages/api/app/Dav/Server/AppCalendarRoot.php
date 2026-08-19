@@ -12,6 +12,8 @@ use Sabre\DAVACL\PrincipalBackend\BackendInterface as PrincipalBackend;
 
 /**
  * {@see CalendarRoot} with per-request listing limited to the authenticated account.
+ * {@see getChild} still resolves any account home so the schedule plugin can deliver
+ * local iTIP to another user's inbox without listing every calendar home.
  */
 final class AppCalendarRoot extends CalendarRoot
 {
@@ -50,26 +52,17 @@ final class AppCalendarRoot extends CalendarRoot
         if (! $principalInfo || ! AccountPrincipalFilter::isAccountPrincipal($principalInfo)) {
             throw new DAV\Exception\NotFound('Principal with name '.$name.' not found');
         }
-        $current = $this->authPlugin->getCurrentPrincipal();
-        if ($current === null || $current === '' || ($principalInfo['uri'] ?? '') !== $current) {
-            throw new DAV\Exception\NotFound('Principal with name '.$name.' not found');
-        }
 
         return $this->getChildForPrincipal($principalInfo);
     }
 
     public function childExists($name): bool
     {
-        $current = $this->authPlugin->getCurrentPrincipal();
-        if ($current === null || $current === '') {
-            return false;
-        }
         $principalInfo = $this->principalBackend->getPrincipalByPath($this->principalPrefix.'/'.$name);
         if (! $principalInfo) {
             return false;
         }
 
-        return AccountPrincipalFilter::isAccountPrincipal($principalInfo)
-            && ($principalInfo['uri'] ?? '') === $current;
+        return AccountPrincipalFilter::isAccountPrincipal($principalInfo);
     }
 }

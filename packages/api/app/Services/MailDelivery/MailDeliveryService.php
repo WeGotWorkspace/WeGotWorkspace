@@ -59,6 +59,23 @@ final class MailDeliveryService
                     $outgoing->from($message->from);
                     $outgoing->to($message->to);
                     $outgoing->subject($message->subject);
+                    if (is_string($message->htmlBody) && $message->htmlBody !== '') {
+                        $outgoing->html($message->htmlBody);
+                    }
+                    if (
+                        is_string($message->calendarIcs)
+                        && $message->calendarIcs !== ''
+                        && is_string($message->calendarMethod)
+                        && $message->calendarMethod !== ''
+                    ) {
+                        $outgoing->attachData(
+                            $message->calendarIcs,
+                            'invite.ics',
+                            [
+                                'mime' => 'text/calendar; method='.$message->calendarMethod.'; charset=UTF-8',
+                            ],
+                        );
+                    }
                 }
             );
         } catch (\Throwable $e) {

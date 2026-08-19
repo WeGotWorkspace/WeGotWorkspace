@@ -34,6 +34,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `search_documents` | `App\Models\SearchDocument` | Unified search index documents |
 | `search_terms` | `App\Models\SearchTerm` | Search token weights (FK → `search_documents`) |
 | `drive_starred_items` | `App\Models\DriveStarredItem` | Per-user starred drive paths |
+| `calendar_rsvp_tokens` | `App\Models\CalendarRsvpToken` | Public iMIP RSVP tokens (event uid + attendee mailto + expiry) |
 | `calendarobjects` | `App\Models\CalendarObject` | CalDAV objects (`VEVENT`/`VTODO` blobs; Calendars REST + Tasks REST; search indexer) |
 | `calendars` | `App\Models\Calendar` | CalDAV calendar collection root (`components` includes `VTODO` for task lists) |
 | `calendarinstances` | `App\Models\CalendarInstance` | Per-principal calendar instances (Calendars REST reads; Tasks REST `TaskList.id` = instance `uri`) |

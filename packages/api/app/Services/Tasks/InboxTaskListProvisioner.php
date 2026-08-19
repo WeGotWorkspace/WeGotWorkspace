@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarColorPalette;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -14,10 +16,16 @@ use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 
 /**
  * Ensures each user principal has a VTODO-only Inbox task list ({@see self::URI}).
+ *
+ * The CalDAV collection uri is {@see CalendarCollectionUris::TASK_INBOX} (`tasks-inbox`).
+ * REST still exposes {@code role: inbox}. Sabre reserves the name {@code inbox} for the
+ * RFC 6638 schedule-inbox.
  */
 final class InboxTaskListProvisioner
 {
-    public const URI = 'inbox';
+    public const URI = CalendarCollectionUris::TASK_INBOX;
+
+    public const LEGACY_URI = CalendarCollectionUris::LEGACY_TASK_INBOX;
 
     public const DISPLAY_NAME = 'Inbox';
 
@@ -64,6 +72,8 @@ final class InboxTaskListProvisioner
             return false;
         }
 
+        $this->migrateLegacyInboxUri($principalUri);
+
         if ($this->hasInboxCalendar($principalUri)) {
             return false;
         }
@@ -74,6 +84,35 @@ final class InboxTaskListProvisioner
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
             CalendarColorPalette::PROPERTY => CalendarColorPalette::forUri(self::URI),
         ]);
+
+        return true;
+    }
+
+    /**
+     * Rename a pre-#482 VTODO collection uri {@see self::LEGACY_URI} to {@see self::URI}.
+     */
+    public function migrateLegacyInboxUri(string $principalUri): bool
+    {
+        if (! Schema::connection('wgw')->hasTable('calendarinstances')) {
+            return false;
+        }
+
+        if ($this->hasInboxCalendar($principalUri)) {
+            return false;
+        }
+
+        $legacy = CalendarInstance::query()
+            ->with('calendar')
+            ->where('principaluri', $principalUri)
+            ->where('uri', self::LEGACY_URI)
+            ->first();
+
+        if ($legacy === null || $legacy->calendar === null || ! $legacy->calendar->isVtodoOnly()) {
+            return false;
+        }
+
+        $legacy->uri = self::URI;
+        $legacy->save();
 
         return true;
     }

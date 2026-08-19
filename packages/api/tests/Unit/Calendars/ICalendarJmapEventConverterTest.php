@@ -166,6 +166,38 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertStringContainsString('mailto:carol@example.com', $defolded);
     }
 
+    public function test_jscalendar_owner_role_map_writes_organizer(): void
+    {
+        $ics = $this->converter->icsFromEvent([
+            '@type' => 'Event',
+            'uid' => 'role-map-1',
+            'title' => 'Lunch',
+            'start' => '2026-08-19T10:00:00',
+            'duration' => 'PT1H',
+            'timeZone' => 'UTC',
+            'participants' => [
+                'org' => [
+                    '@type' => 'Participant',
+                    'email' => 'admin@localhost',
+                    'name' => 'Admin',
+                    'roles' => ['owner' => true],
+                ],
+                'att1' => [
+                    '@type' => 'Participant',
+                    'email' => 'wouter',
+                    'name' => 'Wouter',
+                    'roles' => ['attendee' => true],
+                    'expectReply' => true,
+                    'participationStatus' => 'needs-action',
+                ],
+            ],
+        ]);
+        $defolded = str_replace("\r\n ", '', $ics);
+        $this->assertStringContainsString('ORGANIZER;CN=Admin:mailto:admin@localhost', $defolded);
+        $this->assertStringContainsString('ATTENDEE;', $defolded);
+        $this->assertStringContainsString('mailto:wouter', $defolded);
+    }
+
     public function test_geo_url_and_virtual_location_round_trip(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:loc-1\r\nSUMMARY:Online\r\nDTSTART:20260615T100000Z\r\nDTEND:20260615T110000Z\r\nLOCATION:Zoom Room\r\nGEO:37.386013;-122.082932\r\nURL:https://meet.example.com/room\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";

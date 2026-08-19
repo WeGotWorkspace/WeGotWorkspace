@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Calendars;
+
+use App\Models\Principal;
+use App\Services\Calendars\CalendarPrincipalAddresses;
+use Tests\Support\WgwDatabaseTestCase;
+
+final class CalendarPrincipalAddressesTest extends WgwDatabaseTestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedWgwUser('admin', email: 'admin@localhost', displayName: 'Admin');
+        $this->seedWgwUser('wouter', email: 'wouter@woutervroege.nl', displayName: 'Wouter');
+        $this->seedWgwUser('bare', displayName: 'Bare');
+        $bare = Principal::forUsername('bare');
+        $this->assertNotNull($bare);
+        $bare->email = null;
+        $bare->save();
+    }
+
+    public function test_accepts_localhost_email_and_username_aliases(): void
+    {
+        $addresses = app(CalendarPrincipalAddresses::class);
+
+        $this->assertSame('admin@localhost', $addresses->normalizedEmail('mailto:admin@localhost'));
+        $this->assertContains('mailto:admin@localhost', $addresses->addressesForUsername('admin'));
+        $this->assertContains('mailto:admin', $addresses->addressesForUsername('admin'));
+        $this->assertContains('mailto:bare', $addresses->addressesForUsername('bare'));
+    }
+
+    public function test_resolves_local_attendee_by_email_or_username(): void
+    {
+        $addresses = app(CalendarPrincipalAddresses::class);
+
+        $this->assertSame('principals/wouter', $addresses->principalForMailto('mailto:wouter@woutervroege.nl')?->uri);
+        $this->assertSame('principals/wouter', $addresses->principalForMailto('mailto:wouter')?->uri);
+        $this->assertSame('principals/admin', $addresses->principalForMailto('admin@localhost')?->uri);
+        $this->assertSame('principals/admin', $addresses->principalForMailto('admin')?->uri);
+        $this->assertSame('principals/bare', $addresses->principalForMailto('bare')?->uri);
+        $this->assertNull($addresses->principalForMailto('mailto:guest@elsewhere.test'));
+    }
+}
