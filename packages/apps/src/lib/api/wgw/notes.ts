@@ -553,9 +553,11 @@ export async function createNoteItem(
   body: WgwNoteUpsertRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
+  const id = body.id?.trim();
+  if (!id) throw new NotesRequestError("Note create requires an id", 400);
   return createNoteViaFileNode(
     {
-      id: body.id,
+      id,
       notebook: body.notebook,
       tags: body.tags,
       title: "",
