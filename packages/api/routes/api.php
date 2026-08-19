@@ -34,11 +34,6 @@ use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
-use App\Http\Controllers\Api\V1\Notes\CapabilitiesController as NotesCapabilitiesController;
-use App\Http\Controllers\Api\V1\Notes\ItemsController as NotesItemsController;
-use App\Http\Controllers\Api\V1\Notes\NotebooksController;
-use App\Http\Controllers\Api\V1\Notes\SharedController as NotesSharedController;
-use App\Http\Controllers\Api\V1\Notes\StateController as NotesStateController;
 use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivationController;
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
@@ -176,20 +171,6 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('messageId', '[^/]+');
     Route::delete('mail/messages/{messageId}', [MailController::class, 'messageDestroyById'])
         ->where('messageId', '[^/]+');
-
-    Route::get('notes/capabilities', NotesCapabilitiesController::class);
-    Route::get('notes/state', NotesStateController::class);
-    Route::get('notes/items', [NotesItemsController::class, 'index']);
-    Route::post('notes/items', [NotesItemsController::class, 'store']);
-    Route::put('notes/items/{id}', [NotesItemsController::class, 'update']);
-    Route::patch('notes/items/{id}', [NotesItemsController::class, 'patch']);
-    Route::delete('notes/items/{id}', [NotesItemsController::class, 'destroy']);
-    Route::get('notes/notebooks', [NotebooksController::class, 'index']);
-    Route::post('notes/notebooks', [NotebooksController::class, 'store']);
-    Route::patch('notes/notebooks/{name}', [NotebooksController::class, 'update']);
-    Route::delete('notes/notebooks/{name}', [NotebooksController::class, 'destroy']);
-    Route::get('notes/shared-with-me', [NotesSharedController::class, 'sharedWithMe']);
-    Route::get('notes/shared-notebooks', [NotesSharedController::class, 'sharedNotebooks']);
 
     Route::middleware('wgw.tasks')->group(function (): void {
         Route::get('tasks/capabilities', TasksCapabilitiesController::class);

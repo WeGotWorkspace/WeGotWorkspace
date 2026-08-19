@@ -10,8 +10,8 @@ use Tests\Support\InteractsWithFileNodeJmap;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * Chunk B — FileNode/set note writes: create `.md`, title/tags, archive-restore,
- * notebook mkdir-rename-delete, YAML `starred` pass-through.
+ * FileNode/set note writes: create `.md`, title/tags, archive-restore,
+ * notebook mkdir-rename-delete. YAML `starred` is not emitted.
  */
 final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
 {
@@ -74,16 +74,8 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
         $rewritten = (string) $disk->get('users/bob/.notes/Drafts/fresh.md');
         $this->assertStringContainsString('title: Renamed', $rewritten);
         $this->assertStringContainsString('tags: beta, gamma', $rewritten);
-        $this->assertStringContainsString('starred: true', $rewritten);
+        $this->assertStringNotContainsString('starred:', $rewritten);
         $this->assertStringContainsString("----\nkeep body", $rewritten);
-
-        $items = $this->withBearer($this->userBearerToken())->getJson('/api/v1/notes/items');
-        $items->assertOk();
-        $fresh = collect($items->json('items'))->firstWhere('id', 'fresh');
-        $this->assertIsArray($fresh);
-        $this->assertTrue($fresh['starred']);
-        $this->assertSame(['beta', 'gamma'], $fresh['tags']);
-        $this->assertSame('keep body', $fresh['body']);
     }
 
     public function test_set_archives_restores_and_manages_notebook_directories(): void

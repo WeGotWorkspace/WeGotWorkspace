@@ -10,7 +10,6 @@ use App\Models\DriveShareGrant;
 use App\Models\DriveShareSession;
 use App\Models\Principal;
 use App\Services\Auth\JwtTokenService;
-use App\Services\Notes\NoteMarkdownCodec;
 use App\Services\Settings\GroupDirectoryService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -36,7 +35,6 @@ final class DriveShareService
         private DriveShareSessionRateLimiter $rateLimiter,
         private CollabDocFormats $collabDocFormats,
         private DriveShareAuthorizer $authorizer,
-        private NoteMarkdownCodec $noteCodec,
     ) {}
 
     /**
@@ -558,91 +556,6 @@ final class DriveShareService
         }
 
         return $rows;
-    }
-
-    /**
-     * Note-file grants shared with the current user (`.md` under `.notes`).
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function notesSharedWithMe(string $username): array
-    {
-        $items = [];
-        foreach ($this->memberGrantRows($username) as $row) {
-            $path = (string) ($row['share']['path'] ?? '');
-            if (! $this->paths->isNotePath($path)) {
-                continue;
-            }
-            $meta = $this->noteListingMetaFromPath($path);
-            if ($meta === null || ($meta['kind'] ?? '') !== 'note') {
-                continue;
-            }
-            // Prefer live entry type when present; path meta is enough for note files
-            // (listing must not depend on directoryEntry succeeding).
-            $entry = $row['entry'] ?? null;
-            if (is_array($entry) && ($entry['type'] ?? '') === 'dir') {
-                continue;
-            }
-            // Skip grants whose file was archived/deleted — avoids ghost Shared-with-me rows.
-            $storageKey = $this->paths->virtualToStorageKey($path);
-            if (! $this->filesDisk()->fileExists($storageKey)) {
-                continue;
-            }
-            $listFields = $this->noteListFieldsFromPath($path, (string) $meta['id']);
-            $item = [
-                'path' => $path,
-                'id' => $meta['id'],
-                'notebook' => $meta['notebook'],
-                'title' => $listFields['title'],
-                'tags' => $listFields['tags'],
-                'owner' => $meta['owner'],
-                'scope' => $meta['scope'],
-                'groupSlug' => $meta['groupSlug'],
-                'access' => (string) ($row['share']['defaultAccess'] ?? DriveShareAccess::VIEW),
-                'myRights' => $row['share']['myRights'] ?? DriveShareAccess::rightsFor(
-                    (string) ($row['share']['defaultAccess'] ?? DriveShareAccess::VIEW),
-                    true,
-                    false,
-                    true,
-                ),
-            ];
-            if (isset($row['viaGroup'])) {
-                $item['viaGroup'] = $row['viaGroup'];
-            }
-            $items[] = $item;
-        }
-
-        return $items;
-    }
-
-    /**
-     * Personal notebook-directory ACL shares are not a product feature.
-     *
-     * Group membership notebooks are listed via Notes notebooks/items (not path
-     * grants). This endpoint remains for contract compatibility and always
-     * returns an empty list.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function notesSharedNotebooks(string $username): array
-    {
-        unset($username);
-
-        return [];
-    }
-
-    /**
-     * Notes under personal ACL-shared notebook directories — removed; always empty.
-     * Group-membership notebook notes come from GET /notes/items instead.
-     *
-     * @param  list<array<string, mixed>>|null  $notebooks  Ignored (compat).
-     * @return list<array<string, mixed>>
-     */
-    public function notesUnderSharedNotebooks(string $username, ?array $notebooks = null): array
-    {
-        unset($username, $notebooks);
-
-        return [];
     }
 
     /**
@@ -1344,35 +1257,6 @@ final class DriveShareService
             'scope' => $scope,
             'groupSlug' => $groupSlug,
             'notebook' => $notebook,
-        ];
-    }
-
-    /**
-     * List preview + tags from on-disk note frontmatter (one read).
-     *
-     * Shared-with-me stubs must surface tags the same way owned notes do —
-     * collab only syncs the body section, so metadata lives in frontmatter.
-     *
-     * @return array{title: string, tags: list<string>}
-     */
-    private function noteListFieldsFromPath(string $path, string $fallbackId): array
-    {
-        $disk = $this->filesDisk();
-        $key = $this->paths->virtualToStorageKey($path);
-        if (! $disk->fileExists($key)) {
-            return ['title' => $fallbackId, 'tags' => []];
-        }
-        $contents = $disk->get($key);
-        if (! is_string($contents)) {
-            return ['title' => $fallbackId, 'tags' => []];
-        }
-
-        // Notes list preview is body-first (frontmatter title is often "Untitled").
-        [, $tags] = $this->noteCodec->parse($contents, $fallbackId);
-
-        return [
-            'title' => $this->noteCodec->listPreview($contents, $fallbackId),
-            'tags' => $tags,
         ];
     }
 

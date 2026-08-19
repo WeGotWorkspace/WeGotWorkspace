@@ -466,18 +466,10 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
     public function test_unified_search_updates_note_body_and_keeps_note_source_type(): void
     {
         $token = $this->issueBearerToken();
-        $payload = [
-            'id' => 'n-search',
-            'notebook' => 'General',
-            'body' => 'oldneedle123',
-            'tags' => ['alpha'],
-            'starred' => false,
-            'archived' => false,
-        ];
-
-        $this->withBearer($token)
-            ->putJson('/api/v1/notes/items/n-search', $payload)
-            ->assertOk();
+        $key = 'users/alice/.notes/General/n-search.md';
+        $disk = app(WgwStorage::class)->files();
+        $disk->put($key, "title: Untitled\ntags: alpha\n----\noldneedle123");
+        app(SearchIndexerService::class)->indexFileStorageKey($key);
 
         $firstSearch = $this->withBearer($token)
             ->getJson('/api/v1/search/results?'.http_build_query([
@@ -491,12 +483,8 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $this->assertSame('note', $firstRows[0]['sourceType'] ?? null);
         $this->assertSame('Untitled', $firstRows[0]['title'] ?? null);
 
-        $this->withBearer($token)
-            ->putJson('/api/v1/notes/items/n-search', [
-                ...$payload,
-                'body' => 'newneedle456',
-            ])
-            ->assertOk();
+        $disk->put($key, "title: Untitled\ntags: alpha\n----\nnewneedle456");
+        app(SearchIndexerService::class)->indexFileStorageKey($key);
 
         $staleSearch = $this->withBearer($token)
             ->getJson('/api/v1/search/results?'.http_build_query([

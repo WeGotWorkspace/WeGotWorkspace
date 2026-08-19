@@ -14,16 +14,6 @@ import type {
   MailStatusResponse,
 } from "@wgw-api-generated/mail-types";
 import type {
-  NotesCapabilitiesResponse,
-  NotesStateResponse,
-  NotesItemsResponse,
-  NoteItem,
-  NoteUpsertRequest,
-  NoteDeleteRequest,
-  NotebookListItem,
-  NotebookListResponse,
-} from "@wgw-api-generated/notes-types";
-import type {
   SettingsMailRequest,
   SettingsStateResponse,
   SettingsUserGroup,
@@ -176,15 +166,10 @@ export type WgwMailMoveRequest = MailMoveRequest & {
 export type WgwMailDraftRequest = MailDraftRequest;
 export type WgwMailSendRequest = MailSendRequest;
 
-export type WgwNotesCapabilitiesResponse = NotesCapabilitiesResponse;
-
-export type WgwNotesStateResponse = NotesStateResponse;
-
-/** Row from `GET /notes/items`, with optional-friendly narrowing for older payloads. */
-export type WgwNoteItem = Omit<
-  NoteItem,
-  "body" | "tags" | "starred" | "archived" | "updatedAt" | "username" | "scope" | "groupSlug"
-> & {
+/** Local note row after the `/notes/*` REST sunset (FileNode projection + collab). */
+export type WgwNoteItem = {
+  id: string;
+  notebook: string;
   username?: string;
   body?: string;
   tags?: string[];
@@ -201,15 +186,15 @@ export type WgwNoteItem = Omit<
   hasTeamShare?: boolean;
 };
 
-export type WgwNotesItemsResponse = NotesItemsResponse;
-
-export type WgwNoteUpsertRequest = NoteUpsertRequest;
-
-export type WgwNoteDeleteRequest = NoteDeleteRequest;
-
-export type WgwNotebookListItem = NotebookListItem;
-
-export type WgwNotebookListResponse = NotebookListResponse;
+export type WgwNoteUpsertRequest = {
+  id?: string;
+  notebook: string;
+  body?: string;
+  tags?: string[];
+  starred?: boolean;
+  archived?: boolean;
+  groupSlug?: string | null;
+};
 
 export type WgwSettingsStateResponse = SettingsStateResponse;
 export type WgwSettingsUserProfile = SettingsUserProfile;

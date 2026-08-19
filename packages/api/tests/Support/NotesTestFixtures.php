@@ -7,10 +7,12 @@ namespace Tests\Support;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Notes\NoteMarkdownCodec;
+use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
 
 /**
- * Shared disk + identity fixtures for Notes API feature tests.
+ * Shared disk + identity fixtures for Notes FileNode / share tests.
  */
 trait NotesTestFixtures
 {
@@ -78,26 +80,45 @@ trait NotesTestFixtures
     }
 
     /**
+     * Seed a note markdown file on disk (FileNode index lazy-heals).
+     *
      * @param  array<string, mixed>  $overrides
-     * @return array{id: string, item: array<string, mixed>}
+     * @return array{id: string, item: array<string, mixed>, path: string, key: string}
      */
     protected function createNoteFor(
         string $token,
         array $overrides = [],
     ): array {
-        $payload = array_merge([
-            'id' => 'note-'.uniqid('', true),
-            'notebook' => 'Drafts',
-            'body' => 'Body text',
-            'tags' => ['demo'],
-            'starred' => false,
-            'archived' => false,
-        ], $overrides);
+        unset($token);
+        $id = preg_replace('/[^A-Za-z0-9._-]/', '', (string) ($overrides['id'] ?? ('note-'.uniqid('', true)))) ?: 'note';
+        $notebook = trim((string) ($overrides['notebook'] ?? 'Drafts'));
+        $notebook = $notebook !== '' ? $notebook : 'Drafts';
+        $body = (string) ($overrides['body'] ?? 'Body text');
+        $title = (string) ($overrides['title'] ?? 'Untitled');
+        $tags = is_array($overrides['tags'] ?? null)
+            ? array_values(array_filter($overrides['tags'], is_string(...)))
+            : ['demo'];
+        $username = (string) ($overrides['username'] ?? 'bob');
+        $groupSlug = isset($overrides['groupSlug']) && is_string($overrides['groupSlug'])
+            ? trim($overrides['groupSlug'])
+            : '';
+        $root = $groupSlug !== '' ? 'groups/'.$groupSlug : 'users/'.$username;
+        $key = $root.'/.notes/'.$notebook.'/'.$id.'.md';
+        $codec = new NoteMarkdownCodec;
+        $markdown = $codec->serialize($title, $tags, $body);
+        app(WgwStorage::class)->files()->put($key, $markdown);
 
-        $response = $this->withBearer($token)->postJson('/api/v1/notes/items', $payload);
-        $response->assertCreated();
-        $id = (string) $response->json('item.id');
-
-        return ['id' => $id, 'item' => (array) $response->json('item')];
+        return [
+            'id' => $id,
+            'path' => '/'.$key,
+            'key' => $key,
+            'item' => [
+                'id' => $id,
+                'notebook' => $notebook,
+                'body' => $body,
+                'tags' => $tags,
+                'updatedAt' => $codec->updatedOf($markdown),
+            ],
+        ];
     }
 }
