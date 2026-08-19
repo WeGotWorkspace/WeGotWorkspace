@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
@@ -32,8 +32,18 @@ import {
   calendarDirectoryGroupsFromBootstrap,
   personalOwnerLabel,
 } from "@/calendar-core/src/calendar-workspace-props";
-import { organizerAddress } from "@/calendar-core/src/calendar-attendees";
+import {
+  organizerAddress,
+  sessionEventInviteeStatus,
+} from "@/calendar-core/src/calendar-attendees";
+import {
+  eventIsRecurringForRsvp,
+  persistInviteeRsvp,
+  rsvpRecurrenceIdForEvent,
+  type CalendarRsvpPersistSource,
+} from "@/calendar-core/src/calendar-rsvp-scope";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import {
   personalCalendarsForSidebar,
   teamCalendarsForSidebar,
@@ -235,6 +245,50 @@ export function CalendarWorkspace({
 
   useDocumentTitle(title);
 
+  const persistRsvp = useCallback(
+    (
+      id: string,
+      status: CalendarSchedulingRespondStatus,
+      calendarId: string | undefined,
+      persist: { source: CalendarRsvpPersistSource; editorRecurrenceId?: string },
+    ) => {
+      const notification =
+        inviteeNotifications.find((row) => row.id === id) ??
+        inviteeNotifications.find((row) => row.eventId === id);
+      const eventId =
+        notification?.eventId ?? (editor?.mode === "edit" ? editor.eventId : undefined) ?? id;
+      const event = data.events.find((entry) => entry.id === eventId);
+      const editorRecurrenceId = persist.editorRecurrenceId;
+      const recurrenceId = rsvpRecurrenceIdForEvent({
+        editorRecurrenceId,
+        event,
+        notification,
+      });
+      const previousStatus =
+        (editor?.mode === "edit"
+          ? sessionEventInviteeStatus(
+              editor.form.attendees,
+              organizerAddress(session.user)?.email,
+              invitations.invitees,
+            )
+          : undefined) ?? notification?.participationStatus;
+      return persistInviteeRsvp({
+        source: persist.source,
+        recurring: eventIsRecurringForRsvp(event, notification?.recurring, editorRecurrenceId),
+        previousStatus,
+        masterId: eventId,
+        recurrenceId,
+        askScope: askRecurrenceScope,
+        respond: (scopeOptions) =>
+          invitations.respond(notification?.id ?? id, status, {
+            ...(calendarId ? { calendarId } : {}),
+            ...scopeOptions,
+          }),
+      });
+    },
+    [askRecurrenceScope, data.events, editor, invitations, inviteeNotifications, session.user],
+  );
+
   const invitationsPanel = useMemo(
     () => (
       <CalendarInvitationsPanel
@@ -246,7 +300,9 @@ export function CalendarWorkspace({
         busy={invitations.busy}
         showCloseButton={useInvitationsDrawer}
         onClose={() => setInvitationsOpen(false)}
-        onRespond={(id, status, calendarId) => void invitations.respond(id, status, calendarId)}
+        onRespond={(id, status, calendarId) =>
+          void persistRsvp(id, status, calendarId, { source: "sidebar" })
+        }
         onOpenEvent={canWrite ? openEditEventKey : undefined}
       />
     ),
@@ -257,9 +313,9 @@ export function CalendarWorkspace({
       defaultCalendarId,
       invitations.busy,
       inviteeNotifications,
-      invitations.respond,
       locale,
       openEditEventKey,
+      persistRsvp,
       useInvitationsDrawer,
     ],
   );
@@ -463,9 +519,13 @@ export function CalendarWorkspace({
                     (row) => row.eventId === editor.eventId,
                   );
                   const id = notification?.id ?? editor.eventId;
-                  void invitations
-                    .respond(id, status, calendarId)
-                    .then(() => closeEditor())
+                  void persistRsvp(id, status, calendarId, {
+                    source: "dialog",
+                    editorRecurrenceId: editor.recurrenceId,
+                  })
+                    .then((persisted) => {
+                      if (persisted) closeEditor();
+                    })
                     .catch(() => undefined);
                 }
               : undefined

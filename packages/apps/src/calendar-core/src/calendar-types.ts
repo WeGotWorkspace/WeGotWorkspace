@@ -1,6 +1,7 @@
 import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import type {
   CalendarSchedulingNotification,
+  CalendarSchedulingRespondOptions,
   CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 import type {
@@ -107,7 +108,7 @@ export type CalendarAPIOperations = {
   respondSchedulingNotification?: (
     notificationId: string,
     status: CalendarSchedulingRespondStatus,
-    calendarId?: string,
+    options?: CalendarSchedulingRespondOptions,
   ) => Promise<void>;
   dismissSchedulingNotification?: (notificationId: string) => Promise<void>;
   listInvitees?: () => Promise<{ list: CalendarInvitee[]; canSubmitEmail: boolean }>;

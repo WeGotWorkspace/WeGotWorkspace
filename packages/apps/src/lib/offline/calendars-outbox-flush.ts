@@ -71,7 +71,15 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         await respondCalendarSchedulingNotification(
           String(payload.notificationId ?? ""),
           payload.participationStatus as CalendarSchedulingRespondStatus,
-          typeof payload.calendarId === "string" ? payload.calendarId : undefined,
+          {
+            ...(typeof payload.calendarId === "string" ? { calendarId: payload.calendarId } : {}),
+            ...(typeof payload.recurrenceId === "string"
+              ? { recurrenceId: payload.recurrenceId }
+              : {}),
+            ...(payload.scope === "this" || payload.scope === "future"
+              ? { scope: payload.scope }
+              : {}),
+          },
         );
       } else if (row.op === "dismiss-scheduling") {
         await dismissCalendarSchedulingNotification(String(payload.notificationId ?? ""));

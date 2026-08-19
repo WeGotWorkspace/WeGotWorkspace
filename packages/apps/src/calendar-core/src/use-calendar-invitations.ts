@@ -4,6 +4,7 @@ import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import type {
   CalendarSchedulingNotification,
+  CalendarSchedulingRespondOptions,
   CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 
@@ -78,11 +79,15 @@ export function useCalendarInvitations(
   }, [busy, operations?.listSchedulingNotifications, refreshIfIdle]);
 
   const respond = useCallback(
-    async (id: string, status: CalendarSchedulingRespondStatus, calendarId?: string) => {
+    async (
+      id: string,
+      status: CalendarSchedulingRespondStatus,
+      respondOptions?: CalendarSchedulingRespondOptions,
+    ) => {
       if (!operations?.respondSchedulingNotification) return;
       setBusy(true);
       try {
-        await operations.respondSchedulingNotification(id, status, calendarId);
+        await operations.respondSchedulingNotification(id, status, respondOptions);
         setNotifications((current) =>
           current.map((row) => (row.id === id ? { ...row, participationStatus: status } : row)),
         );

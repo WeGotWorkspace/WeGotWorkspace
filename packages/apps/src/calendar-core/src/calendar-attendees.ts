@@ -212,6 +212,30 @@ export function listedInviteeAttendees(
   return listed;
 }
 
+/**
+ * Organizer row for the Invitees card. Prefers the marked owner; on create
+ * (no owner row yet) injects the session user when they are the organizer.
+ */
+export function organizerAttendeeForList(
+  attendees: CalendarAttendee[],
+  invitees: CalendarInvitee[] = [],
+  sessionEmail?: string,
+): CalendarAttendee | null {
+  const existing = attendees.find((row) => row.isOrganizer);
+  if (existing) return existing;
+  if (!isSessionEventOrganizer(attendees, sessionEmail, invitees)) return null;
+  const email = sessionEmail?.trim();
+  if (!email) return null;
+  const invitee = invitees.find((row) => isSessionInvitee(row, email));
+  return {
+    email: invitee ? inviteeAddress(invitee) : email,
+    name: invitee?.name.trim() || email,
+    participationStatus: "accepted",
+    isOrganizer: true,
+    role: "required",
+  };
+}
+
 function mergeAttendeeDuplicate(
   current: CalendarAttendee,
   incoming: CalendarAttendee,

@@ -7,6 +7,7 @@ import {
   isSessionEventInvitee,
   isSessionEventOrganizer,
   listedInviteeAttendees,
+  organizerAttendeeForList,
   sessionEventInviteeStatus,
   organizerAddress,
   ownEventRsvpPresentation,
@@ -102,6 +103,28 @@ describe("calendar attendees", () => {
       isOrganizer: true,
     });
     expect(listedInviteeAttendees(attendees)).toEqual([]);
+    expect(organizerAttendeeForList(attendees)?.email).toBe("wouter@woutervroege.nl");
+  });
+
+  it("injects the session organizer when the list has no owner row", () => {
+    expect(organizerAttendeeForList([], [], "admin@localhost")).toMatchObject({
+      email: "admin@localhost",
+      isOrganizer: true,
+    });
+    expect(
+      organizerAttendeeForList(
+        [
+          {
+            email: "carol@example.test",
+            name: "Carol",
+            participationStatus: "needs-action",
+            role: "required",
+          },
+        ],
+        [],
+        "carol@example.test",
+      ),
+    ).toBeNull();
   });
 
   it("dedupes username and email aliases for the same teammate", () => {

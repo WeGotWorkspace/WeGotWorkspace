@@ -210,7 +210,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
     },
     listSchedulingNotifications: () => fetchCalendarSchedulingNotifications(),
     listInvitees: () => fetchCalendarSchedulingInvitees(),
-    respondSchedulingNotification: async (notificationId, status, calendarId) => {
+    respondSchedulingNotification: async (notificationId, status, respondOptions) => {
       const queueOffline = async () => {
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
@@ -219,7 +219,9 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
           payload: JSON.stringify({
             notificationId,
             participationStatus: status,
-            ...(calendarId ? { calendarId } : {}),
+            ...(respondOptions?.calendarId ? { calendarId: respondOptions.calendarId } : {}),
+            ...(respondOptions?.recurrenceId ? { recurrenceId: respondOptions.recurrenceId } : {}),
+            ...(respondOptions?.scope ? { scope: respondOptions.scope } : {}),
           }),
         });
       };
@@ -228,7 +230,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         return;
       }
       try {
-        await respondCalendarSchedulingNotification(notificationId, status, calendarId);
+        await respondCalendarSchedulingNotification(notificationId, status, respondOptions);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error);

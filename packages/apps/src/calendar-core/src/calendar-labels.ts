@@ -119,10 +119,12 @@ export type CalendarUILabels = {
   eventAttendeesRoleOptional: string;
   eventAttendeesRemove: string;
   eventAttendeesSearchEmpty: string;
+  eventAttendeesOrganizer: string;
   eventAttendeesRsvpAccepted: string;
   eventAttendeesRsvpTentative: string;
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
+  eventAttendeesRsvpNeedsAction: string;
   rsvpAccept: string;
   rsvpMaybe: string;
   rsvpDecline: string;
@@ -249,10 +251,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRoleOptional: "Optional",
   eventAttendeesRemove: "Remove invitee",
   eventAttendeesSearchEmpty: "No teammates found",
+  eventAttendeesOrganizer: "Organizer",
   eventAttendeesRsvpAccepted: "Accepted",
   eventAttendeesRsvpTentative: "Maybe",
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
+  eventAttendeesRsvpNeedsAction: "Needs response",
   rsvpAccept: "Accept",
   rsvpMaybe: "Maybe",
   rsvpDecline: "Decline",

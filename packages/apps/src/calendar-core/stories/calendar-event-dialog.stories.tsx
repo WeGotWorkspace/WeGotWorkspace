@@ -75,6 +75,12 @@ export const WithInvitees: Story = {
       title: "Lunch",
       attendees: [
         {
+          email: "admin@localhost",
+          name: "Admin",
+          participationStatus: "accepted",
+          isOrganizer: true,
+        },
+        {
           email: "wouter@woutervroege.nl",
           name: "Wouter",
           participationStatus: "tentative",

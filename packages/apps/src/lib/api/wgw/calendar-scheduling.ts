@@ -23,6 +23,14 @@ export type CalendarSchedulingNotification = {
 
 export type CalendarSchedulingRespondStatus = "accepted" | "tentative" | "declined";
 
+export type CalendarSchedulingRespondScope = "this" | "future";
+
+export type CalendarSchedulingRespondOptions = {
+  calendarId?: string;
+  recurrenceId?: string;
+  scope?: CalendarSchedulingRespondScope;
+};
+
 export async function fetchCalendarSchedulingNotifications(): Promise<
   CalendarSchedulingNotification[]
 > {
@@ -53,15 +61,20 @@ export async function fetchCalendarSchedulingInvitees(): Promise<CalendarInvitee
 export async function respondCalendarSchedulingNotification(
   notificationId: string,
   participationStatus: CalendarSchedulingRespondStatus,
-  calendarId?: string,
+  options?: CalendarSchedulingRespondOptions,
 ): Promise<CalendarSchedulingNotification> {
   const body: {
     participationStatus: CalendarSchedulingRespondStatus;
     calendarId?: string;
+    recurrenceId?: string;
+    scope?: CalendarSchedulingRespondScope;
   } = { participationStatus };
+  const calendarId = options?.calendarId;
   if (calendarId && participationStatus !== "declined") {
     body.calendarId = calendarId;
   }
+  if (options?.recurrenceId) body.recurrenceId = options.recurrenceId;
+  if (options?.scope) body.scope = options.scope;
   const response = await wgwFetch(
     `/calendars/scheduling/notifications/${encodeURIComponent(notificationId)}/respond`,
     {

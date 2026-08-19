@@ -8,6 +8,7 @@ import {
   isLikelyEmail,
   isSessionInvitee,
   listedInviteeAttendees,
+  organizerAttendeeForList,
   type CalendarAttendee,
   type CalendarAttendeeRole,
   type CalendarInvitee,
@@ -54,6 +55,8 @@ function rsvpLabel(
       return labels.eventAttendeesRsvpDeclined;
     case "delegated":
       return labels.eventAttendeesRsvpDelegated;
+    case "needs-action":
+      return labels.eventAttendeesRsvpNeedsAction;
     default:
       return undefined;
   }
@@ -84,6 +87,7 @@ export function CalendarInviteesCard({
 }: CalendarInviteesCardProps) {
   const locked = busy || readOnly;
   const [query, setQuery] = useState("");
+  const organizer = organizerAttendeeForList(attendees, invitees, sessionEmail);
   const listed = listedInviteeAttendees(attendees, invitees);
   const roleOptions: ShareRowSelectOption<CalendarAttendeeRole>[] = [
     { value: "required", label: labels.eventAttendeesRoleRequired, icon: UserCheck },
@@ -207,6 +211,20 @@ export function CalendarInviteesCard({
         )
       }
     >
+      {organizer ? (
+        <ShareAccessRow
+          key={`organizer:${organizer.email}`}
+          mark={
+            <SharePrincipalMark
+              principalType="user"
+              displayName={organizer.name || organizer.email}
+              active
+            />
+          }
+          title={organizer.name || organizer.email}
+          titleEnd={<Tag label={labels.eventAttendeesOrganizer} />}
+        />
+      ) : null}
       {listed.map((attendee) => {
         const title = attendee.name || attendee.email;
         const status = rsvpLabel(attendee.participationStatus, labels);
@@ -220,7 +238,7 @@ export function CalendarInviteesCard({
             mark={<SharePrincipalMark principalType="user" displayName={title} active />}
             title={title}
             titleEnd={
-              status && tagTone ? (
+              status ? (
                 <Tag
                   label={status}
                   icon={StatusIcon ? <StatusIcon aria-hidden /> : undefined}

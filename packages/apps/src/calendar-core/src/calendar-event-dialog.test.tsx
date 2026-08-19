@@ -466,7 +466,7 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ attendees: [] }));
   });
 
-  it("shows RSVP as a tag without the username and hides needs-action", () => {
+  it("shows RSVP as a tag without the username and labels needs-action", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -495,10 +495,12 @@ describe("CalendarEventDialog", () => {
     expect(document.querySelector(".calendar-invitees-rsvp-tag--tentative")).toBeTruthy();
     expect(screen.queryByText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeNull();
     expect(screen.getByText("Guest")).toBeTruthy();
-    expect(document.querySelectorAll(".tag")).toHaveLength(1);
+    expect(screen.getByText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
+    expect(document.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
+    expect(document.querySelectorAll(".tag")).toHaveLength(2);
   });
 
-  it("does not list the organizer as a removable invitee", () => {
+  it("lists the organizer as a read-only row without RSVP or remove", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -516,9 +518,30 @@ describe("CalendarEventDialog", () => {
         },
       ],
     };
-    renderDialog({ form });
+    renderDialog({ form, sessionEmail: "admin@localhost" });
+    expect(screen.getByText("Admin")).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventAttendeesOrganizer)).toBeTruthy();
     expect(screen.getByText("Wouter")).toBeTruthy();
-    expect(screen.queryByText("Admin")).toBeNull();
+    expect(screen.getByText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
+    expect(screen.queryByText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeNull();
+    expect(
+      screen.getAllByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
+    ).toHaveLength(1);
+    expect(screen.queryByRole("combobox", { name: /Admin:/i })).toBeNull();
+  });
+
+  it("shows the session organizer on a new event with no other invitees", () => {
+    renderDialog({
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" },
+      sessionEmail: "admin@localhost",
+      invitees: [{ username: "admin", email: "admin@localhost", name: "Admin" }],
+    });
+    expect(screen.getByText("Admin")).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventAttendeesOrganizer)).toBeTruthy();
+    expect(screen.queryByText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
+    ).toBeNull();
   });
 
   it("states that email delivery is unavailable when canSubmitEmail is false", () => {
