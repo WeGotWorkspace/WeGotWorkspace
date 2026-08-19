@@ -69,14 +69,14 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             }}
           />
         </FormField>
-        <FormField label="Transport">
+        <FormField htmlFor="admin-mail-delivery-transport" label="Transport">
           <Select
             value={controller.settingsForm.mailDeliveryTransport || "auto"}
             onValueChange={(value) =>
               controller.setSettingsForm((prev) => ({ ...prev, mailDeliveryTransport: value }))
             }
           >
-            <SelectTrigger>
+            <SelectTrigger id="admin-mail-delivery-transport" aria-label="Transport">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -95,8 +95,9 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           Auto uses SMTP only when a host is set and either a username is set or the relay does not
           require auth (for example local Postfix on localhost with security none).
         </p>
-        <FormField label="SMTP host">
+        <FormField htmlFor="admin-mail-delivery-smtp-host" label="SMTP host">
           <Input
+            id="admin-mail-delivery-smtp-host"
             value={controller.settingsForm.mailDeliverySmtpHost}
             onChange={(event) => {
               const value = event.target.value;
@@ -108,8 +109,9 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           />
         </FormField>
         <div className="admin-email-delivery-pane__row">
-          <FormField label="Port">
+          <FormField htmlFor="admin-mail-delivery-smtp-port" label="Port">
             <Input
+              id="admin-mail-delivery-smtp-port"
               type="number"
               value={String(controller.settingsForm.mailDeliverySmtpPort)}
               onChange={(event) => {
@@ -121,7 +123,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
               }}
             />
           </FormField>
-          <FormField label="Security">
+          <FormField htmlFor="admin-mail-delivery-smtp-security" label="Security">
             <Select
               value={controller.settingsForm.mailDeliverySmtpSecurity || "starttls"}
               onValueChange={(value) =>
@@ -131,7 +133,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
                 }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="admin-mail-delivery-smtp-security" aria-label="Security">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -144,8 +146,9 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             </Select>
           </FormField>
         </div>
-        <FormField label="SMTP username">
+        <FormField htmlFor="admin-mail-delivery-smtp-username" label="SMTP username">
           <Input
+            id="admin-mail-delivery-smtp-username"
             value={controller.settingsForm.mailDeliverySmtpUsername}
             onChange={(event) => {
               const value = event.target.value;
@@ -156,8 +159,9 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             }}
           />
         </FormField>
-        <FormField label="SMTP password">
+        <FormField htmlFor="admin-mail-delivery-smtp-password" label="SMTP password">
           <Input
+            id="admin-mail-delivery-smtp-password"
             type="password"
             autoComplete="new-password"
             value={controller.settingsForm.mailDeliverySmtpPassword}
