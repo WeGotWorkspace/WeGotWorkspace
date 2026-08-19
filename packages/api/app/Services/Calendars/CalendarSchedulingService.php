@@ -43,6 +43,26 @@ final class CalendarSchedulingService
     }
 
     /**
+     * Increment SEQUENCE only when the iTIP Broker reports a significant
+     * organizer change (RFC 5546). Attendee PARTSTAT-only writes and
+     * description/color edits keep the existing SEQUENCE.
+     */
+    public function persistableIcs(string $username, ?string $oldIcs, string $newIcs): string
+    {
+        if ($oldIcs === null || trim($oldIcs) === '') {
+            return $newIcs;
+        }
+        foreach ($this->brokerMessages($username, $newIcs, $oldIcs) as $message) {
+            $method = strtoupper((string) ($message->method ?? ''));
+            if (in_array($method, ['REQUEST', 'CANCEL'], true) && $message->significantChange) {
+                return $this->incrementSequence($newIcs);
+            }
+        }
+
+        return $newIcs;
+    }
+
+    /**
      * Ensure a VEVENT with attendees has an ORGANIZER for the acting user.
      * UI payloads often send JSCalendar {@code roles: {owner: true}} without a
      * list-shaped owner, or omit the organizer when session email is empty.
@@ -130,26 +150,96 @@ final class CalendarSchedulingService
 
     private function schedule(string $username, ?string $newIcs, ?string $oldIcs): void
     {
+        $uid = $this->singleEventUid($newIcs ?? $oldIcs);
+        DB::connection('wgw')->transaction(function () use ($username, $newIcs, $oldIcs, $uid): void {
+            if ($uid !== null && $uid !== '') {
+                CalendarObject::query()->where('uid', $uid)->lockForUpdate()->get();
+            }
+            foreach ($this->brokerMessages($username, $newIcs, $oldIcs) as $message) {
+                if (! $this->shouldDeliver($message, $oldIcs)) {
+                    continue;
+                }
+                $this->deliver($username, $message);
+            }
+        });
+    }
+
+    /**
+     * @return list<Message>
+     */
+    private function brokerMessages(string $username, ?string $newIcs, ?string $oldIcs): array
+    {
         $actorAddresses = $this->addresses->addressesForUsername($username);
         if ($actorAddresses === []) {
-            return;
+            return [];
         }
 
         $newIcs = $this->ensureOrganizerIcs($newIcs, $actorAddresses);
 
         if (! $this->hasSingleEventUid($newIcs) || ! $this->hasSingleEventUid($oldIcs)) {
-            return;
+            return [];
         }
 
-        $broker = new Broker;
         try {
-            $messages = $broker->parseEvent($newIcs, $actorAddresses, $oldIcs);
+            /** @var list<Message> $messages */
+            $messages = (new Broker)->parseEvent($newIcs, $actorAddresses, $oldIcs);
         } catch (ITipException) {
-            return;
+            return [];
         }
-        foreach ($messages as $message) {
-            $this->deliver($username, $message);
+
+        return $messages;
+    }
+
+    private function shouldDeliver(Message $message, ?string $oldIcs): bool
+    {
+        $method = strtoupper((string) ($message->method ?? ''));
+        if ($method === 'REQUEST' && $oldIcs !== null && trim($oldIcs) !== '' && ! $message->significantChange) {
+            return false;
         }
+
+        return true;
+    }
+
+    private function incrementSequence(string $ics): string
+    {
+        try {
+            $parsed = Reader::read($ics);
+        } catch (\Throwable) {
+            return $ics;
+        }
+        if (! $parsed instanceof VCalendar) {
+            return $ics;
+        }
+
+        foreach ($parsed->select('VEVENT') as $event) {
+            $current = isset($event->SEQUENCE) ? (int) $event->SEQUENCE->getValue() : 0;
+            $event->SEQUENCE = $current + 1;
+        }
+
+        return $parsed->serialize();
+    }
+
+    private function singleEventUid(?string $ics): ?string
+    {
+        if ($ics === null || trim($ics) === '') {
+            return null;
+        }
+        try {
+            $parsed = Reader::read($ics);
+        } catch (\Throwable) {
+            return null;
+        }
+        if (! $parsed instanceof VCalendar) {
+            return null;
+        }
+        foreach ($parsed->select('VEVENT') as $event) {
+            $uid = trim((string) ($event->UID ?? ''));
+            if ($uid !== '') {
+                return $uid;
+            }
+        }
+
+        return null;
     }
 
     /**

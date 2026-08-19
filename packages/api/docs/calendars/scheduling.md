@@ -14,7 +14,9 @@ Another user’s notification id is **404**. Local delivery never emails instanc
 
 ## External attendees (iMIP)
 
-Mailto addresses that do not match a local principal are sent through `MailDeliveryService` as multipart iMIP (`text/calendar; method=REQUEST|CANCEL`). Each REQUEST includes a public RSVP URL. When `canSubmit` is false, the participant is still stored and no mail is sent.
+Mailto addresses that do not match a local principal are sent through `MailDeliveryService` as multipart iMIP (`text/calendar; method=REQUEST|REPLY|CANCEL`). Each REQUEST includes a public RSVP URL. REPLY is a status notification (no new token). When `canSubmit` is false, the participant is still stored and no mail is sent.
+
+SEQUENCE follows the iTIP Broker `significantChange` flag (RFC 5546). Description/color edits and attendee PARTSTAT-only writes do not bump SEQUENCE or send a new REQUEST. Significant updates revoke outstanding RSVP tokens before issuing a replacement. Tokens are stored as SHA-256 hashes; the public RSVP routes are rate-limited.
 
 | Method | Path | Access |
 |--------|------|--------|
@@ -22,7 +24,7 @@ Mailto addresses that do not match a local principal are sent through `MailDeliv
 | GET | `/calendar/rsvp/{token}` | Guest |
 | POST | `/calendar/rsvp/{token}` | Guest — `{ participationStatus }` |
 
-Expired or unknown RSVP tokens are **404**. Duplicate POSTs with the same PARTSTAT are idempotent. CANCEL invalidates outstanding tokens.
+Expired or unknown RSVP tokens are **404**. Duplicate POSTs with the same PARTSTAT are idempotent. Significant updates and CANCEL invalidate outstanding tokens.
 
 ## Tasks inbox URI
 

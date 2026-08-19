@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\MailDelivery;
 
-use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
 
 final class MailDeliveryService
@@ -53,30 +52,8 @@ final class MailDeliveryService
         $this->mailers->register($resolved->name, $config);
 
         try {
-            Mail::mailer(MailDeliveryMailerFactory::MAILER_NAME)->raw(
-                $message->textBody,
-                function (Message $outgoing) use ($message): void {
-                    $outgoing->from($message->from);
-                    $outgoing->to($message->to);
-                    $outgoing->subject($message->subject);
-                    if (is_string($message->htmlBody) && $message->htmlBody !== '') {
-                        $outgoing->html($message->htmlBody);
-                    }
-                    if (
-                        is_string($message->calendarIcs)
-                        && $message->calendarIcs !== ''
-                        && is_string($message->calendarMethod)
-                        && $message->calendarMethod !== ''
-                    ) {
-                        $outgoing->attachData(
-                            $message->calendarIcs,
-                            'invite.ics',
-                            [
-                                'mime' => 'text/calendar; method='.$message->calendarMethod.'; charset=UTF-8',
-                            ],
-                        );
-                    }
-                }
+            Mail::mailer(MailDeliveryMailerFactory::MAILER_NAME)->send(
+                (new OutboundMessageMail($message))->to($message->to),
             );
         } catch (\Throwable $e) {
             return $this->mapFailure($e, $resolved->name, $at);

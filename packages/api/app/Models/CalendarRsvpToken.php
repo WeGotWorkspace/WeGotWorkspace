@@ -17,11 +17,30 @@ final class CalendarRsvpToken extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'token',
+        'token_hash',
         'event_uid',
         'attendee_email',
         'organizer_username',
         'expires_at',
         'used_partstat',
     ];
+
+    public static function hashRaw(string $token): string
+    {
+        return hash('sha256', strtolower(trim($token)));
+    }
+
+    public static function findByRawToken(string $token): ?self
+    {
+        $hash = self::hashRaw($token);
+        $row = self::query()->where('token_hash', $hash)->first();
+        if ($row === null) {
+            return null;
+        }
+        if (! hash_equals((string) $row->token_hash, $hash)) {
+            return null;
+        }
+
+        return $row;
+    }
 }

@@ -266,6 +266,71 @@ final class CalendarsSchedulingItipTest extends WgwDatabaseTestCase
         Mail::assertNothingSent();
     }
 
+    public function test_attendee_partstat_only_does_not_bump_sequence(): void
+    {
+        $eventId = $this->bobInvitesCarol();
+        $before = $this->eventSequence($eventId, 'bob');
+        $uid = $this->eventUid($eventId, 'bob');
+        $carolCopy = $this->findEventByUid('carol', $uid);
+        $this->assertNotNull($carolCopy);
+        $carolEventId = pathinfo((string) $carolCopy->uri, PATHINFO_FILENAME);
+
+        $this->jmapAs('carol', [
+            ['CalendarEvent/set', ['accountId' => 'carol', 'update' => [$carolEventId => [
+                'participants' => [
+                    'org' => [
+                        '@type' => 'Participant',
+                        'email' => 'bob@example.test',
+                        'roles' => ['owner'],
+                    ],
+                    'att1' => [
+                        '@type' => 'Participant',
+                        'email' => 'carol@example.test',
+                        'roles' => ['attendee'],
+                        'participationStatus' => 'accepted',
+                    ],
+                ],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $this->assertSame($before, $this->eventSequence($eventId, 'bob'));
+        $this->assertSame($before, $this->eventSequence($carolEventId, 'carol'));
+    }
+
+    public function test_description_only_change_does_not_reschedule_local_itip(): void
+    {
+        $eventId = $this->bobInvitesCarol();
+        $before = $this->eventSequence($eventId, 'bob');
+        $this->assertCount(1, $this->schedulingObjectsFor('principals/carol'));
+
+        $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => [
+                'description' => 'Agenda in the doc',
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $this->assertSame($before, $this->eventSequence($eventId, 'bob'));
+        $this->assertCount(1, $this->schedulingObjectsFor('principals/carol'));
+        Mail::assertNothingSent();
+    }
+
+    public function test_significant_time_change_bumps_sequence_and_replaces_inbox(): void
+    {
+        $eventId = $this->bobInvitesCarol();
+        $before = $this->eventSequence($eventId, 'bob');
+
+        $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => [
+                'start' => '2030-01-15T11:00:00Z',
+                'end' => '2030-01-15T11:30:00Z',
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $this->assertGreaterThan($before, $this->eventSequence($eventId, 'bob'));
+        $this->assertCount(1, $this->schedulingObjectsFor('principals/carol'));
+        $this->assertStringContainsString('METHOD:REQUEST', $this->schedulingObjectsFor('principals/carol')[0]['calendardata']);
+    }
+
     public function test_organizer_cancel_consumes_attendee_inbox(): void
     {
         $eventId = $this->bobInvitesCarol();
@@ -386,6 +451,15 @@ final class CalendarsSchedulingItipTest extends WgwDatabaseTestCase
         $this->assertNotSame('', $uid);
 
         return $uid;
+    }
+
+    private function eventSequence(string $eventId, string $username): int
+    {
+        $event = $this->jmapAs($username, [
+            ['CalendarEvent/get', ['accountId' => $username, 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        return (int) ($event['sequence'] ?? 0);
     }
 
     /**

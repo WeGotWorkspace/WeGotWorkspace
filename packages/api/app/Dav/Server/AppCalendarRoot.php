@@ -12,8 +12,9 @@ use Sabre\DAVACL\PrincipalBackend\BackendInterface as PrincipalBackend;
 
 /**
  * {@see CalendarRoot} with per-request listing limited to the authenticated account.
- * {@see getChild} still resolves any account home so the schedule plugin can deliver
- * local iTIP to another user's inbox without listing every calendar home.
+ * {@see getChild} still resolves a known account home so the CalDAV schedule plugin
+ * can deliver local iTIP to that user's inbox. Listing ({@see getChildren}) stays
+ * least-privilege — this is not a calendar-home directory dump.
  */
 final class AppCalendarRoot extends CalendarRoot
 {

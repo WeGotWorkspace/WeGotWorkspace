@@ -48,39 +48,20 @@ final class CalendarImipService
         $method = strtoupper((string) $message->method);
         $ics = $message->message->serialize();
         $title = $this->summary($ics) ?? 'Calendar invitation';
-        $url = null;
-        if ($method === 'CANCEL') {
-            $this->invalidateTokens((string) $message->uid, $to);
-        } else {
-            $url = rtrim((string) config('app.url'), '/').'/calendar/rsvp/'.$this->issueToken(
-                (string) $message->uid,
-                $to,
-                $organizerUsername,
-            );
-        }
-        $text = $method === 'CANCEL'
-            ? "This event was cancelled.\n"
-            : "You are invited to {$title}.\nRespond: {$url}\n";
-        $html = $method === 'CANCEL'
-            ? '<p>This event was cancelled.</p>'
-            : '<p>You are invited to '.e($title).'.</p><p><a href="'.e($url).'">Respond to this invitation</a></p>';
 
-        return new OutboundMessage(
-            from: $config->from,
-            to: [$to],
-            subject: ($method === 'CANCEL' ? 'Cancelled: ' : 'Invitation: ').$title,
-            textBody: $text,
-            htmlBody: $html,
-            calendarMethod: $method,
-            calendarIcs: $ics,
-        );
+        return match ($method) {
+            'CANCEL' => $this->cancelMessage($config->from, $to, $title, $method, $ics, (string) $message->uid),
+            'REPLY' => $this->replyMessage($config->from, $to, $title, $method, $ics, $message),
+            default => $this->requestMessage($config->from, $to, $title, $method, $ics, (string) $message->uid, $organizerUsername),
+        };
     }
 
     public function issueToken(string $eventUid, string $attendeeEmail, string $organizerUsername): string
     {
+        $this->invalidateTokens($eventUid, $attendeeEmail);
         $token = Str::lower(Str::random(48));
         CalendarRsvpToken::query()->create([
-            'token' => $token,
+            'token_hash' => CalendarRsvpToken::hashRaw($token),
             'event_uid' => $eventUid,
             'attendee_email' => $attendeeEmail,
             'organizer_username' => $organizerUsername,
@@ -97,6 +78,92 @@ final class CalendarImipService
             ->where('event_uid', $eventUid)
             ->where('attendee_email', $attendeeEmail)
             ->update(['expires_at' => time() - 1]);
+    }
+
+    private function requestMessage(
+        string $from,
+        string $to,
+        string $title,
+        string $method,
+        string $ics,
+        string $uid,
+        string $organizerUsername,
+    ): OutboundMessage {
+        $url = rtrim((string) config('app.url'), '/').'/calendar/rsvp/'.$this->issueToken(
+            $uid,
+            $to,
+            $organizerUsername,
+        );
+
+        return new OutboundMessage(
+            from: $from,
+            to: [$to],
+            subject: 'Invitation: '.$title,
+            textBody: "You are invited to {$title}.\nRespond: {$url}\n",
+            htmlBody: '<p>You are invited to '.e($title).'.</p><p><a href="'.e($url).'">Respond to this invitation</a></p>',
+            calendarMethod: $method,
+            calendarIcs: $ics,
+        );
+    }
+
+    private function cancelMessage(
+        string $from,
+        string $to,
+        string $title,
+        string $method,
+        string $ics,
+        string $uid,
+    ): OutboundMessage {
+        $this->invalidateTokens($uid, $to);
+
+        return new OutboundMessage(
+            from: $from,
+            to: [$to],
+            subject: 'Cancelled: '.$title,
+            textBody: "This event was cancelled.\n",
+            htmlBody: '<p>This event was cancelled.</p>',
+            calendarMethod: $method,
+            calendarIcs: $ics,
+        );
+    }
+
+    private function replyMessage(
+        string $from,
+        string $to,
+        string $title,
+        string $method,
+        string $ics,
+        Message $message,
+    ): OutboundMessage {
+        $status = $this->replyPartstat($ics);
+        $actor = is_string($message->senderName) && trim($message->senderName) !== ''
+            ? trim($message->senderName)
+            : ($this->addresses->normalizedEmail((string) $message->sender) ?? 'An attendee');
+        $verb = match ($status) {
+            'ACCEPTED' => 'accepted',
+            'DECLINED' => 'declined',
+            'TENTATIVE' => 'tentatively accepted',
+            default => 'responded to',
+        };
+
+        return new OutboundMessage(
+            from: $from,
+            to: [$to],
+            subject: $actor.' '.$verb.': '.$title,
+            textBody: "{$actor} {$verb} the invitation to {$title}.\n",
+            htmlBody: '<p>'.e($actor).' '.e($verb).' the invitation to '.e($title).'.</p>',
+            calendarMethod: $method,
+            calendarIcs: $ics,
+        );
+    }
+
+    private function replyPartstat(string $ics): string
+    {
+        if (preg_match('/PARTSTAT=([A-Z-]+)/i', $ics, $match) === 1) {
+            return strtoupper($match[1]);
+        }
+
+        return 'NEEDS-ACTION';
     }
 
     private function summary(string $ics): ?string

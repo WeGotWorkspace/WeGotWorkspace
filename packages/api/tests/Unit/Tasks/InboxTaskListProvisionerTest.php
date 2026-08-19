@@ -125,6 +125,38 @@ final class InboxTaskListProvisionerTest extends WgwDatabaseTestCase
         $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::URI));
     }
 
+    public function test_migration_down_renames_tasks_inbox_back_to_inbox(): void
+    {
+        $this->seedWgwUser('rollback-inbox', password: 'longpassword');
+        $principalUri = 'principals/rollback-inbox';
+        $this->assertTrue(app(InboxTaskListProvisioner::class)->ensureForPrincipal($principalUri));
+        $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::URI));
+
+        $migration = require database_path('migrations/wgw/2026_08_19_000240_wgw_rename_tasks_inbox_uri.php');
+        $migration->down();
+
+        $this->assertNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::URI));
+        $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::LEGACY_URI));
+    }
+
+    public function test_revert_skips_when_legacy_inbox_uri_already_exists(): void
+    {
+        $this->seedWgwUser('collision-inbox', password: 'longpassword');
+        $principalUri = 'principals/collision-inbox';
+        $provisioner = app(InboxTaskListProvisioner::class);
+        $this->assertTrue($provisioner->ensureForPrincipal($principalUri));
+
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $caldav->createCalendar($principalUri, InboxTaskListProvisioner::LEGACY_URI, [
+            '{DAV:}displayname' => 'Legacy leftover',
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
+        ]);
+
+        $this->assertFalse($provisioner->revertTasksInboxUri($principalUri));
+        $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::URI));
+        $this->assertNotNull($this->findCalendarByUri($principalUri, InboxTaskListProvisioner::LEGACY_URI));
+    }
+
     /**
      * @param  array<string, mixed>  $calendar
      * @return list<string>

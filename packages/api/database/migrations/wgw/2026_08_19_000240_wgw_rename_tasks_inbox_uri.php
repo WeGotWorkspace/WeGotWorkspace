@@ -18,6 +18,12 @@ return new class extends WgwMigration
 
     public function down(): void
     {
-        // Data migration — tasks-inbox URIs remain after rollback.
+        if (! $this->wgwHasTable('users') || ! $this->wgwHasTable('calendarinstances')) {
+            return;
+        }
+
+        // Reverse tasks-inbox → inbox when that uri is free. Collision is skipped
+        // so existing VTODO rows stay visible under tasks-inbox.
+        app(InboxTaskListProvisioner::class)->revertForAllUsers();
     }
 };

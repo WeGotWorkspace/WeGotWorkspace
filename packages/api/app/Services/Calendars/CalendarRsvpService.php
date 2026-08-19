@@ -15,14 +15,15 @@ final class CalendarRsvpService
         private readonly CalendarEventRepository $events,
         private readonly CalendarEventMapper $mapper,
         private readonly CalendarRepository $calendars,
+        private readonly CalendarRsvpRateLimiter $rateLimiter,
     ) {}
 
     /**
      * @return array{title: string, attendeeEmail: string, participationStatus: string}
      */
-    public function show(string $token): array
+    public function show(string $token, string $ip): array
     {
-        $row = $this->validToken($token);
+        $row = $this->validToken($token, $ip);
 
         return [
             'title' => $this->eventTitle($row),
@@ -35,12 +36,12 @@ final class CalendarRsvpService
      * @param  array{participationStatus: string}  $payload
      * @return array{title: string, attendeeEmail: string, participationStatus: string}
      */
-    public function respond(string $token, array $payload): array
+    public function respond(string $token, array $payload, string $ip): array
     {
-        $row = $this->validToken($token);
+        $row = $this->validToken($token, $ip);
         $status = $payload['participationStatus'];
         if (is_string($row->used_partstat) && $row->used_partstat === $status) {
-            return $this->show($token);
+            return $this->show($token, $ip);
         }
 
         $event = $this->findOrganizerEvent($row);
@@ -71,12 +72,16 @@ final class CalendarRsvpService
         $row->used_partstat = $status;
         $row->save();
 
-        return $this->show($token);
+        return $this->show($token, $ip);
     }
 
-    private function validToken(string $token): CalendarRsvpToken
+    private function validToken(string $token, string $ip): CalendarRsvpToken
     {
-        $row = CalendarRsvpToken::query()->where('token', $token)->first();
+        if (! $this->rateLimiter->allow($ip, $token)) {
+            throw new ApiHttpException(429, 'Too many attempts. Please try again later.', 'throttled');
+        }
+
+        $row = CalendarRsvpToken::findByRawToken($token);
         if ($row === null || (int) $row->expires_at < time()) {
             throw new ApiHttpException(404, 'RSVP link is invalid or expired.', 'not_found');
         }

@@ -87,13 +87,29 @@ final class AppCalDAVPrincipalCollection extends CalDAVPrincipalCollection
     }
 
     /**
+     * Directory search is least-privilege: only the signed-in account (plus groups).
+     * {@see getChild} still resolves other account principals so the CalDAV
+     * schedule plugin can read calendar-home-set / schedule-inbox for a known
+     * ATTENDEE without listing the user directory.
+     *
      * @return list<string>
      */
     public function searchPrincipals(array $searchProperties, $test = 'allof')
     {
+        $current = $this->authPlugin->getCurrentPrincipal();
         $names = parent::searchPrincipals($searchProperties, $test);
 
-        return array_values(array_filter($names, fn (string $n): bool => $this->childExists($n)));
+        return array_values(array_filter($names, function (string $n) use ($current): bool {
+            if ($n === $this->groupsDirectoryName()) {
+                return (bool) $this->principalBackend->getPrincipalByPath(AdminConstants::GROUP_CONTAINER_URI);
+            }
+            $principalInfo = $this->principalBackend->getPrincipalByPath($this->principalPrefix.'/'.$n);
+            if (! $principalInfo || ! AccountPrincipalFilter::isAccountPrincipal($principalInfo)) {
+                return false;
+            }
+
+            return $current !== null && $current !== '' && ($principalInfo['uri'] ?? '') === $current;
+        }));
     }
 
     /**
