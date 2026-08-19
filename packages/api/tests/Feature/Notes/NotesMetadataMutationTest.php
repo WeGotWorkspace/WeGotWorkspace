@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Notes;
 
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\InteractsWithFileNodeJmap;
 use Tests\Support\NotesTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -15,6 +16,7 @@ use Tests\Support\WgwDatabaseTestCase;
  */
 final class NotesMetadataMutationTest extends WgwDatabaseTestCase
 {
+    use InteractsWithFileNodeJmap;
     use NotesTestFixtures;
 
     protected function setUp(): void
@@ -150,5 +152,39 @@ final class NotesMetadataMutationTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertDontSeeText('Shared draft')
             ->assertSeeText('body rewritten by collab');
+    }
+
+    public function test_filenode_set_title_tags_preserves_yaml_star_for_notes_items(): void
+    {
+        $token = $this->userBearerToken();
+        $created = $this->createNoteFor($token, [
+            'id' => 'pass-through-star',
+            'notebook' => 'Drafts',
+            'body' => 'keep me',
+            'tags' => ['old'],
+            'starred' => true,
+        ]);
+        $id = $created['id'];
+        $key = 'users/bob/.notes/Drafts/'.$id.'.md';
+
+        $nodes = $this->fileNodeGetAll();
+        $noteId = $this->fileNodeIdByName($nodes, $id.'.md');
+
+        $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [
+                $noteId => ['note' => ['title' => 'Rewritten', 'tags' => ['new']]],
+            ]], 'c0'],
+        ], $token)->assertOk();
+
+        $this->withBearer($token)->getJson('/api/v1/notes/items')
+            ->assertOk()
+            ->assertJsonPath('items.0.starred', true)
+            ->assertJsonPath('items.0.tags', ['new'])
+            ->assertJsonPath('items.0.body', 'keep me');
+
+        $raw = (string) Storage::disk('wgw_notes')->get($key);
+        $this->assertStringContainsString('starred: true', $raw);
+        $this->assertStringContainsString('title: Rewritten', $raw);
+        $this->assertStringContainsString("----\nkeep me", $raw);
     }
 }

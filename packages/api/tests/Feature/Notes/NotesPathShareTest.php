@@ -159,6 +159,16 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         foreach ($paths as $path) {
             $this->assertStringNotContainsString('/.notes/', (string) $path);
         }
+
+        $withNotes = $this->withBearer($aliceToken)->getJson('/api/v1/files/shared-with-me?includeNotes=true');
+        $withNotes->assertOk();
+        $included = collect($withNotes->json('data'))->pluck('share.path')->all();
+        $this->assertContains('/users/bob/drive-doc.md', $included);
+        $this->assertContains($notePath, $included);
+        $noteRow = collect($withNotes->json('data'))->firstWhere('share.path', $notePath);
+        $this->assertIsArray($noteRow);
+        $this->assertSame('view', $noteRow['share']['defaultAccess']);
+        $this->assertSame('file', $noteRow['entry']['type'] ?? null);
     }
 
     public function test_notes_shared_with_me_lists_file_grants_and_shared_notebooks_is_empty(): void
