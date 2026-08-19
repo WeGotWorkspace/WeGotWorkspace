@@ -402,15 +402,90 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
     public function test_hidden_segments_are_not_file_nodes(): void
     {
         $disk = app(WgwStorage::class)->files();
-        $disk->put('users/bob/.notes/Drafts/secret.md', 'note');
         $disk->put('users/bob/.hidden.yjs', 'sidecar');
+        $disk->put('users/bob/._appledouble', 'appledouble');
+        $disk->put('users/bob/.archive/orphan.md', 'not under notes');
+        $disk->put('users/bob/.notes/Drafts/._sidecar', 'appledouble under notes');
         $this->seedPrivateFile('bob', 'visible.txt');
 
         $names = array_column(array_values($this->getAll()), 'name');
         $this->assertContains('visible.txt', $names);
-        $this->assertNotContains('secret.md', $names);
         $this->assertNotContains('.hidden.yjs', $names);
-        $this->assertNotContains('.notes', $names);
+        $this->assertNotContains('._appledouble', $names);
+        $this->assertNotContains('._sidecar', $names);
+        $this->assertNotContains('orphan.md', $names);
+        $this->assertNotContains('.archive', $names);
+    }
+
+    public function test_personal_and_group_notes_trees_are_file_nodes(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/.notes/Drafts/personal-note.md', 'personal');
+        $disk->put('users/bob/.notes/.archive/Drafts/archived-note.md', 'archived');
+        $disk->put('groups/team/.notes/Roadmap/team-note.md', 'team');
+        $disk->put('groups/team/.notes/.archive/Roadmap/old-team-note.md', 'old team');
+        $this->seedPrivateFile('bob', 'visible.txt');
+
+        $nodes = $this->getAll();
+        $names = array_column(array_values($nodes), 'name');
+        $this->assertContains('visible.txt', $names);
+        $this->assertContains('.notes', $names);
+        $this->assertContains('Drafts', $names);
+        $this->assertContains('personal-note.md', $names);
+        $this->assertContains('archived-note.md', $names);
+        $this->assertContains('Roadmap', $names);
+        $this->assertContains('team-note.md', $names);
+        $this->assertContains('old-team-note.md', $names);
+
+        $index = app(FileNodeIndexService::class);
+        $this->assertNotNull($index->liveByKey('users/bob/.notes'));
+        $this->assertNotNull($index->liveByKey('users/bob/.notes/.archive'));
+        $this->assertNotNull($index->liveByKey('users/bob/.notes/.archive/Drafts/archived-note.md'));
+        $this->assertNotNull($index->liveByKey('groups/team/.notes'));
+        $this->assertNotNull($index->liveByKey('groups/team/.notes/.archive/Roadmap/old-team-note.md'));
+
+        $homeListing = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertOk();
+        $driveNames = array_column((array) $homeListing->json('data.files'), 'name');
+        $this->assertContains('visible.txt', $driveNames);
+        $this->assertNotContains('.notes', $driveNames);
+
+        $groupListing = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/files/children?path=/groups/team')
+            ->assertOk();
+        $groupDriveNames = array_column((array) $groupListing->json('data.files'), 'name');
+        $this->assertNotContains('.notes', $groupDriveNames);
+    }
+
+    public function test_reindex_mints_existing_notes_without_changing_files(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $personalKey = 'users/bob/.notes/Drafts/reindex-me.md';
+        $archivedKey = 'users/bob/.notes/.archive/Drafts/reindex-archived.md';
+        $groupKey = 'groups/team/.notes/Roadmap/reindex-team.md';
+        $personalBody = "---\ntitle: Keep me\n---\nunchanged body";
+        $archivedBody = 'archived body';
+        $groupBody = 'team body';
+        $disk->put($personalKey, $personalBody);
+        $disk->put($archivedKey, $archivedBody);
+        $disk->put($groupKey, $groupBody);
+
+        $index = app(FileNodeIndexService::class);
+        $this->assertNull($index->liveByKey($personalKey));
+        $this->assertNull($index->liveByKey($archivedKey));
+        $this->assertNull($index->liveByKey($groupKey));
+
+        $result = $index->reindexAll();
+
+        $this->assertGreaterThanOrEqual(3, $result['indexed']);
+        $this->assertNotNull($index->liveByKey('users/bob/.notes'));
+        $this->assertNotNull($index->liveByKey($personalKey));
+        $this->assertNotNull($index->liveByKey($archivedKey));
+        $this->assertNotNull($index->liveByKey($groupKey));
+        $this->assertSame($personalBody, $disk->get($personalKey));
+        $this->assertSame($archivedBody, $disk->get($archivedKey));
+        $this->assertSame($groupBody, $disk->get($groupKey));
     }
 
     public function test_product_trash_is_a_file_node_and_can_receive_moves(): void

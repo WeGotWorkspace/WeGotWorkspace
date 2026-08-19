@@ -298,13 +298,14 @@ final class JmapFileNodeAclTest extends WgwDatabaseTestCase
         $conflict->assertJsonPath('methodResponses.0.1.notUpdated.'.$firstId.'.type', 'alreadyExists');
     }
 
-    public function test_hidden_notes_directory_is_not_a_file_node(): void
+    public function test_notes_directory_is_a_file_node(): void
     {
         app(WgwStorage::class)->files()->put('users/bob/.notes/hidden-note.md', 'note body');
         app(WgwStorage::class)->files()->put('users/bob/visible.md', 'visible');
 
         $names = array_column(array_values($this->fileNodeGetAll()), 'name');
         $this->assertContains('visible.md', $names);
-        $this->assertNotContains('.notes', $names);
+        $this->assertContains('.notes', $names);
+        $this->assertContains('hidden-note.md', $names);
     }
 }
