@@ -22,9 +22,19 @@ export function useCalendarInvitations(
       setNotifications([]);
       return;
     }
-    const next = await operations.listSchedulingNotifications();
-    setNotifications(next);
+    refreshInFlightRef.current = true;
+    try {
+      const next = await operations.listSchedulingNotifications();
+      setNotifications(next);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
   }, [operations]);
+
+  const refreshIfIdle = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    await refresh();
+  }, [refresh]);
 
   useEffect(() => {
     void refresh();
@@ -49,14 +59,9 @@ export function useCalendarInvitations(
     let cancelled = false;
 
     const runSilentRefresh = () => {
-      if (cancelled || busy || refreshInFlightRef.current) return;
+      if (cancelled || busy) return;
       if (typeof document !== "undefined" && document.hidden) return;
-      refreshInFlightRef.current = true;
-      void refresh()
-        .catch(() => undefined)
-        .finally(() => {
-          refreshInFlightRef.current = false;
-        });
+      void refreshIfIdle().catch(() => undefined);
     };
 
     const intervalId = window.setInterval(runSilentRefresh, CALENDAR_BACKGROUND_POLL_MS);
@@ -70,7 +75,7 @@ export function useCalendarInvitations(
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [busy, operations?.listSchedulingNotifications, refresh]);
+  }, [busy, operations?.listSchedulingNotifications, refreshIfIdle]);
 
   const respond = useCallback(
     async (id: string, status: CalendarSchedulingRespondStatus, calendarId?: string) => {
@@ -104,5 +109,14 @@ export function useCalendarInvitations(
     [operations],
   );
 
-  return { notifications, invitees, canSubmitEmail, busy, respond, dismiss, refresh };
+  return {
+    notifications,
+    invitees,
+    canSubmitEmail,
+    busy,
+    respond,
+    dismiss,
+    refresh,
+    refreshIfIdle,
+  };
 }

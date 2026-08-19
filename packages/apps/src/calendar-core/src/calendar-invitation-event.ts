@@ -55,11 +55,26 @@ export function isInviteeNotification(
   });
 }
 
+/** Keep the last row per UID so stacked REQUESTs do not render as extra cards. */
+export function collapseInvitationsByUid(
+  notifications: CalendarSchedulingNotification[],
+): CalendarSchedulingNotification[] {
+  const lastIndex = new Map<string, number>();
+  notifications.forEach((row, index) => {
+    const uid = row.uid?.trim();
+    if (uid) lastIndex.set(uid, index);
+  });
+  return notifications.filter((row, index) => {
+    const uid = row.uid?.trim();
+    return !uid || lastIndex.get(uid) === index;
+  });
+}
+
 export function filterInviteeNotifications(
   notifications: CalendarSchedulingNotification[],
   sessionAddresses: readonly string[] = [],
 ): CalendarSchedulingNotification[] {
-  return notifications.filter((notification) =>
+  return collapseInvitationsByUid(notifications).filter((notification) =>
     isInviteeNotification(notification, sessionAddresses),
   );
 }
@@ -69,7 +84,7 @@ export function filterInvitationsByTab(
   tab: CalendarInvitationInboxTab,
   sessionAddresses: readonly string[] = [],
 ): CalendarSchedulingNotification[] {
-  return notifications.filter(
+  return collapseInvitationsByUid(notifications).filter(
     (notification) =>
       invitationInboxTab(notification) === tab &&
       isInviteeNotification(notification, sessionAddresses),

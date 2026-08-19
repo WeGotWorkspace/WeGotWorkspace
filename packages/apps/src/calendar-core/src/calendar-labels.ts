@@ -126,6 +126,8 @@ export type CalendarUILabels = {
   rsvpAccept: string;
   rsvpMaybe: string;
   rsvpDecline: string;
+  rsvpLabel: string;
+  rsvpRespond: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -254,6 +256,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   rsvpAccept: "Accept",
   rsvpMaybe: "Maybe",
   rsvpDecline: "Decline",
+  rsvpLabel: "RSVP",
+  rsvpRespond: "Respond",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

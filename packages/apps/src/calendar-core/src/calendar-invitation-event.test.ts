@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import {
   canRespondInvitation,
+  collapseInvitationsByUid,
   filterInviteeNotifications,
   filterInvitationsByTab,
   invitationInboxTab,
@@ -88,13 +89,50 @@ describe("filterInvitationsByTab", () => {
   it("splits pending and responded rows", () => {
     const rows = [
       notification(),
-      notification({ id: "invite-2.ics", method: "CANCEL", title: "Canceled" }),
-      notification({ id: "invite-3.ics", participationStatus: "accepted", title: "Planning" }),
+      notification({ id: "invite-2.ics", uid: "uid-2", method: "CANCEL", title: "Canceled" }),
+      notification({
+        id: "invite-3.ics",
+        uid: "uid-3",
+        participationStatus: "accepted",
+        title: "Planning",
+      }),
     ];
 
     expect(filterInvitationsByTab(rows, "new").map((row) => row.id)).toEqual(["invite-1.ics"]);
     expect(filterInvitationsByTab(rows, "responded").map((row) => row.title)).toEqual(["Planning"]);
     expect(pendingInvitationCount(rows)).toBe(1);
+  });
+
+  it("collapses stacked REQUEST copies for the same UID to the latest row", () => {
+    const rows = [
+      notification({
+        id: "req-1.ics",
+        uid: "same-event",
+        start: "2030-01-15T13:45:00Z",
+        title: "Another event",
+      }),
+      notification({
+        id: "req-2.ics",
+        uid: "same-event",
+        start: "2030-01-15T14:45:00Z",
+        title: "Another event",
+      }),
+      notification({
+        id: "req-3.ics",
+        uid: "same-event",
+        start: "2030-01-15T15:45:00Z",
+        title: "Another event",
+      }),
+      notification({ id: "other.ics", uid: "other-event", title: "Other" }),
+    ];
+
+    const collapsed = collapseInvitationsByUid(rows);
+    expect(collapsed.map((row) => row.id)).toEqual(["req-3.ics", "other.ics"]);
+    expect(filterInvitationsByTab(rows, "new").map((row) => row.id)).toEqual([
+      "req-3.ics",
+      "other.ics",
+    ]);
+    expect(pendingInvitationCount(rows)).toBe(2);
   });
 });
 

@@ -7,6 +7,7 @@ import {
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import "./calendar-rsvp-actions.css";
 
 const RSVP_ACTIONS: {
@@ -33,6 +34,16 @@ export function calendarRsvpStatusIcon(
     default:
       return undefined;
   }
+}
+
+export function calendarRespondStatus(
+  status: CalendarParticipationStatus | string | null | undefined,
+): CalendarSchedulingRespondStatus | undefined {
+  const normalized = normalizeParticipationStatus(status ?? undefined);
+  if (normalized === "accepted" || normalized === "tentative" || normalized === "declined") {
+    return normalized;
+  }
+  return undefined;
 }
 
 export type CalendarRsvpActionsSize = "sm" | "lg";
@@ -111,5 +122,58 @@ export function CalendarRsvpActions({
         );
       })}
     </div>
+  );
+}
+
+export type CalendarRsvpSelectProps = {
+  value?: CalendarSchedulingRespondStatus | "";
+  labels: CalendarUILabels;
+  busy?: boolean;
+  className?: string;
+  onChange: (status: CalendarSchedulingRespondStatus) => void;
+};
+
+/** Deferred RSVP control for the invitee event-dialog footer. Sidebar keeps CalendarRsvpActions. */
+export function CalendarRsvpSelect({
+  value,
+  labels,
+  busy = false,
+  className,
+  onChange,
+}: CalendarRsvpSelectProps) {
+  const selected = RSVP_ACTIONS.find((action) => action.status === value);
+
+  return (
+    <Select
+      value={selected ? selected.status : undefined}
+      onValueChange={(next) => onChange(next as CalendarSchedulingRespondStatus)}
+      disabled={busy}
+    >
+      <SelectTrigger
+        className={cn(
+          "calendar-rsvp-select",
+          selected && `calendar-rsvp-select--${selected.kind}`,
+          selected && "calendar-rsvp-select--selected",
+          className,
+        )}
+        aria-label={labels.rsvpLabel}
+      >
+        <SelectValue placeholder={labels.rsvpRespond} />
+      </SelectTrigger>
+      <SelectContent className="calendar-rsvp-select__menu">
+        {RSVP_ACTIONS.map(({ kind, status, Icon, labelKey }) => (
+          <SelectItem
+            key={kind}
+            value={status}
+            className={cn("calendar-rsvp-select__item", `calendar-rsvp-select__item--${kind}`)}
+          >
+            <span className="calendar-rsvp-select__option">
+              <Icon className="calendar-rsvp-select__icon" aria-hidden />
+              {labels[labelKey]}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

@@ -1,7 +1,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
+import {
+  CalendarRsvpActions,
+  CalendarRsvpSelect,
+  calendarRespondStatus,
+} from "@/calendar-core/src/calendar-rsvp-actions";
 
 afterEach(() => {
   cleanup();
@@ -60,5 +64,27 @@ describe("CalendarRsvpActions", () => {
     expect(maybe.className).toContain("calendar-rsvp-action--selected");
     expect(accept.getAttribute("aria-pressed")).toBe("false");
     expect(accept.className).not.toContain("calendar-rsvp-action--selected");
+  });
+});
+
+describe("CalendarRsvpSelect", () => {
+  it("maps PARTSTAT to a respond status", () => {
+    expect(calendarRespondStatus("accepted")).toBe("accepted");
+    expect(calendarRespondStatus("needs-action")).toBeUndefined();
+    expect(calendarRespondStatus(null)).toBeUndefined();
+  });
+
+  it("keeps changes local until the parent persists", () => {
+    const onChange = vi.fn();
+    render(
+      <CalendarRsvpSelect value="accepted" labels={defaultCalendarLabels} onChange={onChange} />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: defaultCalendarLabels.rsvpLabel });
+    expect(trigger.className).toContain("calendar-rsvp-select--accept");
+    expect(trigger.className).toContain("calendar-rsvp-select--selected");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.rsvpDecline }));
+    expect(onChange).toHaveBeenCalledWith("declined");
   });
 });

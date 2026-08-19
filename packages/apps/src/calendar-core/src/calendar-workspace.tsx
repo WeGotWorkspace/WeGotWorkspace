@@ -167,6 +167,12 @@ export function CalendarWorkspace({
   const invitationsLayout = useDocsCommentsLayout();
   const useInvitationsDrawer = invitationsLayout === "drawer";
   const [invitationsOpen, setInvitationsOpen] = useState(false);
+  const toggleInvitationsOpen = () => {
+    if (!invitationsOpen) {
+      void invitations.refreshIfIdle().catch(() => undefined);
+    }
+    setInvitationsOpen((open) => !open);
+  };
 
   const {
     L,
@@ -381,7 +387,7 @@ export function CalendarWorkspace({
                   count={pendingInvitationCount(inviteeNotifications)}
                   open={invitationsOpen}
                   labels={L}
-                  onToggle={() => setInvitationsOpen((open) => !open)}
+                  onToggle={toggleInvitationsOpen}
                 />
               </div>
             }
@@ -442,7 +448,7 @@ export function CalendarWorkspace({
           calendars={calendars}
           labels={L}
           locale={locale}
-          busy={editorBusy}
+          busy={editorBusy || invitations.busy}
           onChange={setEditorForm}
           onClose={closeEditor}
           onSave={saveEditor}
@@ -452,11 +458,15 @@ export function CalendarWorkspace({
           sessionEmail={organizerAddress(session.user)?.email}
           onRsvp={
             editor.mode === "edit"
-              ? (status) => {
+              ? (status, calendarId) => {
                   const notification = inviteeNotifications.find(
                     (row) => row.eventId === editor.eventId,
                   );
-                  if (notification) void invitations.respond(notification.id, status);
+                  const id = notification?.id ?? editor.eventId;
+                  void invitations
+                    .respond(id, status, calendarId)
+                    .then(() => closeEditor())
+                    .catch(() => undefined);
                 }
               : undefined
           }

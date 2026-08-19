@@ -29,6 +29,7 @@ const request: CalendarSchedulingNotification = {
 const cancelNotice: CalendarSchedulingNotification = {
   ...request,
   id: "invite-2.ics",
+  uid: "uid-2",
   method: "CANCEL",
   title: "Canceled standup",
 };
@@ -36,6 +37,7 @@ const cancelNotice: CalendarSchedulingNotification = {
 const accepted: CalendarSchedulingNotification = {
   ...request,
   id: "invite-3.ics",
+  uid: "uid-3",
   method: "REQUEST",
   title: "Planning",
   participationStatus: "accepted",
@@ -194,7 +196,7 @@ describe("CalendarInvitationsPanel", () => {
     renderPanel({
       notifications: [
         { ...request, method: "" },
-        { ...request, id: "invite-1b.ics", method: "request" },
+        { ...request, id: "invite-1b.ics", uid: "uid-1b", method: "request" },
       ],
     });
 
@@ -272,13 +274,22 @@ describe("calendar invitation picker reuse", () => {
     expect(card).toContain(importLine);
   });
 
-  it("reuses CalendarRsvpActions in the event dialog and invite card", () => {
+  it("refetches invitations when the inbox trigger opens the panel", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const workspace = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
+    expect(workspace).toContain("onToggle={toggleInvitationsOpen}");
+    expect(workspace).toContain("refreshIfIdle");
+  });
+
+  it("reuses RSVP controls from calendar-rsvp-actions in the dialog and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
     expect(dialog).toContain(importLine);
+    expect(dialog).toContain("CalendarRsvpSelect");
     expect(card).toContain(importLine);
+    expect(card).toContain("CalendarRsvpActions");
   });
 });
 

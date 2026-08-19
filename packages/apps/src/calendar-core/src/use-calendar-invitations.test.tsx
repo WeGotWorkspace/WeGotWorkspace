@@ -88,4 +88,43 @@ describe("useCalendarInvitations", () => {
     });
     unmount();
   });
+
+  it("refetches immediately when refreshIfIdle runs after the mount fetch", async () => {
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    const { result } = renderHook(() => useCalendarInvitations(operations));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.refreshIfIdle();
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips refreshIfIdle while a fetch is already in flight", async () => {
+    let releaseMount: (() => void) | undefined;
+    const listSchedulingNotifications = vi.fn().mockImplementation(
+      () =>
+        new Promise<[]>((resolve) => {
+          releaseMount = () => resolve([]);
+        }),
+    );
+    const operations = operationsWithList(listSchedulingNotifications);
+    const { result } = renderHook(() => useCalendarInvitations(operations));
+
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.refreshIfIdle();
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      releaseMount?.();
+    });
+  });
 });

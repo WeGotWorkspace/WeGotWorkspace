@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bell, Clock, Repeat, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Temporal } from "@js-temporal/polyfill";
@@ -21,7 +21,10 @@ import {
   type CalendarInvitee,
 } from "@/calendar-core/src/calendar-attendees";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
-import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
+import {
+  calendarRespondStatus,
+  CalendarRsvpSelect,
+} from "@/calendar-core/src/calendar-rsvp-actions";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
@@ -71,7 +74,7 @@ export type CalendarEventDialogProps = {
   invitees?: CalendarInvitee[];
   canSubmitEmail?: boolean;
   sessionEmail?: string;
-  onRsvp?: (status: CalendarSchedulingRespondStatus) => void;
+  onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void;
 };
 
 function isoToJsDate(iso: string): Date | undefined {
@@ -296,8 +299,21 @@ export function CalendarEventDialog({
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail, invitees);
   const isInvitee = isSessionEventInvitee(form.attendees, sessionEmail, invitees);
   const inviteeRsvp = sessionEventInviteeStatus(form.attendees, sessionEmail, invitees);
+  const incomingRsvp = calendarRespondStatus(inviteeRsvp);
   const readOnly = mode === "edit" && !isOrganizer;
   const fieldsDisabled = busy || readOnly;
+  const showInviteeRsvp = mode === "edit" && Boolean(onRsvp) && isInvitee;
+  const showSaveCancel = !readOnly || showInviteeRsvp;
+  const [draftCalendarId, setDraftCalendarId] = useState(form.calendarId);
+  const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
+    incomingRsvp ?? "",
+  );
+
+  useEffect(() => {
+    setDraftCalendarId(form.calendarId);
+    setDraftRsvp(incomingRsvp ?? "");
+  }, [form.calendarId, incomingRsvp, open]);
+
   const valid = calendarEventFormIsValid(form);
   const recurrenceLocked = form.recurrencePreset === "custom";
   const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
@@ -356,7 +372,13 @@ export function CalendarEventDialog({
           className="calendar-event-dialog__form"
           onSubmit={(event) => {
             event.preventDefault();
-            if (readOnly || !valid || busy) return;
+            if (busy) return;
+            if (showInviteeRsvp) {
+              if (!draftRsvp) return;
+              onRsvp?.(draftRsvp, draftCalendarId || undefined);
+              return;
+            }
+            if (readOnly || !valid) return;
             onSave();
           }}
         >
@@ -373,10 +395,16 @@ export function CalendarEventDialog({
               />
               <CalendarEventCalendarPicker
                 calendars={calendars}
-                calendarId={form.calendarId}
+                calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
                 labels={labels}
-                disabled={fieldsDisabled}
-                onCalendarIdChange={(calendarId) => set("calendarId", calendarId)}
+                disabled={busy || (readOnly && !showInviteeRsvp)}
+                onCalendarIdChange={(calendarId) => {
+                  if (showInviteeRsvp) {
+                    setDraftCalendarId(calendarId);
+                    return;
+                  }
+                  set("calendarId", calendarId);
+                }}
               />
             </div>
 
@@ -625,14 +653,13 @@ export function CalendarEventDialog({
           </div>
 
           <DialogFooter className="calendar-event-dialog__footer">
-            {mode === "edit" && onRsvp && isInvitee ? (
-              <CalendarRsvpActions
+            {showInviteeRsvp ? (
+              <CalendarRsvpSelect
                 className="calendar-event-dialog__rsvp"
-                currentStatus={inviteeRsvp ?? undefined}
+                value={draftRsvp}
                 labels={labels}
                 busy={busy}
-                size="lg"
-                onRespond={onRsvp}
+                onChange={setDraftRsvp}
               />
             ) : null}
             {mode === "edit" && onDelete && !readOnly ? (
@@ -646,16 +673,19 @@ export function CalendarEventDialog({
                 {labels.delete}
               </Button>
             ) : null}
-            {readOnly ? null : (
+            {showSaveCancel ? (
               <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
                 {labels.cancel}
               </Button>
-            )}
-            {readOnly ? null : (
-              <Button type="submit" disabled={!valid || busy}>
+            ) : null}
+            {showSaveCancel ? (
+              <Button
+                type="submit"
+                disabled={showInviteeRsvp ? !draftRsvp || busy : !valid || busy}
+              >
                 {labels.save}
               </Button>
-            )}
+            ) : null}
           </DialogFooter>
         </form>
       </DialogContent>
