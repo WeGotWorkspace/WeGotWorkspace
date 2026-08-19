@@ -336,6 +336,88 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
             ->assertJsonPath('list', []);
     }
 
+    public function test_past_one_off_invite_is_omitted_from_inbox(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'past-oneoff.ics',
+            $this->inviteIcs('past-oneoff', '20200115T100000Z', '20200115T103000Z'),
+        );
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list', []);
+    }
+
+    public function test_future_one_off_invite_is_listed(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'future-oneoff.ics',
+            $this->inviteIcs('future-oneoff', '20300115T100000Z', '20300115T103000Z'),
+        );
+
+        $list = $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame('future-oneoff', $list[0]['uid']);
+    }
+
+    public function test_recurring_invite_with_future_instances_is_listed(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'series-open.ics',
+            $this->inviteIcs(
+                'series-open',
+                '20200115T100000Z',
+                '20200115T103000Z',
+                'FREQ=WEEKLY;UNTIL=20301231T100000Z',
+            ),
+        );
+
+        $list = $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame('series-open', $list[0]['uid']);
+        $this->assertTrue($list[0]['recurring']);
+    }
+
+    public function test_recurring_invite_with_no_remaining_instances_is_omitted(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'series-ended.ics',
+            $this->inviteIcs(
+                'series-ended',
+                '20200115T100000Z',
+                '20200115T103000Z',
+                'FREQ=WEEKLY;COUNT=3',
+            ),
+        );
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list', []);
+    }
+
+    public function test_responded_past_invite_is_omitted_from_inbox(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'past-accepted.ics',
+            $this->inviteIcs('past-accepted', '20200115T100000Z', '20200115T103000Z', partstat: 'ACCEPTED'),
+        );
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list', []);
+    }
+
     public function test_other_users_notification_id_is_not_found(): void
     {
         $this->bobInvitesCarol();
@@ -440,6 +522,23 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
             'etag' => md5($ics),
             'size' => strlen($ics),
         ]);
+    }
+
+    private function inviteIcs(
+        string $uid,
+        string $dtstart,
+        string $dtend,
+        ?string $rrule = null,
+        string $partstat = 'NEEDS-ACTION',
+    ): string {
+        $rruleLine = $rrule !== null ? "RRULE:{$rrule}\r\n" : '';
+
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\n"
+            ."BEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:Invite\r\n"
+            ."DTSTART:{$dtstart}\r\nDTEND:{$dtend}\r\n{$rruleLine}"
+            ."ORGANIZER;CN=Ext:mailto:ext@elsewhere.test\r\n"
+            ."ATTENDEE;CN=Carol;PARTSTAT={$partstat}:mailto:carol@example.test\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
     }
 
     private function schedulingIcs(

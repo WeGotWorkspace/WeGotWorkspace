@@ -6,7 +6,7 @@ Same-instance meeting invites use Sabre’s `ITip\Broker` and CalDAV Scheduling 
 
 | Method | Path | Effect |
 |--------|------|--------|
-| GET | `/calendars/scheduling/notifications` | Own inbox only |
+| GET | `/calendars/scheduling/notifications` | Own inbox only; omits events that have entirely ended (one-off DTEND/DTSTART before now, or recurring series with no remaining instances) |
 | POST | `/calendars/scheduling/notifications/{id}/respond` | RSVP (`accepted` / `tentative` / `declined`) and send REPLY |
 | DELETE | `/calendars/scheduling/notifications/{id}` | Dismiss without REPLY |
 

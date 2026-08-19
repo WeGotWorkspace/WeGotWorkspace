@@ -29,6 +29,7 @@ final class CalendarSchedulingNotificationService
         private readonly CalendarRepository $calendars,
         private readonly MailDeliveryService $mail,
         private readonly MailDeliveryTransportResolver $mailResolver,
+        private readonly CalendarSchedulingInviteHorizon $horizon,
     ) {}
 
     /**
@@ -90,6 +91,9 @@ final class CalendarSchedulingNotificationService
             if ($this->isStaleInvite($username, $notification, $row)) {
                 $row->delete();
 
+                continue;
+            }
+            if ($this->isFullyPastInvite($row)) {
                 continue;
             }
             $list[] = $notification;
@@ -209,6 +213,19 @@ final class CalendarSchedulingNotificationService
 
         return $this->eventCopyIsCancelled($username, $eventId)
             || $this->organizerEventMissing($username, $row);
+    }
+
+    /**
+     * Hide invites whose event is entirely in the past (one-off ended, or
+     * recurring series with no remaining instances after now). Applies to New
+     * and Responded so the inbox badge stays aligned with the sidebar.
+     */
+    private function isFullyPastInvite(SchedulingObject $row): bool
+    {
+        $vevent = $this->veventFromSchedulingObject($row);
+
+        return $vevent instanceof VEvent
+            && ! $this->horizon->continuesAfter($vevent, now()->toDateTimeImmutable());
     }
 
     private function ownedOrNotFound(string $username, string $notificationId): SchedulingObject
