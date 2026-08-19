@@ -114,6 +114,15 @@
       "calendarId": {
         "type": "string",
         "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
+      },
+      "recurrenceId": {
+        "type": "string",
+        "description": "JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted."
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["this", "future"],
+        "description": "this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events."
       }
     }
   }

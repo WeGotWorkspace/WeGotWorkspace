@@ -220,7 +220,58 @@ final class RecurrenceOverrideSupport
             }
         }
 
+        $participants = self::participantOverridePatch($master, $override);
+        if ($participants !== null) {
+            $patch['participants'] = $participants;
+        }
+
         return $patch;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function participantOverridePatch(VEvent $master, VEvent $override): ?array
+    {
+        $masterEvent = [];
+        ParticipantConversionSupport::readParticipants($master, $masterEvent);
+        $overrideEvent = [];
+        ParticipantConversionSupport::readParticipants($override, $overrideEvent);
+        $masterParticipants = is_array($masterEvent['participants'] ?? null) ? $masterEvent['participants'] : [];
+        $overrideParticipants = is_array($overrideEvent['participants'] ?? null) ? $overrideEvent['participants'] : [];
+        if ($overrideParticipants === []) {
+            return null;
+        }
+
+        $masterByEmail = [];
+        foreach ($masterParticipants as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $email = strtolower(trim((string) ($entry['email'] ?? '')));
+            if ($email !== '') {
+                $masterByEmail[$email] = $entry;
+            }
+        }
+
+        $changed = false;
+        foreach ($overrideParticipants as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $email = strtolower(trim((string) ($entry['email'] ?? '')));
+            if ($email === '') {
+                continue;
+            }
+            $masterStatus = strtolower((string) ($masterByEmail[$email]['participationStatus'] ?? ''));
+            $overrideStatus = strtolower((string) ($entry['participationStatus'] ?? ''));
+            if ($overrideStatus !== $masterStatus) {
+                $changed = true;
+                break;
+            }
+        }
+
+        return $changed ? $overrideParticipants : null;
     }
 
     public static function recurrenceIdKeyFromProperty(Property $property): string

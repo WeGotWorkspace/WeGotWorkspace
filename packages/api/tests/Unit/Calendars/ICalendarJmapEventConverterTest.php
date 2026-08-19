@@ -212,6 +212,55 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertStringContainsString('https://meet.example.com/room', $roundTrip);
     }
 
+    public function test_instance_partstat_override_round_trips(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:rsvp-series\r\nSUMMARY:Standup\r\n"
+            ."DTSTART:20300115T100000Z\r\nDTEND:20300115T103000Z\r\nRRULE:FREQ=WEEKLY\r\n"
+            ."ORGANIZER:mailto:bob@example.test\r\n"
+            ."ATTENDEE;PARTSTAT=ACCEPTED:mailto:carol@example.test\r\n"
+            ."END:VEVENT\r\nBEGIN:VEVENT\r\nUID:rsvp-series\r\n"
+            ."RECURRENCE-ID:20300122T100000Z\r\nDTSTART:20300122T100000Z\r\n"
+            ."ORGANIZER:mailto:bob@example.test\r\n"
+            ."ATTENDEE;PARTSTAT=DECLINED:mailto:carol@example.test\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame(
+            'declined',
+            $this->participantStatus(
+                $event['recurrenceOverrides']['2030-01-22T10:00:00Z']['participants'] ?? [],
+                'carol@example.test',
+            ),
+        );
+        $this->assertSame(
+            'accepted',
+            $this->participantStatus($event['participants'] ?? [], 'carol@example.test'),
+        );
+
+        $roundTrip = $this->converter->icsFromEvent($event);
+        $this->assertStringContainsString('RECURRENCE-ID:20300122T100000Z', $roundTrip);
+        $this->assertStringContainsString('PARTSTAT=DECLINED', str_replace("\r\n ", '', $roundTrip));
+    }
+
+    /**
+     * @param  array<string, mixed>  $participants
+     */
+    private function participantStatus(array $participants, string $email): ?string
+    {
+        foreach ($participants as $participant) {
+            if (! is_array($participant)) {
+                continue;
+            }
+            if (strtolower((string) ($participant['email'] ?? '')) !== strtolower($email)) {
+                continue;
+            }
+
+            return strtolower((string) ($participant['participationStatus'] ?? ''));
+        }
+
+        return null;
+    }
+
     public function test_rdate_and_exrule_round_trip(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:rdate-1\r\nSUMMARY:Series\r\nDTSTART:20260601T080000Z\r\nDTEND:20260601T083000Z\r\nRRULE:FREQ=WEEKLY;BYDAY=MO\r\nRDATE:20260615T080000Z\r\nEXRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=1\r\nEXDATE:20260608T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";

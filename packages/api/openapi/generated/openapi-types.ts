@@ -9159,6 +9159,9 @@ export interface components {
             /** @description UTC start instant when DTSTART is a date-time. */
             start?: string | null;
             end?: string | null;
+            location?: string | null;
+            /** @description True when the VEVENT has RRULE or RECURRENCE-ID. */
+            recurring?: boolean;
             /** @enum {string} */
             participationStatus: "needs-action" | "accepted" | "tentative" | "declined" | "delegated";
             /** @description Attendee calendar event id when a local VEVENT copy exists. */
@@ -9173,6 +9176,13 @@ export interface components {
             participationStatus: "accepted" | "tentative" | "declined";
             /** @description Writable calendar for the attendee copy on accept/tentative. Ignored when declined. */
             calendarId?: string;
+            /** @description JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted. */
+            recurrenceId?: string;
+            /**
+             * @description this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events.
+             * @enum {string}
+             */
+            scope?: "this" | "future";
         };
         CalendarSchedulingInvitee: {
             username: string;

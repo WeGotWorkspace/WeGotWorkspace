@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Calendars;
 
+use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Models\SchedulingObject;
 use App\Services\Jmap\JmapCapabilities;
@@ -387,6 +388,136 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
             ->assertJsonPath('list.0.participationStatus', 'declined');
     }
 
+    public function test_respond_this_instance_writes_recurrence_id_exception(): void
+    {
+        $eventId = $this->bobInvitesCarolWeekly();
+        $notificationId = $this->carolNotificationId();
+        $carolEventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted'],
+        )->assertOk();
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            [
+                'participationStatus' => 'declined',
+                'scope' => 'this',
+                'recurrenceId' => '2030-01-22T10:00:00Z',
+            ],
+        )->assertOk();
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$carolEventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertSame('accepted', $this->participantPartstat($carolEvent, 'carol@example.test'));
+        $this->assertSame(
+            'declined',
+            $this->overridePartstat($carolEvent, '2030-01-22T10:00:00Z', 'carol@example.test'),
+        );
+
+        $bobEvent = $this->jmapAs('bob', [
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('accepted', $this->participantPartstat($bobEvent, 'carol@example.test'));
+        $this->assertSame(
+            'declined',
+            $this->overridePartstat($bobEvent, '2030-01-22T10:00:00Z', 'carol@example.test'),
+        );
+
+        $carolCopy = $this->findCarolCopyIcs((string) ($carolEvent['uid'] ?? ''));
+        $this->assertStringContainsString('RECURRENCE-ID:20300122T100000Z', $carolCopy);
+        $unfolded = str_replace("\r\n ", '', $carolCopy);
+        $this->assertMatchesRegularExpression(
+            '/BEGIN:VEVENT[\s\S]*?PARTSTAT=ACCEPTED[\s\S]*?END:VEVENT[\s\S]*?BEGIN:VEVENT[\s\S]*?PARTSTAT=DECLINED[\s\S]*?RECURRENCE-ID:20300122T100000Z[\s\S]*?END:VEVENT/i',
+            $unfolded,
+        );
+    }
+
+    public function test_respond_future_applies_from_instance_forward(): void
+    {
+        $this->bobInvitesCarolWeekly();
+        $notificationId = $this->carolNotificationId();
+        $carolEventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted'],
+        )->assertOk();
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            [
+                'participationStatus' => 'declined',
+                'scope' => 'future',
+                'recurrenceId' => '2030-01-22T10:00:00Z',
+            ],
+        )->assertOk();
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$carolEventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertSame('declined', $this->participantPartstat($carolEvent, 'carol@example.test'));
+        $this->assertSame(
+            'accepted',
+            $this->overridePartstat($carolEvent, '2030-01-15T10:00:00Z', 'carol@example.test'),
+        );
+        $this->assertNull($this->overridePartstat($carolEvent, '2030-01-22T10:00:00Z', 'carol@example.test'));
+    }
+
+    public function test_respond_series_decline_rewrites_instance_partstat_overrides(): void
+    {
+        $this->bobInvitesCarolWeekly();
+        $notificationId = $this->carolNotificationId();
+        $carolEventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted'],
+        )->assertOk();
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            [
+                'participationStatus' => 'tentative',
+                'scope' => 'this',
+                'recurrenceId' => '2030-01-22T10:00:00Z',
+            ],
+        )->assertOk();
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'declined'],
+        )->assertOk()->assertJsonPath('participationStatus', 'declined');
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$carolEventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertSame('declined', $this->participantPartstat($carolEvent, 'carol@example.test'));
+        $override = $this->overridePartstat($carolEvent, '2030-01-22T10:00:00Z', 'carol@example.test');
+        $this->assertTrue(
+            $override === 'declined' || $override === null,
+            'Series decline must not leave a non-declined instance PARTSTAT (got '.var_export($override, true).')',
+        );
+
+        $carolCopy = $this->findCarolCopyIcs((string) ($carolEvent['uid'] ?? ''));
+        $unfolded = str_replace("\r\n ", '', $carolCopy);
+        $this->assertDoesNotMatchRegularExpression(
+            '/PARTSTAT=(ACCEPTED|NEEDS-ACTION|TENTATIVE):mailto:carol@example.test/i',
+            $unfolded,
+        );
+    }
+
     public function test_organizer_cancel_removes_attendee_notification(): void
     {
         $eventId = $this->bobInvitesCarol();
@@ -542,6 +673,87 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
             : $this->issueBearerTokenFor($username);
 
         return $this->withBearer($token);
+    }
+
+    private function bobInvitesCarolWeekly(): string
+    {
+        $created = $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['inv' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Weekly Standup',
+                'start' => '2030-01-15T10:00:00Z',
+                'end' => '2030-01-15T10:30:00Z',
+                'recurrenceRules' => [
+                    ['@type' => 'RecurrenceRule', 'frequency' => 'weekly', 'byDay' => ['TU']],
+                ],
+                'participants' => [
+                    'org' => [
+                        '@type' => 'Participant',
+                        'email' => 'bob@example.test',
+                        'name' => 'Bob',
+                        'roles' => ['owner'],
+                    ],
+                    'att1' => [
+                        '@type' => 'Participant',
+                        'email' => 'carol@example.test',
+                        'name' => 'Carol',
+                        'roles' => ['attendee'],
+                        'expectReply' => true,
+                        'participationStatus' => 'needs-action',
+                    ],
+                ],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $eventId = (string) $created->json('methodResponses.0.1.created.inv.id');
+        $this->assertNotSame('', $eventId);
+
+        return $eventId;
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function participantPartstat(array $event, string $email): ?string
+    {
+        foreach ($event['participants'] ?? [] as $participant) {
+            if (! is_array($participant)) {
+                continue;
+            }
+            if (strtolower((string) ($participant['email'] ?? '')) !== strtolower($email)) {
+                continue;
+            }
+
+            return strtolower((string) ($participant['participationStatus'] ?? ''));
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function overridePartstat(array $event, string $recurrenceId, string $email): ?string
+    {
+        $overrides = $event['recurrenceOverrides'] ?? [];
+        if (! is_array($overrides) || ! isset($overrides[$recurrenceId]) || ! is_array($overrides[$recurrenceId])) {
+            return null;
+        }
+
+        return $this->participantPartstat($overrides[$recurrenceId], $email);
+    }
+
+    private function findCarolCopyIcs(string $uid): string
+    {
+        $copy = CalendarObject::query()
+            ->where('uid', $uid)
+            ->whereHas('calendar.instances', function ($query): void {
+                $query->where('principaluri', 'principals/carol');
+            })
+            ->first();
+        $this->assertNotNull($copy);
+
+        return is_string($copy->calendardata) ? $copy->calendardata : (string) $copy->calendardata;
     }
 
     private function bobInvitesCarol(): string

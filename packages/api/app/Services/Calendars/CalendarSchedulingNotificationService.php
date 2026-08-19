@@ -30,6 +30,7 @@ final class CalendarSchedulingNotificationService
         private readonly MailDeliveryService $mail,
         private readonly MailDeliveryTransportResolver $mailResolver,
         private readonly CalendarSchedulingInviteHorizon $horizon,
+        private readonly CalendarSchedulingRsvpScope $rsvpScope,
     ) {}
 
     /**
@@ -144,7 +145,7 @@ final class CalendarSchedulingNotificationService
     }
 
     /**
-     * @param  array{participationStatus: string, calendarId?: string|null}  $payload
+     * @param  array{participationStatus: string, calendarId?: string|null, recurrenceId?: string|null, scope?: string|null}  $payload
      * @return array<string, mixed>
      */
     public function respond(string $username, string $notificationId, array $payload): array
@@ -164,27 +165,27 @@ final class CalendarSchedulingNotificationService
         $status = $payload['participationStatus'];
         $event = $this->events->show($username, $eventId);
         $participants = is_array($event['participants'] ?? null) ? $event['participants'] : [];
-        $updated = false;
-        foreach ($participants as $id => $participant) {
-            if (! is_array($participant)) {
-                continue;
-            }
-            if (! $this->isOwnParticipant($username, $participant['email'] ?? null)) {
-                continue;
-            }
-            $participant['participationStatus'] = $status;
-            $participants[$id] = $participant;
-            $updated = true;
-        }
-        if (! $updated) {
+        $isOwn = fn (mixed $email): bool => $this->isOwnParticipant($username, $email);
+        if (! $this->hasOwnParticipant($participants, $isOwn)) {
             throw new ApiHttpException(400, 'You are not an attendee of this event.', 'bad_request');
         }
 
-        $patch = ['participants' => $participants];
-        $calendarId = $payload['calendarId'] ?? null;
-        if (is_string($calendarId) && $calendarId !== '' && in_array($status, ['accepted', 'tentative'], true)) {
-            $patch['calendarIds'] = [$calendarId => true];
-        }
+        $copy = is_string($notification['uid'] ?? null) && $notification['uid'] !== ''
+            ? $this->findEventByUid($username, (string) $notification['uid'])
+            : null;
+        $ics = $copy !== null
+            ? (is_string($copy->calendardata) ? $copy->calendardata : (string) $copy->calendardata)
+            : null;
+
+        $patch = $this->rsvpScope->patch(
+            $event,
+            $status,
+            isset($payload['scope']) && is_string($payload['scope']) ? $payload['scope'] : null,
+            isset($payload['recurrenceId']) && is_string($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
+            $payload['calendarId'] ?? null,
+            $isOwn,
+            $ics,
+        );
 
         $this->events->patchWithPrecondition($username, $eventId, $patch, requirePrecondition: false);
         $notification['participationStatus'] = $status;
@@ -517,6 +518,21 @@ final class CalendarSchedulingNotificationService
         }
 
         return 'needs-action';
+    }
+
+    /**
+     * @param  array<string, mixed>  $participants
+     * @param  callable(mixed): bool  $isOwn
+     */
+    private function hasOwnParticipant(array $participants, callable $isOwn): bool
+    {
+        foreach ($participants as $participant) {
+            if (is_array($participant) && $isOwn($participant['email'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isOwnParticipant(string $username, mixed $participantEmail): bool
