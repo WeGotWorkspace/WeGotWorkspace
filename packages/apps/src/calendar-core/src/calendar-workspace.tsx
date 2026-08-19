@@ -480,6 +480,7 @@ export function CalendarWorkspace({
               className="workspace-app-layout__panel calendar-workspace__invitations-panel"
               data-open={invitationsOpen ? "true" : "false"}
               aria-hidden={!invitationsOpen}
+              inert={!invitationsOpen || undefined}
             >
               {invitationsPanel}
             </div>

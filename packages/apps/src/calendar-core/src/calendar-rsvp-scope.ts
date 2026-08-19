@@ -17,6 +17,7 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type {
   CalendarSchedulingNotification,
   CalendarSchedulingRespondOptions,
+  CalendarSchedulingRespondScope,
 } from "@/lib/api/wgw/calendar-scheduling";
 
 export type {
