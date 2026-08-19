@@ -6,10 +6,12 @@ namespace Tests\Feature\Calendars;
 
 use App\Dav\SabreServerFactory;
 use App\Models\CalendarObject;
+use App\Models\Principal;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Sabre\DAV\Exception as SabreDavException;
 use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
@@ -102,6 +104,108 @@ final class CalendarsSchedulingItipTest extends WgwDatabaseTestCase
         $eventId = (string) $created->json('methodResponses.0.1.created.inv.id');
         $this->assertNotSame([], $this->schedulingObjectsFor('principals/carol'));
         $this->assertNotNull($this->findEventByUid('carol', $this->eventUid($eventId, 'bob')));
+    }
+
+    /**
+     * Reverse of admin→wouter: a usable organizer mailbox must still deliver
+     * local iTIP when the invitee's profile email is empty, invalid, or only a username.
+     *
+     * @return iterable<string, array{0: ?string, 1: string}>
+     */
+    public static function inviteeWithoutUsableEmailProvider(): iterable
+    {
+        yield 'empty email invited by username' => [null, 'admin'];
+        yield 'invalid email invited by stored value' => ['not-an-email', 'not-an-email'];
+        yield 'invalid email invited by username' => ['not-an-email', 'admin'];
+        yield 'username stored as email' => ['admin', 'admin'];
+        yield 'localhost email invited as mailto' => ['admin@localhost', 'admin@localhost'];
+    }
+
+    #[DataProvider('inviteeWithoutUsableEmailProvider')]
+    public function test_valid_organizer_delivers_to_invitee_without_usable_email(
+        ?string $inviteeEmail,
+        string $attendeePayloadEmail,
+    ): void {
+        $this->seedWgwUser('wouter', email: 'wouter@woutervroege.nl', displayName: 'Wouter');
+        $this->seedWgwUser('admin', displayName: 'Admin');
+        $this->seedDefaultCalendarFor('wouter');
+        $this->seedDefaultCalendarFor('admin');
+        $admin = Principal::forUsername('admin');
+        $this->assertNotNull($admin);
+        $admin->email = $inviteeEmail;
+        $admin->save();
+
+        $created = $this->jmapAs('wouter', [
+            ['CalendarEvent/set', ['accountId' => 'wouter', 'create' => ['inv' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Reverse invite',
+                'start' => '2030-01-15T10:00:00Z',
+                'end' => '2030-01-15T10:30:00Z',
+                'participants' => [
+                    'org' => [
+                        '@type' => 'Participant',
+                        'email' => 'wouter@woutervroege.nl',
+                        'name' => 'Wouter',
+                        'roles' => ['owner'],
+                    ],
+                    'att1' => [
+                        '@type' => 'Participant',
+                        'email' => $attendeePayloadEmail,
+                        'name' => 'Admin',
+                        'roles' => ['attendee'],
+                        'expectReply' => true,
+                        'participationStatus' => 'needs-action',
+                    ],
+                ],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $eventId = (string) $created->json('methodResponses.0.1.created.inv.id');
+        $this->assertNotSame('', $eventId);
+        $this->assertSame([], $created->json('methodResponses.0.1.notCreated') ?? []);
+
+        $inbox = $this->schedulingObjectsFor('principals/admin');
+        $this->assertNotSame([], $inbox);
+        $this->assertStringContainsString('METHOD:REQUEST', $inbox[0]['calendardata']);
+        $this->assertNotNull($this->findEventByUid('admin', $this->eventUid($eventId, 'wouter')));
+
+        $list = $this->withBearer($this->issueBearerTokenFor('admin'))
+            ->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame('REQUEST', $list[0]['method']);
+        $this->assertSame('Reverse invite', $list[0]['title']);
+        Mail::assertNothingSent();
+    }
+
+    public function test_organizer_reschedule_replaces_inbox_request_instead_of_stacking(): void
+    {
+        $eventId = $this->bobInvitesCarol();
+        $this->assertCount(1, $this->schedulingObjectsFor('principals/carol'));
+
+        $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => [
+                'start' => '2030-01-15T11:00:00Z',
+                'end' => '2030-01-15T11:30:00Z',
+            ]]], 'c0'],
+        ])->assertOk();
+        $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => [
+                'start' => '2030-01-15T12:00:00Z',
+                'end' => '2030-01-15T12:30:00Z',
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $this->assertCount(1, $this->schedulingObjectsFor('principals/carol'));
+        $list = $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame('REQUEST', $list[0]['method']);
     }
 
     public function test_organizer_invite_writes_attendee_inbox_and_tentative_event_without_email(): void

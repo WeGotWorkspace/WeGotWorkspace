@@ -64,6 +64,62 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertSame('bare', $byUsername['bare'] ?? null);
     }
 
+    public function test_duplicate_request_copies_for_same_uid_list_as_one_notification(): void
+    {
+        $uid = 'dup-invite-uid';
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'req-1.ics',
+            $this->inviteIcs($uid, '20300115T114500Z', '20300115T121500Z'),
+        );
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'req-2.ics',
+            $this->inviteIcs($uid, '20300115T124500Z', '20300115T131500Z'),
+        );
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'req-3.ics',
+            $this->inviteIcs($uid, '20300115T134500Z', '20300115T141500Z'),
+        );
+
+        $list = $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame($uid, $list[0]['uid']);
+        $this->assertSame('2030-01-15T13:45:00Z', $list[0]['start']);
+        $this->assertSame(
+            1,
+            SchedulingObject::query()->where('principaluri', 'principals/carol')->count(),
+        );
+    }
+
+    public function test_recurring_series_lists_one_card_not_each_occurrence(): void
+    {
+        $uid = 'series-invite-uid';
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'series-master.ics',
+            $this->inviteIcs($uid, '20300115T100000Z', '20300115T110000Z', 'FREQ=DAILY;COUNT=3'),
+        );
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'series-instance.ics',
+            $this->inviteIcs($uid, '20300116T100000Z', '20300116T110000Z'),
+        );
+
+        $list = $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame($uid, $list[0]['uid']);
+    }
+
     public function test_attendee_lists_own_invite_notification(): void
     {
         $this->bobInvitesCarol();
@@ -132,6 +188,34 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
 
         $this->assertTrue($carolEvent['calendarIds']['work'] ?? false);
         $this->assertFalse($carolEvent['calendarIds']['default'] ?? false);
+    }
+
+    public function test_respond_can_move_already_accepted_copy(): void
+    {
+        $this->bobInvitesCarol();
+        $this->seedCalendarFor('carol', 'work', 'Work');
+        $this->seedCalendarFor('carol', 'home', 'Home');
+        $notificationId = $this->carolNotificationId();
+        $eventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted', 'calendarId' => 'work'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted', 'calendarId' => 'home'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertTrue($carolEvent['calendarIds']['home'] ?? false);
+        $this->assertFalse($carolEvent['calendarIds']['work'] ?? false);
     }
 
     public function test_respond_declined_ignores_calendar_id(): void

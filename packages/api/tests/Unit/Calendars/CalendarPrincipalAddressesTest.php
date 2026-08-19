@@ -43,4 +43,22 @@ final class CalendarPrincipalAddressesTest extends WgwDatabaseTestCase
         $this->assertSame('principals/bare', $addresses->principalForMailto('bare')?->uri);
         $this->assertNull($addresses->principalForMailto('mailto:guest@elsewhere.test'));
     }
+
+    public function test_resolves_principal_by_stored_invalid_or_empty_email(): void
+    {
+        $broken = Principal::forUsername('admin');
+        $this->assertNotNull($broken);
+        $broken->email = 'not-an-email';
+        $broken->save();
+
+        $addresses = app(CalendarPrincipalAddresses::class);
+
+        $this->assertSame('principals/admin', $addresses->principalForMailto('not-an-email')?->uri);
+        $this->assertSame('principals/admin', $addresses->principalForMailto('mailto:not-an-email')?->uri);
+        $this->assertSame('principals/admin', $addresses->principalForMailto('admin')?->uri);
+        $this->assertSame('admin', $addresses->canonicalCalendarUserAddress($broken));
+        $bare = Principal::forUsername('bare');
+        $this->assertNotNull($bare);
+        $this->assertSame('bare', $addresses->canonicalCalendarUserAddress($bare));
+    }
 }

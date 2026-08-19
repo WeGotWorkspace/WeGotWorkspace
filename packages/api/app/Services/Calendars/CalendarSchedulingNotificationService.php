@@ -51,8 +51,7 @@ final class CalendarSchedulingNotificationService
             if ($username === '' || str_contains($username, '/')) {
                 continue;
             }
-            $email = $this->addresses->calendarUserAddress($row->email)
-                ?? $this->addresses->calendarUserAddress($username);
+            $email = $this->addresses->canonicalCalendarUserAddress($row);
             if ($email === null) {
                 continue;
             }
@@ -96,10 +95,52 @@ final class CalendarSchedulingNotificationService
             if ($this->isFullyPastInvite($row)) {
                 continue;
             }
-            $list[] = $notification;
+            $list[] = ['row' => $row, 'notification' => $notification];
         }
 
-        return ['list' => $list];
+        return ['list' => $this->collapseDuplicateInvites($list)];
+    }
+
+    /**
+     * One invitee-facing card per UID. Extra REQUEST copies (reschedule,
+     * timezone rewrite, series instances) are dropped; the newest row remains.
+     *
+     * @param  list<array{row: SchedulingObject, notification: array<string, mixed>}>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function collapseDuplicateInvites(array $items): array
+    {
+        $keepIndexByUid = [];
+        $drop = [];
+        foreach ($items as $index => $item) {
+            $uid = trim((string) ($item['notification']['uid'] ?? ''));
+            $method = strtoupper((string) ($item['notification']['method'] ?? 'REQUEST'));
+            if ($uid === '' || ($method !== '' && $method !== 'REQUEST')) {
+                continue;
+            }
+            if (! isset($keepIndexByUid[$uid])) {
+                $keepIndexByUid[$uid] = $index;
+
+                continue;
+            }
+            $previous = $keepIndexByUid[$uid];
+            $preferCurrent = (int) $item['row']->id >= (int) $items[$previous]['row']->id;
+            $drop[] = $preferCurrent ? $previous : $index;
+            if ($preferCurrent) {
+                $keepIndexByUid[$uid] = $index;
+            }
+        }
+        foreach ($drop as $index) {
+            $items[$index]['row']->delete();
+            unset($items[$index]);
+        }
+
+        $list = [];
+        foreach ($items as $item) {
+            $list[] = $item['notification'];
+        }
+
+        return $list;
     }
 
     /**

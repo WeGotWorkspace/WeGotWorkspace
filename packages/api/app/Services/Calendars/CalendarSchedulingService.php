@@ -52,6 +52,7 @@ final class CalendarSchedulingService
      */
     public function withOrganizer(string $username, array $event): array
     {
+        $event = $this->canonicalizeLocalParticipants($event);
         $participants = $event['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
             return $event;
@@ -84,6 +85,45 @@ final class CalendarSchedulingService
             ],
             ...$participants,
         ];
+
+        return $event;
+    }
+
+    /**
+     * Rewrite local participants to a stable calendar-user address (usable
+     * email or username) so Broker + inbox matching do not depend on a
+     * valid mailbox.
+     *
+     * @param  array<string, mixed>  $event
+     * @return array<string, mixed>
+     */
+    private function canonicalizeLocalParticipants(array $event): array
+    {
+        $participants = $event['participants'] ?? null;
+        if (! is_array($participants) || $participants === []) {
+            return $event;
+        }
+
+        foreach ($participants as $id => $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $email = $entry['email'] ?? null;
+            if (! is_string($email) || trim($email) === '') {
+                continue;
+            }
+            $principal = $this->addresses->principalForMailto($email);
+            if ($principal === null) {
+                continue;
+            }
+            $canonical = $this->addresses->canonicalCalendarUserAddress($principal);
+            if ($canonical === null) {
+                continue;
+            }
+            $entry['email'] = $canonical;
+            $participants[$id] = $entry;
+        }
+        $event['participants'] = $participants;
 
         return $event;
     }
@@ -220,6 +260,8 @@ final class CalendarSchedulingService
 
             return;
         }
+
+        $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid);
 
         $caldav = $this->calBackend();
         $objectUri = 'sabredav-'.Str::uuid()->toString().'.ics';

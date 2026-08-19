@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Maps instance users to iTIP calendar-user addresses.
  *
- * Local delivery matches {@code principals.email} (including {@code user@localhost})
- * and the username ({@code mailto:wouter} from a username-only picker).
+ * Local delivery matches {@code principals.email} (including invalid or
+ * {@code user@localhost} values) and the username ({@code mailto:wouter}
+ * from a username-only picker). A bad mailbox is not treated as external.
  */
 final class CalendarPrincipalAddresses
 {
@@ -53,15 +54,18 @@ final class CalendarPrincipalAddresses
             return null;
         }
 
+        // Match the stored profile value even when it is not a usable mailbox
+        // (username-shaped garbage, empty-domain, etc.). Invalid email must not
+        // hide a local principal from iTIP.
+        $byEmail = $this->userPrincipalQuery()
+            ->whereRaw('lower(email) = ?', [$raw])
+            ->first();
+        if ($byEmail !== null) {
+            return $byEmail;
+        }
+
         $email = $this->normalizedEmail($raw);
         if ($email !== null) {
-            $byEmail = $this->userPrincipalQuery()
-                ->whereRaw('lower(email) = ?', [$email])
-                ->first();
-            if ($byEmail !== null) {
-                return $byEmail;
-            }
-
             $username = $this->localUsernameIfLocalDomain($email);
             if ($username !== null) {
                 $byUsername = Principal::forUsername($username);
@@ -76,6 +80,16 @@ final class CalendarPrincipalAddresses
         }
 
         return null;
+    }
+
+    /**
+     * Address to advertise / persist for a local user: usable email, else username.
+     */
+    public function canonicalCalendarUserAddress(Principal $principal): ?string
+    {
+        $addresses = $this->addressesForPrincipal($principal);
+
+        return $addresses !== [] ? $this->calendarUserAddress($addresses[0]) : null;
     }
 
     public function normalizedEmail(mixed $value): ?string
