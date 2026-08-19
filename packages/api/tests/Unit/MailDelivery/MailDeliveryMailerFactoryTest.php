@@ -6,6 +6,7 @@ namespace Tests\Unit\MailDelivery;
 
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryMailerFactory;
+use App\Services\MailDelivery\MailDeliveryTransportResolver;
 use Tests\TestCase;
 
 final class MailDeliveryMailerFactoryTest extends TestCase
@@ -20,7 +21,7 @@ final class MailDeliveryMailerFactoryTest extends TestCase
 
     public function test_smtp_and_sendmail_timeout_is_ten_seconds(): void
     {
-        $factory = new MailDeliveryMailerFactory;
+        $factory = new MailDeliveryMailerFactory(new MailDeliveryTransportResolver);
         $config = new MailDeliveryConfig(
             from: 'ops@example.test',
             transport: MailDeliveryConfig::TRANSPORT_SMTP,
@@ -43,7 +44,7 @@ final class MailDeliveryMailerFactoryTest extends TestCase
 
     public function test_php_mailer_has_no_socket_timeout(): void
     {
-        $factory = new MailDeliveryMailerFactory;
+        $factory = new MailDeliveryMailerFactory(new MailDeliveryTransportResolver);
         $config = new MailDeliveryConfig(
             from: 'ops@example.test',
             transport: MailDeliveryConfig::TRANSPORT_PHP,

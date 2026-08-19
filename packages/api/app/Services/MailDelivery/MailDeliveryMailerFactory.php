@@ -15,6 +15,8 @@ final class MailDeliveryMailerFactory
 
     private static bool $sendmailExtended = false;
 
+    public function __construct(private MailDeliveryTransportResolver $resolver) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -28,7 +30,7 @@ final class MailDeliveryMailerFactory
                     'security' => 'starttls',
                     'smtpAuth' => true,
                 ]
-                : (new MailDeliveryTransportResolver)->normalizeSmtp($config);
+                : $this->resolver->normalizeSmtp($config);
             $encryption = match ($normalized['security']) {
                 'ssl' => 'ssl',
                 'starttls' => 'tls',

@@ -36,16 +36,16 @@ final class MailDeliveryTestController
             $to = trim((string) ($row?->email ?? ''));
         }
 
-        $from = $this->delivery->adminState()['config']['from'];
+        $config = $this->delivery->loadConfig();
         $message = new OutboundMessage(
-            from: is_string($from) ? $from : '',
+            from: $config->from,
             to: $to !== '' ? [$to] : [],
             subject: 'WeGotWorkspace email delivery test',
             textBody: 'This is a test message from your WeGotWorkspace instance. Acceptance by the transport does not mean the message reached an inbox.',
         );
 
         try {
-            return response()->json($this->delivery->recordTestSend($message));
+            return response()->json($this->delivery->recordTestSend($message, $config));
         } catch (InvalidOutboundMessageException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
         }

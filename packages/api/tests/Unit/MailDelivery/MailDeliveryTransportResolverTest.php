@@ -87,6 +87,58 @@ final class MailDeliveryTransportResolverTest extends TestCase
         $this->assertSame('php', $capability['selectedTransport']);
     }
 
+    public function test_forced_php_when_probe_false_is_unavailable(): void
+    {
+        $resolver = new MailDeliveryTransportResolver(phpMailProbe: static fn (): bool => false);
+        $config = self::config(from: 'ops@example.test', transport: MailDeliveryConfig::TRANSPORT_PHP);
+        $resolved = $resolver->resolve($config);
+
+        $this->assertSame('php', $resolved->name);
+        $this->assertSame(DeliveryResult::UNAVAILABLE, $resolved->blockStatus);
+        $this->assertFalse($resolved->canAttempt());
+        $this->assertFalse($resolver->capability($config)['canSubmit']);
+    }
+
+    public function test_forced_sendmail_when_probe_false_is_unavailable(): void
+    {
+        $resolver = new MailDeliveryTransportResolver(sendmailProbe: static fn (): bool => false);
+        $config = self::config(from: 'ops@example.test', transport: MailDeliveryConfig::TRANSPORT_SENDMAIL);
+        $resolved = $resolver->resolve($config);
+
+        $this->assertSame('sendmail', $resolved->name);
+        $this->assertSame(DeliveryResult::UNAVAILABLE, $resolved->blockStatus);
+        $this->assertFalse($resolved->canAttempt());
+        $this->assertFalse($resolver->capability($config)['canSubmit']);
+    }
+
+    public function test_forced_php_when_available_can_submit(): void
+    {
+        $resolver = new MailDeliveryTransportResolver(phpMailProbe: static fn (): bool => true);
+        $config = self::config(from: 'ops@example.test', transport: MailDeliveryConfig::TRANSPORT_PHP);
+        $resolved = $resolver->resolve($config);
+
+        $this->assertSame('php', $resolved->name);
+        $this->assertNull($resolved->blockStatus);
+        $this->assertTrue($resolved->canAttempt());
+        $this->assertTrue($resolver->capability($config)['canSubmit']);
+    }
+
+    public function test_forced_smtp_with_empty_host_is_unavailable_not_auth_required(): void
+    {
+        $config = self::config(
+            from: 'ops@example.test',
+            transport: MailDeliveryConfig::TRANSPORT_SMTP,
+            smtpHost: '',
+        );
+        $resolved = $this->resolver->resolve($config);
+
+        $this->assertSame('smtp', $resolved->name);
+        $this->assertSame(DeliveryResult::UNAVAILABLE, $resolved->blockStatus);
+        $this->assertNotSame(DeliveryResult::SMTP_AUTH_REQUIRED, $resolved->blockStatus);
+        $this->assertFalse($resolved->canAttempt());
+        $this->assertFalse($this->resolver->capability($config)['canSubmit']);
+    }
+
     private static function config(
         string $from = '',
         string $transport = MailDeliveryConfig::TRANSPORT_AUTO,

@@ -13,14 +13,20 @@ final class MailDeliveryService
         private MailDeliverySettingsStore $settings,
         private MailDeliveryTransportResolver $resolver,
         private MailDeliveryMailerFactory $mailers,
+        private MailDeliveryFailureClassifier $failures,
     ) {}
+
+    public function loadConfig(): MailDeliveryConfig
+    {
+        return $this->settings->load();
+    }
 
     /**
      * @return array{config: array<string, mixed>, capability: array<string, mixed>, lastTestSend: array<string, mixed>|null}
      */
     public function adminState(): array
     {
-        $config = $this->settings->load();
+        $config = $this->loadConfig();
 
         return [
             'config' => $config->publicArray(),
@@ -29,10 +35,10 @@ final class MailDeliveryService
         ];
     }
 
-    public function send(OutboundMessage $message): DeliveryResult
+    public function send(OutboundMessage $message, ?MailDeliveryConfig $config = null): DeliveryResult
     {
         $this->assertValidMessage($message);
-        $config = $this->settings->load();
+        $config ??= $this->settings->load();
         $resolved = $this->resolver->resolve($config);
         $at = now()->toIso8601String();
         $transport = $resolved->name !== '' ? $resolved->name : '';
@@ -65,9 +71,9 @@ final class MailDeliveryService
     /**
      * @return array{accepted: bool, status: string, transport: string, at: string, message: string|null}
      */
-    public function recordTestSend(OutboundMessage $message): array
+    public function recordTestSend(OutboundMessage $message, ?MailDeliveryConfig $config = null): array
     {
-        $result = $this->send($message)->toArray();
+        $result = $this->send($message, $config)->toArray();
         $this->settings->storeLastTestSend($result);
 
         return $result;
@@ -97,21 +103,6 @@ final class MailDeliveryService
 
     private function mapFailure(\Throwable $e, string $transport, string $at): DeliveryResult
     {
-        $msg = strtolower($e->getMessage());
-        $status = DeliveryResult::UNAVAILABLE;
-        if (str_contains($msg, 'timed out') || str_contains($msg, 'timeout')) {
-            $status = DeliveryResult::TIMEOUT;
-        } elseif (str_contains($msg, 'auth') || str_contains($msg, '535') || str_contains($msg, '534')) {
-            $status = DeliveryResult::AUTH;
-        } elseif (
-            str_contains($msg, 'connect')
-            || str_contains($msg, 'connection')
-            || str_contains($msg, 'refused')
-            || str_contains($msg, 'resolv')
-        ) {
-            $status = DeliveryResult::CONNECT;
-        }
-
-        return DeliveryResult::failure($status, $transport, $at, $e->getMessage());
+        return DeliveryResult::failure($this->failures->classify($e), $transport, $at, $e->getMessage());
     }
 }

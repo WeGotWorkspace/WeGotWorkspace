@@ -8,6 +8,18 @@ use App\Services\Mail\MailSmtpTransportConfig;
 
 final class MailDeliveryTransportResolver
 {
+    /** @var (callable(): bool)|null */
+    private $phpMailProbe;
+
+    /** @var (callable(): bool)|null */
+    private $sendmailProbe;
+
+    public function __construct(?callable $phpMailProbe = null, ?callable $sendmailProbe = null)
+    {
+        $this->phpMailProbe = $phpMailProbe;
+        $this->sendmailProbe = $sendmailProbe;
+    }
+
     /**
      * @return array{host: string, port: int, security: string, smtpAuth: bool}
      */
@@ -38,22 +50,26 @@ final class MailDeliveryTransportResolver
         $mode = $config->transport;
 
         if ($mode === MailDeliveryConfig::TRANSPORT_SMTP) {
-            if ($normalized['smtpAuth'] && trim($config->smtpUsername) === '') {
-                return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_SMTP, DeliveryResult::SMTP_AUTH_REQUIRED, $normalized);
-            }
             if (trim($config->smtpHost) === '') {
                 return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_SMTP, DeliveryResult::UNAVAILABLE, $normalized);
+            }
+            if ($normalized['smtpAuth'] && trim($config->smtpUsername) === '') {
+                return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_SMTP, DeliveryResult::SMTP_AUTH_REQUIRED, $normalized);
             }
 
             return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_SMTP, null, $normalized);
         }
 
         if ($mode === MailDeliveryConfig::TRANSPORT_PHP) {
-            return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_PHP, null, null);
+            $block = $this->phpMailAvailable() ? null : DeliveryResult::UNAVAILABLE;
+
+            return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_PHP, $block, null);
         }
 
         if ($mode === MailDeliveryConfig::TRANSPORT_SENDMAIL) {
-            return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_SENDMAIL, null, null);
+            $block = $this->sendmailAvailable() ? null : DeliveryResult::UNAVAILABLE;
+
+            return new ResolvedTransport(MailDeliveryConfig::TRANSPORT_SENDMAIL, $block, null);
         }
 
         if ($this->isSmtpEligible($config)) {
@@ -94,11 +110,19 @@ final class MailDeliveryTransportResolver
 
     public function phpMailAvailable(): bool
     {
+        if ($this->phpMailProbe !== null) {
+            return (bool) ($this->phpMailProbe)();
+        }
+
         return function_exists('mail');
     }
 
     public function sendmailAvailable(): bool
     {
+        if ($this->sendmailProbe !== null) {
+            return (bool) ($this->sendmailProbe)();
+        }
+
         $path = trim((string) ini_get('sendmail_path'));
         if ($path === '') {
             $path = '/usr/sbin/sendmail';

@@ -29,13 +29,25 @@ final class MailDeliveryTestSendRateLimiter
         return true;
     }
 
+    public static function honorsDisableFlag(string $environment, string $rawFlag): bool
+    {
+        if (! in_array($environment, ['local', 'testing'], true)) {
+            return false;
+        }
+        $raw = strtolower(trim($rawFlag));
+
+        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
+    }
+
     private function isDisabled(): bool
     {
         if (app()->environment('testing') && ! filter_var(env('WGW_MAIL_DELIVERY_THROTTLE_TESTS', false), FILTER_VALIDATE_BOOLEAN)) {
             return true;
         }
-        $raw = strtolower(trim((string) env('WGW_DISABLE_MAIL_DELIVERY_THROTTLE', '')));
 
-        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
+        return self::honorsDisableFlag(
+            (string) app()->environment(),
+            (string) env('WGW_DISABLE_MAIL_DELIVERY_THROTTLE', ''),
+        );
     }
 }

@@ -19,15 +19,11 @@ final class AdminSettingsService
      */
     public function save(array $values, bool $clearSmtpPassword = false): array
     {
-        $passwordInPayload = array_key_exists(SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD, $values);
         $this->mailDelivery->persistAdminSave($values, $clearSmtpPassword);
         unset($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD], $values[SettingKeys::MAIL_DELIVERY_LAST_TEST_SEND]);
 
         $allowed = array_flip(SettingKeys::all());
         $saved = [];
-        if ($clearSmtpPassword || ($passwordInPayload && is_string($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD] ?? null) && $values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD] !== '')) {
-            // Password key is handled separately so plaintext never reaches AppSetting.
-        }
         foreach ($values as $key => $value) {
             if (! is_string($key) || ! isset($allowed[$key])) {
                 continue;
