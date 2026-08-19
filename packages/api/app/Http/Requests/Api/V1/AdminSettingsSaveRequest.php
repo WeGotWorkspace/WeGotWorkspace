@@ -20,7 +20,13 @@ final class AdminSettingsSaveRequest extends FormRequest
     {
         return [
             'values' => ['nullable', 'array'],
+            'clearSmtpPassword' => ['sometimes', 'boolean'],
         ];
+    }
+
+    public function shouldClearSmtpPassword(): bool
+    {
+        return $this->boolean('clearSmtpPassword');
     }
 
     /**

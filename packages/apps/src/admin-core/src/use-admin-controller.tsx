@@ -30,6 +30,7 @@ export function useAdminController({
     refreshingServerChecks: mutations.refreshingServerChecks,
     settingsForm: shell.settingsForm,
     setSettingsForm: shell.setSettingsForm,
+    mailDelivery: shell.mailDelivery,
     actions: mutations.actions,
   };
 }

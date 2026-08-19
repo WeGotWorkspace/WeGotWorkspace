@@ -221,3 +221,20 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-server-check-icon[data-check-tone="success"] {
   color: #3a8f5a;
 }
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-email-delivery-pane {
+  @apply flex flex-col gap-4;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-email-delivery-pane__help {
+  @apply mb-3 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-email-delivery-pane__row {
+  @apply grid grid-cols-2 gap-3;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-email-delivery-pane__actions {
+  @apply flex flex-wrap justify-end gap-3;
+}

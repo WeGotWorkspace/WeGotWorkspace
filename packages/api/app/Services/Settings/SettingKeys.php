@@ -44,6 +44,22 @@ final class SettingKeys
 
     public const MAIL_SMTP_SECURITY = 'mail_smtp_security';
 
+    public const MAIL_DELIVERY_FROM = 'mail_delivery_from';
+
+    public const MAIL_DELIVERY_TRANSPORT = 'mail_delivery_transport';
+
+    public const MAIL_DELIVERY_SMTP_HOST = 'mail_delivery_smtp_host';
+
+    public const MAIL_DELIVERY_SMTP_PORT = 'mail_delivery_smtp_port';
+
+    public const MAIL_DELIVERY_SMTP_SECURITY = 'mail_delivery_smtp_security';
+
+    public const MAIL_DELIVERY_SMTP_USERNAME = 'mail_delivery_smtp_username';
+
+    public const MAIL_DELIVERY_SMTP_PASSWORD = 'mail_delivery_smtp_password';
+
+    public const MAIL_DELIVERY_LAST_TEST_SEND = 'mail_delivery_last_test_send';
+
     /**
      * @return list<string>
      */
@@ -69,6 +85,12 @@ final class SettingKeys
             self::MAIL_SMTP_HOST,
             self::MAIL_SMTP_PORT,
             self::MAIL_SMTP_SECURITY,
+            self::MAIL_DELIVERY_FROM,
+            self::MAIL_DELIVERY_TRANSPORT,
+            self::MAIL_DELIVERY_SMTP_HOST,
+            self::MAIL_DELIVERY_SMTP_PORT,
+            self::MAIL_DELIVERY_SMTP_SECURITY,
+            self::MAIL_DELIVERY_SMTP_USERNAME,
         ];
     }
 }

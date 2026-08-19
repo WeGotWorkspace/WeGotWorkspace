@@ -20,6 +20,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
   const [settingsForm, setSettingsForm] = useState<AdminSettingsFormState>(() =>
     buildAdminSettingsFormState(data),
   );
+  const [mailDelivery, setMailDelivery] = useState(data.mailDelivery);
   const [updates, setUpdates] = useState(data.updates);
   const [searchReindex, setSearchReindex] = useState(data.searchReindex);
   const [updateLogLines, setUpdateLogLines] = useState(data.updateLogLines);
@@ -33,6 +34,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
     setUpdates(data.updates);
     setSearchReindex(data.searchReindex);
     setUpdateLogLines(data.updateLogLines);
+    setMailDelivery(data.mailDelivery);
   }, [data]);
 
   const applyAdminData = (next: AdminWorkspaceProps["data"]) => {
@@ -43,6 +45,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
     setUpdates(next.updates);
     setSearchReindex(next.searchReindex);
     setUpdateLogLines(next.updateLogLines);
+    setMailDelivery(next.mailDelivery);
   };
 
   useEffect(() => {
@@ -168,6 +171,8 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
     setPlugins,
     settingsForm,
     setSettingsForm,
+    mailDelivery,
+    setMailDelivery,
     updates,
     setUpdates,
     searchReindex,

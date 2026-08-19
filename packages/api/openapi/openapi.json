@@ -2169,6 +2169,41 @@
         "x-wgw-access": "admin"
       }
     },
+    "/admin/mail-delivery/test": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Send a platform email delivery test via MailDeliveryService::send()",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminMailDeliveryTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery result (accepted_by_transport is not inbox placement)"
+          },
+          "400": {
+            "description": "Invalid message"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        },
+        "x-wgw-access": "admin"
+      }
+    },
     "/admin/settings": {
       "put": {
         "tags": [
@@ -2180,9 +2215,22 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSettingsSaveRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Settings saved"
+          },
+          "400": {
+            "description": "Invalid settings (e.g. new password + clearSmtpPassword)"
           }
         },
         "x-wgw-access": "admin"

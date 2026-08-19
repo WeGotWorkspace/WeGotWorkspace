@@ -5,6 +5,7 @@ import {
   createDefaultAdminApiSource,
   type AdminApiSource,
 } from "@/admin-core/src/admin-api-source";
+import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
 import type { AdminUIData } from "@/admin-core/src/admin-types";
 
 export function useAdminAPI(source?: AdminApiSource) {
@@ -21,6 +22,7 @@ export function useAdminAPI(source?: AdminApiSource) {
         smtpPort: 0,
         smtpSecurity: "",
       },
+      mailDelivery: defaultMailDeliveryState(),
       rtc: {
         stunUrls: "",
         turnUrls: "",

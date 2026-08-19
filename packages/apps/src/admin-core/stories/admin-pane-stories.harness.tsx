@@ -10,6 +10,12 @@ export type AdminStoryDataOverride = {
   users?: AdminUIData["users"];
   groups?: AdminUIData["groups"];
   mail?: Partial<AdminUIData["mail"]>;
+  mailDelivery?: Partial<AdminUIData["mailDelivery"]> & {
+    config?: Partial<AdminUIData["mailDelivery"]["config"]>;
+    capability?: Partial<AdminUIData["mailDelivery"]["capability"]> & {
+      probes?: Partial<AdminUIData["mailDelivery"]["capability"]["probes"]>;
+    };
+  };
   rtc?: Partial<AdminUIData["rtc"]>;
   apps?: Partial<AdminUIData["apps"]>;
   webdav?: Partial<AdminUIData["webdav"]>;
@@ -41,6 +47,23 @@ function mergeAdminStoryData(base: AdminUIData, override?: AdminStoryDataOverrid
     ...override,
     rtc: { ...base.rtc, ...override.rtc },
     mail: { ...base.mail, ...override.mail },
+    mailDelivery: {
+      ...base.mailDelivery,
+      ...override.mailDelivery,
+      config: { ...base.mailDelivery.config, ...override.mailDelivery?.config },
+      capability: {
+        ...base.mailDelivery.capability,
+        ...override.mailDelivery?.capability,
+        probes: {
+          ...base.mailDelivery.capability.probes,
+          ...override.mailDelivery?.capability?.probes,
+        },
+      },
+      lastTestSend:
+        override.mailDelivery && "lastTestSend" in override.mailDelivery
+          ? (override.mailDelivery.lastTestSend ?? null)
+          : base.mailDelivery.lastTestSend,
+    },
     apps: { ...base.apps, ...override.apps },
     webdav: { ...base.webdav, ...override.webdav },
     updates: { ...base.updates, ...override.updates },

@@ -624,6 +624,10 @@
                 "properties": {
                     "values": {
                         "$ref": "#/components/schemas/AdminSettingsValueMap"
+                    },
+                    "clearSmtpPassword": {
+                        "type": "boolean",
+                        "description": "When true, clears the stored mail_delivery SMTP secret. Cannot be combined with a new password."
                     }
                 },
                 "example": {
@@ -1118,6 +1122,9 @@
                     "mail": {
                         "$ref": "#/components/schemas/AdminMailSettings"
                     },
+                    "mailDelivery": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryState"
+                    },
                     "rtc": {
                         "$ref": "#/components/schemas/AdminRtcSettings"
                     },
@@ -1141,6 +1148,7 @@
                     "users",
                     "groups",
                     "mail",
+                    "mailDelivery",
                     "rtc",
                     "apps",
                     "webdav",
@@ -9470,6 +9478,187 @@
                         "type": "integer"
                     }
                 }
+            },
+            "AdminMailDeliveryTransport": {
+                "type": "string",
+                "enum": [
+                    "auto",
+                    "smtp",
+                    "php",
+                    "sendmail"
+                ],
+                "description": "Configured transport. auto selects SMTP only when smtp-eligible."
+            },
+            "AdminMailDeliverySelectedTransport": {
+                "type": "string",
+                "enum": [
+                    "smtp",
+                    "php",
+                    "sendmail"
+                ],
+                "nullable": true,
+                "description": "Transport that would be used for the next send(), or null when none can be selected."
+            },
+            "AdminMailDeliveryStatus": {
+                "type": "string",
+                "enum": [
+                    "accepted_by_transport",
+                    "unavailable",
+                    "connect",
+                    "auth",
+                    "timeout",
+                    "smtp_auth_required"
+                ],
+                "description": "accepted_by_transport means the MTA/relay accepted the message, not inbox placement."
+            },
+            "AdminMailDeliveryConfig": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "from": {
+                        "type": "string"
+                    },
+                    "transport": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryTransport"
+                    },
+                    "smtpHost": {
+                        "type": "string"
+                    },
+                    "smtpPort": {
+                        "type": "integer"
+                    },
+                    "smtpSecurity": {
+                        "type": "string"
+                    },
+                    "smtpUsername": {
+                        "type": "string"
+                    },
+                    "smtpPasswordSet": {
+                        "type": "boolean",
+                        "description": "True when a SMTP secret is stored. Never a password value."
+                    }
+                },
+                "required": [
+                    "from",
+                    "transport",
+                    "smtpHost",
+                    "smtpPort",
+                    "smtpSecurity",
+                    "smtpUsername",
+                    "smtpPasswordSet"
+                ]
+            },
+            "AdminMailDeliveryProbes": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "fromConfigured": {
+                        "type": "boolean"
+                    },
+                    "smtpEligible": {
+                        "type": "boolean"
+                    },
+                    "smtpAuthRequired": {
+                        "type": "boolean"
+                    },
+                    "phpMailAvailable": {
+                        "type": "boolean"
+                    },
+                    "sendmailAvailable": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "fromConfigured",
+                    "smtpEligible",
+                    "smtpAuthRequired",
+                    "phpMailAvailable",
+                    "sendmailAvailable"
+                ]
+            },
+            "AdminMailDeliveryCapability": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Function check only. Does not claim inbox placement.",
+                "properties": {
+                    "canSubmit": {
+                        "type": "boolean"
+                    },
+                    "selectedTransport": {
+                        "$ref": "#/components/schemas/AdminMailDeliverySelectedTransport"
+                    },
+                    "probes": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryProbes"
+                    }
+                },
+                "required": [
+                    "canSubmit",
+                    "selectedTransport",
+                    "probes"
+                ]
+            },
+            "AdminMailDeliveryLastTestSend": {
+                "type": "object",
+                "additionalProperties": false,
+                "nullable": true,
+                "properties": {
+                    "accepted": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryStatus"
+                    },
+                    "transport": {
+                        "type": "string"
+                    },
+                    "at": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "accepted",
+                    "status",
+                    "transport",
+                    "at",
+                    "message"
+                ]
+            },
+            "AdminMailDeliveryState": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "config": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryConfig"
+                    },
+                    "capability": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryCapability"
+                    },
+                    "lastTestSend": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryLastTestSend"
+                    }
+                },
+                "required": [
+                    "config",
+                    "capability",
+                    "lastTestSend"
+                ]
+            },
+            "AdminMailDeliveryTestRequest": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "to": {
+                        "type": "string",
+                        "description": "Optional recipient. Defaults to the admin principal email."
+                    }
+                }
+            },
+            "AdminMailDeliveryTestResponse": {
+                "$ref": "#/components/schemas/AdminMailDeliveryLastTestSend"
             }
         },
         "responses": {
@@ -11399,9 +11588,22 @@
                         "bearerAuth": []
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminSettingsSaveRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Settings saved"
+                    },
+                    "400": {
+                        "description": "Invalid settings (e.g. new password + clearSmtpPassword)"
                     }
                 },
                 "x-wgw-access": "admin"
@@ -14228,6 +14430,41 @@
                         "$ref": "#/components/responses/JmapForbidden"
                     }
                 }
+            }
+        },
+        "/admin/mail-delivery/test": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Send a platform email delivery test via MailDeliveryService::send()",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminMailDeliveryTestRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Delivery result (accepted_by_transport is not inbox placement)"
+                    },
+                    "400": {
+                        "description": "Invalid message"
+                    },
+                    "429": {
+                        "description": "Rate limited"
+                    }
+                },
+                "x-wgw-access": "admin"
             }
         }
     }
