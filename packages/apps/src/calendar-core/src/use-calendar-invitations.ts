@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import type {
@@ -14,6 +15,7 @@ export function useCalendarInvitations(
   const [invitees, setInvitees] = useState<CalendarInvitee[]>([]);
   const [canSubmitEmail, setCanSubmitEmail] = useState(false);
   const [busy, setBusy] = useState(false);
+  const refreshInFlightRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!operations?.listSchedulingNotifications) {
@@ -39,6 +41,36 @@ export function useCalendarInvitations(
       setCanSubmitEmail(next.canSubmitEmail);
     });
   }, [operations]);
+
+  useEffect(() => {
+    if (!operations?.listSchedulingNotifications) return;
+    if (typeof window === "undefined") return;
+
+    let cancelled = false;
+
+    const runSilentRefresh = () => {
+      if (cancelled || busy || refreshInFlightRef.current) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      refreshInFlightRef.current = true;
+      void refresh()
+        .catch(() => undefined)
+        .finally(() => {
+          refreshInFlightRef.current = false;
+        });
+    };
+
+    const intervalId = window.setInterval(runSilentRefresh, CALENDAR_BACKGROUND_POLL_MS);
+    const onVisibilityChange = () => {
+      if (!document.hidden) runSilentRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [busy, operations?.listSchedulingNotifications, refresh]);
 
   const respond = useCallback(
     async (id: string, status: CalendarSchedulingRespondStatus, calendarId?: string) => {

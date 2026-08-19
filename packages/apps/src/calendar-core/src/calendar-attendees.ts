@@ -107,6 +107,95 @@ export function isSessionInvitee(invitee: CalendarInvitee, sessionEmail?: string
   return attendeesReferToSamePerson({ email: self }, { email: inviteeAddress(invitee) }, [invitee]);
 }
 
+/**
+ * Username vs email (e.g. `admin` vs `admin@localhost`) — same rule as the
+ * invitee inbox (`isInviteeNotification` session-address aliases).
+ */
+export function calendarSessionOwnsAddress(
+  address: string,
+  sessionAddresses: readonly string[],
+): boolean {
+  const target = normalizeParticipantAddress(address);
+  if (!target || sessionAddresses.length === 0) return false;
+  const aliases = sessionAddresses
+    .map((value) => normalizeParticipantAddress(value))
+    .filter(Boolean);
+  if (aliases.includes(target)) return true;
+  const targetLocal = target.split("@")[0] ?? "";
+  return aliases.some((alias) => {
+    const local = alias.split("@")[0] ?? "";
+    return local !== "" && (local === target || local === targetLocal);
+  });
+}
+
+function sessionAddressesForMatch(
+  sessionEmail: string | undefined,
+  invitees: CalendarInvitee[],
+): string[] {
+  const raw = sessionEmail?.trim();
+  if (!raw) return [];
+  const addresses = new Set<string>([raw]);
+  for (const invitee of invitees) {
+    if (
+      isSessionInvitee(invitee, raw) ||
+      calendarSessionOwnsAddress(invitee.email, [raw]) ||
+      calendarSessionOwnsAddress(invitee.username, [raw])
+    ) {
+      if (invitee.email.trim()) addresses.add(invitee.email);
+      if (invitee.username.trim()) addresses.add(invitee.username);
+    }
+  }
+  return [...addresses];
+}
+
+/** True when the session user is the ORGANIZER/owner (`roles.owner` / `isOrganizer`). */
+export function isSessionEventOrganizer(
+  attendees: CalendarAttendee[],
+  sessionEmail?: string,
+  invitees: CalendarInvitee[] = [],
+): boolean {
+  const addresses = sessionAddressesForMatch(sessionEmail, invitees);
+  const organizer = attendees.find((row) => row.isOrganizer);
+  if (organizer) {
+    return calendarSessionOwnsAddress(organizer.email, addresses);
+  }
+  if (addresses.length === 0) return true;
+  return !attendees.some(
+    (row) => !row.isOrganizer && calendarSessionOwnsAddress(row.email, addresses),
+  );
+}
+
+/** True when the session user is a non-organizer attendee (may change their RSVP). */
+export function isSessionEventInvitee(
+  attendees: CalendarAttendee[],
+  sessionEmail?: string,
+  invitees: CalendarInvitee[] = [],
+): boolean {
+  return sessionEventInvitee(attendees, sessionEmail, invitees) !== null;
+}
+
+/** Current user's PARTSTAT when they are a non-organizer attendee. */
+export function sessionEventInviteeStatus(
+  attendees: CalendarAttendee[],
+  sessionEmail?: string,
+  invitees: CalendarInvitee[] = [],
+): CalendarParticipationStatus | null {
+  return sessionEventInvitee(attendees, sessionEmail, invitees)?.participationStatus ?? null;
+}
+
+function sessionEventInvitee(
+  attendees: CalendarAttendee[],
+  sessionEmail?: string,
+  invitees: CalendarInvitee[] = [],
+): CalendarAttendee | null {
+  if (isSessionEventOrganizer(attendees, sessionEmail, invitees)) return null;
+  const addresses = sessionAddressesForMatch(sessionEmail, invitees);
+  return (
+    attendees.find((row) => !row.isOrganizer && calendarSessionOwnsAddress(row.email, addresses)) ??
+    null
+  );
+}
+
 /** Attendees shown in the Invitees card: not the organizer, one row per person. */
 export function listedInviteeAttendees(
   attendees: CalendarAttendee[],

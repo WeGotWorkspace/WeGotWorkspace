@@ -1,6 +1,6 @@
 @import "../../styles.css" reference;
 @import "../../text-editor-core/docs-collab/docs-collab-card/docs-collab-card.css";
-@import "./calendar-rsvp-status.css";
+@import "./calendar-rsvp-actions.css";
 
 .calendar-invitation-card {
   @apply min-w-0 max-w-full;
@@ -19,37 +19,4 @@
 
 .calendar-invitation-card__event {
   @apply mt-2.5 block w-full min-w-0 max-w-full overflow-hidden;
-}
-
-.calendar-invitation-card__actions {
-  @apply mt-3 flex flex-nowrap items-center gap-1.5;
-}
-
-.calendar-invitation-card__action {
-  @apply inline-flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors;
-  border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  color: var(--docs-text, var(--color-ink));
-  background-color: transparent;
-}
-
-.calendar-invitation-card__action:hover:not(:disabled) {
-  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
-}
-
-.calendar-invitation-card__action:disabled {
-  @apply cursor-not-allowed opacity-40;
-}
-
-.calendar-invitation-card__action--selected {
-  border-color: color-mix(in oklab, var(--tag-fg) 45%, transparent);
-  background-color: var(--tag-bg);
-  color: var(--tag-fg);
-}
-
-.calendar-invitation-card__action--selected:hover:not(:disabled) {
-  background-color: var(--tag-bg);
-}
-
-.calendar-invitation-card__action-icon {
-  @apply size-3.5;
 }

@@ -130,6 +130,10 @@ describe("CalendarInvitationsPanel", () => {
     expect(accept.className).toContain("calendar-invitation-card__action--accept");
     expect(maybe.className).toContain("calendar-invitation-card__action--maybe");
     expect(decline.className).toContain("calendar-invitation-card__action--decline");
+    const actions = document.querySelector(".calendar-invitation-card__actions");
+    expect(actions?.className).toContain("calendar-rsvp-actions--sm");
+    expect(actions?.className).not.toContain("calendar-rsvp-actions--lg");
+    expect(accept.className).toContain("calendar-rsvp-action--sm");
     expect(accept.className).not.toContain("calendar-invitation-card__action--selected");
     expect(maybe.className).not.toContain("calendar-invitation-card__action--selected");
     expect(decline.className).not.toContain("calendar-invitation-card__action--selected");
@@ -259,6 +263,15 @@ describe("calendar invitation picker reuse", () => {
     const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
+    expect(dialog).toContain(importLine);
+    expect(card).toContain(importLine);
+  });
+
+  it("reuses CalendarRsvpActions in the event dialog and invite card", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
+    const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
+    const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
     expect(dialog).toContain(importLine);
     expect(card).toContain(importLine);
   });

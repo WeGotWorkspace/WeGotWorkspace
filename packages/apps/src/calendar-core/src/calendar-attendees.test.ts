@@ -4,7 +4,10 @@ import {
   attendeesFromParticipants,
   eventCardRsvpAttr,
   isLikelyEmail,
+  isSessionEventInvitee,
+  isSessionEventOrganizer,
   listedInviteeAttendees,
+  sessionEventInviteeStatus,
   organizerAddress,
   ownEventRsvpPresentation,
   participantsFromAttendees,
@@ -163,5 +166,50 @@ describe("calendar attendees", () => {
     expect(organizerAddress({ email: "admin@localhost", username: "admin" })?.email).toBe(
       "admin@localhost",
     );
+  });
+
+  it("treats the ORGANIZER as owner, including username vs email aliases", () => {
+    const attendees = attendeesFromParticipants({
+      org: {
+        "@type": "Participant" as const,
+        email: "admin@localhost",
+        name: "Admin",
+        roles: { owner: true },
+        participationStatus: "accepted",
+      },
+      att1: {
+        "@type": "Participant" as const,
+        email: "wouter",
+        name: "Wouter",
+        roles: { attendee: true },
+        participationStatus: "needs-action",
+      },
+    });
+    const invitees = [{ username: "wouter", email: "wouter@woutervroege.nl", name: "Wouter" }];
+
+    expect(isSessionEventOrganizer(attendees, "admin@localhost")).toBe(true);
+    expect(isSessionEventOrganizer(attendees, "admin")).toBe(true);
+    expect(isSessionEventOrganizer(attendees, "wouter@woutervroege.nl", invitees)).toBe(false);
+    expect(isSessionEventOrganizer(attendees, "wouter", invitees)).toBe(false);
+    expect(isSessionEventInvitee(attendees, "wouter@woutervroege.nl", invitees)).toBe(true);
+    expect(sessionEventInviteeStatus(attendees, "wouter@woutervroege.nl", invitees)).toBe(
+      "needs-action",
+    );
+    expect(isSessionEventInvitee(attendees, "admin@localhost")).toBe(false);
+    expect(sessionEventInviteeStatus(attendees, "admin@localhost")).toBeNull();
+    expect(isSessionEventOrganizer([], "admin@localhost")).toBe(true);
+    expect(
+      isSessionEventOrganizer(
+        [
+          {
+            email: "carol@example.test",
+            name: "Carol",
+            participationStatus: "needs-action",
+            role: "required",
+          },
+        ],
+        "carol@example.test",
+      ),
+    ).toBe(false);
   });
 });

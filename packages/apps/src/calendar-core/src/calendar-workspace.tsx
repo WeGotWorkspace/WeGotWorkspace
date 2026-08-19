@@ -449,7 +449,7 @@ export function CalendarWorkspace({
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
           invitees={invitations.invitees}
           canSubmitEmail={invitations.canSubmitEmail}
-          sessionEmail={session.user.email}
+          sessionEmail={organizerAddress(session.user)?.email}
           onRsvp={
             editor.mode === "edit"
               ? (status) => {

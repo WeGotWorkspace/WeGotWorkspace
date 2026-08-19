@@ -535,4 +535,257 @@ describe("CalendarEventDialog", () => {
     const deleteButton = screen.getByRole("button", { name: defaultCalendarLabels.delete });
     expect(deleteButton).toBeTruthy();
   });
+
+  it("locks fields and hides save/delete for an invitee, keeping RSVP", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      location: "Room A",
+      description: "Bring notes",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+      alerts: [{ id: "alert1", action: "display" as const, offset: "-PT15M" }],
+    };
+    renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onDelete: vi.fn(),
+      onRsvp: vi.fn(),
+    });
+
+    expect(screen.getByDisplayValue("Standup")).toHaveProperty("disabled", true);
+    expect(screen.getByDisplayValue("Room A")).toHaveProperty("disabled", true);
+    expect(screen.getByDisplayValue("Bring notes")).toHaveProperty("disabled", true);
+    expect(
+      screen.getByRole("button", { name: /Calendar: Personal/i }).hasAttribute("disabled"),
+    ).toBe(true);
+    const allDay = screen.getByLabelText(defaultCalendarLabels.eventAllDayLabel);
+    expect(allDay.hasAttribute("disabled") || allDay.getAttribute("data-disabled") !== null).toBe(
+      true,
+    );
+    for (const name of [
+      defaultCalendarLabels.eventTimeZoneLabel,
+      defaultCalendarLabels.eventRepeatLabel,
+      defaultCalendarLabels.eventShowAs,
+      defaultCalendarLabels.eventAlarmsLabel,
+    ]) {
+      const control = screen.getByRole("combobox", { name });
+      expect(
+        control.hasAttribute("disabled") || control.getAttribute("data-disabled") !== null,
+      ).toBe(true);
+    }
+    expect(screen.queryByLabelText(defaultCalendarLabels.eventAttendeesAdd)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.save })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline })).toBeTruthy();
+  });
+
+  it("colors and icons only the selected RSVP option in view-only", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "accepted" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onRsvp: vi.fn(),
+    });
+
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+    const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
+    expect(accept.className).toContain("calendar-invitation-card__action--selected");
+    expect(accept.className).toContain("calendar-invitation-card__action--accept");
+    expect(accept.querySelector("svg")).toBeTruthy();
+    expect(maybe.className).not.toContain("calendar-invitation-card__action--selected");
+    expect(decline.className).not.toContain("calendar-invitation-card__action--selected");
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.save })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
+  });
+
+  it("uses the large RSVP size variant in the edit dialog", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "accepted" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onRsvp: vi.fn(),
+    });
+
+    const actions = document.querySelector(".calendar-event-dialog__rsvp");
+    expect(actions?.className).toContain("calendar-rsvp-actions--lg");
+    expect(actions?.className).not.toContain("calendar-rsvp-actions--sm");
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }).className,
+    ).toContain("calendar-rsvp-action--lg");
+  });
+
+  it("updates the selected RSVP option immediately without a calendar refetch", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "accepted" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const onRsvp = vi.fn();
+    renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onRsvp,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }));
+
+    expect(onRsvp).toHaveBeenCalledWith("tentative");
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+    const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
+    expect(maybe.className).toContain("calendar-rsvp-action--selected");
+    expect(maybe.getAttribute("aria-pressed")).toBe("true");
+    expect(accept.className).not.toContain("calendar-rsvp-action--selected");
+    expect(accept.getAttribute("aria-pressed")).toBe("false");
+    expect(decline.className).not.toContain("calendar-rsvp-action--selected");
+  });
+
+  it("keeps the organizer edit dialog writable with save and delete", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      location: "Room A",
+      attendees: [
+        {
+          email: "admin",
+          name: "Admin",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const { onChange } = renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "admin@localhost",
+      onDelete: vi.fn(),
+      onRsvp: vi.fn(),
+    });
+
+    const title = screen.getByDisplayValue("Standup");
+    expect(title).toHaveProperty("disabled", false);
+    fireEvent.change(title, { target: { value: "Weekly standup" } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Weekly standup" }));
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.cancel })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
+    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
+    ).toBeTruthy();
+  });
+
+  it("locks the dialog when the invitee identity is a username alias", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "wouter",
+          name: "Wouter",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "wouter@woutervroege.nl",
+      invitees: [{ username: "wouter", email: "wouter@woutervroege.nl", name: "Wouter" }],
+      onDelete: vi.fn(),
+      onRsvp: vi.fn(),
+    });
+    expect(screen.getByDisplayValue("Standup")).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.save })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeTruthy();
+  });
 });

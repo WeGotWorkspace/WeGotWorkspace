@@ -5,6 +5,7 @@
  */
 .calendar-rsvp-status--accepted,
 .calendar-invitees-rsvp-tag--accepted,
+.calendar-rsvp-action--accept.calendar-rsvp-action--selected,
 .calendar-invitation-card__action--accept.calendar-invitation-card__action--selected {
   --tag-bg: color-mix(in oklab, #3a8f5a 18%, transparent);
   --tag-fg: #3a8f5a;
@@ -12,6 +13,7 @@
 
 .calendar-rsvp-status--tentative,
 .calendar-invitees-rsvp-tag--tentative,
+.calendar-rsvp-action--maybe.calendar-rsvp-action--selected,
 .calendar-invitation-card__action--maybe.calendar-invitation-card__action--selected {
   --tag-bg: color-mix(in oklab, #2563eb 16%, transparent);
   --tag-fg: #2563eb;
@@ -19,6 +21,7 @@
 
 .calendar-rsvp-status--declined,
 .calendar-invitees-rsvp-tag--declined,
+.calendar-rsvp-action--decline.calendar-rsvp-action--selected,
 .calendar-invitation-card__action--decline.calendar-invitation-card__action--selected {
   --tag-bg: color-mix(in oklab, #b14242 18%, transparent);
   --tag-fg: #b14242;

@@ -21,9 +21,11 @@ describe("calendar invitation card CSS", () => {
   });
 
   it("keeps Accept | Maybe | Decline on one row", () => {
-    const css = readCss("calendar-invitation-card.css");
+    const css = readCss("calendar-rsvp-actions.css");
     expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*flex-nowrap/);
     expect(css).not.toMatch(/\.calendar-invitation-card__actions \{[\s\S]*flex-wrap/);
+    expect(css).toMatch(/\.calendar-rsvp-actions,[\s\S]*flex-nowrap/);
+    expect(css).toMatch(/\.calendar-rsvp-action--lg \{[\s\S]*h-9/);
   });
 
   it("applies invitees Tag --tag-* tokens only on the selected RSVP action", () => {
@@ -42,16 +44,21 @@ describe("calendar invitation card CSS", () => {
     );
 
     const card = readCss("calendar-invitation-card.css");
-    expect(card).toMatch(/@import "\.\/calendar-rsvp-status\.css"/);
-    const unselected = card.match(/\.calendar-invitation-card__action \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(card).toMatch(/@import "\.\/calendar-rsvp-actions\.css"/);
+    const actions = readCss("calendar-rsvp-actions.css");
+    expect(actions).toMatch(/@import "\.\/calendar-rsvp-status\.css"/);
+    const unselected = actions.match(/\.calendar-invitation-card__action \{[\s\S]*?\}/)?.[0] ?? "";
     expect(unselected).toMatch(/background-color:\s*transparent/);
     expect(unselected).toMatch(/color:\s*var\(--docs-text/);
     expect(unselected).not.toMatch(/--tag-fg/);
-    expect(card).toMatch(
+    expect(actions).toMatch(
       /\.calendar-invitation-card__action--selected \{[\s\S]*background-color:\s*var\(--tag-bg\)/,
     );
-    expect(card).toMatch(
+    expect(actions).toMatch(
       /\.calendar-invitation-card__action--selected \{[\s\S]*color:\s*var\(--tag-fg\)/,
+    );
+    expect(tokens).toMatch(
+      /\.calendar-rsvp-action--accept\.calendar-rsvp-action--selected[\s\S]*--tag-fg:\s*#3a8f5a/,
     );
   });
 });

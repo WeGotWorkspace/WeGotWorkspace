@@ -1,12 +1,11 @@
 import { createElement, useState } from "react";
-import { Check, CircleHelp, X } from "lucide-react";
 import {
   CalendarEventCalendarPicker,
   defaultPickerCalendarId,
 } from "@/calendar-core/src/calendar-event-calendar-picker";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { normalizeParticipationStatus } from "@/calendar-core/src/calendar-attendees";
-import { cn } from "@/lib/utils";
+import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   canRespondInvitation,
   invitationToEventCardFields,
@@ -25,14 +24,6 @@ import "@/lib/calendar-elements/EventCard/EventCard";
 import "./calendar-invitation-card.css";
 
 const INVITATION_EXIT_ANIMATION = "docs-comments-thread-card-evaporate";
-
-function rsvpActionClass(kind: "accept" | "maybe" | "decline", selected: boolean): string {
-  return cn(
-    "calendar-invitation-card__action",
-    `calendar-invitation-card__action--${kind}`,
-    selected && "calendar-invitation-card__action--selected",
-  );
-}
 
 export type CalendarInvitationCardProps = {
   notification: CalendarSchedulingNotification;
@@ -125,47 +116,14 @@ export function CalendarInvitationCard({
       })}
 
       {canRespond ? (
-        <div className="calendar-invitation-card__actions">
-          <button
-            type="button"
-            className={rsvpActionClass("accept", currentStatus === "accepted")}
-            aria-pressed={currentStatus === "accepted"}
-            disabled={busy}
-            onClick={(event) => {
-              event.stopPropagation();
-              respond("accepted");
-            }}
-          >
-            <Check className="calendar-invitation-card__action-icon" aria-hidden />
-            {labels.rsvpAccept}
-          </button>
-          <button
-            type="button"
-            className={rsvpActionClass("maybe", currentStatus === "tentative")}
-            aria-pressed={currentStatus === "tentative"}
-            disabled={busy}
-            onClick={(event) => {
-              event.stopPropagation();
-              respond("tentative");
-            }}
-          >
-            <CircleHelp className="calendar-invitation-card__action-icon" aria-hidden />
-            {labels.rsvpMaybe}
-          </button>
-          <button
-            type="button"
-            className={rsvpActionClass("decline", currentStatus === "declined")}
-            aria-pressed={currentStatus === "declined"}
-            disabled={busy}
-            onClick={(event) => {
-              event.stopPropagation();
-              respond("declined");
-            }}
-          >
-            <X className="calendar-invitation-card__action-icon" aria-hidden />
-            {labels.rsvpDecline}
-          </button>
-        </div>
+        <CalendarRsvpActions
+          className="calendar-invitation-card__actions"
+          currentStatus={currentStatus}
+          labels={labels}
+          busy={busy}
+          size="sm"
+          onRespond={respond}
+        />
       ) : null}
     </DocsCollabCardShell>
   );

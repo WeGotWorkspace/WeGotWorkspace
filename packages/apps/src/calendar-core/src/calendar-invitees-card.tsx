@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { User, UserCheck, Users } from "lucide-react";
+import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   attendeesIncludeInvitee,
   attendeesReferToSamePerson,
@@ -35,6 +36,8 @@ export type CalendarInviteesCardProps = {
   busy?: boolean;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
+  /** Invitee view: hide add/remove and lock role. */
+  readOnly?: boolean;
   onChange: (attendees: CalendarAttendee[]) => void;
 };
 
@@ -76,8 +79,10 @@ export function CalendarInviteesCard({
   busy = false,
   canSubmitEmail = true,
   sessionEmail,
+  readOnly = false,
   onChange,
 }: CalendarInviteesCardProps) {
+  const locked = busy || readOnly;
   const [query, setQuery] = useState("");
   const listed = listedInviteeAttendees(attendees, invitees);
   const roleOptions: ShareRowSelectOption<CalendarAttendeeRole>[] = [
@@ -171,39 +176,42 @@ export function CalendarInviteesCard({
       title={labels.eventAttendeesLabel}
       description={labels.eventAttendeesHint}
       footer={
-        !canSubmitEmail ? (
+        !readOnly && !canSubmitEmail ? (
           <p className="share-access-card__hint">{labels.eventAttendeesEmailUnavailable}</p>
         ) : null
       }
       addControl={
-        <SharePrincipalSearchDropdown
-          query={query}
-          results={searchResults}
-          emptyLabel={labels.eventAttendeesSearchEmpty}
-          listLabel={labels.eventAttendeesLabel}
-          minQueryLength={1}
-          onSelect={selectSearchOption}
-        >
-          <ShareDialogInput
-            value={query}
-            disabled={busy}
-            placeholder={labels.eventAttendeesEmailPlaceholder}
-            aria-label={labels.eventAttendeesAdd}
-            className="share-dialog__add-grant-input"
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              if (isLikelyEmail(query)) addExternalEmail(query);
-            }}
-          />
-        </SharePrincipalSearchDropdown>
+        readOnly ? undefined : (
+          <SharePrincipalSearchDropdown
+            query={query}
+            results={searchResults}
+            emptyLabel={labels.eventAttendeesSearchEmpty}
+            listLabel={labels.eventAttendeesLabel}
+            minQueryLength={1}
+            onSelect={selectSearchOption}
+          >
+            <ShareDialogInput
+              value={query}
+              disabled={locked}
+              placeholder={labels.eventAttendeesEmailPlaceholder}
+              aria-label={labels.eventAttendeesAdd}
+              className="share-dialog__add-grant-input"
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                if (isLikelyEmail(query)) addExternalEmail(query);
+              }}
+            />
+          </SharePrincipalSearchDropdown>
+        )
       }
     >
       {listed.map((attendee) => {
         const title = attendee.name || attendee.email;
         const status = rsvpLabel(attendee.participationStatus, labels);
         const tagTone = rsvpTagClass(attendee.participationStatus);
+        const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus);
         const role = attendee.role === "optional" ? "optional" : "required";
 
         return (
@@ -211,12 +219,20 @@ export function CalendarInviteesCard({
             key={attendee.email}
             mark={<SharePrincipalMark principalType="user" displayName={title} active />}
             title={title}
-            titleEnd={status && tagTone ? <Tag label={status} className={tagTone} /> : null}
+            titleEnd={
+              status && tagTone ? (
+                <Tag
+                  label={status}
+                  icon={StatusIcon ? <StatusIcon aria-hidden /> : undefined}
+                  className={tagTone}
+                />
+              ) : null
+            }
             trailing={
               <ShareRowSelect
                 value={role}
                 options={roleOptions}
-                disabled={busy}
+                disabled={locked}
                 aria-label={`${title}: ${
                   role === "optional"
                     ? labels.eventAttendeesRoleOptional
@@ -234,11 +250,16 @@ export function CalendarInviteesCard({
               />
             }
             removeLabel={labels.eventAttendeesRemove}
-            removeDisabled={busy}
-            onRemove={() =>
-              onChange(
-                attendees.filter((row) => !attendeesReferToSamePerson(row, attendee, invitees)),
-              )
+            removeDisabled={locked}
+            onRemove={
+              readOnly
+                ? undefined
+                : () =>
+                    onChange(
+                      attendees.filter(
+                        (row) => !attendeesReferToSamePerson(row, attendee, invitees),
+                      ),
+                    )
             }
           />
         );

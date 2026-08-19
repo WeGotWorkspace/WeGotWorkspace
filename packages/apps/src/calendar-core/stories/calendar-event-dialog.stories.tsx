@@ -37,6 +37,32 @@ export const EmailUnavailable: Story = {
   },
 };
 
+export const InviteeViewOnly: Story = {
+  args: {
+    mode: "edit",
+    sessionEmail: "carol@example.test",
+    onRsvp: fn(),
+    form: {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted",
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "accepted",
+          role: "required",
+        },
+      ],
+    },
+  },
+};
+
 export const WithInvitees: Story = {
   args: {
     invitees: [

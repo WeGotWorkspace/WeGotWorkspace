@@ -7,9 +7,8 @@ import {
   applyOwnRsvpToEngineEvents,
   calendarEventsToEngineMap,
 } from "@/calendar-core/src/calendar-event-model";
+import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
-
-const SYNC_POLL_MS = 30_000;
 
 export type CalendarSurfaceStore = {
   /** Engine-model events for the lit views (adapter state, or cache fallback). */
@@ -60,7 +59,7 @@ export function useCalendarSurface(
       .initialize(calendarBootstrapWindow())
       .then(() => {
         if (cancelled) return;
-        adapter.startPolling(SYNC_POLL_MS);
+        adapter.startPolling(CALENDAR_BACKGROUND_POLL_MS);
         setReady(true);
         setRevision((current) => current + 1);
       })
