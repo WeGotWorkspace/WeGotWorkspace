@@ -17,7 +17,7 @@ WeGotWorkspace assigns each datatype the most suitable **open protocol**, not on
 | Calendar | CalDAV | VEVENT (RFC 5545) | JMAP-shaped `Calendar` / `CalendarEvent` ([#133](https://github.com/WeGotWorkspace/wegotworkspace/issues/133)) |
 | **Tasks** | **CalDAV** | **VTODO (RFC 5545)** | JMAP-shaped `TaskList` / `Task` ([#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134)) |
 | Contacts | CardDAV | vCard (+ `vCardProps` passthrough) | JMAP-shaped JSContact ([#131](https://github.com/WeGotWorkspace/wegotworkspace/issues/131)) |
-| Notes | WebDAV | YAML-frontmatter Markdown | Custom REST `/notes/*` (VJOURNAL deliberately not used — near-dead client ecosystem) |
+| Notes | WebDAV | YAML-frontmatter Markdown | FileNode query/get/set + `PUT /files/collaboration`; stars via Drive `/files/star` (per-user, no YAML backfill). Dedicated `/notes/*` REST still exists until sunset. |
 
 **Product (v0.9):** Single **Tasks** app at `/tasks` — unified to-do surface ([#296](https://github.com/WeGotWorkspace/wegotworkspace/issues/296)). Optional “Remind me” alerts ([#299](https://github.com/WeGotWorkspace/wegotworkspace/issues/299)) persist as VTODO VALARM ([#147](https://github.com/WeGotWorkspace/wegotworkspace/issues/147)). **No** standalone Reminders app ([#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313)). In-app alert **delivery** is v1.0 ([#300](https://github.com/WeGotWorkspace/wegotworkspace/issues/300)–[#303](https://github.com/WeGotWorkspace/wegotworkspace/issues/303)).
 
@@ -313,7 +313,7 @@ Use existing [tasks.svg](../../packages/apps/src/assets/app-icons/tasks.svg) —
 |---|-------|-------|
 | Primary artifact | Long-form **markdown body** + metadata | Structured **entity** (title, status, due, tags, list) |
 | Offline path | **Dual-path:** Yjs + y-indexeddb (body) + Dexie outbox (metadata) | **Single-path:** whole task record like **Contacts** |
-| Transport | Body: `PUT /files/collaboration`; metadata: `PUT /notes/items` | `GET/POST/PATCH /tasks/items` + CalDAV blob via [#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134) |
+| Transport | Body: `PUT /files/collaboration`; metadata: FileNode/set; stars: Drive `/files/star` | `GET/POST/PATCH /tasks/items` + CalDAV blob via [#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134) |
 
 Tasks follow the **[Contacts offline reference](../../packages/apps/docs/offline-platform.md)** (bootstrap → cache → outbox → reconnect flush), not Notes dual-path — unless a field needs document-style CRDT (tier 2 below).
 

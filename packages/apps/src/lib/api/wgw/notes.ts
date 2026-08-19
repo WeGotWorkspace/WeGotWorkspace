@@ -3,14 +3,20 @@ import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import type { WgwNoteItem, WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  archiveNoteViaFileNode,
+  createNotebookViaFileNode,
+  createNoteViaFileNode,
+  deleteNotebookViaFileNode,
+  deleteNoteViaFileNode,
+  listOwnedNotesFromFileNodes,
+  NotesRequestError,
+  renameNotebookViaFileNode,
+  restoreNoteViaFileNode,
+  updateNoteViaFileNode,
+} from "@/lib/api/wgw/notes-filenode";
 
-export class NotesRequestError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
+export { NotesRequestError };
 
 // --- JSON → WGW note shapes --------------------------------------------------------------------
 
@@ -413,7 +419,10 @@ export function noteFromWgwItem(row: WgwNoteItem): Note {
   };
 }
 
-/** Full upsert (incl. `body`) — use only for **creating** a note (`POST /notes/items`). */
+/**
+ * Full upsert shape (incl. `body`) for creating a note.
+ * Live writes send title/tags via FileNode/set; `body` stays collab-owned.
+ */
 export function wgwNoteUpsertFromNote(
   note: Note,
   opts?: { starred?: boolean; archived?: boolean },
@@ -432,9 +441,9 @@ export function wgwNoteUpsertFromNote(
 }
 
 /**
- * Metadata-only upsert (no `body`) for `PUT /notes/items/{id}`. The API leaves
- * the markdown body untouched on disk — body edits flow through the collab
- * document (`PUT /files/collaboration`), not the Notes metadata API.
+ * Metadata-only upsert (no `body`) for FileNode/set title/tags/moves.
+ * `starred` is consumed by Drive `POST|DELETE /files/star`, not YAML.
+ * Body edits stay on `PUT /files/collaboration`.
  */
 export function wgwNoteMetadataFromNote(
   note: Note,
@@ -454,22 +463,11 @@ export function wgwNoteMetadataFromNote(
 
 // --- live bootstrap ----------------------------------------------------------------------------
 
-/** Load notes + notebook names from the configured WeGotWorkspace API. */
+/** Load notes + notebook names from FileNode query/get under `.notes`. */
 export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   const session = await wgwFetchPrincipal();
-
-  const itemsRes = await wgwFetch("/notes/items");
-  if (!itemsRes.ok) throw new Error(`GET /notes/items failed (${itemsRes.status})`);
-  const itemsJson = await wgwReadJson(itemsRes);
-  const rawItems = parseNotesItemsPayload(itemsJson);
-  const ownedNotes = rawItems.map(noteFromWgwItem);
-
-  let notebookRows: NotesNotebookRow[] = [];
-  const nbRes = await wgwFetch("/notes/notebooks");
-  if (nbRes.ok) {
-    const nbJson = await wgwReadJson(nbRes);
-    notebookRows = parseNotebookRowsPayload(nbJson);
-  }
+  const listing = await listOwnedNotesFromFileNodes();
+  const ownedNotes = listing.notes;
 
   let sharedWithMe: NotesSharedNoteEntry[] = [];
   try {
@@ -480,9 +478,7 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
 
   const notes = mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe);
 
-  const personalFromApi = notebookRows
-    .filter((row) => row.scope !== "group")
-    .map((row) => row.name);
+  const personalFromApi = listing.notebooks;
   const personalFromNotes = ownedNotes.filter((n) => n.scope !== "group").map((n) => n.notebook);
   const notebooks = [...new Set([...personalFromApi, ...personalFromNotes])].filter((name) =>
     name.trim(),
@@ -497,7 +493,10 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
         groupSlug: n.groupSlug ?? null,
       }),
     );
-  const sharedNotebooks = mergeGroupSharedNotebooks([...notebookRows, ...groupRowsFromNotes]);
+  const sharedNotebooks = mergeGroupSharedNotebooks([
+    ...listing.notebookRows,
+    ...groupRowsFromNotes,
+  ]);
 
   const tags = [...new Set(ownedNotes.flatMap((n) => n.tags))];
 
@@ -507,36 +506,22 @@ export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
   };
 }
 
-function parseNoteMutationPayload(json: unknown): WgwNoteItem | null {
-  if (!json || typeof json !== "object") return null;
-  const root = json as Record<string, unknown>;
-  return coerceNoteItem(root.item ?? root.note ?? root.data ?? root);
-}
-
-async function requestNotesJson(
-  path: string,
-  method: "POST" | "PUT" | "PATCH" | "DELETE",
-  body?: unknown,
-  opts?: { signal?: AbortSignal },
-): Promise<unknown> {
-  const res = await wgwFetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: opts?.signal,
-  });
-  if (!res.ok) throw new NotesRequestError(`${method} ${path} failed (${res.status})`, res.status);
-  return wgwReadJson(res);
-}
-
 export async function createNoteItem(
   body: WgwNoteUpsertRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
-  const json = await requestNotesJson("/notes/items", "POST", body, opts);
-  const row = parseNoteMutationPayload(json);
-  if (!row) throw new Error("POST /notes/items returned no note payload");
-  return noteFromWgwItem(row);
+  return createNoteViaFileNode(
+    {
+      id: body.id,
+      notebook: body.notebook,
+      tags: body.tags,
+      title: "",
+      starred: body.starred,
+      archived: body.archived,
+      groupSlug: body.groupSlug,
+    },
+    opts,
+  );
 }
 
 export async function updateNoteItem(
@@ -544,10 +529,17 @@ export async function updateNoteItem(
   body: WgwNoteUpsertRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
-  const json = await requestNotesJson(`/notes/items/${encodeURIComponent(id)}`, "PUT", body, opts);
-  const row = parseNoteMutationPayload(json);
-  if (!row) throw new Error(`PUT /notes/items/${id} returned no note payload`);
-  return noteFromWgwItem(row);
+  return updateNoteViaFileNode(
+    id,
+    {
+      notebook: body.notebook,
+      tags: body.tags,
+      starred: body.starred,
+      archived: body.archived,
+      groupSlug: body.groupSlug,
+    },
+    opts,
+  );
 }
 
 export async function deleteNoteItem(
@@ -555,47 +547,25 @@ export async function deleteNoteItem(
   body: { notebook: string; archived: boolean; groupSlug?: string | null },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await requestNotesJson(`/notes/items/${encodeURIComponent(id)}`, "DELETE", body, opts);
+  await deleteNoteViaFileNode(id, body, opts);
 }
 
 export async function archiveNoteItem(
   id: string,
   opts?: { signal?: AbortSignal; groupSlug?: string | null },
 ): Promise<Note> {
-  const json = await requestNotesJson(
-    `/notes/items/${encodeURIComponent(id)}`,
-    "PATCH",
-    {
-      archived: true,
-      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
-    },
-    opts?.signal !== undefined ? { signal: opts.signal } : undefined,
-  );
-  const row = parseNoteMutationPayload(json);
-  if (!row) throw new Error(`PATCH /notes/items/${id} archive returned no note payload`);
-  return noteFromWgwItem(row);
+  return archiveNoteViaFileNode(id, opts);
 }
 
 export async function restoreNoteItem(
   id: string,
   opts?: { signal?: AbortSignal; groupSlug?: string | null },
 ): Promise<Note> {
-  const json = await requestNotesJson(
-    `/notes/items/${encodeURIComponent(id)}`,
-    "PATCH",
-    {
-      archived: false,
-      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
-    },
-    opts?.signal !== undefined ? { signal: opts.signal } : undefined,
-  );
-  const row = parseNoteMutationPayload(json);
-  if (!row) throw new Error(`PATCH /notes/items/${id} restore returned no note payload`);
-  return noteFromWgwItem(row);
+  return restoreNoteViaFileNode(id, opts);
 }
 
 export async function createNotebook(name: string, opts?: { signal?: AbortSignal }): Promise<void> {
-  await requestNotesJson("/notes/notebooks", "POST", { name }, opts);
+  await createNotebookViaFileNode(name, opts);
 }
 
 export async function renameNotebook(
@@ -603,12 +573,7 @@ export async function renameNotebook(
   to: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await requestNotesJson(
-    `/notes/notebooks/${encodeURIComponent(from)}`,
-    "PATCH",
-    { name: to },
-    opts,
-  );
+  await renameNotebookViaFileNode(from, to, opts);
 }
 
 export async function deleteNotebook(
@@ -616,5 +581,5 @@ export async function deleteNotebook(
   action: { mode: "archive" | "move" | "purge"; target?: string },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await requestNotesJson(`/notes/notebooks/${encodeURIComponent(name)}`, "DELETE", action, opts);
+  await deleteNotebookViaFileNode(name, action, opts);
 }
