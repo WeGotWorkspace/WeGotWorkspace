@@ -159,6 +159,29 @@ describe("noteFromWgwItem", () => {
 });
 
 describe("shared notes listing parsers", () => {
+  it("maps Drive shared-with-me note paths without calling /notes/shared-*", async () => {
+    const { noteEntryFromDriveSharedPath, noteFromSharedEntry } =
+      await import("@/lib/api/wgw/notes");
+    const entry = noteEntryFromDriveSharedPath({
+      path: "/users/bob/.notes/TeamPad/n1.md",
+      access: "view",
+      myRights: { mayEditContent: false },
+      title: "Hello",
+      tags: ["planning", "shared"],
+    });
+    expect(entry).toMatchObject({
+      path: "/users/bob/.notes/TeamPad/n1.md",
+      id: "n1",
+      notebook: "TeamPad",
+      owner: "bob",
+      scope: "personal",
+      access: "view",
+      myRights: { mayEditContent: false },
+    });
+    expect(noteFromSharedEntry(entry!).sharedInbox).toBe(true);
+    expect(noteEntryFromDriveSharedPath({ path: "/users/bob/drive-doc.md" })).toBeNull();
+  });
+
   it("parses shared-with-me payloads and empty shared-notebooks", async () => {
     const { parseSharedNotesPayload, parseSharedNotebooksPayload, noteFromSharedEntry } =
       await import("@/lib/api/wgw/notes");

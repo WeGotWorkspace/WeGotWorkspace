@@ -2,19 +2,22 @@ import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import type { WgwNoteItem, WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwFetchPrincipal } from "@/lib/api/wgw/http";
 import {
   archiveNoteViaFileNode,
   createNotebookViaFileNode,
   createNoteViaFileNode,
   deleteNotebookViaFileNode,
   deleteNoteViaFileNode,
+  fileNodeNoteProjectionAtPath,
   listOwnedNotesFromFileNodes,
   NotesRequestError,
+  parseNoteVirtualPath,
   renameNotebookViaFileNode,
   restoreNoteViaFileNode,
   updateNoteViaFileNode,
 } from "@/lib/api/wgw/notes-filenode";
+import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 
 export { NotesRequestError };
 
@@ -254,25 +257,65 @@ export function parseSharedNotebooksPayload(json: unknown): NotesSharedNotebooks
   return { items, notes };
 }
 
-/** List note-file grants under `.notes` (Shared with me). */
+export function noteEntryFromDriveSharedPath(args: {
+  path: string;
+  access?: string;
+  myRights?: NotesSharedNoteListRights | { mayEditContent?: unknown };
+  title?: string;
+  tags?: string[];
+}): NotesSharedNoteEntry | null {
+  const parsed = parseNoteVirtualPath(args.path);
+  if (!parsed) return null;
+  const access = args.access;
+  const myRights = coerceSharedListRights(args.myRights, access);
+  return {
+    path: parsed.path,
+    id: parsed.noteId,
+    notebook: parsed.notebook,
+    title: args.title ?? "",
+    tags: args.tags ?? [],
+    owner: parsed.owner,
+    scope: parsed.scope,
+    groupSlug: parsed.groupSlug,
+    access,
+    ...(myRights ? { myRights } : {}),
+  };
+}
+
+/** List note-file grants via Drive `GET /files/shared-with-me?includeNotes=true`. */
 export async function fetchNotesSharedWithMe(opts?: {
   signal?: AbortSignal;
 }): Promise<NotesSharedNoteEntry[]> {
-  const res = await wgwFetch("/notes/shared-with-me", { signal: opts?.signal });
-  if (!res.ok)
-    throw new NotesRequestError(`GET /notes/shared-with-me failed (${res.status})`, res.status);
-  return parseSharedNotesPayload(await wgwReadJson(res));
+  const rows = await fetchDriveSharedWithMe({ signal: opts?.signal, includeNotes: true });
+  const mapped = rows
+    .map((row) =>
+      noteEntryFromDriveSharedPath({
+        path: row.share.path,
+        access: row.share.defaultAccess,
+        myRights: row.share.myRights,
+      }),
+    )
+    .filter((entry): entry is NotesSharedNoteEntry => entry !== null);
+
+  return Promise.all(
+    mapped.map(async (entry) => {
+      const projection = await fileNodeNoteProjectionAtPath(entry.path, opts);
+      if (!projection) return entry;
+      return {
+        ...entry,
+        title: projection.excerpt.trim() || projection.title.trim() || entry.title,
+        tags: projection.tags,
+      };
+    }),
+  );
 }
 
-/** List shared notebook payload (compat — API returns empty ACL items/notes). */
+/** Group-membership notebooks from FileNode listing (personal ACL notebook shares are gone). */
 export async function fetchNotesSharedNotebooks(opts?: {
   signal?: AbortSignal;
 }): Promise<NotesSharedNotebooksPayload> {
-  const res = await wgwFetch("/notes/shared-notebooks", { signal: opts?.signal });
-  if (!res.ok) {
-    throw new NotesRequestError(`GET /notes/shared-notebooks failed (${res.status})`, res.status);
-  }
-  return parseSharedNotebooksPayload(await wgwReadJson(res));
+  const listing = await listOwnedNotesFromFileNodes(opts);
+  return { items: listing.sharedNotebooks, notes: [] };
 }
 
 /** Path-stable list id when a shared grant collides with an owned (or sibling) note id. */

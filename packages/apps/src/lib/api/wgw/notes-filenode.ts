@@ -252,6 +252,22 @@ export async function listNotesFileNodeRoots(opts?: {
   return { roots, username };
 }
 
+export async function fileNodeNoteProjectionAtPath(
+  path: string,
+  opts?: { signal?: AbortSignal },
+): Promise<JmapFileNodeNote | null> {
+  try {
+    const { session, username } = await notesSession(opts);
+    const nodeId = await resolveFileNodeId(session, path, username, opts?.signal);
+    const got = await session.fileNodes.getFileNodes(session.accountId, [nodeId], {
+      signal: opts?.signal,
+    });
+    return coerceFileNodeNote(got.list[0]?.note);
+  } catch {
+    return null;
+  }
+}
+
 export async function listOwnedNotesFromFileNodes(opts?: {
   signal?: AbortSignal;
 }): Promise<OwnedNotesFileNodeListing> {
