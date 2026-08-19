@@ -118,15 +118,29 @@ final class NoteMarkdownCodec
             return $this->truncatePreview($fromBody, $maxLen);
         }
         $fromTitle = trim($title);
-        if (
-            $fromTitle !== ''
-            && strcasecmp($fromTitle, 'Untitled') !== 0
-            && $fromTitle !== $fallbackId
-        ) {
+        if (! $this->isPlaceholderTitle($fromTitle, $fallbackId)) {
             return $this->truncatePreview($fromTitle, $maxLen);
         }
 
         return '';
+    }
+
+    /**
+     * Frontmatter / filename titles that must not appear as a list heading.
+     * `parse()` uses the note id (often a `local-*` offline filename stem) when
+     * title is empty — callers must treat that as missing, not as a title.
+     */
+    public function isPlaceholderTitle(string $title, string $fallbackId): bool
+    {
+        $fromTitle = trim($title);
+        if ($fromTitle === '' || strcasecmp($fromTitle, 'Untitled') === 0) {
+            return true;
+        }
+        if ($fromTitle === $fallbackId) {
+            return true;
+        }
+
+        return (bool) preg_match('/^local-[0-9a-f-]+$/i', $fromTitle);
     }
 
     private function plainPreviewText(string $markdown): string

@@ -111,6 +111,9 @@ final class NoteMarkdownCodecTest extends TestCase
                 'local-55a6723bcd6e453aa11abf548f043398',
             ),
         );
+        $this->assertTrue($codec->isPlaceholderTitle('local-dbac4d6cfb5f48d6866278856920ed5a', 'other-id'));
+        $this->assertTrue($codec->isPlaceholderTitle('welcome', 'welcome'));
+        $this->assertFalse($codec->isPlaceholderTitle('Meeting notes', 'welcome'));
     }
 
     public function test_list_preview_strips_task_list_and_common_markdown(): void

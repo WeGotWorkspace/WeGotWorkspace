@@ -60,9 +60,33 @@ export function plainTextFromBody(body: string[] | undefined): string {
   return markdownToPlainText(noteBodyToMarkdown(body ?? []));
 }
 
+/** Offline-created notes keep `local-*` ids as the `.md` filename / FileNode name. */
+const LOCAL_NOTE_ID_RE = /^local-[0-9a-f-]+$/i;
+
+/**
+ * True when a list label is a filename / id placeholder, not a human title.
+ * FileNode `parse()` uses the note id as `fallbackTitle` when frontmatter is
+ * empty — that must never become the list heading.
+ */
+export function isPlaceholderNoteListLabel(text: string, noteId?: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  if (trimmed.localeCompare("Untitled", undefined, { sensitivity: "accent" }) === 0) {
+    return true;
+  }
+  if (noteId && trimmed === noteId) return true;
+  return LOCAL_NOTE_ID_RE.test(trimmed);
+}
+
+/** Body-first list preview text, or empty when the value is only an id / Untitled. */
+export function usableNoteListPreview(text: string, noteId?: string): string {
+  const trimmed = text.trim();
+  return isPlaceholderNoteListLabel(trimmed, noteId) ? "" : trimmed;
+}
+
 /** True when the note has plain-text body content suitable for list preview/title. */
-export function noteHasListableBody(note: Pick<Note, "body">): boolean {
-  return plainTextFromBody(note.body).length > 0;
+export function noteHasListableBody(note: Pick<Note, "body"> & { id?: string }): boolean {
+  return usableNoteListPreview(plainTextFromBody(note.body), note.id).length > 0;
 }
 
 export function computeWordCount(body: string[]): number {
@@ -78,16 +102,16 @@ export function computeExcerpt(body: string[]): string {
 const NOTE_LIST_TITLE_MAX = 80;
 
 /** Derives the list-row heading from excerpt or body (notes have no separate title field). */
-export function noteListTitle(note: Pick<Note, "excerpt" | "body">): string {
+export function noteListTitle(note: Pick<Note, "excerpt" | "body"> & { id?: string }): string {
   // Re-strip so stale excerpts (or server listPreview) never leak raw markdown.
-  const excerpt = markdownToPlainText(note.excerpt ?? "");
+  const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
   if (excerpt) {
     const withoutEllipsis = excerpt.endsWith("…") ? excerpt.slice(0, -1).trim() : excerpt;
     return withoutEllipsis.length <= NOTE_LIST_TITLE_MAX
       ? withoutEllipsis
       : `${withoutEllipsis.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
   }
-  const text = plainTextFromBody(note.body).trim();
+  const text = usableNoteListPreview(plainTextFromBody(note.body), note.id);
   if (text) {
     return text.length <= NOTE_LIST_TITLE_MAX ? text : `${text.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
   }
@@ -179,11 +203,12 @@ export function noteShowsSharedBadge(
  */
 export function enrichNote(note: Note): Note {
   const body = Array.isArray(note.body) && note.body.length > 0 ? note.body : [""];
+  const excerpt = computeExcerpt(body);
   return {
     ...note,
     body,
-    excerpt: computeExcerpt(body),
-    wordCount: computeWordCount(body),
+    excerpt: usableNoteListPreview(excerpt, note.id),
+    wordCount: noteHasListableBody({ ...note, body }) ? computeWordCount(body) : 0,
   };
 }
 

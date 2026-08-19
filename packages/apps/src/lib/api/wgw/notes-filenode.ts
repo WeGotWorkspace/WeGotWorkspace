@@ -10,6 +10,7 @@ import {
 import { setDriveFileStar } from "@/lib/api/wgw/drive";
 import { JmapSetItemError, type JmapFileNode, type JmapFileNodeNote } from "@/lib/jmap-client";
 import { noteCollabPath, type NoteCollabScope } from "@/notes-core/src/note-collab-path";
+import { usableNoteListPreview } from "@/notes-core/src/notes-note-utils";
 import type { NotesNotebookRow, NotesSharedNotebookEntry } from "@/lib/api/wgw/notes";
 
 export class NotesRequestError extends Error {
@@ -123,7 +124,12 @@ export function noteFromFileNodeNote(args: {
   modified?: string;
   changed?: string;
 }): Note {
-  const preview = args.projection.excerpt.trim() || args.projection.title.trim();
+  // listPreview already blanks id / Untitled titles. Do not fall back to the
+  // FileNode name (`local-*.md` stem) — that stuck the id in excerpt/body and
+  // skipped collab enrich (`noteHasListableBody` treated the id as content).
+  const preview =
+    usableNoteListPreview(args.projection.excerpt, args.id) ||
+    usableNoteListPreview(args.projection.title, args.id);
   const body = splitBodyParagraphs(preview);
   const metadataUpdatedAt = args.changed;
   const displayDate = args.modified ?? metadataUpdatedAt ?? "—";

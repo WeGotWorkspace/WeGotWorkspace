@@ -18,6 +18,7 @@ import {
   updateNoteViaFileNode,
 } from "@/lib/api/wgw/notes-filenode";
 import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
+import { usableNoteListPreview } from "@/notes-core/src/notes-note-utils";
 
 export { NotesRequestError };
 
@@ -303,7 +304,10 @@ export async function fetchNotesSharedWithMe(opts?: {
       if (!projection) return entry;
       return {
         ...entry,
-        title: projection.excerpt.trim() || projection.title.trim() || entry.title,
+        title:
+          usableNoteListPreview(projection.excerpt, entry.id) ||
+          usableNoteListPreview(projection.title, entry.id) ||
+          usableNoteListPreview(entry.title, entry.id),
         tags: projection.tags,
       };
     }),
@@ -330,11 +334,7 @@ export function sharedInboxFallbackId(path: string): string {
  * (and collab IDB enrich can still fill a real preview without selecting).
  */
 export function sharedEntryListPreview(entry: Pick<NotesSharedNoteEntry, "id" | "title">): string {
-  const title = entry.title.trim();
-  if (!title || title === entry.id) return "";
-  // Offline creates keep `local-*` ids; those must never appear as list titles.
-  if (/^local-[0-9a-f-]+$/i.test(title)) return "";
-  return title;
+  return usableNoteListPreview(entry.title, entry.id);
 }
 
 export function noteFromSharedEntry(entry: NotesSharedNoteEntry): Note {

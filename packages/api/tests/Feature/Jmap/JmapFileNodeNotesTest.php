@@ -77,6 +77,30 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         $this->assertArrayNotHasKey('note', $root);
     }
 
+    public function test_local_id_filename_is_not_projected_as_title(): void
+    {
+        $this->seedNotesTree();
+        $localId = 'local-dbac4d6cfb5f48d6866278856920ed5a';
+        $disk = app(WgwStorage::class)->files();
+        $disk->put(
+            'users/bob/.notes/Drafts/'.$localId.'.md',
+            "title: {$localId}\ntags:\n----\nPasta with garlic and oil"
+        );
+
+        $note = $this->getNoteByName($localId.'.md');
+        $this->assertSame('Pasta with garlic and oil', $note['note']['excerpt']);
+        $this->assertSame('', $note['note']['title']);
+        $this->assertNotSame($localId, $note['note']['title']);
+
+        $disk->put(
+            'users/bob/.notes/Drafts/local-emptybody.md',
+            "title: local-emptybody\ntags:\n----\n"
+        );
+        $empty = $this->getNoteByName('local-emptybody.md');
+        $this->assertSame('', $empty['note']['excerpt']);
+        $this->assertSame('', $empty['note']['title']);
+    }
+
     public function test_non_note_files_have_no_note_property(): void
     {
         $this->seedPrivateFile('bob', 'hello.txt', 'hello world');
