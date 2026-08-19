@@ -9772,6 +9772,10 @@
                             "tentative",
                             "declined"
                         ]
+                    },
+                    "calendarId": {
+                        "type": "string",
+                        "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
                     }
                 }
             },

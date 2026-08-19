@@ -769,17 +769,31 @@ final class CalendarEventRepository
         } else {
             $eventPayload['uid'] = $existingEvent['uid'] ?? $eventPayload['uid'] ?? null;
         }
-        $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($instance) => true];
+        $targetInstance = $this->resolvePatchTargetCalendar($username, $payload, $instance);
+        $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($targetInstance) => true];
 
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
         if (isset($existingEvent['sequence']) || isset($eventPayload['participants'])) {
             $eventPayload['sequence'] = ((int) ($existingEvent['sequence'] ?? 0)) + 1;
         }
         $ics = $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']);
-        $calendarId = (int) $object->calendarid;
-        $this->calBackend()->updateCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+        $sourceBackendId = $this->calBackendCalendarId($instance);
+        $targetBackendId = $this->calBackendCalendarId($targetInstance);
+        if ($sourceBackendId !== $targetBackendId) {
+            $this->calBackend()->createCalendarObject($targetBackendId, $eventUri, $ics);
+            $this->calBackend()->deleteCalendarObject($sourceBackendId, $eventUri);
+            $oldPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
+            $this->searchIndexSync->sync(
+                'calendars',
+                fn () => $this->searchIndexer->deleteDavPath($oldPath),
+                $oldPath,
+                $username,
+            );
+        } else {
+            $this->calBackend()->updateCalendarObject($targetBackendId, $eventUri, $ics);
+        }
         $this->scheduling->scheduleAfterWrite($username, $raw, $ics);
-        $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
+        $davPath = $this->calDavPath($username, (string) $targetInstance->uri, $eventUri);
         $this->searchIndexSync->sync(
             'calendars',
             fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
@@ -787,17 +801,49 @@ final class CalendarEventRepository
             $username,
         );
 
-        $updated = $this->findObjectInCalendar($calendarId, $eventUri, fresh: true);
+        $updated = $this->findObjectInCalendar((int) $targetInstance->calendarid, $eventUri, fresh: true);
         if ($updated === null) {
             throw new ApiHttpException(500, 'Could not load updated calendar event.', 'server_error');
         }
 
         return $this->mapper->toCalendarEvent(
             $updated,
-            $this->calendars->apiIdForInstance($instance),
+            $this->calendars->apiIdForInstance($targetInstance),
             $located['veventUid'],
             $username,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function resolvePatchTargetCalendar(
+        string $username,
+        array $payload,
+        CalendarInstance $current,
+    ): CalendarInstance {
+        $calendarIds = $payload['calendarIds'] ?? null;
+        if (! is_array($calendarIds) || $calendarIds === []) {
+            return $current;
+        }
+
+        $requestedId = null;
+        foreach ($calendarIds as $id => $enabled) {
+            if ($enabled === true) {
+                $requestedId = (string) $id;
+                break;
+            }
+        }
+        if ($requestedId === null || $requestedId === '' || $requestedId === $this->calendars->apiIdForInstance($current)) {
+            return $current;
+        }
+
+        $target = $this->calendars->findAccessibleCalendar($username, $requestedId);
+        if ($target === null) {
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
+        }
+
+        return $target;
     }
 
     /**

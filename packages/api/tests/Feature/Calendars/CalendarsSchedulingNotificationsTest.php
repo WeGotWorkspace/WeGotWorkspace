@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Calendars;
 
 use App\Models\Principal;
+use App\Models\SchedulingObject;
 use App\Services\Jmap\JmapCapabilities;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -79,7 +83,7 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertNotNull($list[0]['eventId']);
     }
 
-    public function test_respond_accepted_updates_organizer_and_clears_inbox(): void
+    public function test_respond_accepted_updates_organizer_and_keeps_inbox(): void
     {
         $eventId = $this->bobInvitesCarol();
         $notificationId = $this->carolNotificationId();
@@ -91,7 +95,8 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
 
         $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
             ->assertOk()
-            ->assertJsonPath('list', []);
+            ->assertJsonPath('list.0.participationStatus', 'accepted')
+            ->assertJsonPath('list.0.method', 'REQUEST');
 
         $bobEvent = $this->jmapAs('bob', [
             ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$eventId]], 'c0'],
@@ -105,6 +110,50 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         }
         $this->assertContains('accepted', $partstats);
         Mail::assertNothingSent();
+    }
+
+    public function test_respond_accepted_moves_copy_to_selected_calendar(): void
+    {
+        $this->bobInvitesCarol();
+        $this->seedCalendarFor('carol', 'work', 'Work');
+        $notificationId = $this->carolNotificationId();
+        $eventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted', 'calendarId' => 'work'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertTrue($carolEvent['calendarIds']['work'] ?? false);
+        $this->assertFalse($carolEvent['calendarIds']['default'] ?? false);
+    }
+
+    public function test_respond_declined_ignores_calendar_id(): void
+    {
+        $this->bobInvitesCarol();
+        $this->seedCalendarFor('carol', 'work', 'Work');
+        $notificationId = $this->carolNotificationId();
+        $eventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'declined', 'calendarId' => 'work'],
+        )->assertOk()->assertJsonPath('participationStatus', 'declined');
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $this->assertTrue($carolEvent['calendarIds']['default'] ?? false);
+        $this->assertFalse($carolEvent['calendarIds']['work'] ?? false);
     }
 
     public function test_dismiss_removes_inbox_without_reply(): void
@@ -130,6 +179,161 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
             }
         }
         $this->assertContains('needs-action', $partstats);
+    }
+
+    public function test_organizer_does_not_list_own_request_when_inviting(): void
+    {
+        $this->seedWgwUser('admin', email: 'admin@localhost', displayName: 'Admin');
+        $this->seedWgwUser('wouter', email: 'wouter@example.test', displayName: 'Wouter');
+        $this->seedDefaultCalendarFor('admin');
+        $this->seedDefaultCalendarFor('wouter');
+
+        $created = $this->jmapAs('admin', [
+            ['CalendarEvent/set', ['accountId' => 'admin', 'create' => ['inv' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Uit eten',
+                'start' => '2030-01-15T10:00:00Z',
+                'end' => '2030-01-15T10:30:00Z',
+                'participants' => [
+                    'org' => [
+                        '@type' => 'Participant',
+                        'email' => 'admin@localhost',
+                        'name' => 'Admin',
+                        'roles' => ['owner' => true],
+                    ],
+                    'self' => [
+                        '@type' => 'Participant',
+                        'email' => 'admin',
+                        'name' => 'Admin',
+                        'roles' => ['attendee' => true],
+                        'expectReply' => true,
+                        'participationStatus' => 'needs-action',
+                    ],
+                    'att1' => [
+                        '@type' => 'Participant',
+                        'email' => 'wouter@example.test',
+                        'name' => 'Wouter',
+                        'roles' => ['attendee' => true],
+                        'expectReply' => true,
+                        'participationStatus' => 'needs-action',
+                    ],
+                ],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $eventId = (string) $created->json('methodResponses.0.1.created.inv.id');
+        $this->assertNotSame('', $eventId);
+        $uid = (string) $this->jmapAs('admin', [
+            ['CalendarEvent/get', ['accountId' => 'admin', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0.uid');
+        $this->assertNotSame('', $uid);
+
+        $adminList = $this->asUser('admin')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($adminList);
+        $adminRequests = array_values(array_filter(
+            $adminList,
+            static fn (array $row): bool => ($row['method'] ?? '') === 'REQUEST' && ($row['uid'] ?? '') === $uid,
+        ));
+        $this->assertSame([], $adminRequests);
+
+        $wouterList = $this->asUser('wouter')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($wouterList);
+        $wouterRequests = array_values(array_filter(
+            $wouterList,
+            static fn (array $row): bool => ($row['method'] ?? '') === 'REQUEST' && ($row['uid'] ?? '') === $uid,
+        ));
+        $this->assertCount(1, $wouterRequests);
+    }
+
+    public function test_organizer_inbox_omits_outbound_request_keeps_reply(): void
+    {
+        $this->seedWgwUser('admin', email: 'admin@localhost', displayName: 'Admin');
+
+        $this->insertSchedulingObject(
+            'principals/admin',
+            'outbound-request.ics',
+            $this->schedulingIcs('REQUEST', 'outbound-uid', 'admin@localhost', 'wouter@example.test', 'NEEDS-ACTION'),
+        );
+        $this->insertSchedulingObject(
+            'principals/admin',
+            'attendee-reply.ics',
+            $this->schedulingIcs('REPLY', 'reply-uid', 'admin@localhost', 'wouter@example.test', 'ACCEPTED'),
+        );
+        $this->insertSchedulingObject(
+            'principals/admin',
+            'attendee-cancel.ics',
+            $this->schedulingIcs('CANCEL', 'cancel-uid', 'admin@localhost', 'wouter@example.test', 'DECLINED'),
+        );
+
+        $list = $this->asUser('admin')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $byMethod = [];
+        foreach ($list as $row) {
+            $byMethod[(string) $row['method']][] = (string) $row['uid'];
+        }
+        $this->assertArrayNotHasKey('REQUEST', $byMethod);
+        $this->assertArrayNotHasKey('REPLY', $byMethod);
+        $this->assertArrayNotHasKey('CANCEL', $byMethod);
+        $this->assertSame([], $list);
+    }
+
+    public function test_respond_can_change_existing_partstat(): void
+    {
+        $this->bobInvitesCarol();
+        $notificationId = $this->carolNotificationId();
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'declined'],
+        )->assertOk()->assertJsonPath('participationStatus', 'declined');
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list.0.participationStatus', 'declined');
+    }
+
+    public function test_organizer_cancel_removes_attendee_notification(): void
+    {
+        $eventId = $this->bobInvitesCarol();
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonCount(1, 'list');
+
+        $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => [$eventId]], 'c0'],
+        ])->assertOk();
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list', []);
+    }
+
+    public function test_missing_organizer_property_does_not_list_own_event(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/bob',
+            'no-organizer.ics',
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\n"
+            ."BEGIN:VEVENT\r\nUID:own-no-org\r\nSUMMARY:Standup\r\n"
+            ."DTSTART:20300115T100000Z\r\nDTEND:20300115T103000Z\r\n"
+            ."ATTENDEE;CN=Carol;PARTSTAT=NEEDS-ACTION:mailto:carol@example.test\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n",
+        );
+
+        $this->asUser('bob')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list', []);
     }
 
     public function test_other_users_notification_id_is_not_found(): void
@@ -215,5 +419,41 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertNotSame('', $id);
 
         return $id;
+    }
+
+    private function seedCalendarFor(string $username, string $uri, string $displayName): void
+    {
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $caldav->createCalendar('principals/'.$username, $uri, [
+            '{DAV:}displayname' => $displayName,
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
+        ]);
+    }
+
+    private function insertSchedulingObject(string $principalUri, string $uri, string $ics): void
+    {
+        SchedulingObject::query()->create([
+            'principaluri' => $principalUri,
+            'uri' => $uri,
+            'calendardata' => $ics,
+            'lastmodified' => time(),
+            'etag' => md5($ics),
+            'size' => strlen($ics),
+        ]);
+    }
+
+    private function schedulingIcs(
+        string $method,
+        string $uid,
+        string $organizerEmail,
+        string $attendeeEmail,
+        string $partstat,
+    ): string {
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:{$method}\r\n"
+            ."BEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:Uit eten\r\n"
+            ."DTSTART:20300115T100000Z\r\nDTEND:20300115T103000Z\r\n"
+            ."ORGANIZER;CN=Admin:mailto:{$organizerEmail}\r\n"
+            ."ATTENDEE;CN=Wouter;PARTSTAT={$partstat}:mailto:{$attendeeEmail}\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
     }
 }

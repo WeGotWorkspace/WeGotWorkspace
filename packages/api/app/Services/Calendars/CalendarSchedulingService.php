@@ -178,11 +178,49 @@ final class CalendarSchedulingService
             return;
         }
 
+        if ($this->isOrganizerRequestToSelf($message, $recipient)) {
+            return;
+        }
+
         $this->deliverLocal($message, (string) $recipient->uri);
+    }
+
+    private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool
+    {
+        $method = strtoupper((string) ($message->method ?? 'REQUEST'));
+        if ($method !== '' && $method !== 'REQUEST') {
+            return false;
+        }
+
+        $organizerMailto = (string) ($message->sender ?? '');
+        $vevent = isset($message->message) ? ($message->message->VEVENT ?? null) : null;
+        if ($vevent !== null && isset($vevent->ORGANIZER)) {
+            $organizerMailto = (string) $vevent->ORGANIZER;
+        }
+        $organizer = $this->addresses->principalForMailto($organizerMailto);
+        if ($organizer !== null && $organizer->uri === $recipient->uri) {
+            return true;
+        }
+
+        foreach ($this->addresses->addressesForPrincipal($recipient) as $address) {
+            if ($this->addresses->calendarUserAddress($address) === $this->addresses->calendarUserAddress($organizerMailto)
+                && $this->addresses->calendarUserAddress($organizerMailto) !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function deliverLocal(Message $message, string $principalUri): void
     {
+        $method = strtoupper((string) ($message->method ?? ''));
+        if ($method === 'CANCEL') {
+            $this->consumeCancel($principalUri, $message);
+
+            return;
+        }
+
         $caldav = $this->calBackend();
         $objectUri = 'sabredav-'.Str::uuid()->toString().'.ics';
         $payload = $message->message->serialize();
@@ -225,6 +263,103 @@ final class CalendarSchedulingService
             );
             $this->indexPath($principalUri, (string) $instance->uri, $eventUri);
         }
+    }
+
+    /**
+     * iTIP CANCEL is consumed automatically: drop inbox REQUEST leftovers and the
+     * CANCEL itself, and remove a still-tentative invitee copy. Do not leave a
+     * non-actionable CANCEL card in the invitations sidebar.
+     */
+    private function consumeCancel(string $principalUri, Message $message): void
+    {
+        $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid);
+
+        $existing = $this->findEventByUid($principalUri, (string) $message->uid);
+        if ($existing === null) {
+            return;
+        }
+
+        $raw = is_string($existing->calendardata) ? $existing->calendardata : (string) $existing->calendardata;
+        $current = Reader::read($raw);
+        $newObject = (new Broker)->processMessage($message, $current);
+        $instance = $this->instanceForObject($principalUri, $existing);
+        if ($instance === null) {
+            return;
+        }
+
+        $caldav = $this->calBackend();
+        $calendarId = [(int) $instance->calendarid, (int) $instance->id];
+        if ($this->isTentativeInviteCopy($raw, $principalUri) || $newObject === null) {
+            $caldav->deleteCalendarObject($calendarId, (string) $existing->uri);
+            $this->unindexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
+
+            return;
+        }
+
+        $caldav->updateCalendarObject($calendarId, (string) $existing->uri, $newObject->serialize());
+        $this->indexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
+    }
+
+    private function deleteSchedulingObjectsForUid(string $principalUri, string $uid): void
+    {
+        if ($uid === '') {
+            return;
+        }
+        $caldav = $this->calBackend();
+        foreach ($caldav->getSchedulingObjects($principalUri) as $row) {
+            $data = is_string($row['calendardata'] ?? null) ? $row['calendardata'] : '';
+            if ($data === '' || ! str_contains($data, $uid)) {
+                continue;
+            }
+            try {
+                $parsed = Reader::read($data);
+            } catch (\Throwable) {
+                continue;
+            }
+            $vevent = $parsed->VEVENT ?? null;
+            if ($vevent === null || trim((string) ($vevent->UID ?? '')) !== $uid) {
+                continue;
+            }
+            $caldav->deleteSchedulingObject($principalUri, (string) $row['uri']);
+        }
+    }
+
+    private function isTentativeInviteCopy(string $ics, string $principalUri): bool
+    {
+        try {
+            $parsed = Reader::read($ics);
+        } catch (\Throwable) {
+            return false;
+        }
+        $vevent = $parsed->VEVENT ?? null;
+        if ($vevent === null || ! isset($vevent->ATTENDEE)) {
+            return false;
+        }
+        foreach ($vevent->ATTENDEE as $attendee) {
+            $principal = $this->addresses->principalForMailto((string) $attendee);
+            if ($principal === null || $principal->uri !== $principalUri) {
+                continue;
+            }
+            $status = strtoupper(trim((string) ($attendee['PARTSTAT'] ?? 'NEEDS-ACTION')));
+
+            return in_array($status, ['NEEDS-ACTION', 'TENTATIVE'], true);
+        }
+
+        return false;
+    }
+
+    private function unindexPath(string $principalUri, string $calendarUri, string $eventUri): void
+    {
+        $username = str_starts_with($principalUri, 'principals/')
+            ? substr($principalUri, strlen('principals/'))
+            : $principalUri;
+        $davPath = 'calendars/'.$username.'/'.$calendarUri.'/'.$eventUri;
+        $this->searchIndexSync->sync(
+            'calendars',
+            fn () => $this->searchIndexer->deleteDavPath($davPath),
+            $davPath,
+            $username,
+        );
     }
 
     private function findEventByUid(string $principalUri, string $uid): ?CalendarObject

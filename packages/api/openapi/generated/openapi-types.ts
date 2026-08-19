@@ -9171,6 +9171,8 @@ export interface components {
         CalendarSchedulingNotificationRespond: {
             /** @enum {string} */
             participationStatus: "accepted" | "tentative" | "declined";
+            /** @description Writable calendar for the attendee copy on accept/tentative. Ignored when declined. */
+            calendarId?: string;
         };
         CalendarSchedulingInvitee: {
             username: string;

@@ -21,6 +21,7 @@ final class CalendarSchedulingNotificationRespondRequest extends FormRequest
     {
         return [
             'participationStatus' => ['required', 'string', Rule::in(['accepted', 'tentative', 'declined'])],
+            'calendarId' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }
 }

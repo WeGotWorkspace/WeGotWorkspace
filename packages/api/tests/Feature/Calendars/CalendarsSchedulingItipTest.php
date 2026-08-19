@@ -162,20 +162,25 @@ final class CalendarsSchedulingItipTest extends WgwDatabaseTestCase
         Mail::assertNothingSent();
     }
 
-    public function test_organizer_cancel_notifies_attendee_inbox(): void
+    public function test_organizer_cancel_consumes_attendee_inbox(): void
     {
         $eventId = $this->bobInvitesCarol();
-        $before = count($this->schedulingObjectsFor('principals/carol'));
+        $uid = $this->eventUid($eventId, 'bob');
+        $this->assertNotSame([], $this->schedulingObjectsFor('principals/carol'));
+        $this->assertNotNull($this->findEventByUid('carol', $uid));
 
         $this->jmapAs('bob', [
             ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => [$eventId]], 'c0'],
         ])->assertOk();
 
         $after = $this->schedulingObjectsFor('principals/carol');
-        $this->assertGreaterThan($before, count($after));
-        $this->assertTrue(
+        $this->assertFalse(
             collect($after)->contains(fn (array $row): bool => str_contains($row['calendardata'], 'METHOD:CANCEL')),
         );
+        $this->assertFalse(
+            collect($after)->contains(fn (array $row): bool => str_contains((string) $row['calendardata'], $uid)),
+        );
+        $this->assertNull($this->findEventByUid('carol', $uid));
         Mail::assertNothingSent();
     }
 

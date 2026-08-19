@@ -33,6 +33,13 @@
       "end": {
         "type": ["string", "null"]
       },
+      "location": {
+        "type": ["string", "null"]
+      },
+      "recurring": {
+        "type": "boolean",
+        "description": "True when the VEVENT has RRULE or RECURRENCE-ID."
+      },
       "participationStatus": {
         "type": "string",
         "enum": ["needs-action", "accepted", "tentative", "declined", "delegated"]
@@ -103,6 +110,10 @@
       "participationStatus": {
         "type": "string",
         "enum": ["accepted", "tentative", "declined"]
+      },
+      "calendarId": {
+        "type": "string",
+        "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
       }
     }
   }

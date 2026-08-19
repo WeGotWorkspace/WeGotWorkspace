@@ -26,6 +26,8 @@ final class CalendarSchedulingNotificationResource extends JsonResource
             'organizerName' => $this->resource['organizerName'] ?? null,
             'start' => $this->resource['start'] ?? null,
             'end' => $this->resource['end'] ?? null,
+            'location' => $this->resource['location'] ?? null,
+            'recurring' => (bool) ($this->resource['recurring'] ?? false),
             'participationStatus' => $this->resource['participationStatus'],
             'eventId' => $this->resource['eventId'] ?? null,
             'etag' => $this->resource['etag'] ?? '',

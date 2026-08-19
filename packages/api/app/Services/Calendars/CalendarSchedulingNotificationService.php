@@ -83,14 +83,23 @@ final class CalendarSchedulingNotificationService
 
         $list = [];
         foreach ($rows as $row) {
-            $list[] = $this->toNotification($username, $row);
+            $notification = $this->toNotification($username, $row);
+            if ($this->isOrganizerInboxItem($username, $notification, $row)) {
+                continue;
+            }
+            if ($this->isStaleInvite($username, $notification, $row)) {
+                $row->delete();
+
+                continue;
+            }
+            $list[] = $notification;
         }
 
         return ['list' => $list];
     }
 
     /**
-     * @param  array{participationStatus: string}  $payload
+     * @param  array{participationStatus: string, calendarId?: string|null}  $payload
      * @return array<string, mixed>
      */
     public function respond(string $username, string $notificationId, array $payload): array
@@ -126,11 +135,13 @@ final class CalendarSchedulingNotificationService
             throw new ApiHttpException(400, 'You are not an attendee of this event.', 'bad_request');
         }
 
-        $this->events->patchWithPrecondition($username, $eventId, [
-            'participants' => $participants,
-        ], requirePrecondition: false);
-        $row->delete();
+        $patch = ['participants' => $participants];
+        $calendarId = $payload['calendarId'] ?? null;
+        if (is_string($calendarId) && $calendarId !== '' && in_array($status, ['accepted', 'tentative'], true)) {
+            $patch['calendarIds'] = [$calendarId => true];
+        }
 
+        $this->events->patchWithPrecondition($username, $eventId, $patch, requirePrecondition: false);
         $notification['participationStatus'] = $status;
 
         return $notification;
@@ -141,17 +152,81 @@ final class CalendarSchedulingNotificationService
         $this->ownedOrNotFound($username, $notificationId)->delete();
     }
 
+    /**
+     * This REST inbox is invitee-only. Organizer rows (REQUEST/REPLY/CANCEL, self-as-attendee
+     * aliases, missing METHOD, or missing ORGANIZER on an outbound copy) stay out.
+     *
+     * @param  array<string, mixed>  $notification
+     */
+    private function isOrganizerInboxItem(string $username, array $notification, ?SchedulingObject $row): bool
+    {
+        if ($this->isOwnParticipant($username, $notification['organizerEmail'] ?? null)) {
+            return true;
+        }
+
+        $vevent = $row !== null ? $this->veventFromSchedulingObject($row) : null;
+        if ($vevent instanceof VEvent && isset($vevent->ORGANIZER)) {
+            return $this->isOwnParticipant($username, (string) $vevent->ORGANIZER);
+        }
+
+        if ($vevent instanceof VEvent && $this->isListedAttendee($username, $vevent)) {
+            return false;
+        }
+
+        $eventId = $notification['eventId'] ?? null;
+        if (! is_string($eventId) || $eventId === '') {
+            return $vevent instanceof VEvent && ! $this->isListedAttendee($username, $vevent);
+        }
+
+        try {
+            $event = $this->events->show($username, $eventId);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $this->userOwnsEvent($username, $event);
+    }
+
+    /**
+     * @param  array<string, mixed>  $notification
+     */
+    private function isStaleInvite(string $username, array $notification, SchedulingObject $row): bool
+    {
+        $method = strtoupper((string) ($notification['method'] ?? ''));
+        if ($method === 'CANCEL') {
+            $this->deleteInboxForUid($username, (string) ($notification['uid'] ?? ''));
+
+            return true;
+        }
+        if ($method !== 'REQUEST') {
+            return false;
+        }
+
+        $eventId = $notification['eventId'] ?? null;
+        if (! is_string($eventId) || $eventId === '') {
+            return $this->organizerEventMissing($username, $row);
+        }
+
+        return $this->eventCopyIsCancelled($username, $eventId)
+            || $this->organizerEventMissing($username, $row);
+    }
+
     private function ownedOrNotFound(string $username, string $notificationId): SchedulingObject
     {
         $row = SchedulingObject::query()
             ->where('principaluri', $this->principalUri($username))
             ->where('uri', $notificationId)
             ->first();
-        if ($row === null) {
-            throw new ApiHttpException(404, 'Scheduling notification not found.', 'not_found');
+        if ($row !== null) {
+            return $row;
         }
 
-        return $row;
+        $synthetic = $this->syntheticSchedulingObject($username, $notificationId);
+        if ($synthetic !== null) {
+            return $synthetic;
+        }
+
+        throw new ApiHttpException(404, 'Scheduling notification not found.', 'not_found');
     }
 
     /**
@@ -179,8 +254,156 @@ final class CalendarSchedulingNotificationService
             'eventId' => $copy !== null
                 ? CalendarEventMapper::eventIdFromUri((string) $copy->uri)
                 : null,
+            'location' => $vevent instanceof VEvent ? $this->location($vevent) : null,
+            'recurring' => $vevent instanceof VEvent && $this->isRecurring($vevent),
             'etag' => (string) $row->etag,
         ];
+    }
+
+    private function schedulingObjectFromCalendarCopy(CalendarObject $copy): SchedulingObject
+    {
+        $raw = is_string($copy->calendardata) ? $copy->calendardata : (string) $copy->calendardata;
+        $row = new SchedulingObject;
+        $row->uri = CalendarEventMapper::eventIdFromUri((string) $copy->uri);
+        $row->calendardata = $raw;
+        $row->etag = (string) $copy->etag;
+
+        return $row;
+    }
+
+    private function syntheticSchedulingObject(string $username, string $notificationId): ?SchedulingObject
+    {
+        try {
+            $event = $this->events->show($username, $notificationId);
+        } catch (\Throwable) {
+            return null;
+        }
+        if ($this->userOwnsEvent($username, $event)) {
+            return null;
+        }
+        $uid = is_string($event['uid'] ?? null) ? $event['uid'] : '';
+        $copy = $uid !== '' ? $this->findEventByUid($username, $uid) : null;
+        if ($copy === null) {
+            return null;
+        }
+
+        return $this->schedulingObjectFromCalendarCopy($copy);
+    }
+
+    private function veventFromSchedulingObject(SchedulingObject $row): ?VEvent
+    {
+        $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
+        try {
+            $vcal = Reader::read($raw);
+        } catch (\Throwable) {
+            return null;
+        }
+        $vevent = $vcal->VEVENT ?? null;
+
+        return $vevent instanceof VEvent ? $vevent : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function userOwnsEvent(string $username, array $event): bool
+    {
+        foreach ($event['participants'] ?? [] as $participant) {
+            if (! is_array($participant)) {
+                continue;
+            }
+            $roles = $participant['roles'] ?? null;
+            $isOwner = is_array($roles) && (isset($roles['owner']) || in_array('owner', $roles, true));
+            if (! $isOwner) {
+                continue;
+            }
+            if ($this->isOwnParticipant($username, $participant['email'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isListedAttendee(string $username, VEvent $vevent): bool
+    {
+        if (! isset($vevent->ATTENDEE)) {
+            return false;
+        }
+        foreach ($vevent->ATTENDEE as $attendee) {
+            if ($this->isOwnParticipant($username, (string) $attendee)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function eventCopyIsCancelled(string $username, string $eventId): bool
+    {
+        try {
+            $event = $this->events->show($username, $eventId);
+        } catch (\Throwable) {
+            return false;
+        }
+        $status = strtolower((string) ($event['status'] ?? ''));
+
+        return $status === 'cancelled';
+    }
+
+    private function organizerEventMissing(string $username, SchedulingObject $row): bool
+    {
+        $vevent = $this->veventFromSchedulingObject($row);
+        if (! $vevent instanceof VEvent || ! isset($vevent->ORGANIZER)) {
+            return false;
+        }
+        $organizer = $this->addresses->principalForMailto((string) $vevent->ORGANIZER);
+        if ($organizer === null) {
+            return false;
+        }
+        $uid = trim((string) ($vevent->UID ?? ''));
+        if ($uid === '') {
+            return false;
+        }
+        $organizerUsername = str_starts_with((string) $organizer->uri, 'principals/')
+            ? substr((string) $organizer->uri, strlen('principals/'))
+            : (string) $organizer->uri;
+        if ($organizerUsername === $username) {
+            return false;
+        }
+
+        return $this->findEventByUid($organizerUsername, $uid) === null;
+    }
+
+    private function deleteInboxForUid(string $username, string $uid): void
+    {
+        if ($uid === '') {
+            return;
+        }
+        $rows = SchedulingObject::query()
+            ->where('principaluri', $this->principalUri($username))
+            ->get();
+        foreach ($rows as $row) {
+            $vevent = $this->veventFromSchedulingObject($row);
+            if ($vevent instanceof VEvent && trim((string) ($vevent->UID ?? '')) === $uid) {
+                $row->delete();
+            }
+        }
+    }
+
+    private function location(VEvent $vevent): ?string
+    {
+        if (! isset($vevent->LOCATION)) {
+            return null;
+        }
+        $location = trim((string) $vevent->LOCATION);
+
+        return $location !== '' ? $location : null;
+    }
+
+    private function isRecurring(VEvent $vevent): bool
+    {
+        return isset($vevent->RRULE) || isset($vevent->{'RECURRENCE-ID'});
     }
 
     private function findEventByUid(string $username, string $uid): ?CalendarObject
