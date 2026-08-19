@@ -75,23 +75,30 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     }
   };
 
-  const sendMailDeliveryTest = async () => {
+  const sendMailDeliveryTest = async (to: string) => {
+    const recipient = to.trim();
+    if (!recipient.includes("@")) {
+      showError("A recipient email is required");
+      return false;
+    }
     if (!operations?.sendMailDeliveryTest) {
       showError("Admin API is not ready yet");
-      return;
+      return false;
     }
     try {
-      const next = await operations.sendMailDeliveryTest();
+      const next = await operations.sendMailDeliveryTest({ to: recipient });
       applyAdminData(next);
       const last = next.mailDelivery.lastTestSend;
       if (last?.accepted) {
         showSuccess("Test send accepted by the transport (not inbox placement)");
-        return;
+      } else {
+        showError(last?.message || `Test send failed (${last?.status ?? "unavailable"})`);
       }
-      showError(last?.message || `Test send failed (${last?.status ?? "unavailable"})`);
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not send a test email";
       showError(message);
+      return false;
     }
   };
 

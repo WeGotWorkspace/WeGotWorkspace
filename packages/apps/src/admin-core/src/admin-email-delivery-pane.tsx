@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { Card } from "@/card/src/card";
@@ -5,6 +6,7 @@ import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { lastTestSendLabel } from "@/admin-core/src/admin-mail-delivery";
+import { MailDeliveryTestDialog } from "@/admin-core/src/admin-workspace-dialogs";
 import { SECURITY_OPTIONS } from "@/admin-core/src/admin-workspace-utils";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
@@ -23,6 +25,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
   const delivery = controller.mailDelivery;
   const capability = delivery.capability;
   const selected = capability.selectedTransport ?? "none";
+  const [testSendOpen, setTestSendOpen] = useState(false);
 
   return (
     <div className="admin-email-delivery-pane">
@@ -187,9 +190,18 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           label="Send test email"
           variant="subtle"
           disabled={!capability.canSubmit}
-          onClick={() => void controller.actions.sendMailDeliveryTest()}
+          onClick={() => setTestSendOpen(true)}
         />
       </div>
+      <MailDeliveryTestDialog
+        open={testSendOpen}
+        onOpenChange={setTestSendOpen}
+        onSubmit={async (to) => {
+          if (await controller.actions.sendMailDeliveryTest(to)) {
+            setTestSendOpen(false);
+          }
+        }}
+      />
     </div>
   );
 }

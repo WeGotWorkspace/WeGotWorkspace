@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
@@ -51,6 +51,36 @@ export const CapabilityOkTestNull: Story = {
     await userEvent.clear(fromInput);
     await userEvent.type(fromInput, "noreply@example.test");
     await expect(fromInput).toHaveValue("noreply@example.test");
+  },
+};
+
+export const TestSendDialog: Story = {
+  name: "test-send-dialog",
+  tags: ["vitest-ci"],
+  render: () => (
+    <EmailDeliveryHarness
+      override={{
+        mailDelivery: {
+          capability: {
+            canSubmit: true,
+            selectedTransport: "smtp",
+            probes: { fromConfigured: true, smtpEligible: true },
+          },
+          lastTestSend: null,
+        },
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Send test email" }));
+    const recipient = await screen.findByLabelText("Recipient");
+    await userEvent.type(recipient, "alice@example.test");
+    await userEvent.click(screen.getByRole("button", { name: /^Send$/ }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    await expect(canvas.getByText(/accepted by the smtp transport/i)).toBeInTheDocument();
   },
 };
 

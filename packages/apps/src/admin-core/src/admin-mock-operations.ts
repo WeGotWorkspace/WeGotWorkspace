@@ -163,6 +163,10 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
     },
     sendMailDeliveryTest: async (opts) => {
       await sleep(150, opts?.signal);
+      const to = opts?.to?.trim() ?? "";
+      if (to === "" || !to.includes("@")) {
+        throw new Error("At least one recipient is required.");
+      }
       const now = new Date().toISOString();
       if (!current.mailDelivery.capability.canSubmit) {
         current.mailDelivery.lastTestSend = {
