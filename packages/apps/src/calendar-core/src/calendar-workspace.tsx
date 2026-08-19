@@ -318,9 +318,9 @@ export function CalendarWorkspace({
         busy={invitations.busy}
         showCloseButton={useInvitationsDrawer}
         onClose={() => setInvitationsOpen(false)}
-        onRespond={(id, status, calendarId) =>
-          persistRsvp(id, status, calendarId, { source: "sidebar" })
-        }
+        onRespond={async (id, status, calendarId) => {
+          await persistRsvp(id, status, calendarId, { source: "sidebar" });
+        }}
         onOpenEvent={canWrite ? openEditEventKey : undefined}
       />
     ),
