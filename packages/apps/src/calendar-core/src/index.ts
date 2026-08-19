@@ -19,3 +19,16 @@ export {
   mergeCalendarLabels,
   type CalendarUILabels,
 } from "./calendar-labels";
+export { CalendarInvitationsSection } from "./calendar-invitations-section";
+export type { CalendarInvitationsSectionProps } from "./calendar-invitations-section";
+export { CalendarRsvpPage, CalendarRsvpView } from "./calendar-rsvp-page";
+export type { CalendarRsvpViewProps } from "./calendar-rsvp-page";
+export { CalendarEventDialog } from "./calendar-event-dialog";
+export type { CalendarEventDialogProps } from "./calendar-event-dialog";
+export {
+  attendeesFromParticipants,
+  participantsFromAttendees,
+  type CalendarAttendee,
+  type CalendarAttendeeRole,
+  type CalendarInvitee,
+} from "./calendar-attendees";

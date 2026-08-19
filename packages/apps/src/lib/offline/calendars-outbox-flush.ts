@@ -5,6 +5,11 @@ import {
   deleteCalendarEventLive,
   patchCalendarEventLive,
 } from "@/lib/api/wgw/calendar";
+import {
+  dismissCalendarSchedulingNotification,
+  respondCalendarSchedulingNotification,
+  type CalendarSchedulingRespondStatus,
+} from "@/lib/api/wgw/calendar-scheduling";
 import { JmapSetItemError } from "@/lib/jmap-client";
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {
@@ -62,6 +67,13 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const eventId = String(payload.eventId ?? "");
         await deleteCalendarEventLive(eventId);
         await removeCalendarEventFromCache(username, eventId);
+      } else if (row.op === "respond-scheduling") {
+        await respondCalendarSchedulingNotification(
+          String(payload.notificationId ?? ""),
+          payload.participationStatus as CalendarSchedulingRespondStatus,
+        );
+      } else if (row.op === "dismiss-scheduling") {
+        await dismissCalendarSchedulingNotification(String(payload.notificationId ?? ""));
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {

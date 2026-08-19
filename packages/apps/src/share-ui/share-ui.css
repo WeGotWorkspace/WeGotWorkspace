@@ -1,6 +1,7 @@
 @import "../styles.css" reference;
 
-.share-dialog {
+.share-dialog,
+.share-access-card {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
   --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
   --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
@@ -25,14 +26,18 @@
   --card-panel-border-color: var(--share-dialog-panel-border);
   --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream, #ffffff)) 60%, transparent);
   --card-row-subtitle-color: var(--share-dialog-muted);
-  max-width: 36rem;
   --input-height: 2.25rem;
   /* Match outline IconButtons to Input/Select (--control-border-color). */
   --button-outline-border-color: var(--control-border-color);
 }
 
+.share-dialog {
+  max-width: 36rem;
+}
+
 /* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
-.share-dialog .icon-button--size-sm {
+.share-dialog .icon-button--size-sm,
+.share-access-card .icon-button--size-sm {
   width: var(--input-height);
   height: var(--input-height);
 }
@@ -224,6 +229,11 @@
 
 .share-dialog__add-grant-field {
   @apply min-w-0;
+}
+
+.share-access-card__hint {
+  @apply px-1 pt-2 text-xs;
+  color: var(--share-dialog-muted);
 }
 
 /* Portaled via Popover — keep tokens when rendered outside `.share-dialog` content. */

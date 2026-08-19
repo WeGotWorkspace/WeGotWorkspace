@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, Check, Clock, Eye, Repeat, Trash2 } from "lucide-react";
+import { Bell, Check, Clock, Repeat, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Temporal } from "@js-temporal/polyfill";
 import { Button } from "@/button/src/button";
@@ -21,7 +21,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { cn } from "@/lib/utils";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
+import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
   calendarEventFormIsValid,
@@ -66,6 +69,10 @@ export type CalendarEventDialogProps = {
   onClose: () => void;
   onSave: () => void;
   onDelete?: () => void;
+  invitees?: CalendarInvitee[];
+  canSubmitEmail?: boolean;
+  sessionEmail?: string;
+  onRsvp?: (status: CalendarSchedulingRespondStatus) => void;
 };
 
 function isoToJsDate(iso: string): Date | undefined {
@@ -281,6 +288,10 @@ export function CalendarEventDialog({
   onClose,
   onSave,
   onDelete,
+  invitees = [],
+  canSubmitEmail = true,
+  sessionEmail,
+  onRsvp,
 }: CalendarEventDialogProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
   const writableCalendars = calendars.filter((calendar) => calendar.mayWrite !== false);
@@ -557,30 +568,15 @@ export function CalendarEventDialog({
               ) : null}
             </Card>
 
-            <Card
-              className="calendar-event-dialog__card"
-              titleIcon={<Eye className="size-4" />}
-              title={labels.eventShowAs}
-            >
-              <CardRow fill>
-                <Select
-                  value={form.freeBusyStatus}
-                  onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
-                  disabled={busy}
-                >
-                  <SelectTrigger
-                    className="calendar-event-dialog__show-as-trigger"
-                    aria-label={labels.eventShowAs}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
-                    <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </CardRow>
-            </Card>
+            <CalendarInviteesCard
+              attendees={form.attendees}
+              invitees={invitees}
+              labels={labels}
+              busy={busy}
+              canSubmitEmail={canSubmitEmail}
+              sessionEmail={sessionEmail}
+              onChange={(attendees) => set("attendees", attendees)}
+            />
 
             <Card
               className="calendar-event-dialog__card"
@@ -614,6 +610,25 @@ export function CalendarEventDialog({
               )}
             </Card>
 
+            <FieldLabelRow label={labels.eventShowAs}>
+              <Select
+                value={form.freeBusyStatus}
+                onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
+                disabled={busy}
+              >
+                <SelectTrigger
+                  className="calendar-event-dialog__show-as-trigger"
+                  aria-label={labels.eventShowAs}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
+                  <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
+                </SelectContent>
+              </Select>
+            </FieldLabelRow>
+
             <FieldLabelRow label={labels.eventNotesLabel}>
               <Textarea
                 value={form.description}
@@ -625,6 +640,38 @@ export function CalendarEventDialog({
           </div>
 
           <DialogFooter className="calendar-event-dialog__footer">
+            {mode === "edit" && onRsvp && sessionEmail ? (
+              form.attendees.some(
+                (row) => row.email === sessionEmail.toLowerCase() && !row.isOrganizer,
+              ) ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    disabled={busy}
+                    onClick={() => onRsvp("accepted")}
+                  >
+                    {labels.rsvpAccept}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    disabled={busy}
+                    onClick={() => onRsvp("tentative")}
+                  >
+                    {labels.rsvpMaybe}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    disabled={busy}
+                    onClick={() => onRsvp("declined")}
+                  >
+                    {labels.rsvpDecline}
+                  </Button>
+                </>
+              ) : null
+            ) : null}
             {mode === "edit" && onDelete ? (
               <Button
                 type="button"

@@ -1,3 +1,8 @@
+import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type {
+  CalendarSchedulingNotification,
+  CalendarSchedulingRespondStatus,
+} from "@/lib/api/wgw/calendar-scheduling";
 import type {
   JmapCalendarEvent,
   JSCalendarAlert,
@@ -72,6 +77,8 @@ export type CalendarEventDraft = {
    * by omission).
    */
   recurrenceOverrides?: Record<string, JSCalendarPatchObject | null> | null;
+  attendees?: CalendarAttendee[];
+  organizer?: { email: string; name?: string };
 };
 
 export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">> & {
@@ -96,4 +103,11 @@ export type CalendarAPIOperations = {
   createCalendar?: (draft: CalendarDraft) => Promise<CalendarInfo>;
   patchCalendar?: (calendarId: string, patch: CalendarPatch) => Promise<CalendarInfo>;
   deleteCalendar?: (calendarId: string) => Promise<void>;
+  listSchedulingNotifications?: () => Promise<CalendarSchedulingNotification[]>;
+  respondSchedulingNotification?: (
+    notificationId: string,
+    status: CalendarSchedulingRespondStatus,
+  ) => Promise<void>;
+  dismissSchedulingNotification?: (notificationId: string) => Promise<void>;
+  listInvitees?: () => Promise<{ list: CalendarInvitee[]; canSubmitEmail: boolean }>;
 };

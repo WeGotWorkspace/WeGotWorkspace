@@ -16,6 +16,8 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
+import { CalendarInvitationsSection } from "@/calendar-core/src/calendar-invitations-section";
+import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import { formToCreateIntent } from "@/calendar-core/src/calendar-editor-model";
@@ -25,6 +27,7 @@ import {
   calendarDirectoryGroupsFromBootstrap,
   personalOwnerLabel,
 } from "@/calendar-core/src/calendar-workspace-props";
+import { organizerAddress } from "@/calendar-core/src/calendar-attendees";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
 import {
   personalCalendarsForSidebar,
@@ -138,7 +141,10 @@ export function CalendarWorkspace({
     onMutated: () => {
       surface?.syncNow();
     },
+    sessionEmail: organizerAddress(session.user)?.email,
+    sessionName: session.user.displayName,
   });
+  const invitations = useCalendarInvitations(operations);
 
   const {
     L,
@@ -247,6 +253,14 @@ export function CalendarWorkspace({
               />
             }
           >
+            <CalendarInvitationsSection
+              notifications={invitations.notifications}
+              labels={L}
+              busy={invitations.busy}
+              onRespond={(id, status) => void invitations.respond(id, status)}
+              onDismiss={(id) => void invitations.dismiss(id)}
+              onOpenEvent={canWrite ? openEditEventKey : undefined}
+            />
             <SidebarSection
               title={L.myCalendarsSection}
               onAdd={canCreateCalendar ? openCreateCalendarDialog : undefined}
@@ -363,6 +377,19 @@ export function CalendarWorkspace({
           onClose={closeEditor}
           onSave={saveEditor}
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
+          invitees={invitations.invitees}
+          canSubmitEmail={invitations.canSubmitEmail}
+          sessionEmail={session.user.email}
+          onRsvp={
+            editor.mode === "edit"
+              ? (status) => {
+                  const notification = invitations.notifications.find(
+                    (row) => row.eventId === editor.eventId,
+                  );
+                  if (notification) void invitations.respond(notification.id, status);
+                }
+              : undefined
+          }
         />
       ) : null}
       <CalendarCalendarDialog

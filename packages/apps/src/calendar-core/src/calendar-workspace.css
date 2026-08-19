@@ -256,6 +256,10 @@
  * Portaled event dialog sits outside `.calendar-workspace`; repeat the accent
  * tokens so {@link Button} and form chrome match the calendar shell.
  */
+.calendar-dialog-surface .share-access-card {
+  --share-dialog-accent: var(--calendar-accent);
+}
+
 .calendar-dialog-surface {
   --calendar-accent: #6366f1;
   --calendar-accent-strong: #5558e8;

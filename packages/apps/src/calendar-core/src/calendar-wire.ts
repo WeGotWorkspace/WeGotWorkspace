@@ -1,9 +1,11 @@
+import { participantsFromAttendees } from "@/calendar-core/src/calendar-attendees";
 import type { JmapCalendarEvent, JSCalendarRecurrenceRule } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 
 /** Pure JSCalendar wire shaping shared by the jmap transport and the offline layer. */
 
 export function draftToJmapEvent(draft: CalendarEventDraft): Omit<JmapCalendarEvent, "id"> {
+  const participants = participantsFromAttendees(draft.attendees ?? [], draft.organizer);
   return {
     "@type": "Event",
     uid: `urn:uuid:${crypto.randomUUID()}`,
@@ -23,6 +25,7 @@ export function draftToJmapEvent(draft: CalendarEventDraft): Omit<JmapCalendarEv
     ...(draft.recurrenceOverrides && Object.keys(draft.recurrenceOverrides).length
       ? { recurrenceOverrides: draft.recurrenceOverrides }
       : {}),
+    ...(participants ? { participants } : {}),
   } as Omit<JmapCalendarEvent, "id">;
 }
 
@@ -45,6 +48,9 @@ export function patchToJmapPartial(patch: CalendarEventPatch): Partial<JmapCalen
       : {}),
     ...(patch.recurrenceOverrides !== undefined
       ? { recurrenceOverrides: patch.recurrenceOverrides }
+      : {}),
+    ...(patch.attendees !== undefined
+      ? { participants: participantsFromAttendees(patch.attendees, patch.organizer) }
       : {}),
   } as Partial<JmapCalendarEvent>;
 }

@@ -93,6 +93,27 @@ export type CalendarUILabels = {
   save: string;
   cancel: string;
   delete: string;
+  invitationsSection: string;
+  invitationsEmpty: string;
+  invitationsDismiss: string;
+  eventAttendeesLabel: string;
+  eventAttendeesHint: string;
+  eventAttendeesAdd: string;
+  eventAttendeesEmpty: string;
+  eventAttendeesEmailPlaceholder: string;
+  eventAttendeesEmailAdd: string;
+  eventAttendeesEmailUnavailable: string;
+  eventAttendeesRoleRequired: string;
+  eventAttendeesRoleOptional: string;
+  eventAttendeesRemove: string;
+  eventAttendeesSearchEmpty: string;
+  eventAttendeesRsvpAccepted: string;
+  eventAttendeesRsvpTentative: string;
+  eventAttendeesRsvpDeclined: string;
+  eventAttendeesRsvpDelegated: string;
+  rsvpAccept: string;
+  rsvpMaybe: string;
+  rsvpDecline: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -187,6 +208,28 @@ export const defaultCalendarLabels: CalendarUILabels = {
   save: "Save",
   cancel: "Cancel",
   delete: "Delete",
+  invitationsSection: "Invitations",
+  invitationsEmpty: "No pending invitations.",
+  invitationsDismiss: "Dismiss",
+  eventAttendeesLabel: "Invitees",
+  eventAttendeesHint: "Add teammates or invite anyone with an email address.",
+  eventAttendeesAdd: "Add people",
+  eventAttendeesEmpty: "No invitees yet.",
+  eventAttendeesEmailPlaceholder: "Add people…",
+  eventAttendeesEmailAdd: "Add email",
+  eventAttendeesEmailUnavailable:
+    "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
+  eventAttendeesRoleRequired: "Required",
+  eventAttendeesRoleOptional: "Optional",
+  eventAttendeesRemove: "Remove invitee",
+  eventAttendeesSearchEmpty: "No teammates found",
+  eventAttendeesRsvpAccepted: "Accepted",
+  eventAttendeesRsvpTentative: "Maybe",
+  eventAttendeesRsvpDeclined: "Declined",
+  eventAttendeesRsvpDelegated: "Delegated",
+  rsvpAccept: "Accept",
+  rsvpMaybe: "Maybe",
+  rsvpDecline: "Decline",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

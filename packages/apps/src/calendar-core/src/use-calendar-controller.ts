@@ -5,6 +5,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type {
   CalendarAPIOperations,
+  CalendarEventDraft,
   CalendarInfo,
   CalendarPresentation,
   CalendarUIData,
@@ -88,6 +89,8 @@ export type UseCalendarControllerOptions = {
   resolveEventId?: (engineKey: string) => Promise<string | undefined>;
   /** Called after a successful create/update/delete (e.g. to refresh the bootstrap). */
   onMutated?: () => void;
+  sessionEmail?: string;
+  sessionName?: string;
 };
 
 const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOptions = {
@@ -125,6 +128,14 @@ function rangeTitle(view: CalendarViewId, anchorISO: string, locale: string): st
     : `${startLabel} – ${endLabel}`;
 }
 
+function draftFromForm(
+  form: CalendarEventFormValue,
+  organizer?: { email: string; name?: string },
+): CalendarEventDraft {
+  const draft = formToDraft(form);
+  return organizer ? { ...draft, organizer } : draft;
+}
+
 function pickDefaultCalendarId(calendars: CalendarInfo[], preferred?: string): string | undefined {
   const writable = calendars.filter((c) => c.mayWrite !== false);
   if (preferred && writable.some((c) => c.id === preferred)) return preferred;
@@ -144,6 +155,8 @@ export function useCalendarController({
   surfaceEvents,
   resolveEventId,
   onMutated,
+  sessionEmail,
+  sessionName,
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
   const { show, showError } = useAppToast();
@@ -502,7 +515,12 @@ export function useCalendarController({
     if (editor.mode === "create") {
       ensureCalendarVisible(editor.form.calendarId);
       runEditorMutation(async () => {
-        await operations.createEvent(formToDraft(editor.form));
+        await operations.createEvent(
+          draftFromForm(
+            editor.form,
+            sessionEmail ? { email: sessionEmail, name: sessionName || sessionEmail } : undefined,
+          ),
+        );
       }, L.toastEventCreated);
       return;
     }
@@ -510,6 +528,12 @@ export function useCalendarController({
     void (async () => {
       const original = data.events.find((entry) => entry.id === editor.eventId);
       const patch = original ? formToPatch(editor.form, original) : formToFullPatch(editor.form);
+      const organizer = sessionEmail
+        ? { email: sessionEmail, name: sessionName || sessionEmail }
+        : undefined;
+      if (patch.attendees && organizer) {
+        patch.organizer = organizer;
+      }
       const isRecurring = original
         ? eventIsRecurringSeries(original)
         : Boolean(editor.recurrenceId);
@@ -598,7 +622,12 @@ export function useCalendarController({
           ? editor.eventId
           : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
         if (patch.calendarId) {
-          await operations.createEvent(formToDraft(editor.form));
+          await operations.createEvent(
+            draftFromForm(
+              editor.form,
+              sessionEmail ? { email: sessionEmail, name: sessionName || sessionEmail } : undefined,
+            ),
+          );
           await operations.deleteEvent(targetId);
           return;
         }
@@ -616,6 +645,8 @@ export function useCalendarController({
     askRecurrenceScope,
     showError,
     L,
+    sessionEmail,
+    sessionName,
   ]);
 
   const deleteEditorEvent = useCallback(() => {
@@ -965,6 +996,7 @@ export function useCalendarController({
           ? freeBusyStatusFromWire(original.freeBusyStatus)
           : (engineForm?.freeBusyStatus ?? "busy"),
         alerts: original ? alertsFromWire(original.alerts) : (engineForm?.alerts ?? []),
+        attendees: engineForm?.attendees ?? [],
         recurrencePreset: seriesRules?.length ? "custom" : (engineForm?.recurrencePreset ?? "none"),
         recurrenceEnds: engineForm?.recurrenceEnds ?? "never",
         recurrenceUntilDate: engineForm?.recurrenceUntilDate ?? startDate,
