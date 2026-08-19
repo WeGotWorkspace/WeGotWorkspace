@@ -95,7 +95,19 @@ export type CalendarUILabels = {
   delete: string;
   invitationsSection: string;
   invitationsEmpty: string;
+  invitationsEmptyResponded: string;
   invitationsDismiss: string;
+  invitationsClosePanel: string;
+  invitationsCountOne: string;
+  invitationsCountMany: (count: number) => string;
+  invitationsRespondedCountOne: string;
+  invitationsRespondedCountMany: (count: number) => string;
+  invitationsTabNew: string;
+  invitationsTabResponded: string;
+  invitationsFilterAria: string;
+  invitationsToggleShow: string;
+  invitationsToggleHide: string;
+  invitationsOrganizerUnknown: string;
   eventAttendeesLabel: string;
   eventAttendeesHint: string;
   eventAttendeesAdd: string;
@@ -209,8 +221,20 @@ export const defaultCalendarLabels: CalendarUILabels = {
   cancel: "Cancel",
   delete: "Delete",
   invitationsSection: "Invitations",
-  invitationsEmpty: "No pending invitations.",
+  invitationsEmpty: "No pending invitations. Invites you receive will appear here.",
+  invitationsEmptyResponded: "No responded invitations yet.",
   invitationsDismiss: "Dismiss",
+  invitationsClosePanel: "Close invitations",
+  invitationsCountOne: "1 pending",
+  invitationsCountMany: (count: number) => `${count} pending`,
+  invitationsRespondedCountOne: "1 responded",
+  invitationsRespondedCountMany: (count: number) => `${count} responded`,
+  invitationsTabNew: "New",
+  invitationsTabResponded: "Responded",
+  invitationsFilterAria: "Invitation inbox",
+  invitationsToggleShow: "Show invitations",
+  invitationsToggleHide: "Hide invitations",
+  invitationsOrganizerUnknown: "Organizer",
   eventAttendeesLabel: "Invitees",
   eventAttendeesHint: "Add teammates or invite anyone with an email address.",
   eventAttendeesAdd: "Add people",

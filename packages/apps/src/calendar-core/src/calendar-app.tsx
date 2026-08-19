@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
@@ -13,10 +14,29 @@ export type CalendarAppProps = {
 export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
   const { initialView, initialPresentation, initialAnchor, handleRouteStateChange } =
     useCalendarRouteSync();
-  const { phase, error, retry, successVersion, data, session, operations, jmapClient } =
-    useCalendarAPI(apiSource);
+  const {
+    phase,
+    error,
+    retry,
+    successVersion,
+    data,
+    session,
+    operations,
+    jmapClient,
+    refreshBootstrap,
+  } = useCalendarAPI(apiSource);
 
-  const surface = useCalendarSurface(jmapClient, data);
+  const surface = useCalendarSurface(jmapClient, data, session.user.email);
+  const syncedSurface = useMemo(
+    () => ({
+      ...surface,
+      syncNow: () => {
+        surface.syncNow();
+        void refreshBootstrap();
+      },
+    }),
+    [surface, refreshBootstrap],
+  );
 
   return (
     <WorkspaceLiveAppShell
@@ -31,7 +51,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
           data={data}
           session={session}
           operations={operations}
-          surface={surface}
+          surface={syncedSurface}
           initialView={initialView}
           initialPresentation={initialPresentation}
           initialAnchor={initialAnchor}

@@ -107,6 +107,7 @@ export type CalendarAPIOperations = {
   respondSchedulingNotification?: (
     notificationId: string,
     status: CalendarSchedulingRespondStatus,
+    calendarId?: string,
   ) => Promise<void>;
   dismissSchedulingNotification?: (notificationId: string) => Promise<void>;
   listInvitees?: () => Promise<{ list: CalendarInvitee[]; canSubmitEmail: boolean }>;

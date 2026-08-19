@@ -1,6 +1,8 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { expandEvents, type CalendarEvent, type CalendarEventsMap } from "@/lib/calendar-engine";
 import { jmapEventToInternalRows, type JmapCalendarEvent } from "@/lib/jmap-client";
+import type { JmapParticipant } from "@/calendar-core/src/calendar-attendees";
+import { ownEventRsvpPresentation } from "@/calendar-core/src/calendar-attendees";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
 
 /**
@@ -23,14 +25,46 @@ export type CalendarOccurrence = {
   location?: string;
 };
 
-export function calendarEventsToEngineMap(events: JmapCalendarEvent[]): CalendarEventsMap {
+function wireParticipants(event: JmapCalendarEvent): Record<string, JmapParticipant> | undefined {
+  const raw = event.participants;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  return raw as Record<string, JmapParticipant>;
+}
+
+export function applyOwnRsvpToEngineEvents(
+  events: CalendarEventsMap,
+  wireEvents: readonly JmapCalendarEvent[],
+  sessionEmail?: string,
+): CalendarEventsMap {
+  const byId = new Map<string, ReturnType<typeof ownEventRsvpPresentation>>();
+  const byUid = new Map<string, ReturnType<typeof ownEventRsvpPresentation>>();
+  for (const wire of wireEvents) {
+    const status = ownEventRsvpPresentation(wireParticipants(wire), sessionEmail);
+    byId.set(wire.id, status);
+    if (wire.uid) byUid.set(wire.uid, status);
+  }
+
+  const next: CalendarEventsMap = new Map();
+  for (const [key, event] of events) {
+    const masterKey = key.includes("::") ? key.slice(0, key.indexOf("::")) : key;
+    const status = byId.get(masterKey) ?? (event.eventId ? byUid.get(event.eventId) : undefined);
+    if (status === "declined") continue;
+    next.set(key, status ? { ...event, participationStatus: status } : event);
+  }
+  return next;
+}
+
+export function calendarEventsToEngineMap(
+  events: JmapCalendarEvent[],
+  options: { sessionEmail?: string } = {},
+): CalendarEventsMap {
   const map: CalendarEventsMap = new Map();
   for (const event of events) {
     for (const row of jmapEventToInternalRows(event)) {
       map.set(row.key, row.event);
     }
   }
-  return map;
+  return applyOwnRsvpToEngineEvents(map, events, options.sessionEmail);
 }
 
 function resolveEnd(event: CalendarEvent): Temporal.PlainDateTime {

@@ -210,13 +210,17 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
     },
     listSchedulingNotifications: () => fetchCalendarSchedulingNotifications(),
     listInvitees: () => fetchCalendarSchedulingInvitees(),
-    respondSchedulingNotification: async (notificationId, status) => {
+    respondSchedulingNotification: async (notificationId, status, calendarId) => {
       const queueOffline = async () => {
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: CALENDARS_DOMAIN,
           op: "respond-scheduling",
-          payload: JSON.stringify({ notificationId, participationStatus: status }),
+          payload: JSON.stringify({
+            notificationId,
+            participationStatus: status,
+            ...(calendarId ? { calendarId } : {}),
+          }),
         });
       };
       if (!readBrowserOnline()) {
@@ -224,7 +228,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         return;
       }
       try {
-        await respondCalendarSchedulingNotification(notificationId, status);
+        await respondCalendarSchedulingNotification(notificationId, status, calendarId);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error);

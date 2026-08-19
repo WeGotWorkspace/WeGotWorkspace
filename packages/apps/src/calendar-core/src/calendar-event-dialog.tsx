@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, Check, Clock, Repeat, Trash2 } from "lucide-react";
+import { Bell, Clock, Repeat, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Temporal } from "@js-temporal/polyfill";
 import { Button } from "@/button/src/button";
@@ -12,14 +12,7 @@ import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
 import { Calendar } from "@/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-import { cn } from "@/lib/utils";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
@@ -54,7 +47,7 @@ import {
   eventTimeZoneOptions,
   eventTimeZoneSelectValue,
 } from "@/calendar-core/src/calendar-timezones";
-import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
+import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 
 export type CalendarEventDialogProps = {
   open: boolean;
@@ -294,9 +287,6 @@ export function CalendarEventDialog({
   onRsvp,
 }: CalendarEventDialogProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
-  const writableCalendars = calendars.filter((calendar) => calendar.mayWrite !== false);
-  const selectedCalendar =
-    writableCalendars.find((calendar) => calendar.id === form.calendarId) ?? writableCalendars[0];
   const valid = calendarEventFormIsValid(form);
   const recurrenceLocked = form.recurrencePreset === "custom";
   const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
@@ -368,42 +358,13 @@ export function CalendarEventDialog({
                 aria-label={labels.eventTitleLabel}
                 autoFocus
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <CalendarColorSwatchTrigger
-                    color={selectedCalendar?.color ?? "transparent"}
-                    label={
-                      selectedCalendar
-                        ? `${labels.eventCalendarLabel}: ${selectedCalendar.name}`
-                        : labels.eventCalendarLabel
-                    }
-                    className="calendar-event-dialog__calendar-trigger"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
-                  {writableCalendars.map((calendar) => (
-                    <DropdownMenuItem
-                      key={calendar.id}
-                      className="calendar-event-dialog__calendar-option"
-                      onSelect={() => set("calendarId", calendar.id)}
-                    >
-                      <span
-                        className="calendar-sidebar-dot"
-                        style={{ backgroundColor: calendar.color }}
-                        aria-hidden
-                      />
-                      <span className="calendar-event-dialog__calendar-name">{calendar.name}</span>
-                      <Check
-                        className={cn(
-                          "calendar-event-dialog__calendar-check",
-                          form.calendarId === calendar.id ? "opacity-100" : "opacity-0",
-                        )}
-                        aria-hidden
-                      />
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CalendarEventCalendarPicker
+                calendars={calendars}
+                calendarId={form.calendarId}
+                labels={labels}
+                disabled={busy}
+                onCalendarIdChange={(calendarId) => set("calendarId", calendarId)}
+              />
             </div>
 
             <FieldLabelRow label={labels.eventLocationLabel}>

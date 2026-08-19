@@ -228,6 +228,30 @@ export function attendeesEqual(a: CalendarAttendee[], b: CalendarAttendee[]): bo
   return left.every((value, index) => value === right[index]);
 }
 
+/**
+ * Current user's RSVP on a wire event. Organizer-owned events (or no self attendee)
+ * return null so the grid keeps the solid calendar color.
+ */
+export function ownEventRsvpPresentation(
+  participants: Record<string, JmapParticipant> | undefined,
+  sessionEmail?: string,
+): CalendarParticipationStatus | null {
+  const selfEmail = sessionEmail?.trim();
+  if (!selfEmail) return null;
+  const self = attendeesFromParticipants(participants).find((row) =>
+    attendeesReferToSamePerson(row, { email: selfEmail }),
+  );
+  if (!self || self.isOrganizer) return null;
+  return self.participationStatus;
+}
+
+export function eventCardRsvpAttr(
+  status: CalendarParticipationStatus | null | undefined,
+): "needs-action" | "tentative" | "" {
+  if (status === "needs-action" || status === "tentative") return status;
+  return "";
+}
+
 export function normalizeParticipationStatus(
   value: string | undefined,
 ): CalendarParticipationStatus {

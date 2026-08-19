@@ -140,5 +140,6 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     operations,
     offlineUsername,
     jmapClient,
+    refreshBootstrap: applyBootstrapRefresh,
   };
 }

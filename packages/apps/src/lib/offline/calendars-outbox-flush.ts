@@ -71,6 +71,7 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         await respondCalendarSchedulingNotification(
           String(payload.notificationId ?? ""),
           payload.participationStatus as CalendarSchedulingRespondStatus,
+          typeof payload.calendarId === "string" ? payload.calendarId : undefined,
         );
       } else if (row.op === "dismiss-scheduling") {
         await dismissCalendarSchedulingNotification(String(payload.notificationId ?? ""));

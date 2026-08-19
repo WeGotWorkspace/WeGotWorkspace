@@ -130,6 +130,10 @@ export class CalendarListView extends CalendarViewBase {
           .recurring=${isRecurring}
           .exception=${isException}
           ?past=${isPast}
+          .rsvp=${event.participationStatus === "needs-action" ||
+          event.participationStatus === "tentative"
+            ? event.participationStatus
+            : ""}
           style=${styleMap(colorStyles)}
         ></event-card>
       </li>

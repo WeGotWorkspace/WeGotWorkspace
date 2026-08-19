@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
@@ -16,7 +16,12 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
-import { CalendarInvitationsSection } from "@/calendar-core/src/calendar-invitations-section";
+import {
+  filterInviteeNotifications,
+  pendingInvitationCount,
+} from "@/calendar-core/src/calendar-invitation-event";
+import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
+import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
@@ -34,6 +39,8 @@ import {
   teamCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
+import { SideDrawer } from "@/ui/side-drawer";
+import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
 
@@ -144,7 +151,22 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
-  const invitations = useCalendarInvitations(operations);
+  const invitations = useCalendarInvitations(operations, {
+    onResponded: () => {
+      surface?.syncNow();
+    },
+  });
+  const inviteeNotifications = useMemo(
+    () =>
+      filterInviteeNotifications(invitations.notifications, [
+        session.user.email ?? "",
+        session.user.username ?? "",
+      ]),
+    [invitations.notifications, session.user.email, session.user.username],
+  );
+  const invitationsLayout = useDocsCommentsLayout();
+  const useInvitationsDrawer = invitationsLayout === "drawer";
+  const [invitationsOpen, setInvitationsOpen] = useState(false);
 
   const {
     L,
@@ -207,6 +229,35 @@ export function CalendarWorkspace({
 
   useDocumentTitle(title);
 
+  const invitationsPanel = useMemo(
+    () => (
+      <CalendarInvitationsPanel
+        notifications={inviteeNotifications}
+        labels={L}
+        locale={locale}
+        calendars={calendars}
+        defaultCalendarId={defaultCalendarId}
+        busy={invitations.busy}
+        showCloseButton={useInvitationsDrawer}
+        onClose={() => setInvitationsOpen(false)}
+        onRespond={(id, status, calendarId) => void invitations.respond(id, status, calendarId)}
+        onOpenEvent={canWrite ? openEditEventKey : undefined}
+      />
+    ),
+    [
+      L,
+      calendars,
+      canWrite,
+      defaultCalendarId,
+      invitations.busy,
+      inviteeNotifications,
+      invitations.respond,
+      locale,
+      openEditEventKey,
+      useInvitationsDrawer,
+    ],
+  );
+
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
@@ -253,14 +304,6 @@ export function CalendarWorkspace({
               />
             }
           >
-            <CalendarInvitationsSection
-              notifications={invitations.notifications}
-              labels={L}
-              busy={invitations.busy}
-              onRespond={(id, status) => void invitations.respond(id, status)}
-              onDismiss={(id) => void invitations.dismiss(id)}
-              onOpenEvent={canWrite ? openEditEventKey : undefined}
-            />
             <SidebarSection
               title={L.myCalendarsSection}
               onAdd={canCreateCalendar ? openCreateCalendarDialog : undefined}
@@ -334,6 +377,12 @@ export function CalendarWorkspace({
                   listLabel={L.showAsList}
                 />
                 <Button label={L.today} onClick={goToday} variant="subtle" />
+                <CalendarInvitationsTrigger
+                  count={pendingInvitationCount(inviteeNotifications)}
+                  open={invitationsOpen}
+                  labels={L}
+                  onToggle={() => setInvitationsOpen((open) => !open)}
+                />
               </div>
             }
           />
@@ -363,7 +412,28 @@ export function CalendarWorkspace({
             </div>
           </div>
         }
+        panel={
+          useInvitationsDrawer ? undefined : (
+            <div
+              className="workspace-app-layout__panel calendar-workspace__invitations-panel"
+              data-open={invitationsOpen ? "true" : "false"}
+              aria-hidden={!invitationsOpen}
+            >
+              {invitationsPanel}
+            </div>
+          )
+        }
       />
+      {useInvitationsDrawer ? (
+        <SideDrawer
+          open={invitationsOpen}
+          onClose={() => setInvitationsOpen(false)}
+          title={L.invitationsSection}
+          className="calendar-invitations-panel-drawer"
+        >
+          {invitationsPanel}
+        </SideDrawer>
+      ) : null}
       {editor ? (
         <CalendarEventDialog
           open
@@ -383,7 +453,7 @@ export function CalendarWorkspace({
           onRsvp={
             editor.mode === "edit"
               ? (status) => {
-                  const notification = invitations.notifications.find(
+                  const notification = inviteeNotifications.find(
                     (row) => row.eventId === editor.eventId,
                   );
                   if (notification) void invitations.respond(notification.id, status);

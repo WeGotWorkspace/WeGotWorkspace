@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   attendeesEqual,
   attendeesFromParticipants,
+  eventCardRsvpAttr,
   isLikelyEmail,
   listedInviteeAttendees,
   organizerAddress,
+  ownEventRsvpPresentation,
   participantsFromAttendees,
 } from "@/calendar-core/src/calendar-attendees";
 
@@ -126,6 +128,31 @@ describe("calendar attendees", () => {
     expect(isLikelyEmail("guest@elsewhere.test")).toBe(true);
     expect(isLikelyEmail("admin@localhost")).toBe(true);
     expect(isLikelyEmail("not-an-email")).toBe(false);
+  });
+
+  it("reads the current user's PARTSTAT and keeps organizer events solid", () => {
+    const participants = {
+      org: {
+        "@type": "Participant" as const,
+        email: "bob@example.test",
+        roles: { owner: true },
+        participationStatus: "accepted",
+      },
+      att1: {
+        "@type": "Participant" as const,
+        email: "carol@example.test",
+        roles: { attendee: true },
+        participationStatus: "needs-action",
+      },
+    };
+
+    expect(ownEventRsvpPresentation(participants, "carol@example.test")).toBe("needs-action");
+    expect(ownEventRsvpPresentation(participants, "bob@example.test")).toBeNull();
+    expect(ownEventRsvpPresentation(participants, "nobody@example.test")).toBeNull();
+    expect(eventCardRsvpAttr("needs-action")).toBe("needs-action");
+    expect(eventCardRsvpAttr("tentative")).toBe("tentative");
+    expect(eventCardRsvpAttr("accepted")).toBe("");
+    expect(eventCardRsvpAttr("declined")).toBe("");
   });
 
   it("falls back to username when the session has no email", () => {

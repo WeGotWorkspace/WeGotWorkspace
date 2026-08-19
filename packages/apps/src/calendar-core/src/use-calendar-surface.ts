@@ -3,7 +3,10 @@ import { calendarBootstrapWindow } from "@/lib/api/wgw/calendar";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { JmapEventsAdapter, type JmapClient } from "@/lib/jmap-client";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
+import {
+  applyOwnRsvpToEngineEvents,
+  calendarEventsToEngineMap,
+} from "@/calendar-core/src/calendar-event-model";
 import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
 
 const SYNC_POLL_MS = 30_000;
@@ -31,6 +34,7 @@ export type CalendarSurfaceStore = {
 export function useCalendarSurface(
   client: JmapClient | undefined,
   data: CalendarUIData,
+  sessionEmail?: string,
 ): CalendarSurfaceStore {
   const [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false);
@@ -75,13 +79,10 @@ export function useCalendarSurface(
   const adapter = ready ? adapterRef.current : undefined;
 
   const events = useMemo<CalendarEventsMap>(() => {
-    if (adapter) {
-      // revision invalidates this memo on every adapter change.
-      void revision;
-      return new Map(adapter.getEvents());
-    }
-    return calendarEventsToEngineMap(data.events);
-  }, [adapter, revision, data.events]);
+    void revision;
+    const raw = adapter ? new Map(adapter.getEvents()) : calendarEventsToEngineMap(data.events);
+    return applyOwnRsvpToEngineEvents(raw, data.events, sessionEmail);
+  }, [adapter, revision, data.events, sessionEmail]);
 
   return {
     events,

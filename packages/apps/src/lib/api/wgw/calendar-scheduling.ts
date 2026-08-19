@@ -13,6 +13,9 @@ export type CalendarSchedulingNotification = {
   organizerName?: string | null;
   start?: string | null;
   end?: string | null;
+  location?: string | null;
+  color?: string | null;
+  recurring?: boolean;
   participationStatus: CalendarParticipationStatus;
   eventId?: string | null;
   etag?: string;
@@ -50,13 +53,21 @@ export async function fetchCalendarSchedulingInvitees(): Promise<CalendarInvitee
 export async function respondCalendarSchedulingNotification(
   notificationId: string,
   participationStatus: CalendarSchedulingRespondStatus,
+  calendarId?: string,
 ): Promise<CalendarSchedulingNotification> {
+  const body: {
+    participationStatus: CalendarSchedulingRespondStatus;
+    calendarId?: string;
+  } = { participationStatus };
+  if (calendarId && participationStatus !== "declined") {
+    body.calendarId = calendarId;
+  }
   const response = await wgwFetch(
     `/calendars/scheduling/notifications/${encodeURIComponent(notificationId)}/respond`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ participationStatus }),
+      body: JSON.stringify(body),
     },
   );
   if (!response.ok) throw new Error("Could not send RSVP");

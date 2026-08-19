@@ -1,20 +1,2 @@
 @import "../../styles.css" reference;
-
-/*
- * RSVP chips reuse Callout severity hues (success / error) and the shared
- * docs/info blue already used for accent chips — applied via Tag --tag-* vars.
- */
-.calendar-invitees-rsvp-tag--accepted {
-  --tag-bg: color-mix(in oklab, #3a8f5a 18%, transparent);
-  --tag-fg: #3a8f5a;
-}
-
-.calendar-invitees-rsvp-tag--tentative {
-  --tag-bg: color-mix(in oklab, #2563eb 16%, transparent);
-  --tag-fg: #2563eb;
-}
-
-.calendar-invitees-rsvp-tag--declined {
-  --tag-bg: color-mix(in oklab, #b14242 18%, transparent);
-  --tag-fg: #b14242;
-}
+@import "./calendar-rsvp-status.css";

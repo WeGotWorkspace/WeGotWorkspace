@@ -6,7 +6,10 @@ import type {
   CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 
-export function useCalendarInvitations(operations?: CalendarAPIOperations) {
+export function useCalendarInvitations(
+  operations?: CalendarAPIOperations,
+  options?: { onResponded?: () => void },
+) {
   const [notifications, setNotifications] = useState<CalendarSchedulingNotification[]>([]);
   const [invitees, setInvitees] = useState<CalendarInvitee[]>([]);
   const [canSubmitEmail, setCanSubmitEmail] = useState(false);
@@ -38,17 +41,21 @@ export function useCalendarInvitations(operations?: CalendarAPIOperations) {
   }, [operations]);
 
   const respond = useCallback(
-    async (id: string, status: CalendarSchedulingRespondStatus) => {
+    async (id: string, status: CalendarSchedulingRespondStatus, calendarId?: string) => {
       if (!operations?.respondSchedulingNotification) return;
       setBusy(true);
       try {
-        await operations.respondSchedulingNotification(id, status);
-        setNotifications((current) => current.filter((row) => row.id !== id));
+        await operations.respondSchedulingNotification(id, status, calendarId);
+        setNotifications((current) =>
+          current.map((row) => (row.id === id ? { ...row, participationStatus: status } : row)),
+        );
+        await refresh();
+        options?.onResponded?.();
       } finally {
         setBusy(false);
       }
     },
-    [operations],
+    [operations, options?.onResponded, refresh],
   );
 
   const dismiss = useCallback(

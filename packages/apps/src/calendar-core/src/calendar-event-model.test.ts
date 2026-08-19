@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
+  applyOwnRsvpToEngineEvents,
+  calendarEventsToEngineMap,
   occurrencesInRange,
   shiftAnchor,
   viewDateRange,
@@ -101,5 +103,44 @@ describe("occurrencesInRange", () => {
 
     expect(occurrences).toHaveLength(1);
     expect(occurrences[0].calendarId).toBe("home");
+  });
+});
+
+describe("applyOwnRsvpToEngineEvents", () => {
+  it("stamps needs-action and hides declined attendee events", () => {
+    const waiting = wireEvent({
+      id: "wait",
+      uid: "uid-wait",
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "needs-action",
+        },
+      },
+    });
+    const declined = wireEvent({
+      id: "no",
+      uid: "uid-no",
+      title: "Skip",
+      start: "2033-01-10T16:00:00",
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "declined",
+        },
+      },
+    });
+    const map = applyOwnRsvpToEngineEvents(
+      calendarEventsToEngineMap([waiting, declined]),
+      [waiting, declined],
+      "me@example.test",
+    );
+
+    expect([...map.keys()]).toEqual(["wait"]);
+    expect(map.get("wait")?.participationStatus).toBe("needs-action");
   });
 });

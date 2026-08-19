@@ -134,6 +134,23 @@
   @apply sticky m-0 flex flex-1 min-w-0 max-w-full items-start gap-1.5 overflow-hidden px-2 pt-2 pb-2 text-start text-xs font-bold leading-tight;
 }
 
+/* Awaiting reply / maybe: Apple/Google convention — dashed accent edge + lighter fill.
+   Accepted stays the solid default. Declined events are filtered out before render. */
+:host([rsvp="needs-action"]) .event-card-shell::before,
+:host([rsvp="tentative"]) .event-card-shell::before {
+  background: color-mix(in srgb, var(--_lc-event-card-bg) 42%, transparent);
+  border: 1.5px dashed var(--_lc-event-accent-color, var(--_lc-event-card-accent-color));
+}
+
+:host([rsvp="tentative"]) .event-card-shell::before {
+  background: color-mix(in srgb, var(--_lc-event-card-bg) 58%, transparent);
+}
+
+:host([rsvp="needs-action"]) .event-card-shell::after,
+:host([rsvp="tentative"]) .event-card-shell::after {
+  opacity: 0.72;
+}
+
 /* Past events fade instead of strikethrough; interaction states (set via
    --_lc-event-card-past-opacity from EventBase) restore emphasis. */
 :host([past]) .event-card-shell {
