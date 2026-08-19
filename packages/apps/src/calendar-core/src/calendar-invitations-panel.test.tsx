@@ -148,8 +148,13 @@ describe("CalendarInvitationsPanel", () => {
     const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
     expect(trigger.className).toContain("calendar-color-swatch-trigger");
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
+    expect(trigger.className).toContain("calendar-invitation-card__calendar-trigger");
     expect(trigger.querySelector(".calendar-color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".calendar-color-swatch-trigger__chevron")).toBeTruthy();
+    const actions = document.querySelector(
+      "[data-invitation-id='invite-1.ics'] .docs-collab-card__actions",
+    );
+    expect(actions?.contains(trigger)).toBe(true);
   });
 
   it("uses the docs comments empty chrome", () => {

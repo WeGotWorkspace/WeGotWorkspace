@@ -10,6 +10,13 @@ function readCss(relativePath: string): string {
 }
 
 describe("calendar invitation card CSS", () => {
+  it("pins the event-dialog calendar picker to the card header actions", () => {
+    const css = readCss("calendar-invitation-card.css");
+    expect(css).toMatch(/\.calendar-invitation-card \.docs-collab-card__actions \{[\s\S]*shrink-0/);
+    expect(css).toMatch(/\.calendar-invitation-card__calendar-trigger \{[\s\S]*width:\s*auto/);
+    expect(css).toMatch(/\.calendar-invitation-card__calendar \{[\s\S]*shrink-0/);
+  });
+
   it("paints a solid cream/white surface on the card shell only", () => {
     const css = readCss("calendar-invitation-card.css");
     expect(css).toMatch(

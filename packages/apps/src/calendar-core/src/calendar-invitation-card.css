@@ -13,8 +13,23 @@
   background-color: var(--docs-surface);
 }
 
+.calendar-invitation-card .docs-collab-card__header {
+  @apply overflow-visible;
+}
+
+.calendar-invitation-card .docs-collab-card__actions {
+  @apply relative z-10 shrink-0 overflow-visible;
+}
+
 .calendar-invitation-card__calendar {
   @apply shrink-0;
+}
+
+/* control-surface is w-full; dialog scopes shrink only under .calendar-dialog-surface. */
+.calendar-invitation-card__calendar-trigger {
+  @apply inline-flex w-auto shrink-0;
+  width: auto;
+  min-width: 3.25rem;
 }
 
 .calendar-invitation-card__event {

@@ -1,7 +1,8 @@
-import { createElement, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import {
   CalendarEventCalendarPicker,
   defaultPickerCalendarId,
+  writableCalendarsForPicker,
 } from "@/calendar-core/src/calendar-event-calendar-picker";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { normalizeParticipationStatus } from "@/calendar-core/src/calendar-attendees";
@@ -62,6 +63,16 @@ export function CalendarInvitationCard({
     defaultPickerCalendarId(calendars, defaultCalendarId),
   );
 
+  useEffect(() => {
+    setCalendarId((current) => {
+      const writable = writableCalendarsForPicker(calendars);
+      if (current && writable.some((calendar) => calendar.id === current)) {
+        return current;
+      }
+      return defaultPickerCalendarId(calendars, defaultCalendarId);
+    });
+  }, [calendars, defaultCalendarId]);
+
   const respond = (status: CalendarSchedulingRespondStatus) => {
     const apply = () =>
       onRespond(status, status === "declined" ? undefined : calendarId || undefined);
@@ -96,6 +107,7 @@ export function CalendarInvitationCard({
                 calendarId={calendarId}
                 labels={labels}
                 disabled={busy}
+                triggerClassName="calendar-event-dialog__calendar-trigger calendar-invitation-card__calendar-trigger"
                 onCalendarIdChange={setCalendarId}
               />
             </div>
