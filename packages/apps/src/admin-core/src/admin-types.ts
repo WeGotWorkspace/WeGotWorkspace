@@ -1,12 +1,61 @@
 export type AdminSection =
   | "users"
   | "mail"
+  | "email-delivery"
   | "collaboration"
   | "webdav"
   | "plugins"
   | "backups"
   | "updates"
   | "search";
+
+export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
+
+export type AdminMailDeliverySelectedTransport = "smtp" | "php" | "sendmail" | null;
+
+export type AdminMailDeliveryStatus =
+  | "accepted_by_transport"
+  | "unavailable"
+  | "connect"
+  | "auth"
+  | "timeout"
+  | "smtp_auth_required";
+
+export type AdminMailDeliveryConfig = {
+  from: string;
+  transport: AdminMailDeliveryTransport;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecurity: string;
+  smtpUsername: string;
+  smtpPasswordSet: boolean;
+};
+
+export type AdminMailDeliveryCapability = {
+  canSubmit: boolean;
+  selectedTransport: AdminMailDeliverySelectedTransport;
+  probes: {
+    fromConfigured: boolean;
+    smtpEligible: boolean;
+    smtpAuthRequired: boolean;
+    phpMailAvailable: boolean;
+    sendmailAvailable: boolean;
+  };
+};
+
+export type AdminMailDeliveryLastTestSend = {
+  accepted: boolean;
+  status: AdminMailDeliveryStatus;
+  transport: string;
+  at: string;
+  message: string | null;
+};
+
+export type AdminMailDeliveryState = {
+  config: AdminMailDeliveryConfig;
+  capability: AdminMailDeliveryCapability;
+  lastTestSend: AdminMailDeliveryLastTestSend | null;
+};
 
 export type AdminUser = {
   id: string;
@@ -150,6 +199,7 @@ export type AdminUIData = {
   users: AdminUser[];
   groups: AdminGroup[];
   mail: AdminMailSettings;
+  mailDelivery: AdminMailDeliveryState;
   rtc: AdminRtcSettings;
   apps: AdminAppsSettings;
   webdav: AdminWebdavSettings;
@@ -170,8 +220,9 @@ export type AdminAPIOperations = {
   refreshState: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   saveSettings: (
     values: Record<string, string | number | boolean | null>,
-    opts?: { signal?: AbortSignal },
+    opts?: { signal?: AbortSignal; clearSmtpPassword?: boolean },
   ) => Promise<AdminUIData>;
+  sendMailDeliveryTest: (opts?: { signal?: AbortSignal; to?: string }) => Promise<AdminUIData>;
   checkUpdates: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   refreshUpdateState: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   applyUpdate: (version?: string, opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;

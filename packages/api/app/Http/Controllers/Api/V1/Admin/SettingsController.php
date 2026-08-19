@@ -14,6 +14,9 @@ final class SettingsController
 
     public function __invoke(AdminSettingsSaveRequest $request): JsonResponse
     {
-        return response()->json($this->settings->save($request->valueMap()));
+        return response()->json($this->settings->save(
+            $request->valueMap(),
+            $request->shouldClearSmtpPassword(),
+        ));
     }
 }

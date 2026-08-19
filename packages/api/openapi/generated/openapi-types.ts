@@ -2420,10 +2420,21 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminSettingsSaveRequest"];
+                };
+            };
             responses: {
                 /** @description Settings saved */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid settings (e.g. new password + clearSmtpPassword) */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5521,6 +5532,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/mail-delivery/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a platform email delivery test via MailDeliveryService::send() */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminMailDeliveryTestRequest"];
+                };
+            };
+            responses: {
+                /** @description Delivery result (accepted_by_transport is not inbox placement) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid message */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5752,6 +5815,8 @@ export interface components {
          */
         AdminSettingsSaveRequest: {
             values?: components["schemas"]["AdminSettingsValueMap"];
+            /** @description When true, clears the stored mail_delivery SMTP secret. Cannot be combined with a new password. */
+            clearSmtpPassword?: boolean;
         };
         AdminUserSummary: {
             id: string;
@@ -5861,6 +5926,7 @@ export interface components {
             users: components["schemas"]["AdminUserSummary"][];
             groups: components["schemas"]["AdminGroupSummary"][];
             mail: components["schemas"]["AdminMailSettings"];
+            mailDelivery: components["schemas"]["AdminMailDeliveryState"];
             rtc: components["schemas"]["AdminRtcSettings"];
             apps: components["schemas"]["AdminAppsSettings"];
             webdav: components["schemas"]["AdminWebdavSettings"];
@@ -8799,6 +8865,61 @@ export interface components {
             type: string;
             size: number;
         };
+        /**
+         * @description Configured transport. auto selects SMTP only when smtp-eligible.
+         * @enum {string}
+         */
+        AdminMailDeliveryTransport: "auto" | "smtp" | "php" | "sendmail";
+        /**
+         * @description Transport that would be used for the next send(), or null when none can be selected.
+         * @enum {string|null}
+         */
+        AdminMailDeliverySelectedTransport: "smtp" | "php" | "sendmail" | null;
+        /**
+         * @description accepted_by_transport means the MTA/relay accepted the message, not inbox placement.
+         * @enum {string}
+         */
+        AdminMailDeliveryStatus: "accepted_by_transport" | "unavailable" | "connect" | "auth" | "timeout" | "smtp_auth_required";
+        AdminMailDeliveryConfig: {
+            from: string;
+            transport: components["schemas"]["AdminMailDeliveryTransport"];
+            smtpHost: string;
+            smtpPort: number;
+            smtpSecurity: string;
+            smtpUsername: string;
+            /** @description True when a SMTP secret is stored. Never a password value. */
+            smtpPasswordSet: boolean;
+        };
+        AdminMailDeliveryProbes: {
+            fromConfigured: boolean;
+            smtpEligible: boolean;
+            smtpAuthRequired: boolean;
+            phpMailAvailable: boolean;
+            sendmailAvailable: boolean;
+        };
+        /** @description Function check only. Does not claim inbox placement. */
+        AdminMailDeliveryCapability: {
+            canSubmit: boolean;
+            selectedTransport: components["schemas"]["AdminMailDeliverySelectedTransport"];
+            probes: components["schemas"]["AdminMailDeliveryProbes"];
+        };
+        AdminMailDeliveryLastTestSend: {
+            accepted: boolean;
+            status: components["schemas"]["AdminMailDeliveryStatus"];
+            transport: string;
+            at: string;
+            message: string | null;
+        } | null;
+        AdminMailDeliveryState: {
+            config: components["schemas"]["AdminMailDeliveryConfig"];
+            capability: components["schemas"]["AdminMailDeliveryCapability"];
+            lastTestSend: components["schemas"]["AdminMailDeliveryLastTestSend"];
+        };
+        AdminMailDeliveryTestRequest: {
+            /** @description Optional recipient. Defaults to the admin principal email. */
+            to?: string;
+        };
+        AdminMailDeliveryTestResponse: components["schemas"]["AdminMailDeliveryLastTestSend"];
     };
     responses: {
         /** @description Invalid request */

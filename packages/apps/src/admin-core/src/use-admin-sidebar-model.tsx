@@ -3,6 +3,7 @@ import {
   Database,
   Search,
   Mail,
+  Send,
   MessagesSquare,
   Puzzle,
   ShieldCheck,
@@ -30,6 +31,12 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
       label: "Mail",
       description: "Server IMAP/SMTP settings",
       icon: <Mail className="size-3.5" />,
+    },
+    {
+      id: "email-delivery",
+      label: "Email delivery",
+      description: "Platform outbound mail for recovery and invites",
+      icon: <Send className="size-3.5" />,
     },
     {
       id: "collaboration",
