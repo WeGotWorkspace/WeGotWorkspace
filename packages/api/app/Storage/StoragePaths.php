@@ -61,6 +61,34 @@ final class StoragePaths
         return preg_match('#^/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $normalized) === 1;
     }
 
+    /**
+     * Archived notes live under `…/.notes/.archive/…` (not other `.archive` dirs).
+     */
+    public function isNotesArchivePath(string $path): bool
+    {
+        return str_contains($this->normalizeVirtualPath($path), '/.notes/.archive/');
+    }
+
+    /**
+     * Notebook directory for a note file storage key (parent dir). Empty when
+     * the file sits directly under `.notes` or `.notes/.archive`.
+     */
+    public function noteNotebookFromKey(string $key): string
+    {
+        $virtual = $this->normalizeVirtualPath('/'.ltrim($key, '/'));
+        if (! $this->isNotePath($virtual)) {
+            return '';
+        }
+        if (preg_match('#/\.notes/\.archive/([^/]+)/[^/]+$#', $virtual, $matches) === 1) {
+            return $matches[1];
+        }
+        if (preg_match('#/\.notes/([^/]+)/[^/]+$#', $virtual, $matches) === 1 && $matches[1] !== '.archive') {
+            return $matches[1];
+        }
+
+        return '';
+    }
+
     public function isPathAllowed(string $path, string $username, array $groupSlugs, bool $forWrite): bool
     {
         $normalized = $this->normalizeVirtualPath($path);

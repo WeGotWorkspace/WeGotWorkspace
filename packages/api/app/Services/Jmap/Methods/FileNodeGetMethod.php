@@ -88,10 +88,7 @@ final class FileNodeGetMethod implements JmapMethodInterface
             }
         }
 
-        $list = array_map(
-            fn ($node): array => $this->mapper->toFileNode($node, $principal),
-            array_values($nodes),
-        );
+        $list = $this->mapper->toFileNodes(array_values($nodes), $principal);
 
         return [
             'accountId' => $username,
