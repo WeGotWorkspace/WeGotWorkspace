@@ -2,15 +2,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
-import type {
-  CalendarSchedulingNotification,
-  CalendarSchedulingRespondOptions,
-  CalendarSchedulingRespondStatus,
+import {
+  CalendarSchedulingGoneError,
+  type CalendarSchedulingNotification,
+  type CalendarSchedulingRespondOptions,
+  type CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
+import { setCalendarsSchedulingConflictListener } from "@/lib/offline/calendars-sync-conflicts";
+
+export type UseCalendarInvitationsOptions = {
+  onResponded?: () => void;
+  onError?: (error: unknown) => void;
+  onSchedulingConflict?: (notificationIds: string[]) => void;
+};
 
 export function useCalendarInvitations(
   operations?: CalendarAPIOperations,
-  options?: { onResponded?: () => void },
+  options?: UseCalendarInvitationsOptions,
 ) {
   const [notifications, setNotifications] = useState<CalendarSchedulingNotification[]>([]);
   const [invitees, setInvitees] = useState<CalendarInvitee[]>([]);
@@ -78,6 +86,19 @@ export function useCalendarInvitations(
     };
   }, [busy, operations?.listSchedulingNotifications, refreshIfIdle]);
 
+  const dropNotifications = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    setNotifications((current) => current.filter((row) => !ids.includes(row.id)));
+  }, []);
+
+  useEffect(() => {
+    setCalendarsSchedulingConflictListener((ids) => {
+      dropNotifications(ids);
+      options?.onSchedulingConflict?.(ids);
+    });
+    return () => setCalendarsSchedulingConflictListener(undefined);
+  }, [dropNotifications, options?.onSchedulingConflict]);
+
   const respond = useCallback(
     async (
       id: string,
@@ -93,11 +114,17 @@ export function useCalendarInvitations(
         );
         await refresh();
         options?.onResponded?.();
+      } catch (error) {
+        if (error instanceof CalendarSchedulingGoneError) {
+          dropNotifications([id]);
+        }
+        options?.onError?.(error);
+        throw error;
       } finally {
         setBusy(false);
       }
     },
-    [operations, options?.onResponded, refresh],
+    [dropNotifications, operations, options?.onError, options?.onResponded, refresh],
   );
 
   const dismiss = useCallback(

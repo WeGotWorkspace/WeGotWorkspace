@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
+import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
+import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars-sync-conflicts";
 
 function operationsWithList(
   listSchedulingNotifications: CalendarAPIOperations["listSchedulingNotifications"],
@@ -126,5 +128,67 @@ describe("useCalendarInvitations", () => {
     await act(async () => {
       releaseMount?.();
     });
+  });
+
+  it("does not keep Accepted when respond fails", async () => {
+    const invite: CalendarSchedulingNotification = {
+      id: "invite-1.ics",
+      uid: "uid-1",
+      method: "REQUEST",
+      title: "Standup",
+      organizerEmail: "bob@example.test",
+      participationStatus: "needs-action",
+    };
+    const respondSchedulingNotification = vi
+      .fn()
+      .mockRejectedValue(new Error("Could not send RSVP"));
+    const onError = vi.fn();
+    const operations: CalendarAPIOperations = {
+      ...operationsWithList(vi.fn().mockResolvedValue([invite])),
+      respondSchedulingNotification,
+    };
+    const { result } = renderHook(() => useCalendarInvitations(operations, { onError }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.notifications[0]?.participationStatus).toBe("needs-action");
+
+    await act(async () => {
+      await expect(result.current.respond("invite-1.ics", "accepted")).rejects.toThrow(
+        "Could not send RSVP",
+      );
+    });
+
+    expect(result.current.notifications[0]?.participationStatus).toBe("needs-action");
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it("drops a cancelled invite reported during outbox flush", async () => {
+    const invite: CalendarSchedulingNotification = {
+      id: "invite-1.ics",
+      uid: "uid-1",
+      method: "REQUEST",
+      title: "Standup",
+      organizerEmail: "bob@example.test",
+      participationStatus: "accepted",
+    };
+    const onSchedulingConflict = vi.fn();
+    const operations = operationsWithList(vi.fn().mockResolvedValue([invite]));
+    const { result } = renderHook(() =>
+      useCalendarInvitations(operations, { onSchedulingConflict }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.notifications).toHaveLength(1);
+
+    await act(async () => {
+      reportCalendarsSchedulingConflicts(["invite-1.ics"]);
+    });
+
+    expect(result.current.notifications).toEqual([]);
+    expect(onSchedulingConflict).toHaveBeenCalledWith(["invite-1.ics"]);
   });
 });

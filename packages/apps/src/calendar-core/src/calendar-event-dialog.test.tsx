@@ -1,5 +1,5 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -716,6 +716,45 @@ describe("CalendarEventDialog", () => {
     expect(onRsvp).toHaveBeenCalledTimes(1);
     expect(onRsvp).toHaveBeenCalledWith("tentative", "work");
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("reverts the Save-gated RSVP when persist fails", async () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "accepted" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const onRsvp = vi.fn().mockRejectedValue(new Error("Could not send RSVP"));
+    renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onRsvp,
+    });
+
+    fireEvent.click(screen.getByRole("combobox", { name: defaultCalendarLabels.rsvpLabel }));
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.rsvpDecline }));
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.save }));
+
+    await waitFor(() => {
+      expect(onRsvp).toHaveBeenCalledWith("declined", "default");
+    });
+    const rsvp = screen.getByRole("combobox", { name: defaultCalendarLabels.rsvpLabel });
+    expect(rsvp.className).toContain("calendar-rsvp-select--accept");
+    expect(rsvp.className).not.toContain("calendar-rsvp-select--decline");
   });
 
   it("discards invitee RSVP and calendar edits on Cancel", () => {

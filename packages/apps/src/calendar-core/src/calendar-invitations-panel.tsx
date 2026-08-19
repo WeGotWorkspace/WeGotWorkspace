@@ -26,7 +26,11 @@ export type CalendarInvitationsPanelProps = {
   tab?: CalendarInvitationInboxTab;
   onTabChange?: (tab: CalendarInvitationInboxTab) => void;
   onClose: () => void;
-  onRespond: (id: string, status: CalendarSchedulingRespondStatus, calendarId?: string) => void;
+  onRespond: (
+    id: string,
+    status: CalendarSchedulingRespondStatus,
+    calendarId?: string,
+  ) => void | Promise<void>;
   onOpenEvent?: (eventId: string) => void;
   onSelect?: (id: string) => void;
 };

@@ -70,7 +70,7 @@ export type CalendarRsvpActionsProps = {
   busy?: boolean;
   size?: CalendarRsvpActionsSize;
   className?: string;
-  onRespond: (status: CalendarSchedulingRespondStatus) => void;
+  onRespond: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
 };
 
 export function CalendarRsvpActions({
@@ -106,7 +106,9 @@ export function CalendarRsvpActions({
             onClick={(event) => {
               event.stopPropagation();
               setOptimisticStatus(value);
-              onRespond(value);
+              void Promise.resolve(onRespond(value)).catch(() => {
+                setOptimisticStatus(null);
+              });
             }}
           >
             <Icon

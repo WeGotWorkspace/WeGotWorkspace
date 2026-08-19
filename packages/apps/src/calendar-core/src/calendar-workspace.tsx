@@ -1,6 +1,8 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@/button/src/button";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
@@ -161,29 +163,6 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
-  const invitations = useCalendarInvitations(operations, {
-    onResponded: () => {
-      surface?.syncNow();
-    },
-  });
-  const inviteeNotifications = useMemo(
-    () =>
-      filterInviteeNotifications(invitations.notifications, [
-        session.user.email ?? "",
-        session.user.username ?? "",
-      ]),
-    [invitations.notifications, session.user.email, session.user.username],
-  );
-  const invitationsLayout = useDocsCommentsLayout();
-  const useInvitationsDrawer = invitationsLayout === "drawer";
-  const [invitationsOpen, setInvitationsOpen] = useState(false);
-  const toggleInvitationsOpen = () => {
-    if (!invitationsOpen) {
-      void invitations.refreshIfIdle().catch(() => undefined);
-    }
-    setInvitationsOpen((open) => !open);
-  };
-
   const {
     L,
     locale,
@@ -229,6 +208,45 @@ export function CalendarWorkspace({
     truncateSeriesFromOccurrence,
     splitSeriesFromDrag,
   } = controller;
+  const { showError } = useAppToast();
+  const handleInvitationResponded = useCallback(() => {
+    surface?.syncNow();
+  }, [surface]);
+  const handleInvitationError = useCallback(
+    (error: unknown) => {
+      showError(
+        error instanceof CalendarSchedulingGoneError
+          ? L.toastInvitationCancelled
+          : L.toastRsvpFailed,
+      );
+    },
+    [L.toastInvitationCancelled, L.toastRsvpFailed, showError],
+  );
+  const handleSchedulingConflict = useCallback(() => {
+    showError(L.toastInvitationCancelled);
+  }, [L.toastInvitationCancelled, showError]);
+  const invitations = useCalendarInvitations(operations, {
+    onResponded: handleInvitationResponded,
+    onError: handleInvitationError,
+    onSchedulingConflict: handleSchedulingConflict,
+  });
+  const inviteeNotifications = useMemo(
+    () =>
+      filterInviteeNotifications(invitations.notifications, [
+        session.user.email ?? "",
+        session.user.username ?? "",
+      ]),
+    [invitations.notifications, session.user.email, session.user.username],
+  );
+  const invitationsLayout = useDocsCommentsLayout();
+  const useInvitationsDrawer = invitationsLayout === "drawer";
+  const [invitationsOpen, setInvitationsOpen] = useState(false);
+  const toggleInvitationsOpen = () => {
+    if (!invitationsOpen) {
+      void invitations.refreshIfIdle().catch(() => undefined);
+    }
+    setInvitationsOpen((open) => !open);
+  };
 
   const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
   const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
@@ -301,7 +319,7 @@ export function CalendarWorkspace({
         showCloseButton={useInvitationsDrawer}
         onClose={() => setInvitationsOpen(false)}
         onRespond={(id, status, calendarId) =>
-          void persistRsvp(id, status, calendarId, { source: "sidebar" })
+          persistRsvp(id, status, calendarId, { source: "sidebar" })
         }
         onOpenEvent={canWrite ? openEditEventKey : undefined}
       />
@@ -520,14 +538,12 @@ export function CalendarWorkspace({
                     (row) => row.eventId === editor.eventId,
                   );
                   const id = notification?.id ?? editor.eventId;
-                  void persistRsvp(id, status, calendarId, {
+                  return persistRsvp(id, status, calendarId, {
                     source: "dialog",
                     editorRecurrenceId: editor.recurrenceId,
-                  })
-                    .then((persisted) => {
-                      if (persisted) closeEditor();
-                    })
-                    .catch(() => undefined);
+                  }).then((persisted) => {
+                    if (persisted) closeEditor();
+                  });
                 }
               : undefined
           }

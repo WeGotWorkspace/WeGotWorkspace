@@ -257,6 +257,16 @@ describe("CalendarInvitationsPanel", () => {
     expect(eventCardHost("invite-1.ics")?.recurring).toBe(true);
   });
 
+  it("discloses that sidebar RSVP applies to the entire series when recurring", () => {
+    renderPanel({ notifications: [{ ...request, recurring: true }] });
+    expect(screen.getByText(defaultCalendarLabels.rsvpSeriesHint)).toBeTruthy();
+  });
+
+  it("does not show the series hint on a one-off invitation", () => {
+    renderPanel();
+    expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+  });
+
   it("closes from the panel header", () => {
     const { onClose } = renderPanel({ showCloseButton: true });
     fireEvent.click(screen.getByLabelText(defaultCalendarLabels.invitationsClosePanel));

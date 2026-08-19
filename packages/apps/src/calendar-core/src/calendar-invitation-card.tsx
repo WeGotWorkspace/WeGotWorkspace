@@ -35,7 +35,7 @@ export type CalendarInvitationCardProps = {
   active: boolean;
   busy?: boolean;
   onSelect: () => void;
-  onRespond: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void;
+  onRespond: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
 };
 
 export function CalendarInvitationCard({
@@ -49,7 +49,7 @@ export function CalendarInvitationCard({
   onSelect,
   onRespond,
 }: CalendarInvitationCardProps) {
-  const { cardRef, isExiting, runExitAnimation, handleExitAnimationEnd } = useDocsCollabCardExit({
+  const { cardRef, isExiting, handleExitAnimationEnd } = useDocsCollabCardExit({
     exitAnimationName: INVITATION_EXIT_ANIMATION,
   });
   const organizer =
@@ -73,15 +73,8 @@ export function CalendarInvitationCard({
     });
   }, [calendars, defaultCalendarId]);
 
-  const respond = (status: CalendarSchedulingRespondStatus) => {
-    const apply = () =>
-      onRespond(status, status === "declined" ? undefined : calendarId || undefined);
-    if (currentStatus === "needs-action") {
-      runExitAnimation(apply);
-      return;
-    }
-    apply();
-  };
+  const respond = (status: CalendarSchedulingRespondStatus) =>
+    onRespond(status, status === "declined" ? undefined : calendarId || undefined);
 
   return (
     <DocsCollabCardShell
@@ -128,14 +121,19 @@ export function CalendarInvitationCard({
       })}
 
       {canRespond ? (
-        <CalendarRsvpActions
-          className="calendar-invitation-card__actions"
-          currentStatus={currentStatus}
-          labels={labels}
-          busy={busy}
-          size="sm"
-          onRespond={respond}
-        />
+        <div className="calendar-invitation-card__rsvp">
+          {eventCard.recurring ? (
+            <p className="calendar-invitation-card__rsvp-hint">{labels.rsvpSeriesHint}</p>
+          ) : null}
+          <CalendarRsvpActions
+            className="calendar-invitation-card__actions"
+            currentStatus={currentStatus}
+            labels={labels}
+            busy={busy}
+            size="sm"
+            onRespond={respond}
+          />
+        </div>
       ) : null}
     </DocsCollabCardShell>
   );

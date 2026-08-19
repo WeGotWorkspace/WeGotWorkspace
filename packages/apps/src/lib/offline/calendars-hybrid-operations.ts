@@ -43,7 +43,10 @@ import {
   flushCalendarsOutbox,
   type CalendarOutboxFlushResult,
 } from "@/lib/offline/calendars-outbox-flush";
-import { reportCalendarsSyncConflicts } from "@/lib/offline/calendars-sync-conflicts";
+import {
+  reportCalendarsSchedulingConflicts,
+  reportCalendarsSyncConflicts,
+} from "@/lib/offline/calendars-sync-conflicts";
 import { readOfflineCalendarsUsername } from "@/lib/offline/offline-session";
 
 function rethrowUnlessOfflineQueue(error: unknown): void {
@@ -56,6 +59,7 @@ const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<CalendarOutboxFlus
 async function flushCalendarsOutboxAndReport(username: string): Promise<CalendarOutboxFlushResult> {
   const result = await flushCalendarsOutbox(username);
   reportCalendarsSyncConflicts(result.conflicts);
+  reportCalendarsSchedulingConflicts(result.schedulingConflicts);
   return result;
 }
 

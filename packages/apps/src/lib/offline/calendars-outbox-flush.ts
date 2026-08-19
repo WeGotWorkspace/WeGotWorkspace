@@ -6,6 +6,7 @@ import {
   patchCalendarEventLive,
 } from "@/lib/api/wgw/calendar";
 import {
+  CalendarSchedulingGoneError,
   dismissCalendarSchedulingNotification,
   respondCalendarSchedulingNotification,
   type CalendarSchedulingRespondStatus,
@@ -24,6 +25,8 @@ import {
 export type CalendarOutboxFlushResult = {
   /** Event ids whose queued write was rejected by the server (deleted/changed remotely). */
   conflicts: string[];
+  /** Inbox notification ids whose queued RSVP/dismiss failed because the invite is gone. */
+  schedulingConflicts: string[];
   bootstrap: CalendarAppBootstrap | null;
 };
 
@@ -39,14 +42,31 @@ function isSetConflict(error: unknown): boolean {
   );
 }
 
+function isSchedulingOutboxOp(op: string): boolean {
+  return op === "respond-scheduling" || op === "dismiss-scheduling";
+}
+
+function isOutboxConflict(error: unknown, op: string): boolean {
+  if (isSetConflict(error)) return true;
+  return isSchedulingOutboxOp(op) && error instanceof CalendarSchedulingGoneError;
+}
+
+function outboxConflictId(op: string, payload: Record<string, unknown>): string {
+  if (isSchedulingOutboxOp(op)) {
+    return String(payload.notificationId ?? "");
+  }
+  return String(payload.eventId ?? "");
+}
+
 export async function flushCalendarsOutbox(username: string): Promise<CalendarOutboxFlushResult> {
   const cached = await readCalendarBootstrapFromCache(username);
   if (!cached) {
-    return { conflicts: [], bootstrap: null };
+    return { conflicts: [], schedulingConflicts: [], bootstrap: null };
   }
 
   const rows = await listOutboxMutations(username);
   const conflicts: string[] = [];
+  const schedulingConflicts: string[] = [];
 
   for (const row of rows) {
     if (row.domain !== CALENDARS_DOMAIN) continue;
@@ -86,10 +106,16 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
-      if (isSetConflict(error)) {
-        const eventId = String(JSON.parse(row.payload).eventId ?? "");
-        if (eventId) conflicts.push(eventId);
-        await markOutboxError(username, row.id, "conflict");
+      const payload = JSON.parse(row.payload) as Record<string, unknown>;
+      if (isOutboxConflict(error, row.op)) {
+        const conflictId = outboxConflictId(row.op, payload);
+        if (isSchedulingOutboxOp(row.op)) {
+          if (conflictId) schedulingConflicts.push(conflictId);
+          await removeOutboxMutation(username, row.id);
+        } else {
+          if (conflictId) conflicts.push(conflictId);
+          await markOutboxError(username, row.id, "conflict");
+        }
         continue;
       }
       await markOutboxError(
@@ -101,5 +127,5 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
   }
 
   const bootstrap = await readCalendarBootstrapFromCache(username);
-  return { conflicts, bootstrap };
+  return { conflicts, schedulingConflicts, bootstrap };
 }

@@ -74,7 +74,7 @@ export type CalendarEventDialogProps = {
   invitees?: CalendarInvitee[];
   canSubmitEmail?: boolean;
   sessionEmail?: string;
-  onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void;
+  onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
 };
 
 function isoToJsDate(iso: string): Date | undefined {
@@ -375,7 +375,10 @@ export function CalendarEventDialog({
             if (busy) return;
             if (showInviteeRsvp) {
               if (!draftRsvp) return;
-              onRsvp?.(draftRsvp, draftCalendarId || undefined);
+              const previous = incomingRsvp ?? "";
+              void Promise.resolve(onRsvp?.(draftRsvp, draftCalendarId || undefined)).catch(() => {
+                setDraftRsvp(previous);
+              });
               return;
             }
             if (readOnly || !valid) return;

@@ -35,3 +35,16 @@
 .calendar-invitation-card__event {
   @apply mt-2.5 block w-full min-w-0 max-w-full overflow-hidden;
 }
+
+.calendar-invitation-card__rsvp {
+  @apply mt-3 min-w-0;
+}
+
+.calendar-invitation-card__rsvp-hint {
+  @apply mb-1.5 text-xs;
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 62%, transparent));
+}
+
+.calendar-invitation-card__rsvp .calendar-invitation-card__actions {
+  @apply mt-0;
+}

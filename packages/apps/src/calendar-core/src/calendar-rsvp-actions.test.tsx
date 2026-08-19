@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
@@ -64,6 +64,28 @@ describe("CalendarRsvpActions", () => {
     expect(maybe.className).toContain("calendar-rsvp-action--selected");
     expect(accept.getAttribute("aria-pressed")).toBe("false");
     expect(accept.className).not.toContain("calendar-rsvp-action--selected");
+  });
+
+  it("reverts the optimistic selection when onRespond rejects", async () => {
+    const onRespond = vi.fn().mockRejectedValue(new Error("Could not send RSVP"));
+    render(
+      <CalendarRsvpActions
+        currentStatus="accepted"
+        labels={defaultCalendarLabels}
+        onRespond={onRespond}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }));
+
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+    expect(maybe.getAttribute("aria-pressed")).toBe("true");
+
+    await waitFor(() => {
+      expect(accept.getAttribute("aria-pressed")).toBe("true");
+      expect(maybe.getAttribute("aria-pressed")).toBe("false");
+    });
   });
 });
 

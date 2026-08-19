@@ -130,6 +130,9 @@ export type CalendarUILabels = {
   rsvpDecline: string;
   rsvpLabel: string;
   rsvpRespond: string;
+  rsvpSeriesHint: string;
+  toastRsvpFailed: string;
+  toastInvitationCancelled: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -262,6 +265,9 @@ export const defaultCalendarLabels: CalendarUILabels = {
   rsvpDecline: "Decline",
   rsvpLabel: "RSVP",
   rsvpRespond: "Respond",
+  rsvpSeriesHint: "Accept and Decline apply to the entire series.",
+  toastRsvpFailed: "Could not send RSVP",
+  toastInvitationCancelled: "This invitation was cancelled",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

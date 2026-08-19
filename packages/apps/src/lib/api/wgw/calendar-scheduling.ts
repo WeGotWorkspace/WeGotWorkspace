@@ -58,6 +58,29 @@ export async function fetchCalendarSchedulingInvitees(): Promise<CalendarInvitee
   };
 }
 
+/** Invite was cancelled or deleted before the queued RSVP could land. */
+export class CalendarSchedulingGoneError extends Error {
+  readonly notificationId: string;
+
+  constructor(notificationId: string, message = "This invitation was cancelled") {
+    super(message);
+    this.name = "CalendarSchedulingGoneError";
+    this.notificationId = notificationId;
+  }
+}
+
+function throwUnlessSchedulingOk(
+  response: Response,
+  notificationId: string,
+  fallback: string,
+): void {
+  if (response.ok || response.status === 204) return;
+  if (response.status === 404 || response.status === 410) {
+    throw new CalendarSchedulingGoneError(notificationId);
+  }
+  throw new Error(fallback);
+}
+
 export async function respondCalendarSchedulingNotification(
   notificationId: string,
   participationStatus: CalendarSchedulingRespondStatus,
@@ -83,7 +106,7 @@ export async function respondCalendarSchedulingNotification(
       body: JSON.stringify(body),
     },
   );
-  if (!response.ok) throw new Error("Could not send RSVP");
+  throwUnlessSchedulingOk(response, notificationId, "Could not send RSVP");
   return (await wgwReadJson(response)) as CalendarSchedulingNotification;
 }
 
@@ -92,5 +115,5 @@ export async function dismissCalendarSchedulingNotification(notificationId: stri
     `/calendars/scheduling/notifications/${encodeURIComponent(notificationId)}`,
     { method: "DELETE" },
   );
-  if (!response.ok && response.status !== 204) throw new Error("Could not dismiss invitation");
+  throwUnlessSchedulingOk(response, notificationId, "Could not dismiss invitation");
 }
