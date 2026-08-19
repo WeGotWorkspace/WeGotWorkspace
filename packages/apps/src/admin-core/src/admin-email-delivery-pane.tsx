@@ -52,16 +52,18 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           Platform email is separate from the Mail app IMAP/SMTP pane. Recovery and invites will use
           this path later.
         </p>
-        <FormField label="From address">
+        <FormField htmlFor="admin-mail-delivery-from" label="From address">
           <Input
+            id="admin-mail-delivery-from"
             type="email"
             value={controller.settingsForm.mailDeliveryFrom}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                mailDeliveryFrom: event.currentTarget.value,
-              }))
-            }
+                mailDeliveryFrom: value,
+              }));
+            }}
           />
         </FormField>
         <FormField label="Transport">
@@ -93,12 +95,13 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FormField label="SMTP host">
           <Input
             value={controller.settingsForm.mailDeliverySmtpHost}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                mailDeliverySmtpHost: event.currentTarget.value,
-              }))
-            }
+                mailDeliverySmtpHost: value,
+              }));
+            }}
           />
         </FormField>
         <div className="admin-email-delivery-pane__row">
@@ -106,12 +109,13 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             <Input
               type="number"
               value={String(controller.settingsForm.mailDeliverySmtpPort)}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = Number(event.target.value) || 0;
                 controller.setSettingsForm((prev) => ({
                   ...prev,
-                  mailDeliverySmtpPort: Number(event.currentTarget.value) || 0,
-                }))
-              }
+                  mailDeliverySmtpPort: value,
+                }));
+              }}
             />
           </FormField>
           <FormField label="Security">
@@ -140,12 +144,13 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FormField label="SMTP username">
           <Input
             value={controller.settingsForm.mailDeliverySmtpUsername}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                mailDeliverySmtpUsername: event.currentTarget.value,
-              }))
-            }
+                mailDeliverySmtpUsername: value,
+              }));
+            }}
           />
         </FormField>
         <FormField label="SMTP password">
@@ -156,12 +161,13 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             placeholder={
               delivery.config.smtpPasswordSet ? "Leave blank to keep the stored secret" : ""
             }
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                mailDeliverySmtpPassword: event.currentTarget.value,
-              }))
-            }
+                mailDeliverySmtpPassword: value,
+              }));
+            }}
           />
         </FormField>
         {delivery.config.smtpPasswordSet ? (

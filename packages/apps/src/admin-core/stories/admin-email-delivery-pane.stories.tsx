@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
@@ -29,6 +30,7 @@ type Story = StoryObj<typeof AdminEmailDeliveryPane>;
 
 export const CapabilityOkTestNull: Story = {
   name: "capability-ok / test-null",
+  tags: ["vitest-ci"],
   render: () => (
     <EmailDeliveryHarness
       override={{
@@ -43,6 +45,13 @@ export const CapabilityOkTestNull: Story = {
       }}
     />
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const fromInput = canvas.getByLabelText("From address");
+    await userEvent.clear(fromInput);
+    await userEvent.type(fromInput, "noreply@example.test");
+    await expect(fromInput).toHaveValue("noreply@example.test");
+  },
 };
 
 export const TestAccepted: Story = {
