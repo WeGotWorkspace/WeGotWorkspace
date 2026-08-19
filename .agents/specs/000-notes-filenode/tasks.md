@@ -10,7 +10,7 @@ Source plan: [plan.md](./plan.md)
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
 | `notes-filenode-index` | builder | api | `packages/api/app/Services/Jmap/FileNodes/FileNodeIndexService.php`, `packages/api/docs/files/jmap-filenode-design.md` | PHPUnit FileNode + Drive hide-`.notes`; `pnpm test:api-done-gate` | done |
-| `notes-filenode-api` | builder | api | `FileNodeMapper.php`, `NoteMarkdownCodec.php`, `NoteRepository.php`, Drive share listing, OpenAPI if path changed | FileNode feature tests + REST starred GET/PUT green (`NotesItemsTest`, `NotesMetadataMutationTest`) | pending |
+| `notes-filenode-api` | builder | api | `FileNodeMapper.php`, `NoteMarkdownCodec.php`, `NoteRepository.php`, Drive share listing, OpenAPI if path changed | FileNode feature tests + REST starred GET/PUT green (`NotesItemsTest`, `NotesMetadataMutationTest`) | done |
 | `notes-filenode-app` | builder | workspace | `packages/apps/src/lib/api/wgw/notes.ts`, notes-core, notes hybrid/outbox, docs-stars-store | Vitest notes mapper + notes-core + notes offline | pending |
 | `notes-filenode-sunset` | builder | api | `packages/api/routes/api.php`, OpenAPI `/notes/*`, `NoteRepository` HTTP surface | `pnpm test:api-done-gate`; no apps `/notes/` imports | pending |
 | `notes-filenode-verify` | verifier | testing | Drive + Notes + Docs | verifier PASS / PASS_WITH_NITS | pending |

@@ -4739,10 +4739,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List paths shared with current user */
+        /**
+         * List paths shared with current user
+         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients; replacement for `GET /notes/shared-with-me`).
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description When true, include file grants under `.notes`. Default is false. */
+                    includeNotes?: boolean;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -5189,7 +5195,7 @@ export interface paths {
         };
         /**
          * List note files shared with the current user via path grants
-         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.
+         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.
          */
         get: {
             parameters: {
