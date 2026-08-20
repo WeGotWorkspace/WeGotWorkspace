@@ -106,6 +106,13 @@ describe("calendar-rsvp-scope", () => {
     ).toBe(false);
     expect(
       shouldAskRsvpOccurrenceScope({
+        source: "preview",
+        recurring: true,
+        previousStatus: "accepted",
+      }),
+    ).toBe(true);
+    expect(
+      shouldAskRsvpOccurrenceScope({
         source: "sidebar",
         recurring: true,
         previousStatus: "accepted",

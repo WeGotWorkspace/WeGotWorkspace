@@ -27,6 +27,13 @@ import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitat
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
+import { CalendarEventDetailsPopover } from "@/calendar-core/src/calendar-event-details-popover";
+import {
+  eventPreviewOccurrenceKey,
+  resolveCalendarEventPreview,
+  type CalendarEventPreviewModel,
+  type CalendarEventSelectionOrigin,
+} from "@/calendar-core/src/calendar-event-preview";
 import { formToCreateIntent } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
@@ -37,6 +44,7 @@ import {
 import {
   organizerAddress,
   sessionEventInviteeStatus,
+  type CalendarAttendee,
 } from "@/calendar-core/src/calendar-attendees";
 import {
   eventIsRecurringForRsvp,
@@ -174,6 +182,7 @@ export function CalendarWorkspace({
     setPresentation,
     anchor,
     title,
+    compactTitle,
     goToday,
     goPrevious,
     goNext,
@@ -192,6 +201,7 @@ export function CalendarWorkspace({
     openCreateFromSurface,
     openEditEventKey,
     closeEditor,
+    pendingDeletedEventIds,
     setEditorForm,
     saveEditor,
     deleteEditorEvent,
@@ -245,6 +255,10 @@ export function CalendarWorkspace({
   const useInvitationsDrawer = invitationsLayout === "drawer";
   const [invitationsOpen, setInvitationsOpen] = useState(false);
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
+  const [eventPreview, setEventPreview] = useState<{
+    model: CalendarEventPreviewModel;
+    origin?: CalendarEventSelectionOrigin;
+  } | null>(null);
   const toggleInvitationsOpen = () => {
     if (!invitationsOpen) {
       void invitations.refreshIfIdle().catch(() => undefined);
@@ -272,7 +286,11 @@ export function CalendarWorkspace({
       id: string,
       status: CalendarSchedulingRespondStatus,
       calendarId: string | undefined,
-      persist: { source: CalendarRsvpPersistSource; editorRecurrenceId?: string },
+      persist: {
+        source: CalendarRsvpPersistSource;
+        editorRecurrenceId?: string;
+        attendees?: CalendarAttendee[];
+      },
     ) => {
       const notification =
         inviteeNotifications.find((row) => row.id === id) ??
@@ -286,10 +304,12 @@ export function CalendarWorkspace({
         event,
         notification,
       });
+      const attendeesForStatus =
+        persist.attendees ?? (editor?.mode === "edit" ? editor.form.attendees : undefined);
       const previousStatus =
-        (editor?.mode === "edit"
+        (attendeesForStatus
           ? sessionEventInviteeStatus(
-              editor.form.attendees,
+              attendeesForStatus,
               organizerAddress(session.user)?.email,
               invitations.invitees,
             )
@@ -335,6 +355,31 @@ export function CalendarWorkspace({
     ],
   );
 
+  const closeEventPreview = useCallback(() => {
+    setEventPreview(null);
+  }, []);
+
+  const openEventPreview = useCallback(
+    (key: string, origin?: CalendarEventSelectionOrigin) => {
+      closeEditor();
+      const model = resolveCalendarEventPreview(key, {
+        events: data.events,
+        surfaceEvents: surface?.events,
+        pendingDeletedEventIds,
+      });
+      if (!model) return;
+      setEventPreview({ model, origin });
+    },
+    [closeEditor, data.events, pendingDeletedEventIds, surface?.events],
+  );
+
+  const openEditFromPreview = useCallback(() => {
+    if (!eventPreview) return;
+    const key = eventPreviewOccurrenceKey(eventPreview.model);
+    setEventPreview(null);
+    void openEditEventKey(key);
+  }, [eventPreview, openEditEventKey]);
+
   const invitationsPanel = useMemo(
     () => (
       <CalendarInvitationsPanel
@@ -349,7 +394,14 @@ export function CalendarWorkspace({
         onRespond={async (id, status, calendarId) => {
           await persistRsvp(id, status, calendarId, { source: "sidebar" });
         }}
-        onOpenEvent={canWrite ? openEditEventKey : undefined}
+        onOpenEvent={
+          canWrite
+            ? (key) => {
+                closeEventPreview();
+                return openEditEventKey(key);
+              }
+            : undefined
+        }
       />
     ),
     [
@@ -360,6 +412,7 @@ export function CalendarWorkspace({
       invitations.busy,
       inviteeNotifications,
       locale,
+      closeEventPreview,
       openEditEventKey,
       persistRsvp,
       useInvitationsDrawer,
@@ -380,6 +433,7 @@ export function CalendarWorkspace({
                   label={L.newEvent}
                   icon={<Plus />}
                   onClick={() => {
+                    closeEventPreview();
                     openCreateEvent();
                     closeSidebarOnMobile(() => setSidebarOpen(false));
                   }}
@@ -447,6 +501,7 @@ export function CalendarWorkspace({
         mainHeader={
           <ViewHeader
             title={title}
+            compactTitle={compactTitle}
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -517,13 +572,21 @@ export function CalendarWorkspace({
                 requestRecurrenceScope={askRecurrenceScope}
                 onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
                 onRecurrenceFutureUpdate={splitSeriesFromDrag}
-                onEventSelected={canWrite ? openEditEventKey : undefined}
+                onEventSelected={openEventPreview}
                 onViewChange={selectView}
                 onStartDateChange={setAnchor}
-                onCreateRequested={canWrite ? openCreateFromSurface : undefined}
+                onCreateRequested={
+                  canWrite
+                    ? (intent) => {
+                        closeEventPreview();
+                        openCreateFromSurface(intent);
+                      }
+                    : undefined
+                }
                 pendingCreateIntent={
                   editor?.mode === "create" ? formToCreateIntent(editor.form) : null
                 }
+                selectedEventKey={eventPreview ? eventPreviewOccurrenceKey(eventPreview.model) : ""}
               />
             </div>
           </div>
@@ -550,6 +613,31 @@ export function CalendarWorkspace({
         >
           {invitationsPanel}
         </SideDrawer>
+      ) : null}
+      {eventPreview ? (
+        <CalendarEventDetailsPopover
+          open
+          preview={eventPreview.model}
+          origin={eventPreview.origin}
+          calendars={calendars}
+          labels={L}
+          locale={locale}
+          untitledLabel={L.untitledEvent}
+          canEdit={canWrite}
+          busy={invitations.busy}
+          sessionEmail={organizerAddress(session.user)?.email}
+          onClose={closeEventPreview}
+          onEdit={canWrite ? openEditFromPreview : undefined}
+          onRsvp={(status) => {
+            const eventId = eventPreview.model.eventId;
+            const notification = inviteeNotifications.find((row) => row.eventId === eventId);
+            return persistRsvp(notification?.id ?? eventId, status, undefined, {
+              source: "preview",
+              editorRecurrenceId: eventPreview.model.recurrenceId,
+              attendees: eventPreview.model.form.attendees,
+            }).then(() => undefined);
+          }}
+        />
       ) : null}
       {editor ? (
         <CalendarEventDialog
