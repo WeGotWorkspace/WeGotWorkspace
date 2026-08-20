@@ -29,3 +29,14 @@
   --tag-bg: color-mix(in oklab, #b14242 18%, transparent);
   --tag-fg: #b14242;
 }
+
+.calendar-invitees-rsvp-tag--organizer {
+  --tag-bg: color-mix(in oklab, var(--share-dialog-accent, var(--color-ink)) 16%, transparent);
+  --tag-fg: var(--share-dialog-accent, var(--color-ink));
+}
+
+.calendar-invitees-rsvp-tag--pending,
+.calendar-invitees-rsvp-tag--delegated {
+  --tag-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --tag-fg: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}

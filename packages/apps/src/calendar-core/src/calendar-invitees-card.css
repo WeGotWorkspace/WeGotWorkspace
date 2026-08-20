@@ -2,9 +2,9 @@
 @import "./calendar-rsvp-status.css";
 
 /**
- * Invitee rows share CardRow with a status chip, role select, and delete.
- * On a single narrow line those controls win the flex fight and the name
- * disappears. Wrap identity vs controls, and keep the name from collapsing.
+ * Invitee rows keep identity visible: wrap the chip/delete instead of
+ * shrinking the name. Status lives on the avatar; full-text chips hide
+ * on narrow widths so they do not compete with the name.
  */
 .calendar-invitees-card {
   container: calendar-invitees / inline-size;
@@ -28,6 +28,23 @@
   min-width: min(8rem, 100%);
 }
 
+.calendar-invitees-status-mark-trigger {
+  @apply inline-flex shrink-0 rounded-full;
+}
+
+.calendar-invitees-status-mark-trigger:focus-visible {
+  box-shadow: 0 0 0 1px var(--ring, var(--color-ring, currentColor));
+}
+
+.calendar-invitees-status-mark {
+  background: var(--tag-bg, color-mix(in oklab, var(--color-ink) 10%, transparent));
+  color: var(--tag-fg, var(--color-ink));
+}
+
+.calendar-invitees-status-mark svg {
+  @apply size-3.5;
+}
+
 .calendar-invitees-card .card__row-title-line .tag {
   @apply shrink-0;
 }
@@ -46,8 +63,8 @@
     text-overflow: unset;
   }
 
-  .calendar-invitees-card .share-dialog__permission-select {
-    @apply w-auto min-w-0;
+  .calendar-invitees-status-tag {
+    @apply hidden;
   }
 }
 
@@ -62,8 +79,8 @@
       text-overflow: unset;
     }
 
-    .calendar-invitees-card .share-dialog__permission-select {
-      @apply w-auto min-w-0;
+    .calendar-invitees-status-tag {
+      @apply hidden;
     }
   }
 }

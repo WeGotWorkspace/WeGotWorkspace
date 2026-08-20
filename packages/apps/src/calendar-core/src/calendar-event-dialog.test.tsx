@@ -432,7 +432,7 @@ describe("CalendarEventDialog", () => {
     );
   });
 
-  it("keeps the invitee name in the same row as the RSVP chip and Required control", () => {
+  it("keeps the invitee name visible beside a text-only RSVP chip and status avatar", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -452,14 +452,18 @@ describe("CalendarEventDialog", () => {
     expect(name.classList.contains("card__row-title")).toBe(true);
     expect(row!.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
     expect(screen.getByText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: /Carol: Required/i })).toBeTruthy();
+    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
+    expect(row!.querySelector(".calendar-invitees-status-mark svg")).toBeTruthy();
+    expect(row!.querySelector(".calendar-invitees-status-mark")?.textContent).toBe("");
+    expect(row!.querySelector(".calendar-invitees-status-tag .tag__icon")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Required|Optional/i })).toBeNull();
     expect(
       screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
     ).toBeTruthy();
     expect(name.closest(".calendar-invitees-card")).not.toBeNull();
   });
 
-  it("changes an invitee from Required to Optional and can remove them", () => {
+  it("can remove an invitee without a role picker", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -479,15 +483,7 @@ describe("CalendarEventDialog", () => {
     expect(screen.getByText("Carol")).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeTruthy();
     expect(document.querySelector(".tag")).toBeTruthy();
-    fireEvent.click(screen.getByRole("combobox", { name: /Carol: Required/i }));
-    fireEvent.click(
-      screen.getByRole("option", { name: defaultCalendarLabels.eventAttendeesRoleOptional }),
-    );
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        attendees: [expect.objectContaining({ email: "carol@example.test", role: "optional" })],
-      }),
-    );
+    expect(screen.queryByRole("combobox", { name: /Required|Optional/i })).toBeNull();
     fireEvent.click(
       screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
     );
@@ -549,13 +545,14 @@ describe("CalendarEventDialog", () => {
     renderDialog({ form, sessionEmail: "admin@localhost" });
     expect(screen.getByText("Admin")).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.eventAttendeesOrganizer)).toBeTruthy();
+    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesOrganizer)).toBeTruthy();
     expect(screen.getByText("Wouter")).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
     expect(screen.queryByText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeNull();
     expect(
       screen.getAllByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
     ).toHaveLength(1);
-    expect(screen.queryByRole("combobox", { name: /Admin:/i })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Admin:|Required|Optional/i })).toBeNull();
   });
 
   it("shows the session organizer on a new event with no other invitees", () => {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { User, UserCheck, Users } from "lucide-react";
+import { Crown, Users, type LucideIcon } from "lucide-react";
 import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   attendeesIncludeInvitee,
@@ -10,7 +10,6 @@ import {
   listedInviteeAttendees,
   organizerAttendeeForList,
   type CalendarAttendee,
-  type CalendarAttendeeRole,
   type CalendarInvitee,
   type CalendarParticipationStatus,
 } from "@/calendar-core/src/calendar-attendees";
@@ -23,8 +22,9 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import { ShareRowSelect, type ShareRowSelectOption } from "@/share-ui/share-row-select";
 import { Tag } from "@/tag/src/tag";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
 import "@/calendar-core/src/calendar-invitees-card.css";
 
@@ -37,7 +37,7 @@ export type CalendarInviteesCardProps = {
   busy?: boolean;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
-  /** Invitee view: hide add/remove and lock role. */
+  /** Invitee view: hide add/remove. */
   readOnly?: boolean;
   onChange: (attendees: CalendarAttendee[]) => void;
 };
@@ -62,7 +62,7 @@ function rsvpLabel(
   }
 }
 
-function rsvpTagClass(status: CalendarParticipationStatus): string | undefined {
+function rsvpToneClass(status: CalendarParticipationStatus): string | undefined {
   switch (status) {
     case "accepted":
       return "calendar-invitees-rsvp-tag--accepted";
@@ -70,9 +70,39 @@ function rsvpTagClass(status: CalendarParticipationStatus): string | undefined {
       return "calendar-invitees-rsvp-tag--tentative";
     case "declined":
       return "calendar-invitees-rsvp-tag--declined";
+    case "delegated":
+      return "calendar-invitees-rsvp-tag--delegated";
+    case "needs-action":
+      return "calendar-invitees-rsvp-tag--pending";
     default:
       return undefined;
   }
+}
+
+function InviteeStatusMark({
+  label,
+  icon: Icon,
+  toneClass,
+}: {
+  label: string;
+  icon: LucideIcon;
+  toneClass?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="calendar-invitees-status-mark-trigger" tabIndex={0} aria-label={label}>
+          <SharePrincipalMark
+            principalType="user"
+            displayName={label}
+            icon={<Icon aria-hidden />}
+            className={cn("calendar-invitees-status-mark", toneClass)}
+          />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function CalendarInviteesCard({
@@ -89,10 +119,6 @@ export function CalendarInviteesCard({
   const [query, setQuery] = useState("");
   const organizer = organizerAttendeeForList(attendees, invitees, sessionEmail);
   const listed = listedInviteeAttendees(attendees, invitees);
-  const roleOptions: ShareRowSelectOption<CalendarAttendeeRole>[] = [
-    { value: "required", label: labels.eventAttendeesRoleRequired, icon: UserCheck },
-    { value: "optional", label: labels.eventAttendeesRoleOptional, icon: User },
-  ];
 
   const selectableInvitees = useMemo(
     () =>
@@ -215,57 +241,46 @@ export function CalendarInviteesCard({
         <ShareAccessRow
           key={`organizer:${organizer.email}`}
           mark={
-            <SharePrincipalMark
-              principalType="user"
-              displayName={organizer.name || organizer.email}
-              active
+            <InviteeStatusMark
+              label={labels.eventAttendeesOrganizer}
+              icon={Crown}
+              toneClass="calendar-invitees-rsvp-tag--organizer"
             />
           }
           title={organizer.name || organizer.email}
-          titleEnd={<Tag label={labels.eventAttendeesOrganizer} />}
+          titleEnd={
+            <Tag label={labels.eventAttendeesOrganizer} className="calendar-invitees-status-tag" />
+          }
         />
       ) : null}
       {listed.map((attendee) => {
         const title = attendee.name || attendee.email;
         const status = rsvpLabel(attendee.participationStatus, labels);
-        const tagTone = rsvpTagClass(attendee.participationStatus);
+        const toneClass = rsvpToneClass(attendee.participationStatus);
         const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus);
-        const role = attendee.role === "optional" ? "optional" : "required";
 
         return (
           <ShareAccessRow
             key={attendee.email}
-            mark={<SharePrincipalMark principalType="user" displayName={title} active />}
+            mark={
+              status && StatusIcon ? (
+                <InviteeStatusMark label={status} icon={StatusIcon} toneClass={toneClass} />
+              ) : (
+                <SharePrincipalMark principalType="user" displayName={title} active />
+              )
+            }
             title={title}
             titleEnd={
               status ? (
                 <Tag
                   label={status}
-                  icon={StatusIcon ? <StatusIcon aria-hidden /> : undefined}
-                  className={tagTone}
+                  className={
+                    toneClass
+                      ? `calendar-invitees-status-tag ${toneClass}`
+                      : "calendar-invitees-status-tag"
+                  }
                 />
               ) : null
-            }
-            trailing={
-              <ShareRowSelect
-                value={role}
-                options={roleOptions}
-                disabled={locked}
-                aria-label={`${title}: ${
-                  role === "optional"
-                    ? labels.eventAttendeesRoleOptional
-                    : labels.eventAttendeesRoleRequired
-                }`}
-                onChange={(next) =>
-                  onChange(
-                    attendees.map((row) =>
-                      attendeesReferToSamePerson(row, attendee, invitees)
-                        ? { ...row, role: next }
-                        : row,
-                    ),
-                  )
-                }
-              />
             }
             removeLabel={labels.eventAttendeesRemove}
             removeDisabled={locked}

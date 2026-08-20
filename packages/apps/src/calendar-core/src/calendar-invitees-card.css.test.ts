@@ -7,7 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-invitees-card.css"), "utf8");
 
 describe("calendar invitees card CSS", () => {
-  it("wraps invitee identity so status and role controls cannot hide the name", () => {
+  it("wraps invitee identity so status chips cannot hide the name", () => {
     expect(css).toMatch(/\.calendar-invitees-card \{[\s\S]*container:\s*calendar-invitees/);
     expect(css).toMatch(/\.calendar-invitees-card \.card__row \{[\s\S]*flex-wrap/);
     expect(css).toMatch(
@@ -20,9 +20,11 @@ describe("calendar invitees card CSS", () => {
     expect(css).toMatch(/\.calendar-invitees-card \.card__row-title-line \.tag \{[\s\S]*shrink-0/);
   });
 
-  it("keeps a container-query fallback for browsers without inline-size queries", () => {
+  it("hides full-text status chips on narrow widths instead of adding icon-only chips", () => {
     expect(css).toMatch(/@container calendar-invitees \(max-width: 22rem\)/);
     expect(css).toMatch(/@supports not \(container-type: inline-size\)/);
     expect(css).toMatch(/\.calendar-invitees-card \.card__row-title \{[\s\S]*whitespace-normal/);
+    expect(css).toMatch(/\.calendar-invitees-status-tag \{[\s\S]*hidden/);
+    expect(css).not.toMatch(/tag--icon-only/);
   });
 });

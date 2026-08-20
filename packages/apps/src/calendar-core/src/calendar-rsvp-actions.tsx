@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, CircleHelp, X, type LucideIcon } from "lucide-react";
+import { Check, CircleHelp, Clock, Forward, X, type LucideIcon } from "lucide-react";
 import {
   normalizeParticipationStatus,
   type CalendarParticipationStatus,
@@ -31,6 +31,10 @@ export function calendarRsvpStatusIcon(
       return CircleHelp;
     case "declined":
       return X;
+    case "needs-action":
+      return Clock;
+    case "delegated":
+      return Forward;
     default:
       return undefined;
   }
