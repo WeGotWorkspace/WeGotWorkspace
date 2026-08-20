@@ -1,0 +1,20 @@
+@import "../styles.css" reference;
+
+.ui-modal-surface {
+  --modal-inset: 1rem;
+  --modal-close-size: calc(var(--input-height, 2.25rem) - 0.25rem);
+  --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
+  @apply p-[length:var(--modal-inset)];
+}
+
+@media (min-width: 640px) {
+  .ui-modal-surface {
+    --modal-inset: 1.5rem;
+  }
+}
+
+.ui-modal-header {
+  @apply flex flex-col justify-center gap-1.5 text-left;
+  min-height: var(--modal-close-size);
+  padding-inline-end: var(--modal-header-end);
+}
