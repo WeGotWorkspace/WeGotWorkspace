@@ -129,6 +129,54 @@ describe("ViewHeader layout", () => {
     ).toBe(true);
   });
 
+  it("keeps titleLeading before the title when stacked", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        layout="stacked"
+        titleLeading={
+          <button type="button" className="nav-prev">
+            Prev
+          </button>
+        }
+        actions={<button type="button">Today</button>}
+      />,
+    );
+    const cluster = container.querySelector(".view-header__title-cluster");
+    const leading = cluster!.querySelector(".nav-prev");
+    const title = cluster!.querySelector(".view-header__title");
+    expect(leading).not.toBeNull();
+    expect(title).not.toBeNull();
+    expect(
+      Boolean(leading!.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+
+  it("renders titleTrailing after actions so stacked CSS can pin it to row 1", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        layout="stacked"
+        titleLeading={<button type="button">Prev</button>}
+        titleTrailing={
+          <button type="button" className="inbox-trigger">
+            Inbox
+          </button>
+        }
+        actions={<button type="button">Today</button>}
+      />,
+    );
+    const row = container.querySelector(".view-header__title-row");
+    const actions = row!.querySelector(".view-header__actions");
+    const trailing = row!.querySelector(".view-header__title-trailing");
+    const inbox = trailing!.querySelector(".inbox-trigger");
+    expect(actions).not.toBeNull();
+    expect(inbox).not.toBeNull();
+    expect(
+      Boolean(actions!.compareDocumentPosition(trailing!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+
   it("keeps a compact title available for narrow headers", () => {
     const { container } = render(
       <ViewHeader

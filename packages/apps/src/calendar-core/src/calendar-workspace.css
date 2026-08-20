@@ -91,11 +91,16 @@
   --wai-detail-muted: #c7d2fe;
 }
 
-/* Prev/next (ViewHeader titleLeading): inline before the title; stacked at row end.
-   Same gap as header actions (view switch ↔ Today / inbox). */
+/* Prev/next stays before the title (ViewHeader titleLeading). Inbox is
+   titleTrailing so stacked/narrow rows keep it on row 1 end. Same gap as
+   view switch ↔ Today. */
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
+}
+
+.calendar-workspace .view-header__end {
+  @apply gap-1;
 }
 
 .calendar-workspace .calendar-header-nav {
@@ -145,7 +150,8 @@
 /* Compact chrome so the date-range title can wrap instead of ellipsizing. */
 @container view-header-main (max-width: 40rem) {
   .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
     @apply size-8;
   }
 
@@ -157,7 +163,8 @@
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
     .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+    .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
       @apply size-8;
     }
 

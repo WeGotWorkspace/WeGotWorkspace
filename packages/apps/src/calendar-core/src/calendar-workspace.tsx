@@ -521,6 +521,14 @@ export function CalendarWorkspace({
                 />
               </div>
             }
+            titleTrailing={
+              <CalendarInvitationsTrigger
+                count={pendingInvitationCount(inviteeNotifications)}
+                open={invitationsOpen}
+                labels={L}
+                onToggle={toggleInvitationsOpen}
+              />
+            }
             actions={
               <div className="calendar-header-actions">
                 <Select
@@ -550,12 +558,6 @@ export function CalendarWorkspace({
                   listLabel={L.showAsList}
                 />
                 <Button label={L.today} onClick={goToday} variant="subtle" size="sm" />
-                <CalendarInvitationsTrigger
-                  count={pendingInvitationCount(inviteeNotifications)}
-                  open={invitationsOpen}
-                  labels={L}
-                  onToggle={toggleInvitationsOpen}
-                />
               </div>
             }
           />
