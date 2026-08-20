@@ -119,8 +119,6 @@ export type CalendarUILabels = {
   eventAttendeesEmailPlaceholder: string;
   eventAttendeesEmailAdd: string;
   eventAttendeesEmailUnavailable: string;
-  eventAttendeesRoleRequired: string;
-  eventAttendeesRoleOptional: string;
   eventAttendeesRemove: string;
   eventAttendeesSearchEmpty: string;
   eventAttendeesOrganizer: string;
@@ -254,8 +252,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesEmailAdd: "Add email",
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
-  eventAttendeesRoleRequired: "Required",
-  eventAttendeesRoleOptional: "Optional",
   eventAttendeesRemove: "Remove invitee",
   eventAttendeesSearchEmpty: "No teammates found",
   eventAttendeesOrganizer: "Organizer",

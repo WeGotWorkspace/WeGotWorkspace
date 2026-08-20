@@ -1,2 +1,65 @@
 @import "../../styles.css" reference;
 @import "./calendar-rsvp-status.css";
+
+/**
+ * Invitee rows keep identity visible: wrap the delete control instead of
+ * shrinking the name. Status lives on the avatar (icon + color + tooltip).
+ */
+.calendar-invitees-card {
+  container: calendar-invitees / inline-size;
+}
+
+.calendar-invitees-card .card__row {
+  @apply flex-wrap items-center;
+}
+
+.calendar-invitees-card .card__row-main {
+  flex: 1 1 10rem;
+  min-width: min(10rem, 100%);
+  @apply self-center;
+}
+
+.calendar-invitees-status-mark-trigger {
+  @apply inline-flex shrink-0 items-center self-center rounded-full;
+}
+
+.calendar-invitees-status-mark-trigger:focus-visible {
+  box-shadow: 0 0 0 1px var(--ring, var(--color-ring, currentColor));
+}
+
+.calendar-invitees-status-mark {
+  background: var(--tag-bg, color-mix(in oklab, var(--color-ink) 10%, transparent));
+  color: var(--tag-fg, var(--color-ink));
+}
+
+.calendar-invitees-status-mark svg {
+  @apply size-3.5;
+}
+
+.calendar-invitees-card .card__row-action {
+  @apply ms-auto self-center;
+}
+
+@container calendar-invitees (max-width: 22rem) {
+  .calendar-invitees-card .card__row {
+    @apply items-center;
+  }
+
+  .calendar-invitees-card .card__row-title {
+    @apply overflow-visible whitespace-normal;
+    text-overflow: unset;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (max-width: 22rem) {
+    .calendar-invitees-card .card__row {
+      @apply items-center;
+    }
+
+    .calendar-invitees-card .card__row-title {
+      @apply overflow-visible whitespace-normal;
+      text-overflow: unset;
+    }
+  }
+}
