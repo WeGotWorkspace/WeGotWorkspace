@@ -334,10 +334,11 @@ export function setCustomRecurrenceRepeatMode(
   if (customRecurrenceRepeatMode({ ...rest, byMonthDay: undefined }) === "ordinal") {
     return { ...rest, byMonthDay: undefined };
   }
+  const nth = nthWeekdayOfMonth(start);
   return patchCustomRecurrenceOrdinal(
     { ...rest, byDay: undefined, bySetPosition: undefined, byMonthDay: undefined },
     {
-      nth: nthWeekdayOfMonth(start),
+      nth: isOrdinalNth(nth) ? nth : 1,
       kind: weekdayFromIsoDate(startDateISO),
     },
     startDateISO,
