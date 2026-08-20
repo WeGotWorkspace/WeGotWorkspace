@@ -272,6 +272,25 @@ describe("CalendarInvitationsPanel", () => {
     fireEvent.click(screen.getByLabelText(defaultCalendarLabels.invitationsClosePanel));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("does not show a tooltip when the drawer close control is focused", () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarInvitationsPanel
+          notifications={[request]}
+          labels={defaultCalendarLabels}
+          locale="en-US"
+          calendars={calendars}
+          defaultCalendarId="default"
+          showCloseButton
+          onClose={vi.fn()}
+          onRespond={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    screen.getByLabelText(defaultCalendarLabels.invitationsClosePanel).focus();
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
 });
 
 describe("calendar invitation picker reuse", () => {

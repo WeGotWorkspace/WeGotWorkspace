@@ -128,6 +128,7 @@
 }
 
 :host .event-card-compact-time {
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
   font-weight: 300;
   font-variant-numeric: tabular-nums;
 }
@@ -200,7 +201,16 @@
 }
 
 :host .event-card-time {
-  @apply flex min-w-0 max-w-full items-baseline gap-1 overflow-hidden text-start text-xs font-light leading-tight tabular-nums;
+  @apply flex min-w-0 max-w-full items-baseline gap-1 overflow-hidden text-start font-light leading-tight tabular-nums;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+}
+
+@media (max-width: 40rem) {
+  :host .event-card-compact-time,
+  :host .event-card-time,
+  :host .event-card-location {
+    font-size: var(--_lc-time-label-font-size, 0.625rem);
+  }
 }
 
 :host .event-card-time-main,
@@ -209,7 +219,8 @@
 }
 
 :host .event-card-location {
-  @apply min-w-0 max-w-full overflow-hidden truncate text-xs font-light leading-tight;
+  @apply min-w-0 max-w-full overflow-hidden truncate font-light leading-tight;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
   opacity: 0.84;
 }
 

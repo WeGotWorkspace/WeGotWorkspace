@@ -11,7 +11,12 @@ import type {
   CalendarUIData,
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
-import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/calendar-event-model";
+import {
+  isViewShowingToday,
+  shiftAnchor,
+  todayISODate,
+  viewDateRange,
+} from "@/calendar-core/src/calendar-event-model";
 import {
   calendarRangeLabel,
   type CalendarRangeLabelDensity,
@@ -344,6 +349,7 @@ export function useCalendarController({
   );
 
   const dateRange = useMemo(() => viewDateRange(view, anchor), [view, anchor]);
+  const showingToday = useMemo(() => isViewShowingToday(view, anchor), [view, anchor]);
 
   /** Lit surface mirrors time-range `view` and independent grid/list `presentation`. */
   const litSurface = useMemo(() => ({ view, presentation }) as const, [view, presentation]);
@@ -1112,6 +1118,7 @@ export function useCalendarController({
     title: rangeTitle(view, anchor, locale),
     compactTitle:
       view === "day" || view === "week" ? rangeTitle(view, anchor, locale, "compact") : undefined,
+    showingToday,
     goToday,
     goPrevious,
     goNext,

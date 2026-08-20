@@ -235,6 +235,20 @@ export function viewDateRange(view: CalendarViewId, anchorISO: string): Calendar
   }
 }
 
+/** True when this view's rendered period is the same as navigating to today. */
+export function isViewShowingToday(
+  view: CalendarViewId,
+  anchorISO: string,
+  todayISO: string = todayISODate(),
+): boolean {
+  const current = viewDateRange(view, anchorISO);
+  const todayRange = viewDateRange(view, todayISO);
+  return (
+    Temporal.PlainDate.compare(current.start, todayRange.start) === 0 &&
+    Temporal.PlainDate.compare(current.end, todayRange.end) === 0
+  );
+}
+
 export function shiftAnchor(view: CalendarViewId, anchorISO: string, direction: 1 | -1): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
   switch (view) {

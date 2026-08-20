@@ -88,7 +88,7 @@ const periodActions = (
   </div>
 );
 
-/** Prev/next + title on row 1 start; inbox on row 1 end; other actions on row 2. */
+/** View actions on row 1 start; inbox on row 1 end; title + prev/next on row 2. */
 export const Stacked: Story = {
   args: {
     title: "August 2026",

@@ -6,6 +6,7 @@ import {
   occurrencesInRange,
   shiftAnchor,
   viewDateRange,
+  isViewShowingToday,
   rangeToPlainDateTimeStrings,
 } from "@/calendar-core/src/calendar-event-model";
 
@@ -45,6 +46,22 @@ describe("viewDateRange", () => {
     const range = viewDateRange("day", "2033-01-12");
     expect(range.start.toString()).toBe("2033-01-12");
     expect(range.end.toString()).toBe("2033-01-13");
+  });
+});
+
+describe("isViewShowingToday", () => {
+  it("is true when the rendered period matches today's period", () => {
+    expect(isViewShowingToday("day", "2033-01-12", "2033-01-12")).toBe(true);
+    expect(isViewShowingToday("week", "2033-01-14", "2033-01-12")).toBe(true);
+    expect(isViewShowingToday("month", "2033-01-28", "2033-01-12")).toBe(true);
+    expect(isViewShowingToday("year", "2033-06-01", "2033-01-12")).toBe(true);
+  });
+
+  it("is false when the rendered period is not today's", () => {
+    expect(isViewShowingToday("day", "2033-01-11", "2033-01-12")).toBe(false);
+    expect(isViewShowingToday("week", "2033-01-19", "2033-01-12")).toBe(false);
+    expect(isViewShowingToday("month", "2033-02-01", "2033-01-12")).toBe(false);
+    expect(isViewShowingToday("year", "2032-12-31", "2033-01-12")).toBe(false);
   });
 });
 

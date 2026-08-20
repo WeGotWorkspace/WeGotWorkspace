@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { TooltipProvider } from "@/ui/tooltip";
 import { ViewHeader } from "@/view-header/src/view-header";
 
 const baseProps = {
@@ -20,6 +21,30 @@ describe("ViewHeader titleSize", () => {
     const title = container.querySelector(".view-header__title");
     expect(title).not.toBeNull();
     expect(title!.classList.contains("view-header__title--sm")).toBe(true);
+  });
+});
+
+describe("ViewHeader titlePrefix", () => {
+  it("renders prefix controls immediately before the title", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        titlePrefix={
+          <button type="button" className="today-icon">
+            Today
+          </button>
+        }
+      />,
+    );
+    const block = container.querySelector(".view-header__title-block");
+    expect(block).not.toBeNull();
+    const prefix = block!.querySelector(".today-icon");
+    const title = block!.querySelector(".view-header__title");
+    expect(prefix).not.toBeNull();
+    expect(title).not.toBeNull();
+    expect(
+      Boolean(prefix!.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
   });
 });
 
@@ -127,6 +152,15 @@ describe("ViewHeader layout", () => {
         .querySelector(".view-header__title-row")
         ?.classList.contains("view-header__title-row--responsive"),
     ).toBe(true);
+  });
+
+  it("renders the sidebar toggle in a dedicated slot", () => {
+    const { container } = render(
+      <TooltipProvider delayDuration={0}>
+        <ViewHeader title="All Items" sidebarOpen={false} onToggleSidebar={() => {}} />
+      </TooltipProvider>,
+    );
+    expect(container.querySelector(".view-header__sidebar-toggle")).not.toBeNull();
   });
 
   it("keeps titleLeading before the title when stacked", () => {

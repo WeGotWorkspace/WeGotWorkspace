@@ -677,6 +677,8 @@ describe("now-badge x-alignment with hour labels", () => {
     expect(hourLabels).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
     expect(nowBadge).toContain("inset-inline-end: 0");
     expect(nowBadge).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
+    expect(css).toContain("font-size: var(--_lc-time-label-font-size, 0.75rem)");
+    expect(css).toContain("font-size: var(--_lc-time-label-font-size, 11px)");
   });
 });
 
@@ -700,6 +702,15 @@ describe("week-number corner alignment with time gutter and day-header row", () 
     expect(weekNumberStart).toBeGreaterThan(-1);
     expect(weekNumberEnd).toBeGreaterThan(weekNumberStart);
     expect(timelineCss).toContain("--_lc-time-sidebar-inline-padding: 6px");
+    expect(timelineCss).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-time-sidebar-inline-padding:\s*4px/,
+    );
+    expect(timelineCss).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-time-label-font-size:\s*0\.625rem/,
+    );
+    expect(timelineCss).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-weekday-header-font-size:\s*0\.75rem/,
+    );
     expect(weekNumber).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 6px)");
     expect(weekNumber).toContain("justify-content: end");
     expect(weekNumber).toContain("text-align: end");
@@ -711,6 +722,9 @@ describe("week-number corner alignment with time gutter and day-header row", () 
     expect(weekNumber).toContain("--_lc-outside-month-day-color");
     expect(weekdayHeaderCss).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
     expect(weekdayHeaderCss).toContain("font-size: var(--_lc-weekday-header-font-size, 14px)");
+    expect(weekdayHeaderCss).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-weekday-header-font-size,\s*0\.75rem/,
+    );
     expect(weekdayHeaderCss).toContain("leading-none");
   });
 });

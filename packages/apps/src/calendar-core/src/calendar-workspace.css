@@ -91,12 +91,101 @@
   --wai-detail-muted: #c7d2fe;
 }
 
-/* Prev/next stays before the title (ViewHeader titleLeading). Inbox is
-   titleTrailing so stacked/narrow rows keep it on row 1 end. Same gap as
-   view switch ↔ Today. */
+/* Inbox is titleTrailing (row 1 end). Prev/next is titleLeading (row 2 end). */
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
+}
+
+/* Labeled Today stays in actions on desktop; icon-only sits before the title on mobile. */
+.calendar-workspace .view-header__title-prefix {
+  @apply hidden;
+}
+
+/*
+ * Small viewports: two-row header matching the calendar mock.
+ *   [☰] [Week] [grid|list]              [inbox]
+ *   [today] [1–7 Feb 2027]              [<] [>]
+ * Viewport media (not a container query): flattening `__main` with
+ * `display: contents` would otherwise drop the query container and snap back.
+ */
+@media (max-width: 40rem) {
+  .calendar-workspace .view-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "toggle actions trailing"
+      "title title leading";
+    align-items: center;
+    column-gap: 0.25rem;
+    row-gap: 0.75rem;
+  }
+
+  .calendar-workspace .view-header__sidebar-toggle {
+    grid-area: toggle;
+  }
+
+  .calendar-workspace .view-header__main,
+  .calendar-workspace .view-header__title-row,
+  .calendar-workspace .view-header__title-cluster,
+  .calendar-workspace .view-header__end {
+    display: contents;
+  }
+
+  .calendar-workspace .view-header__actions {
+    grid-area: actions;
+    justify-self: start;
+  }
+
+  .calendar-workspace .view-header__title-block {
+    grid-area: title;
+    @apply min-w-0;
+  }
+
+  .calendar-workspace .view-header__title-prefix {
+    @apply flex;
+  }
+
+  .calendar-workspace .view-header__title {
+    @apply overflow-visible whitespace-normal text-xl leading-tight;
+    text-overflow: unset;
+  }
+
+  .calendar-workspace .view-header__title-leading {
+    grid-area: leading;
+    justify-self: end;
+  }
+
+  .calendar-workspace .view-header__title-trailing {
+    grid-area: trailing;
+    justify-self: end;
+  }
+
+  .calendar-workspace .calendar-header-today {
+    @apply hidden;
+  }
+
+  .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-today-icon.button[class*="icon-button--size"],
+  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
+    @apply size-8;
+  }
+
+  .calendar-workspace .calendar-header-actions .calendar-view-select {
+    @apply h-8 min-w-0;
+  }
+
+  .calendar-workspace
+    .view-header__title:has(.view-header__title-compact)
+    .view-header__title-full {
+    @apply hidden;
+  }
+
+  .calendar-workspace .view-header__title-compact {
+    @apply inline;
+  }
 }
 
 .calendar-workspace .view-header__end {
@@ -128,6 +217,38 @@
 
 .calendar-workspace .calendar-invitations-trigger {
   @apply relative;
+}
+
+/* Open inbox / current-today: indigo wash + stroke glyph. Generic active
+   recolors emerald and fills Lucide solid, which turns icons into blobs. */
+.calendar-workspace
+  :is(
+    .calendar-invitations-trigger,
+    .calendar-header-today,
+    .calendar-header-today-icon
+  ).button--variant-subtle.icon-button--active {
+  --button-active-color: var(--calendar-accent-strong);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+.calendar-workspace
+  :is(
+    .calendar-invitations-trigger,
+    .calendar-header-today,
+    .calendar-header-today-icon
+  ).button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
+  fill: none;
 }
 
 .calendar-workspace .calendar-invitations-trigger::after {
@@ -171,12 +292,6 @@
     .calendar-workspace .calendar-header-actions .calendar-view-select {
       @apply h-8 min-w-0;
     }
-  }
-}
-
-@media (max-width: 40rem) {
-  .calendar-workspace .workspace-app-layout__main-header {
-    @apply p-3;
   }
 }
 
@@ -307,11 +422,21 @@
 }
 
 .calendar-workspace .calendar-main {
-  /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`)
-     so day/week/month/year grid edges line up with the sidebar toggle and actions.
+  /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`,
+     `p-3` below 40rem) so grid edges line up with the sidebar toggle and actions.
      overflow-hidden clips the range-change zoom so scale does not spill into the header.
      min-w-0 keeps the invitations dock from overflowing the flex row. */
   @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
+}
+
+@media (max-width: 40rem) {
+  .calendar-workspace .workspace-app-layout__main-header {
+    @apply p-3;
+  }
+
+  .calendar-workspace .calendar-main {
+    @apply px-3 pb-3;
+  }
 }
 
 /* Portaled view dropdown sits over the grid; ignore hits so choosing Week
@@ -331,6 +456,15 @@
 .calendar-workspace .calendar-main wgw-calendar-surface {
   flex: 1;
   min-height: 0;
+}
+
+/* Overlay sidebar only (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY).
+   Opaque sticky day headings stay bright under the 30% scrim; inherit a
+   transparent token into the list shadow tree instead. */
+@media (max-width: 1159px) {
+  .calendar-workspace:has(.app-sidebar[data-open="true"]) {
+    --_lc-list-heading-bg: transparent;
+  }
 }
 
 /**

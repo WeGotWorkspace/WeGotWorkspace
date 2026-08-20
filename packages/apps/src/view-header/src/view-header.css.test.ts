@@ -32,19 +32,25 @@ describe("view-header CSS", () => {
     expect(css).toMatch(/\.view-header__title-compact \{[\s\S]*hidden/);
   });
 
-  it("keeps prev/next at the start and pins titleTrailing to the first stacked row", () => {
+  it("puts view actions and titleTrailing on row 1, title and prev/next on row 2", () => {
     expect(css).not.toMatch(/--view-header-leading-order:\s*1/);
     expect(css).toMatch(
-      /\.view-header__title-row--stacked \{[\s\S]*"cluster trailing"[\s\S]*"actions actions"/,
+      /\.view-header__title-row--stacked \{[\s\S]*"actions trailing"[\s\S]*"title leading"/,
     );
     expect(css).toMatch(
-      /\.view-header__title-row--stacked \.view-header__end \{[\s\S]*display: contents/,
+      /\.view-header__title-row--stacked \.view-header__end,[\s\S]*\.view-header__title-cluster \{[\s\S]*display: contents/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-row--stacked \.view-header__title-block \{[\s\S]*grid-area: title/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-row--stacked \.view-header__title-leading \{[\s\S]*grid-area: leading/,
     );
     expect(css).toMatch(
       /\.view-header__title-row--stacked \.view-header__title-trailing \{[\s\S]*grid-area: trailing/,
     );
     expect(css).toMatch(
-      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.view-header__title-row--responsive \{[\s\S]*"cluster trailing"/,
+      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.view-header__title-row--responsive \{[\s\S]*"actions trailing"/,
     );
   });
 });
