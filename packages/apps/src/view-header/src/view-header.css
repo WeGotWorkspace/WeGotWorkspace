@@ -19,20 +19,24 @@
 
 /**
  * Grid keeps wide inline titles predictable; stacked / narrow responsive
- * wrap the title instead of ellipsizing first. Min-height matches default
- * icon-button row (size-md / 2.25rem) so subtitle/search do not jump.
+ * wrap the title instead of ellipsizing first. Min-height matches compact
+ * icon-button row (size-sm) so subtitle/search do not jump when actions
+ * are present vs absent.
  */
 .view-header__title-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   column-gap: 0.75rem;
-  min-height: var(--view-header-title-row-min-height, 2.25rem);
+  min-height: var(
+    --view-header-title-row-min-height,
+    var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem))
+  );
 }
 
-/** Title + optional period controls as one unit. */
+/** Title + optional period controls as one unit (gap-2 = nav-group → title). */
 .view-header__title-cluster {
-  @apply flex min-w-0 items-center gap-1;
+  @apply flex min-w-0 items-center gap-2;
   justify-content: var(--view-header-cluster-justify, flex-start);
 }
 
@@ -62,23 +66,48 @@
   @apply hidden;
 }
 
+/** Actions + optional first-row trailing control (inbox). */
+.view-header__end {
+  @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
+}
+
 .view-header__actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
 }
 
+.view-header__title-trailing {
+  @apply flex shrink-0 items-center;
+}
+
 /**
- * Stacked variant: title cluster on row 1 (title at start, prev/next at end),
- * actions on row 2. Used as-is for `layout="stacked"`, and by the
- * container-query / viewport fallback for `layout="responsive"`.
+ * Stacked variant: prev/next + title on row 1 start, optional titleTrailing
+ * on row 1 end, actions on row 2. Used as-is for `layout="stacked"`, and by
+ * the container-query / viewport fallback for `layout="responsive"`.
+ * `display: contents` on `__end` lets trailing occupy the first-row end
+ * independently of the wrapping actions cluster.
  */
 .view-header__title-row--stacked {
-  --view-header-cluster-justify: space-between;
-  --view-header-leading-order: 1;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-areas:
+    "cluster trailing"
+    "actions actions";
   row-gap: 0.5rem;
 }
 
+.view-header__title-row--stacked .view-header__end {
+  display: contents;
+}
+
+.view-header__title-row--stacked .view-header__title-cluster {
+  grid-area: cluster;
+}
+
+.view-header__title-row--stacked .view-header__title-trailing {
+  grid-area: trailing;
+}
+
 .view-header__title-row--stacked .view-header__actions {
+  grid-area: actions;
   @apply w-full flex-wrap;
 }
 
@@ -93,13 +122,27 @@
   }
 
   .view-header__title-row--responsive {
-    --view-header-cluster-justify: space-between;
-    --view-header-leading-order: 1;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      "cluster trailing"
+      "actions actions";
     row-gap: 0.5rem;
   }
 
+  .view-header__title-row--responsive .view-header__end {
+    display: contents;
+  }
+
+  .view-header__title-row--responsive .view-header__title-cluster {
+    grid-area: cluster;
+  }
+
+  .view-header__title-row--responsive .view-header__title-trailing {
+    grid-area: trailing;
+  }
+
   .view-header__title-row--responsive .view-header__actions {
+    grid-area: actions;
     @apply w-full flex-wrap;
   }
 
@@ -124,13 +167,27 @@
     }
 
     .view-header__title-row--responsive {
-      --view-header-cluster-justify: space-between;
-      --view-header-leading-order: 1;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) max-content;
+      grid-template-areas:
+        "cluster trailing"
+        "actions actions";
       row-gap: 0.5rem;
     }
 
+    .view-header__title-row--responsive .view-header__end {
+      display: contents;
+    }
+
+    .view-header__title-row--responsive .view-header__title-cluster {
+      grid-area: cluster;
+    }
+
+    .view-header__title-row--responsive .view-header__title-trailing {
+      grid-area: trailing;
+    }
+
     .view-header__title-row--responsive .view-header__actions {
+      grid-area: actions;
       @apply w-full flex-wrap;
     }
 

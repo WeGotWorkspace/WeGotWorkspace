@@ -19,6 +19,8 @@ describe("calendar event details popover CSS", () => {
     expect(css).toContain("position-area: top right");
     expect(css).toContain("justify-self: center");
     expect(css).toContain("align-self: start");
+    expect(css).toContain("w-[min(20rem,calc(100vw-1.5rem))]");
+    expect(css).not.toContain("--radix-popover-trigger-width");
   });
 
   it("docks the Radix wrapper on small viewports and compact-month --docked", () => {
@@ -33,5 +35,19 @@ describe("calendar event details popover CSS", () => {
     expect(css).toContain("height: max-content");
     expect(css).toContain("position-anchor: none");
     expect(css).toContain("position-try-fallbacks: none");
+  });
+
+  it("centers a size-3.5 swatch on the title and keeps meta icons in a size-4 column", () => {
+    expect(css).not.toContain("calendar-event-details-popover__calendar");
+    expect(css).toMatch(
+      /\.calendar-event-details-popover__title\s*\{[\s\S]*?@apply m-0 flex[\s\S]*?items-center/,
+    );
+    expect(css).toMatch(/\.calendar-event-details-popover__swatch\s*\{[\s\S]*?@apply size-3\.5/);
+    expect(css).toContain("--calendar-event-details-icon-column: 1rem");
+    expect(css).toContain("width: var(--calendar-event-details-icon-column, 1rem)");
+    expect(css).toContain("height: var(--calendar-event-details-icon-column, 1rem)");
+    expect(css).toMatch(
+      /\.calendar-event-details-popover__icon\s*\{[\s\S]*?@apply inline-flex[\s\S]*?items-center justify-center/,
+    );
   });
 });

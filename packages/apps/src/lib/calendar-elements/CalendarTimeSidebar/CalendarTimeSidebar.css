@@ -56,15 +56,9 @@
 .hour-labels {
   @apply block h-full min-h-0 pointer-events-none;
   padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
-  /* Same 1px-at-end-of-hour-tile paint as TimeLine `.cell-main--grid`. */
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0 calc(100% - 1px),
-    var(--time-line-grid-color, transparent) calc(100% - 1px) 100%,
-    transparent 100% 100%
-  );
-  background-size: 100% var(--_lc-time-sidebar-hour-cell-height, calc(100% / 24));
-  background-repeat: repeat;
+  /* Hour lines live on the timed grid only (TimeLine `.cell-main--grid`). An opaque
+     gutter so labels sit on a clean surface and no line crosses the glyphs. */
+  background-color: var(--_lc-time-sidebar-layer-bg);
 }
 
 .hour-label-row:last-child {
@@ -78,7 +72,7 @@
 
 .hour-label {
   @apply text-inherit block text-xs leading-none font-medium whitespace-nowrap text-end tabular-nums;
-  /* Sit the 12px label on the hour line (end of the previous tile) without moving the line. */
+  /* Sit the 12px label on the timed-grid hour line (end of the previous tile). */
   transform: translateY(-50%);
 }
 

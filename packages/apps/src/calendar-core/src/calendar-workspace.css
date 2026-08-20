@@ -91,19 +91,20 @@
   --wai-detail-muted: #c7d2fe;
 }
 
-/* Header IconButtons match {@link WorkspaceSidebarToggle}; leave labeled Buttons alone. */
-.calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-.calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
-  @apply size-9 shrink-0;
-}
-
-/* Prev/next (ViewHeader titleLeading): inline before the title; stacked at row end. */
-.calendar-workspace .calendar-header-nav {
-  @apply flex shrink-0 items-center gap-0;
-}
-
+/* Prev/next stays before the title (ViewHeader titleLeading). Inbox is
+   titleTrailing so stacked/narrow rows keep it on row 1 end. Same gap as
+   view switch ↔ Today. */
+.calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
+}
+
+.calendar-workspace .view-header__end {
+  @apply gap-1;
+}
+
+.calendar-workspace .calendar-header-nav {
+  @apply shrink-0;
 }
 
 .calendar-workspace .workspace-app-layout__main {
@@ -143,14 +144,14 @@
 .calendar-workspace .calendar-header-actions .calendar-view-select {
   width: auto;
   min-width: 7rem;
-  height: 2.25rem;
   background-color: var(--color-cream, #ffffff);
 }
 
 /* Compact chrome so the date-range title can wrap instead of ellipsizing. */
 @container view-header-main (max-width: 40rem) {
   .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
     @apply size-8;
   }
 
@@ -162,7 +163,8 @@
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
     .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+    .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
       @apply size-8;
     }
 
@@ -305,14 +307,11 @@
 }
 
 .calendar-workspace .calendar-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  padding: 0.5rem 1rem 1rem;
-  /* Clip the slight zoom so scale does not spill into the header. */
-  overflow: hidden;
+  /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`)
+     so day/week/month/year grid edges line up with the sidebar toggle and actions.
+     overflow-hidden clips the range-change zoom so scale does not spill into the header.
+     min-w-0 keeps the invitations dock from overflowing the flex row. */
+  @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
 }
 
 /* Portaled view dropdown sits over the grid; ignore hits so choosing Week

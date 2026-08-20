@@ -1,24 +1,34 @@
 @import "../../styles.css" reference;
 
 .segmented-control {
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--control-radius-button-pill);
-  padding: 0.125rem;
+  --segmented-control-padding: 0.125rem;
+  --segmented-control-height: var(
+    --control-height-sm,
+    calc(var(--input-height, 2.25rem) - 0.25rem)
+  );
+  --segmented-control-track-radius: var(--control-radius-button-pill);
+  --segmented-control-thumb-radius: calc(
+    var(--segmented-control-track-radius) - var(--segmented-control-padding)
+  );
+  @apply box-border inline-flex items-center;
+  height: var(--segmented-control-height);
+  padding: var(--segmented-control-padding);
+  border-radius: var(--segmented-control-track-radius);
   background-color: var(
     --segmented-control-track-bg,
     color-mix(in oklab, var(--color-ink) 6%, transparent)
   );
 }
 
+.segmented-control--size-md {
+  --segmented-control-height: var(--control-height-md, var(--input-height, 2.25rem));
+}
+
 .segmented-control__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: 0;
-  border-radius: var(--control-radius-button-pill);
+  @apply inline-flex items-center justify-center border-0;
+  width: calc(var(--segmented-control-height) - (2 * var(--segmented-control-padding)));
+  height: calc(var(--segmented-control-height) - (2 * var(--segmented-control-padding)));
+  border-radius: var(--segmented-control-thumb-radius);
   color: color-mix(in oklab, var(--segmented-control-color, var(--color-ink)) 55%, transparent);
   background: transparent;
   transition:
@@ -43,17 +53,7 @@
 }
 
 .segmented-control__label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.segmented-control--size-md .segmented-control__button {
-  height: var(--input-height, 2.25rem);
-}
-
-.segmented-control--size-md .segmented-control__button:not(.segmented-control__button--text) {
-  width: var(--input-height, 2.25rem);
+  @apply text-xs font-medium leading-none;
 }
 
 .segmented-control--size-md .segmented-control__button--text {
@@ -75,6 +75,7 @@
     var(--segmented-boolean-track-radius) - var(--segmented-boolean-padding)
   );
   position: relative;
+  height: auto;
   padding: var(--segmented-boolean-padding);
   border-radius: var(--segmented-boolean-track-radius);
   color: var(--segmented-control-color, var(--color-ink));

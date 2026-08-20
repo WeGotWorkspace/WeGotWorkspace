@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-workspace.css"), "utf8");
+const tsx = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
 
 describe("calendar workspace header CSS", () => {
   it("compacts header chrome on narrow view-header containers", () => {
@@ -16,5 +17,23 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.calendar-header-actions \.calendar-view-select \{[\s\S]*min-w-0/,
     );
     expect(css).toMatch(/\.calendar-workspace \.workspace-app-layout__main-header \{[\s\S]*p-3/);
+  });
+
+  it("matches inbox gap to header actions so desktop clustering stays tight", () => {
+    expect(css).toMatch(/\.calendar-workspace \.view-header__end \{[\s\S]*gap-1/);
+    expect(css).toMatch(
+      /\.calendar-workspace \.calendar-invitations-trigger\.button\[class\*="icon-button--size"\][\s\S]*size-8/,
+    );
+  });
+});
+
+describe("calendar workspace header markup", () => {
+  it("pins inbox to ViewHeader titleTrailing instead of wrapping actions", () => {
+    expect(tsx).toMatch(/titleTrailing=\{\s*<CalendarInvitationsTrigger/);
+    const actionsBlock = tsx.match(
+      /actions=\{\s*<div className="calendar-header-actions">([\s\S]*?)<\/div>\s*\}/,
+    );
+    expect(actionsBlock?.[1]).toBeDefined();
+    expect(actionsBlock![1]).not.toMatch(/CalendarInvitationsTrigger/);
   });
 });

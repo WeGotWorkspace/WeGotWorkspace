@@ -28,7 +28,23 @@ describe("view-header CSS", () => {
 
   it("aligns the title with the sidebar toggle and swaps compact titles", () => {
     expect(css).toMatch(/\.view-header \{[\s\S]*items-start/);
-    expect(css).toMatch(/\.view-header__title-cluster \{[\s\S]*items-center/);
+    expect(css).toMatch(/\.view-header__title-cluster \{[\s\S]*items-center gap-2/);
     expect(css).toMatch(/\.view-header__title-compact \{[\s\S]*hidden/);
+  });
+
+  it("keeps prev/next at the start and pins titleTrailing to the first stacked row", () => {
+    expect(css).not.toMatch(/--view-header-leading-order:\s*1/);
+    expect(css).toMatch(
+      /\.view-header__title-row--stacked \{[\s\S]*"cluster trailing"[\s\S]*"actions actions"/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-row--stacked \.view-header__end \{[\s\S]*display: contents/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-row--stacked \.view-header__title-trailing \{[\s\S]*grid-area: trailing/,
+    );
+    expect(css).toMatch(
+      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.view-header__title-row--responsive \{[\s\S]*"cluster trailing"/,
+    );
   });
 });

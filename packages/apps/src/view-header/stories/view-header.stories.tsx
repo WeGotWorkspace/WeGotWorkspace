@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ChevronLeft, ChevronRight, PenSquare, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
@@ -88,7 +88,7 @@ const periodActions = (
   </div>
 );
 
-/** Title + prev/next on the first row; other actions on the second. */
+/** Prev/next + title on row 1 start; inbox on row 1 end; other actions on row 2. */
 export const Stacked: Story = {
   args: {
     title: "August 2026",
@@ -96,6 +96,9 @@ export const Stacked: Story = {
     onToggleSidebar: () => {},
     layout: "stacked",
     titleLeading: periodNav,
+    titleTrailing: (
+      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="subtle" />
+    ),
     actions: periodActions,
   },
 };

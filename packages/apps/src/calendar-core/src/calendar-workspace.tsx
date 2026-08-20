@@ -510,14 +510,24 @@ export function CalendarWorkspace({
                 <IconButton
                   label={L.previousPeriod}
                   icon={<ChevronLeft className="size-4" />}
+                  size="sm"
                   onClick={goPrevious}
                 />
                 <IconButton
                   label={L.nextPeriod}
                   icon={<ChevronRight className="size-4" />}
+                  size="sm"
                   onClick={goNext}
                 />
               </div>
+            }
+            titleTrailing={
+              <CalendarInvitationsTrigger
+                count={pendingInvitationCount(inviteeNotifications)}
+                open={invitationsOpen}
+                labels={L}
+                onToggle={toggleInvitationsOpen}
+              />
             }
             actions={
               <div className="calendar-header-actions">
@@ -526,7 +536,11 @@ export function CalendarWorkspace({
                   onOpenChange={setViewSelectOpen}
                   onValueChange={(next) => selectView(next as CalendarViewId)}
                 >
-                  <SelectTrigger className="calendar-view-select" aria-label={L.viewSelectLabel}>
+                  <SelectTrigger
+                    size="sm"
+                    className="calendar-view-select"
+                    aria-label={L.viewSelectLabel}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -543,13 +557,7 @@ export function CalendarWorkspace({
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
                 />
-                <Button label={L.today} onClick={goToday} variant="subtle" />
-                <CalendarInvitationsTrigger
-                  count={pendingInvitationCount(inviteeNotifications)}
-                  open={invitationsOpen}
-                  labels={L}
-                  onToggle={toggleInvitationsOpen}
-                />
+                <Button label={L.today} onClick={goToday} variant="subtle" size="sm" />
               </div>
             }
           />

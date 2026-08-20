@@ -74,11 +74,16 @@
 }
 
 .share-dialog__header {
-  @apply px-6 pb-3 pt-6;
+  @apply pb-3;
+  padding-block-start: var(--modal-inset, 1.5rem);
+  padding-inline-start: var(--modal-inset, 1.5rem);
+  padding-inline-end: calc(var(--modal-inset, 1.5rem) + var(--modal-header-end, 2.5rem));
 }
 
 .share-dialog__body {
-  @apply flex min-w-0 flex-col gap-6 overflow-x-hidden px-6 pb-6;
+  @apply flex min-w-0 flex-col gap-6 overflow-x-hidden;
+  padding-inline: var(--modal-inset, 1.5rem);
+  padding-block-end: var(--modal-inset, 1.5rem);
 }
 
 .share-dialog__body > .card {
@@ -269,7 +274,8 @@
 
 .share-dialog__loading,
 .share-dialog__error {
-  @apply px-6 py-8 text-sm;
+  @apply py-8 text-sm;
+  padding-inline: var(--modal-inset, 1.5rem);
   color: var(--share-dialog-muted);
 }
 

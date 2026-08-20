@@ -21,7 +21,7 @@ function renderPopover(
   const preview =
     overrides.preview ?? resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
 
-  render(
+  const view = render(
     <CalendarEventDetailsPopover
       open
       preview={preview}
@@ -36,7 +36,7 @@ function renderPopover(
     />,
   );
 
-  return { onEdit, onClose, onRsvp };
+  return { onEdit, onClose, onRsvp, container: view.container };
 }
 
 describe("CalendarEventDetailsPopover", () => {
@@ -44,12 +44,14 @@ describe("CalendarEventDetailsPopover", () => {
     cleanup();
   });
 
-  it("shows title, time, calendar, and Edit", { timeout: 10_000 }, () => {
+  it("shows title with color swatch, time, and Edit", { timeout: 10_000 }, () => {
     const { onEdit } = renderPopover({
       origin: { left: 48, top: 96, width: 180, height: 36 },
     });
-    expect(screen.getByRole("heading", { name: /Dentist/i })).toBeTruthy();
-    expect(screen.getByText("Personal")).toBeTruthy();
+    const heading = screen.getByRole("heading", { name: /Dentist/i });
+    expect(heading.querySelector(".calendar-event-details-popover__swatch")).toBeTruthy();
+    expect(screen.queryByText("Personal")).toBeNull();
+    expect(document.querySelector(".calendar-event-details-popover__calendar")).toBeNull();
     expect(screen.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeTruthy();
     const popover = screen.getByRole("dialog", { name: /Dentist/i });
     expect(popover.className).toContain("calendar-event-details-popover");
@@ -113,6 +115,25 @@ describe("CalendarEventDetailsPopover", () => {
       });
       const popover = screen.getByRole("dialog", { name: /Dentist/i });
       expect(popover.className).toContain("calendar-event-details-popover--docked");
+    },
+  );
+
+  it(
+    "keeps a tall week-view segment compact instead of docking full-width",
+    { timeout: 10_000 },
+    () => {
+      const { container } = renderPopover({
+        origin: { left: 420, top: 160, width: 168, height: 420 },
+      });
+      const popover = screen.getByRole("dialog", { name: /Dentist/i });
+      expect(popover.className).toContain("calendar-event-details-popover");
+      expect(popover.className).not.toContain("calendar-event-details-popover--docked");
+      const anchor = container.ownerDocument.querySelector(
+        ".calendar-event-details-popover__anchor",
+      );
+      expect(anchor).toBeInstanceOf(HTMLElement);
+      expect((anchor as HTMLElement).style.width).toBe("168px");
+      expect((anchor as HTMLElement).style.height).toBe("40px");
     },
   );
 });

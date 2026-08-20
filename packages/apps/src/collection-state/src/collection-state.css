@@ -1,9 +1,33 @@
+@import "../../styles.css" reference;
+
 .collection-state {
   padding: 4rem;
   text-align: center;
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--collection-state-color, color-mix(in oklab, var(--color-ink) 50%, transparent));
+}
+
+/**
+ * Pane host (Drive scroll, Calendar agenda): pin the icon+label block ~40%
+ * down the pane (2:3 spacers), slightly above geometric center — not flush top.
+ */
+.collection-state-host:has(> .collection-state) {
+  @apply flex min-h-full flex-col items-center;
+}
+
+.collection-state-host:has(> .collection-state)::before {
+  content: "";
+  flex: 2 0 0;
+}
+
+.collection-state-host:has(> .collection-state)::after {
+  content: "";
+  flex: 3 0 0;
+}
+
+.collection-state-host:has(> .collection-state) > .collection-state {
+  @apply shrink-0;
 }
 
 .collection-state__icon {
@@ -13,6 +37,10 @@
   width: 3rem;
   height: 3rem;
   opacity: 0.3;
+}
+
+.collection-state__icon:not(.collection-state__icon--loading) > * {
+  @apply size-full;
 }
 
 .collection-state__icon--loading {

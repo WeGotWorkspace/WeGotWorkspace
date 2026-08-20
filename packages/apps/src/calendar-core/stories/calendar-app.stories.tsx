@@ -1,11 +1,25 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 import {
   createCalendarAppBootstrap,
   MOCK_CALENDAR_ANCHOR,
 } from "@/lib/api/mock/calendar-bootstrap";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
+
+function queryDeep(root: ParentNode, selector: string): Element | null {
+  const direct = root.querySelector(selector);
+  if (direct) return direct;
+  for (const el of root.querySelectorAll("*")) {
+    if (el.shadowRoot) {
+      const found = queryDeep(el.shadowRoot, selector);
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 const meta: Meta<typeof CalendarWorkspace> = {
   title: "Apps/Calendar",
@@ -89,5 +103,11 @@ export const Empty: Story = {
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "month",
     initialPresentation: "list",
+  },
+  play: async ({ canvasElement }) => {
+    await expect
+      .poll(() => queryDeep(canvasElement, ".collection-state__body")?.textContent)
+      .toBe(defaultCalendarLabels.noEventsInRange);
+    await expect(queryDeep(canvasElement, ".collection-state__icon")).toBeTruthy();
   },
 };

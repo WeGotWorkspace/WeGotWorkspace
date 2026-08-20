@@ -16,16 +16,21 @@ type ViewHeaderProps = {
   /** "default" = large serif title (smaller on compact headers); "sm" = medium sans-serif title (e.g. doc editor file name). */
   titleSize?: ViewHeaderTitleSize;
   /**
-   * Title-row layout for `view-header__title-cluster` + `view-header__actions`.
+   * Title-row layout for `view-header__title-cluster` + `view-header__end`.
    * "inline" (default) = one row; "stacked" = cluster then actions; "responsive" =
    * stacked when the header main column is narrow (container query).
    */
   layout?: ViewHeaderLayout;
   /**
-   * Optional period controls (e.g. calendar prev/next). Inline: before the title.
-   * Stacked / narrow responsive: at the end of the title row.
+   * Optional period controls (e.g. calendar prev/next). Always before the title
+   * at the start of the first row (inline, stacked, and narrow responsive).
    */
   titleLeading?: ReactNode;
+  /**
+   * Optional first-row trailing control (e.g. calendar inbox). Inline: after
+   * `actions`. Stacked / narrow responsive: end of row 1 while `actions` wrap.
+   */
+  titleTrailing?: ReactNode;
   subtitle?: string;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
@@ -46,6 +51,7 @@ export function ViewHeader({
   titleSize = "default",
   layout = "inline",
   titleLeading,
+  titleTrailing,
   subtitle,
   hideSidebarToggle = false,
   sidebarOpen = false,
@@ -101,7 +107,12 @@ export function ViewHeader({
                 )}
               </h2>
             </div>
-            <div className="view-header__actions">{actions}</div>
+            <div className="view-header__end">
+              <div className="view-header__actions">{actions}</div>
+              {titleTrailing ? (
+                <div className="view-header__title-trailing">{titleTrailing}</div>
+              ) : null}
+            </div>
           </div>
           {subtitle ? (
             <p className={cn("field-label-row__label", "view-header__subtitle")}>{subtitle}</p>

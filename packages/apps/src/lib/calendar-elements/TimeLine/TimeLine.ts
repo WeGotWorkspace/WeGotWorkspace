@@ -1710,7 +1710,18 @@ export class TimeLine extends LitElement {
     vl: LaneLayout | null | undefined,
   ) {
     const { ev, index, segIndex, segStart, segEnd, rowSpan, showResizeStart, showResizeEnd } = seg;
-    const draggingClass = this.draggingEventIndex === index ? " event--dragging" : "";
+    const dragging = this.draggingEventIndex === index;
+    const selected = this.selectedEventKey !== "" && String(ev.key ?? "") === this.selectedEventKey;
+    const draggingClass = dragging ? " event--dragging" : "";
+    const selectedClass = selected ? " event--selected" : "";
+    /* Numeric inline z-index on the positioned wrapper beats stylesheet stagger
+       `calc(2 + indent)` (that :host+layout rule is more specific than `.event--selected`).
+       400 stays below create-preview 500 / dragging 600 / markers 700. */
+    const stackStyle = dragging
+      ? "z-index:600;"
+      : selected
+        ? "z-index:400;--time-line-event-selected-boost:400;"
+        : "";
     // Template contract: `templateEv` carries the committed range; the live gesture range (if
     // any) travels separately so templates can render live-updating labels.
     const preview = this.resizePreviewByIndex?.get(index);
@@ -1738,14 +1749,15 @@ export class TimeLine extends LitElement {
 
     return html`
       <div
-        class="event${draggingClass}"
+        class="event${draggingClass}${selectedClass}"
         part="event"
         data-index=${index}
         data-segment=${segIndex}
+        ?data-selected=${selected}
         @pointerdown=${this.#onEventBodyPointerDown}
         style="
         --__lane:${lane};
-        ${staggerVars}${dragTransform}
+        ${staggerVars}${stackStyle}${dragTransform}
         --__start:${this.#axisPct(segStart, w0, w1)}%;
         --__end:${endInset};
         ${this.#eventAccentVars(templateEv)}

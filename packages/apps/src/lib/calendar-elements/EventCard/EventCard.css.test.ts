@@ -29,6 +29,32 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(/:host\(\[data-dragging\]\)[\s\S]*cursor-grabbing/);
   });
 
+  it("keeps the resting calendar tint on EventBase while data-dragging", () => {
+    const css = readCss("../EventBase/EventBase.css");
+    expect(css).toMatch(
+      /:host\(\[data-dragging\]\)\s+event-card\s*\{[\s\S]*--_lc-event-card-bg-active:\s*var\(--_lc-event-bg\)/,
+    );
+    expect(css).not.toMatch(/:host\(\[data-dragging\]\)\s+event-card\s*\{[\s\S]*color-mix/);
+  });
+
+  it("insets the card fill with one shared token on all four sides", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(/--_lc-event-card-inset:\s*1px/);
+    expect(css).toMatch(/inset:\s*var\(--_lc-event-card-inset,\s*1px\)/);
+    expect(css).not.toMatch(/inset-px/);
+  });
+
+  it("uses the hover fill when the card is selected / popover-open", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /:host\(\[data-selected\]\)\s*\{[\s\S]*--_lc-event-card-bg-active:\s*var\(--_lc-event-bg-hover\)/,
+    );
+    const beforeHoverMedia = css.split(
+      /@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)/,
+    )[0];
+    expect(beforeHoverMedia).toMatch(/:host\(\[data-selected\]\)/);
+  });
+
   it("tints the card background on hover only for hover-capable fine pointers", () => {
     const css = readCss("EventCard.css");
     expect(css).toMatch(

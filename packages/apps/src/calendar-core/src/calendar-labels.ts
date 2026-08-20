@@ -1,3 +1,4 @@
+import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
 export type CalendarUILabels = {
@@ -177,7 +178,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   viewsSection: "Views",
   untitledEvent: "Untitled event",
   allDay: "All day",
-  noEventsInRange: "No events in this period.",
+  noEventsInRange: CALENDAR_LIST_EMPTY_LABEL,
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventSaveUndone: "Event change undone.",

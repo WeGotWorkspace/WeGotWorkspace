@@ -177,8 +177,29 @@ function eventCardFromPath(path: EventTarget[]): Element | undefined {
   });
 }
 
+/** Compact-month day cells are ≪ a week-view day column. */
+const COMPACT_MONTH_CELL_MAX_WIDTH = 72;
+const COMPACT_MONTH_CELL_MIN_HEIGHT = 64;
+const COMPACT_MONTH_CELL_MIN_ASPECT = 1.75;
+
+/** Virtual trigger height so a tall timed segment does not pin the popover to the grid floor. */
+const DETAILS_POPOVER_ANCHOR_MAX_HEIGHT = 40;
+
 function originLooksLikeMonthCell(origin: CalendarEventSelectionOrigin): boolean {
-  return origin.width > 0 && origin.height >= 64 && origin.height / origin.width >= 1.75;
+  return (
+    origin.width > 0 &&
+    origin.width <= COMPACT_MONTH_CELL_MAX_WIDTH &&
+    origin.height >= COMPACT_MONTH_CELL_MIN_HEIGHT &&
+    origin.height / origin.width >= COMPACT_MONTH_CELL_MIN_ASPECT
+  );
+}
+
+/** Clicked-segment box for placement: keep width, clamp tall day-column cards to a compact head. */
+export function detailsPopoverAnchorOrigin(
+  origin: CalendarEventSelectionOrigin,
+): CalendarEventSelectionOrigin {
+  if (origin.height <= DETAILS_POPOVER_ANCHOR_MAX_HEIGHT) return origin;
+  return { ...origin, height: DETAILS_POPOVER_ANCHOR_MAX_HEIGHT };
 }
 
 function viewportPrefersDockedPopover(): boolean {
@@ -189,7 +210,7 @@ function viewportPrefersDockedPopover(): boolean {
   );
 }
 
-/** Narrow, portrait, or compact-month cell: dock to the viewport instead of the card. */
+/** Narrow/portrait viewport or a compact-month day cell: dock instead of anchoring to the card. */
 export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin): boolean {
   return viewportPrefersDockedPopover() || (origin != null && originLooksLikeMonthCell(origin));
 }

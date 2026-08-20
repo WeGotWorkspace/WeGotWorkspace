@@ -252,6 +252,18 @@ export function monthDayHeaderPartNames(options: {
 }
 
 /**
+ * Class list for the same header. These classes live in <time-line>'s shadow
+ * (header templates render there), so TimeLine.css can mute outside days without
+ * `::part()` — CalendarTimelineView's outer-tree `::part()` rules do not paint
+ * those numbers in year mini-months.
+ */
+export function monthDayHeaderClassNames(options: { outsideMonth: boolean }): string {
+  return ["timeline-day-header", options.outsideMonth ? "is-outside-month" : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
  * Whether a numeric timeline range overlaps day cell `cellIndex`
  * (cell `i` spans `[i * unitsPerDay, (i + 1) * unitsPerDay)`; ranges are `[start, end)`).
  */

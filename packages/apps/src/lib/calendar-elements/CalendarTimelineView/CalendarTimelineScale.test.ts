@@ -14,6 +14,7 @@ import {
   fromTimelineRange,
   fromTimelineValue,
   isOutsideVisibleMonth,
+  monthDayHeaderClassNames,
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
@@ -552,6 +553,13 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
     );
   });
 
+  it("marks outside cells with is-outside-month for TimeLine shadow CSS", () => {
+    expect(monthDayHeaderClassNames({ outsideMonth: true })).toBe(
+      "timeline-day-header is-outside-month",
+    );
+    expect(monthDayHeaderClassNames({ outsideMonth: false })).toBe("timeline-day-header");
+  });
+
   it("keeps outside-month ink clearly below in-month ink in CSS tokens", () => {
     const css = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
@@ -564,10 +572,21 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
     expect(inMonth.length).toBeGreaterThan(0);
     expect(outside.length).toBeGreaterThan(0);
     // Mute must come from darkening in-month, not from dropping outside below AA.
-    // 72% vs 63% is invisible; 92% vs 63% is the visible AA-safe pairing.
-    expect(Math.min(...inMonth)).toBeGreaterThanOrEqual(90);
+    // 72% vs 63% is invisible; 100% vs 63% is the visible AA-safe pairing.
+    expect(Math.min(...inMonth)).toBeGreaterThanOrEqual(100);
     expect(Math.max(...outside)).toBeLessThanOrEqual(65);
     expect(Math.min(...inMonth) - Math.max(...outside)).toBeGreaterThanOrEqual(25);
+  });
+
+  it("mutes outside days from inside TimeLine's shadow, not only via ::part()", () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
+      "utf8",
+    );
+    expect(css).toMatch(
+      /\.timeline-day-header\.is-outside-month\s*\{[^}]*--_lc-outside-month-day-color/,
+    );
+    expect(css).toMatch(/\.timeline-day-header\s*\{[^}]*--_lc-in-month-day-color/);
   });
 });
 
@@ -661,6 +680,41 @@ describe("now-badge x-alignment with hour labels", () => {
   });
 });
 
+describe("week-number corner alignment with time gutter and day-header row", () => {
+  const timelineCss = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
+    "utf8",
+  );
+  const weekdayHeaderCss = readFileSync(
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../CalendarWeekdayHeader/CalendarWeekdayHeader.css",
+    ),
+    "utf8",
+  );
+
+  it("end-aligns with time-gutter labels and struts to the day-number pill height", () => {
+    const weekNumberStart = timelineCss.indexOf(".timeline-week-number {");
+    const weekNumberEnd = timelineCss.indexOf(".timeline-swipe {");
+    const weekNumber = timelineCss.slice(weekNumberStart, weekNumberEnd);
+    expect(weekNumberStart).toBeGreaterThan(-1);
+    expect(weekNumberEnd).toBeGreaterThan(weekNumberStart);
+    expect(timelineCss).toContain("--_lc-time-sidebar-inline-padding: 6px");
+    expect(weekNumber).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 6px)");
+    expect(weekNumber).toContain("justify-content: end");
+    expect(weekNumber).toContain("text-align: end");
+    expect(weekNumber).not.toContain("justify-content: start");
+    expect(weekNumber).toContain("var(--_lc-weekday-header-font-size, 14px)");
+    expect(weekNumber).toContain("line-height: 1");
+    expect(weekNumber).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
+    expect(weekNumber).toContain("--muted-foreground");
+    expect(weekNumber).toContain("--_lc-outside-month-day-color");
+    expect(weekdayHeaderCss).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
+    expect(weekdayHeaderCss).toContain("font-size: var(--_lc-weekday-header-font-size, 14px)");
+    expect(weekdayHeaderCss).toContain("leading-none");
+  });
+});
+
 describe("composed timeline hour-line geometry", () => {
   const timelineCss = readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
@@ -690,13 +744,15 @@ describe("composed timeline hour-line geometry", () => {
     expect(timelineCss).toContain("border-block-width: 0");
   });
 
-  it("paints gutter hour lines with the same end-of-tile gradient as TimeLine", () => {
+  it("keeps hour lines on the timed grid, not through time-gutter labels", () => {
     expect(sidebarCss).toContain("grid-row: 4");
     expect(sidebarCss).toContain("--_lc-time-sidebar-timed-gap, 0px)");
-    expect(sidebarCss).toContain("transparent 0 calc(100% - 1px)");
-    expect(sidebarCss).toContain(
-      "background-size: 100% var(--_lc-time-sidebar-hour-cell-height, calc(100% / 24))",
-    );
+    const hourLabels = sidebarCss.match(/\.hour-labels\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(hourLabels).toContain("background-color: var(--_lc-time-sidebar-layer-bg)");
+    expect(hourLabels).not.toContain("background-image");
+    expect(hourLabels).not.toContain("linear-gradient");
+    expect(timeLineCss).toContain(".cell-main--grid");
+    expect(timeLineCss).toContain("var(--__grid-line-color)");
     expect(sidebarCss).toContain("transform: translateY(-50%)");
     expect(sidebarCss).not.toContain("--_lc-time-sidebar-timed-top-offset");
   });
