@@ -24,6 +24,30 @@ describe("ViewHeader titleSize", () => {
   });
 });
 
+describe("ViewHeader titlePrefix", () => {
+  it("renders prefix controls immediately before the title", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        titlePrefix={
+          <button type="button" className="today-icon">
+            Today
+          </button>
+        }
+      />,
+    );
+    const block = container.querySelector(".view-header__title-block");
+    expect(block).not.toBeNull();
+    const prefix = block!.querySelector(".today-icon");
+    const title = block!.querySelector(".view-header__title");
+    expect(prefix).not.toBeNull();
+    expect(title).not.toBeNull();
+    expect(
+      Boolean(prefix!.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+});
+
 describe("ViewHeader titleLeading", () => {
   it("renders leading controls before the title in the title cluster", () => {
     const { container } = render(

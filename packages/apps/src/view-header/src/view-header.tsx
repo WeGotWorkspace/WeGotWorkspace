@@ -22,6 +22,11 @@ type ViewHeaderProps = {
    */
   layout?: ViewHeaderLayout;
   /**
+   * Optional control immediately before the title (e.g. mobile Today).
+   * Stays with the title in stacked / narrow layouts.
+   */
+  titlePrefix?: ReactNode;
+  /**
    * Optional period controls (e.g. calendar prev/next). Inline: before the
    * title. Stacked / narrow responsive: end of row 2 (after the title).
    */
@@ -50,6 +55,7 @@ export function ViewHeader({
   compactTitle,
   titleSize = "default",
   layout = "inline",
+  titlePrefix,
   titleLeading,
   titleTrailing,
   subtitle,
@@ -96,18 +102,26 @@ export function ViewHeader({
               {titleLeading ? (
                 <div className="view-header__title-leading">{titleLeading}</div>
               ) : null}
-              <h2
-                className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
-              >
-                {compactTitle ? (
-                  <>
-                    <span className="view-header__title-full">{title}</span>
-                    <span className="view-header__title-compact">{compactTitle}</span>
-                  </>
-                ) : (
-                  title
-                )}
-              </h2>
+              <div className="view-header__title-block">
+                {titlePrefix ? (
+                  <div className="view-header__title-prefix">{titlePrefix}</div>
+                ) : null}
+                <h2
+                  className={cn(
+                    "view-header__title",
+                    titleSize === "sm" && "view-header__title--sm",
+                  )}
+                >
+                  {compactTitle ? (
+                    <>
+                      <span className="view-header__title-full">{title}</span>
+                      <span className="view-header__title-compact">{compactTitle}</span>
+                    </>
+                  ) : (
+                    title
+                  )}
+                </h2>
+              </div>
             </div>
             <div className="view-header__end">
               <div className="view-header__actions">{actions}</div>

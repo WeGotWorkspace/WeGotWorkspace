@@ -97,10 +97,15 @@
   @apply flex items-center gap-1;
 }
 
+/* Labeled Today stays in actions on desktop; icon-only sits before the title on mobile. */
+.calendar-workspace .view-header__title-prefix {
+  @apply hidden;
+}
+
 /*
  * Small viewports: two-row header matching the calendar mock.
  *   [☰] [Week] [grid|list]              [inbox]
- *   [1–7 Feb 2027]                      [<] [>]
+ *   [today] [1–7 Feb 2027]              [<] [>]
  * Viewport media (not a container query): flattening `__main` with
  * `display: contents` would otherwise drop the query container and snap back.
  */
@@ -132,8 +137,16 @@
     justify-self: start;
   }
 
-  .calendar-workspace .view-header__title {
+  .calendar-workspace .view-header__title-block {
     grid-area: title;
+    @apply min-w-0;
+  }
+
+  .calendar-workspace .view-header__title-prefix {
+    @apply flex;
+  }
+
+  .calendar-workspace .view-header__title {
     @apply overflow-visible whitespace-normal text-xl leading-tight;
     text-overflow: unset;
   }
@@ -155,6 +168,7 @@
   .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
   .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
   .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-today-icon.button[class*="icon-button--size"],
   .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
     @apply size-8;
   }

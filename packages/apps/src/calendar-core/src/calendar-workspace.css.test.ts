@@ -36,6 +36,12 @@ describe("calendar workspace header markup", () => {
     expect(actionsBlock?.[1]).toBeDefined();
     expect(actionsBlock![1]).not.toMatch(/CalendarInvitationsTrigger/);
     expect(actionsBlock![1]).toMatch(/calendar-header-today/);
+    expect(actionsBlock![1]).toMatch(/icon=\{<CalendarDays/);
+  });
+
+  it("places an icon-only Today control in titlePrefix ahead of the date title", () => {
+    expect(tsx).toMatch(/titlePrefix=\{\s*<IconButton/);
+    expect(tsx).toMatch(/className="calendar-header-today-icon"/);
   });
 });
 
@@ -46,6 +52,13 @@ describe("calendar workspace stacked header", () => {
     );
     expect(css).toMatch(
       /@media\s*\(max-width:\s*40rem\)[\s\S]*\.calendar-header-today \{[\s\S]*hidden/,
+    );
+    expect(css).toMatch(/\.calendar-workspace \.view-header__title-prefix \{[\s\S]*hidden/);
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)[\s\S]*\.view-header__title-prefix \{[\s\S]*flex/,
+    );
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)[\s\S]*\.view-header__title-block \{[\s\S]*grid-area:\s*title/,
     );
   });
 });

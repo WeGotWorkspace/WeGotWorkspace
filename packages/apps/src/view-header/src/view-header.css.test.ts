@@ -41,6 +41,9 @@ describe("view-header CSS", () => {
       /\.view-header__title-row--stacked \.view-header__end,[\s\S]*\.view-header__title-cluster \{[\s\S]*display: contents/,
     );
     expect(css).toMatch(
+      /\.view-header__title-row--stacked \.view-header__title-block \{[\s\S]*grid-area: title/,
+    );
+    expect(css).toMatch(
       /\.view-header__title-row--stacked \.view-header__title-leading \{[\s\S]*grid-area: leading/,
     );
     expect(css).toMatch(

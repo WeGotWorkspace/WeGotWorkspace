@@ -49,6 +49,14 @@
   order: var(--view-header-leading-order, 0);
 }
 
+.view-header__title-block {
+  @apply flex min-w-0 items-center gap-1;
+}
+
+.view-header__title-prefix {
+  @apply flex shrink-0 items-center;
+}
+
 /**
  * Default: large serif title on wide headers. Tailwind has no `text-box-*`
  * utility that emits this, so the trim shorthand is a CSS property.
@@ -104,8 +112,11 @@
   display: contents;
 }
 
-.view-header__title-row--stacked .view-header__title {
+.view-header__title-row--stacked .view-header__title-block {
   grid-area: title;
+}
+
+.view-header__title-row--stacked .view-header__title {
   @apply overflow-visible whitespace-normal leading-tight;
   text-overflow: unset;
 }
@@ -141,8 +152,11 @@
     display: contents;
   }
 
-  .view-header__title-row--responsive .view-header__title {
+  .view-header__title-row--responsive .view-header__title-block {
     grid-area: title;
+  }
+
+  .view-header__title-row--responsive .view-header__title {
     @apply overflow-visible whitespace-normal leading-tight;
     text-overflow: unset;
   }
@@ -188,8 +202,11 @@
       display: contents;
     }
 
-    .view-header__title-row--responsive .view-header__title {
+    .view-header__title-row--responsive .view-header__title-block {
       grid-area: title;
+    }
+
+    .view-header__title-row--responsive .view-header__title {
       @apply overflow-visible whitespace-normal leading-tight;
       text-overflow: unset;
     }

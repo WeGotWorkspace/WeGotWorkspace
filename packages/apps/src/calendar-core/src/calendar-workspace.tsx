@@ -505,6 +505,15 @@ export function CalendarWorkspace({
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            titlePrefix={
+              <IconButton
+                className="calendar-header-today-icon"
+                label={L.today}
+                icon={<CalendarDays className="size-4" />}
+                size="sm"
+                onClick={goToday}
+              />
+            }
             titleLeading={
               <div className="calendar-header-nav">
                 <IconButton
@@ -560,6 +569,7 @@ export function CalendarWorkspace({
                 <Button
                   className="calendar-header-today"
                   label={L.today}
+                  icon={<CalendarDays />}
                   onClick={goToday}
                   variant="subtle"
                   size="sm"
