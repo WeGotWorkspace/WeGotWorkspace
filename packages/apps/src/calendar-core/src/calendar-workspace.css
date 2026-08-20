@@ -174,12 +174,6 @@
   }
 }
 
-@media (max-width: 40rem) {
-  .calendar-workspace .workspace-app-layout__main-header {
-    @apply p-3;
-  }
-}
-
 .calendar-workspace .calendar-sidebar-dot {
   display: inline-block;
   width: 0.65rem;
@@ -307,11 +301,21 @@
 }
 
 .calendar-workspace .calendar-main {
-  /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`)
-     so day/week/month/year grid edges line up with the sidebar toggle and actions.
+  /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`,
+     `p-3` below 40rem) so grid edges line up with the sidebar toggle and actions.
      overflow-hidden clips the range-change zoom so scale does not spill into the header.
      min-w-0 keeps the invitations dock from overflowing the flex row. */
   @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
+}
+
+@media (max-width: 40rem) {
+  .calendar-workspace .workspace-app-layout__main-header {
+    @apply p-3;
+  }
+
+  .calendar-workspace .calendar-main {
+    @apply px-3 pb-3;
+  }
 }
 
 /* Portaled view dropdown sits over the grid; ignore hits so choosing Week
