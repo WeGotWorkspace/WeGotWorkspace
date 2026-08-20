@@ -132,7 +132,7 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ timeZone: "UTC" }));
   });
 
-  it("shows Custom for unmatched recurrence and disables the repeat control", () => {
+  it("lets the user edit an unmatched custom recurrence", () => {
     const form = calendarEventToForm({
       "@type": "Event",
       id: "custom",
@@ -153,15 +153,51 @@ describe("CalendarEventDialog", () => {
       ],
     } as Parameters<typeof calendarEventToForm>[0]);
     expect(form.recurrencePreset).toBe("custom");
-    renderDialog({ form, locale: "en-US" });
+    const { onChange } = renderDialog({ form, locale: "en-US" });
     const repeat = screen.getByRole("combobox", { name: defaultCalendarLabels.eventRepeatLabel });
     expect(repeat.textContent).toMatch(/Custom/i);
     expect(repeat.hasAttribute("disabled") || repeat.getAttribute("data-disabled") !== null).toBe(
-      true,
+      false,
     );
     expect(
-      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceFrequencyLabel }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fri" }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recurrencePreset: "custom",
+        customRecurrenceRules: [
+          expect.objectContaining({
+            frequency: "weekly",
+            byDay: expect.arrayContaining([
+              expect.objectContaining({ day: "mo" }),
+              expect.objectContaining({ day: "we" }),
+              expect.objectContaining({ day: "fr" }),
+            ]),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("hides the custom editor for a daily preset", () => {
+    renderDialog({
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        title: "Standup",
+        recurrencePreset: "daily",
+      },
+      locale: "en-US",
+    });
+    expect(
+      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceFrequencyLabel }),
     ).toBeNull();
+    expect(
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
+    ).toBeTruthy();
   });
 
   it("groups schedule, recurrence, invitees, and alarms into cards in order", () => {

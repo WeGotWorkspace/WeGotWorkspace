@@ -45,10 +45,11 @@ import {
   type CalendarEventAlertFormValue,
   type CalendarFreeBusyStatus,
 } from "@/calendar-core/src/calendar-alerts";
+import { CalendarCustomRecurrenceFields } from "@/calendar-core/src/calendar-custom-recurrence-fields";
+import { seedCustomRecurrenceRules } from "@/calendar-core/src/calendar-custom-recurrence";
 import {
   EDITABLE_RECURRENCE_PRESET_IDS,
   recurrencePresetOptionLabel,
-  type EditableRecurrencePresetId,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
 import {
@@ -315,17 +316,17 @@ export function CalendarEventDialog({
   }, [form.calendarId, incomingRsvp, open]);
 
   const valid = calendarEventFormIsValid(form);
-  const recurrenceLocked = form.recurrencePreset === "custom";
-  const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
+  const showCustomRecurrence = form.recurrencePreset === "custom";
+  const showRecurrenceEnds = form.recurrencePreset !== "none";
+  const customRecurrenceRule =
+    form.customRecurrenceRules?.[0] ?? seedCustomRecurrenceRules(form)[0]!;
   const recurrenceOptions = useMemo(() => {
-    const ids: RecurrencePresetId[] = recurrenceLocked
-      ? ["custom"]
-      : EDITABLE_RECURRENCE_PRESET_IDS;
+    const ids: RecurrencePresetId[] = [...EDITABLE_RECURRENCE_PRESET_IDS, "custom"];
     return ids.map((id) => ({
       id,
       label: recurrencePresetOptionLabel(id, form.startDate, locale),
     }));
-  }, [form.startDate, locale, recurrenceLocked]);
+  }, [form.startDate, locale]);
 
   const timeZoneOptions = useMemo(
     () => eventTimeZoneOptions(locale, labels.eventTimeZoneLocalLabel, form.timeZone),
@@ -339,7 +340,16 @@ export function CalendarEventDialog({
     onChange(patchCalendarEventForm(form, { [key]: value } as Partial<CalendarEventFormValue>));
   };
 
-  const setRecurrencePreset = (preset: EditableRecurrencePresetId) => {
+  const setRecurrencePreset = (preset: RecurrencePresetId) => {
+    if (preset === "custom") {
+      onChange(
+        patchCalendarEventForm(form, {
+          recurrencePreset: "custom",
+          customRecurrenceRules: seedCustomRecurrenceRules(form),
+        }),
+      );
+      return;
+    }
     onChange(
       patchCalendarEventForm(form, {
         recurrencePreset: preset,
@@ -508,10 +518,8 @@ export function CalendarEventDialog({
               <CardRow fill>
                 <Select
                   value={form.recurrencePreset}
-                  onValueChange={(value) =>
-                    setRecurrencePreset(value as EditableRecurrencePresetId)
-                  }
-                  disabled={recurrenceLocked || fieldsDisabled}
+                  onValueChange={(value) => setRecurrencePreset(value as RecurrencePresetId)}
+                  disabled={fieldsDisabled}
                 >
                   <SelectTrigger
                     className="calendar-event-dialog__repeat-trigger"
@@ -528,6 +536,25 @@ export function CalendarEventDialog({
                   </SelectContent>
                 </Select>
               </CardRow>
+              {showCustomRecurrence ? (
+                <CalendarCustomRecurrenceFields
+                  rule={customRecurrenceRule}
+                  startDateISO={form.startDate}
+                  labels={labels}
+                  locale={locale}
+                  disabled={fieldsDisabled}
+                  onChange={(rule) =>
+                    onChange(
+                      patchCalendarEventForm(form, {
+                        customRecurrenceRules: [
+                          rule,
+                          ...(form.customRecurrenceRules?.slice(1) ?? []),
+                        ],
+                      }),
+                    )
+                  }
+                />
+              ) : null}
               {showRecurrenceEnds ? (
                 <CardRow title={labels.eventRecurrenceEndsLabel}>
                   <div className="calendar-event-dialog__recurrence-ends">

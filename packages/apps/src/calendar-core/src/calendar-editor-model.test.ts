@@ -6,6 +6,7 @@ import {
   calendarEventToForm,
   createIntentToForm,
   emptyCalendarEventForm,
+  formRecurrenceRules,
   formToCreateIntent,
   formToDraft,
   formToPatch,
@@ -711,5 +712,91 @@ describe("formToPatch", () => {
     expect(formToPatch({ ...form, title: "Still custom" }, custom)).toEqual({
       title: "Still custom",
     });
+  });
+
+  it("persists a created custom rule and reopens as custom", () => {
+    const form = {
+      ...emptyCalendarEventForm("work", "2033-01-12"),
+      title: "Office days",
+      recurrencePreset: "custom" as const,
+      recurrenceEnds: "count" as const,
+      recurrenceCount: 6,
+      customRecurrenceRules: [
+        {
+          "@type": "RecurrenceRule" as const,
+          frequency: "weekly" as const,
+          interval: 2,
+          byDay: [
+            { "@type": "NDay" as const, day: "mo" as const },
+            { "@type": "NDay" as const, day: "fr" as const },
+          ],
+        },
+      ],
+    };
+    expect(formRecurrenceRules(form)).toEqual([
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        interval: 2,
+        byDay: [
+          { "@type": "NDay", day: "mo" },
+          { "@type": "NDay", day: "fr" },
+        ],
+        count: 6,
+      },
+    ]);
+    const reopened = calendarEventToForm({
+      ...timedEvent,
+      title: "Office days",
+      recurrenceRules: formRecurrenceRules(form),
+    });
+    expect(reopened.recurrencePreset).toBe("custom");
+    expect(reopened.recurrenceEnds).toBe("count");
+    expect(reopened.recurrenceCount).toBe(6);
+    expect(reopened.customRecurrenceRules?.[0]).toMatchObject({
+      frequency: "weekly",
+      interval: 2,
+    });
+  });
+
+  it("patches recurrenceRules when the user edits a custom rule", () => {
+    const original = {
+      ...timedEvent,
+      recurrenceRules: [
+        {
+          "@type": "RecurrenceRule" as const,
+          frequency: "weekly" as const,
+          byDay: [
+            { "@type": "NDay" as const, day: "mo" as const },
+            { "@type": "NDay" as const, day: "we" as const },
+          ],
+        },
+      ],
+    };
+    const form = {
+      ...calendarEventToForm(original),
+      customRecurrenceRules: [
+        {
+          "@type": "RecurrenceRule" as const,
+          frequency: "weekly" as const,
+          interval: 3,
+          byDay: [
+            { "@type": "NDay" as const, day: "mo" as const },
+            { "@type": "NDay" as const, day: "we" as const },
+          ],
+        },
+      ],
+    };
+    expect(formToPatch(form, original).recurrenceRules).toEqual([
+      {
+        "@type": "RecurrenceRule",
+        frequency: "weekly",
+        interval: 3,
+        byDay: [
+          { "@type": "NDay", day: "mo" },
+          { "@type": "NDay", day: "we" },
+        ],
+      },
+    ]);
   });
 });

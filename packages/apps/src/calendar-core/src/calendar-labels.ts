@@ -90,6 +90,17 @@ export type CalendarUILabels = {
   eventRecurrenceEndsOnDate: string;
   eventRecurrenceEndsAfter: string;
   eventRecurrenceEndsCountSuffix: string;
+  eventRecurrenceFrequencyLabel: string;
+  eventRecurrenceFrequencyDaily: string;
+  eventRecurrenceFrequencyWeekly: string;
+  eventRecurrenceFrequencyMonthly: string;
+  eventRecurrenceFrequencyYearly: string;
+  eventRecurrenceIntervalLabel: string;
+  eventRecurrenceIntervalDays: string;
+  eventRecurrenceIntervalWeeks: string;
+  eventRecurrenceIntervalMonths: string;
+  eventRecurrenceIntervalYears: string;
+  eventRecurrenceByDayLabel: string;
   save: string;
   cancel: string;
   delete: string;
@@ -224,6 +235,17 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventRecurrenceEndsOnDate: "On date",
   eventRecurrenceEndsAfter: "After",
   eventRecurrenceEndsCountSuffix: "times",
+  eventRecurrenceFrequencyLabel: "Frequency",
+  eventRecurrenceFrequencyDaily: "Daily",
+  eventRecurrenceFrequencyWeekly: "Weekly",
+  eventRecurrenceFrequencyMonthly: "Monthly",
+  eventRecurrenceFrequencyYearly: "Yearly",
+  eventRecurrenceIntervalLabel: "Every",
+  eventRecurrenceIntervalDays: "days",
+  eventRecurrenceIntervalWeeks: "weeks",
+  eventRecurrenceIntervalMonths: "months",
+  eventRecurrenceIntervalYears: "years",
+  eventRecurrenceByDayLabel: "Repeat on",
   save: "Save",
   cancel: "Cancel",
   delete: "Delete",

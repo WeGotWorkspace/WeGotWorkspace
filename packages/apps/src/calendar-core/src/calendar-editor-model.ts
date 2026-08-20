@@ -71,7 +71,7 @@ export type CalendarEventFormValue = {
   alerts: CalendarEventAlertFormValue[];
   recurrencePreset: RecurrencePresetId;
   /**
-   * How a repeating series ends. Ignored when preset is `"none"` or `"custom"`.
+   * How a repeating series ends. Ignored when preset is `"none"`.
    * `"never"` omits both `until` and `count` on the wire.
    */
   recurrenceEnds: RecurrenceEndsMode;
@@ -80,8 +80,9 @@ export type CalendarEventFormValue = {
   /** Occurrence count when `recurrenceEnds === "count"`. */
   recurrenceCount: number;
   /**
-   * Preserved when `recurrencePreset` is `"custom"` so save does not wipe an
-   * unmatched rule. Cleared when the user picks a predefined preset.
+   * Shape of an unmatched / user-built rule when `recurrencePreset` is `"custom"`.
+   * Series bounds (`until` / `count`) are applied from the ends fields on save.
+   * Cleared when the user picks a predefined preset.
    */
   customRecurrenceRules?: JSCalendarRecurrenceRule[];
   attendees: CalendarAttendee[];
@@ -237,6 +238,29 @@ export function formRecurrenceUntilWire(form: CalendarEventFormValue): string {
   return `${date}T${form.startTime}:00`;
 }
 
+function endsFieldsFromRule(
+  rule: JSCalendarRecurrenceRule | undefined,
+  startDateISO: string,
+): Pick<CalendarEventFormValue, "recurrenceEnds" | "recurrenceUntilDate" | "recurrenceCount"> {
+  const defaults = defaultRecurrenceEndsFields(startDateISO);
+  const untilDate = untilDateFromWire(rule?.until);
+  if (untilDate) {
+    return {
+      recurrenceEnds: "until",
+      recurrenceUntilDate: untilDate,
+      recurrenceCount: defaults.recurrenceCount,
+    };
+  }
+  if (rule?.count != null && rule.count > 0) {
+    return {
+      recurrenceEnds: "count",
+      recurrenceUntilDate: defaults.recurrenceUntilDate,
+      recurrenceCount: rule.count,
+    };
+  }
+  return defaults;
+}
+
 function recurrenceFieldsFromRules(
   rules: JSCalendarRecurrenceRule[] | null | undefined,
   startDateISO: string,
@@ -249,33 +273,29 @@ function recurrenceFieldsFromRules(
   | "recurrenceCount"
 > {
   const preset = matchRecurrencePreset(rules, startDateISO);
-  const defaults = defaultRecurrenceEndsFields(startDateISO);
+  const ends = endsFieldsFromRule(rules?.[0], startDateISO);
   if (preset === "custom" && rules?.length) {
     return {
       recurrencePreset: "custom",
       customRecurrenceRules: rules,
-      ...defaults,
+      ...ends,
     };
   }
-  const rule = rules?.[0];
-  const untilDate = untilDateFromWire(rule?.until);
-  if (untilDate) {
-    return {
-      recurrencePreset: preset,
-      recurrenceEnds: "until",
-      recurrenceUntilDate: untilDate,
-      recurrenceCount: defaults.recurrenceCount,
-    };
+  return { recurrencePreset: preset, ...ends };
+}
+
+function applyRecurrenceEnds(
+  rule: JSCalendarRecurrenceRule,
+  form: CalendarEventFormValue,
+): JSCalendarRecurrenceRule {
+  const { count: _count, until: _until, ...rest } = rule;
+  if (form.recurrenceEnds === "until" && form.recurrenceUntilDate) {
+    return { ...rest, until: formRecurrenceUntilWire(form) };
   }
-  if (rule?.count != null && rule.count > 0) {
-    return {
-      recurrencePreset: preset,
-      recurrenceEnds: "count",
-      recurrenceUntilDate: defaults.recurrenceUntilDate,
-      recurrenceCount: rule.count,
-    };
+  if (form.recurrenceEnds === "count" && form.recurrenceCount >= 1) {
+    return { ...rest, count: Math.floor(form.recurrenceCount) };
   }
-  return { recurrencePreset: preset, ...defaults };
+  return rest;
 }
 
 /** JSCalendar rules to persist for the current form recurrence selection. */
@@ -283,18 +303,15 @@ export function formRecurrenceRules(
   form: CalendarEventFormValue,
 ): JSCalendarRecurrenceRule[] | null {
   if (form.recurrencePreset === "custom") {
-    return form.customRecurrenceRules?.length ? form.customRecurrenceRules : null;
+    if (!form.customRecurrenceRules?.length) return null;
+    return form.customRecurrenceRules.map((rule, index) =>
+      index === 0 ? applyRecurrenceEnds(rule, form) : rule,
+    );
   }
   if (form.recurrencePreset === "none") return null;
   const rule = recurrencePresetToRule(form.recurrencePreset, form.startDate);
   if (!rule) return null;
-  if (form.recurrenceEnds === "until" && form.recurrenceUntilDate) {
-    return [{ ...rule, until: formRecurrenceUntilWire(form) }];
-  }
-  if (form.recurrenceEnds === "count" && form.recurrenceCount >= 1) {
-    return [{ ...rule, count: Math.floor(form.recurrenceCount) }];
-  }
-  return [rule];
+  return [applyRecurrenceEnds(rule, form)];
 }
 
 export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventFormValue {
@@ -425,11 +442,8 @@ export function patchCalendarEventForm(
   }
 
   if (Object.prototype.hasOwnProperty.call(patch, "recurrencePreset")) {
-    if (next.recurrencePreset === "none" || next.recurrencePreset === "custom") {
+    if (next.recurrencePreset === "none") {
       next = { ...next, ...defaultRecurrenceEndsFields(next.startDate) };
-    } else if (form.recurrencePreset === "none" || form.recurrencePreset === "custom") {
-      // Entering an editable preset from none/custom → open-ended by default.
-      next = { ...next, recurrenceEnds: "never" };
     }
   }
 
@@ -467,7 +481,7 @@ export function patchCalendarEventForm(
 export function calendarEventFormIsValid(form: CalendarEventFormValue): boolean {
   if (!form.title.trim() || !form.calendarId || !form.startDate || !form.endDate) return false;
   if (!form.allDay && (!form.startTime || !form.endTime)) return false;
-  const repeating = form.recurrencePreset !== "none" && form.recurrencePreset !== "custom";
+  const repeating = form.recurrencePreset !== "none";
   if (repeating) {
     if (form.recurrenceEnds === "until" && !form.recurrenceUntilDate) return false;
     if (
