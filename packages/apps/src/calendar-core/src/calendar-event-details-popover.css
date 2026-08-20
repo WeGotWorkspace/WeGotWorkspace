@@ -6,8 +6,18 @@
   anchor-name: --calendar-event-details-anchor;
 }
 
+.calendar-event-details-popover__anchor--docked {
+  anchor-name: none;
+}
+
 .calendar-dialog-surface.calendar-event-details-popover {
-  @apply box-border flex min-w-0 w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-2 overflow-x-hidden overflow-y-auto p-3;
+  @apply box-border flex w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2 overflow-x-hidden overflow-y-auto p-3;
+  /* Do not use min-w-0 here: position-area stretch would collapse the card to a strip. */
+  min-width: min(16rem, calc(100vw - 1.5rem));
+  height: max-content;
+  max-height: min(32rem, calc(100dvh - 2rem));
+  justify-self: center;
+  align-self: start;
   /* Margin is overflow for CSS anchor + position-try, so corner fallbacks keep an inset. */
   margin: 0.75rem;
   position-anchor: --calendar-event-details-anchor;
@@ -92,11 +102,13 @@
 
 @media (max-width: 40rem) {
   .calendar-dialog-surface.calendar-event-details-popover {
-    /* Inset left/right — do not center with translateX, which compounds Radix's card left. */
-    @apply box-border min-w-0 overflow-x-hidden;
-    position-anchor: auto;
+    @apply box-border overflow-x-hidden;
+    position-anchor: none;
     position-area: none;
+    position-try: none;
     position-try-fallbacks: none;
+    justify-self: unset;
+    align-self: unset;
     margin: 0;
     position: fixed !important;
     inset: auto !important;
@@ -105,9 +117,38 @@
     right: 0.75rem !important;
     bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) !important;
     width: auto !important;
+    min-width: 0;
     max-width: calc(100vw - 1.5rem) !important;
     max-width: calc(100dvw - 1.5rem) !important;
-    transform: none !important;
+    height: auto !important;
+    min-height: 0;
     max-height: min(32rem, calc(100dvh - 6rem));
+    transform: none !important;
   }
+}
+
+/* Compact-month cell origins can be tall on a wider window than 40rem. */
+.calendar-dialog-surface.calendar-event-details-popover--docked {
+  @apply box-border overflow-x-hidden;
+  position-anchor: none;
+  position-area: none;
+  position-try: none;
+  position-try-fallbacks: none;
+  justify-self: unset;
+  align-self: unset;
+  margin: 0;
+  position: fixed !important;
+  inset: auto !important;
+  top: auto !important;
+  left: 0.75rem !important;
+  right: 0.75rem !important;
+  bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) !important;
+  width: auto !important;
+  min-width: 0;
+  max-width: calc(100vw - 1.5rem) !important;
+  max-width: calc(100dvw - 1.5rem) !important;
+  height: auto !important;
+  min-height: 0;
+  max-height: min(32rem, calc(100dvh - 6rem));
+  transform: none !important;
 }

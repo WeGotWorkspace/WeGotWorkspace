@@ -101,6 +101,18 @@ describe("CalendarEventDetailsPopover", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const source = readFileSync(join(here, "calendar-event-details-popover.tsx"), "utf8");
     expect(source).toContain("collisionPadding={16}");
-    expect(source).not.toContain("avoidCollisions={false}");
+    expect(source).toContain("avoidCollisions={!docked}");
   });
+
+  it(
+    "docks a tall compact-month origin instead of stretching to the cell",
+    { timeout: 10_000 },
+    () => {
+      renderPopover({
+        origin: { left: 160, top: 72, width: 44, height: 160 },
+      });
+      const popover = screen.getByRole("dialog", { name: /Dentist/i });
+      expect(popover.className).toContain("calendar-event-details-popover--docked");
+    },
+  );
 });

@@ -28,12 +28,23 @@ describe("calendar event details popover CSS", () => {
     expect(css).toMatch(
       /@media \(max-width: 40rem\) \{[\s\S]*max-height:\s*min\(32rem,\s*calc\(100dvh - 6rem\)\)/,
     );
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-anchor:\s*none;/);
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-area:\s*none;/);
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-try-fallbacks:\s*none;/);
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*height:\s*auto\s*!important;/);
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*left:\s*0\.75rem\s*!important;/);
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*right:\s*0\.75rem\s*!important;/);
     expect(css).toMatch(
       /@media \(max-width: 40rem\) \{[\s\S]*max-width:\s*calc\(100dvw - 1\.5rem\)\s*!important;/,
     );
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*transform:\s*none\s*!important;/);
+  });
+
+  it("does not stretch-to-anchor and can dock compact-month origins on a wider window", () => {
+    expect(css).toContain("height: max-content");
+    expect(css).toContain("justify-self: center");
+    expect(css).toContain("align-self: start");
+    expect(css).toContain("calendar-event-details-popover--docked");
+    expect(css).toContain("position-anchor: none");
   });
 });

@@ -177,6 +177,24 @@ function eventCardFromPath(path: EventTarget[]): Element | undefined {
   });
 }
 
+/** Compact-month day cells are tall and skinny; do not CSS-anchor / stretch-to-area. */
+function originLooksLikeMonthCell(origin: CalendarEventSelectionOrigin): boolean {
+  return origin.width > 0 && origin.height >= 64 && origin.height / origin.width >= 1.75;
+}
+
+function viewportPrefersDockedPopover(): boolean {
+  if (typeof globalThis.matchMedia !== "function") return false;
+  return (
+    globalThis.matchMedia("(max-width: 40rem)").matches ||
+    globalThis.matchMedia("(orientation: portrait) and (max-width: 48rem)").matches
+  );
+}
+
+/** Narrow / portrait / compact-month: dock center-bottom instead of position-try. */
+export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin): boolean {
+  return viewportPrefersDockedPopover() || (origin != null && originLooksLikeMonthCell(origin));
+}
+
 export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
   const detail = event instanceof CustomEvent ? event.detail : undefined;
   const fromDetail = originFromUnknown(

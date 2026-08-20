@@ -6,6 +6,7 @@ import {
   sessionEventInviteeStatus,
 } from "@/calendar-core/src/calendar-attendees";
 import {
+  detailsPopoverShouldDock,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
   eventPreviewRepeatLabel,
@@ -76,16 +77,19 @@ export function CalendarEventDetailsPopover({
   const invitees = eventPreviewInviteeNames(form.attendees, labels);
   const showRsvp = Boolean(onRsvp) && isSessionEventInvitee(form.attendees, sessionEmail);
   const rsvpStatus = sessionEventInviteeStatus(form.attendees, sessionEmail);
+  const docked = detailsPopoverShouldDock(origin);
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
   const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
-  const anchorStyle = origin
-    ? {
-        left: origin.left,
-        top: origin.top,
-        width: origin.width,
-        height: origin.height,
-      }
-    : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
+  const anchorStyle = docked
+    ? { left: 0, top: 0, width: 0, height: 0 }
+    : origin
+      ? {
+          left: origin.left,
+          top: origin.top,
+          width: origin.width,
+          height: origin.height,
+        }
+      : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
 
   return (
     <Popover
@@ -96,14 +100,27 @@ export function CalendarEventDetailsPopover({
       modal
     >
       <PopoverAnchor asChild>
-        <span className="calendar-event-details-popover__anchor" style={anchorStyle} aria-hidden />
+        <span
+          className={
+            docked
+              ? "calendar-event-details-popover__anchor calendar-event-details-popover__anchor--docked"
+              : "calendar-event-details-popover__anchor"
+          }
+          style={anchorStyle}
+          aria-hidden
+        />
       </PopoverAnchor>
       <PopoverContent
         align="center"
         side="bottom"
         sideOffset={8}
         collisionPadding={16}
-        className="calendar-dialog-surface calendar-event-details-popover"
+        avoidCollisions={!docked}
+        className={
+          docked
+            ? "calendar-dialog-surface calendar-event-details-popover calendar-event-details-popover--docked"
+            : "calendar-dialog-surface calendar-event-details-popover"
+        }
         aria-label={title}
         onOpenAutoFocus={(event) => {
           event.preventDefault();

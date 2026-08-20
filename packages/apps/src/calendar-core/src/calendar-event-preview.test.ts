@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
+  detailsPopoverShouldDock,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
   eventPreviewOccurrenceKey,
@@ -89,5 +90,12 @@ describe("selectionOriginFromEvent", () => {
     expect(
       selectionOriginFromEvent(new CustomEvent("event-selected", { detail: { key: "dentist" } })),
     ).toBeUndefined();
+  });
+});
+
+describe("detailsPopoverShouldDock", () => {
+  it("docks a tall compact-month cell origin and leaves a card-sized origin undocked", () => {
+    expect(detailsPopoverShouldDock({ left: 120, top: 80, width: 48, height: 140 })).toBe(true);
+    expect(detailsPopoverShouldDock({ left: 48, top: 96, width: 180, height: 36 })).toBe(false);
   });
 });
