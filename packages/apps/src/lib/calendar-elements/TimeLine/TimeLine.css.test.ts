@@ -38,6 +38,13 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
     expect(timeLineCss).toMatch(/z-index:\s*700/);
   });
 
+  it("does not elevate a dragging event with a drop shadow", () => {
+    const dragging = ruleBlock(timeLineCss, ".event.event--dragging");
+    expect(dragging).toMatch(/z-index:\s*600/);
+    expect(dragging).not.toMatch(/drop-shadow/);
+    expect(dragging).not.toMatch(/filter:/);
+  });
+
   it("traps month (and other standalone) timelines on a layout ancestor of <time-line>", () => {
     const layout = ruleBlock(timelineViewCss, ".timeline-layout");
     expect(layout).toMatch(/isolation:\s*isolate/);

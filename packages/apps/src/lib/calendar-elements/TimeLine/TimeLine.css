@@ -257,8 +257,6 @@
   cursor: grabbing;
   z-index: 600;
   will-change: transform;
-  /* Subtle lift for the free-following card (follows the card's shape, not the wrapper box). */
-  filter: drop-shadow(0 3px 8px light-dark(rgb(15 23 42 / 22%), rgb(0 0 0 / 45%)));
 }
 
 /* Time axis in vertical flow: % on top/bottom resolve against .cell-main height (not margin-% which uses width). */
