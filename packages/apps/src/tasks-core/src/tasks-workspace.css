@@ -109,9 +109,9 @@
   }
 }
 
-/** Header action icon buttons match {@link WorkspaceSidebarToggle} (size-9 / input-height). */
+/** Header action icon buttons use the shared sm control size. */
 .tasks-workspace .tasks-workspace__header-actions .button {
-  @apply size-9 shrink-0;
+  @apply shrink-0;
 }
 
 /* Active toggle: accent fill + ink glyph (matches primary CTA / app switcher lockup). */

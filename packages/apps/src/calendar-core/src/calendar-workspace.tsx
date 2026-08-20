@@ -290,11 +290,13 @@ export function CalendarWorkspace({
                 <IconButton
                   label={L.previousPeriod}
                   icon={<ChevronLeft className="size-4" />}
+                  size="sm"
                   onClick={goPrevious}
                 />
                 <IconButton
                   label={L.nextPeriod}
                   icon={<ChevronRight className="size-4" />}
+                  size="sm"
                   onClick={goNext}
                 />
               </div>
@@ -302,7 +304,11 @@ export function CalendarWorkspace({
             actions={
               <div className="calendar-header-actions">
                 <Select value={view} onValueChange={(next) => selectView(next as CalendarViewId)}>
-                  <SelectTrigger className="calendar-view-select" aria-label={L.viewSelectLabel}>
+                  <SelectTrigger
+                    size="sm"
+                    className="calendar-view-select"
+                    aria-label={L.viewSelectLabel}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -319,7 +325,7 @@ export function CalendarWorkspace({
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
                 />
-                <Button label={L.today} onClick={goToday} variant="subtle" />
+                <Button label={L.today} onClick={goToday} variant="subtle" size="sm" />
               </div>
             }
           />

@@ -10,7 +10,7 @@
 }
 
 /**
- * Grid keeps title truncation predictable; min-height matches default icon-button row (size-md / 2.25rem)
+ * Grid keeps title truncation predictable; min-height matches compact icon-button row (size-sm)
  * so subtitle/search do not jump when actions are present vs absent.
  */
 .view-header__title-row {
@@ -18,7 +18,10 @@
   grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   column-gap: 0.75rem;
-  min-height: var(--view-header-title-row-min-height, 2.25rem);
+  min-height: var(
+    --view-header-title-row-min-height,
+    var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem))
+  );
 }
 
 /** Title + optional period controls as one unit. */

@@ -64,6 +64,7 @@ function renderActionItems(actions: ActionBarAction[]) {
               onClick={action.onClick}
               disabled={action.disabled}
               icon={action.icon}
+              size="sm"
               variant="subtle"
               aria-label={tooltipLabel}
               aria-pressed={action.active}
@@ -85,6 +86,7 @@ function renderActionItems(actions: ActionBarAction[]) {
         active={action.active}
         disabled={action.disabled}
         icon={action.icon}
+        size="sm"
         variant="subtle"
       />
     );
@@ -116,6 +118,7 @@ function renderCompactDropdown(
           <IconButton
             label={label}
             icon={icon}
+            size="sm"
             variant="subtle"
             className="action-bar__menu-trigger"
           />
@@ -154,6 +157,7 @@ export function ActionBar({
           icon={backIcon === "close" ? <X /> : <ArrowLeft />}
           variant="ghost"
           className="action-bar__back"
+          size="sm"
           title={backLabel}
         />
       ) : null}
