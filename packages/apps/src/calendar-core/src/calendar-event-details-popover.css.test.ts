@@ -9,16 +9,24 @@ const css = readFileSync(
 );
 
 describe("calendar event details popover CSS", () => {
-  it("anchors to the event card and tries placements around it", () => {
+  it("anchors to the event card and tries placements around it, including corners", () => {
     expect(css).toContain("anchor-name: --calendar-event-details-anchor");
     expect(css).toContain("position-anchor: --calendar-event-details-anchor");
     expect(css).toContain("position-try-fallbacks");
     expect(css).toContain("flip-block");
+    expect(css).toContain("flip-inline");
+    expect(css).toContain("flip-block flip-inline");
+    expect(css).toContain("position-area: top left");
+    expect(css).toContain("position-area: top right");
+    expect(css).toMatch(/margin:\s*0\.75rem/);
   });
 
-  it("keeps a fixed center-bottom placement on small viewports", () => {
+  it("keeps a safe center-bottom placement on small viewports", () => {
     expect(css).toMatch(
-      /@media \(max-width: 40rem\) \{[\s\S]*bottom:\s*1rem;[\s\S]*translate:\s*-50%\s*0;/,
+      /@media \(max-width: 40rem\) \{[\s\S]*bottom:\s*max\(1\.25rem,[\s\S]*safe-area-inset-bottom/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 40rem\) \{[\s\S]*max-height:\s*min\(32rem,\s*calc\(100dvh - 6rem\)\)/,
     );
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-try-fallbacks:\s*none;/);
   });

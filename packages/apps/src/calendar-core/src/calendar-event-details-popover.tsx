@@ -102,7 +102,7 @@ export function CalendarEventDetailsPopover({
         align="center"
         side="bottom"
         sideOffset={8}
-        avoidCollisions={false}
+        collisionPadding={16}
         className="calendar-dialog-surface calendar-event-details-popover"
         aria-label={title}
         onOpenAutoFocus={(event) => {

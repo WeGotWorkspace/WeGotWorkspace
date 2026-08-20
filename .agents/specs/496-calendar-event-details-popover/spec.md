@@ -27,8 +27,8 @@ Selecting an event on the Lit calendar surface opens a dismissible **details pop
 - Do not grow `use-calendar-controller` with preview UI state — keep preview in a small hook / workspace wiring.
 - RSVP uses existing suite actions + `persistInviteeRsvp` (`source: "preview"` treated like dialog for occurrence-scope prompts).
 - BEM + `@apply` in CSS; popover is portaled (own surface tokens, like the event dialog).
-- Larger viewports: CSS `anchor-name` + `position-try` around the **event card** rect (not the calendar surface, not a fixed screen center).
-- Small viewports (`max-width: 40rem`): keep fixed center-bottom.
+- Larger viewports: CSS `anchor-name` + `position-try` (flip-block / flip-inline / corner areas) around the **event card** rect, plus Radix collision shift with padding, so corner and edge cells stay fully visible with inset — never flush or clipped.
+- Small viewports (`max-width: 40rem`): fixed center-bottom with safe-area inset and a shorter max-height so it does not collide with bottom chrome.
 - Keyboard: Escape / outside click dismisses; user is not forced into the editor to read details.
 - Read-only calendars can still open the popover; Edit is omitted when the user cannot write.
 
@@ -38,3 +38,4 @@ Selecting an event on the Lit calendar surface opens a dismissible **details pop
 - Pending deleted master: ignore selection (same as editor).
 - Invitee without write: popover + RSVP, no Edit.
 - No card origin: popover still opens (viewport fallback; small screens stay center-bottom).
+- Bottom-right / bottom-left month cells and day/week timed events on the edge: flip or shift inward with margin; do not pin flush to the pane corner.

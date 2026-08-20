@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,5 +95,12 @@ describe("CalendarEventDetailsPopover", () => {
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
     expect(onRsvp).toHaveBeenCalledWith("accepted");
     expect(screen.queryByRole("dialog", { name: defaultCalendarLabels.editEventTitle })).toBeNull();
+  });
+
+  it("shifts away from viewport edges with collision padding", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "calendar-event-details-popover.tsx"), "utf8");
+    expect(source).toContain("collisionPadding={16}");
+    expect(source).not.toContain("avoidCollisions={false}");
   });
 });

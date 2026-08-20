@@ -8,28 +8,34 @@
 
 .calendar-dialog-surface.calendar-event-details-popover {
   @apply flex w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-2 overflow-y-auto p-3;
-  /* Beat Radix’s inline top/left/transform so CSS anchor + position-try can own placement. */
-  position: fixed !important;
-  inset: auto !important;
-  transform: none !important;
+  /* Margin is overflow for CSS anchor + position-try, so corner fallbacks keep an inset. */
+  margin: 0.75rem;
   position-anchor: --calendar-event-details-anchor;
-  top: calc(anchor(bottom) + 0.5rem);
-  left: anchor(center);
-  translate: -50% 0;
+  position-area: bottom;
   position-try-fallbacks:
-    flip-block, flip-inline, --calendar-event-details-try-start, --calendar-event-details-try-end;
+    flip-block,
+    flip-inline,
+    flip-block flip-inline,
+    --calendar-event-details-try-start,
+    --calendar-event-details-try-end,
+    --calendar-event-details-try-above-start,
+    --calendar-event-details-try-above-end;
 }
 
 @position-try --calendar-event-details-try-start {
-  top: anchor(top);
-  left: calc(anchor(left) - 0.5rem);
-  translate: -100% 0;
+  position-area: left;
 }
 
 @position-try --calendar-event-details-try-end {
-  top: anchor(top);
-  left: calc(anchor(right) + 0.5rem);
-  translate: 0 0;
+  position-area: right;
+}
+
+@position-try --calendar-event-details-try-above-start {
+  position-area: top left;
+}
+
+@position-try --calendar-event-details-try-above-end {
+  position-area: top right;
 }
 
 .calendar-event-details-popover__header {
@@ -86,12 +92,18 @@
 
 @media (max-width: 40rem) {
   .calendar-dialog-surface.calendar-event-details-popover {
-    @apply w-[calc(100vw-1rem)];
+    @apply w-[calc(100vw-1.5rem)];
     position-anchor: auto;
+    position-area: none;
     position-try-fallbacks: none;
-    top: auto;
-    left: 50%;
-    bottom: 1rem;
-    translate: -50% 0;
+    margin: 0;
+    position: fixed !important;
+    inset: auto !important;
+    top: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) !important;
+    transform: translateX(-50%) !important;
+    max-height: min(32rem, calc(100dvh - 6rem));
   }
 }
