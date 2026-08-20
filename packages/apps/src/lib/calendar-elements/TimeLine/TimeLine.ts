@@ -8,7 +8,8 @@ import {
 } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import componentStyle from "./TimeLine.css?inline";
-import "../ResizeHandle/ResizeHandle";
+import { isTouchResizeHandleActive } from "../ResizeHandle/ResizeHandle";
+import { getEventColorStyles } from "../utils/EventColor";
 import type {
   TimeLineLayout,
   TimelineEvent,
@@ -216,6 +217,14 @@ export class TimeLine extends LitElement {
 
   @property({ type: Array })
   accessor events: TimelineEvent[] = [];
+
+  /**
+   * Selected event key (from the composing calendar view). On coarse pointers, only this
+   * event’s resize handles become `active` grabbers; others stay hidden so scroll/swipe/move
+   * are not stolen.
+   */
+  @property({ type: String, attribute: "selected-event-key" })
+  accessor selectedEventKey = "";
 
   /**
    * Marker values on the absolute axis (same coordinate space as event `start`/`end`; cell `i`
@@ -1671,11 +1680,24 @@ export class TimeLine extends LitElement {
     return horiz && laneMode ? ` --__lane-stack: calc(${laneCount} * var(--__event-height))` : "";
   }
 
-  #resizeHandleFragment(position: "start" | "end", title: string) {
+  /** Accent tokens for sibling handles. Always after `--__end` so time geometry stays intact. */
+  #eventAccentVars(ev: TimelineEvent): string {
+    const color = ev.color;
+    if (typeof color !== "string" || color.trim() === "") return "";
+    const styles = getEventColorStyles(color);
+    const accent = styles["--_lc-event-accent-color"] ?? color;
+    const border = styles["--_lc-event-border-color"];
+    return border
+      ? `--_lc-event-accent-color:${accent};--_lc-event-border-color:${border};`
+      : `--_lc-event-accent-color:${accent};`;
+  }
+
+  #resizeHandleFragment(position: "start" | "end", title: string, eventKey: unknown) {
     return html`<resize-handle
       .axis=${this.flow}
       position=${position}
       title=${title}
+      ?active=${isTouchResizeHandleActive(eventKey, this.selectedEventKey)}
       @pointerdown=${this.#onResizeHandlePointerDown}
     ></resize-handle>`;
   }
@@ -1726,11 +1748,12 @@ export class TimeLine extends LitElement {
         ${staggerVars}${dragTransform}
         --__start:${this.#axisPct(segStart, w0, w1)}%;
         --__end:${endInset};
+        ${this.#eventAccentVars(templateEv)}
       "
       >
-        ${showResizeStart ? this.#resizeHandleFragment("start", "Resize start") : nothing}
+        ${showResizeStart ? this.#resizeHandleFragment("start", "Resize start", ev.key) : nothing}
         ${this.renderEventTemplate(templateEv, preview)}
-        ${showResizeEnd ? this.#resizeHandleFragment("end", "Resize end") : nothing}
+        ${showResizeEnd ? this.#resizeHandleFragment("end", "Resize end", ev.key) : nothing}
       </div>
     `;
   }

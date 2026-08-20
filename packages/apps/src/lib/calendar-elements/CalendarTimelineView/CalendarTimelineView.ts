@@ -181,12 +181,16 @@ export class CalendarTimelineView extends CalendarViewBase {
    * editor is open; Lit uses it to keep the drag-create card after pointer-up.
    */
   pendingCreateIntent: PendingCreateGeometry | null = null;
+  /**
+   * Event open in the details popover (React) or just short-pressed. Coarse resize
+   * grabbers render only for this key. Empty = initial state, no handles.
+   */
+  selectedEventKey = "";
 
   /** Events passed to the timed `<time-line>` in the latest render; commit indexes point here. */
   #renderedTimedEvents: CalendarTimelineEvent[] = [];
   /** Events passed to the all-day `<time-line>` in the latest render. */
   #renderedAllDayEvents: CalendarTimelineEvent[] = [];
-  #selectedEventKey: string | null = null;
   /** Set right after a gesture commit so the trailing click does not also select the event. */
   #suppressNextCardSelect = false;
   #suppressNextCardSelectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -250,6 +254,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       rtl: { type: Boolean, reflect: true },
       pendingCreateIntent: { attribute: false },
+      selectedEventKey: { type: String, attribute: "selected-event-key" },
     } as const;
   }
 
@@ -823,9 +828,8 @@ export class CalendarTimelineView extends CalendarViewBase {
       },
     };
     await this.applyDeleteRequestToEventsAPI(detail);
-    if (this.#selectedEventKey === key) {
-      this.#selectedEventKey = null;
-      this.requestUpdate();
+    if (this.selectedEventKey === key) {
+      this.selectedEventKey = "";
     }
   }
 
@@ -858,9 +862,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   #selectTimelineEvent(key: string, card?: EventTarget | null) {
-    if (this.#selectedEventKey !== key) {
-      this.#selectedEventKey = key;
-      this.requestUpdate();
+    if (this.selectedEventKey !== key) {
+      this.selectedEventKey = key;
     }
     const origin = eventSelectionOriginFromElement(card);
     this.dispatchEvent(
@@ -971,7 +974,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     preview?: TimelineEventPreviewRange,
   ): TemplateResult {
     const timelineEvent = event as CalendarTimelineEvent;
-    const selected = this.#selectedEventKey === timelineEvent.key;
+    const selected = this.selectedEventKey === timelineEvent.key;
     const timeLabel = this.#timelineEventTimeLabel(variant, timelineEvent, preview);
     // The card renders inside <time-line>'s shadow root. Selection has no persistent ring
     // (grid parity); it is exposed via aria-pressed and the event-card-selected part.
@@ -1551,6 +1554,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       <time-line
         class="timeline-main"
         .events=${events}
+        .selectedEventKey=${this.selectedEventKey ?? ""}
         .cells=${this.#resolvedNumDays}
         .columns=${this.#resolvedColumns}
         .max=${unitsPerDay}
@@ -1631,6 +1635,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-all-day"
             .events=${allDayEvents}
+            .selectedEventKey=${this.selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}
@@ -1686,6 +1691,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-timed"
             .events=${timedEvents}
+            .selectedEventKey=${this.selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}

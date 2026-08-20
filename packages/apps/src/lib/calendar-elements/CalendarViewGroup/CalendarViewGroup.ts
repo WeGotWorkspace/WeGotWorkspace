@@ -39,6 +39,8 @@ export class CalendarViewGroup extends CalendarViewBase {
   rtl = false;
   /** Create-dialog range from the React surface; forwarded to the timeline. */
   pendingCreateIntent: PendingCreateGeometry | null = null;
+  /** Details-popover event; forwarded so TimeLine can show coarse resize grabbers. */
+  selectedEventKey = "";
 
   static get properties() {
     return {
@@ -67,6 +69,7 @@ export class CalendarViewGroup extends CalendarViewBase {
       visibleHours: { type: Number, attribute: "visible-hours" },
       rtl: { type: Boolean, reflect: true },
       pendingCreateIntent: { attribute: false },
+      selectedEventKey: { type: String, attribute: "selected-event-key" },
     } as const;
   }
 
@@ -297,6 +300,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .currentTime=${this.#resolvedCurrentTime}
           .selectedCalendarId=${this.selectedCalendarId}
           .pendingCreateIntent=${this.pendingCreateIntent}
+          .selectedEventKey=${this.selectedEventKey}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
           @event-created=${this.forwardComposedCalendarEvent}
@@ -328,6 +332,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .currentTime=${this.#resolvedCurrentTime}
           .selectedCalendarId=${this.selectedCalendarId}
           .pendingCreateIntent=${this.pendingCreateIntent}
+          .selectedEventKey=${this.selectedEventKey}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
           @event-created=${this.forwardComposedCalendarEvent}
@@ -361,6 +366,7 @@ export class CalendarViewGroup extends CalendarViewBase {
         .visibleHours=${this.visibleHours}
         .selectedCalendarId=${this.selectedCalendarId}
         .pendingCreateIntent=${this.pendingCreateIntent}
+        .selectedEventKey=${this.selectedEventKey}
         @active-date-changed=${this.#handleWeekActiveDateChanged}
         @day-selection=${this.#handleDaySelectionRequested}
         @event-create-requested=${this.forwardComposedCalendarEvent}
