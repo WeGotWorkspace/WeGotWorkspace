@@ -38,6 +38,13 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
     expect(timeLineCss).toMatch(/z-index:\s*700/);
   });
 
+  it("does not elevate a dragging event with a drop shadow", () => {
+    const dragging = ruleBlock(timeLineCss, ".event.event--dragging");
+    expect(dragging).toMatch(/z-index:\s*600/);
+    expect(dragging).not.toMatch(/drop-shadow/);
+    expect(dragging).not.toMatch(/filter:/);
+  });
+
   it("traps month (and other standalone) timelines on a layout ancestor of <time-line>", () => {
     const layout = ruleBlock(timelineViewCss, ".timeline-layout");
     expect(layout).toMatch(/isolation:\s*isolate/);
@@ -47,5 +54,40 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
   it("traps the month composition wrapper around calendar-timeline-view", () => {
     const monthLayout = ruleBlock(monthGroupCss, ".timeline-month-layout");
     expect(monthLayout).toMatch(/isolate/);
+  });
+});
+
+describe("TimeLine event geometry vs resize handles", () => {
+  const timeLineCss = readCss("TimeLine.css");
+
+  it("keeps resize handles out of the event flex row so they cannot shift cards", () => {
+    expect(timeLineCss).toContain(".event > resize-handle");
+    expect(timeLineCss).toMatch(/\.event > resize-handle\s*\{[\s\S]*?position:\s*absolute/);
+    expect(timeLineCss).toMatch(/\.event > resize-handle\s*\{[\s\S]*?flex:\s*none/);
+    expect(timeLineCss).toMatch(/\.event > event-card\s*\{[\s\S]*?flex:\s*1/);
+  });
+
+  it("shows desktop handles on event hover, not on coarse hover", () => {
+    expect(timeLineCss).toContain("(hover: hover) and (pointer: fine)");
+    expect(timeLineCss).toContain("--_lc-resize-handle-event-hover: 0.88");
+  });
+});
+
+describe("TimeLine touch resize selection wiring", () => {
+  const timeLineTs = readCss("TimeLine.ts");
+  const timelineViewTs = readCss("../CalendarTimelineView/CalendarTimelineView.ts");
+
+  it("marks resize handles active only for the selected event key", () => {
+    expect(timeLineTs).toContain("selectedEventKey");
+    expect(timeLineTs).toContain("isTouchResizeHandleActive");
+    expect(timeLineTs).toContain("#eventAccentVars");
+    const startIdx = timeLineTs.indexOf("--__start:${this.#axisPct");
+    const endIdx = timeLineTs.indexOf("--__end:${endInset}");
+    const accentIdx = timeLineTs.indexOf("${this.#eventAccentVars(templateEv)}");
+    expect(startIdx).toBeGreaterThan(-1);
+    expect(endIdx).toBeGreaterThan(startIdx);
+    expect(accentIdx).toBeGreaterThan(endIdx);
+    expect(timelineViewTs).toContain(".selectedEventKey=${this.selectedEventKey");
+    expect(timelineViewTs).toContain('attribute: "selected-event-key"');
   });
 });

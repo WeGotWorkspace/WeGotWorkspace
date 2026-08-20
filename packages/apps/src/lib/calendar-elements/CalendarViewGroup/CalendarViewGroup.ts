@@ -19,11 +19,7 @@ import { startOfWeekFor, weekNumberForDate } from "../utils/WeekNumber.js";
 import componentStyle from "./CalendarViewGroup.css?inline";
 import type { PendingCreateGeometry } from "../CalendarTimelineView/pendingOccurrenceGeometry.js";
 import { monthAnchorDate, yearAnchorDate } from "./timelineAnchorDates.js";
-
-type RangeLabelPart = {
-  text: string;
-  isYear: boolean;
-};
+import { calendarRangeLabelParts, type CalendarRangeLabelPart } from "./calendar-range-label.js";
 
 @customElement("calendar-view-group")
 export class CalendarViewGroup extends CalendarViewBase {
@@ -39,6 +35,8 @@ export class CalendarViewGroup extends CalendarViewBase {
   rtl = false;
   /** Create-dialog range from the React surface; forwarded to the timeline. */
   pendingCreateIntent: PendingCreateGeometry | null = null;
+  /** Details-popover event; forwarded so TimeLine can show coarse resize grabbers. */
+  selectedEventKey = "";
 
   static get properties() {
     return {
@@ -67,6 +65,7 @@ export class CalendarViewGroup extends CalendarViewBase {
       visibleHours: { type: Number, attribute: "visible-hours" },
       rtl: { type: Boolean, reflect: true },
       pendingCreateIntent: { attribute: false },
+      selectedEventKey: { type: String, attribute: "selected-event-key" },
     } as const;
   }
 
@@ -169,35 +168,18 @@ export class CalendarViewGroup extends CalendarViewBase {
     return this.rangeLabelParts.map((part) => part.text).join("");
   }
 
-  get rangeLabelParts(): RangeLabelPart[] {
+  get rangeLabelParts(): CalendarRangeLabelPart[] {
     const lang = resolveLocale(this.lang);
     const anchor = this.#resolvedStartDate;
-    const anchorDate = new Date(Date.UTC(anchor.year, anchor.month - 1, anchor.day));
-
-    if (this.view === "year") {
-      return [
-        {
-          text: new Intl.DateTimeFormat(lang, { year: "numeric" }).format(anchorDate),
-          isYear: false,
-        },
-      ];
-    }
-
-    if (this.view === "month") {
-      return this.#dateLabelParts(
-        new Intl.DateTimeFormat(lang, { month: "long", year: "numeric" }),
-        new Date(Date.UTC(anchor.year, anchor.month - 1, 1)),
-      );
-    }
-
-    if (this.view === "day") {
-      return this.#dateLabelParts(new Intl.DateTimeFormat(lang, { dateStyle: "long" }), anchorDate);
-    }
-
     const start = this.#weekRangeStartDate;
-    const rangeLengthDays = this.daysPerWeek;
-    const end = start.add({ days: rangeLengthDays - 1 });
-    return this.#weekRangeLabelParts(start, end, lang);
+    const end = start.add({ days: this.daysPerWeek - 1 });
+    return calendarRangeLabelParts({
+      view: this.view,
+      anchor,
+      locale: lang,
+      weekStart: start,
+      weekEnd: end,
+    });
   }
 
   get startDate(): Temporal.PlainDate | undefined {
@@ -297,6 +279,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .currentTime=${this.#resolvedCurrentTime}
           .selectedCalendarId=${this.selectedCalendarId}
           .pendingCreateIntent=${this.pendingCreateIntent}
+          .selectedEventKey=${this.selectedEventKey}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
           @event-created=${this.forwardComposedCalendarEvent}
@@ -328,6 +311,7 @@ export class CalendarViewGroup extends CalendarViewBase {
           .currentTime=${this.#resolvedCurrentTime}
           .selectedCalendarId=${this.selectedCalendarId}
           .pendingCreateIntent=${this.pendingCreateIntent}
+          .selectedEventKey=${this.selectedEventKey}
           @day-selection=${this.#handleDaySelectionRequested}
           @event-create-requested=${this.forwardComposedCalendarEvent}
           @event-created=${this.forwardComposedCalendarEvent}
@@ -361,6 +345,7 @@ export class CalendarViewGroup extends CalendarViewBase {
         .visibleHours=${this.visibleHours}
         .selectedCalendarId=${this.selectedCalendarId}
         .pendingCreateIntent=${this.pendingCreateIntent}
+        .selectedEventKey=${this.selectedEventKey}
         @active-date-changed=${this.#handleWeekActiveDateChanged}
         @day-selection=${this.#handleDaySelectionRequested}
         @event-create-requested=${this.forwardComposedCalendarEvent}
@@ -461,51 +446,6 @@ export class CalendarViewGroup extends CalendarViewBase {
 
   #startOfWeekFor(date: Temporal.PlainDate, weekStart: WeekdayNumber): Temporal.PlainDate {
     return startOfWeekFor(date, weekStart);
-  }
-
-  #weekRangeLabelParts(
-    start: Temporal.PlainDate,
-    end: Temporal.PlainDate,
-    lang: string,
-  ): RangeLabelPart[] {
-    const startDate = new Date(Date.UTC(start.year, start.month - 1, start.day));
-    const endDate = new Date(Date.UTC(end.year, end.month - 1, end.day));
-    const yearText = new Intl.DateTimeFormat(lang, { year: "numeric" }).format(startDate);
-
-    if (start.year === end.year && start.month === end.month) {
-      const month = new Intl.DateTimeFormat(lang, { month: "short" }).format(startDate);
-      return [
-        { text: `${month} ${start.day}-${end.day}, `, isYear: false },
-        { text: yearText, isYear: true },
-      ];
-    }
-
-    if (start.year === end.year) {
-      const startPart = new Intl.DateTimeFormat(lang, { month: "short", day: "numeric" }).format(
-        startDate,
-      );
-      const endPart = new Intl.DateTimeFormat(lang, { month: "short", day: "numeric" }).format(
-        endDate,
-      );
-      return [
-        { text: `${startPart} - ${endPart}, `, isYear: false },
-        { text: yearText, isYear: true },
-      ];
-    }
-
-    const mediumDateFormatter = new Intl.DateTimeFormat(lang, { dateStyle: "medium" });
-    return [
-      ...this.#dateLabelParts(mediumDateFormatter, startDate),
-      { text: " - ", isYear: false },
-      ...this.#dateLabelParts(mediumDateFormatter, endDate),
-    ];
-  }
-
-  #dateLabelParts(formatter: Intl.DateTimeFormat, date: Date): RangeLabelPart[] {
-    return formatter.formatToParts(date).map((part) => ({
-      text: part.value,
-      isYear: part.type === "year",
-    }));
   }
 
   #weekNumberFromStartDate(date: Temporal.PlainDate): number {

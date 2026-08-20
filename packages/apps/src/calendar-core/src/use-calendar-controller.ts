@@ -13,6 +13,10 @@ import type {
 } from "@/calendar-core/src/calendar-types";
 import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/calendar-event-model";
 import {
+  calendarRangeLabel,
+  type CalendarRangeLabelDensity,
+} from "@/lib/calendar-elements/CalendarViewGroup/calendar-range-label";
+import {
   calendarRouteKey,
   DEFAULT_CALENDAR_PRESENTATION,
   DEFAULT_CALENDAR_VIEW,
@@ -20,7 +24,6 @@ import {
 } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import {
-  calendarEventToForm,
   createIntentToForm,
   emptyCalendarEventForm,
   engineEventToForm,
@@ -48,17 +51,16 @@ import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
   forkSeriesDraftWithSplitOverrides,
-  formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
   resolveSeriesRecurrenceOverrides,
   seriesRecurrenceRulesForSplit,
-  splitOccurrenceKey,
   truncateMasterSeriesPatch,
   type RecurrenceEditScope,
   type RecurrenceScopeChoice,
   type RecurrenceScopeRequest,
 } from "@/calendar-core/src/calendar-recurrence-scope";
+import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
@@ -93,39 +95,25 @@ export type UseCalendarControllerOptions = {
   sessionName?: string;
 };
 
-const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-};
-
-function rangeTitle(view: CalendarViewId, anchorISO: string, locale: string): string {
+function rangeTitle(
+  view: CalendarViewId,
+  anchorISO: string,
+  locale: string,
+  density: CalendarRangeLabelDensity = "full",
+): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
-  if (view === "month") {
-    return anchor.toLocaleString(locale, MONTH_TITLE);
-  }
-  if (view === "year") {
-    return String(anchor.year);
-  }
-  if (view === "day") {
-    return anchor.toLocaleString(locale, {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  if (view !== "week") {
+    return calendarRangeLabel({ view, anchor, locale, density });
   }
   const range = viewDateRange(view, anchorISO);
-  const last = range.end.subtract({ days: 1 });
-  const sameMonth = range.start.month === last.month && range.start.year === last.year;
-  const startLabel = range.start.toLocaleString(locale, { day: "numeric", month: "short" });
-  const endLabel = last.toLocaleString(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+  return calendarRangeLabel({
+    view,
+    anchor,
+    locale,
+    density,
+    weekStart: range.start,
+    weekEnd: range.end.subtract({ days: 1 }),
   });
-  return sameMonth
-    ? `${range.start.day}–${last.day} ${last.toLocaleString(locale, { month: "long", year: "numeric" })}`
-    : `${startLabel} – ${endLabel}`;
 }
 
 function draftFromForm(
@@ -437,46 +425,19 @@ export function useCalendarController({
 
   const openEditEventKey = useCallback(
     async (key: string) => {
-      const { masterId, recurrenceId } = splitOccurrenceKey(key);
-      if (pendingDeletedEventIds.has(masterId)) return;
-
-      const wireEvent = data.events.find((entry) => entry.id === masterId);
-      const occurrenceEngine = surfaceEvents?.get(key);
-      const masterEngine = surfaceEvents?.get(masterId);
-      let form = wireEvent
-        ? calendarEventToForm(wireEvent)
-        : masterEngine
-          ? engineEventToForm(masterEngine)
-          : occurrenceEngine
-            ? engineEventToForm(occurrenceEngine)
-            : null;
-      if (!form) return;
-
-      // Prefill wall times from the clicked occurrence (master form starts at series start).
-      // Surface maps only store masters — derive from recurrenceId when the expanded
-      // occurrence row is absent, so this-and-future forks do not restart at series start.
-      if (recurrenceId) {
-        if (occurrenceEngine) {
-          const occurrenceForm = engineEventToForm(occurrenceEngine);
-          form = {
-            ...form,
-            allDay: occurrenceForm.allDay,
-            startDate: occurrenceForm.startDate,
-            startTime: occurrenceForm.startTime,
-            endDate: occurrenceForm.endDate,
-            endTime: occurrenceForm.endTime,
-          };
-        } else {
-          form = formAnchoredToOccurrence(form, recurrenceId);
-        }
-      }
+      const preview = resolveCalendarEventPreview(key, {
+        events: data.events,
+        surfaceEvents,
+        pendingDeletedEventIds,
+      });
+      if (!preview) return;
 
       // Open the editor immediately — recurrence scope is chosen on Save / Delete.
       setEditor({
         mode: "edit",
-        eventId: masterId,
-        form,
-        ...(recurrenceId ? { recurrenceId } : {}),
+        eventId: preview.eventId,
+        form: preview.form,
+        ...(preview.recurrenceId ? { recurrenceId: preview.recurrenceId } : {}),
       });
     },
     [data.events, surfaceEvents, pendingDeletedEventIds],
@@ -1081,6 +1042,8 @@ export function useCalendarController({
     setAnchor,
     dateRange,
     title: rangeTitle(view, anchor, locale),
+    compactTitle:
+      view === "day" || view === "week" ? rangeTitle(view, anchor, locale, "compact") : undefined,
     goToday,
     goPrevious,
     goNext,
