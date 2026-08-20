@@ -6,6 +6,7 @@ import {
   sessionEventInviteeStatus,
 } from "@/calendar-core/src/calendar-attendees";
 import {
+  detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
@@ -78,16 +79,17 @@ export function CalendarEventDetailsPopover({
   const showRsvp = Boolean(onRsvp) && isSessionEventInvitee(form.attendees, sessionEmail);
   const rsvpStatus = sessionEventInviteeStatus(form.attendees, sessionEmail);
   const docked = detailsPopoverShouldDock(origin);
+  const placementOrigin = origin && !docked ? detailsPopoverAnchorOrigin(origin) : origin;
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
   const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
   const anchorStyle = docked
     ? { left: 0, top: 0, width: 0, height: 0 }
-    : origin
+    : placementOrigin
       ? {
-          left: origin.left,
-          top: origin.top,
-          width: origin.width,
-          height: origin.height,
+          left: placementOrigin.left,
+          top: placementOrigin.top,
+          width: placementOrigin.width,
+          height: placementOrigin.height,
         }
       : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
 
@@ -135,17 +137,16 @@ export function CalendarEventDetailsPopover({
         }}
       >
         <header className="calendar-event-details-popover__header">
-          <h2 className="calendar-event-details-popover__title">{title}</h2>
-          {calendar ? (
-            <p className="calendar-event-details-popover__calendar">
+          <h2 className="calendar-event-details-popover__title">
+            {calendar ? (
               <span
                 className="calendar-event-details-popover__swatch"
                 style={{ backgroundColor: calendar.color }}
                 aria-hidden
               />
-              <span>{calendar.name}</span>
-            </p>
-          ) : null}
+            ) : null}
+            {title}
+          </h2>
         </header>
         <div className="calendar-event-details-popover__details">
           <DetailRow

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
+  detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
@@ -97,5 +98,23 @@ describe("detailsPopoverShouldDock", () => {
   it("docks a tall compact-month cell origin and leaves a card-sized origin undocked", () => {
     expect(detailsPopoverShouldDock({ left: 120, top: 80, width: 48, height: 140 })).toBe(true);
     expect(detailsPopoverShouldDock({ left: 48, top: 96, width: 180, height: 36 })).toBe(false);
+  });
+
+  it("leaves a tall week-view segment undocked so the popover stays compact", () => {
+    expect(detailsPopoverShouldDock({ left: 420, top: 160, width: 168, height: 420 })).toBe(false);
+    expect(detailsPopoverShouldDock({ left: 280, top: 48, width: 336, height: 520 })).toBe(false);
+  });
+});
+
+describe("detailsPopoverAnchorOrigin", () => {
+  it("keeps a short card origin and clamps a tall segment to a compact head", () => {
+    const short = { left: 48, top: 96, width: 180, height: 36 };
+    expect(detailsPopoverAnchorOrigin(short)).toEqual(short);
+    expect(detailsPopoverAnchorOrigin({ left: 420, top: 160, width: 168, height: 420 })).toEqual({
+      left: 420,
+      top: 160,
+      width: 168,
+      height: 40,
+    });
   });
 });

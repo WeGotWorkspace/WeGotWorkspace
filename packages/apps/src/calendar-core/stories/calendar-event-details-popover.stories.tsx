@@ -40,11 +40,38 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await expect(canvas.getByRole("heading", { name: "Lunch" })).toBeTruthy();
+    const heading = canvas.getByRole("heading", { name: "Lunch" });
+    await expect(heading).toBeTruthy();
+    await expect(heading.querySelector(".calendar-event-details-popover__swatch")).toBeTruthy();
+    await expect(canvas.queryByText("Personal")).toBeNull();
     await userEvent.click(
       canvas.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
     );
     await expect(args.onEdit).toHaveBeenCalled();
+  },
+};
+
+export const TallWeekSegment: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    origin: { left: 420, top: 160, width: 168, height: 420 },
+    preview: {
+      eventId: "two",
+      form: {
+        ...lunchForm,
+        title: "Two",
+        startDate: "2026-08-20",
+        startTime: "14:00",
+        endDate: "2026-08-21",
+        endTime: "15:45",
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const popover = canvas.getByRole("dialog", { name: "Two" });
+    await expect(popover.className).toContain("calendar-event-details-popover");
+    await expect(popover.className).not.toContain("calendar-event-details-popover--docked");
   },
 };
 
