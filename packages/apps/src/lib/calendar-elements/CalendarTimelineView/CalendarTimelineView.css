@@ -279,7 +279,8 @@ time-line.timeline-main {
 }
 
 /* Narrow-week pager breakpoints (grid-week parity: CalendarWeekView.css). Touch-first: the
-   pointer:fine override below restores all columns on desktop, where there is no swipe. */
+   pointer:fine override below restores all columns on desktop, where there is no swipe.
+   Floor is 3 days so a phone-width week still shows a useful stretch of the range. */
 @container lc-timeline-composed (max-width: 1100px) {
   .timeline-swipe {
     --_lc-timeline-visible-columns: 6;
@@ -301,12 +302,6 @@ time-line.timeline-main {
 @container lc-timeline-composed (max-width: 700px) {
   .timeline-swipe {
     --_lc-timeline-visible-columns: 3;
-  }
-}
-
-@container lc-timeline-composed (max-width: 540px) {
-  .timeline-swipe {
-    --_lc-timeline-visible-columns: 2;
   }
 }
 
