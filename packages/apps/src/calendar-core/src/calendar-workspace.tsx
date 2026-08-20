@@ -557,7 +557,13 @@ export function CalendarWorkspace({
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
                 />
-                <Button label={L.today} onClick={goToday} variant="subtle" size="sm" />
+                <Button
+                  className="calendar-header-today"
+                  label={L.today}
+                  onClick={goToday}
+                  variant="subtle"
+                  size="sm"
+                />
               </div>
             }
           />

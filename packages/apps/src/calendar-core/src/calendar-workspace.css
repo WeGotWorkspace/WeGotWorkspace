@@ -91,12 +91,87 @@
   --wai-detail-muted: #c7d2fe;
 }
 
-/* Prev/next stays before the title (ViewHeader titleLeading). Inbox is
-   titleTrailing so stacked/narrow rows keep it on row 1 end. Same gap as
-   view switch ↔ Today. */
+/* Inbox is titleTrailing (row 1 end). Prev/next is titleLeading (row 2 end). */
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
+}
+
+/*
+ * Small viewports: two-row header matching the calendar mock.
+ *   [☰] [Week] [grid|list]              [inbox]
+ *   [1–7 Feb 2027]                      [<] [>]
+ * Viewport media (not a container query): flattening `__main` with
+ * `display: contents` would otherwise drop the query container and snap back.
+ */
+@media (max-width: 40rem) {
+  .calendar-workspace .view-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "toggle actions trailing"
+      "title title leading";
+    align-items: center;
+    column-gap: 0.25rem;
+    row-gap: 0.75rem;
+  }
+
+  .calendar-workspace .view-header__sidebar-toggle {
+    grid-area: toggle;
+  }
+
+  .calendar-workspace .view-header__main,
+  .calendar-workspace .view-header__title-row,
+  .calendar-workspace .view-header__title-cluster,
+  .calendar-workspace .view-header__end {
+    display: contents;
+  }
+
+  .calendar-workspace .view-header__actions {
+    grid-area: actions;
+    justify-self: start;
+  }
+
+  .calendar-workspace .view-header__title {
+    grid-area: title;
+    @apply overflow-visible whitespace-normal text-xl leading-tight;
+    text-overflow: unset;
+  }
+
+  .calendar-workspace .view-header__title-leading {
+    grid-area: leading;
+    justify-self: end;
+  }
+
+  .calendar-workspace .view-header__title-trailing {
+    grid-area: trailing;
+    justify-self: end;
+  }
+
+  .calendar-workspace .calendar-header-today {
+    @apply hidden;
+  }
+
+  .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
+    @apply size-8;
+  }
+
+  .calendar-workspace .calendar-header-actions .calendar-view-select {
+    @apply h-8 min-w-0;
+  }
+
+  .calendar-workspace
+    .view-header__title:has(.view-header__title-compact)
+    .view-header__title-full {
+    @apply hidden;
+  }
+
+  .calendar-workspace .view-header__title-compact {
+    @apply inline;
+  }
 }
 
 .calendar-workspace .view-header__end {

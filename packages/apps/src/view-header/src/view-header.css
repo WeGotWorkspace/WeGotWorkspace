@@ -11,6 +11,10 @@
   @apply flex items-start gap-3;
 }
 
+.view-header__sidebar-toggle {
+  @apply flex shrink-0 items-center;
+}
+
 /** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
@@ -80,26 +84,34 @@
 }
 
 /**
- * Stacked variant: prev/next + title on row 1 start, optional titleTrailing
- * on row 1 end, actions on row 2. Used as-is for `layout="stacked"`, and by
- * the container-query / viewport fallback for `layout="responsive"`.
- * `display: contents` on `__end` lets trailing occupy the first-row end
- * independently of the wrapping actions cluster.
+ * Stacked variant: view actions on row 1 start, optional titleTrailing on
+ * row 1 end, title on row 2 start, optional titleLeading (prev/next) on
+ * row 2 end. Used as-is for `layout="stacked"`, and by the container-query
+ * / viewport fallback for `layout="responsive"`.
+ * `display: contents` on `__end` and `__title-cluster` lets trailing, title,
+ * and leading occupy their own grid areas.
  */
 .view-header__title-row--stacked {
   grid-template-columns: minmax(0, 1fr) max-content;
   grid-template-areas:
-    "cluster trailing"
-    "actions actions";
+    "actions trailing"
+    "title leading";
   row-gap: 0.5rem;
 }
 
-.view-header__title-row--stacked .view-header__end {
+.view-header__title-row--stacked .view-header__end,
+.view-header__title-row--stacked .view-header__title-cluster {
   display: contents;
 }
 
-.view-header__title-row--stacked .view-header__title-cluster {
-  grid-area: cluster;
+.view-header__title-row--stacked .view-header__title {
+  grid-area: title;
+  @apply overflow-visible whitespace-normal leading-tight;
+  text-overflow: unset;
+}
+
+.view-header__title-row--stacked .view-header__title-leading {
+  grid-area: leading;
 }
 
 .view-header__title-row--stacked .view-header__title-trailing {
@@ -108,12 +120,7 @@
 
 .view-header__title-row--stacked .view-header__actions {
   grid-area: actions;
-  @apply w-full flex-wrap;
-}
-
-.view-header__title-row--stacked .view-header__title {
-  @apply overflow-visible whitespace-normal leading-tight;
-  text-overflow: unset;
+  @apply flex-wrap justify-start;
 }
 
 @container view-header-main (max-width: 40rem) {
@@ -124,17 +131,24 @@
   .view-header__title-row--responsive {
     grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
-      "cluster trailing"
-      "actions actions";
+      "actions trailing"
+      "title leading";
     row-gap: 0.5rem;
   }
 
-  .view-header__title-row--responsive .view-header__end {
+  .view-header__title-row--responsive .view-header__end,
+  .view-header__title-row--responsive .view-header__title-cluster {
     display: contents;
   }
 
-  .view-header__title-row--responsive .view-header__title-cluster {
-    grid-area: cluster;
+  .view-header__title-row--responsive .view-header__title {
+    grid-area: title;
+    @apply overflow-visible whitespace-normal leading-tight;
+    text-overflow: unset;
+  }
+
+  .view-header__title-row--responsive .view-header__title-leading {
+    grid-area: leading;
   }
 
   .view-header__title-row--responsive .view-header__title-trailing {
@@ -143,12 +157,7 @@
 
   .view-header__title-row--responsive .view-header__actions {
     grid-area: actions;
-    @apply w-full flex-wrap;
-  }
-
-  .view-header__title-row--responsive .view-header__title {
-    @apply overflow-visible whitespace-normal leading-tight;
-    text-overflow: unset;
+    @apply flex-wrap justify-start;
   }
 
   .view-header__title:has(.view-header__title-compact) .view-header__title-full {
@@ -169,17 +178,24 @@
     .view-header__title-row--responsive {
       grid-template-columns: minmax(0, 1fr) max-content;
       grid-template-areas:
-        "cluster trailing"
-        "actions actions";
+        "actions trailing"
+        "title leading";
       row-gap: 0.5rem;
     }
 
-    .view-header__title-row--responsive .view-header__end {
+    .view-header__title-row--responsive .view-header__end,
+    .view-header__title-row--responsive .view-header__title-cluster {
       display: contents;
     }
 
-    .view-header__title-row--responsive .view-header__title-cluster {
-      grid-area: cluster;
+    .view-header__title-row--responsive .view-header__title {
+      grid-area: title;
+      @apply overflow-visible whitespace-normal leading-tight;
+      text-overflow: unset;
+    }
+
+    .view-header__title-row--responsive .view-header__title-leading {
+      grid-area: leading;
     }
 
     .view-header__title-row--responsive .view-header__title-trailing {
@@ -188,12 +204,7 @@
 
     .view-header__title-row--responsive .view-header__actions {
       grid-area: actions;
-      @apply w-full flex-wrap;
-    }
-
-    .view-header__title-row--responsive .view-header__title {
-      @apply overflow-visible whitespace-normal leading-tight;
-      text-overflow: unset;
+      @apply flex-wrap justify-start;
     }
 
     .view-header__title:has(.view-header__title-compact) .view-header__title-full {

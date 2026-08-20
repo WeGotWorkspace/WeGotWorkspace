@@ -22,13 +22,13 @@ type ViewHeaderProps = {
    */
   layout?: ViewHeaderLayout;
   /**
-   * Optional period controls (e.g. calendar prev/next). Always before the title
-   * at the start of the first row (inline, stacked, and narrow responsive).
+   * Optional period controls (e.g. calendar prev/next). Inline: before the
+   * title. Stacked / narrow responsive: end of row 2 (after the title).
    */
   titleLeading?: ReactNode;
   /**
    * Optional first-row trailing control (e.g. calendar inbox). Inline: after
-   * `actions`. Stacked / narrow responsive: end of row 1 while `actions` wrap.
+   * `actions`. Stacked / narrow responsive: end of row 1.
    */
   titleTrailing?: ReactNode;
   subtitle?: string;
@@ -80,7 +80,9 @@ export function ViewHeader({
     <>
       <div className="view-header">
         {hideSidebarToggle ? null : (
-          <WorkspaceSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar ?? (() => {})} />
+          <div className="view-header__sidebar-toggle">
+            <WorkspaceSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar ?? (() => {})} />
+          </div>
         )}
         <div className="view-header__main">
           <div

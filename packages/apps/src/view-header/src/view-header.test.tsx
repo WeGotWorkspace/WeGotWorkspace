@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { TooltipProvider } from "@/ui/tooltip";
 import { ViewHeader } from "@/view-header/src/view-header";
 
 const baseProps = {
@@ -127,6 +128,15 @@ describe("ViewHeader layout", () => {
         .querySelector(".view-header__title-row")
         ?.classList.contains("view-header__title-row--responsive"),
     ).toBe(true);
+  });
+
+  it("renders the sidebar toggle in a dedicated slot", () => {
+    const { container } = render(
+      <TooltipProvider delayDuration={0}>
+        <ViewHeader title="All Items" sidebarOpen={false} onToggleSidebar={() => {}} />
+      </TooltipProvider>,
+    );
+    expect(container.querySelector(".view-header__sidebar-toggle")).not.toBeNull();
   });
 
   it("keeps titleLeading before the title when stacked", () => {

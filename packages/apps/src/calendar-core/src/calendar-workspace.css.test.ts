@@ -35,5 +35,17 @@ describe("calendar workspace header markup", () => {
     );
     expect(actionsBlock?.[1]).toBeDefined();
     expect(actionsBlock![1]).not.toMatch(/CalendarInvitationsTrigger/);
+    expect(actionsBlock![1]).toMatch(/calendar-header-today/);
+  });
+});
+
+describe("calendar workspace stacked header", () => {
+  it("uses a viewport two-row grid so flattening main cannot drop the query", () => {
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)[\s\S]*"toggle actions trailing"[\s\S]*"title title leading"/,
+    );
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)[\s\S]*\.calendar-header-today \{[\s\S]*hidden/,
+    );
   });
 });
