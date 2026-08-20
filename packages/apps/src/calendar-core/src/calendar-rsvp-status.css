@@ -1,7 +1,7 @@
 /*
  * RSVP chips reuse Callout severity hues (success / error) and the shared
  * docs/info blue already used for accent chips — applied via Tag --tag-* vars.
- * Invitees-card Tags and invitation-card RSVP buttons share these tokens.
+ * Invitees-card status marks and invitation-card RSVP buttons share these tokens.
  */
 .calendar-rsvp-status--accepted,
 .calendar-invitees-rsvp-tag--accepted,
@@ -30,13 +30,13 @@
   --tag-fg: #b14242;
 }
 
-.calendar-invitees-rsvp-tag--organizer {
+.calendar-invitees-status-mark--organizer {
   --tag-bg: color-mix(in oklab, var(--share-dialog-accent, var(--color-ink)) 16%, transparent);
   --tag-fg: var(--share-dialog-accent, var(--color-ink));
 }
 
-.calendar-invitees-rsvp-tag--pending,
-.calendar-invitees-rsvp-tag--delegated {
+.calendar-invitees-status-mark--pending,
+.calendar-invitees-status-mark--delegated {
   --tag-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --tag-fg: color-mix(in oklab, var(--color-ink) 72%, transparent);
 }

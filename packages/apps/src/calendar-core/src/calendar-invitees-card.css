@@ -2,34 +2,25 @@
 @import "./calendar-rsvp-status.css";
 
 /**
- * Invitee rows keep identity visible: wrap the chip/delete instead of
- * shrinking the name. Status lives on the avatar; full-text chips hide
- * on narrow widths so they do not compete with the name.
+ * Invitee rows keep identity visible: wrap the delete control instead of
+ * shrinking the name. Status lives on the avatar (icon + color + tooltip).
  */
 .calendar-invitees-card {
   container: calendar-invitees / inline-size;
 }
 
 .calendar-invitees-card .card__row {
-  @apply flex-wrap;
+  @apply flex-wrap items-center;
 }
 
 .calendar-invitees-card .card__row-main {
   flex: 1 1 10rem;
   min-width: min(10rem, 100%);
-}
-
-.calendar-invitees-card .card__row-title-line {
-  @apply flex-wrap;
-}
-
-.calendar-invitees-card .card__row-title-group {
-  flex: 1 1 8rem;
-  min-width: min(8rem, 100%);
+  @apply self-center;
 }
 
 .calendar-invitees-status-mark-trigger {
-  @apply inline-flex shrink-0 rounded-full;
+  @apply inline-flex shrink-0 items-center self-center rounded-full;
 }
 
 .calendar-invitees-status-mark-trigger:focus-visible {
@@ -45,42 +36,30 @@
   @apply size-3.5;
 }
 
-.calendar-invitees-card .card__row-title-line .tag {
-  @apply shrink-0;
-}
-
 .calendar-invitees-card .card__row-action {
-  @apply ms-auto;
+  @apply ms-auto self-center;
 }
 
 @container calendar-invitees (max-width: 22rem) {
   .calendar-invitees-card .card__row {
-    @apply items-start;
+    @apply items-center;
   }
 
   .calendar-invitees-card .card__row-title {
     @apply overflow-visible whitespace-normal;
     text-overflow: unset;
   }
-
-  .calendar-invitees-status-tag {
-    @apply hidden;
-  }
 }
 
 @supports not (container-type: inline-size) {
   @media (max-width: 22rem) {
     .calendar-invitees-card .card__row {
-      @apply items-start;
+      @apply items-center;
     }
 
     .calendar-invitees-card .card__row-title {
       @apply overflow-visible whitespace-normal;
       text-overflow: unset;
-    }
-
-    .calendar-invitees-status-tag {
-      @apply hidden;
     }
   }
 }

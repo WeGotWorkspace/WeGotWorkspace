@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Crown, Users, type LucideIcon } from "lucide-react";
+import { Clock, Crown, Users, type LucideIcon } from "lucide-react";
 import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   attendeesIncludeInvitee,
@@ -22,7 +22,6 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import { Tag } from "@/tag/src/tag";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
@@ -71,9 +70,9 @@ function rsvpToneClass(status: CalendarParticipationStatus): string | undefined 
     case "declined":
       return "calendar-invitees-rsvp-tag--declined";
     case "delegated":
-      return "calendar-invitees-rsvp-tag--delegated";
+      return "calendar-invitees-status-mark--delegated";
     case "needs-action":
-      return "calendar-invitees-rsvp-tag--pending";
+      return "calendar-invitees-status-mark--pending";
     default:
       return undefined;
   }
@@ -244,44 +243,27 @@ export function CalendarInviteesCard({
             <InviteeStatusMark
               label={labels.eventAttendeesOrganizer}
               icon={Crown}
-              toneClass="calendar-invitees-rsvp-tag--organizer"
+              toneClass="calendar-invitees-status-mark--organizer"
             />
           }
           title={organizer.name || organizer.email}
-          titleEnd={
-            <Tag label={labels.eventAttendeesOrganizer} className="calendar-invitees-status-tag" />
-          }
+          showRemove={!readOnly}
+          removeDisabled
+          removeLabel={labels.eventAttendeesRemove}
         />
       ) : null}
       {listed.map((attendee) => {
         const title = attendee.name || attendee.email;
-        const status = rsvpLabel(attendee.participationStatus, labels);
+        const status =
+          rsvpLabel(attendee.participationStatus, labels) ?? labels.eventAttendeesRsvpNeedsAction;
         const toneClass = rsvpToneClass(attendee.participationStatus);
-        const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus);
+        const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus) ?? Clock;
 
         return (
           <ShareAccessRow
             key={attendee.email}
-            mark={
-              status && StatusIcon ? (
-                <InviteeStatusMark label={status} icon={StatusIcon} toneClass={toneClass} />
-              ) : (
-                <SharePrincipalMark principalType="user" displayName={title} active />
-              )
-            }
+            mark={<InviteeStatusMark label={status} icon={StatusIcon} toneClass={toneClass} />}
             title={title}
-            titleEnd={
-              status ? (
-                <Tag
-                  label={status}
-                  className={
-                    toneClass
-                      ? `calendar-invitees-status-tag ${toneClass}`
-                      : "calendar-invitees-status-tag"
-                  }
-                />
-              ) : null
-            }
             removeLabel={labels.eventAttendeesRemove}
             removeDisabled={locked}
             onRemove={
