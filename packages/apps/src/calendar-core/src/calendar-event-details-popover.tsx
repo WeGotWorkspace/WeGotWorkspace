@@ -136,7 +136,7 @@ export function CalendarEventDetailsPopover({
           focusable?.focus();
         }}
       >
-        <header className="calendar-event-details-popover__header">
+        <header>
           <h2 className="calendar-event-details-popover__title">
             {calendar ? (
               <span

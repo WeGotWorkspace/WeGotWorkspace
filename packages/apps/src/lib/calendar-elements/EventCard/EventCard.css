@@ -26,8 +26,7 @@
   --_lc-event-recurring-icon-size: 13px;
   --_lc-event-card-segment-radius: var(--lc-event-card-radius, var(--radius-sm));
   --_lc-resize-handle-color: var(--_lc-event-card-text-color);
-  /* Block-leading chrome inset: TimeLine `--time-line-event-inset` uses this 1px on all
-     four sides (old T/B fill inset; do not use the old 4px inline gutter). */
+  /* Four-side fill inset; TimeLine `--time-line-event-inset` aliases this. */
   --_lc-event-card-inset: 1px;
 }
 

@@ -48,10 +48,6 @@
   position-area: top right;
 }
 
-.calendar-event-details-popover__header {
-  @apply flex min-w-0;
-}
-
 .calendar-event-details-popover__title {
   @apply m-0 flex min-w-0 items-center gap-2 text-base font-semibold leading-snug text-[color:var(--color-ink)];
 }

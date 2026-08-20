@@ -40,8 +40,7 @@
 }
 
 .collection-state__icon:not(.collection-state__icon--loading) > * {
-  width: 100%;
-  height: 100%;
+  @apply size-full;
 }
 
 .collection-state__icon--loading {

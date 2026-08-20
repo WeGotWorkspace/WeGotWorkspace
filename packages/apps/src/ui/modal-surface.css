@@ -2,7 +2,7 @@
 
 .ui-modal-surface {
   --modal-inset: 1rem;
-  --modal-close-size: calc(var(--input-height, 2.25rem) - 0.25rem);
+  --modal-close-size: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
   @apply p-[length:var(--modal-inset)];
 }

@@ -5,9 +5,7 @@
 :host {
   display: block;
   width: 100%;
-  /* Four-side gutter vs the grid. Leading value is the old block chrome
-     (`--_lc-event-card-inset` / former `inset-px` = 1px), not the old 4px inline gutter.
-     --time-line-event-inline-inset aliases this when a consumer sets it. */
+  /* Four-side gutter. `--time-line-event-inline-inset` overrides when set. */
   --time-line-event-inset: var(--time-line-event-inline-inset, var(--_lc-event-card-inset, 1px));
   /* Selected boost is added inside the same z-index formulas as rest/stagger so a later
      indent calc cannot wipe a separate 400 rule. Stays below create-preview 500 /
@@ -293,8 +291,7 @@
    visual/hit area grows, the underlying range (and gesture math, which reads event data and
    .cell-main rects, never this element's height) is untouched. */
 :host([flow="vertical"]) .event {
-  /* --time-line-event-inset: same gutter on all four sides. Value is the old block
-     chrome (1px), not the old 4px inline gutter. Overlap stagger indent is separate. */
+  /* Same gutter on all four sides. Overlap stagger indent is separate. */
   inset-inline: var(--time-line-event-inset);
   top: calc(var(--__start, 0) + var(--time-line-event-inset));
   bottom: calc(var(--__end, 0) + var(--time-line-event-inset));

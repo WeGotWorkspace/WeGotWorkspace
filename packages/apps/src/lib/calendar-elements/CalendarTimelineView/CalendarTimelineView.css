@@ -353,7 +353,7 @@ time-line.timeline-timed {
      so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
      each event-card. */
   --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, light-dark(#fff, #222));
-  /* Four-side gutter at the old block chrome size (1px), not the old 4px inline gutter. */
+  /* Same four-side gutter as all-day bars. */
   --time-line-event-inline-inset: 1px;
 }
 
