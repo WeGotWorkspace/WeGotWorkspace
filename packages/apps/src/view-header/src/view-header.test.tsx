@@ -128,4 +128,19 @@ describe("ViewHeader layout", () => {
         ?.classList.contains("view-header__title-row--responsive"),
     ).toBe(true);
   });
+
+  it("keeps a compact title available for narrow headers", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        title="Thursday, August 20, 2026"
+        compactTitle="Thu, Aug 20"
+        layout="responsive"
+      />,
+    );
+    expect(container.querySelector(".view-header__title-full")?.textContent).toBe(
+      "Thursday, August 20, 2026",
+    );
+    expect(container.querySelector(".view-header__title-compact")?.textContent).toBe("Thu, Aug 20");
+  });
 });

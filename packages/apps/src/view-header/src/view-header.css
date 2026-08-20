@@ -3,6 +3,14 @@
 
 @import "../../ui/anchored-dropdown.css";
 
+/**
+ * Toggle + title stack. `items-start` keeps the toggle on the title-row
+ * center line (row min-height matches the icon button) when a subtitle follows.
+ */
+.view-header {
+  @apply flex items-start gap-3;
+}
+
 /** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
@@ -46,6 +54,10 @@
   font-family: var(--font-sans);
 }
 
+.view-header__title-compact {
+  @apply hidden;
+}
+
 .view-header__actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
 }
@@ -67,11 +79,11 @@
 }
 
 .view-header__title-row--stacked .view-header__title-cluster {
-  @apply items-start;
+  @apply items-center;
 }
 
 .view-header__title-row--stacked .view-header__title {
-  @apply overflow-visible whitespace-normal text-xl leading-tight;
+  @apply overflow-visible whitespace-normal leading-tight;
   text-overflow: unset;
 }
 
@@ -88,12 +100,20 @@
   }
 
   .view-header__title-row--responsive .view-header__title-cluster {
-    @apply items-start;
+    @apply items-center;
   }
 
   .view-header__title-row--responsive .view-header__title {
-    @apply overflow-visible whitespace-normal text-xl leading-tight;
+    @apply overflow-visible whitespace-normal leading-tight;
     text-overflow: unset;
+  }
+
+  .view-header__title:has(.view-header__title-compact) .view-header__title-full {
+    @apply hidden;
+  }
+
+  .view-header__title-compact {
+    @apply inline;
   }
 }
 
@@ -111,12 +131,20 @@
     }
 
     .view-header__title-row--responsive .view-header__title-cluster {
-      @apply items-start;
+      @apply items-center;
     }
 
     .view-header__title-row--responsive .view-header__title {
-      @apply overflow-visible whitespace-normal text-xl leading-tight;
+      @apply overflow-visible whitespace-normal leading-tight;
       text-overflow: unset;
+    }
+
+    .view-header__title:has(.view-header__title-compact) .view-header__title-full {
+      @apply hidden;
+    }
+
+    .view-header__title-compact {
+      @apply inline;
     }
   }
 }
