@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Single sequential chunk — UI + persist live
 
 ## Goal
 
-Unlock Custom in the event dialog with frequency, interval, by-day, and end fields that persist JSCalendar `recurrenceRules`.
+Unlock Custom in the event dialog with frequency, interval, frequency-specific repeat-on, and end fields that persist JSCalendar `recurrenceRules`.
 
 ## Non-goals
 
