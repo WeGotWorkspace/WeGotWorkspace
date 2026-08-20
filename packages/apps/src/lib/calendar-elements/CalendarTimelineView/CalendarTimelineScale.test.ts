@@ -680,6 +680,41 @@ describe("now-badge x-alignment with hour labels", () => {
   });
 });
 
+describe("week-number corner alignment with time gutter and day-header row", () => {
+  const timelineCss = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
+    "utf8",
+  );
+  const weekdayHeaderCss = readFileSync(
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../CalendarWeekdayHeader/CalendarWeekdayHeader.css",
+    ),
+    "utf8",
+  );
+
+  it("end-aligns with time-gutter labels and struts to the day-number pill height", () => {
+    const weekNumberStart = timelineCss.indexOf(".timeline-week-number {");
+    const weekNumberEnd = timelineCss.indexOf(".timeline-swipe {");
+    const weekNumber = timelineCss.slice(weekNumberStart, weekNumberEnd);
+    expect(weekNumberStart).toBeGreaterThan(-1);
+    expect(weekNumberEnd).toBeGreaterThan(weekNumberStart);
+    expect(timelineCss).toContain("--_lc-time-sidebar-inline-padding: 6px");
+    expect(weekNumber).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 6px)");
+    expect(weekNumber).toContain("justify-content: end");
+    expect(weekNumber).toContain("text-align: end");
+    expect(weekNumber).not.toContain("justify-content: start");
+    expect(weekNumber).toContain("var(--_lc-weekday-header-font-size, 14px)");
+    expect(weekNumber).toContain("line-height: 1");
+    expect(weekNumber).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
+    expect(weekNumber).toContain("--muted-foreground");
+    expect(weekNumber).toContain("--_lc-outside-month-day-color");
+    expect(weekdayHeaderCss).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
+    expect(weekdayHeaderCss).toContain("font-size: var(--_lc-weekday-header-font-size, 14px)");
+    expect(weekdayHeaderCss).toContain("leading-none");
+  });
+});
+
 describe("composed timeline hour-line geometry", () => {
   const timelineCss = readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),

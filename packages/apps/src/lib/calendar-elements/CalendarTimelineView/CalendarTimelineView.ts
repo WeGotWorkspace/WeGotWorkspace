@@ -1729,7 +1729,9 @@ export class CalendarTimelineView extends CalendarViewBase {
    * week's number (day mode: the week containing that day). Same computation as
    * CalendarViewGroup's toolbar `weekNumber` (shared via utils/WeekNumber). Overlaps the
    * sidebar's grid cell and sticks above the shell; all static styling (including the logical
-   * start-corner placement that flips under RTL) lives in CalendarTimelineView.css.
+   * start-corner placement that flips under RTL, shared time-gutter end-alignment, and
+   * a day-number-height strut so W## baselines with the weekday-header name) lives in
+   * CalendarTimelineView.css.
    */
   #renderWeekNumberCorner(): TemplateResult {
     const weekNumber = weekNumberForDate(

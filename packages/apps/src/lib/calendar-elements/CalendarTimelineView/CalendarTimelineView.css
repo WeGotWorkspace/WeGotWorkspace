@@ -140,6 +140,8 @@ time-line.timeline-main {
   );
   /* Shared by the time-gutter hour rules and <time-line> `.cell-main--grid`. */
   --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
+  /* Shared gutter inset: hour labels, now-badge, and the week-number corner cell. */
+  --_lc-time-sidebar-inline-padding: 6px;
 }
 
 .timeline-sidebar {
@@ -151,7 +153,6 @@ time-line.timeline-main {
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
   background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
-  --_lc-time-sidebar-inline-padding: 6px;
   /* Internal layout mirrors the composed column: no weekday header row, an all-day slot as
      tall as the (measured) sticky shell — itself sticky, so it covers the top-left corner
      while scrolling — and the timed hour labels below. */
@@ -171,9 +172,17 @@ time-line.timeline-main {
    Overlaps the sidebar's grid cell (both are explicitly placed at row 1 / column 1) and
    sticks with the shell; grid column 1 is the inline-start column, so the corner flips to
    the right edge automatically under RTL. It paints above the sidebar's sticky slots
-   (z 2/3 in its shadow tree) and the all-day shell (z 3). Metrics mirror the weekday-header
-   row (26px min-height + 4px bottom padding = 30px) so the number centers on it. */
+   (z 2/3 in its shadow tree) and the all-day shell (z 3).
+   Horizontal: same inline-end inset as the time-column labels (shared
+   --_lc-time-sidebar-inline-padding + justify/text-end), so the right edge of W##
+   lines up with the right edge of "12:00 PM".
+   Vertical: date-mode weekday buttons are inline-flex + items-center with the day
+   name beside a --_lc-weekday-day-number-size pill. Copying font/padding alone left
+   W## high — it was centered in a text-only 24px box while "Mo" is centered against
+   that taller pill. A zero-width ::before strut matches the button's flex items so
+   the name and W## share a baseline. */
 .timeline-week-number {
+  box-sizing: border-box;
   grid-row: 1;
   grid-column: 1;
   position: sticky;
@@ -183,19 +192,33 @@ time-line.timeline-main {
   justify-self: stretch;
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 3px 6px;
-  font-size: 11px;
+  justify-content: end;
+  min-height: var(--_lc-weekday-header-item-min-height, 24px);
+  padding-block: var(--_lc-weekday-header-item-padding-block, 3px);
+  padding-inline: var(--_lc-time-sidebar-inline-padding, 6px);
+  font-family: inherit;
+  font-size: var(--_lc-weekday-header-font-size, 14px);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1;
+  text-align: end;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
-  /* WGW a11y: was opacity 0.75 — compounded to ~3.85:1 contrast on white; full-strength
-     72% ink keeps the muted look at ~7:1 (WCAG AA needs 4.5:1 at this 11px size). */
+  /* Dimmer than day-name 72% ink; page muted, then calendar outside-month (AA floor). */
+  color: var(
+    --muted-foreground,
+    var(--_lc-outside-month-day-color, light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%)))
+  );
   pointer-events: none;
   user-select: none;
+}
+
+/* Zero-width stand-in for .weekday-day-number so align-items: center matches the
+   date-mode button (day name + 20px pill), not a text-only box. */
+.timeline-week-number::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: var(--_lc-weekday-day-number-size, 20px);
 }
 
 .timeline-swipe {
