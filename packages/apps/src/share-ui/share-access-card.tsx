@@ -9,7 +9,7 @@ export type ShareAccessCardProps = {
   description?: ReactNode;
   className?: string;
   children?: ReactNode;
-  addControl: ReactNode;
+  addControl?: ReactNode;
   footer?: ReactNode;
 };
 
@@ -32,7 +32,7 @@ export function ShareAccessCard({
     >
       <CardPanel>
         {children}
-        <div className="share-dialog__add-grant">{addControl}</div>
+        {addControl != null ? <div className="share-dialog__add-grant">{addControl}</div> : null}
       </CardPanel>
       {footer}
     </Card>
