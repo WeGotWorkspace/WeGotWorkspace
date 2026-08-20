@@ -12,7 +12,10 @@ import type {
   CalendarViewId,
 } from "@/calendar-core/src/calendar-types";
 import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/calendar-event-model";
-import { calendarRangeLabel } from "@/lib/calendar-elements/CalendarViewGroup/calendar-range-label";
+import {
+  calendarRangeLabel,
+  type CalendarRangeLabelDensity,
+} from "@/lib/calendar-elements/CalendarViewGroup/calendar-range-label";
 import {
   calendarRouteKey,
   DEFAULT_CALENDAR_PRESENTATION,
@@ -96,18 +99,20 @@ function rangeTitle(
   view: CalendarViewId,
   anchorISO: string,
   locale: string,
-  density: "full" | "compact" = "full",
+  density: CalendarRangeLabelDensity = "full",
 ): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
+  if (view !== "week") {
+    return calendarRangeLabel({ view, anchor, locale, density });
+  }
   const range = viewDateRange(view, anchorISO);
-  const weekEnd = range.end.subtract({ days: 1 });
   return calendarRangeLabel({
     view,
     anchor,
     locale,
     density,
     weekStart: range.start,
-    weekEnd,
+    weekEnd: range.end.subtract({ days: 1 }),
   });
 }
 

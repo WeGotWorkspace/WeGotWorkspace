@@ -33,6 +33,22 @@ function weekdayShort(date: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(date);
 }
 
+function yearText(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { year: "numeric", timeZone: "UTC" }).format(date);
+}
+
+function monthShort(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(date);
+}
+
+function monthDay(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 function weekRangeLabelParts(
   start: Temporal.PlainDate,
   end: Temporal.PlainDate,
@@ -41,36 +57,27 @@ function weekRangeLabelParts(
 ): CalendarRangeLabelPart[] {
   const startDate = utcDate(start);
   const endDate = utcDate(end);
-  const yearText = new Intl.DateTimeFormat(locale, { year: "numeric", timeZone: "UTC" }).format(
-    startDate,
-  );
+  const year = yearText(startDate, locale);
 
   if (density === "compact") {
     const startWeekday = weekdayShort(startDate, locale);
     const endWeekday = weekdayShort(endDate, locale);
     if (start.year === end.year && start.month === end.month) {
-      const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(
-        startDate,
-      );
       return [
-        { text: `${startWeekday} ${start.day}–${endWeekday} ${end.day} ${month} `, isYear: false },
-        { text: yearText, isYear: true },
+        {
+          text: `${startWeekday} ${start.day}–${endWeekday} ${end.day} ${monthShort(startDate, locale)} `,
+          isYear: false,
+        },
+        { text: year, isYear: true },
       ];
     }
     if (start.year === end.year) {
-      const startPart = new Intl.DateTimeFormat(locale, {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      }).format(startDate);
-      const endPart = new Intl.DateTimeFormat(locale, {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      }).format(endDate);
       return [
-        { text: `${startWeekday} ${startPart} – ${endWeekday} ${endPart}, `, isYear: false },
-        { text: yearText, isYear: true },
+        {
+          text: `${startWeekday} ${monthDay(startDate, locale)} – ${endWeekday} ${monthDay(endDate, locale)}, `,
+          isYear: false,
+        },
+        { text: year, isYear: true },
       ];
     }
     const compactDate = new Intl.DateTimeFormat(locale, {
@@ -88,29 +95,19 @@ function weekRangeLabelParts(
   }
 
   if (start.year === end.year && start.month === end.month) {
-    const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(
-      startDate,
-    );
     return [
-      { text: `${month} ${start.day}-${end.day}, `, isYear: false },
-      { text: yearText, isYear: true },
+      { text: `${monthShort(startDate, locale)} ${start.day}-${end.day}, `, isYear: false },
+      { text: year, isYear: true },
     ];
   }
 
   if (start.year === end.year) {
-    const startPart = new Intl.DateTimeFormat(locale, {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    }).format(startDate);
-    const endPart = new Intl.DateTimeFormat(locale, {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    }).format(endDate);
     return [
-      { text: `${startPart} - ${endPart}, `, isYear: false },
-      { text: yearText, isYear: true },
+      {
+        text: `${monthDay(startDate, locale)} - ${monthDay(endDate, locale)}, `,
+        isYear: false,
+      },
+      { text: year, isYear: true },
     ];
   }
 
@@ -137,14 +134,7 @@ export function calendarRangeLabelParts({
   const anchorDate = utcDate(anchor);
 
   if (view === "year") {
-    return [
-      {
-        text: new Intl.DateTimeFormat(locale, { year: "numeric", timeZone: "UTC" }).format(
-          anchorDate,
-        ),
-        isYear: false,
-      },
-    ];
+    return [{ text: yearText(anchorDate, locale), isYear: false }];
   }
 
   if (view === "month") {

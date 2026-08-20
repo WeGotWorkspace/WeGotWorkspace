@@ -19,7 +19,7 @@ import { startOfWeekFor, weekNumberForDate } from "../utils/WeekNumber.js";
 import componentStyle from "./CalendarViewGroup.css?inline";
 import type { PendingCreateGeometry } from "../CalendarTimelineView/pendingOccurrenceGeometry.js";
 import { monthAnchorDate, yearAnchorDate } from "./timelineAnchorDates.js";
-import { calendarRangeLabelParts } from "./calendar-range-label.js";
+import { calendarRangeLabelParts, type CalendarRangeLabelPart } from "./calendar-range-label.js";
 
 @customElement("calendar-view-group")
 export class CalendarViewGroup extends CalendarViewBase {
@@ -168,7 +168,7 @@ export class CalendarViewGroup extends CalendarViewBase {
     return this.rangeLabelParts.map((part) => part.text).join("");
   }
 
-  get rangeLabelParts() {
+  get rangeLabelParts(): CalendarRangeLabelPart[] {
     const lang = resolveLocale(this.lang);
     const anchor = this.#resolvedStartDate;
     const start = this.#weekRangeStartDate;
