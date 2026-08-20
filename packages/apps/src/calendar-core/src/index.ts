@@ -25,6 +25,8 @@ export { CalendarRsvpPage, CalendarRsvpView } from "./calendar-rsvp-page";
 export type { CalendarRsvpViewProps } from "./calendar-rsvp-page";
 export { CalendarEventDialog } from "./calendar-event-dialog";
 export type { CalendarEventDialogProps } from "./calendar-event-dialog";
+export { CalendarEventDetailsPopover } from "./calendar-event-details-popover";
+export type { CalendarEventDetailsPopoverProps } from "./calendar-event-details-popover";
 export {
   attendeesFromParticipants,
   participantsFromAttendees,

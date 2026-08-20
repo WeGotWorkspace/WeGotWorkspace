@@ -12,11 +12,12 @@ import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../DayOverflowPopover/DayOverflowPopover.js";
 import "../SwipeContainer/SwipeContainer.js";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
-import type {
-  EventCreateRequestDetail,
-  EventDeleteRequestDetail,
-  EventSelectionRequestDetail,
-  EventUpdateRequestDetail,
+import {
+  eventSelectionOriginFromElement,
+  type EventCreateRequestDetail,
+  type EventDeleteRequestDetail,
+  type EventSelectionRequestDetail,
+  type EventUpdateRequestDetail,
 } from "../types/CalendarEventRequests.js";
 import {
   isCalendarEventException,
@@ -856,14 +857,18 @@ export class CalendarTimelineView extends CalendarViewBase {
     }, 150);
   }
 
-  #selectTimelineEvent(key: string) {
+  #selectTimelineEvent(key: string, card?: EventTarget | null) {
     if (this.#selectedEventKey !== key) {
       this.#selectedEventKey = key;
       this.requestUpdate();
     }
+    const origin = eventSelectionOriginFromElement(card);
     this.dispatchEvent(
       new CustomEvent("event-selected", {
-        detail: { key } satisfies EventSelectionRequestDetail,
+        detail: {
+          key,
+          ...(origin ? { origin } : {}),
+        } satisfies EventSelectionRequestDetail,
       }),
     );
   }
@@ -881,7 +886,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     if (card instanceof HTMLElement) {
       card.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
     }
-    this.#selectTimelineEvent(key);
+    this.#selectTimelineEvent(key, card);
   }
 
   #handleEventCardKeydown(key: string, event: KeyboardEvent) {
@@ -895,7 +900,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      this.#selectTimelineEvent(key);
+      this.#selectTimelineEvent(key, event.currentTarget);
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
@@ -1450,13 +1455,16 @@ export class CalendarTimelineView extends CalendarViewBase {
         },
       }),
     );
-    const popover = event.currentTarget;
+    this.#hideOpenPopover(event.currentTarget);
+  }
+
+  #hideOpenPopover(host: EventTarget | null) {
     if (
-      popover instanceof HTMLElement &&
-      typeof popover.hidePopover === "function" &&
-      popover.matches(":popover-open")
+      host instanceof HTMLElement &&
+      typeof host.hidePopover === "function" &&
+      host.matches(":popover-open")
     ) {
-      popover.hidePopover();
+      host.hidePopover();
     }
   }
 
@@ -1472,7 +1480,11 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   #handleOverflowPopoverSelect = (event: Event) => {
     const key = this.#eventKeyFromPopoverDetail(event);
-    if (key) this.#selectTimelineEvent(key);
+    if (!key) return;
+    const detail = (event as CustomEvent<unknown>).detail;
+    const card = detail instanceof EventTarget ? detail : event.target;
+    this.#selectTimelineEvent(key, card);
+    this.#hideOpenPopover(event.currentTarget);
   };
 
   #handleOverflowPopoverDelete = (event: Event) => {
