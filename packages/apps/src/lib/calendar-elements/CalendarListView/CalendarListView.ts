@@ -16,6 +16,8 @@ import { eventSelectionOriginFromElement } from "../types/CalendarEventRequests.
 import { getEventColorStyles } from "../utils/EventColor.js";
 import { resolveLocale } from "../utils/Locale.js";
 import { formatShortTime } from "../utils/TimeFormatting.js";
+import collectionStateStyle from "@/collection-state/src/collection-state.css?inline";
+import { CALENDAR_LIST_EMPTY_LABEL } from "./calendar-list-empty-label.js";
 import componentStyle from "./CalendarListView.css?inline";
 
 type AgendaItem = {
@@ -42,8 +44,11 @@ export class CalendarListView extends CalendarViewBase {
     return {
       ...CalendarViewBase.properties,
       startDate: { type: String, attribute: "start-date" },
+      emptyLabel: { type: String, attribute: "empty-label" },
     } as const;
   }
+
+  emptyLabel = CALENDAR_LIST_EMPTY_LABEL;
 
   get startDate(): Temporal.PlainDate {
     if (this.#startDate) {
@@ -76,7 +81,7 @@ export class CalendarListView extends CalendarViewBase {
   }
 
   static get styles() {
-    return [...CalendarViewBase.styles, unsafeCSS(componentStyle)];
+    return [...CalendarViewBase.styles, unsafeCSS(collectionStateStyle), unsafeCSS(componentStyle)];
   }
 
   render() {
@@ -84,7 +89,7 @@ export class CalendarListView extends CalendarViewBase {
     const days = this.#agendaDays;
 
     return html`
-      <div class="agenda-shell" dir=${direction}>
+      <div class="agenda-shell collection-state-host" dir=${direction}>
         ${days.length
           ? html`
               ${days.map(
@@ -106,8 +111,9 @@ export class CalendarListView extends CalendarViewBase {
               )}
             `
           : html`
-              <div class="agenda-empty">
-                ${renderCalendarIcon({ className: "agenda-empty-icon" })}
+              <div class="collection-state">
+                <div class="collection-state__icon" aria-hidden="true">${renderCalendarIcon()}</div>
+                <div class="collection-state__body">${this.emptyLabel}</div>
               </div>
             `}
       </div>

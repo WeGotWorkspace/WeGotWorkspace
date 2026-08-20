@@ -68,12 +68,3 @@
   --_lc-event-card-accent-color: var(--_lc-event-accent-color);
   --_lc-event-card-text-color: var(--_lc-event-text-color, CanvasText);
 }
-
-.agenda-empty {
-  @apply h-full min-h-[180px] grid place-content-center p-4;
-  color: light-dark(rgb(51 65 85), rgb(226 232 240 / 0.9));
-}
-
-.agenda-empty-icon {
-  @apply w-14 h-14 opacity-[0.48];
-}
