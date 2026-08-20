@@ -72,6 +72,12 @@ export type CalendarUILabels = {
   eventAlarmsNone: string;
   eventAlarmAdd: string;
   eventAlarmRemove: string;
+  /** Visible label on each alarm row (not the card title). */
+  eventAlarmRow: string;
+  /** Empty offset option and trailing unused slot. */
+  eventAlarmNone: string;
+  /** Offset select on a single alarm row (not the card title). */
+  eventAlarmOffset: string;
   eventAlarmAtStart: string;
   eventAlarm5Min: string;
   eventAlarm10Min: string;
@@ -204,8 +210,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventShowAsFree: "Free",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
-  eventAlarmAdd: "Add alarm",
-  eventAlarmRemove: "Remove alarm",
+  eventAlarmAdd: "Add alert",
+  eventAlarmRemove: "Remove alert",
+  eventAlarmRow: "Alert",
+  eventAlarmNone: "None",
+  eventAlarmOffset: "Alert time",
   eventAlarmAtStart: "At time of event",
   eventAlarm5Min: "5 minutes before",
   eventAlarm10Min: "10 minutes before",

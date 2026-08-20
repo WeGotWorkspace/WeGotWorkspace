@@ -7,7 +7,7 @@ Technical translation of Task #499 — alarm rows in the event dialog follow the
 
 ## Goal
 
-Alarm / reminder rows use the same **ShareAccessCard + ShareAccessRow** layout, density, and add/remove pattern as invitees: list rows with a leading mark, trailing offset control, outline remove, and an add control in the card footer — not a header-only picker.
+Alarm / reminder rows use the same **ShareAccessCard + ShareAccessRow** layout and density as invitees. The parent card stays titled **Alarms** with the bell icon only there. Each row shows **Alert** (no icon), an offset dropdown that includes **None**, and delete on set rows. There is no footer Add button and no “No alarms” empty-state copy. A writable card always ends with one unused **None** slot.
 
 ## Non-goals
 
@@ -24,12 +24,16 @@ Alarm / reminder rows use the same **ShareAccessCard + ShareAccessRow** layout, 
 ## Technical constraints
 
 - Reuse `ShareAccessCard` / `ShareAccessRow` (do not invent a third row chrome).
-- Preserve existing alarm behavior: offset presets, custom amount/unit, leftover absolute `when`, display-only leftover email (no action menu).
+- Card title remains `eventAlarmsLabel` (“Alarms”); do not rename the section to Alerts.
+- Bell / title icon only on the parent card — not on each row.
+- Each row keeps a visible `eventAlarmRow` (“Alert”) label.
+- Persist only real alerts via `alertsAfterOffsetChange`. Choosing None on a set row removes it; choosing an offset on the trailing slot appends one. Keep exactly one trailing None in the UI, never in the form.
+- Do not render `eventAlarmsNone` or an Add-alert footer.
+- Preserve leftover absolute `when` and display-only leftover email (no action menu).
 - BEM + `@apply` in CSS; keep alarm-row controls inside the shared row trailing slot.
-- RTL still covers add / change offset / remove.
 
 ## Edge cases
 
-- Empty list: show the existing “no alarms” hint; add control still available when writable.
-- Invitee read-only dialog: no add/remove (same as invitees `readOnly`).
-- Multiple alarms: one row per alert id; remove only that row.
+- Empty writable card: one Alert + None row only (no “No alarms” copy).
+- Invitee read-only dialog: existing rows only; no trailing None; no delete.
+- Multiple alarms: one persisted row per alert id plus one trailing None.

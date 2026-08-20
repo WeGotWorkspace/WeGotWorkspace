@@ -278,20 +278,28 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ freeBusyStatus: "free" }));
   });
 
-  it("shows the alarms card, adds an alarm, and forwards offset changes", () => {
+  it("shows the alarms card, adds an alarm from the trailing None row, and forwards offset changes", () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
     const { onChange } = renderDialog({ form, locale: "en-US" });
     expect(
       screen.getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel }),
     ).toBeTruthy();
-    expect(screen.getByText(defaultCalendarLabels.eventAlarmsNone)).toBeTruthy();
+    expect(screen.queryByText(defaultCalendarLabels.eventAlarmsNone)).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
+    expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
+    expect(screen.getAllByText(defaultCalendarLabels.eventAlarmRow)).toHaveLength(1);
     expect(
       screen
         .getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel })
         .closest(".share-access-card"),
     ).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventAlarmAdd }));
+    const emptyOffset = screen.getByRole("combobox", {
+      name: defaultCalendarLabels.eventAlarmOffset,
+    });
+    expect(emptyOffset.textContent).toMatch(/None/i);
+    fireEvent.click(emptyOffset);
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm15Min }));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT15M" })],
@@ -304,11 +312,18 @@ describe("CalendarEventDialog", () => {
     };
     cleanup();
     const next = renderDialog({ form: withAlarm, locale: "en-US" });
-    const offset = screen.getByRole("combobox", { name: defaultCalendarLabels.eventAlarmsLabel });
-    expect(offset.textContent).toMatch(/15 minutes/i);
+    expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
+    expect(screen.getAllByText(defaultCalendarLabels.eventAlarmRow)).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
+    const offsets = screen.getAllByRole("combobox", {
+      name: defaultCalendarLabels.eventAlarmOffset,
+    });
+    expect(offsets).toHaveLength(2);
+    expect(offsets[0]?.textContent).toMatch(/15 minutes/i);
+    expect(offsets[1]?.textContent).toMatch(/None/i);
     expect(screen.queryByRole("option", { name: /Email/i })).toBeNull();
     expect(screen.queryByRole("option", { name: /Notification/i })).toBeNull();
-    fireEvent.click(offset);
+    fireEvent.click(offsets[0]!);
     fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm1Hour }));
     expect(next.onChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -316,7 +331,8 @@ describe("CalendarEventDialog", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventAlarmRemove }));
+    fireEvent.click(offsets[0]!);
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarmNone }));
     expect(next.onChange).toHaveBeenCalledWith(expect.objectContaining({ alerts: [] }));
   });
 
@@ -327,11 +343,13 @@ describe("CalendarEventDialog", () => {
       alerts: [{ id: "alert1", action: "display" as const, offset: "-PT15M" }],
     };
     const { onChange } = renderDialog({ form, locale: "en-US" });
-    const offset = screen.getByRole("combobox", { name: defaultCalendarLabels.eventAlarmsLabel });
-    expect(offset.textContent).toMatch(/15 minutes/i);
+    const offset = screen.getAllByRole("combobox", {
+      name: defaultCalendarLabels.eventAlarmOffset,
+    })[0];
+    expect(offset?.textContent).toMatch(/15 minutes/i);
     expect(screen.queryByRole("combobox", { name: /Action/i })).toBeNull();
     expect(screen.queryByRole("option", { name: /Email/i })).toBeNull();
-    fireEvent.click(offset);
+    fireEvent.click(offset!);
     fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm30Min }));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -608,7 +626,7 @@ describe("CalendarEventDialog", () => {
       defaultCalendarLabels.eventTimeZoneLabel,
       defaultCalendarLabels.eventRepeatLabel,
       defaultCalendarLabels.eventShowAs,
-      defaultCalendarLabels.eventAlarmsLabel,
+      defaultCalendarLabels.eventAlarmOffset,
     ]) {
       const control = screen.getByRole("combobox", { name });
       expect(

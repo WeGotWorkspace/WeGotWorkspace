@@ -4,6 +4,7 @@ import {
   alertMapsEqual,
   alertsFromWire,
   alertsToWire,
+  alertsAfterOffsetChange,
   defaultEventAlert,
   formatCustomOffset,
   freeBusyStatusFromWire,
@@ -171,5 +172,30 @@ describe("alerts wire round-trip", () => {
     expect(defaultEventAlert([{ id: "alert1", action: "display", offset: "-PT15M" }]).id).toBe(
       "alert2",
     );
+  });
+});
+
+describe("alertsAfterOffsetChange", () => {
+  const existing = [{ id: "alert1", action: "display" as const, offset: "-PT15M" }];
+
+  it("appends a real alert from the trailing None slot", () => {
+    expect(alertsAfterOffsetChange({ alerts: [], rowId: null, value: "15m" })).toEqual([
+      { id: "alert1", action: "display", offset: "-PT15M" },
+    ]);
+  });
+
+  it("removes a set row when choosing None and does not store extra Nones", () => {
+    expect(alertsAfterOffsetChange({ alerts: existing, rowId: "alert1", value: "none" })).toEqual(
+      [],
+    );
+    expect(alertsAfterOffsetChange({ alerts: existing, rowId: null, value: "none" })).toEqual(
+      existing,
+    );
+  });
+
+  it("updates an existing row offset", () => {
+    expect(alertsAfterOffsetChange({ alerts: existing, rowId: "alert1", value: "1h" })).toEqual([
+      { id: "alert1", action: "display", offset: "-PT1H" },
+    ]);
   });
 });

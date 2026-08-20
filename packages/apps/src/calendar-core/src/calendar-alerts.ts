@@ -21,6 +21,9 @@ export type CalendarAlertOffsetPreset =
   | "1d"
   | "custom";
 
+/** Offset dropdown value, including the empty trailing slot. */
+export type CalendarAlertOffsetSelectValue = CalendarAlertOffsetPreset | "none";
+
 export type CalendarAlertCustomUnit = "minutes" | "hours" | "days";
 
 export type CalendarEventAlertFormValue = {
@@ -125,6 +128,31 @@ export function nextAlertId(existing: CalendarEventAlertFormValue[]): string {
   let index = 1;
   while (used.has(`alert${index}`)) index += 1;
   return `alert${index}`;
+}
+
+/**
+ * Persist only real alerts. Choosing None on a set row removes it; choosing an
+ * offset on the empty trailing slot appends one. The UI always shows one extra
+ * None row — it is not stored here.
+ */
+export function alertsAfterOffsetChange(args: {
+  alerts: CalendarEventAlertFormValue[];
+  rowId: string | null;
+  value: CalendarAlertOffsetSelectValue;
+}): CalendarEventAlertFormValue[] {
+  if (args.value === "none") {
+    if (!args.rowId) return args.alerts;
+    return args.alerts.filter((row) => row.id !== args.rowId);
+  }
+  const current = args.rowId ? args.alerts.find((row) => row.id === args.rowId) : undefined;
+  const offset =
+    args.value === "custom" ? (current?.offset ?? "-PT15M") : presetToOffset(args.value);
+  if (!args.rowId) {
+    return [...args.alerts, { id: nextAlertId(args.alerts), action: "display", offset }];
+  }
+  return args.alerts.map((row) =>
+    row.id === args.rowId ? { ...row, offset, when: undefined } : row,
+  );
 }
 
 function triggerRelatedTo(trigger: object): "start" | "end" {
