@@ -24,6 +24,7 @@ import {
 } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import {
+  calendarEventToForm,
   createIntentToForm,
   emptyCalendarEventForm,
   engineEventToForm,
