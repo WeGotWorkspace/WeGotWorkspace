@@ -63,6 +63,7 @@ export function DocsCollabSidebarPanel({
                     icon={<X className="size-4" aria-hidden />}
                     size="sm"
                     variant="subtle"
+                    showTooltip={false}
                     onClick={onClose}
                   />
                 ) : null}
