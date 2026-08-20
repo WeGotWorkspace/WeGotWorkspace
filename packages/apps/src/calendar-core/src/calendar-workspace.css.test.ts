@@ -19,6 +19,13 @@ describe("calendar workspace header CSS", () => {
     expect(css).toMatch(/\.calendar-workspace \.workspace-app-layout__main-header \{[\s\S]*p-3/);
   });
 
+  it("tints the open inbox and current-today controls instead of filled-emerald", () => {
+    expect(css).toMatch(
+      /:is\([\s\S]*calendar-invitations-trigger[\s\S]*calendar-header-today[\s\S]*\)\.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
+    );
+    expect(css).toMatch(/:is\([\s\S]*calendar-header-today-icon[\s\S]*fill:\s*none/);
+  });
+
   it("matches inbox gap to header actions so desktop clustering stays tight", () => {
     expect(css).toMatch(/\.calendar-workspace \.view-header__end \{[\s\S]*gap-1/);
     expect(css).toMatch(
@@ -37,6 +44,7 @@ describe("calendar workspace header markup", () => {
     expect(actionsBlock![1]).not.toMatch(/CalendarInvitationsTrigger/);
     expect(actionsBlock![1]).toMatch(/calendar-header-today/);
     expect(actionsBlock![1]).toMatch(/icon=\{<CalendarDays/);
+    expect(actionsBlock![1]).toMatch(/aria-pressed=\{showingToday\}/);
   });
 
   it("places an icon-only Today control in titlePrefix ahead of the date title", () => {

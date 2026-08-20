@@ -219,6 +219,38 @@
   @apply relative;
 }
 
+/* Open inbox / current-today: indigo wash + stroke glyph. Generic active
+   recolors emerald and fills Lucide solid, which turns icons into blobs. */
+.calendar-workspace
+  :is(
+    .calendar-invitations-trigger,
+    .calendar-header-today,
+    .calendar-header-today-icon
+  ).button--variant-subtle.icon-button--active {
+  --button-active-color: var(--calendar-accent-strong);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+.calendar-workspace
+  :is(
+    .calendar-invitations-trigger,
+    .calendar-header-today,
+    .calendar-header-today-icon
+  ).button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
+  fill: none;
+}
+
 .calendar-workspace .calendar-invitations-trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;

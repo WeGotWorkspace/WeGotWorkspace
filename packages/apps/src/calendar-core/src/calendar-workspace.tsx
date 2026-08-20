@@ -183,6 +183,7 @@ export function CalendarWorkspace({
     anchor,
     title,
     compactTitle,
+    showingToday,
     goToday,
     goPrevious,
     goNext,
@@ -511,6 +512,8 @@ export function CalendarWorkspace({
                 label={L.today}
                 icon={<CalendarDays className="size-4" />}
                 size="sm"
+                active={showingToday}
+                aria-pressed={showingToday}
                 onClick={goToday}
               />
             }
@@ -567,12 +570,13 @@ export function CalendarWorkspace({
                   listLabel={L.showAsList}
                 />
                 <Button
-                  className="calendar-header-today"
+                  className={cn("calendar-header-today", showingToday && "icon-button--active")}
                   label={L.today}
                   icon={<CalendarDays />}
                   onClick={goToday}
                   variant="subtle"
                   size="sm"
+                  aria-pressed={showingToday}
                 />
               </div>
             }
