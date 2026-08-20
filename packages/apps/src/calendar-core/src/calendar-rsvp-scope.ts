@@ -72,7 +72,7 @@ export function rsvpRecurrenceIdForEvent(args: {
   return args.notification?.start ?? args.event?.start ?? undefined;
 }
 
-export type CalendarRsvpPersistSource = "sidebar" | "dialog";
+export type CalendarRsvpPersistSource = "sidebar" | "dialog" | "preview";
 
 /**
  * Occurrence-scope prompt is only for changing an already-set RSVP
@@ -85,7 +85,7 @@ export function shouldAskRsvpOccurrenceScope(args: {
   previousStatus?: string | null;
 }): boolean {
   return (
-    args.source === "dialog" &&
+    (args.source === "dialog" || args.source === "preview") &&
     args.recurring &&
     calendarRespondStatus(args.previousStatus) !== undefined
   );

@@ -64,6 +64,9 @@ export type CalendarUILabels = {
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
   eventNotesLabel: string;
+  /** Compact details popover — opens the existing event dialog. */
+  eventDetailsEdit: string;
+  eventDetailsMoreInvitees: (count: number) => string;
   /** Standalone card heading and select label for busy/free availability. */
   eventShowAs: string;
   eventShowAsBusy: string;
@@ -200,6 +203,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
   eventNotesLabel: "Notes",
+  eventDetailsEdit: "Edit",
+  eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
