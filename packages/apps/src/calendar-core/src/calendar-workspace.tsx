@@ -41,7 +41,9 @@ import {
 import {
   eventIsRecurringForRsvp,
   persistInviteeRsvp,
+  queueUndoableRespond,
   rsvpRecurrenceIdForEvent,
+  rsvpUndoStatus,
   type CalendarRsvpPersistSource,
 } from "@/calendar-core/src/calendar-rsvp-scope";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
@@ -207,6 +209,7 @@ export function CalendarWorkspace({
     recurrenceScopeDialog,
     truncateSeriesFromOccurrence,
     splitSeriesFromDrag,
+    queueMutation,
   } = controller;
   const { showError } = useAppToast();
   const handleInvitationResponded = useCallback(() => {
@@ -291,6 +294,8 @@ export function CalendarWorkspace({
               invitations.invitees,
             )
           : undefined) ?? notification?.participationStatus;
+      const notificationId = notification?.id ?? id;
+      const respondOptions = calendarId ? { calendarId } : {};
       return persistInviteeRsvp({
         source: persist.source,
         recurring: eventIsRecurringForRsvp(event, notification?.recurring, editorRecurrenceId),
@@ -299,13 +304,35 @@ export function CalendarWorkspace({
         recurrenceId,
         askScope: askRecurrenceScope,
         respond: (scopeOptions) =>
-          invitations.respond(notification?.id ?? id, status, {
-            ...(calendarId ? { calendarId } : {}),
-            ...scopeOptions,
+          queueUndoableRespond({
+            queueMutation,
+            key: `calendar:rsvp:${notificationId}:${status}`,
+            toastMessage: L.toastRsvpUpdated,
+            undoToastMessage: L.toastRsvpUndone,
+            execute: () =>
+              invitations.respond(notificationId, status, {
+                ...respondOptions,
+                ...scopeOptions,
+              }),
+            undo: () => {
+              const revert = rsvpUndoStatus(previousStatus);
+              if (!revert) return;
+              void invitations.respond(notificationId, revert, respondOptions);
+            },
           }),
       });
     },
-    [askRecurrenceScope, data.events, editor, invitations, inviteeNotifications, session.user],
+    [
+      L.toastRsvpUndone,
+      L.toastRsvpUpdated,
+      askRecurrenceScope,
+      data.events,
+      editor,
+      invitations,
+      inviteeNotifications,
+      queueMutation,
+      session.user,
+    ],
   );
 
   const invitationsPanel = useMemo(
