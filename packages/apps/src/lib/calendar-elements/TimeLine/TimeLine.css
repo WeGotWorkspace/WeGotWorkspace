@@ -119,6 +119,10 @@
   position: absolute;
   z-index: 700;
   pointer-events: none;
+  /* Own compositor layer so iOS overflow scroll cannot let `will-change` event cards
+     paint over the now line (Safari promotes transformed siblings independently). */
+  isolation: isolate;
+  transform: translateZ(0);
 }
 
 :host([flow="vertical"]) .marker {
@@ -142,7 +146,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) translateZ(0);
 }
 
 /* Horizontal flow uses logical insets so the time axis follows the inline direction (RTL-aware). */
@@ -227,7 +231,6 @@
 
 .event {
   position: absolute;
-  will-change: transform;
   display: flex;
   flex: 1;
   z-index: 2;
@@ -253,6 +256,7 @@
 .event.event--dragging {
   cursor: grabbing;
   z-index: 600;
+  will-change: transform;
   /* Subtle lift for the free-following card (follows the card's shape, not the wrapper box). */
   filter: drop-shadow(0 3px 8px light-dark(rgb(15 23 42 / 22%), rgb(0 0 0 / 45%)));
 }
