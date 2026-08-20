@@ -1,6 +1,9 @@
-import { useId, useRef, useState, type ReactElement } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactElement } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import { nativeColorWellDismissProps } from "@/ui/dialog-nested-layer";
+import {
+  nativeColorWellDismissProps,
+  preventDialogDismissForNestedLayer,
+} from "@/ui/dialog-nested-layer";
 import { cn } from "@/lib/utils";
 import "./swatch-color-picker.css";
 
@@ -12,6 +15,10 @@ export type SwatchColorPickerProps = {
   children: ReactElement;
 };
 
+function cssHexColor(value: string): string {
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000";
+}
+
 export function SwatchColorPicker({
   value,
   onChange,
@@ -20,15 +27,57 @@ export function SwatchColorPicker({
   children,
 }: SwatchColorPickerProps) {
   const [open, setOpen] = useState(false);
+  const [customAnchor, setCustomAnchor] = useState<HTMLLabelElement | null>(null);
   const customColorInputRef = useRef<HTMLInputElement>(null);
   const customColorInputId = useId();
   const colorLabelId = useId();
+  const selectedColor = cssHexColor(value);
+
+  useLayoutEffect(() => {
+    const input = customColorInputRef.current;
+    if (!input) return;
+
+    const clear = () => {
+      input.style.left = "";
+      input.style.top = "";
+      input.style.width = "";
+      input.style.height = "";
+    };
+
+    if (!open || !customAnchor) {
+      clear();
+      return;
+    }
+
+    const sync = () => {
+      const rect = customAnchor.getBoundingClientRect();
+      input.style.left = `${rect.left}px`;
+      input.style.top = `${rect.top}px`;
+      input.style.width = `${rect.width}px`;
+      input.style.height = `${rect.height}px`;
+    };
+
+    sync();
+    window.addEventListener("resize", sync);
+    window.addEventListener("scroll", sync, true);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("scroll", sync, true);
+      clear();
+    };
+  }, [customAnchor, open]);
 
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{children}</PopoverTrigger>
-        <PopoverContent align="end" className="swatch-color-picker__content">
+        <PopoverContent
+          align="end"
+          className="swatch-color-picker__content"
+          onPointerDownOutside={preventDialogDismissForNestedLayer}
+          onFocusOutside={preventDialogDismissForNestedLayer}
+          onInteractOutside={preventDialogDismissForNestedLayer}
+        >
           <div
             className="swatch-color-picker__swatches"
             role="radiogroup"
@@ -38,7 +87,7 @@ export function SwatchColorPicker({
               {colorLabel}
             </span>
             {swatches.map((swatch) => {
-              const selected = value.toLowerCase() === swatch.toLowerCase();
+              const selected = selectedColor.toLowerCase() === swatch.toLowerCase();
               return (
                 <button
                   key={swatch}
@@ -58,14 +107,14 @@ export function SwatchColorPicker({
                 />
               );
             })}
-            <button
-              type="button"
+            <label
+              ref={setCustomAnchor}
+              htmlFor={customColorInputId}
               className="swatch-color-picker__swatch swatch-color-picker__swatch--custom"
-              aria-label="Custom color"
-              onClick={() => customColorInputRef.current?.click()}
             >
               <span className="swatch-color-picker__custom-marker" aria-hidden />
-            </button>
+              <span className="sr-only">Custom color</span>
+            </label>
           </div>
         </PopoverContent>
       </Popover>
@@ -74,9 +123,9 @@ export function SwatchColorPicker({
         id={customColorInputId}
         type="color"
         className="swatch-color-picker__native-color"
-        value={value}
-        tabIndex={-1}
-        aria-hidden
+        value={selectedColor}
+        data-open={open ? "true" : "false"}
+        aria-label="Custom color"
         {...nativeColorWellDismissProps()}
         onChange={(event) => onChange(event.target.value)}
       />
