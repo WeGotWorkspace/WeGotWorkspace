@@ -20,7 +20,6 @@ import {
 } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import {
-  calendarEventToForm,
   createIntentToForm,
   emptyCalendarEventForm,
   engineEventToForm,
@@ -48,17 +47,16 @@ import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
   forkSeriesDraftWithSplitOverrides,
-  formAnchoredToOccurrence,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
   resolveSeriesRecurrenceOverrides,
   seriesRecurrenceRulesForSplit,
-  splitOccurrenceKey,
   truncateMasterSeriesPatch,
   type RecurrenceEditScope,
   type RecurrenceScopeChoice,
   type RecurrenceScopeRequest,
 } from "@/calendar-core/src/calendar-recurrence-scope";
+import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
@@ -437,46 +435,19 @@ export function useCalendarController({
 
   const openEditEventKey = useCallback(
     async (key: string) => {
-      const { masterId, recurrenceId } = splitOccurrenceKey(key);
-      if (pendingDeletedEventIds.has(masterId)) return;
-
-      const wireEvent = data.events.find((entry) => entry.id === masterId);
-      const occurrenceEngine = surfaceEvents?.get(key);
-      const masterEngine = surfaceEvents?.get(masterId);
-      let form = wireEvent
-        ? calendarEventToForm(wireEvent)
-        : masterEngine
-          ? engineEventToForm(masterEngine)
-          : occurrenceEngine
-            ? engineEventToForm(occurrenceEngine)
-            : null;
-      if (!form) return;
-
-      // Prefill wall times from the clicked occurrence (master form starts at series start).
-      // Surface maps only store masters — derive from recurrenceId when the expanded
-      // occurrence row is absent, so this-and-future forks do not restart at series start.
-      if (recurrenceId) {
-        if (occurrenceEngine) {
-          const occurrenceForm = engineEventToForm(occurrenceEngine);
-          form = {
-            ...form,
-            allDay: occurrenceForm.allDay,
-            startDate: occurrenceForm.startDate,
-            startTime: occurrenceForm.startTime,
-            endDate: occurrenceForm.endDate,
-            endTime: occurrenceForm.endTime,
-          };
-        } else {
-          form = formAnchoredToOccurrence(form, recurrenceId);
-        }
-      }
+      const preview = resolveCalendarEventPreview(key, {
+        events: data.events,
+        surfaceEvents,
+        pendingDeletedEventIds,
+      });
+      if (!preview) return;
 
       // Open the editor immediately — recurrence scope is chosen on Save / Delete.
       setEditor({
         mode: "edit",
-        eventId: masterId,
-        form,
-        ...(recurrenceId ? { recurrenceId } : {}),
+        eventId: preview.eventId,
+        form: preview.form,
+        ...(preview.recurrenceId ? { recurrenceId: preview.recurrenceId } : {}),
       });
     },
     [data.events, surfaceEvents, pendingDeletedEventIds],

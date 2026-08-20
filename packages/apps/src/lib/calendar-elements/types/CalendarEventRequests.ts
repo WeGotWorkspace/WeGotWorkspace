@@ -49,5 +49,24 @@ export type EventExceptionRequestDetail = {
   source: "move";
 };
 
+/** Viewport rect of the event card that opened the details popover. */
+export type EventSelectionOriginRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 /** Emitted for `event-selected`; same shape as `event-created` / `event-updated` / `event-deleted` (`EventKeyDetail`). */
-export type EventSelectionRequestDetail = EventKeyDetail;
+export type EventSelectionRequestDetail = EventKeyDetail & {
+  origin?: EventSelectionOriginRect;
+};
+
+export function eventSelectionOriginFromElement(
+  target: EventTarget | null | undefined,
+): EventSelectionOriginRect | undefined {
+  if (!(target instanceof Element)) return undefined;
+  const rect = target.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return undefined;
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+}

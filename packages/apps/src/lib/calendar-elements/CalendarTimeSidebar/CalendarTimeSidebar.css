@@ -92,7 +92,8 @@
   inset-inline-end: 0;
   top: var(--_lc-now-badge-top, 0%);
   z-index: var(--_lc-z-overlay-raised);
-  transform: translateY(-50%);
+  isolation: isolate;
+  transform: translateY(-50%) translateZ(0);
   pointer-events: none;
   padding-block: 2px;
   padding-inline: var(--_lc-time-sidebar-inline-padding, 0);

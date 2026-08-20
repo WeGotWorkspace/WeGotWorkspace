@@ -143,6 +143,9 @@ time-line.timeline-main {
 .timeline-sidebar {
   grid-row: 1;
   grid-column: 1;
+  /* Above the swipe column so iOS event compositor layers cannot cover the clock badge. */
+  z-index: 2;
+  isolation: isolate;
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
   background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
