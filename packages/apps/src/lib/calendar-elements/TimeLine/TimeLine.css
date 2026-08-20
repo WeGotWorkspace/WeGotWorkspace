@@ -356,11 +356,24 @@
 }
 
 .event > * {
-  flex: 1;
   pointer-events: auto;
+}
+
+.event > event-card {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* Overlay the card ends. Must not take flex space or change time geometry. */
 .event > resize-handle {
+  position: absolute;
   flex: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .event:hover,
+  .event:focus-within {
+    --_lc-resize-handle-event-hover: 0.88;
+  }
 }

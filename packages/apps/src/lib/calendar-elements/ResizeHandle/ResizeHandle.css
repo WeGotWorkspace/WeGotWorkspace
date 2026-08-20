@@ -2,13 +2,18 @@
 
 :host {
   @apply absolute z-10 flex justify-center items-center;
-  --_lc-resize-handle-color: transparent;
-  --_lc-resize-handle-thickness: 2px;
+  --_lc-resize-handle-color: var(
+    --_lc-event-accent-color,
+    var(--_lc-event-border-color, transparent)
+  );
+  --_lc-resize-handle-thickness: 3px;
   --_lc-resize-handle-length: 22px;
-  --_lc-resize-handle-length-vertical: 30px;
+  --_lc-resize-handle-length-vertical: 28px;
   --_lc-resize-handle-length-horizontal: var(--_lc-resize-handle-length);
   --_lc-resize-handle-opacity: 0;
-  --_lc-resize-handle-opacity-hover: 0.9;
+  --_lc-resize-handle-opacity-hover: 0.88;
+  /* Same visual inset as the event-card accent pill (6px shell-relative). */
+  --_lc-resize-handle-inset: 6px;
 }
 
 :host([axis="vertical"]) {
@@ -43,7 +48,7 @@
   content: "";
   border-radius: 999px;
   background: var(--_lc-resize-handle-color);
-  opacity: var(--_lc-resize-handle-opacity);
+  opacity: max(var(--_lc-resize-handle-opacity), var(--_lc-resize-handle-event-hover, 0));
   transition: opacity 160ms ease-in-out;
 }
 
@@ -53,21 +58,47 @@
 }
 
 :host([axis="vertical"]) > div {
-  @apply w-full h-2 cursor-ns-resize;
+  @apply w-full h-3 cursor-ns-resize;
+}
+
+:host([axis="vertical"][position="start"]) > div {
+  align-items: flex-start;
+  padding-block-start: var(--_lc-resize-handle-inset);
+}
+
+:host([axis="vertical"][position="end"]) > div {
+  align-items: flex-end;
+  padding-block-end: var(--_lc-resize-handle-inset);
 }
 
 :host([axis="vertical"]) > div::before {
-  width: min(var(--_lc-resize-handle-length-vertical), calc(100% - 8px));
+  width: min(
+    var(--_lc-resize-handle-length-vertical),
+    calc(100% - 2 * var(--_lc-resize-handle-inset))
+  );
   height: var(--_lc-resize-handle-thickness);
 }
 
 :host([axis="horizontal"]) > div {
-  @apply h-full w-2 cursor-ew-resize;
+  @apply h-full w-3 cursor-ew-resize;
+}
+
+:host([axis="horizontal"][position="start"]) > div {
+  justify-content: flex-start;
+  padding-inline-start: var(--_lc-resize-handle-inset);
+}
+
+:host([axis="horizontal"][position="end"]) > div {
+  justify-content: flex-end;
+  padding-inline-end: var(--_lc-resize-handle-inset);
 }
 
 :host([axis="horizontal"]) > div::before {
   width: var(--_lc-resize-handle-thickness);
-  height: min(var(--_lc-resize-handle-length-horizontal), calc(100% - 8px));
+  height: min(
+    var(--_lc-resize-handle-length-horizontal),
+    calc(100% - 2 * var(--_lc-resize-handle-inset))
+  );
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -81,17 +112,15 @@
   :host([active]) {
     display: flex;
     pointer-events: auto;
-    --_lc-resize-handle-thickness: 6px;
-    --_lc-resize-handle-length-vertical: 44px;
-    --_lc-resize-handle-length-horizontal: 44px;
-    --_lc-resize-handle-opacity: 0.95;
-    --_lc-resize-handle-opacity-hover: 1;
-    /* Sibling of event-card (not slotted): EventCard's handle color never inherits here. */
-    --_lc-resize-handle-color: var(--_lc-event-text-color, CanvasText);
-  }
-
-  :host([active]) > div::before {
-    box-shadow: 0 0 0 1px light-dark(rgb(15 23 42 / 35%), rgb(248 250 252 / 45%));
+    --_lc-resize-handle-thickness: 3px;
+    --_lc-resize-handle-length-vertical: 28px;
+    --_lc-resize-handle-length-horizontal: 28px;
+    --_lc-resize-handle-opacity: 0.88;
+    --_lc-resize-handle-opacity-hover: 0.95;
+    --_lc-resize-handle-color: var(
+      --_lc-event-accent-color,
+      var(--_lc-event-border-color, transparent)
+    );
   }
 
   :host([active][axis="vertical"]) > div {

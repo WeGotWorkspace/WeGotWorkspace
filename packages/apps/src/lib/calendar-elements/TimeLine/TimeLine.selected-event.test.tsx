@@ -27,7 +27,7 @@ describe("TimeLine selected-event resize handles", () => {
     el.cells = 1;
     el.max = 100;
     el.events = [
-      { start: 10, end: 40, key: "dentist" },
+      { start: 10, end: 40, key: "dentist", color: "#6366f1" },
       { start: 50, end: 80, key: "standup" },
     ];
     document.body.append(el);
@@ -46,6 +46,8 @@ describe("TimeLine selected-event resize handles", () => {
     const style = dentist instanceof HTMLElement ? (dentist.getAttribute("style") ?? "") : "";
     expect(style).toMatch(/--__start:\s*[\d.]+%/);
     expect(style).toMatch(/--__end:/);
-    expect(style).not.toContain("--_lc-event-bg");
+    expect(style.indexOf("--__end:")).toBeLessThan(style.indexOf("--_lc-event-accent-color"));
+    expect(style).toContain("#6366f1");
+    expect(style).not.toContain("--_lc-event-bg:");
   });
 });

@@ -9,6 +9,7 @@ import {
 import { customElement, property, state } from "lit/decorators.js";
 import componentStyle from "./TimeLine.css?inline";
 import { isTouchResizeHandleActive } from "../ResizeHandle/ResizeHandle";
+import { getEventColorStyles } from "../utils/EventColor";
 import type {
   TimeLineLayout,
   TimelineEvent,
@@ -1679,6 +1680,21 @@ export class TimeLine extends LitElement {
     return horiz && laneMode ? ` --__lane-stack: calc(${laneCount} * var(--__event-height))` : "";
   }
 
+  /**
+   * Accent tokens for sibling resize-handles. Appended after `--__end` so a missing
+   * semicolon cannot glue onto time geometry (that previously shifted cards).
+   */
+  #eventAccentVars(ev: TimelineEvent): string {
+    const color = ev.color;
+    if (typeof color !== "string" || color.trim() === "") return "";
+    const styles = getEventColorStyles(color);
+    const accent = styles["--_lc-event-accent-color"] ?? color;
+    const border = styles["--_lc-event-border-color"];
+    return border
+      ? `--_lc-event-accent-color:${accent};--_lc-event-border-color:${border};`
+      : `--_lc-event-accent-color:${accent};`;
+  }
+
   #resizeHandleFragment(position: "start" | "end", title: string, eventKey: unknown) {
     return html`<resize-handle
       .axis=${this.flow}
@@ -1735,6 +1751,7 @@ export class TimeLine extends LitElement {
         ${staggerVars}${dragTransform}
         --__start:${this.#axisPct(segStart, w0, w1)}%;
         --__end:${endInset};
+        ${this.#eventAccentVars(templateEv)}
       "
       >
         ${showResizeStart ? this.#resizeHandleFragment("start", "Resize start", ev.key) : nothing}
