@@ -10,8 +10,9 @@
 }
 
 /**
- * Grid keeps title truncation predictable; min-height matches default icon-button row (size-md / 2.25rem)
- * so subtitle/search do not jump when actions are present vs absent.
+ * Grid keeps wide inline titles predictable; stacked / narrow responsive
+ * wrap the title instead of ellipsizing first. Min-height matches default
+ * icon-button row (size-md / 2.25rem) so subtitle/search do not jump.
  */
 .view-header__title-row {
   display: grid;
@@ -65,6 +66,15 @@
   @apply w-full flex-wrap;
 }
 
+.view-header__title-row--stacked .view-header__title-cluster {
+  @apply items-start;
+}
+
+.view-header__title-row--stacked .view-header__title {
+  @apply overflow-visible whitespace-normal text-xl leading-tight;
+  text-overflow: unset;
+}
+
 @container view-header-main (max-width: 40rem) {
   .view-header__title-row--responsive {
     --view-header-cluster-justify: space-between;
@@ -75,6 +85,15 @@
 
   .view-header__title-row--responsive .view-header__actions {
     @apply w-full flex-wrap;
+  }
+
+  .view-header__title-row--responsive .view-header__title-cluster {
+    @apply items-start;
+  }
+
+  .view-header__title-row--responsive .view-header__title {
+    @apply overflow-visible whitespace-normal text-xl leading-tight;
+    text-overflow: unset;
   }
 }
 
@@ -89,6 +108,15 @@
 
     .view-header__title-row--responsive .view-header__actions {
       @apply w-full flex-wrap;
+    }
+
+    .view-header__title-row--responsive .view-header__title-cluster {
+      @apply items-start;
+    }
+
+    .view-header__title-row--responsive .view-header__title {
+      @apply overflow-visible whitespace-normal text-xl leading-tight;
+      text-overflow: unset;
     }
   }
 }
