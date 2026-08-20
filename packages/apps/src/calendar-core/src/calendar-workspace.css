@@ -458,6 +458,15 @@
   min-height: 0;
 }
 
+/* Overlay sidebar only (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY).
+   Opaque sticky day headings stay bright under the 30% scrim; inherit a
+   transparent token into the list shadow tree instead. */
+@media (max-width: 1159px) {
+  .calendar-workspace:has(.app-sidebar[data-open="true"]) {
+    --_lc-list-heading-bg: transparent;
+  }
+}
+
 /**
  * Portaled event dialog sits outside `.calendar-workspace`; repeat the accent
  * tokens so {@link Button} and form chrome match the calendar shell.

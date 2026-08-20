@@ -53,6 +53,14 @@ describe("calendar workspace header markup", () => {
   });
 });
 
+describe("calendar workspace sidebar overlay", () => {
+  it("clears sticky list heading backgrounds while the overlay sidebar is open", () => {
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*1159px\)[\s\S]*\.app-sidebar\[data-open="true"\][\s\S]*--_lc-list-heading-bg:\s*transparent/,
+    );
+  });
+});
+
 describe("calendar workspace stacked header", () => {
   it("uses a viewport two-row grid so flattening main cannot drop the query", () => {
     expect(css).toMatch(
