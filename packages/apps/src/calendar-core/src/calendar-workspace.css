@@ -369,18 +369,6 @@
   @apply min-w-36;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__alarm-custom {
-  @apply flex min-w-0 items-center gap-2;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-custom input[type="number"] {
-  @apply w-20;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-when {
-  @apply min-w-44 flex-1;
-}
-
 .calendar-dialog-surface .calendar-event-dialog__title-row {
   display: flex;
   align-items: center;

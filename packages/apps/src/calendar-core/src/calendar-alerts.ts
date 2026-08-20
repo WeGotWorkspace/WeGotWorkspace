@@ -11,20 +11,10 @@ export type CalendarAlertAction = "display";
 
 export const DEFAULT_ALERT_ACTION: CalendarAlertAction = "display";
 
-export type CalendarAlertOffsetPreset =
-  | "at-start"
-  | "5m"
-  | "10m"
-  | "15m"
-  | "30m"
-  | "1h"
-  | "1d"
-  | "custom";
+export type CalendarAlertOffsetPreset = "at-start" | "5m" | "10m" | "15m" | "30m" | "1h" | "1d";
 
 /** Offset dropdown value, including the empty trailing slot. */
 export type CalendarAlertOffsetSelectValue = CalendarAlertOffsetPreset | "none";
-
-export type CalendarAlertCustomUnit = "minutes" | "hours" | "days";
 
 export type CalendarEventAlertFormValue = {
   id: string;
@@ -38,7 +28,7 @@ export type CalendarEventAlertFormValue = {
 };
 
 export const ALERT_OFFSET_PRESETS: ReadonlyArray<{
-  id: Exclude<CalendarAlertOffsetPreset, "custom">;
+  id: CalendarAlertOffsetPreset;
   offset: string;
 }> = [
   { id: "at-start", offset: "PT0S" },
@@ -66,51 +56,51 @@ export function alertActionFromWire(_value: unknown): CalendarAlertAction {
   return DEFAULT_ALERT_ACTION;
 }
 
-export function matchAlertOffsetPreset(offset: string): CalendarAlertOffsetPreset {
+export function matchAlertOffsetPreset(offset: string): CalendarAlertOffsetPreset | null {
   if (AT_START_OFFSETS.has(offset)) return "at-start";
-  const found = ALERT_OFFSET_PRESETS.find((preset) => preset.offset === offset);
-  return found?.id ?? "custom";
+  return ALERT_OFFSET_PRESETS.find((preset) => preset.offset === offset)?.id ?? null;
 }
 
-export function presetToOffset(preset: Exclude<CalendarAlertOffsetPreset, "custom">): string {
+export function isAlertOffsetSelectValue(value: string): value is CalendarAlertOffsetSelectValue {
+  return value === "none" || ALERT_OFFSET_PRESETS.some((preset) => preset.id === value);
+}
+
+export function presetToOffset(preset: CalendarAlertOffsetPreset): string {
   const found = ALERT_OFFSET_PRESETS.find((entry) => entry.id === preset);
   return found?.offset ?? "PT0S";
 }
 
-export function parseCustomOffset(offset: string): {
-  amount: number;
-  unit: CalendarAlertCustomUnit;
-} {
+/** Display-only label for a leftover offset that is not a prefab. */
+export function formatUnmatchedAlertOffset(offset: string): string {
   try {
+    const negated = offset.startsWith("-");
     const duration = Temporal.Duration.from(offset.replace(/^-/, ""));
+    let quantity = "";
     if (
       duration.days > 0 &&
       duration.hours === 0 &&
       duration.minutes === 0 &&
       duration.seconds === 0
     ) {
-      return { amount: duration.days, unit: "days" };
-    }
-    if (
+      quantity = `${duration.days} ${duration.days === 1 ? "day" : "days"}`;
+    } else if (
       duration.hours > 0 &&
       duration.days === 0 &&
       duration.minutes === 0 &&
       duration.seconds === 0
     ) {
-      return { amount: duration.hours, unit: "hours" };
+      quantity = `${duration.hours} ${duration.hours === 1 ? "hour" : "hours"}`;
+    } else {
+      const totalMinutes = Math.round(duration.total({ unit: "minutes" }));
+      if (totalMinutes > 0 && duration.days === 0) {
+        quantity = `${totalMinutes} ${totalMinutes === 1 ? "minute" : "minutes"}`;
+      }
     }
-    const totalMinutes = Math.round(duration.total({ unit: "minutes" }));
-    return { amount: totalMinutes > 0 ? totalMinutes : 15, unit: "minutes" };
+    if (!quantity) return offset;
+    return negated ? `${quantity} before` : `${quantity} after`;
   } catch {
-    return { amount: 15, unit: "minutes" };
+    return offset;
   }
-}
-
-export function formatCustomOffset(amount: number, unit: CalendarAlertCustomUnit): string {
-  const safe = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 1;
-  return Temporal.Duration.from({ [unit]: safe })
-    .negated()
-    .toString();
 }
 
 export function defaultEventAlert(
@@ -144,9 +134,7 @@ export function alertsAfterOffsetChange(args: {
     if (!args.rowId) return args.alerts;
     return args.alerts.filter((row) => row.id !== args.rowId);
   }
-  const current = args.rowId ? args.alerts.find((row) => row.id === args.rowId) : undefined;
-  const offset =
-    args.value === "custom" ? (current?.offset ?? "-PT15M") : presetToOffset(args.value);
+  const offset = presetToOffset(args.value);
   if (!args.rowId) {
     return [...args.alerts, { id: nextAlertId(args.alerts), action: "display", offset }];
   }

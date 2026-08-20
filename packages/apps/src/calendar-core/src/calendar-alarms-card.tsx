@@ -1,12 +1,10 @@
 import { Bell } from "lucide-react";
-import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   alertsAfterOffsetChange,
-  formatCustomOffset,
+  formatUnmatchedAlertOffset,
+  isAlertOffsetSelectValue,
   matchAlertOffsetPreset,
-  parseCustomOffset,
-  type CalendarAlertCustomUnit,
   type CalendarAlertOffsetSelectValue,
   type CalendarEventAlertFormValue,
 } from "@/calendar-core/src/calendar-alerts";
@@ -17,12 +15,26 @@ import "@/share-ui/share-ui.css";
 
 const EMPTY_SLOT_ID = null;
 
-function alarmOffsetSelectValue(
-  alert: CalendarEventAlertFormValue | null,
-): CalendarAlertOffsetSelectValue {
+function foreignSelectValue(alert: CalendarEventAlertFormValue): string | null {
+  if (alert.offset != null) {
+    return matchAlertOffsetPreset(alert.offset) ? null : `offset:${alert.offset}`;
+  }
+  if (alert.when) return `when:${alert.when}`;
+  return null;
+}
+
+function alarmOffsetSelectValue(alert: CalendarEventAlertFormValue | null): string {
   if (!alert) return "none";
-  if (alert.offset == null) return "custom";
-  return matchAlertOffsetPreset(alert.offset);
+  if (alert.offset != null) {
+    return matchAlertOffsetPreset(alert.offset) ?? `offset:${alert.offset}`;
+  }
+  if (alert.when) return `when:${alert.when}`;
+  return "none";
+}
+
+function foreignSelectLabel(alert: CalendarEventAlertFormValue): string {
+  if (alert.offset != null) return formatUnmatchedAlertOffset(alert.offset);
+  return alert.when ?? "";
 }
 
 function AlarmOffsetControls({
@@ -30,25 +42,22 @@ function AlarmOffsetControls({
   labels,
   disabled,
   onSelect,
-  onPatch,
 }: {
   alert: CalendarEventAlertFormValue | null;
   labels: CalendarUILabels;
   disabled: boolean;
   onSelect: (value: CalendarAlertOffsetSelectValue) => void;
-  onPatch?: (patch: Partial<CalendarEventAlertFormValue>) => void;
 }) {
-  const preset = alarmOffsetSelectValue(alert);
-  const custom = alert?.offset
-    ? parseCustomOffset(alert.offset)
-    : { amount: 15, unit: "minutes" as const };
-  const isAbsolute = Boolean(alert && alert.offset == null && alert.when);
+  const selectValue = alarmOffsetSelectValue(alert);
+  const foreignValue = alert ? foreignSelectValue(alert) : null;
 
   return (
     <div className="calendar-event-dialog__alarm-row">
       <Select
-        value={isAbsolute ? "custom" : preset}
-        onValueChange={(value) => onSelect(value as CalendarAlertOffsetSelectValue)}
+        value={selectValue}
+        onValueChange={(value) => {
+          if (isAlertOffsetSelectValue(value)) onSelect(value);
+        }}
         disabled={disabled}
       >
         <SelectTrigger
@@ -59,6 +68,11 @@ function AlarmOffsetControls({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="none">{labels.eventAlarmNone}</SelectItem>
+          {foreignValue && alert ? (
+            <SelectItem value={foreignValue} disabled>
+              {foreignSelectLabel(alert)}
+            </SelectItem>
+          ) : null}
           <SelectItem value="at-start">{labels.eventAlarmAtStart}</SelectItem>
           <SelectItem value="5m">{labels.eventAlarm5Min}</SelectItem>
           <SelectItem value="10m">{labels.eventAlarm10Min}</SelectItem>
@@ -66,61 +80,8 @@ function AlarmOffsetControls({
           <SelectItem value="30m">{labels.eventAlarm30Min}</SelectItem>
           <SelectItem value="1h">{labels.eventAlarm1Hour}</SelectItem>
           <SelectItem value="1d">{labels.eventAlarm1Day}</SelectItem>
-          <SelectItem value="custom">{labels.eventAlarmCustom}</SelectItem>
         </SelectContent>
       </Select>
-      {isAbsolute && alert && onPatch ? (
-        <Input
-          type="datetime-local"
-          className="calendar-event-dialog__alarm-when"
-          value={alert.when?.slice(0, 16) ?? ""}
-          aria-label={labels.eventAlarmCustom}
-          disabled={disabled}
-          onChange={(event) => {
-            const value = event.target.value;
-            if (!value) return;
-            onPatch({ offset: null, when: `${value}:00` });
-          }}
-        />
-      ) : null}
-      {preset === "custom" && !isAbsolute && alert && onPatch ? (
-        <div className="calendar-event-dialog__alarm-custom">
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            value={custom.amount}
-            aria-label={labels.eventAlarmCustomAmount}
-            disabled={disabled}
-            onChange={(event) => {
-              const parsed = Number.parseInt(event.target.value, 10);
-              onPatch({
-                offset: formatCustomOffset(Number.isFinite(parsed) ? parsed : 1, custom.unit),
-                when: undefined,
-              });
-            }}
-          />
-          <Select
-            value={custom.unit}
-            onValueChange={(value) =>
-              onPatch({
-                offset: formatCustomOffset(custom.amount, value as CalendarAlertCustomUnit),
-                when: undefined,
-              })
-            }
-            disabled={disabled}
-          >
-            <SelectTrigger aria-label={labels.eventAlarmCustomAmount}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="minutes">{labels.eventAlarmUnitMinutes}</SelectItem>
-              <SelectItem value="hours">{labels.eventAlarmUnitHours}</SelectItem>
-              <SelectItem value="days">{labels.eventAlarmUnitDays}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -161,9 +122,6 @@ export function CalendarAlarmsCard({
               labels={labels}
               disabled={disabled || readOnly}
               onSelect={(value) => commitOffset(alert.id, value)}
-              onPatch={(patch) =>
-                onChange(alerts.map((row) => (row.id === alert.id ? { ...row, ...patch } : row)))
-              }
             />
           }
           removeLabel={labels.eventAlarmRemove}

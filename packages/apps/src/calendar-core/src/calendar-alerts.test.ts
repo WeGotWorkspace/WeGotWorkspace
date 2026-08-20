@@ -6,10 +6,9 @@ import {
   alertsToWire,
   alertsAfterOffsetChange,
   defaultEventAlert,
-  formatCustomOffset,
+  formatUnmatchedAlertOffset,
   freeBusyStatusFromWire,
   matchAlertOffsetPreset,
-  parseCustomOffset,
 } from "@/calendar-core/src/calendar-alerts";
 
 describe("freeBusyStatusFromWire", () => {
@@ -38,15 +37,14 @@ describe("alert offset presets", () => {
     expect(matchAlertOffsetPreset("-PT15M")).toBe("15m");
     expect(matchAlertOffsetPreset("-PT1H")).toBe("1h");
     expect(matchAlertOffsetPreset("-P1D")).toBe("1d");
-    expect(matchAlertOffsetPreset("-PT45M")).toBe("custom");
+    expect(matchAlertOffsetPreset("-PT45M")).toBeNull();
   });
 
-  it("parses and formats custom before-offsets", () => {
-    expect(parseCustomOffset("-PT45M")).toEqual({ amount: 45, unit: "minutes" });
-    expect(parseCustomOffset("-PT2H")).toEqual({ amount: 2, unit: "hours" });
-    expect(parseCustomOffset("-P3D")).toEqual({ amount: 3, unit: "days" });
-    expect(formatCustomOffset(45, "minutes")).toBe("-PT45M");
-    expect(formatCustomOffset(2, "hours")).toBe("-PT2H");
+  it("labels unmatched leftover offsets without coercing them", () => {
+    expect(formatUnmatchedAlertOffset("-PT45M")).toBe("45 minutes before");
+    expect(formatUnmatchedAlertOffset("-PT2H")).toBe("2 hours before");
+    expect(formatUnmatchedAlertOffset("-P3D")).toBe("3 days before");
+    expect(formatUnmatchedAlertOffset("not-a-duration")).toBe("not-a-duration");
   });
 });
 
@@ -197,5 +195,12 @@ describe("alertsAfterOffsetChange", () => {
     expect(alertsAfterOffsetChange({ alerts: existing, rowId: "alert1", value: "1h" })).toEqual([
       { id: "alert1", action: "display", offset: "-PT1H" },
     ]);
+  });
+
+  it("clears an unmatched leftover offset when choosing None", () => {
+    const leftover = [{ id: "alert1", action: "display" as const, offset: "-PT45M" }];
+    expect(alertsAfterOffsetChange({ alerts: leftover, rowId: "alert1", value: "none" })).toEqual(
+      [],
+    );
   });
 });

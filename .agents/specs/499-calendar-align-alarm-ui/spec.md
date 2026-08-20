@@ -28,8 +28,9 @@ Alarm / reminder rows use the same **ShareAccessCard + ShareAccessRow** layout a
 - Bell / title icon only on the parent card — not on each row.
 - Each row is numbered `Alert 1`, `Alert 2`, … (trailing None is the next number).
 - Persist only real alerts via `alertsAfterOffsetChange`. Choosing None on a set row removes it; choosing an offset on the trailing slot appends one. Keep exactly one trailing None in the UI, never in the form.
-- Do not render `eventAlarmsNone` or an Add-alert footer.
-- Preserve leftover absolute `when` and display-only leftover email (no action menu).
+- Do not render `eventAlarmsNone`, an Add-alert footer, or a Custom offset option.
+- Leftover offsets that are not a prefab stay visible as a greyed-out / disabled dropdown option (do not coerce to a nearby prefab). None still clears them.
+- Preserve leftover absolute `when` (same disabled-option treatment) and display-only leftover email (no action menu).
 - BEM + `@apply` in CSS; keep alarm-row controls inside the shared row trailing slot.
 
 ## Edge cases
@@ -37,3 +38,4 @@ Alarm / reminder rows use the same **ShareAccessCard + ShareAccessRow** layout a
 - Empty writable card: one Alert + None row only (no “No alarms” copy).
 - Invitee read-only dialog: existing rows only; no trailing None; no delete.
 - Multiple alarms: one persisted row per alert id plus one trailing None.
+- Foreign offset (e.g. `-PT45M`) or absolute `when`: trigger shows that value; the matching option is disabled.

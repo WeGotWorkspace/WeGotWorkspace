@@ -359,6 +359,27 @@ describe("CalendarEventDialog", () => {
     );
   });
 
+  it("shows unmatched leftover offsets as a disabled option and omits Custom", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      alerts: [{ id: "alert1", action: "display" as const, offset: "-PT45M" }],
+    };
+    const { onChange } = renderDialog({ form, locale: "en-US" });
+    const offset = screen.getAllByRole("combobox", {
+      name: defaultCalendarLabels.eventAlarmOffset,
+    })[0];
+    expect(offset?.textContent).toMatch(/45 minutes before/i);
+    fireEvent.click(offset!);
+    expect(screen.queryByRole("option", { name: /^Custom$/i })).toBeNull();
+    const foreign = screen.getByRole("option", { name: /45 minutes before/i });
+    expect(foreign.hasAttribute("disabled") || foreign.getAttribute("data-disabled") !== null).toBe(
+      true,
+    );
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarmNone }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ alerts: [] }));
+  });
+
   it("adds an external invitee from the people input", () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
     const { onChange } = renderDialog({ form, canSubmitEmail: true });

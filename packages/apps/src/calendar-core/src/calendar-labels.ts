@@ -85,11 +85,6 @@ export type CalendarUILabels = {
   eventAlarm30Min: string;
   eventAlarm1Hour: string;
   eventAlarm1Day: string;
-  eventAlarmCustom: string;
-  eventAlarmCustomAmount: string;
-  eventAlarmUnitMinutes: string;
-  eventAlarmUnitHours: string;
-  eventAlarmUnitDays: string;
   eventRepeatLabel: string;
   eventRecurrenceEndsLabel: string;
   eventRecurrenceEndsNever: string;
@@ -222,11 +217,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAlarm30Min: "30 minutes before",
   eventAlarm1Hour: "1 hour before",
   eventAlarm1Day: "1 day before",
-  eventAlarmCustom: "Custom",
-  eventAlarmCustomAmount: "Time before",
-  eventAlarmUnitMinutes: "minutes",
-  eventAlarmUnitHours: "hours",
-  eventAlarmUnitDays: "days",
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
   eventRecurrenceEndsNever: "Never",
