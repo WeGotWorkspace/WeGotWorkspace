@@ -37,6 +37,25 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).not.toMatch(/:host\(\[data-dragging\]\)\s+event-card\s*\{[\s\S]*color-mix/);
   });
 
+  it("sizes meta labels from the shared token so small devices can shrink them", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /\.event-card-time\s*\{[\s\S]*font-size:\s*var\(--_lc-time-label-font-size,\s*0\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-compact-time\s*\{[\s\S]*font-size:\s*var\(--_lc-time-label-font-size,\s*0\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-location\s*\{[\s\S]*font-size:\s*var\(--_lc-time-label-font-size,\s*0\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-time-label-font-size,\s*0\.625rem/,
+    );
+    const summaryMain = css.match(/\.event-card-summary-main\s*\{[^}]*\}/)?.[0] ?? "";
+    expect(summaryMain).toBeTruthy();
+    expect(summaryMain).not.toContain("--_lc-time-label-font-size");
+  });
+
   it("insets the card fill with one shared token on all four sides", () => {
     const css = readCss("EventCard.css");
     expect(css).toMatch(/--_lc-event-card-inset:\s*1px/);

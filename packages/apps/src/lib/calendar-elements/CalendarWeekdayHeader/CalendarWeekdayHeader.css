@@ -21,6 +21,12 @@
   font-size: var(--_lc-weekday-header-font-size, 14px);
 }
 
+@media (max-width: 40rem) {
+  .weekday-header {
+    font-size: var(--_lc-weekday-header-font-size, 0.75rem);
+  }
+}
+
 .weekday {
   @apply inline-flex [container-type:inline-size] items-center justify-start text-start whitespace-nowrap [padding-inline:6px];
 }

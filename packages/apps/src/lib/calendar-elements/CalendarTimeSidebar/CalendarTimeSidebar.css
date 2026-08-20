@@ -71,8 +71,9 @@
 }
 
 .hour-label {
-  @apply text-inherit block text-xs leading-none font-medium whitespace-nowrap text-end tabular-nums;
-  /* Sit the 12px label on the timed-grid hour line (end of the previous tile). */
+  @apply text-inherit block leading-none font-medium whitespace-nowrap text-end tabular-nums;
+  /* Sit the label on the timed-grid hour line (end of the previous tile). */
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
   transform: translateY(-50%);
 }
 
@@ -94,9 +95,16 @@
   border-radius: 999px;
   background: var(--lc-higlight-color, #ff0000);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--_lc-time-label-font-size, 11px);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.01em;
   box-shadow: 0 0 0 1px var(--_lc-time-sidebar-layer-bg, transparent);
+}
+
+@media (max-width: 40rem) {
+  .hour-label,
+  .now-badge {
+    font-size: var(--_lc-time-label-font-size, 0.625rem);
+  }
 }

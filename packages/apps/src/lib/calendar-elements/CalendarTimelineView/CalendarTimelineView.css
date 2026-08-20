@@ -144,6 +144,25 @@ time-line.timeline-main {
   --_lc-time-sidebar-inline-padding: 6px;
 }
 
+@media (max-width: 40rem) {
+  .timeline-layout--composed {
+    --_lc-time-sidebar-inline-padding: 4px;
+    --_lc-time-label-font-size: 0.625rem;
+    --_lc-weekday-header-font-size: 0.75rem;
+  }
+}
+
+@container lc-timeline-composed (max-width: 40rem) {
+  .timeline-sidebar,
+  .timeline-swipe,
+  .timeline-week-number,
+  calendar-weekday-header.timeline-day-header-row {
+    --_lc-time-sidebar-inline-padding: 4px;
+    --_lc-time-label-font-size: 0.625rem;
+    --_lc-weekday-header-font-size: 0.75rem;
+  }
+}
+
 .timeline-sidebar {
   grid-row: 1;
   grid-column: 1;
