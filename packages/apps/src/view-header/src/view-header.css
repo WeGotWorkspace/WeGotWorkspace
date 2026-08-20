@@ -41,9 +41,9 @@
   order: var(--view-header-leading-order, 0);
 }
 
-/** Default: large serif display title. */
+/** Default: compact serif title, centered with the sidebar toggle. */
 .view-header__title {
-  @apply min-w-0 truncate text-2xl leading-none;
+  @apply min-w-0 truncate text-xl leading-none;
   font-family: var(--font-serif);
   color: var(--color-ink);
 }
