@@ -3,6 +3,14 @@
 
 @import "../../ui/anchored-dropdown.css";
 
+/**
+ * Toggle + title stack. `items-start` keeps the toggle on the title-row
+ * center line (row min-height matches the icon button) when a subtitle follows.
+ */
+.view-header {
+  @apply flex items-start gap-3;
+}
+
 /** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
@@ -10,8 +18,9 @@
 }
 
 /**
- * Grid keeps title truncation predictable; min-height matches default icon-button row (size-md / 2.25rem)
- * so subtitle/search do not jump when actions are present vs absent.
+ * Grid keeps wide inline titles predictable; stacked / narrow responsive
+ * wrap the title instead of ellipsizing first. Min-height matches default
+ * icon-button row (size-md / 2.25rem) so subtitle/search do not jump.
  */
 .view-header__title-row {
   display: grid;
@@ -32,17 +41,25 @@
   order: var(--view-header-leading-order, 0);
 }
 
-/** Default: large serif display title. */
+/**
+ * Default: large serif title on wide headers. Tailwind has no `text-box-*`
+ * utility that emits this, so the trim shorthand is a CSS property.
+ */
 .view-header__title {
   @apply min-w-0 truncate text-2xl leading-none;
   font-family: var(--font-serif);
   color: var(--color-ink);
+  text-box: auto;
 }
 
 /** Compact variant: medium-size, medium-weight, sans-serif (e.g. doc editor file name). */
 .view-header__title--sm {
   @apply text-base font-medium md:text-xl;
   font-family: var(--font-sans);
+}
+
+.view-header__title-compact {
+  @apply hidden;
 }
 
 .view-header__actions {
@@ -65,7 +82,16 @@
   @apply w-full flex-wrap;
 }
 
+.view-header__title-row--stacked .view-header__title {
+  @apply overflow-visible whitespace-normal leading-tight;
+  text-overflow: unset;
+}
+
 @container view-header-main (max-width: 40rem) {
+  .view-header__title:not(.view-header__title--sm) {
+    @apply text-xl;
+  }
+
   .view-header__title-row--responsive {
     --view-header-cluster-justify: space-between;
     --view-header-leading-order: 1;
@@ -76,10 +102,27 @@
   .view-header__title-row--responsive .view-header__actions {
     @apply w-full flex-wrap;
   }
+
+  .view-header__title-row--responsive .view-header__title {
+    @apply overflow-visible whitespace-normal leading-tight;
+    text-overflow: unset;
+  }
+
+  .view-header__title:has(.view-header__title-compact) .view-header__title-full {
+    @apply hidden;
+  }
+
+  .view-header__title-compact {
+    @apply inline;
+  }
 }
 
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
+    .view-header__title:not(.view-header__title--sm) {
+      @apply text-xl;
+    }
+
     .view-header__title-row--responsive {
       --view-header-cluster-justify: space-between;
       --view-header-leading-order: 1;
@@ -89,6 +132,19 @@
 
     .view-header__title-row--responsive .view-header__actions {
       @apply w-full flex-wrap;
+    }
+
+    .view-header__title-row--responsive .view-header__title {
+      @apply overflow-visible whitespace-normal leading-tight;
+      text-overflow: unset;
+    }
+
+    .view-header__title:has(.view-header__title-compact) .view-header__title-full {
+      @apply hidden;
+    }
+
+    .view-header__title-compact {
+      @apply inline;
     }
   }
 }

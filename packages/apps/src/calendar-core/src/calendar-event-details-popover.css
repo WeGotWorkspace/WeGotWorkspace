@@ -1,0 +1,159 @@
+@import "../../styles.css" reference;
+@import "./calendar-rsvp-actions.css";
+
+.calendar-event-details-popover__anchor {
+  @apply pointer-events-none fixed z-50;
+  anchor-name: --calendar-event-details-anchor;
+}
+
+.calendar-event-details-popover__anchor--docked {
+  anchor-name: none;
+}
+
+.calendar-dialog-surface.calendar-event-details-popover {
+  @apply box-border flex w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2 overflow-x-hidden overflow-y-auto p-3;
+  min-width: min(16rem, calc(100vw - 1.5rem));
+  height: max-content;
+  max-height: min(32rem, calc(100dvh - 2rem));
+  justify-self: center;
+  align-self: start;
+  margin: 0.75rem;
+  position-anchor: --calendar-event-details-anchor;
+  position-area: bottom;
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline,
+    --calendar-event-details-try-start,
+    --calendar-event-details-try-end,
+    --calendar-event-details-try-above-start,
+    --calendar-event-details-try-above-end;
+}
+
+@position-try --calendar-event-details-try-start {
+  position-area: left;
+}
+
+@position-try --calendar-event-details-try-end {
+  position-area: right;
+}
+
+@position-try --calendar-event-details-try-above-start {
+  position-area: top left;
+}
+
+@position-try --calendar-event-details-try-above-end {
+  position-area: top right;
+}
+
+.calendar-event-details-popover__header {
+  @apply flex min-w-0 flex-col gap-1;
+}
+
+.calendar-event-details-popover__title {
+  @apply m-0 text-base font-semibold leading-snug text-[color:var(--color-ink)];
+}
+
+.calendar-event-details-popover__calendar {
+  @apply m-0 flex min-w-0 items-center gap-2 text-sm text-[color:var(--field-label-color,inherit)];
+}
+
+.calendar-event-details-popover__swatch {
+  @apply size-2.5 shrink-0 rounded-full;
+}
+
+.calendar-event-details-popover__details {
+  @apply m-0 flex flex-col gap-2;
+}
+
+.calendar-event-details-popover__row {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.calendar-event-details-popover__icon {
+  @apply shrink-0 text-[color:var(--card-title-icon-color,currentColor)];
+}
+
+.calendar-event-details-popover__row-text {
+  @apply min-w-0 flex-1;
+}
+
+.calendar-event-details-popover__dt {
+  @apply sr-only;
+}
+
+.calendar-event-details-popover__dd {
+  @apply m-0 wrap-break-word text-sm;
+}
+
+.calendar-event-details-popover__rsvp {
+  @apply flex flex-col gap-2;
+}
+
+.calendar-event-details-popover__rsvp-hint {
+  @apply m-0 text-xs text-[color:var(--field-label-color,inherit)];
+}
+
+.calendar-event-details-popover__footer {
+  @apply flex justify-end;
+}
+
+/* Narrow viewport and --docked: pin Radix's transformed wrapper to the
+   viewport bottom. The card stays in-flow inside that wrapper. */
+@media (max-width: 40rem) {
+  [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
+    position: fixed !important;
+    inset: auto 0.75rem max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) 0.75rem !important;
+    transform: none !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+  }
+
+  .calendar-dialog-surface.calendar-event-details-popover {
+    @apply box-border overflow-x-hidden;
+    position-anchor: none;
+    position-area: none;
+    position-try: none;
+    position-try-fallbacks: none;
+    justify-self: unset;
+    align-self: unset;
+    margin: 0;
+    position: relative !important;
+    inset: unset !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: max-content !important;
+    max-height: min(32rem, calc(100dvh - 6rem));
+    transform: none !important;
+  }
+}
+
+[data-radix-popper-content-wrapper]:has(.calendar-event-details-popover--docked) {
+  position: fixed !important;
+  inset: auto 0.75rem max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) 0.75rem !important;
+  transform: none !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+}
+
+.calendar-dialog-surface.calendar-event-details-popover--docked {
+  @apply box-border overflow-x-hidden;
+  position-anchor: none;
+  position-area: none;
+  position-try: none;
+  position-try-fallbacks: none;
+  justify-self: unset;
+  align-self: unset;
+  margin: 0;
+  position: relative !important;
+  inset: unset !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: max-content !important;
+  max-height: min(32rem, calc(100dvh - 6rem));
+  transform: none !important;
+}

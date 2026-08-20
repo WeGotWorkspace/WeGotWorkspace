@@ -17,6 +17,7 @@ import {
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
+  shouldRequestInitialTimedScroll,
   timelineGridMax,
   timelineRangeOverlapsCell,
   toTimelineAllDayRange,
@@ -107,6 +108,22 @@ describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
       "utf8",
     );
     expect(css).toMatch(/\.marker\.marker--dimmed\s*\{[^}]*opacity:\s*0\.35/);
+  });
+
+  it("keeps the now line above resting events during iOS overflow scroll", () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
+      "utf8",
+    );
+    const markerBlock = css.match(/^\.marker\s*\{[^}]+\}/m)?.[0] ?? "";
+    const eventBlock = css.match(/^\.event\s*\{[^}]+\}/m)?.[0] ?? "";
+    const draggingBlock = css.match(/^\.event\.event--dragging\s*\{[^}]+\}/m)?.[0] ?? "";
+    expect(markerBlock).toContain("z-index: 700");
+    expect(markerBlock).toContain("translateZ(0)");
+    expect(eventBlock).not.toContain("will-change");
+    expect(draggingBlock).toContain("will-change: transform");
+    expect(draggingBlock).not.toContain("drop-shadow");
+    expect(draggingBlock).not.toContain("filter:");
   });
 });
 
@@ -291,6 +308,52 @@ describe("resolveVisibleHoursZoom (grid visibleHours -> hour-height zoom)", () =
     expect(hourHeightPx).toBe(80);
     expect(24 * hourHeightPx).toBe(1920);
     expect((zoom?.startHour ?? 0) * hourHeightPx).toBe(640);
+  });
+});
+
+describe("shouldRequestInitialTimedScroll (week swipe vs Today)", () => {
+  it("does not re-center when startDate moves and today stays in range (week swipe)", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: false,
+        startDateChanged: true,
+        todayInRange: true,
+        todayWasInRange: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("re-centers when today newly enters the range (Today from another week)", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: false,
+        startDateChanged: true,
+        todayInRange: true,
+        todayWasInRange: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("re-centers on view or zoom changes", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: true,
+        startDateChanged: false,
+        todayInRange: true,
+        todayWasInRange: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not re-center when navigating to a week without today", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: false,
+        startDateChanged: true,
+        todayInRange: false,
+        todayWasInRange: true,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -641,6 +704,11 @@ describe("composed timeline hour-line geometry", () => {
   it("lets the composed view size TimeLine hour tiles with a length token", () => {
     expect(timeLineCss).toContain("var(--time-line-grid-size, var(--__grid-size, 100%))");
   });
+
+  it("paints the time sidebar (clock badge) above the swipe column", () => {
+    expect(timelineCss).toMatch(/\.timeline-sidebar\s*\{[^}]*z-index:\s*2/);
+    expect(sidebarCss).toContain("translateZ(0)");
+  });
 });
 
 describe("week swipe page measure ignores range-zoom transform", () => {
@@ -663,5 +731,19 @@ describe("week swipe page measure ignores range-zoom transform", () => {
   it("re-measures the week pager when the range-zoom animation ends", () => {
     expect(timelineTs).toContain("CALENDAR_RANGE_TRANSITION_END_EVENT");
     expect(timelineTs).toContain("swipe?.remeasure");
+  });
+
+  it("gates date-window re-center through shouldRequestInitialTimedScroll (not raw startDate)", () => {
+    expect(timelineTs).toContain("shouldRequestInitialTimedScroll");
+    expect(timelineTs).toContain("todayWasInRange");
+    expect(timelineTs).toContain("scrollToNow");
+  });
+
+  it("re-centers on Today via CalendarViewGroup even when the week already includes today", () => {
+    const viewGroupTs = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../CalendarViewGroup/CalendarViewGroup.ts"),
+      "utf8",
+    );
+    expect(viewGroupTs).toContain("timeline.scrollToNow()");
   });
 });

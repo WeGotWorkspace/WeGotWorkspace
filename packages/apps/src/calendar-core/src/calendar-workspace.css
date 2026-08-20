@@ -147,6 +147,37 @@
   background-color: var(--color-cream, #ffffff);
 }
 
+/* Compact chrome so the date-range title can wrap instead of ellipsizing. */
+@container view-header-main (max-width: 40rem) {
+  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+    @apply size-8;
+  }
+
+  .calendar-workspace .calendar-header-actions .calendar-view-select {
+    @apply h-8 min-w-0;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (max-width: 40rem) {
+    .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
+      @apply size-8;
+    }
+
+    .calendar-workspace .calendar-header-actions .calendar-view-select {
+      @apply h-8 min-w-0;
+    }
+  }
+}
+
+@media (max-width: 40rem) {
+  .calendar-workspace .workspace-app-layout__main-header {
+    @apply p-3;
+  }
+}
+
 .calendar-workspace .calendar-sidebar-dot {
   display: inline-block;
   width: 0.65rem;
@@ -362,23 +393,11 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-wrap items-center gap-2;
+  @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-offset {
-  @apply min-w-36 flex-1;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-custom {
-  @apply flex min-w-0 items-center gap-2;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-custom input[type="number"] {
-  @apply w-20;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-when {
-  @apply min-w-44 flex-1;
+  @apply min-w-36;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__title-row {
