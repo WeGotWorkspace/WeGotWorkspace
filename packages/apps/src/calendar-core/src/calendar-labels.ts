@@ -39,6 +39,7 @@ export type CalendarUILabels = {
   noEventsInRange: string;
   toastEventCreated: string;
   toastEventUpdated: string;
+  toastEventSaveUndone: string;
   toastEventDeleted: string;
   toastEventDeleteUndone: string;
   toastEventSaveFailed: string;
@@ -134,6 +135,8 @@ export type CalendarUILabels = {
   rsvpRespond: string;
   rsvpSeriesHint: string;
   toastRsvpFailed: string;
+  toastRsvpUpdated: string;
+  toastRsvpUndone: string;
   toastInvitationCancelled: string;
 };
 
@@ -177,6 +180,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   noEventsInRange: "No events in this period.",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
+  toastEventSaveUndone: "Event change undone.",
   toastEventDeleted: "Event deleted",
   toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",
@@ -267,6 +271,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   rsvpRespond: "Respond",
   rsvpSeriesHint: "Accept and Decline apply to the entire series.",
   toastRsvpFailed: "Could not send RSVP",
+  toastRsvpUpdated: "Invitation updated",
+  toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
 };
 

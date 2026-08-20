@@ -6,10 +6,13 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   eventIsRecurringForRsvp,
   persistInviteeRsvp,
+  queueUndoableRespond,
   respondScopeFromChoice,
   rsvpRecurrenceIdForEvent,
+  rsvpUndoStatus,
   shouldAskRsvpOccurrenceScope,
 } from "@/calendar-core/src/calendar-rsvp-scope";
+import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 
 function wireEvent(overrides: Partial<JmapCalendarEvent> = {}): JmapCalendarEvent {
   return {
@@ -217,5 +220,40 @@ describe("calendar RSVP prompt reuse", () => {
     expect(workspace).toContain('source: "sidebar"');
     expect(workspace).toContain('source: "dialog"');
     expect(workspace).toContain("previousStatus");
+    expect(workspace).toContain("queueUndoableRespond");
+    expect(workspace).toContain("queueMutation");
+    expect(workspace).toContain("toastRsvpUpdated");
+    expect(workspace).toContain("toastRsvpUndone");
+  });
+});
+
+describe("queueUndoableRespond", () => {
+  it("runs the RSVP write then undo restores the previous PARTSTAT", async () => {
+    const respond = vi.fn().mockResolvedValue(undefined);
+    const queued: DeferredApiWriteArgs[] = [];
+    await queueUndoableRespond({
+      queueMutation: (write) => {
+        queued.push(write);
+        void write.execute(new AbortController().signal);
+      },
+      key: "calendar:rsvp:invite-1:accepted",
+      toastMessage: "Invitation updated",
+      undoToastMessage: "Invitation change undone.",
+      execute: () => respond("accepted"),
+      undo: () => {
+        const revert = rsvpUndoStatus("tentative");
+        if (revert) void respond(revert);
+      },
+    });
+
+    expect(respond).toHaveBeenCalledWith("accepted");
+    expect(queued[0]?.executeImmediately).toBe(true);
+    queued[0]?.undo();
+    expect(respond).toHaveBeenLastCalledWith("tentative");
+  });
+
+  it("does not revert a first RSVP from needs-action", () => {
+    expect(rsvpUndoStatus("needs-action")).toBeUndefined();
+    expect(rsvpUndoStatus(undefined)).toBeUndefined();
   });
 });
