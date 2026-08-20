@@ -744,13 +744,15 @@ describe("composed timeline hour-line geometry", () => {
     expect(timelineCss).toContain("border-block-width: 0");
   });
 
-  it("paints gutter hour lines with the same end-of-tile gradient as TimeLine", () => {
+  it("keeps hour lines on the timed grid, not through time-gutter labels", () => {
     expect(sidebarCss).toContain("grid-row: 4");
     expect(sidebarCss).toContain("--_lc-time-sidebar-timed-gap, 0px)");
-    expect(sidebarCss).toContain("transparent 0 calc(100% - 1px)");
-    expect(sidebarCss).toContain(
-      "background-size: 100% var(--_lc-time-sidebar-hour-cell-height, calc(100% / 24))",
-    );
+    const hourLabels = sidebarCss.match(/\.hour-labels\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(hourLabels).toContain("background-color: var(--_lc-time-sidebar-layer-bg)");
+    expect(hourLabels).not.toContain("background-image");
+    expect(hourLabels).not.toContain("linear-gradient");
+    expect(timeLineCss).toContain(".cell-main--grid");
+    expect(timeLineCss).toContain("var(--__grid-line-color)");
     expect(sidebarCss).toContain("transform: translateY(-50%)");
     expect(sidebarCss).not.toContain("--_lc-time-sidebar-timed-top-offset");
   });
