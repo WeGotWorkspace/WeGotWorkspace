@@ -13,7 +13,7 @@ type ViewHeaderProps = {
   title: string;
   /** Shown instead of `title` when the header main column is narrow. */
   compactTitle?: string;
-  /** "default" = compact serif title; "sm" = medium sans-serif title (e.g. doc editor file name). */
+  /** "default" = large serif title (smaller on compact headers); "sm" = medium sans-serif title (e.g. doc editor file name). */
   titleSize?: ViewHeaderTitleSize;
   /**
    * Title-row layout for `view-header__title-cluster` + `view-header__actions`.

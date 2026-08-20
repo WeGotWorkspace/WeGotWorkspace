@@ -158,7 +158,7 @@ export function calendarRangeLabelParts({
     const formatter = new Intl.DateTimeFormat(
       locale,
       density === "compact"
-        ? { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }
+        ? { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }
         : {
             weekday: "long",
             month: "long",

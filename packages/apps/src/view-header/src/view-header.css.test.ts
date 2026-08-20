@@ -16,8 +16,11 @@ describe("view-header CSS", () => {
     );
     expect(css).toMatch(/@container view-header-main \(max-width: 40rem\)/);
     expect(css).toMatch(/@supports not \(container-type: inline-size\)/);
-    expect(css).toMatch(/\.view-header__title \{[\s\S]*text-xl/);
-    expect(css).not.toMatch(/\.view-header__title \{[\s\S]*text-2xl/);
+    expect(css).toMatch(/\.view-header__title \{[\s\S]*text-2xl leading-none/);
+    expect(css).toMatch(/\.view-header__title \{[\s\S]*text-box:\s*auto;/);
+    expect(css).toMatch(
+      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.view-header__title:not\(\.view-header__title--sm\) \{[\s\S]*text-xl/,
+    );
     expect(css).toMatch(/\.view-header \{[\s\S]*items-start/);
     expect(css).toMatch(
       /\.view-header__title-row--responsive \.view-header__title-cluster \{[\s\S]*items-center/,

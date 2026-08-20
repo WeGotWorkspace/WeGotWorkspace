@@ -41,11 +41,15 @@
   order: var(--view-header-leading-order, 0);
 }
 
-/** Default: compact serif title, centered with the sidebar toggle. */
+/**
+ * Default: large serif title on wide headers. Tailwind has no `text-box-*`
+ * utility that emits this, so the trim shorthand is a CSS property.
+ */
 .view-header__title {
-  @apply min-w-0 truncate text-xl leading-none;
+  @apply min-w-0 truncate text-2xl leading-none;
   font-family: var(--font-serif);
   color: var(--color-ink);
+  text-box: auto;
 }
 
 /** Compact variant: medium-size, medium-weight, sans-serif (e.g. doc editor file name). */
@@ -88,6 +92,10 @@
 }
 
 @container view-header-main (max-width: 40rem) {
+  .view-header__title:not(.view-header__title--sm) {
+    @apply text-xl;
+  }
+
   .view-header__title-row--responsive {
     --view-header-cluster-justify: space-between;
     --view-header-leading-order: 1;
@@ -119,6 +127,10 @@
 
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
+    .view-header__title:not(.view-header__title--sm) {
+      @apply text-xl;
+    }
+
     .view-header__title-row--responsive {
       --view-header-cluster-justify: space-between;
       --view-header-leading-order: 1;

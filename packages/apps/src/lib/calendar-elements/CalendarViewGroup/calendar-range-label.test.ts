@@ -15,9 +15,10 @@ describe("calendarRangeLabel", () => {
     expect(label).toMatch(/Thursday/);
     expect(label).toMatch(/August/);
     expect(label).toMatch(/20/);
+    expect(label).toMatch(/2026/);
   });
 
-  it("shortens the weekday and month on compact day labels", () => {
+  it("shortens the weekday and month on compact day labels but keeps the year", () => {
     const label = calendarRangeLabel({
       view: "day",
       anchor: thursday,
@@ -29,6 +30,7 @@ describe("calendarRangeLabel", () => {
     expect(label).toMatch(/Aug/);
     expect(label).not.toMatch(/August/);
     expect(label).toMatch(/20/);
+    expect(label).toMatch(/2026/);
   });
 
   it("adds short weekdays on compact week ranges", () => {
