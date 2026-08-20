@@ -180,6 +180,7 @@ export function CalendarWorkspace({
     setPresentation,
     anchor,
     title,
+    compactTitle,
     goToday,
     goPrevious,
     goNext,
@@ -473,6 +474,7 @@ export function CalendarWorkspace({
         mainHeader={
           <ViewHeader
             title={title}
+            compactTitle={compactTitle}
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}

@@ -13,6 +13,10 @@ import type {
 } from "@/calendar-core/src/calendar-types";
 import { shiftAnchor, todayISODate, viewDateRange } from "@/calendar-core/src/calendar-event-model";
 import {
+  calendarRangeLabel,
+  type CalendarRangeLabelDensity,
+} from "@/lib/calendar-elements/CalendarViewGroup/calendar-range-label";
+import {
   calendarRouteKey,
   DEFAULT_CALENDAR_PRESENTATION,
   DEFAULT_CALENDAR_VIEW,
@@ -91,39 +95,25 @@ export type UseCalendarControllerOptions = {
   sessionName?: string;
 };
 
-const MONTH_TITLE: Temporal.ToStringPrecisionOptions & Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-};
-
-function rangeTitle(view: CalendarViewId, anchorISO: string, locale: string): string {
+function rangeTitle(
+  view: CalendarViewId,
+  anchorISO: string,
+  locale: string,
+  density: CalendarRangeLabelDensity = "full",
+): string {
   const anchor = Temporal.PlainDate.from(anchorISO);
-  if (view === "month") {
-    return anchor.toLocaleString(locale, MONTH_TITLE);
-  }
-  if (view === "year") {
-    return String(anchor.year);
-  }
-  if (view === "day") {
-    return anchor.toLocaleString(locale, {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  if (view !== "week") {
+    return calendarRangeLabel({ view, anchor, locale, density });
   }
   const range = viewDateRange(view, anchorISO);
-  const last = range.end.subtract({ days: 1 });
-  const sameMonth = range.start.month === last.month && range.start.year === last.year;
-  const startLabel = range.start.toLocaleString(locale, { day: "numeric", month: "short" });
-  const endLabel = last.toLocaleString(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+  return calendarRangeLabel({
+    view,
+    anchor,
+    locale,
+    density,
+    weekStart: range.start,
+    weekEnd: range.end.subtract({ days: 1 }),
   });
-  return sameMonth
-    ? `${range.start.day}–${last.day} ${last.toLocaleString(locale, { month: "long", year: "numeric" })}`
-    : `${startLabel} – ${endLabel}`;
 }
 
 function draftFromForm(
@@ -1052,6 +1042,8 @@ export function useCalendarController({
     setAnchor,
     dateRange,
     title: rangeTitle(view, anchor, locale),
+    compactTitle:
+      view === "day" || view === "week" ? rangeTitle(view, anchor, locale, "compact") : undefined,
     goToday,
     goPrevious,
     goNext,

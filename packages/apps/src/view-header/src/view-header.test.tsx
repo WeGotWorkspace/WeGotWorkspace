@@ -98,4 +98,51 @@ describe("ViewHeader layout", () => {
     expect(row!.classList.contains("view-header__title-row--responsive")).toBe(true);
     expect(row!.classList.contains("view-header__title-row--stacked")).toBe(false);
   });
+
+  it("keeps a long date-range title in the document for stacked and responsive layouts", () => {
+    const title = "31 Aug – 6 Sep 2026";
+    const { rerender, container } = render(
+      <ViewHeader
+        {...baseProps}
+        title={title}
+        layout="stacked"
+        titleLeading={<button type="button">Prev</button>}
+        actions={<button type="button">Today</button>}
+      />,
+    );
+    expect(container.querySelector(".view-header__title")?.textContent).toBe(title);
+
+    rerender(
+      <ViewHeader
+        {...baseProps}
+        title={title}
+        layout="responsive"
+        titleLeading={<button type="button">Prev</button>}
+        actions={<button type="button">Today</button>}
+      />,
+    );
+    expect(container.querySelector(".view-header__title")?.textContent).toBe(title);
+    expect(
+      container
+        .querySelector(".view-header__title-row")
+        ?.classList.contains("view-header__title-row--responsive"),
+    ).toBe(true);
+  });
+
+  it("keeps a compact title available for narrow headers", () => {
+    const { container } = render(
+      <ViewHeader
+        {...baseProps}
+        title="Thursday, August 20, 2026"
+        compactTitle="Thu, Aug 20, 2026"
+        layout="responsive"
+      />,
+    );
+    expect(container.querySelector(".view-header__title-full")?.textContent).toBe(
+      "Thursday, August 20, 2026",
+    );
+    expect(container.querySelector(".view-header__title-compact")?.textContent).toBe(
+      "Thu, Aug 20, 2026",
+    );
+  });
 });
