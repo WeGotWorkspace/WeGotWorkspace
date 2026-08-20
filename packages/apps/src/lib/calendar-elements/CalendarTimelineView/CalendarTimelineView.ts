@@ -1455,13 +1455,16 @@ export class CalendarTimelineView extends CalendarViewBase {
         },
       }),
     );
-    const popover = event.currentTarget;
+    this.#hideOpenPopover(event.currentTarget);
+  }
+
+  #hideOpenPopover(host: EventTarget | null) {
     if (
-      popover instanceof HTMLElement &&
-      typeof popover.hidePopover === "function" &&
-      popover.matches(":popover-open")
+      host instanceof HTMLElement &&
+      typeof host.hidePopover === "function" &&
+      host.matches(":popover-open")
     ) {
-      popover.hidePopover();
+      host.hidePopover();
     }
   }
 
@@ -1477,7 +1480,11 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   #handleOverflowPopoverSelect = (event: Event) => {
     const key = this.#eventKeyFromPopoverDetail(event);
-    if (key) this.#selectTimelineEvent(key, event.target);
+    if (!key) return;
+    const detail = (event as CustomEvent<unknown>).detail;
+    const card = detail instanceof EventTarget ? detail : event.target;
+    this.#selectTimelineEvent(key, card);
+    this.#hideOpenPopover(event.currentTarget);
   };
 
   #handleOverflowPopoverDelete = (event: Event) => {

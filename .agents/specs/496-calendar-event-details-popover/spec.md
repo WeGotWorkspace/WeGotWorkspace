@@ -39,3 +39,4 @@ Selecting an event on the Lit calendar surface opens a dismissible **details pop
 - Invitee without write: popover + RSVP, no Edit.
 - No card origin: popover still opens (viewport fallback; small screens stay center-bottom).
 - Bottom-right / bottom-left month cells and day/week timed events on the edge: flip or shift inward with margin; do not pin flush to the pane corner.
+- Compact month: tapping a day with events opens the day-overflow card (day number + chips), not the details popover. Tapping a chip there opens details and dismisses the overflow card.
