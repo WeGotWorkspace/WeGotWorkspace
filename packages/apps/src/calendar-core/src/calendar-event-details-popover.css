@@ -42,7 +42,7 @@
 }
 
 .calendar-event-details-popover__dt {
-  @apply text-xs text-[color:var(--field-label-color,inherit)];
+  @apply m-0 text-xs text-[color:var(--field-label-color,inherit)];
 }
 
 .calendar-event-details-popover__dd {

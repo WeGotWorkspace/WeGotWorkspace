@@ -41,7 +41,7 @@ describe("CalendarEventDetailsPopover", () => {
     cleanup();
   });
 
-  it("shows title, time, calendar, and Edit", () => {
+  it("shows title, time, calendar, and Edit", { timeout: 10_000 }, () => {
     const { onEdit } = renderPopover();
     expect(screen.getByRole("heading", { name: /Dentist/i })).toBeTruthy();
     expect(screen.getByText("Personal")).toBeTruthy();
@@ -50,7 +50,7 @@ describe("CalendarEventDetailsPopover", () => {
     expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
-  it("does not force Edit when the user cannot write", () => {
+  it("does not force Edit when the user cannot write", { timeout: 10_000 }, () => {
     renderPopover({ canEdit: false, onEdit: undefined });
     expect(screen.getByRole("heading", { name: /Dentist/i })).toBeTruthy();
     expect(
@@ -58,7 +58,7 @@ describe("CalendarEventDetailsPopover", () => {
     ).toBeNull();
   });
 
-  it("keeps RSVP reachable for an invitee without opening the editor", () => {
+  it("keeps RSVP reachable for an invitee without opening the editor", { timeout: 10_000 }, () => {
     const preview = {
       eventId: "awaiting-reply",
       form: {

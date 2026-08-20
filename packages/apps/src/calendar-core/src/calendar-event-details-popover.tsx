@@ -43,8 +43,8 @@ function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; val
         {icon}
       </span>
       <div className="calendar-event-details-popover__row-text">
-        <dt className="calendar-event-details-popover__dt">{label}</dt>
-        <dd className="calendar-event-details-popover__dd">{value}</dd>
+        <p className="calendar-event-details-popover__dt">{label}</p>
+        <p className="calendar-event-details-popover__dd">{value}</p>
       </div>
     </div>
   );
@@ -124,7 +124,7 @@ export function CalendarEventDetailsPopover({
             </p>
           ) : null}
         </header>
-        <dl className="calendar-event-details-popover__details">
+        <div className="calendar-event-details-popover__details">
           <DetailRow
             icon={<CalendarDays className="size-4" />}
             label={labels.eventWhenSectionTitle}
@@ -158,7 +158,7 @@ export function CalendarEventDetailsPopover({
               value={invitees}
             />
           ) : null}
-        </dl>
+        </div>
         {showRsvp && onRsvp ? (
           <div className="calendar-event-details-popover__rsvp">
             {form.recurrencePreset !== "none" ? (
