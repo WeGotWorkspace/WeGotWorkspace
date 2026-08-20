@@ -285,6 +285,11 @@ describe("CalendarEventDialog", () => {
       screen.getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel }),
     ).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.eventAlarmsNone)).toBeTruthy();
+    expect(
+      screen
+        .getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel })
+        .closest(".share-access-card"),
+    ).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventAlarmAdd }));
     expect(onChange).toHaveBeenCalledWith(

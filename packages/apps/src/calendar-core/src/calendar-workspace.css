@@ -362,11 +362,11 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-wrap items-center gap-2;
+  @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-offset {
-  @apply min-w-36 flex-1;
+  @apply min-w-36;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-custom {
