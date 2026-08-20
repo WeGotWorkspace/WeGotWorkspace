@@ -17,6 +17,7 @@ import {
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
+  shouldRequestInitialTimedScroll,
   timelineGridMax,
   timelineRangeOverlapsCell,
   toTimelineAllDayRange,
@@ -291,6 +292,52 @@ describe("resolveVisibleHoursZoom (grid visibleHours -> hour-height zoom)", () =
     expect(hourHeightPx).toBe(80);
     expect(24 * hourHeightPx).toBe(1920);
     expect((zoom?.startHour ?? 0) * hourHeightPx).toBe(640);
+  });
+});
+
+describe("shouldRequestInitialTimedScroll (week swipe vs Today)", () => {
+  it("does not re-center when startDate moves and today stays in range (week swipe)", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: false,
+        startDateChanged: true,
+        todayInRange: true,
+        todayWasInRange: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("re-centers when today newly enters the range (Today from another week)", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: false,
+        startDateChanged: true,
+        todayInRange: true,
+        todayWasInRange: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("re-centers on view or zoom changes", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: true,
+        startDateChanged: false,
+        todayInRange: true,
+        todayWasInRange: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not re-center when navigating to a week without today", () => {
+    expect(
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged: false,
+        startDateChanged: true,
+        todayInRange: false,
+        todayWasInRange: true,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -663,5 +710,19 @@ describe("week swipe page measure ignores range-zoom transform", () => {
   it("re-measures the week pager when the range-zoom animation ends", () => {
     expect(timelineTs).toContain("CALENDAR_RANGE_TRANSITION_END_EVENT");
     expect(timelineTs).toContain("swipe?.remeasure");
+  });
+
+  it("gates date-window re-center through shouldRequestInitialTimedScroll (not raw startDate)", () => {
+    expect(timelineTs).toContain("shouldRequestInitialTimedScroll");
+    expect(timelineTs).toContain("todayWasInRange");
+    expect(timelineTs).toContain("scrollToNow");
+  });
+
+  it("re-centers on Today via CalendarViewGroup even when the week already includes today", () => {
+    const viewGroupTs = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../CalendarViewGroup/CalendarViewGroup.ts"),
+      "utf8",
+    );
+    expect(viewGroupTs).toContain("timeline.scrollToNow()");
   });
 });
