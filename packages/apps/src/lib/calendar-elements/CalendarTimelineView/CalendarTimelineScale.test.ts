@@ -121,6 +121,8 @@ describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
     expect(markerBlock).toContain("translateZ(0)");
     expect(eventBlock).not.toContain("will-change");
     expect(draggingBlock).toContain("will-change: transform");
+    expect(draggingBlock).not.toContain("drop-shadow");
+    expect(draggingBlock).not.toContain("filter:");
   });
 });
 

@@ -557,6 +557,7 @@ export function CalendarWorkspace({
                 pendingCreateIntent={
                   editor?.mode === "create" ? formToCreateIntent(editor.form) : null
                 }
+                selectedEventKey={eventPreview ? eventPreviewOccurrenceKey(eventPreview.model) : ""}
               />
             </div>
           </div>

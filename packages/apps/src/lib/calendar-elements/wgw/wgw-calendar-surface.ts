@@ -42,6 +42,7 @@ export class WgwCalendarSurface extends LitElement {
       events: { attribute: false },
       visibleCalendarIds: { attribute: false },
       pendingCreateIntent: { attribute: false },
+      selectedEventKey: { type: String, attribute: "selected-event-key" },
     } as const;
   }
 
@@ -55,6 +56,8 @@ export class WgwCalendarSurface extends LitElement {
   visibleCalendarIds?: string[];
   /** Create-dialog range while the React editor is open (drag-create preview persist). */
   pendingCreateIntent: PendingCreateGeometry | null = null;
+  /** Event open in the React details popover; empty when nothing is previewed. */
+  selectedEventKey = "";
   /**
    * React-provided resolver for Only-this / This-and-future (and All instances
    * on delete) when editing recurring occurrences via drag/delete in the Lit
@@ -112,6 +115,7 @@ export class WgwCalendarSurface extends LitElement {
         timezone=${this.timezone ?? ""}
         selected-calendar-id=${this.selectedCalendarId ?? ""}
         .pendingCreateIntent=${this.pendingCreateIntent}
+        .selectedEventKey=${this.selectedEventKey}
         @view-changed=${this.#syncFromViewGroup}
         @start-date-changed=${this.#syncFromViewGroup}
         @presentation-changed=${this.#syncFromViewGroup}
