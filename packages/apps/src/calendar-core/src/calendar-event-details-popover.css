@@ -100,7 +100,23 @@
   @apply flex justify-end;
 }
 
+/*
+  Radix wraps content in [data-radix-popper-content-wrapper] with transform +
+  min-width: max-content. That wrapper becomes the containing block for
+  position:fixed on the card, so left+right insets collapse to a ~26px strip
+  next to a 0×0 / month-cell origin. Dock the wrapper to the viewport instead.
+*/
 @media (max-width: 40rem) {
+  [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
+    position: fixed !important;
+    inset: auto 0.75rem max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) 0.75rem !important;
+    transform: none !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+  }
+
   .calendar-dialog-surface.calendar-event-details-popover {
     @apply box-border overflow-x-hidden;
     position-anchor: none;
@@ -110,24 +126,32 @@
     justify-self: unset;
     align-self: unset;
     margin: 0;
-    position: fixed !important;
-    inset: auto !important;
+    position: relative !important;
+    inset: unset !important;
     top: auto !important;
-    left: 0.75rem !important;
-    right: 0.75rem !important;
-    bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) !important;
-    width: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
     min-width: 0;
-    max-width: calc(100vw - 1.5rem) !important;
-    max-width: calc(100dvw - 1.5rem) !important;
-    height: auto !important;
+    max-width: none !important;
+    height: max-content !important;
     min-height: 0;
     max-height: min(32rem, calc(100dvh - 6rem));
     transform: none !important;
   }
 }
 
-/* Compact-month cell origins can be tall on a wider window than 40rem. */
+[data-radix-popper-content-wrapper]:has(.calendar-event-details-popover--docked) {
+  position: fixed !important;
+  inset: auto 0.75rem max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) 0.75rem !important;
+  transform: none !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+}
+
 .calendar-dialog-surface.calendar-event-details-popover--docked {
   @apply box-border overflow-x-hidden;
   position-anchor: none;
@@ -137,17 +161,16 @@
   justify-self: unset;
   align-self: unset;
   margin: 0;
-  position: fixed !important;
-  inset: auto !important;
+  position: relative !important;
+  inset: unset !important;
   top: auto !important;
-  left: 0.75rem !important;
-  right: 0.75rem !important;
-  bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) !important;
-  width: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
   min-width: 0;
-  max-width: calc(100vw - 1.5rem) !important;
-  max-width: calc(100dvw - 1.5rem) !important;
-  height: auto !important;
+  max-width: none !important;
+  height: max-content !important;
   min-height: 0;
   max-height: min(32rem, calc(100dvh - 6rem));
   transform: none !important;

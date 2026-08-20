@@ -22,8 +22,11 @@ describe("calendar event details popover CSS", () => {
   });
 
   it("keeps a safe center-bottom placement on small viewports", () => {
+    expect(css).toContain(
+      "[data-radix-popper-content-wrapper]:has(.calendar-event-details-popover)",
+    );
     expect(css).toMatch(
-      /@media \(max-width: 40rem\) \{[\s\S]*bottom:\s*max\(1\.25rem,[\s\S]*safe-area-inset-bottom/,
+      /@media \(max-width: 40rem\) \{[\s\S]*inset:\s*auto 0\.75rem[\s\S]*safe-area-inset-bottom/,
     );
     expect(css).toMatch(
       /@media \(max-width: 40rem\) \{[\s\S]*max-height:\s*min\(32rem,\s*calc\(100dvh - 6rem\)\)/,
@@ -31,12 +34,7 @@ describe("calendar event details popover CSS", () => {
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-anchor:\s*none;/);
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-area:\s*none;/);
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-try-fallbacks:\s*none;/);
-    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*height:\s*auto\s*!important;/);
-    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*left:\s*0\.75rem\s*!important;/);
-    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*right:\s*0\.75rem\s*!important;/);
-    expect(css).toMatch(
-      /@media \(max-width: 40rem\) \{[\s\S]*max-width:\s*calc\(100dvw - 1\.5rem\)\s*!important;/,
-    );
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*height:\s*max-content\s*!important;/);
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*transform:\s*none\s*!important;/);
   });
 
@@ -46,5 +44,8 @@ describe("calendar event details popover CSS", () => {
     expect(css).toContain("align-self: start");
     expect(css).toContain("calendar-event-details-popover--docked");
     expect(css).toContain("position-anchor: none");
+    expect(css).toContain(
+      "[data-radix-popper-content-wrapper]:has(.calendar-event-details-popover--docked)",
+    );
   });
 });
