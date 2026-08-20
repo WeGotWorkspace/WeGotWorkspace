@@ -45,6 +45,55 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
     expect(dragging).not.toMatch(/filter:/);
   });
 
+  it("raises a selected event above stagger and uses the hover fill", () => {
+    expect(timeLineCss).toMatch(/--time-line-event-selected-z:\s*400/);
+    const selected =
+      timeLineCss.match(/\.event\.event--selected,[\s\S]*?\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(selected).toMatch(
+      /--time-line-event-selected-boost:\s*var\(--time-line-event-selected-z\)/,
+    );
+    expect(selected).not.toMatch(/z-index:/);
+    const selectedCard = ruleBlock(timeLineCss, ".event.event--selected event-card");
+    expect(selectedCard).toMatch(/--_lc-event-card-bg-active:\s*var\(--_lc-event-bg-hover\)/);
+    const staggerEvent =
+      timeLineCss.match(
+        /:host\(\[flow="vertical"\]\[layout="stagger"\]\)\s*\.event\s*\{[\s\S]*?\n\}/,
+      )?.[0] ?? "";
+    expect(staggerEvent).toMatch(
+      /z-index:\s*calc\(2 \+ var\(--__indent,\s*0\) \+ var\(--time-line-event-selected-boost,\s*0\)\)/,
+    );
+    const selectedIdx = timeLineCss.indexOf(".event.event--selected event-card");
+    const draggingIdx = timeLineCss.indexOf(".event.event--dragging event-card");
+    expect(selectedIdx).toBeGreaterThan(-1);
+    expect(draggingIdx).toBeGreaterThan(selectedIdx);
+  });
+
+  it("keeps the resting calendar tint while dragging (no desaturated ghost mix)", () => {
+    const draggingCard = ruleBlock(timeLineCss, ".event.event--dragging event-card");
+    expect(draggingCard).toMatch(/--_lc-event-card-bg-active:\s*var\(--_lc-event-bg\)/);
+    expect(draggingCard).toMatch(/--_lc-event-bg-hover:\s*var\(--_lc-event-bg\)/);
+    expect(draggingCard).not.toMatch(/color-mix/);
+    expect(draggingCard).not.toMatch(/saturat/);
+    expect(draggingCard).not.toMatch(/grayscale/);
+  });
+
+  it("uses one inset token on all four sides of vertical events", () => {
+    expect(timeLineCss).toMatch(
+      /--time-line-event-inset:\s*var\(--time-line-event-inline-inset,\s*var\(--_lc-event-card-inset,\s*1px\)\)/,
+    );
+    const verticalEvent =
+      timeLineCss.match(/:host\(\[flow="vertical"\]\)\s*\.event\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(verticalEvent).toMatch(/inset-inline:\s*var\(--time-line-event-inset\)/);
+    expect(verticalEvent).toMatch(
+      /top:\s*calc\(var\(--__start,\s*0\)\s*\+\s*var\(--time-line-event-inset\)\)/,
+    );
+    expect(verticalEvent).toMatch(
+      /bottom:\s*calc\(var\(--__end,\s*0\)\s*\+\s*var\(--time-line-event-inset\)\)/,
+    );
+    expect(timelineViewCss).toMatch(/--time-line-event-inline-inset:\s*1px/);
+    expect(timelineViewCss).not.toMatch(/--time-line-event-inline-inset:\s*4px/);
+  });
+
   it("traps month (and other standalone) timelines on a layout ancestor of <time-line>", () => {
     const layout = ruleBlock(timelineViewCss, ".timeline-layout");
     expect(layout).toMatch(/isolation:\s*isolate/);
@@ -89,5 +138,7 @@ describe("TimeLine touch resize selection wiring", () => {
     expect(accentIdx).toBeGreaterThan(endIdx);
     expect(timelineViewTs).toContain(".selectedEventKey=${this.selectedEventKey");
     expect(timelineViewTs).toContain('attribute: "selected-event-key"');
+    expect(timeLineTs).toContain("z-index:400");
+    expect(timeLineTs).toContain("?data-selected=${selected}");
   });
 });

@@ -26,6 +26,9 @@
   --_lc-event-recurring-icon-size: 13px;
   --_lc-event-card-segment-radius: var(--lc-event-card-radius, var(--radius-sm));
   --_lc-resize-handle-color: var(--_lc-event-card-text-color);
+  /* Block-leading chrome inset: TimeLine `--time-line-event-inset` uses this 1px on all
+     four sides (old T/B fill inset; do not use the old 4px inline gutter). */
+  --_lc-event-card-inset: 1px;
 }
 
 :host([layout="flow"]) {
@@ -74,11 +77,12 @@
 
 :host .event-card-shell::before {
   /* z-0 (not -1): negative z-index paints behind transformed ancestors (e.g. TimeLine drag ghost). */
-  @apply absolute inset-px z-0;
+  @apply absolute z-0;
   @apply bg-[var(--_lc-event-card-bg)];
   @apply text-[var(--_lc-event-card-accent-color)];
   @apply transition-[color,background-color] duration-100;
   content: "";
+  inset: var(--_lc-event-card-inset, 1px);
   border-radius: var(--_lc-event-card-segment-radius);
   outline: var(--_lc-event-focus-ring-width) solid var(--_lc-event-focus-ring-color);
   outline-offset: var(--_lc-event-focus-ring-gap);
@@ -89,7 +93,6 @@
   box-shadow:
     var(--_lc-event-card-cutout-ring, 0 0 0 transparent),
     inset 0 0 0 var(--_lc-event-focus-ring-inset-width) var(--_lc-event-focus-ring-color);
-  height: calc(100% - 2px);
 }
 
 :host .event-card-shell.event-card-overlap::before {
@@ -156,6 +159,16 @@
 :host([past]) .event-card-shell {
   opacity: var(--_lc-event-card-past-opacity, 0.55);
   transition-property: transform, opacity;
+}
+
+/* Selected / popover-open: same saturated fill as hover (not the pale rest tint).
+   Outside the hover media so a tap that opens the popover keeps the fill on touch. */
+:host([data-selected]) {
+  --_lc-event-card-bg-active: var(--_lc-event-bg-hover);
+}
+
+:host([past][data-selected]) .event-card-shell {
+  opacity: var(--_lc-event-card-past-opacity, 0.85);
 }
 
 /* Hover: pointer cursor is the resting affordance (edit, not drag). Tint only on

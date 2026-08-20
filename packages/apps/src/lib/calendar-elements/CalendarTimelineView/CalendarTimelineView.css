@@ -138,7 +138,7 @@ time-line.timeline-main {
     --_lc-week-section-divider-color,
     light-dark(rgb(15 23 42 / 22%), rgb(255 255 255 / 28%))
   );
-  /* Shared by the time-gutter hour rules and <time-line> `.cell-main--grid`. */
+  /* Hour lines on <time-line> `.cell-main--grid` only (not the time-gutter labels). */
   --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
   /* Shared gutter inset: hour labels, now-badge, and the week-number corner cell. */
   --_lc-time-sidebar-inline-padding: 6px;
@@ -315,14 +315,13 @@ time-line.timeline-all-day {
   /* Let vertical touch pans reach the composed scroll container; drags still work via
      TimeLine's touch long-press activation. */
   --time-line-touch-action: pan-y;
-  /* Match timed day/week cards: 4px gutter so all-day bars and timed cards share inline edges
-     within a day column (see --time-line-event-inline-inset on .timeline-timed). */
-  --time-line-event-inline-inset: 4px;
+  /* Same four-side gutter as timed day/week cards (block-size --time-line-event-inset). */
+  --time-line-event-inline-inset: 1px;
 }
 
 /* Standalone all-day presentation (variant="all-day", class timeline-main): same gutter. */
 :host([variant="all-day"]) time-line.timeline-main {
-  --time-line-event-inline-inset: 4px;
+  --time-line-event-inline-inset: 1px;
 }
 
 time-line.timeline-timed {
@@ -354,11 +353,8 @@ time-line.timeline-timed {
      so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
      each event-card. */
   --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, light-dark(#fff, #222));
-  /* Horizontal gutter beside timed cards so day-column separators stay visible (the cutout ring
-     alone only separates overlaps; solo cards were flush to the column edges). 4px clears the
-     1.5px cutout ring and leaves a thin surface strip over the cell outline. Same token on
-     .timeline-all-day so all-day bars line up with timed cards in the composed day/week view. */
-  --time-line-event-inline-inset: 4px;
+  /* Four-side gutter at the old block chrome size (1px), not the old 4px inline gutter. */
+  --time-line-event-inline-inset: 1px;
 }
 
 /* Drop the 0.5px block-axis viewport border so hour tiles are exactly
