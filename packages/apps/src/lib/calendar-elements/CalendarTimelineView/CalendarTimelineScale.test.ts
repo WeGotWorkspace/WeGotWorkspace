@@ -108,6 +108,22 @@ describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
     );
     expect(css).toMatch(/\.marker\.marker--dimmed\s*\{[^}]*opacity:\s*0\.35/);
   });
+
+  it("keeps the now line above resting events during iOS overflow scroll", () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
+      "utf8",
+    );
+    const markerBlock = css.match(/^\.marker\s*\{[^}]+\}/m)?.[0] ?? "";
+    const eventBlock = css.match(/^\.event\s*\{[^}]+\}/m)?.[0] ?? "";
+    const draggingBlock = css.match(/^\.event\.event--dragging\s*\{[^}]+\}/m)?.[0] ?? "";
+    expect(markerBlock).toContain("z-index: 700");
+    expect(markerBlock).toContain("translateZ(0)");
+    expect(eventBlock).not.toContain("will-change");
+    expect(draggingBlock).toContain("will-change: transform");
+    expect(draggingBlock).not.toContain("drop-shadow");
+    expect(draggingBlock).not.toContain("filter:");
+  });
 });
 
 describe("currentTimeMarkerTodayCell (today-column emphasis)", () => {
@@ -640,6 +656,11 @@ describe("composed timeline hour-line geometry", () => {
 
   it("lets the composed view size TimeLine hour tiles with a length token", () => {
     expect(timeLineCss).toContain("var(--time-line-grid-size, var(--__grid-size, 100%))");
+  });
+
+  it("paints the time sidebar (clock badge) above the swipe column", () => {
+    expect(timelineCss).toMatch(/\.timeline-sidebar\s*\{[^}]*z-index:\s*2/);
+    expect(sidebarCss).toContain("translateZ(0)");
   });
 });
 

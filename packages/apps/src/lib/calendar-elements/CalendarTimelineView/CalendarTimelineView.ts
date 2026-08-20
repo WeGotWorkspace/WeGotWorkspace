@@ -12,11 +12,12 @@ import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../DayOverflowPopover/DayOverflowPopover.js";
 import "../SwipeContainer/SwipeContainer.js";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
-import type {
-  EventCreateRequestDetail,
-  EventDeleteRequestDetail,
-  EventSelectionRequestDetail,
-  EventUpdateRequestDetail,
+import {
+  eventSelectionOriginFromElement,
+  type EventCreateRequestDetail,
+  type EventDeleteRequestDetail,
+  type EventSelectionRequestDetail,
+  type EventUpdateRequestDetail,
 } from "../types/CalendarEventRequests.js";
 import {
   isCalendarEventException,
@@ -180,12 +181,16 @@ export class CalendarTimelineView extends CalendarViewBase {
    * editor is open; Lit uses it to keep the drag-create card after pointer-up.
    */
   pendingCreateIntent: PendingCreateGeometry | null = null;
+  /**
+   * Event open in the details popover (React) or just short-pressed. Coarse resize
+   * grabbers render only for this key. Empty = initial state, no handles.
+   */
+  selectedEventKey = "";
 
   /** Events passed to the timed `<time-line>` in the latest render; commit indexes point here. */
   #renderedTimedEvents: CalendarTimelineEvent[] = [];
   /** Events passed to the all-day `<time-line>` in the latest render. */
   #renderedAllDayEvents: CalendarTimelineEvent[] = [];
-  #selectedEventKey: string | null = null;
   /** Set right after a gesture commit so the trailing click does not also select the event. */
   #suppressNextCardSelect = false;
   #suppressNextCardSelectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -249,6 +254,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       rtl: { type: Boolean, reflect: true },
       pendingCreateIntent: { attribute: false },
+      selectedEventKey: { type: String, attribute: "selected-event-key" },
     } as const;
   }
 
@@ -822,9 +828,8 @@ export class CalendarTimelineView extends CalendarViewBase {
       },
     };
     await this.applyDeleteRequestToEventsAPI(detail);
-    if (this.#selectedEventKey === key) {
-      this.#selectedEventKey = null;
-      this.requestUpdate();
+    if (this.selectedEventKey === key) {
+      this.selectedEventKey = "";
     }
   }
 
@@ -856,14 +861,17 @@ export class CalendarTimelineView extends CalendarViewBase {
     }, 150);
   }
 
-  #selectTimelineEvent(key: string) {
-    if (this.#selectedEventKey !== key) {
-      this.#selectedEventKey = key;
-      this.requestUpdate();
+  #selectTimelineEvent(key: string, card?: EventTarget | null) {
+    if (this.selectedEventKey !== key) {
+      this.selectedEventKey = key;
     }
+    const origin = eventSelectionOriginFromElement(card);
     this.dispatchEvent(
       new CustomEvent("event-selected", {
-        detail: { key } satisfies EventSelectionRequestDetail,
+        detail: {
+          key,
+          ...(origin ? { origin } : {}),
+        } satisfies EventSelectionRequestDetail,
       }),
     );
   }
@@ -881,7 +889,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     if (card instanceof HTMLElement) {
       card.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
     }
-    this.#selectTimelineEvent(key);
+    this.#selectTimelineEvent(key, card);
   }
 
   #handleEventCardKeydown(key: string, event: KeyboardEvent) {
@@ -895,7 +903,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      this.#selectTimelineEvent(key);
+      this.#selectTimelineEvent(key, event.currentTarget);
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
@@ -966,7 +974,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     preview?: TimelineEventPreviewRange,
   ): TemplateResult {
     const timelineEvent = event as CalendarTimelineEvent;
-    const selected = this.#selectedEventKey === timelineEvent.key;
+    const selected = this.selectedEventKey === timelineEvent.key;
     const timeLabel = this.#timelineEventTimeLabel(variant, timelineEvent, preview);
     // The card renders inside <time-line>'s shadow root. Selection has no persistent ring
     // (grid parity); it is exposed via aria-pressed and the event-card-selected part.
@@ -1450,13 +1458,16 @@ export class CalendarTimelineView extends CalendarViewBase {
         },
       }),
     );
-    const popover = event.currentTarget;
+    this.#hideOpenPopover(event.currentTarget);
+  }
+
+  #hideOpenPopover(host: EventTarget | null) {
     if (
-      popover instanceof HTMLElement &&
-      typeof popover.hidePopover === "function" &&
-      popover.matches(":popover-open")
+      host instanceof HTMLElement &&
+      typeof host.hidePopover === "function" &&
+      host.matches(":popover-open")
     ) {
-      popover.hidePopover();
+      host.hidePopover();
     }
   }
 
@@ -1472,7 +1483,11 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   #handleOverflowPopoverSelect = (event: Event) => {
     const key = this.#eventKeyFromPopoverDetail(event);
-    if (key) this.#selectTimelineEvent(key);
+    if (!key) return;
+    const detail = (event as CustomEvent<unknown>).detail;
+    const card = detail instanceof EventTarget ? detail : event.target;
+    this.#selectTimelineEvent(key, card);
+    this.#hideOpenPopover(event.currentTarget);
   };
 
   #handleOverflowPopoverDelete = (event: Event) => {
@@ -1539,6 +1554,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       <time-line
         class="timeline-main"
         .events=${events}
+        .selectedEventKey=${this.selectedEventKey ?? ""}
         .cells=${this.#resolvedNumDays}
         .columns=${this.#resolvedColumns}
         .max=${unitsPerDay}
@@ -1619,6 +1635,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-all-day"
             .events=${allDayEvents}
+            .selectedEventKey=${this.selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}
@@ -1674,6 +1691,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-timed"
             .events=${timedEvents}
+            .selectedEventKey=${this.selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}
