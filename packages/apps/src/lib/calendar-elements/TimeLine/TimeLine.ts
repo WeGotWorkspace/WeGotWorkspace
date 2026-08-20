@@ -1680,10 +1680,7 @@ export class TimeLine extends LitElement {
     return horiz && laneMode ? ` --__lane-stack: calc(${laneCount} * var(--__event-height))` : "";
   }
 
-  /**
-   * Accent tokens for sibling resize-handles. Appended after `--__end` so a missing
-   * semicolon cannot glue onto time geometry (that previously shifted cards).
-   */
+  /** Accent tokens for sibling handles. Always after `--__end` so time geometry stays intact. */
   #eventAccentVars(ev: TimelineEvent): string {
     const color = ev.color;
     if (typeof color !== "string" || color.trim() === "") return "";

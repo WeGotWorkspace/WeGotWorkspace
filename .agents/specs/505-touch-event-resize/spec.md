@@ -21,8 +21,8 @@ Touch users can change a timed event’s start and/or end on the day/week timeli
 
 ## Technical constraints
 
-- Do not un-hide the 2px hover bars under `@media (hover: none), (pointer: coarse)`
-- Touch resize is two-step: short-press opens the details popover **and** shows larger grabbers on that event only (WCAG 2.2 24px target). Long-press still moves.
+- Do not un-hide coarse handles until short-press / popover-open
+- Touch resize is two-step: short-press opens the details popover **and** shows thin event-accent pills on that event only (24px hit, 3px bar, 6px inset). Long-press still moves.
 - Touch handle visibility follows the event open in the details popover (React `selectedEventKey`), not hover and not “every on-screen event”
 - Initial state: no handles, no resize. Closing the popover hides grabbers
 - Unselected coarse handles stay `display: none; pointer-events: none` so scroll, week swipe, and long-press move are not stolen
@@ -35,3 +35,4 @@ Touch users can change a timed event’s start and/or end on the day/week timeli
 - Closing the details popover hides grabbers
 - Fine pointer: show thin accent pills on **event hover** (classic desktop); `active` must not change that look
 - Gesture lock already suspends swipe while a resize session is live
+- Dragging/resizing does not add a drop-shadow lift on the event card

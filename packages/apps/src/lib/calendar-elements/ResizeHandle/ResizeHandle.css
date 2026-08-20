@@ -7,12 +7,10 @@
     var(--_lc-event-border-color, transparent)
   );
   --_lc-resize-handle-thickness: 3px;
-  --_lc-resize-handle-length: 22px;
   --_lc-resize-handle-length-vertical: 28px;
-  --_lc-resize-handle-length-horizontal: var(--_lc-resize-handle-length);
+  --_lc-resize-handle-length-horizontal: 28px;
   --_lc-resize-handle-opacity: 0;
   --_lc-resize-handle-opacity-hover: 0.88;
-  /* Same visual inset as the event-card accent pill (6px shell-relative). */
   --_lc-resize-handle-inset: 6px;
 }
 
@@ -107,20 +105,12 @@
     pointer-events: none;
   }
 
-  /* Two-step touch resize: hidden until the event is selected, then a 24px grabber
-     (not the 2px hover bar). Unselected handles stay inert so scroll/swipe/move win. */
+  /* Hidden until the event is selected. Same 3px pill; 24px hit target. */
   :host([active]) {
     display: flex;
     pointer-events: auto;
-    --_lc-resize-handle-thickness: 3px;
-    --_lc-resize-handle-length-vertical: 28px;
-    --_lc-resize-handle-length-horizontal: 28px;
     --_lc-resize-handle-opacity: 0.88;
     --_lc-resize-handle-opacity-hover: 0.95;
-    --_lc-resize-handle-color: var(
-      --_lc-event-accent-color,
-      var(--_lc-event-border-color, transparent)
-    );
   }
 
   :host([active][axis="vertical"]) > div {
