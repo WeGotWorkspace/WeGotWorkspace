@@ -12,10 +12,7 @@ describe("calendarRangeLabel", () => {
       anchor: thursday,
       locale: "en-US",
     });
-    expect(label).toMatch(/Thursday/);
-    expect(label).toMatch(/August/);
-    expect(label).toMatch(/20/);
-    expect(label).toMatch(/2026/);
+    expect(label).toBe("Thursday, August 20, 2026");
   });
 
   it("shortens the weekday and month on compact day labels but keeps the year", () => {
@@ -25,12 +22,7 @@ describe("calendarRangeLabel", () => {
       locale: "en-US",
       density: "compact",
     });
-    expect(label).toMatch(/Thu/);
-    expect(label).not.toMatch(/Thursday/);
-    expect(label).toMatch(/Aug/);
-    expect(label).not.toMatch(/August/);
-    expect(label).toMatch(/20/);
-    expect(label).toMatch(/2026/);
+    expect(label).toBe("Thu, Aug 20, 2026");
   });
 
   it("adds short weekdays on compact week ranges", () => {

@@ -29,8 +29,8 @@ function dateLabelParts(formatter: Intl.DateTimeFormat, date: Date): CalendarRan
   }));
 }
 
-function weekdayShort(date: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(date);
+function weekdayName(date: Date, locale: string, width: "long" | "short"): string {
+  return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: "UTC" }).format(date);
 }
 
 function yearText(date: Date, locale: string): string {
@@ -49,6 +49,28 @@ function monthDay(date: Date, locale: string): string {
   }).format(date);
 }
 
+/** Day titles always include a weekday (long on large headers, short when compact). */
+function dayLabelParts(
+  date: Date,
+  locale: string,
+  density: CalendarRangeLabelDensity,
+): CalendarRangeLabelPart[] {
+  const weekdayWidth = density === "compact" ? "short" : "long";
+  const monthWidth = density === "compact" ? "short" : "long";
+  return [
+    { text: `${weekdayName(date, locale, weekdayWidth)}, `, isYear: false },
+    ...dateLabelParts(
+      new Intl.DateTimeFormat(locale, {
+        month: monthWidth,
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+      date,
+    ),
+  ];
+}
+
 function weekRangeLabelParts(
   start: Temporal.PlainDate,
   end: Temporal.PlainDate,
@@ -60,8 +82,8 @@ function weekRangeLabelParts(
   const year = yearText(startDate, locale);
 
   if (density === "compact") {
-    const startWeekday = weekdayShort(startDate, locale);
-    const endWeekday = weekdayShort(endDate, locale);
+    const startWeekday = weekdayName(startDate, locale, "short");
+    const endWeekday = weekdayName(endDate, locale, "short");
     if (start.year === end.year && start.month === end.month) {
       return [
         {
@@ -145,19 +167,7 @@ export function calendarRangeLabelParts({
   }
 
   if (view === "day") {
-    const formatter = new Intl.DateTimeFormat(
-      locale,
-      density === "compact"
-        ? { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }
-        : {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-            timeZone: "UTC",
-          },
-    );
-    return dateLabelParts(formatter, anchorDate);
+    return dayLabelParts(anchorDate, locale, density);
   }
 
   const start = weekStart ?? anchor;
