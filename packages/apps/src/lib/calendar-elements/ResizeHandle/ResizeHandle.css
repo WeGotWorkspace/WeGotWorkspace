@@ -75,4 +75,24 @@
     display: none;
     pointer-events: none;
   }
+
+  /* Two-step touch resize: hidden until the event is selected, then a 24px grabber
+     (not the 2px hover bar). Unselected handles stay inert so scroll/swipe/move win. */
+  :host([active]) {
+    display: flex;
+    pointer-events: auto;
+    --_lc-resize-handle-thickness: 6px;
+    --_lc-resize-handle-length-vertical: 44px;
+    --_lc-resize-handle-length-horizontal: 44px;
+    --_lc-resize-handle-opacity: 0.95;
+    --_lc-resize-handle-opacity-hover: 1;
+  }
+
+  :host([active][axis="vertical"]) > div {
+    @apply h-6;
+  }
+
+  :host([active][axis="horizontal"]) > div {
+    @apply w-6;
+  }
 }

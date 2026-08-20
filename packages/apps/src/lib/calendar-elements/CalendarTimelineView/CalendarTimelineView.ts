@@ -1539,6 +1539,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       <time-line
         class="timeline-main"
         .events=${events}
+        .selectedEventKey=${this.#selectedEventKey ?? ""}
         .cells=${this.#resolvedNumDays}
         .columns=${this.#resolvedColumns}
         .max=${unitsPerDay}
@@ -1619,6 +1620,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-all-day"
             .events=${allDayEvents}
+            .selectedEventKey=${this.#selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}
@@ -1674,6 +1676,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-timed"
             .events=${timedEvents}
+            .selectedEventKey=${this.#selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}

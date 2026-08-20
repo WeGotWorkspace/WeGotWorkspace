@@ -49,3 +49,14 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
     expect(monthLayout).toMatch(/isolate/);
   });
 });
+
+describe("TimeLine touch resize selection wiring", () => {
+  const timeLineTs = readCss("TimeLine.ts");
+  const timelineViewTs = readCss("../CalendarTimelineView/CalendarTimelineView.ts");
+
+  it("marks resize handles active only for the selected event key", () => {
+    expect(timeLineTs).toContain("selectedEventKey");
+    expect(timeLineTs).toContain("isTouchResizeHandleActive");
+    expect(timelineViewTs).toContain(".selectedEventKey=${this.#selectedEventKey");
+  });
+});
