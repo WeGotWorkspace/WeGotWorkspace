@@ -42,10 +42,14 @@ describe("CalendarEventDetailsPopover", () => {
   });
 
   it("shows title, time, calendar, and Edit", { timeout: 10_000 }, () => {
-    const { onEdit } = renderPopover();
+    const { onEdit } = renderPopover({
+      origin: { left: 48, top: 96, width: 180, height: 36 },
+    });
     expect(screen.getByRole("heading", { name: /Dentist/i })).toBeTruthy();
     expect(screen.getByText("Personal")).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeTruthy();
+    const popover = screen.getByRole("dialog", { name: /Dentist/i });
+    expect(popover.className).toContain("calendar-event-details-popover");
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }));
     expect(onEdit).toHaveBeenCalledTimes(1);
   });

@@ -2,11 +2,34 @@
 @import "./calendar-rsvp-actions.css";
 
 .calendar-event-details-popover__anchor {
-  @apply pointer-events-none fixed z-50 size-0;
+  @apply pointer-events-none fixed z-50;
+  anchor-name: --calendar-event-details-anchor;
 }
 
 .calendar-dialog-surface.calendar-event-details-popover {
-  @apply flex w-[min(22rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-3 overflow-y-auto p-4;
+  @apply flex w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-2 overflow-y-auto p-3;
+  /* Beat Radix’s inline top/left/transform so CSS anchor + position-try can own placement. */
+  position: fixed !important;
+  inset: auto !important;
+  transform: none !important;
+  position-anchor: --calendar-event-details-anchor;
+  top: calc(anchor(bottom) + 0.5rem);
+  left: anchor(center);
+  translate: -50% 0;
+  position-try-fallbacks:
+    flip-block, flip-inline, --calendar-event-details-try-start, --calendar-event-details-try-end;
+}
+
+@position-try --calendar-event-details-try-start {
+  top: anchor(top);
+  left: calc(anchor(left) - 0.5rem);
+  translate: -100% 0;
+}
+
+@position-try --calendar-event-details-try-end {
+  top: anchor(top);
+  left: calc(anchor(right) + 0.5rem);
+  translate: 0 0;
 }
 
 .calendar-event-details-popover__header {
@@ -26,15 +49,15 @@
 }
 
 .calendar-event-details-popover__details {
-  @apply m-0 flex flex-col gap-2.5;
+  @apply m-0 flex flex-col gap-2;
 }
 
 .calendar-event-details-popover__row {
-  @apply flex min-w-0 items-start gap-2.5;
+  @apply flex min-w-0 items-center gap-2;
 }
 
 .calendar-event-details-popover__icon {
-  @apply mt-0.5 shrink-0 text-[color:var(--card-title-icon-color,currentColor)];
+  @apply shrink-0 text-[color:var(--card-title-icon-color,currentColor)];
 }
 
 .calendar-event-details-popover__row-text {
@@ -42,7 +65,7 @@
 }
 
 .calendar-event-details-popover__dt {
-  @apply m-0 text-xs text-[color:var(--field-label-color,inherit)];
+  @apply sr-only;
 }
 
 .calendar-event-details-popover__dd {
@@ -64,5 +87,11 @@
 @media (max-width: 40rem) {
   .calendar-dialog-surface.calendar-event-details-popover {
     @apply w-[calc(100vw-1rem)];
+    position-anchor: auto;
+    position-try-fallbacks: none;
+    top: auto;
+    left: 50%;
+    bottom: 1rem;
+    translate: -50% 0;
   }
 }

@@ -24,8 +24,10 @@ export type CalendarEventPreviewModel = {
 };
 
 export type CalendarEventSelectionOrigin = {
-  x: number;
-  y: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 };
 
 const NOTES_PREVIEW_MAX = 160;
@@ -140,12 +142,50 @@ export function eventPreviewRepeatLabel(
   return recurrencePresetOptionLabel(form.recurrencePreset, form.startDate, locale);
 }
 
-export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
-  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-  const node = path.find((entry): entry is Element => entry instanceof Element);
-  const target = node ?? (event.target instanceof Element ? event.target : null);
-  if (!target) return undefined;
-  const rect = target.getBoundingClientRect();
+function originFromRect(
+  rect: Pick<DOMRect, "left" | "top" | "width" | "height">,
+): CalendarEventSelectionOrigin | undefined {
   if (rect.width === 0 && rect.height === 0) return undefined;
-  return { x: rect.left + rect.width / 2, y: rect.bottom };
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+}
+
+function originFromUnknown(value: unknown): CalendarEventSelectionOrigin | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.left !== "number" ||
+    typeof record.top !== "number" ||
+    typeof record.width !== "number" ||
+    typeof record.height !== "number"
+  ) {
+    return undefined;
+  }
+  return originFromRect({
+    left: record.left,
+    top: record.top,
+    width: record.width,
+    height: record.height,
+  });
+}
+
+function eventCardFromPath(path: EventTarget[]): Element | undefined {
+  if (typeof Element === "undefined") return undefined;
+  return path.find((entry): entry is Element => {
+    if (!(entry instanceof Element)) return false;
+    const tag = entry.tagName.toLowerCase();
+    return tag === "event-card" || tag === "all-day-event";
+  });
+}
+
+export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
+  const detail = event instanceof CustomEvent ? event.detail : undefined;
+  const fromDetail = originFromUnknown(
+    detail && typeof detail === "object" ? (detail as { origin?: unknown }).origin : undefined,
+  );
+  if (fromDetail) return fromDetail;
+
+  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+  const card = eventCardFromPath(path);
+  if (card) return originFromRect(card.getBoundingClientRect());
+  return undefined;
 }

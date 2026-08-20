@@ -27,6 +27,7 @@ const meta: Meta<typeof CalendarEventDetailsPopover> = {
     locale: "en-US",
     untitledLabel: defaultCalendarLabels.untitledEvent,
     canEdit: true,
+    origin: { left: 72, top: 96, width: 168, height: 40 },
     onClose: fn(),
     onEdit: fn(),
   },

@@ -76,8 +76,16 @@ export function CalendarEventDetailsPopover({
   const invitees = eventPreviewInviteeNames(form.attendees, labels);
   const showRsvp = Boolean(onRsvp) && isSessionEventInvitee(form.attendees, sessionEmail);
   const rsvpStatus = sessionEventInviteeStatus(form.attendees, sessionEmail);
-  const anchorX = origin?.x ?? Math.round(globalThis.innerWidth / 2);
-  const anchorY = origin?.y ?? Math.round(globalThis.innerHeight * 0.28);
+  const fallbackLeft = Math.round(globalThis.innerWidth / 2);
+  const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
+  const anchorStyle = origin
+    ? {
+        left: origin.left,
+        top: origin.top,
+        width: origin.width,
+        height: origin.height,
+      }
+    : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
 
   return (
     <Popover
@@ -88,17 +96,13 @@ export function CalendarEventDetailsPopover({
       modal
     >
       <PopoverAnchor asChild>
-        <span
-          className="calendar-event-details-popover__anchor"
-          style={{ left: anchorX, top: anchorY }}
-          aria-hidden
-        />
+        <span className="calendar-event-details-popover__anchor" style={anchorStyle} aria-hidden />
       </PopoverAnchor>
       <PopoverContent
         align="center"
         side="bottom"
         sideOffset={8}
-        collisionPadding={12}
+        avoidCollisions={false}
         className="calendar-dialog-surface calendar-event-details-popover"
         aria-label={title}
         onOpenAutoFocus={(event) => {

@@ -6,6 +6,7 @@ import {
   eventPreviewOccurrenceKey,
   formatEventPreviewWhen,
   resolveCalendarEventPreview,
+  selectionOriginFromEvent,
 } from "@/calendar-core/src/calendar-event-preview";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -71,5 +72,22 @@ describe("event preview formatters", () => {
         defaultCalendarLabels,
       ),
     ).toBe("Carol");
+  });
+});
+
+describe("selectionOriginFromEvent", () => {
+  it("prefers the event-card rect from event-selected detail", () => {
+    const origin = selectionOriginFromEvent(
+      new CustomEvent("event-selected", {
+        detail: { key: "dentist", origin: { left: 40, top: 80, width: 160, height: 32 } },
+      }),
+    );
+    expect(origin).toEqual({ left: 40, top: 80, width: 160, height: 32 });
+  });
+
+  it("returns nothing when event-selected has no card origin", () => {
+    expect(
+      selectionOriginFromEvent(new CustomEvent("event-selected", { detail: { key: "dentist" } })),
+    ).toBeUndefined();
   });
 });
