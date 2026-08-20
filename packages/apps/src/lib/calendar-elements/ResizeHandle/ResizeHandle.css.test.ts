@@ -27,6 +27,7 @@ describe("ResizeHandle coarse-pointer contract", () => {
     expect(css).toContain("@apply h-6");
     expect(css).toContain("@apply w-6");
     expect(css).toContain("--_lc-resize-handle-thickness: 6px");
+    expect(css).toContain("--_lc-resize-handle-color: var(--_lc-event-text-color, CanvasText)");
     expect(css).not.toMatch(
       /@media \(hover: none\), \(pointer: coarse\)\s*\{\s*:host \{\s*display: none;\s*pointer-events: none;\s*\}\s*\}/,
     );

@@ -7,7 +7,7 @@ Source plan: [plan.md](./plan.md)
 
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
-| `touch-event-resize` | builder | apps-ui | `ResizeHandle.*`, `TimeLine.ts`, `CalendarTimelineView.ts` | `pnpm --dir packages/apps exec vitest run src/lib/calendar-elements/ResizeHandle` | done |
+| `touch-event-resize` | builder | apps-ui | `ResizeHandle.*`, `TimeLine.ts`, `CalendarTimelineView.ts`, `calendar-surface.tsx` | `pnpm --dir packages/apps exec vitest run src/lib/calendar-elements/ResizeHandle src/lib/calendar-elements/TimeLine` | done |
 
 ## Notes
 

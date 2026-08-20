@@ -86,6 +86,12 @@
     --_lc-resize-handle-length-horizontal: 44px;
     --_lc-resize-handle-opacity: 0.95;
     --_lc-resize-handle-opacity-hover: 1;
+    /* Sibling of event-card (not slotted): EventCard's handle color never inherits here. */
+    --_lc-resize-handle-color: var(--_lc-event-text-color, CanvasText);
+  }
+
+  :host([active]) > div::before {
+    box-shadow: 0 0 0 1px light-dark(rgb(15 23 42 / 35%), rgb(248 250 252 / 45%));
   }
 
   :host([active][axis="vertical"]) > div {

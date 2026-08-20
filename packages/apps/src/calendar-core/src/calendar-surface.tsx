@@ -49,6 +49,11 @@ export type CalendarSurfaceProps = {
    * event-card in that slot until the dialog closes or a real event replaces it.
    */
   pendingCreateIntent?: CalendarSurfaceCreateIntent | null;
+  /**
+   * Event currently open in the details popover. Empty when closed so TimeLine
+   * keeps coarse resize handles off until a short-press selection.
+   */
+  selectedEventKey?: string;
   /** Ask Only-this / This-and-future (delete also offers All instances). */
   requestRecurrenceScope?: (
     request: RecurrenceScopeRequest,
@@ -91,6 +96,7 @@ export function CalendarSurface({
   onStartDateChange,
   onCreateRequested,
   pendingCreateIntent,
+  selectedEventKey,
   requestRecurrenceScope,
   onRecurrenceFutureDelete,
   onRecurrenceFutureUpdate,
@@ -117,6 +123,7 @@ export function CalendarSurface({
     host.contextValue = contextValue;
     host.requestRecurrenceScope = requestRecurrenceScope;
     host.pendingCreateIntent = pendingCreateIntent ?? null;
+    host.selectedEventKey = selectedEventKey ?? "";
   }, [
     view,
     presentation,
@@ -127,6 +134,7 @@ export function CalendarSurface({
     contextValue,
     requestRecurrenceScope,
     pendingCreateIntent,
+    selectedEventKey,
   ]);
 
   useEffect(() => {

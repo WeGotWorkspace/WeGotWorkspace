@@ -8,7 +8,8 @@ export function isTouchResizeHandleActive(
   eventKey: unknown,
   selectedEventKey: string | null | undefined,
 ): boolean {
-  return Boolean(selectedEventKey && eventKey === selectedEventKey);
+  if (!selectedEventKey || eventKey == null || eventKey === "") return false;
+  return String(eventKey) === selectedEventKey;
 }
 
 @customElement("resize-handle")

@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Single sequential chunk — same files, no pa
 
 ## Goal
 
-Two-step touch resize on the day/week TimeLine: select, then drag large grabbers. Mouse resize unchanged.
+Two-step touch resize on the day/week TimeLine: short-press opens the details popover and shows large grabbers on that event; then drag. Mouse resize unchanged.
 
 ## Non-goals
 
@@ -27,7 +27,7 @@ Two-step touch resize on the day/week TimeLine: select, then drag large grabbers
 - **id:** `touch-event-resize`
 - **Skill:** apps-ui
 - **Inputs:** Issue #505 AC; `ResizeHandle.css` coarse hide; TimeLine resize session
-- **Done when:** Coarse selected events show ≥24px grabbers; unselected coarse handles stay inert; mouse hover resize unchanged; unit tests cover CSS + selected-key wiring
+- **Done when:** Coarse grabbers appear only for the short-pressed / popover-open event; unselected coarse handles stay inert; mouse hover resize unchanged; unit + mobile-viewport Playwright cover visibility
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/calendar-elements/ResizeHandle src/lib/calendar-elements/TimeLine/TimeLine.css.test.ts`
 - **Parallel with:** none
 

@@ -50,6 +50,15 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
   });
 });
 
+describe("TimeLine event geometry vs resize handles", () => {
+  const timeLineCss = readCss("TimeLine.css");
+
+  it("keeps resize handles out of the event flex row so they cannot shift cards", () => {
+    expect(timeLineCss).toContain(".event > resize-handle");
+    expect(timeLineCss).toMatch(/\.event > resize-handle\s*\{[\s\S]*?flex:\s*none/);
+  });
+});
+
 describe("TimeLine touch resize selection wiring", () => {
   const timeLineTs = readCss("TimeLine.ts");
   const timelineViewTs = readCss("../CalendarTimelineView/CalendarTimelineView.ts");
@@ -57,6 +66,9 @@ describe("TimeLine touch resize selection wiring", () => {
   it("marks resize handles active only for the selected event key", () => {
     expect(timeLineTs).toContain("selectedEventKey");
     expect(timeLineTs).toContain("isTouchResizeHandleActive");
-    expect(timelineViewTs).toContain(".selectedEventKey=${this.#selectedEventKey");
+    expect(timeLineTs).not.toContain("getEventColorStyles");
+    expect(timeLineTs).toContain("--__start:${this.#axisPct");
+    expect(timelineViewTs).toContain(".selectedEventKey=${this.selectedEventKey");
+    expect(timelineViewTs).toContain('attribute: "selected-event-key"');
   });
 });

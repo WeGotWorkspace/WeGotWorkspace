@@ -359,3 +359,8 @@
   flex: 1;
   pointer-events: auto;
 }
+
+/* Overlay the card ends. Must not take flex space or change time geometry. */
+.event > resize-handle {
+  flex: none;
+}
