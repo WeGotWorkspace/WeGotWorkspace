@@ -160,12 +160,9 @@ describe("CalendarCalendarDialog", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.calendarColorLabel }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom color" }));
-
-    const colorInput = document.querySelector(
-      ".swatch-color-picker__native-color",
-    ) as HTMLInputElement;
+    const colorInput = screen.getByLabelText("Custom color") as HTMLInputElement;
     expect(colorInput).toBeTruthy();
+    expect(colorInput.getAttribute("type")).toBe("color");
 
     fireEvent.focus(colorInput);
     fireEvent.input(colorInput, { target: { value: "#31c75c" } });
