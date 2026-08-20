@@ -12,13 +12,11 @@
 
 .calendar-dialog-surface.calendar-event-details-popover {
   @apply box-border flex w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2 overflow-x-hidden overflow-y-auto p-3;
-  /* Do not use min-w-0 here: position-area stretch would collapse the card to a strip. */
   min-width: min(16rem, calc(100vw - 1.5rem));
   height: max-content;
   max-height: min(32rem, calc(100dvh - 2rem));
   justify-self: center;
   align-self: start;
-  /* Margin is overflow for CSS anchor + position-try, so corner fallbacks keep an inset. */
   margin: 0.75rem;
   position-anchor: --calendar-event-details-anchor;
   position-area: bottom;
@@ -100,12 +98,8 @@
   @apply flex justify-end;
 }
 
-/*
-  Radix wraps content in [data-radix-popper-content-wrapper] with transform +
-  min-width: max-content. That wrapper becomes the containing block for
-  position:fixed on the card, so left+right insets collapse to a ~26px strip
-  next to a 0×0 / month-cell origin. Dock the wrapper to the viewport instead.
-*/
+/* Narrow viewport and --docked: pin Radix's transformed wrapper to the
+   viewport bottom. The card stays in-flow inside that wrapper. */
 @media (max-width: 40rem) {
   [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
     position: fixed !important;
@@ -128,15 +122,9 @@
     margin: 0;
     position: relative !important;
     inset: unset !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    bottom: auto !important;
     width: 100% !important;
-    min-width: 0;
     max-width: none !important;
     height: max-content !important;
-    min-height: 0;
     max-height: min(32rem, calc(100dvh - 6rem));
     transform: none !important;
   }
@@ -163,15 +151,9 @@
   margin: 0;
   position: relative !important;
   inset: unset !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
   width: 100% !important;
-  min-width: 0;
   max-width: none !important;
   height: max-content !important;
-  min-height: 0;
   max-height: min(32rem, calc(100dvh - 6rem));
   transform: none !important;
 }

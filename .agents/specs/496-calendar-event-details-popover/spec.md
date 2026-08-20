@@ -28,7 +28,7 @@ Selecting an event on the Lit calendar surface opens a dismissible **details pop
 - RSVP uses existing suite actions + `persistInviteeRsvp` (`source: "preview"` treated like dialog for occurrence-scope prompts).
 - BEM + `@apply` in CSS; popover is portaled (own surface tokens, like the event dialog).
 - Larger viewports: CSS `anchor-name` + `position-try` (flip-block / flip-inline / corner areas) around the **event card** rect, plus Radix collision shift with padding, so corner and edge cells stay fully visible with inset — never flush or clipped.
-- Small viewports (`max-width: 40rem`) and compact-month cell origins: dock a content-sized card at center-bottom (`max-width: calc(100dvw - insets)`, `height: auto`). Do not apply `position-try` / `position-area` stretch-to-anchor on that path.
+- Small viewports (`max-width: 40rem`) and compact-month cell origins: dock the Radix popper wrapper to the viewport bottom and size the card to its content. Do not apply `position-try` / `position-area` on that path.
 - Keyboard: Escape / outside click dismisses; user is not forced into the editor to read details.
 - Read-only calendars can still open the popover; Edit is omitted when the user cannot write.
 

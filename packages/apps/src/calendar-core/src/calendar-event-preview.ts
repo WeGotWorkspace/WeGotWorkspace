@@ -177,7 +177,6 @@ function eventCardFromPath(path: EventTarget[]): Element | undefined {
   });
 }
 
-/** Compact-month day cells are tall and skinny; do not CSS-anchor / stretch-to-area. */
 function originLooksLikeMonthCell(origin: CalendarEventSelectionOrigin): boolean {
   return origin.width > 0 && origin.height >= 64 && origin.height / origin.width >= 1.75;
 }
@@ -190,7 +189,7 @@ function viewportPrefersDockedPopover(): boolean {
   );
 }
 
-/** Narrow / portrait / compact-month: dock center-bottom instead of position-try. */
+/** Narrow, portrait, or compact-month cell: dock to the viewport instead of the card. */
 export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin): boolean {
   return viewportPrefersDockedPopover() || (origin != null && originLooksLikeMonthCell(origin));
 }

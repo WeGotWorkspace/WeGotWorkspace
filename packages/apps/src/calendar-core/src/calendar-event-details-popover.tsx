@@ -101,11 +101,12 @@ export function CalendarEventDetailsPopover({
     >
       <PopoverAnchor asChild>
         <span
-          className={
-            docked
-              ? "calendar-event-details-popover__anchor calendar-event-details-popover__anchor--docked"
-              : "calendar-event-details-popover__anchor"
-          }
+          className={[
+            "calendar-event-details-popover__anchor",
+            docked ? "calendar-event-details-popover__anchor--docked" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           style={anchorStyle}
           aria-hidden
         />
@@ -116,11 +117,12 @@ export function CalendarEventDetailsPopover({
         sideOffset={8}
         collisionPadding={16}
         avoidCollisions={!docked}
-        className={
-          docked
-            ? "calendar-dialog-surface calendar-event-details-popover calendar-event-details-popover--docked"
-            : "calendar-dialog-surface calendar-event-details-popover"
-        }
+        className={[
+          "calendar-dialog-surface calendar-event-details-popover",
+          docked ? "calendar-event-details-popover--docked" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         aria-label={title}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
