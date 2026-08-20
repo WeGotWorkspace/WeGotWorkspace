@@ -34,9 +34,9 @@
   );
 }
 
-/** Title + optional period controls as one unit. */
+/** Title + optional period controls as one unit (gap-2 = nav-group → title). */
 .view-header__title-cluster {
-  @apply flex min-w-0 items-center gap-1;
+  @apply flex min-w-0 items-center gap-2;
   justify-content: var(--view-header-cluster-justify, flex-start);
 }
 

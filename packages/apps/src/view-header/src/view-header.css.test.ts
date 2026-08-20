@@ -28,7 +28,7 @@ describe("view-header CSS", () => {
 
   it("aligns the title with the sidebar toggle and swaps compact titles", () => {
     expect(css).toMatch(/\.view-header \{[\s\S]*items-start/);
-    expect(css).toMatch(/\.view-header__title-cluster \{[\s\S]*items-center/);
+    expect(css).toMatch(/\.view-header__title-cluster \{[\s\S]*items-center gap-2/);
     expect(css).toMatch(/\.view-header__title-compact \{[\s\S]*hidden/);
   });
 });
