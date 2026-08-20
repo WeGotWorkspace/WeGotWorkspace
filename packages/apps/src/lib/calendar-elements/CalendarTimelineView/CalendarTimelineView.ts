@@ -50,6 +50,7 @@ import {
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
+  shouldRequestInitialTimedScroll,
   timelineRangeOverlapsCell,
   toTimelineAllDayRange,
   toTimelineRange,
@@ -207,11 +208,13 @@ export class CalendarTimelineView extends CalendarViewBase {
   /** Active day column for the narrow-week swipe pager (grid-week `currentDayIndex` parity). */
   #currentDayIndex = 0;
   /**
-   * Apply the initial timed-grid scroll on the next layout pass (once per mount / view change,
-   * not on the 30s now-indicator tick). Centers “now” when today is in range; otherwise
-   * `visibleHoursStart`.
+   * Apply the initial timed-grid scroll on the next layout pass (once per mount / view /
+   * zoom / Today / today-entering-range — not on week swipe or the 30s now-indicator tick).
+   * Centers “now” when today is in range; otherwise `visibleHoursStart`.
    */
   #pendingInitialScroll = true;
+  /** Previous layout pass: today was in the rendered range (used to ignore same-week swipe). */
+  #todayWasInRange = false;
   /** Watches the composed layout + all-day shell to derive the timed viewport height. */
   #composedResizeObserver: ResizeObserver | null = null;
   #observedComposedElements = new Set<Element>();
@@ -302,25 +305,25 @@ export class CalendarTimelineView extends CalendarViewBase {
         this.numDays = Math.floor(next);
       }
     }
-    if (
+    const viewOrZoomChanged =
       changedProperties.has("mode") ||
       changedProperties.has("visibleHours") ||
-      changedProperties.has("visibleHoursStart")
-    ) {
-      this.#pendingInitialScroll = true;
-    }
-    // Date-window moves: re-center on now only when today is in range (e.g. goToday). Other
-    // weeks keep the user’s scroll so navigation does not fight them.
+      changedProperties.has("visibleHoursStart") ||
+      changedProperties.has("numDays") ||
+      changedProperties.has("daysPerWeek") ||
+      changedProperties.has("weekStart");
+    const todayInRange = this.#composedVertical && this.#nowIndicatorDayFraction != null;
     if (
-      this.#composedVertical &&
-      this.#nowIndicatorDayFraction != null &&
-      (changedProperties.has("startDate") ||
-        changedProperties.has("numDays") ||
-        changedProperties.has("daysPerWeek") ||
-        changedProperties.has("weekStart"))
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged,
+        startDateChanged: changedProperties.has("startDate"),
+        todayInRange,
+        todayWasInRange: this.#todayWasInRange,
+      })
     ) {
       this.#pendingInitialScroll = true;
     }
+    this.#todayWasInRange = todayInRange;
     // Keep the swipe pager's active column on the anchor date whenever the window moves
     // (grid-week parity: CalendarWeekView#willUpdate).
     if (
@@ -1841,11 +1844,21 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /**
+   * Re-center the timed grid on “now” (Today control). Week swipe must not call this — it
+   * only changes `startDate` while today stays in range.
+   */
+  scrollToNow() {
+    if (!this.#composedVertical) return;
+    this.#pendingInitialScroll = true;
+    this.requestUpdate();
+  }
+
+  /**
    * One-shot scroll for the composed timed grid: center the current-time marker when today is
    * in the visible range; otherwise align to `visibleHoursStart`. Instant `scrollTop` (no
    * smooth scroll) so reduced-motion preferences are respected. Does not re-run on the now
-   * tick — only when `#pendingInitialScroll` is set (mount / view / zoom / today-in-range
-   * date change).
+   * tick — only when `#pendingInitialScroll` is set (mount / view / zoom / Today /
+   * today-entering-range).
    */
   #applyInitialScrollPosition() {
     if (!this.#composedVertical || !this.#pendingInitialScroll) return;

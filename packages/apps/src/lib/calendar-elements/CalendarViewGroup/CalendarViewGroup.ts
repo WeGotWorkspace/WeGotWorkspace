@@ -8,7 +8,7 @@ import {
   type CalendarRangeZoomDirection,
 } from "@/calendar-core/src/calendar-range-transition";
 import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
-import "../CalendarTimelineView/CalendarTimelineView.js";
+import { CalendarTimelineView } from "../CalendarTimelineView/CalendarTimelineView.js";
 import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../CalendarListView/CalendarListView.js";
 import type { CalendarPresentationMode, CalendarViewMode } from "../types/CalendarViewGroup.js";
@@ -380,6 +380,11 @@ export class CalendarViewGroup extends CalendarViewBase {
     const today = now.toPlainDate();
     this.currentTime = now.toString();
     this.startDate = today;
+    // Same-week Today still re-centers; week swipe only changes startDate and must not.
+    const timeline = this.renderRoot.querySelector("calendar-timeline-view");
+    if (timeline instanceof CalendarTimelineView) {
+      timeline.scrollToNow();
+    }
   }
 
   #targetDateByView(step: number): Temporal.PlainDate {
