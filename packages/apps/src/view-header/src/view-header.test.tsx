@@ -133,16 +133,16 @@ describe("ViewHeader layout", () => {
     const { container } = render(
       <ViewHeader
         {...baseProps}
-        title="Thursday, August 20, 2026"
-        compactTitle="Thu, Aug 20, 2026"
+        title="August 20, 2026"
+        compactTitle="Aug 20, 2026"
         layout="responsive"
       />,
     );
     expect(container.querySelector(".view-header__title-full")?.textContent).toBe(
-      "Thursday, August 20, 2026",
+      "August 20, 2026",
     );
     expect(container.querySelector(".view-header__title-compact")?.textContent).toBe(
-      "Thu, Aug 20, 2026",
+      "Aug 20, 2026",
     );
   });
 });

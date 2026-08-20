@@ -6,26 +6,26 @@ const monday = Temporal.PlainDate.from("2026-08-17");
 const thursday = Temporal.PlainDate.from("2026-08-20");
 
 describe("calendarRangeLabel", () => {
-  it("uses a long weekday on full day labels", () => {
+  it("uses month, day, and year on full day labels without a weekday", () => {
     const label = calendarRangeLabel({
       view: "day",
       anchor: thursday,
       locale: "en-US",
     });
-    expect(label).toBe("Thursday, August 20, 2026");
+    expect(label).toBe("August 20, 2026");
   });
 
-  it("shortens the weekday and month on compact day labels but keeps the year", () => {
+  it("shortens the month on compact day labels but keeps the year and omits the weekday", () => {
     const label = calendarRangeLabel({
       view: "day",
       anchor: thursday,
       locale: "en-US",
       density: "compact",
     });
-    expect(label).toBe("Thu, Aug 20, 2026");
+    expect(label).toBe("Aug 20, 2026");
   });
 
-  it("adds short weekdays on compact week ranges", () => {
+  it("formats week ranges without weekday names", () => {
     const sunday = monday.add({ days: 6 });
     const full = calendarRangeLabel({
       view: "week",
@@ -42,10 +42,24 @@ describe("calendarRangeLabel", () => {
       weekStart: monday,
       weekEnd: sunday,
     });
-    expect(full).toMatch(/Aug 17-23/);
-    expect(compact).toMatch(/Mon/);
-    expect(compact).toMatch(/Sun/);
-    expect(compact).toMatch(/17/);
-    expect(compact).toMatch(/23/);
+    expect(full).toBe("Aug 17-23, 2026");
+    expect(compact).toBe("17–23 Aug 2026");
+  });
+
+  it("keeps month and year titles as month + year or year only", () => {
+    expect(
+      calendarRangeLabel({
+        view: "month",
+        anchor: thursday,
+        locale: "en-US",
+      }),
+    ).toBe("August 2026");
+    expect(
+      calendarRangeLabel({
+        view: "year",
+        anchor: thursday,
+        locale: "en-US",
+      }),
+    ).toBe("2026");
   });
 });

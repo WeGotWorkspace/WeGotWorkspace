@@ -29,10 +29,6 @@ function dateLabelParts(formatter: Intl.DateTimeFormat, date: Date): CalendarRan
   }));
 }
 
-function weekdayName(date: Date, locale: string, width: "long" | "short"): string {
-  return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: "UTC" }).format(date);
-}
-
 function yearText(date: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { year: "numeric", timeZone: "UTC" }).format(date);
 }
@@ -49,26 +45,22 @@ function monthDay(date: Date, locale: string): string {
   }).format(date);
 }
 
-/** Day titles always include a weekday (long on large headers, short when compact). */
+/** Day titles are month + day + year (no weekday). Compact shortens the month. */
 function dayLabelParts(
   date: Date,
   locale: string,
   density: CalendarRangeLabelDensity,
 ): CalendarRangeLabelPart[] {
-  const weekdayWidth = density === "compact" ? "short" : "long";
   const monthWidth = density === "compact" ? "short" : "long";
-  return [
-    { text: `${weekdayName(date, locale, weekdayWidth)}, `, isYear: false },
-    ...dateLabelParts(
-      new Intl.DateTimeFormat(locale, {
-        month: monthWidth,
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      }),
-      date,
-    ),
-  ];
+  return dateLabelParts(
+    new Intl.DateTimeFormat(locale, {
+      month: monthWidth,
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+    date,
+  );
 }
 
 function weekRangeLabelParts(
@@ -82,12 +74,10 @@ function weekRangeLabelParts(
   const year = yearText(startDate, locale);
 
   if (density === "compact") {
-    const startWeekday = weekdayName(startDate, locale, "short");
-    const endWeekday = weekdayName(endDate, locale, "short");
     if (start.year === end.year && start.month === end.month) {
       return [
         {
-          text: `${startWeekday} ${start.day}–${endWeekday} ${end.day} ${monthShort(startDate, locale)} `,
+          text: `${start.day}–${end.day} ${monthShort(startDate, locale)} `,
           isYear: false,
         },
         { text: year, isYear: true },
@@ -96,14 +86,13 @@ function weekRangeLabelParts(
     if (start.year === end.year) {
       return [
         {
-          text: `${startWeekday} ${monthDay(startDate, locale)} – ${endWeekday} ${monthDay(endDate, locale)}, `,
+          text: `${monthDay(startDate, locale)} – ${monthDay(endDate, locale)}, `,
           isYear: false,
         },
         { text: year, isYear: true },
       ];
     }
     const compactDate = new Intl.DateTimeFormat(locale, {
-      weekday: "short",
       month: "short",
       day: "numeric",
       year: "numeric",
