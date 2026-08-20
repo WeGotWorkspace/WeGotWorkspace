@@ -26,7 +26,7 @@ Alarm / reminder rows use the same **ShareAccessCard + ShareAccessRow** layout a
 - Reuse `ShareAccessCard` / `ShareAccessRow` (do not invent a third row chrome).
 - Card title remains `eventAlarmsLabel` (“Alarms”); do not rename the section to Alerts.
 - Bell / title icon only on the parent card — not on each row.
-- Each row keeps a visible `eventAlarmRow` (“Alert”) label.
+- Each row is numbered `Alert 1`, `Alert 2`, … (trailing None is the next number).
 - Persist only real alerts via `alertsAfterOffsetChange`. Choosing None on a set row removes it; choosing an offset on the trailing slot appends one. Keep exactly one trailing None in the UI, never in the form.
 - Do not render `eventAlarmsNone` or an Add-alert footer.
 - Preserve leftover absolute `when` and display-only leftover email (no action menu).

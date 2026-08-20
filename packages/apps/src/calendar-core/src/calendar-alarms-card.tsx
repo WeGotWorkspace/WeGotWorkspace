@@ -151,10 +151,10 @@ export function CalendarAlarmsCard({
       titleIcon={<Bell className="size-4" />}
       title={labels.eventAlarmsLabel}
     >
-      {alerts.map((alert) => (
+      {alerts.map((alert, index) => (
         <ShareAccessRow
           key={alert.id}
-          title={labels.eventAlarmRow}
+          title={`${labels.eventAlarmRow} ${index + 1}`}
           trailing={
             <AlarmOffsetControls
               alert={alert}
@@ -175,7 +175,7 @@ export function CalendarAlarmsCard({
       ))}
       {showTrailingNone ? (
         <ShareAccessRow
-          title={labels.eventAlarmRow}
+          title={`${labels.eventAlarmRow} ${alerts.length + 1}`}
           trailing={
             <AlarmOffsetControls
               alert={null}
