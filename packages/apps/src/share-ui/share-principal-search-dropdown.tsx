@@ -1,32 +1,44 @@
 import type { ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
-import type { DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
-import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
+import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
 import { shareLabels } from "@/share-ui/share-labels";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { cn } from "@/lib/utils";
 import "@/unified-search-dropdown/src/unified-search-results-dropdown.css";
 
+export type ShareSearchOption = {
+  id: string;
+  displayName: string;
+  principalType: SharePrincipalKind;
+  meta?: string;
+};
+
 type SharePrincipalSearchDropdownProps = {
   query: string;
-  searching: boolean;
-  results: DriveSharePrincipalEntry[];
+  searching?: boolean;
+  results: ShareSearchOption[];
   className?: string;
+  emptyLabel?: string;
+  listLabel?: string;
+  minQueryLength?: number;
   /** Anchor element (typically the search input). */
   children: ReactNode;
-  onSelect: (entry: DriveSharePrincipalEntry) => void;
+  onSelect: (option: ShareSearchOption) => void;
 };
 
 export function SharePrincipalSearchDropdown({
   query,
-  searching,
+  searching = false,
   results,
   className,
+  emptyLabel = "No people or groups found",
+  listLabel = shareLabels.teamSectionTitle,
+  minQueryLength = 2,
   children,
   onSelect,
 }: SharePrincipalSearchDropdownProps) {
   const trimmedQuery = query.trim();
-  const open = trimmedQuery.length >= 2 || searching;
+  const open = trimmedQuery.length >= minQueryLength || searching;
 
   return (
     <Popover open={open} modal={false}>
@@ -60,16 +72,16 @@ export function SharePrincipalSearchDropdown({
               <span>Searching…</span>
             </div>
           ) : results.length === 0 ? (
-            <div className="unified-search-results-dropdown__state">No people or groups found</div>
+            <div className="unified-search-results-dropdown__state">{emptyLabel}</div>
           ) : (
             <div
               className="share-principal-search-dropdown__list"
               role="listbox"
-              aria-label={shareLabels.teamSectionTitle}
+              aria-label={listLabel}
             >
               {results.map((entry) => (
                 <button
-                  key={entry.principal}
+                  key={entry.id}
                   type="button"
                   role="option"
                   className="share-principal-search-dropdown__option"
@@ -84,10 +96,8 @@ export function SharePrincipalSearchDropdown({
                     displayName={entry.displayName}
                   />
                   <span className="share-principal-search-dropdown__name">{entry.displayName}</span>
-                  {entry.memberCount != null ? (
-                    <span className="share-principal-search-dropdown__meta">
-                      {shareLabels.membersSuffix(entry.memberCount)}
-                    </span>
+                  {entry.meta ? (
+                    <span className="share-principal-search-dropdown__meta">{entry.meta}</span>
                   ) : null}
                 </button>
               ))}

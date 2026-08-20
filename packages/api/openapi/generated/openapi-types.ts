@@ -2420,10 +2420,21 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminSettingsSaveRequest"];
+                };
+            };
             responses: {
                 /** @description Settings saved */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid settings (e.g. new password + clearSmtpPassword) */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3217,56 +3228,10 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Delete files */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        delete?: never;
         options?: never;
         head?: never;
-        /** Rename or move file or directory */
-        patch: {
-            parameters: {
-                query: {
-                    path: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name: string;
-                        /** @description Target parent directory; omit to rename in place */
-                        destination?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Renamed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        patch?: never;
         trace?: never;
     };
     "/files/children": {
@@ -3391,27 +3356,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Upload file content */
-        post: {
-            parameters: {
-                query?: {
-                    path?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Accepted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3446,42 +3391,6 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/files/directories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create directory */
-        post: {
-            parameters: {
-                query: {
-                    path: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3861,433 +3770,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/contacts/addressbooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List user's address books */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Address book list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactAddressBookListResponse"];
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-            };
-        };
-        put?: never;
-        /** Create an address book */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AddressBookCreate"];
-                };
-            };
-            responses: {
-                /** @description Created address book */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AddressBook"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/addressbooks/{addressBookId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Fetch a single address book */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    addressBookId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Address book */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AddressBook"];
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
-        /** Delete an address book */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    addressBookId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["AddressBookDeleteOptions"];
-                };
-            };
-            responses: {
-                /** @description Address book deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["OkResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                409: components["responses"]["JmapConflict"];
-                412: components["responses"]["JmapPreconditionFailed"];
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Update an address book */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    addressBookId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AddressBookPatch"];
-                };
-            };
-            responses: {
-                /** @description Updated address book */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AddressBook"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        trace?: never;
-    };
-    "/contacts/cards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List contact cards in an address book */
-        get: {
-            parameters: {
-                query: {
-                    addressBookId: string;
-                    uid?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Contact card list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCardListResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        /** Create a contact card */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
-                     * @example {
-                     *       "addressBookIds": {
-                     *         "default": true
-                     *       },
-                     *       "name": {
-                     *         "full": "Joe Example"
-                     *       },
-                     *       "emails": {
-                     *         "550e8400-e29b-41d4-a716-446655440001": {
-                     *           "address": "joe@example.com"
-                     *         }
-                     *       },
-                     *       "phones": {
-                     *         "550e8400-e29b-41d4-a716-446655440002": {
-                     *           "number": "+1-555-0100"
-                     *         }
-                     *       },
-                     *       "addresses": {
-                     *         "550e8400-e29b-41d4-a716-446655440003": {
-                     *           "full": "123 Main St",
-                     *           "countryCode": "US"
-                     *         }
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ContactCardCreate"];
-                };
-            };
-            responses: {
-                /** @description Created contact card */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCard"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/cards/{cardId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Fetch a single contact card */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    cardId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Contact card */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCard"];
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        /** Replace a contact card */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    cardId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
-                     * @example {
-                     *       "addressBookIds": {
-                     *         "default": true
-                     *       },
-                     *       "name": {
-                     *         "full": "Joe Example"
-                     *       },
-                     *       "emails": {
-                     *         "550e8400-e29b-41d4-a716-446655440001": {
-                     *           "address": "joe@example.com"
-                     *         }
-                     *       },
-                     *       "phones": {
-                     *         "550e8400-e29b-41d4-a716-446655440002": {
-                     *           "number": "+1-555-0100"
-                     *         }
-                     *       },
-                     *       "addresses": {
-                     *         "550e8400-e29b-41d4-a716-446655440003": {
-                     *           "full": "123 Main St",
-                     *           "countryCode": "US"
-                     *         }
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ContactCardCreate"];
-                };
-            };
-            responses: {
-                /** @description Updated contact card */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCard"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        post?: never;
-        /** Delete a contact card */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    cardId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted contact card */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["OkResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-            };
-        };
-        options?: never;
-        head?: never;
-        /**
-         * Partially update a contact card
-         * @description Deep-merge patch into the existing JSContact Card. Id-keyed map entries merge by key; null removes an entry.
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    cardId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
-                     * @example {
-                     *       "emails": {
-                     *         "550e8400-e29b-41d4-a716-446655440001": {
-                     *           "address": "updated@example.com"
-                     *         }
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ContactCardPatch"];
-                };
-            };
-            responses: {
-                /** @description Updated contact card */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCard"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        trace?: never;
-    };
     "/plugins/{id}/activation": {
         parameters: {
             query?: never;
@@ -4619,644 +4101,6 @@ export interface paths {
                     };
                     content?: never;
                 };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/blobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload contact media blob
-         * @description JMAP blob upload REST equivalent for contact photo/logo media (RFC 9610).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /** Format: binary */
-                        file: string;
-                    };
-                    "image/jpeg": string;
-                    "image/png": string;
-                    "image/gif": string;
-                    "image/webp": string;
-                };
-            };
-            responses: {
-                /** @description Blob uploaded */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactBlobUploadResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/blobs/{blobId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download contact media blob */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    blobId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Blob bytes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "image/jpeg": string;
-                        "image/png": string;
-                        "image/gif": string;
-                        "image/webp": string;
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List calendar events in a calendar */
-        get: {
-            parameters: {
-                query: {
-                    calendarId: string;
-                    /** @description Expand recurring events into instances in the requested window (requires after and before). */
-                    expandRecurrences?: boolean;
-                    /** @description Window start (required when expandRecurrences is true). */
-                    after?: string;
-                    /** @description Window end (required when expandRecurrences is true). */
-                    before?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Calendar event list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEventListResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        /** Create a calendar event */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
-                     * @example {
-                     *       "calendarIds": {
-                     *         "default": true
-                     *       },
-                     *       "title": "Team sync",
-                     *       "start": "2026-06-15T10:00:00Z",
-                     *       "end": "2026-06-15T11:00:00Z"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["CalendarEventCreate"];
-                };
-            };
-            responses: {
-                /** @description Created calendar event */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEvent"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/events/{eventId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Fetch a single calendar event */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    eventId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Calendar event */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEvent"];
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        /** Replace a calendar event */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    eventId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalendarEventCreate"];
-                };
-            };
-            responses: {
-                /** @description Updated calendar event */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEvent"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        post?: never;
-        /** Delete a calendar event */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    eventId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["OkResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Partially update a calendar event */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    eventId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalendarEventPatch"];
-                };
-            };
-            responses: {
-                /** @description Patched calendar event */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEvent"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        trace?: never;
-    };
-    "/calendars/calendars": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List user's calendars */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Calendar list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarListResponse"];
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-            };
-        };
-        put?: never;
-        /** Create a calendar */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalendarCreate"];
-                };
-            };
-            responses: {
-                /** @description Created calendar */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Calendar"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/calendars/{calendarId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Fetch a single calendar */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    calendarId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Calendar */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Calendar"];
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
-        /** Delete a calendar */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    calendarId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["CalendarDeleteOptions"];
-                };
-            };
-            responses: {
-                /** @description Calendar deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["OkResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                409: components["responses"]["JmapConflict"];
-                412: components["responses"]["JmapPreconditionFailed"];
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Update a calendar */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    calendarId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalendarPatch"];
-                };
-            };
-            responses: {
-                /** @description Updated calendar */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Calendar"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                412: components["responses"]["JmapPreconditionFailed"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        trace?: never;
-    };
-    "/contacts/addressbooks/changes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Incremental address book collection changes */
-        get: {
-            parameters: {
-                query?: {
-                    since?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Address book changes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["JmapChangesResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/cards/changes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Incremental contact card changes */
-        get: {
-            parameters: {
-                query: {
-                    addressBookId: string;
-                    since?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Contact card changes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["JmapChangesResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/cards/query": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Query contact card ids */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ContactCardQueryRequest"];
-                };
-            };
-            responses: {
-                /** @description Matching contact card ids */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCardQueryResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                413: components["responses"]["JmapPayloadTooLarge"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/calendars/changes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Incremental calendar collection changes */
-        get: {
-            parameters: {
-                query?: {
-                    since?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Calendar collection changes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["JmapCalendarChangesResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
             };
         };
         put?: never;
@@ -5748,48 +4592,6 @@ export interface paths {
         };
         trace?: never;
     };
-    "/contacts/cards/set": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** JMAP Contact/set batch mutations */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ContactCardSetRequest"];
-                };
-            };
-            responses: {
-                /** @description Contact/set result */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ContactCardSetResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/contacts/cards/import": {
         parameters: {
             query?: never;
@@ -5828,46 +4630,6 @@ export interface paths {
                 403: components["responses"]["JmapForbidden"];
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/contacts/cards/{cardId}/vcf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download vCard file for a contact */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    cardId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description vCard file (re-serialized for Apple label compatibility) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/vcard": string;
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5988,10 +4750,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List paths shared with current user */
+        /**
+         * List paths shared with current user
+         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients; replacement for `GET /notes/shared-with-me`).
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description When true, include file grants under `.notes`. Default is false. */
+                    includeNotes?: boolean;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -6438,7 +5206,7 @@ export interface paths {
         };
         /**
          * List note files shared with the current user via path grants
-         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.
+         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.
          */
         get: {
             parameters: {
@@ -6501,144 +5269,6 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/events/changes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Incremental calendar event changes
-         * @description JMAP CalendarEvent/changes mapping over the CalDAV calendarchanges log. Multi-VEVENT objects emit one composite id `{objectId}#{uid}` per VEVENT; destroyed ids include every id previously surfaced over REST for the destroyed object. The full delta is always returned in one response: `maxChanges` is accepted (RFC 8620 §5.2) but not used for truncation because the backing Sabre changes log cannot produce a safe intermediate sync token, so `hasMoreChanges` is always false.
-         */
-        get: {
-            parameters: {
-                query: {
-                    calendarId: string;
-                    since?: string;
-                    /** @description RFC 8620 §5.2 maxChanges. Validated (positive integer) but not used for truncation; the full delta is always returned and hasMoreChanges is always false. */
-                    maxChanges?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Calendar event changes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["JmapCalendarChangesResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/events/set": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * JMAP CalendarEvent/set batch mutations
-         * @description RFC 8620 §5.3 response semantics: `created` maps creation id to the server-set properties `{id, state}`, `updated` maps event id to the server-changed properties `{state}`. Top-level `oldState`/`newState` are the same per-calendar sync state `/calendars/events/changes` uses, scoped to the calendars touched by the request (single calendar: plain synctoken; multiple: `{count}:{uri:token,...}` composite sorted by uri; nothing mutated: all owned VEVENT calendars, oldState equals newState). Deliberate divergence: `ifInState` is per record (update/destroy entries carry their own per-event state token, stale token yields SetError type `stateMismatch`) instead of a request-level ifInState.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalendarEventSetRequest"];
-                };
-            };
-            responses: {
-                /** @description CalendarEvent/set result */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEventSetResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/calendars/events/query": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Query calendar event ids
-         * @description JMAP CalendarEvent/query mapping: filter by calendar ids, time range, and title text. Time-range matching is per VEVENT (composite ids match on their own occurrences, including recurrence expansion). Returns `queryState` (the same state string `/calendars/events/changes` uses, composed across `filter.inCalendars`) and `canCalculateChanges: false` (CalendarEvent/queryChanges is not implemented) per RFC 8620 §5.5.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalendarEventQueryRequest"];
-                };
-            };
-            responses: {
-                /** @description Matching calendar event ids */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalendarEventQueryResponse"];
-                    };
-                };
-                400: components["responses"]["JmapBadRequest"];
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-            };
-        };
         delete?: never;
         options?: never;
         head?: never;
@@ -6902,6 +5532,283 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/mail-delivery/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a platform email delivery test via MailDeliveryService::send() */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminMailDeliveryTestRequest"];
+                };
+            };
+            responses: {
+                /** @description Delivery result (accepted_by_transport is not inbox placement) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid message */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List own calendar scheduling inbox */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scheduling notifications for the signed-in user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingNotificationListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications/{notificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Dismiss a scheduling notification without sending a REPLY */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notificationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification dismissed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications/{notificationId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** RSVP to a scheduling invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notificationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSchedulingNotificationRespond"];
+                };
+            };
+            responses: {
+                /** @description Updated notification after REPLY */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingNotification"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/invitees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List instance users who can be invited */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invitee directory */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingInviteeListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendar/rsvp/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show a public RSVP invitation */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description RSVP target */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarRsvpResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /** Respond to a public RSVP invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSchedulingNotificationRespond"];
+                };
+            };
+            responses: {
+                /** @description Updated RSVP */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarRsvpResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7133,6 +6040,8 @@ export interface components {
          */
         AdminSettingsSaveRequest: {
             values?: components["schemas"]["AdminSettingsValueMap"];
+            /** @description When true, clears the stored mail_delivery SMTP secret. Cannot be combined with a new password. */
+            clearSmtpPassword?: boolean;
         };
         AdminUserSummary: {
             id: string;
@@ -7242,6 +6151,7 @@ export interface components {
             users: components["schemas"]["AdminUserSummary"][];
             groups: components["schemas"]["AdminGroupSummary"][];
             mail: components["schemas"]["AdminMailSettings"];
+            mailDelivery: components["schemas"]["AdminMailDeliveryState"];
             rtc: components["schemas"]["AdminRtcSettings"];
             apps: components["schemas"]["AdminAppsSettings"];
             webdav: components["schemas"]["AdminWebdavSettings"];
@@ -10179,6 +9089,116 @@ export interface components {
             blobId: string;
             type: string;
             size: number;
+        };
+        /**
+         * @description Configured transport. auto selects SMTP only when smtp-eligible.
+         * @enum {string}
+         */
+        AdminMailDeliveryTransport: "auto" | "smtp" | "php" | "sendmail";
+        /**
+         * @description Transport that would be used for the next send(), or null when none can be selected.
+         * @enum {string|null}
+         */
+        AdminMailDeliverySelectedTransport: "smtp" | "php" | "sendmail" | null;
+        /**
+         * @description accepted_by_transport means the MTA/relay accepted the message, not inbox placement.
+         * @enum {string}
+         */
+        AdminMailDeliveryStatus: "accepted_by_transport" | "unavailable" | "connect" | "auth" | "timeout" | "smtp_auth_required";
+        AdminMailDeliveryConfig: {
+            from: string;
+            transport: components["schemas"]["AdminMailDeliveryTransport"];
+            smtpHost: string;
+            smtpPort: number;
+            smtpSecurity: string;
+            smtpUsername: string;
+            /** @description True when a SMTP secret is stored. Never a password value. */
+            smtpPasswordSet: boolean;
+        };
+        AdminMailDeliveryProbes: {
+            fromConfigured: boolean;
+            smtpEligible: boolean;
+            smtpAuthRequired: boolean;
+            phpMailAvailable: boolean;
+            sendmailAvailable: boolean;
+        };
+        /** @description Function check only. Does not claim inbox placement. */
+        AdminMailDeliveryCapability: {
+            canSubmit: boolean;
+            selectedTransport: components["schemas"]["AdminMailDeliverySelectedTransport"];
+            probes: components["schemas"]["AdminMailDeliveryProbes"];
+        };
+        AdminMailDeliveryLastTestSend: {
+            accepted: boolean;
+            status: components["schemas"]["AdminMailDeliveryStatus"];
+            transport: string;
+            at: string;
+            message: string | null;
+        } | null;
+        AdminMailDeliveryState: {
+            config: components["schemas"]["AdminMailDeliveryConfig"];
+            capability: components["schemas"]["AdminMailDeliveryCapability"];
+            lastTestSend: components["schemas"]["AdminMailDeliveryLastTestSend"];
+        };
+        AdminMailDeliveryTestRequest: {
+            /** @description Optional recipient. Defaults to the admin principal email. */
+            to?: string;
+        };
+        AdminMailDeliveryTestResponse: components["schemas"]["AdminMailDeliveryLastTestSend"];
+        /** @description One iTIP scheduling-inbox row (RFC 6638), later-mappable to JMAP CalendarEventNotification. */
+        CalendarSchedulingNotification: {
+            /** @description Scheduling object URI (inbox resource name). */
+            id: string;
+            /** @description VEVENT UID the notification refers to. */
+            uid: string;
+            /** @enum {string} */
+            method: "REQUEST" | "CANCEL" | "REPLY" | "ADD" | "REFRESH" | "COUNTER" | "DECLINECOUNTER";
+            title: string;
+            organizerEmail: string | null;
+            organizerName?: string | null;
+            /** @description UTC start instant when DTSTART is a date-time. */
+            start?: string | null;
+            end?: string | null;
+            location?: string | null;
+            /** @description True when the VEVENT has RRULE or RECURRENCE-ID. */
+            recurring?: boolean;
+            /** @enum {string} */
+            participationStatus: "needs-action" | "accepted" | "tentative" | "declined" | "delegated";
+            /** @description Attendee calendar event id when a local VEVENT copy exists. */
+            eventId?: string | null;
+            etag?: string;
+        };
+        CalendarSchedulingNotificationListResponse: {
+            list: components["schemas"]["CalendarSchedulingNotification"][];
+        };
+        CalendarSchedulingNotificationRespond: {
+            /** @enum {string} */
+            participationStatus: "accepted" | "tentative" | "declined";
+            /** @description Writable calendar for the attendee copy on accept/tentative. Ignored when declined. */
+            calendarId?: string;
+            /** @description JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted. */
+            recurrenceId?: string;
+            /**
+             * @description this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events.
+             * @enum {string}
+             */
+            scope?: "this" | "future";
+        };
+        CalendarSchedulingInvitee: {
+            username: string;
+            email: string;
+            name: string;
+        };
+        CalendarSchedulingInviteeListResponse: {
+            list: components["schemas"]["CalendarSchedulingInvitee"][];
+            /** @description When false, Calendar must not send iMIP to external attendees. */
+            canSubmitEmail: boolean;
+        };
+        CalendarRsvpResponse: {
+            title: string;
+            attendeeEmail: string;
+            /** @enum {string} */
+            participationStatus: "needs-action" | "accepted" | "tentative" | "declined";
         };
     };
     responses: {

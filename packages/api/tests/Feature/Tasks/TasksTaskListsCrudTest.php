@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Tasks;
 
 use App\Models\Principal;
+use App\Services\Jmap\JmapCapabilities;
 use App\Services\Tasks\InboxTaskListProvisioner;
+use App\Support\WgwSettings;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -94,11 +96,16 @@ final class TasksTaskListsCrudTest extends WgwDatabaseTestCase
 
     public function test_calendars_list_excludes_vtodo_only_inbox(): void
     {
-        $response = $this->withBearer($this->userBearerToken())
-            ->getJson('/api/v1/calendars/calendars');
+        $this->setAppSetting(WgwSettings::CALENDAR_ENABLED, true);
 
-        $response->assertOk();
-        $ids = collect($response->json('list'))->pluck('id')->all();
+        $response = $this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+            'methodCalls' => [
+                ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+            ],
+        ])->assertOk();
+
+        $ids = array_column($response->json('methodResponses.0.1.list'), 'id');
         $this->assertNotContains(InboxTaskListProvisioner::URI, $ids);
     }
 }

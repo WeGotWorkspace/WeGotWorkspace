@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
-import { Card } from "@/card/src/card";
-import { CardPanel, CardRowDivider } from "@/card/src/card-panel";
+import { CardRowDivider } from "@/card/src/card-panel";
 import { buttonVariants } from "@/button/src/button";
 import {
   AlertDialog,
@@ -14,8 +13,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
+import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { SharePrincipalSearchDropdown } from "@/share-ui/share-principal-search-dropdown";
+import {
+  SharePrincipalSearchDropdown,
+  type ShareSearchOption,
+} from "@/share-ui/share-principal-search-dropdown";
 import {
   SHARE_UI_PERMISSIONS,
   accessToUIPermission,
@@ -85,14 +88,40 @@ export function ShareTeamSection({
   }, [atPath.effectiveGrants, atPath.memberAccess]);
 
   const selectableResults = results.filter((entry) => !existingPrincipals.has(entry.principal));
+  const searchOptions: ShareSearchOption[] = selectableResults.map((entry) => ({
+    id: entry.principal,
+    displayName: entry.displayName,
+    principalType: entry.principalType,
+    meta: entry.memberCount != null ? shareLabels.membersSuffix(entry.memberCount) : undefined,
+  }));
 
   return (
-    <Card
-      titleIcon={<Users className="size-4" />}
-      title={shareLabels.teamSectionTitle}
-      description={shareLabels.teamSectionHint}
-    >
-      <CardPanel>
+    <>
+      <ShareAccessCard
+        titleIcon={<Users className="size-4" />}
+        title={shareLabels.teamSectionTitle}
+        description={shareLabels.teamSectionHint}
+        addControl={
+          <SharePrincipalSearchDropdown
+            query={query}
+            searching={searching}
+            results={searchOptions}
+            onSelect={(option) => {
+              const entry = selectableResults.find((row) => row.principal === option.id);
+              if (!entry) return;
+              void mutations.addTeamGrant(entry, "view").then(() => setQuery(""));
+            }}
+          >
+            <ShareDialogInput
+              value={query}
+              disabled={disabled}
+              placeholder={shareLabels.addTeamGrantPlaceholder}
+              className="share-dialog__add-grant-input"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </SharePrincipalSearchDropdown>
+        }
+      >
         {groupGrants.map((grant) => {
           const inherited = grant.source.inherited;
           const uiPermission = accessToUIPermission(grant.access);
@@ -187,26 +216,7 @@ export function ShareTeamSection({
             />
           );
         })}
-
-        <div className="share-dialog__add-grant">
-          <SharePrincipalSearchDropdown
-            query={query}
-            searching={searching}
-            results={selectableResults}
-            onSelect={(entry) => {
-              void mutations.addTeamGrant(entry, "view").then(() => setQuery(""));
-            }}
-          >
-            <ShareDialogInput
-              value={query}
-              disabled={disabled}
-              placeholder={shareLabels.addTeamGrantPlaceholder}
-              className="share-dialog__add-grant-input"
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </SharePrincipalSearchDropdown>
-        </div>
-      </CardPanel>
+      </ShareAccessCard>
 
       <AlertDialog
         open={!!pendingRemoval}
@@ -236,6 +246,6 @@ export function ShareTeamSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </>
   );
 }

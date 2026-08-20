@@ -22,8 +22,17 @@ use Illuminate\Support\Str;
  */
 final class FileNodeIndexService
 {
-    /** Dot-prefixed segments are internal (.notes trees, collab sidecars). */
+    /** Dot-prefixed segments are internal (collab sidecars, AppleDouble) unless product-excepted. */
     private const HIDDEN_SEGMENT_PREFIX = '.';
+
+    /** Product trash is hidden from browse listings but is a FileNode. */
+    private const PRODUCT_TRASH_DIR = '.Trash';
+
+    /** Product notes tree is hidden from Drive browse but is a FileNode. */
+    private const PRODUCT_NOTES_DIR = '.notes';
+
+    /** `.archive` is a FileNode only when it lives under `.notes`. */
+    private const PRODUCT_NOTES_ARCHIVE_DIR = '.archive';
 
     public function __construct(private readonly WgwStorage $storage) {}
 
@@ -96,13 +105,31 @@ final class FileNodeIndexService
 
     private function isHiddenKey(string $key): bool
     {
+        $underNotes = false;
         foreach (explode('/', $key) as $segment) {
+            if ($segment === '') {
+                continue;
+            }
+            if ($this->isIndexedDotSegment($segment, $underNotes)) {
+                if ($segment === self::PRODUCT_NOTES_DIR) {
+                    $underNotes = true;
+                }
+
+                continue;
+            }
             if (str_starts_with($segment, self::HIDDEN_SEGMENT_PREFIX)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function isIndexedDotSegment(string $segment, bool $underNotes): bool
+    {
+        return $segment === self::PRODUCT_TRASH_DIR
+            || $segment === self::PRODUCT_NOTES_DIR
+            || ($segment === self::PRODUCT_NOTES_ARCHIVE_DIR && $underNotes);
     }
 
     // ---------------------------------------------------------------

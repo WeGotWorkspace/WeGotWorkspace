@@ -1,14 +1,20 @@
 import type {
   AddressBook,
-  ContactAddressBookListResponse,
   ContactCard,
-  ContactCardCreate,
   ContactCardImportResponse,
-  ContactCardListResponse,
-  ContactCardPatch,
 } from "@wgw-api-generated/contacts-types";
+import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  CONTACTS_CAPABILITY,
+  JmapClient,
+  JmapContactsClient,
+  JmapMethodError,
+  type ChangesResponse,
+  type JmapAddressBook,
+  type JmapContactCard,
+} from "@/lib/jmap-client";
 
 export class ContactsRequestError extends Error {
   status: number;
@@ -19,159 +25,170 @@ export class ContactsRequestError extends Error {
   }
 }
 
-type ContactsRequestOpts = {
-  signal?: AbortSignal;
-  /** CardDAV etag from ContactCard — required for PATCH/DELETE per optimistic concurrency. */
-  ifMatch?: string;
-};
-
-function parseAddressBooksPayload(json: unknown): AddressBook[] {
-  if (!json || typeof json !== "object") return [];
-  const payload = json as ContactAddressBookListResponse | Record<string, unknown>;
-  const list = "list" in payload && Array.isArray(payload.list) ? payload.list : [];
-  return list as AddressBook[];
+/**
+ * JmapClient fetches sessionUrl and the session's absolute apiUrl verbatim;
+ * this bridge routes both through wgwFetch (bearer + refresh) by reducing the
+ * URL back to an API-relative path.
+ */
+function toApiRelativePath(input: string): string {
+  const base = wgwApiBaseUrl();
+  const url = new URL(input, window.location.origin);
+  const path = url.pathname + url.search;
+  return path.startsWith(base) ? path.slice(base.length) : path;
 }
 
-function parseCardsPayload(json: unknown): ContactCard[] {
-  if (!json || typeof json !== "object") return [];
-  const payload = json as ContactCardListResponse | Record<string, unknown>;
-  const list = "list" in payload && Array.isArray(payload.list) ? payload.list : [];
-  return list as ContactCard[];
+function interpolateJmapUrl(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => encodeURIComponent(vars[key] ?? ""));
 }
 
-async function requestContactsJson(
-  path: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
-  body?: unknown,
-  opts?: ContactsRequestOpts,
-): Promise<unknown> {
-  const headers = new Headers();
-  if (body !== undefined) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (opts?.ifMatch) {
-    headers.set("If-Match", opts.ifMatch);
-  }
+let cachedClient: JmapClient | null = null;
 
-  const init: RequestInit = { method, signal: opts?.signal, headers };
-  if (body !== undefined) {
-    init.body = JSON.stringify(body);
-  }
-
-  const res = await wgwFetch(path, init);
-  if (!res.ok) {
-    throw new ContactsRequestError(`${method} ${path} failed (${res.status})`, res.status);
-  }
-  if (res.status === 204) return undefined;
-  return wgwReadJson(res);
+export function createContactsJmapClient(): JmapClient {
+  return new JmapClient({
+    sessionUrl: "/jmap/session",
+    fetch: (input, init) => wgwFetch(toApiRelativePath(input), init ?? {}),
+  });
 }
 
-export async function listAddressBooks(opts?: { signal?: AbortSignal }): Promise<AddressBook[]> {
-  const json = await requestContactsJson("/contacts/addressbooks", "GET", undefined, opts);
-  return parseAddressBooksPayload(json);
+export function contactsJmapClient(): JmapClient {
+  if (!cachedClient) {
+    cachedClient = createContactsJmapClient();
+  }
+  return cachedClient;
+}
+
+/** Test-only: drop the memoized client (and its session). */
+export function resetContactsJmapClientForTests(): void {
+  cachedClient = null;
+}
+
+export async function connectedContacts(client: JmapClient = contactsJmapClient()): Promise<{
+  contacts: JmapContactsClient;
+  accountId: string;
+  client: JmapClient;
+}> {
+  if (!client.isConnected) {
+    await client.connect();
+  }
+  return {
+    contacts: new JmapContactsClient(client),
+    accountId: client.primaryAccountId(CONTACTS_CAPABILITY),
+    client,
+  };
+}
+
+export function isCannotCalculateChanges(error: unknown): boolean {
+  return error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges";
+}
+
+function toAddressBook(book: JmapAddressBook): AddressBook {
+  return book as AddressBook;
+}
+
+function toContactCard(card: JmapContactCard): ContactCard {
+  return card as ContactCard;
+}
+
+export async function listAddressBooks(_opts?: { signal?: AbortSignal }): Promise<AddressBook[]> {
+  const { contacts, accountId } = await connectedContacts();
+  const response = await contacts.getAddressBooks(accountId);
+  return response.list.map(toAddressBook);
 }
 
 export async function getAddressBook(
   addressBookId: string,
-  opts?: { signal?: AbortSignal },
+  _opts?: { signal?: AbortSignal },
 ): Promise<AddressBook> {
-  const json = await requestContactsJson(
-    `/contacts/addressbooks/${encodeURIComponent(addressBookId)}`,
-    "GET",
-    undefined,
-    opts,
-  );
-  return json as AddressBook;
+  const { contacts, accountId } = await connectedContacts();
+  const response = await contacts.getAddressBooks(accountId, [addressBookId]);
+  const book = response.list[0];
+  if (!book) {
+    throw new ContactsRequestError(`AddressBook/get did not return ${addressBookId}`, 404);
+  }
+  return toAddressBook(book);
 }
 
 export async function listCards(opts?: {
   addressBookId?: string;
   signal?: AbortSignal;
 }): Promise<ContactCard[]> {
-  if (opts?.addressBookId) {
-    const query = `?addressBookId=${encodeURIComponent(opts.addressBookId)}`;
-    const json = await requestContactsJson(`/contacts/cards${query}`, "GET", undefined, opts);
-    return parseCardsPayload(json);
-  }
-
-  const books = await listAddressBooks(opts);
-  if (books.length === 0) return [];
-
-  const lists = await Promise.all(
-    books.map((book) => listCards({ addressBookId: book.id, signal: opts?.signal })),
+  const { contacts, accountId } = await connectedContacts();
+  const response = await contacts.getContactCardsByQuery(
+    accountId,
+    opts?.addressBookId ? { inAddressBook: opts.addressBookId } : undefined,
   );
-  const byId = new Map<string, ContactCard>();
-  for (const cards of lists) {
-    for (const card of cards) {
-      byId.set(card.id, card);
-    }
-  }
-  return [...byId.values()];
+  return response.list.map(toContactCard);
 }
 
 export async function getCard(
   cardId: string,
-  opts?: { signal?: AbortSignal },
+  _opts?: { signal?: AbortSignal },
 ): Promise<ContactCard> {
-  const json = await requestContactsJson(
-    `/contacts/cards/${encodeURIComponent(cardId)}`,
-    "GET",
-    undefined,
-    opts,
-  );
-  return json as ContactCard;
+  const { contacts, accountId } = await connectedContacts();
+  const response = await contacts.getContactCards(accountId, [cardId]);
+  const card = response.list[0];
+  if (!card) {
+    throw new ContactsRequestError(`ContactCard/get did not return ${cardId}`, 404);
+  }
+  return toContactCard(card);
 }
 
-export async function createCard(
-  body: ContactCardCreate,
-  opts?: { signal?: AbortSignal },
-): Promise<ContactCard> {
-  const json = await requestContactsJson("/contacts/cards", "POST", body, opts);
-  return json as ContactCard;
+export async function addressBookChanges(
+  sinceState: string,
+  _opts?: { signal?: AbortSignal },
+): Promise<ChangesResponse> {
+  const { contacts, accountId } = await connectedContacts();
+  return contacts.addressBookChanges(accountId, sinceState);
 }
 
-export async function patchCard(
-  cardId: string,
-  patch: ContactCardPatch,
-  opts?: ContactsRequestOpts,
-): Promise<ContactCard> {
-  const json = await requestContactsJson(
-    `/contacts/cards/${encodeURIComponent(cardId)}`,
-    "PATCH",
-    patch,
-    opts,
-  );
-  return json as ContactCard;
+export async function contactCardChanges(
+  sinceState: string,
+  _opts?: { signal?: AbortSignal },
+): Promise<ChangesResponse> {
+  const { contacts, accountId } = await connectedContacts();
+  return contacts.contactCardChanges(accountId, sinceState);
 }
 
-export async function deleteCard(cardId: string, opts?: ContactsRequestOpts): Promise<void> {
-  await requestContactsJson(
-    `/contacts/cards/${encodeURIComponent(cardId)}`,
-    "DELETE",
-    undefined,
-    opts,
-  );
+export async function downloadContactBlob(
+  blobId: string,
+  opts?: { name?: string; type?: string; signal?: AbortSignal },
+): Promise<Response> {
+  const { client, accountId } = await connectedContacts();
+  const path = interpolateJmapUrl(client.session.downloadUrl, {
+    accountId,
+    blobId,
+    name: opts?.name ?? "photo",
+    type: opts?.type ?? "application/octet-stream",
+  });
+  return wgwFetch(toApiRelativePath(path), { method: "GET", signal: opts?.signal });
 }
 
-/**
- * Fetch the raw vCard bytes for a single contact card from the server.
- * Returns the raw vCard text as a string (UTF-8).
- */
+export async function uploadContactBlob(
+  body: Blob,
+  opts?: { type?: string; signal?: AbortSignal },
+): Promise<{ blobId: string; size: number; type: string }> {
+  const { client, accountId } = await connectedContacts();
+  const path = interpolateJmapUrl(client.session.uploadUrl, { accountId });
+  const contentType = opts?.type ?? body.type ?? "application/octet-stream";
+  const res = await wgwFetch(toApiRelativePath(path), {
+    method: "POST",
+    headers: { "Content-Type": contentType },
+    body,
+    signal: opts?.signal,
+  });
+  if (!res.ok) {
+    throw new ContactsRequestError(`POST /jmap/upload failed (${res.status})`, res.status);
+  }
+  return (await wgwReadJson(res)) as { blobId: string; size: number; type: string };
+}
+
+/** Client-side JSContact → vCard. Does not call GET …/vcf. */
 export async function downloadCardVcf(
   cardId: string,
   opts?: { signal?: AbortSignal },
 ): Promise<string> {
-  const res = await wgwFetch(`/contacts/cards/${encodeURIComponent(cardId)}/vcf`, {
-    method: "GET",
-    signal: opts?.signal,
-  });
-  if (!res.ok) {
-    throw new ContactsRequestError(
-      `GET /contacts/cards/${cardId}/vcf failed (${res.status})`,
-      res.status,
-    );
-  }
-  return res.text();
+  const card = await getCard(cardId, opts);
+  return contactCardToVCard(card);
 }
 
 export async function importVcards(
@@ -211,11 +228,14 @@ export async function fetchContactsLiveBootstrap(): Promise<ContactsAppBootstrap
     }
   }
 
-  const addressBooks = await listAddressBooks();
-  const cards = await listCards();
+  const { contacts, accountId } = await connectedContacts();
+  const { books, cards } = await contacts.getAddressBooksAndCards(accountId);
 
   return {
-    data: { addressBooks, cards },
+    data: {
+      addressBooks: books.list.map(toAddressBook),
+      cards: cards.list.map(toContactCard),
+    },
     session,
   };
 }

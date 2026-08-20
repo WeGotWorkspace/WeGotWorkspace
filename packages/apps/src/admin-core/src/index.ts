@@ -14,6 +14,7 @@ export type {
   AdminAPIOperations,
   AdminAppsSettings,
   AdminGroup,
+  AdminMailDeliveryState,
   AdminMailSettings,
   AdminSection,
   AdminUIData,

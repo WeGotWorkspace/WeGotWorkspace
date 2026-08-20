@@ -1,0 +1,42 @@
+/*
+ * RSVP chips reuse Callout severity hues (success / error) and the shared
+ * docs/info blue already used for accent chips — applied via Tag --tag-* vars.
+ * Invitees-card status marks and invitation-card RSVP buttons share these tokens.
+ */
+.calendar-rsvp-status--accepted,
+.calendar-invitees-rsvp-tag--accepted,
+.calendar-rsvp-action--accept.calendar-rsvp-action--selected,
+.calendar-invitation-card__action--accept.calendar-invitation-card__action--selected,
+.calendar-rsvp-select--accept.calendar-rsvp-select--selected {
+  --tag-bg: color-mix(in oklab, #3a8f5a 18%, transparent);
+  --tag-fg: #3a8f5a;
+}
+
+.calendar-rsvp-status--tentative,
+.calendar-invitees-rsvp-tag--tentative,
+.calendar-rsvp-action--maybe.calendar-rsvp-action--selected,
+.calendar-invitation-card__action--maybe.calendar-invitation-card__action--selected,
+.calendar-rsvp-select--maybe.calendar-rsvp-select--selected {
+  --tag-bg: color-mix(in oklab, #2563eb 16%, transparent);
+  --tag-fg: #2563eb;
+}
+
+.calendar-rsvp-status--declined,
+.calendar-invitees-rsvp-tag--declined,
+.calendar-rsvp-action--decline.calendar-rsvp-action--selected,
+.calendar-invitation-card__action--decline.calendar-invitation-card__action--selected,
+.calendar-rsvp-select--decline.calendar-rsvp-select--selected {
+  --tag-bg: color-mix(in oklab, #b14242 18%, transparent);
+  --tag-fg: #b14242;
+}
+
+.calendar-invitees-status-mark--organizer {
+  --tag-bg: color-mix(in oklab, var(--share-dialog-accent, var(--color-ink)) 16%, transparent);
+  --tag-fg: var(--share-dialog-accent, var(--color-ink));
+}
+
+.calendar-invitees-status-mark--pending,
+.calendar-invitees-status-mark--delegated {
+  --tag-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --tag-fg: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}

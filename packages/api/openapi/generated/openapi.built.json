@@ -624,6 +624,10 @@
                 "properties": {
                     "values": {
                         "$ref": "#/components/schemas/AdminSettingsValueMap"
+                    },
+                    "clearSmtpPassword": {
+                        "type": "boolean",
+                        "description": "When true, clears the stored mail_delivery SMTP secret. Cannot be combined with a new password."
                     }
                 },
                 "example": {
@@ -1118,6 +1122,9 @@
                     "mail": {
                         "$ref": "#/components/schemas/AdminMailSettings"
                     },
+                    "mailDelivery": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryState"
+                    },
                     "rtc": {
                         "$ref": "#/components/schemas/AdminRtcSettings"
                     },
@@ -1141,6 +1148,7 @@
                     "users",
                     "groups",
                     "mail",
+                    "mailDelivery",
                     "rtc",
                     "apps",
                     "webdav",
@@ -9470,6 +9478,394 @@
                         "type": "integer"
                     }
                 }
+            },
+            "AdminMailDeliveryTransport": {
+                "type": "string",
+                "enum": [
+                    "auto",
+                    "smtp",
+                    "php",
+                    "sendmail"
+                ],
+                "description": "Configured transport. auto selects SMTP only when smtp-eligible."
+            },
+            "AdminMailDeliverySelectedTransport": {
+                "type": "string",
+                "enum": [
+                    "smtp",
+                    "php",
+                    "sendmail"
+                ],
+                "nullable": true,
+                "description": "Transport that would be used for the next send(), or null when none can be selected."
+            },
+            "AdminMailDeliveryStatus": {
+                "type": "string",
+                "enum": [
+                    "accepted_by_transport",
+                    "unavailable",
+                    "connect",
+                    "auth",
+                    "timeout",
+                    "smtp_auth_required"
+                ],
+                "description": "accepted_by_transport means the MTA/relay accepted the message, not inbox placement."
+            },
+            "AdminMailDeliveryConfig": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "from": {
+                        "type": "string"
+                    },
+                    "transport": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryTransport"
+                    },
+                    "smtpHost": {
+                        "type": "string"
+                    },
+                    "smtpPort": {
+                        "type": "integer"
+                    },
+                    "smtpSecurity": {
+                        "type": "string"
+                    },
+                    "smtpUsername": {
+                        "type": "string"
+                    },
+                    "smtpPasswordSet": {
+                        "type": "boolean",
+                        "description": "True when a SMTP secret is stored. Never a password value."
+                    }
+                },
+                "required": [
+                    "from",
+                    "transport",
+                    "smtpHost",
+                    "smtpPort",
+                    "smtpSecurity",
+                    "smtpUsername",
+                    "smtpPasswordSet"
+                ]
+            },
+            "AdminMailDeliveryProbes": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "fromConfigured": {
+                        "type": "boolean"
+                    },
+                    "smtpEligible": {
+                        "type": "boolean"
+                    },
+                    "smtpAuthRequired": {
+                        "type": "boolean"
+                    },
+                    "phpMailAvailable": {
+                        "type": "boolean"
+                    },
+                    "sendmailAvailable": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "fromConfigured",
+                    "smtpEligible",
+                    "smtpAuthRequired",
+                    "phpMailAvailable",
+                    "sendmailAvailable"
+                ]
+            },
+            "AdminMailDeliveryCapability": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Function check only. Does not claim inbox placement.",
+                "properties": {
+                    "canSubmit": {
+                        "type": "boolean"
+                    },
+                    "selectedTransport": {
+                        "$ref": "#/components/schemas/AdminMailDeliverySelectedTransport"
+                    },
+                    "probes": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryProbes"
+                    }
+                },
+                "required": [
+                    "canSubmit",
+                    "selectedTransport",
+                    "probes"
+                ]
+            },
+            "AdminMailDeliveryLastTestSend": {
+                "type": "object",
+                "additionalProperties": false,
+                "nullable": true,
+                "properties": {
+                    "accepted": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryStatus"
+                    },
+                    "transport": {
+                        "type": "string"
+                    },
+                    "at": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "accepted",
+                    "status",
+                    "transport",
+                    "at",
+                    "message"
+                ]
+            },
+            "AdminMailDeliveryState": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "config": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryConfig"
+                    },
+                    "capability": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryCapability"
+                    },
+                    "lastTestSend": {
+                        "$ref": "#/components/schemas/AdminMailDeliveryLastTestSend"
+                    }
+                },
+                "required": [
+                    "config",
+                    "capability",
+                    "lastTestSend"
+                ]
+            },
+            "AdminMailDeliveryTestRequest": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "to": {
+                        "type": "string",
+                        "description": "Optional recipient. Defaults to the admin principal email."
+                    }
+                }
+            },
+            "AdminMailDeliveryTestResponse": {
+                "$ref": "#/components/schemas/AdminMailDeliveryLastTestSend"
+            },
+            "CalendarSchedulingNotification": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "uid",
+                    "method",
+                    "title",
+                    "organizerEmail",
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "description": "One iTIP scheduling-inbox row (RFC 6638), later-mappable to JMAP CalendarEventNotification.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Scheduling object URI (inbox resource name)."
+                    },
+                    "uid": {
+                        "type": "string",
+                        "description": "VEVENT UID the notification refers to."
+                    },
+                    "method": {
+                        "type": "string",
+                        "enum": [
+                            "REQUEST",
+                            "CANCEL",
+                            "REPLY",
+                            "ADD",
+                            "REFRESH",
+                            "COUNTER",
+                            "DECLINECOUNTER"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "organizerEmail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "organizerName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "start": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "UTC start instant when DTSTART is a date-time."
+                    },
+                    "end": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "recurring": {
+                        "type": "boolean",
+                        "description": "True when the VEVENT has RRULE or RECURRENCE-ID."
+                    },
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "needs-action",
+                            "accepted",
+                            "tentative",
+                            "declined",
+                            "delegated"
+                        ]
+                    },
+                    "eventId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Attendee calendar event id when a local VEVENT copy exists."
+                    },
+                    "etag": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CalendarSchedulingNotificationListResponse": {
+                "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarSchedulingNotification"
+                        }
+                    }
+                }
+            },
+            "CalendarSchedulingNotificationRespond": {
+                "type": "object",
+                "required": [
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "accepted",
+                            "tentative",
+                            "declined"
+                        ]
+                    },
+                    "calendarId": {
+                        "type": "string",
+                        "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
+                    },
+                    "recurrenceId": {
+                        "type": "string",
+                        "description": "JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "this",
+                            "future"
+                        ],
+                        "description": "this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events."
+                    }
+                }
+            },
+            "CalendarSchedulingInvitee": {
+                "type": "object",
+                "required": [
+                    "username",
+                    "email",
+                    "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "username": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CalendarSchedulingInviteeListResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "canSubmitEmail"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarSchedulingInvitee"
+                        }
+                    },
+                    "canSubmitEmail": {
+                        "type": "boolean",
+                        "description": "When false, Calendar must not send iMIP to external attendees."
+                    }
+                }
+            },
+            "CalendarRsvpResponse": {
+                "type": "object",
+                "required": [
+                    "title",
+                    "attendeeEmail",
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "attendeeEmail": {
+                        "type": "string"
+                    },
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "needs-action",
+                            "accepted",
+                            "tentative",
+                            "declined"
+                        ]
+                    }
+                }
             }
         },
         "responses": {
@@ -11399,9 +11795,22 @@
                         "bearerAuth": []
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminSettingsSaveRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Settings saved"
+                    },
+                    "400": {
+                        "description": "Invalid settings (e.g. new password + clearSmtpPassword)"
                     }
                 },
                 "x-wgw-access": "admin"
@@ -11936,72 +12345,6 @@
                     }
                 },
                 "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Files"
-                ],
-                "summary": "Rename or move file or directory",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "path",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "name"
-                                ],
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "destination": {
-                                        "type": "string",
-                                        "description": "Target parent directory; omit to rename in place"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Renamed"
-                    }
-                },
-                "x-wgw-access": "guest"
-            },
-            "delete": {
-                "tags": [
-                    "Files"
-                ],
-                "summary": "Delete files",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted"
-                    }
-                },
-                "x-wgw-access": "guest"
             }
         },
         "/files/children": {
@@ -12127,32 +12470,6 @@
                     }
                 },
                 "x-wgw-access": "guest"
-            },
-            "post": {
-                "tags": [
-                    "Files"
-                ],
-                "summary": "Upload file content",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "path",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Accepted"
-                    }
-                },
-                "x-wgw-access": "guest"
             }
         },
         "/files/context": {
@@ -12169,35 +12486,6 @@
                 "responses": {
                     "200": {
                         "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/files/directories": {
-            "post": {
-                "tags": [
-                    "Files"
-                ],
-                "summary": "Create directory",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "path",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created"
                     }
                 },
                 "x-wgw-access": "user"
@@ -12483,604 +12771,6 @@
                 "x-wgw-access": "guest"
             }
         },
-        "/contacts/addressbooks": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "List user's address books",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Address book list",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactAddressBookListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Create an address book",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AddressBookCreate"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created address book",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AddressBook"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/addressbooks/{addressBookId}": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Fetch a single address book",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "addressBookId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Address book",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AddressBook"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Update an address book",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "addressBookId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AddressBookPatch"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated address book",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AddressBook"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Delete an address book",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "addressBookId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AddressBookDeleteOptions"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Address book deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "409": {
-                        "$ref": "#/components/responses/JmapConflict"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/cards": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "List contact cards in an address book",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "addressBookId",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "uid",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "uid",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Contact card list",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCardListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Create a contact card",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created contact card",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCard"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ContactCardCreate"
-                            },
-                            "example": {
-                                "addressBookIds": {
-                                    "default": true
-                                },
-                                "name": {
-                                    "full": "Joe Example"
-                                },
-                                "emails": {
-                                    "550e8400-e29b-41d4-a716-446655440001": {
-                                        "address": "joe@example.com"
-                                    }
-                                },
-                                "phones": {
-                                    "550e8400-e29b-41d4-a716-446655440002": {
-                                        "number": "+1-555-0100"
-                                    }
-                                },
-                                "addresses": {
-                                    "550e8400-e29b-41d4-a716-446655440003": {
-                                        "full": "123 Main St",
-                                        "countryCode": "US"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/cards/{cardId}": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Fetch a single contact card",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "cardId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Contact card",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCard"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "put": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Replace a contact card",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "cardId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated contact card",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCard"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ContactCardCreate"
-                            },
-                            "example": {
-                                "addressBookIds": {
-                                    "default": true
-                                },
-                                "name": {
-                                    "full": "Joe Example"
-                                },
-                                "emails": {
-                                    "550e8400-e29b-41d4-a716-446655440001": {
-                                        "address": "joe@example.com"
-                                    }
-                                },
-                                "phones": {
-                                    "550e8400-e29b-41d4-a716-446655440002": {
-                                        "number": "+1-555-0100"
-                                    }
-                                },
-                                "addresses": {
-                                    "550e8400-e29b-41d4-a716-446655440003": {
-                                        "full": "123 Main St",
-                                        "countryCode": "US"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Partially update a contact card",
-                "description": "Deep-merge patch into the existing JSContact Card. Id-keyed map entries merge by key; null removes an entry.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "cardId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated contact card",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCard"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ContactCardPatch"
-                            },
-                            "example": {
-                                "emails": {
-                                    "550e8400-e29b-41d4-a716-446655440001": {
-                                        "address": "updated@example.com"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Delete a contact card",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "cardId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted contact card",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/plugins/{id}/activation": {
             "put": {
                 "tags": [
@@ -13322,889 +13012,6 @@
                 "responses": {
                     "200": {
                         "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/blobs": {
-            "post": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Upload contact media blob",
-                "description": "JMAP blob upload REST equivalent for contact photo/logo media (RFC 9610).",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "file"
-                                ],
-                                "properties": {
-                                    "file": {
-                                        "type": "string",
-                                        "format": "binary"
-                                    }
-                                }
-                            }
-                        },
-                        "image/jpeg": {
-                            "schema": {
-                                "type": "string",
-                                "format": "binary"
-                            }
-                        },
-                        "image/png": {
-                            "schema": {
-                                "type": "string",
-                                "format": "binary"
-                            }
-                        },
-                        "image/gif": {
-                            "schema": {
-                                "type": "string",
-                                "format": "binary"
-                            }
-                        },
-                        "image/webp": {
-                            "schema": {
-                                "type": "string",
-                                "format": "binary"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Blob uploaded",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactBlobUploadResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/blobs/{blobId}": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Download contact media blob",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "blobId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Blob bytes",
-                        "content": {
-                            "image/jpeg": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "binary"
-                                }
-                            },
-                            "image/png": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "binary"
-                                }
-                            },
-                            "image/gif": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "binary"
-                                }
-                            },
-                            "image/webp": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "binary"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/events": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "List calendar events in a calendar",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "calendarId",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "expandRecurrences",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        },
-                        "description": "Expand recurring events into instances in the requested window (requires after and before)."
-                    },
-                    {
-                        "name": "after",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date-time"
-                        },
-                        "description": "Window start (required when expandRecurrences is true)."
-                    },
-                    {
-                        "name": "before",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date-time"
-                        },
-                        "description": "Window end (required when expandRecurrences is true)."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Calendar event list",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEventListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Create a calendar event",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarEventCreate"
-                            },
-                            "example": {
-                                "calendarIds": {
-                                    "default": true
-                                },
-                                "title": "Team sync",
-                                "start": "2026-06-15T10:00:00Z",
-                                "end": "2026-06-15T11:00:00Z"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created calendar event",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEvent"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/events/{eventId}": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Fetch a single calendar event",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eventId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Calendar event",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEvent"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "put": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Replace a calendar event",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eventId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarEventCreate"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated calendar event",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEvent"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Partially update a calendar event",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eventId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarEventPatch"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Patched calendar event",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEvent"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Delete a calendar event",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eventId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/calendars": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "List user's calendars",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Calendar list",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Create a calendar",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarCreate"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created calendar",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Calendar"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/calendars/{calendarId}": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Fetch a single calendar",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "calendarId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Calendar",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Calendar"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Update a calendar",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "calendarId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarPatch"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated calendar",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Calendar"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Delete a calendar",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "calendarId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarDeleteOptions"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Calendar deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "409": {
-                        "$ref": "#/components/responses/JmapConflict"
-                    },
-                    "412": {
-                        "$ref": "#/components/responses/JmapPreconditionFailed"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/addressbooks/changes": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Incremental address book collection changes",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "since",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Address book changes",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/JmapChangesResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/cards/changes": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Incremental contact card changes",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "addressBookId",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "since",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Contact card changes",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/JmapChangesResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/cards/query": {
-            "post": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Query contact card ids",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ContactCardQueryRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Matching contact card ids",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCardQueryResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "413": {
-                        "$ref": "#/components/responses/JmapPayloadTooLarge"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/calendars/changes": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Incremental calendar collection changes",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "since",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Calendar collection changes",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/JmapCalendarChangesResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
                     }
                 },
                 "x-wgw-access": "user"
@@ -14851,48 +13658,6 @@
                 "x-wgw-access": "user"
             }
         },
-        "/contacts/cards/set": {
-            "post": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "JMAP Contact/set batch mutations",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ContactCardSetRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Contact/set result",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ContactCardSetResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/contacts/cards/import": {
             "post": {
                 "tags": [
@@ -14940,49 +13705,6 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/contacts/cards/{cardId}/vcf": {
-            "get": {
-                "tags": [
-                    "Contacts"
-                ],
-                "summary": "Download vCard file for a contact",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "cardId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "vCard file (re-serialized for Apple label compatibility)",
-                        "content": {
-                            "text/vcard": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "binary"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
                     }
                 },
                 "x-wgw-access": "user"
@@ -15091,9 +13813,22 @@
                     "Files"
                 ],
                 "summary": "List paths shared with current user",
+                "description": "Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients; replacement for `GET /notes/shared-with-me`).",
                 "security": [
                     {
                         "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "includeNotes",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "When true, include file grants under `.notes`. Default is false."
                     }
                 ],
                 "responses": {
@@ -15573,7 +14308,7 @@
                     "Notes"
                 ],
                 "summary": "List note files shared with the current user via path grants",
-                "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths.",
+                "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15616,159 +14351,6 @@
                                 }
                             }
                         }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/events/changes": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Incremental calendar event changes",
-                "description": "JMAP CalendarEvent/changes mapping over the CalDAV calendarchanges log. Multi-VEVENT objects emit one composite id `{objectId}#{uid}` per VEVENT; destroyed ids include every id previously surfaced over REST for the destroyed object. The full delta is always returned in one response: `maxChanges` is accepted (RFC 8620 §5.2) but not used for truncation because the backing Sabre changes log cannot produce a safe intermediate sync token, so `hasMoreChanges` is always false.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "calendarId",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "since",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "maxChanges",
-                        "in": "query",
-                        "required": false,
-                        "description": "RFC 8620 §5.2 maxChanges. Validated (positive integer) but not used for truncation; the full delta is always returned and hasMoreChanges is always false.",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Calendar event changes",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/JmapCalendarChangesResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/events/set": {
-            "post": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "JMAP CalendarEvent/set batch mutations",
-                "description": "RFC 8620 §5.3 response semantics: `created` maps creation id to the server-set properties `{id, state}`, `updated` maps event id to the server-changed properties `{state}`. Top-level `oldState`/`newState` are the same per-calendar sync state `/calendars/events/changes` uses, scoped to the calendars touched by the request (single calendar: plain synctoken; multiple: `{count}:{uri:token,...}` composite sorted by uri; nothing mutated: all owned VEVENT calendars, oldState equals newState). Deliberate divergence: `ifInState` is per record (update/destroy entries carry their own per-event state token, stale token yields SetError type `stateMismatch`) instead of a request-level ifInState.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarEventSetRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "CalendarEvent/set result",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEventSetResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendars/events/query": {
-            "post": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Query calendar event ids",
-                "description": "JMAP CalendarEvent/query mapping: filter by calendar ids, time range, and title text. Time-range matching is per VEVENT (composite ids match on their own occurrences, including recurrence expansion). Returns `queryState` (the same state string `/calendars/events/changes` uses, composed across `filter.inCalendars`) and `canCalculateChanges: false` (CalendarEvent/queryChanges is not implemented) per RFC 8620 §5.5.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarEventQueryRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Matching calendar event ids",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarEventQueryResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
                     }
                 },
                 "x-wgw-access": "user"
@@ -16055,6 +14637,271 @@
                         "$ref": "#/components/responses/JmapForbidden"
                     }
                 }
+            }
+        },
+        "/admin/mail-delivery/test": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Send a platform email delivery test via MailDeliveryService::send()",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminMailDeliveryTestRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Delivery result (accepted_by_transport is not inbox placement)"
+                    },
+                    "400": {
+                        "description": "Invalid message"
+                    },
+                    "429": {
+                        "description": "Rate limited"
+                    }
+                },
+                "x-wgw-access": "admin"
+            }
+        },
+        "/calendars/scheduling/notifications": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "List own calendar scheduling inbox",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Scheduling notifications for the signed-in user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingNotificationListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/scheduling/notifications/{notificationId}": {
+            "delete": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Dismiss a scheduling notification without sending a REPLY",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Notification dismissed"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/scheduling/notifications/{notificationId}/respond": {
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "RSVP to a scheduling invitation",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated notification after REPLY",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingNotification"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendars/scheduling/invitees": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "List instance users who can be invited",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitee directory",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingInviteeListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/calendar/rsvp/{token}": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Show a public RSVP invitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "RSVP target",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "guest"
+            },
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Respond to a public RSVP invitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated RSVP",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "guest"
             }
         }
     }

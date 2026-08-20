@@ -82,9 +82,9 @@ final class JmapCapabilityGatingTest extends WgwDatabaseTestCase
         $this->setAppSetting(WgwSettings::CALENDAR_ENABLED, false);
         $token = $this->userBearerToken();
 
-        // The decoupling this chunk exists for: before it, /jmap* lived
-        // inside the wgw.calendars group and this 403 took the envelope down.
-        $this->withBearer($token)->getJson('/api/v1/calendars/calendars')->assertForbidden();
+        // Dual-protocol REST is gone; the envelope stays up when the domain
+        // feature gate is off (capabilities + `using`, not HTTP 403).
+        $this->withBearer($token)->getJson('/api/v1/calendars/calendars')->assertNotFound();
         $this->withBearer($token)->getJson('/api/v1/jmap/session')->assertOk();
     }
 

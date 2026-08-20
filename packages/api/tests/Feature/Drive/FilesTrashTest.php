@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Drive;
 
+use App\Services\Drive\DriveService;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -24,34 +25,18 @@ final class FilesTrashTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_move_to_trash_accepts_post_with_method_override(): void
-    {
-        $token = $this->userBearerToken();
-        $this->createDriveFile($token, '/users/bob', 'report.md');
-        $this->ensureTrashDirectory($token, 'bob');
-
-        $this->withBearer($token)
-            ->withHeader('X-HTTP-Method-Override', 'PATCH')
-            ->postJson('/api/v1/files?path=/users/bob/report.md', [
-                'name' => 'report.md',
-                'destination' => '/users/bob/.Trash',
-            ])
-            ->assertOk()
-            ->assertJsonPath('data', 'Renamed');
-
-        $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/.Trash/report.md'));
-    }
-
     public function test_move_to_trash_retains_blob_and_updates_listings(): void
     {
         $token = $this->userBearerToken();
         $this->createDriveFile($token, '/users/bob', 'report.md');
         $this->ensureTrashDirectory($token, 'bob');
 
-        $this->withBearer($token)->patchJson('/api/v1/files?path=/users/bob/report.md', [
-            'name' => 'report.md',
-            'destination' => '/users/bob/.Trash',
-        ])->assertOk();
+        $this->assertSame('Renamed', app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob/.Trash',
+            '/users/bob/report.md',
+            'report.md',
+        ));
 
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/.Trash/report.md'));
 
@@ -69,10 +54,12 @@ final class FilesTrashTest extends WgwDatabaseTestCase
         Storage::disk('wgw_files')->put('users/bob/.Trash/Untitled.md', 'trashed');
         $this->createDriveFile($token, '/users/bob', 'Untitled.md');
 
-        $this->withBearer($token)->patchJson('/api/v1/files?path=/users/bob/Untitled.md', [
-            'name' => 'Untitled.md',
-            'destination' => '/users/bob/.Trash',
-        ])->assertOk();
+        app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob/.Trash',
+            '/users/bob/Untitled.md',
+            'Untitled.md',
+        );
 
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/.Trash/Untitled.md'));
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/.Trash/Untitled 2.md'));
@@ -85,13 +72,17 @@ final class FilesTrashTest extends WgwDatabaseTestCase
         $this->createDriveFile($token, '/users/bob', 'old.md');
         $this->ensureTrashDirectory($token, 'bob');
 
-        $this->withBearer($token)->patchJson('/api/v1/files?path=/users/bob/old.md', [
-            'name' => 'old.md',
-            'destination' => '/users/bob/.Trash',
-        ])->assertOk();
+        app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob/.Trash',
+            '/users/bob/old.md',
+            'old.md',
+        );
 
-        $this->withBearer($token)->deleteJson('/api/v1/files?path=/users/bob/.Trash/old.md')
-            ->assertOk();
+        $this->assertSame('Deleted', app(DriveService::class)->deleteItems(
+            $this->drivePrincipal('bob'),
+            [['path' => '/users/bob/.Trash/old.md']],
+        ));
 
         $this->assertFalse(Storage::disk('wgw_files')->exists('users/bob/.Trash/old.md'));
         $this->assertSearchDocumentMissing('users/bob/.Trash/old.md');

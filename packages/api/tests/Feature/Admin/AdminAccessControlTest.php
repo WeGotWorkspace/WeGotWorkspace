@@ -28,6 +28,7 @@ final class AdminAccessControlTest extends WgwDatabaseTestCase
         $this->getJson('/api/v1/admin/state')->assertUnauthorized();
         $this->postJson('/api/v1/admin/users', [])->assertUnauthorized();
         $this->putJson('/api/v1/admin/settings', ['values' => []])->assertUnauthorized();
+        $this->postJson('/api/v1/admin/mail-delivery/test')->assertUnauthorized();
         $this->getJson('/api/v1/admin/updates/state')->assertUnauthorized();
         $this->postJson('/api/v1/admin/search/jobs')->assertUnauthorized();
     }
@@ -43,6 +44,7 @@ final class AdminAccessControlTest extends WgwDatabaseTestCase
             $this->withBearer($token)->putJson('/api/v1/admin/settings', [
                 'values' => ['timezone' => 'UTC'],
             ])->assertForbidden();
+            $this->withBearer($token)->postJson('/api/v1/admin/mail-delivery/test')->assertForbidden();
             $this->withBearer($token)->getJson('/api/v1/admin/updates/state')->assertForbidden();
             $this->withBearer($token)->postJson('/api/v1/admin/search/jobs')->assertForbidden();
             $this->withBearer($token)->postJson('/api/v1/admin/update-jobs', ['type' => 'check'])->assertForbidden();
@@ -60,6 +62,7 @@ final class AdminAccessControlTest extends WgwDatabaseTestCase
                 'users',
                 'groups',
                 'mail',
+                'mailDelivery' => ['config', 'capability', 'lastTestSend'],
                 'rtc',
                 'apps',
                 'webdav',

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { wgwFetch } from "@/lib/api/wgw/http";
+import { downloadContactBlob } from "@/lib/api/wgw/contacts";
 
 import { contactPhotoBlobId, contactPhotoUrl } from "./contacts-display-utils";
 import type { ContactCard } from "./contacts-types";
@@ -35,7 +35,7 @@ export function useContactPhotoSrc(card: ContactCard | undefined): string | unde
 
     void (async () => {
       try {
-        const res = await wgwFetch(`/contacts/blobs/${blobId}`);
+        const res = await downloadContactBlob(blobId);
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
         if (cancelled) return;

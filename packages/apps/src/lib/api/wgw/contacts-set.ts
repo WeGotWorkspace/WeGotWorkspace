@@ -3,8 +3,8 @@ import type {
   ContactCardCreate,
   ContactCardPatch,
 } from "@/contacts-core/src/contacts-types";
-import { ContactsRequestError } from "@/lib/api/wgw/contacts";
-import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import { connectedContacts, getCard } from "@/lib/api/wgw/contacts";
+import type { JmapContactCard, SetResponse } from "@/lib/jmap-client";
 
 export type ContactCardSetResponse = {
   created: Record<string, string>;
@@ -24,24 +24,69 @@ export class ContactStateMismatchError extends Error {
   }
 }
 
+function setErrorMap(
+  errors: Record<string, { type?: string; description?: string } | null> | null | undefined,
+): Record<string, { type: string; description: string }> {
+  const out: Record<string, { type: string; description: string }> = {};
+  for (const [id, err] of Object.entries(errors ?? {})) {
+    if (!err) continue;
+    out[id] = {
+      type: err.type ?? "serverFail",
+      description: err.description ?? err.type ?? "Contact/set failed",
+    };
+  }
+  return out;
+}
+
+function mapSetResponse(response: SetResponse<JmapContactCard>): ContactCardSetResponse {
+  const created: Record<string, string> = {};
+  for (const [creationId, record] of Object.entries(response.created ?? {})) {
+    const id = record?.id;
+    if (typeof id === "string" && id.length > 0) created[creationId] = id;
+  }
+
+  const updated: Record<string, string> = {};
+  for (const [cardId, record] of Object.entries(response.updated ?? {})) {
+    const state =
+      record && typeof record === "object" && typeof record.state === "string"
+        ? record.state
+        : response.newState;
+    updated[cardId] = state;
+  }
+
+  return {
+    created,
+    updated,
+    destroyed: response.destroyed ?? [],
+    notCreated: setErrorMap(response.notCreated),
+    notUpdated: setErrorMap(response.notUpdated),
+    notDestroyed: setErrorMap(response.notDestroyed),
+  };
+}
+
+function destroyIds(
+  destroy: string[] | Record<string, { ifInState?: string }> | undefined,
+): string[] {
+  if (!destroy) return [];
+  return Array.isArray(destroy) ? destroy : Object.keys(destroy);
+}
+
 export async function contactCardSet(
   body: {
     create?: Record<string, ContactCardCreate>;
     update?: Record<string, ContactCardPatch & { ifInState?: string }>;
     destroy?: string[] | Record<string, { ifInState?: string }>;
   },
-  opts?: { signal?: AbortSignal },
+  _opts?: { signal?: AbortSignal },
 ): Promise<ContactCardSetResponse> {
-  const res = await wgwFetch("/contacts/cards/set", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: opts?.signal,
+  const { contacts, accountId } = await connectedContacts();
+  const response = await contacts.setContactCards({
+    accountId,
+    ...(body.create ? { create: body.create } : {}),
+    ...(body.update ? { update: body.update } : {}),
+    ...(body.destroy ? { destroy: destroyIds(body.destroy) } : {}),
   });
-  if (!res.ok) {
-    throw new ContactsRequestError(`POST /contacts/cards/set failed (${res.status})`, res.status);
-  }
-  return (await wgwReadJson(res)) as ContactCardSetResponse;
+  return mapSetResponse(response);
 }
 
 export function throwOnSetMismatch(
@@ -83,15 +128,12 @@ export async function deleteCardViaSet(
   cardId: string,
   opts?: { signal?: AbortSignal; ifInState?: string },
 ): Promise<void> {
-  const destroy = opts?.ifInState ? { [cardId]: { ifInState: opts.ifInState } } : [cardId];
-  const response = await contactCardSet({ destroy }, { signal: opts?.signal });
-  if (Array.isArray(destroy)) {
-    if (!response.destroyed.includes(cardId) && response.notDestroyed[cardId]) {
-      throwOnSetMismatch(cardId, response, "notDestroyed");
-    }
-    return;
+  // JMAP destroy is an id list; per-item ifInState is REST-only and dropped.
+  void opts?.ifInState;
+  const response = await contactCardSet({ destroy: [cardId] }, { signal: opts?.signal });
+  if (!response.destroyed.includes(cardId) && response.notDestroyed[cardId]) {
+    throwOnSetMismatch(cardId, response, "notDestroyed");
   }
-  throwOnSetMismatch(cardId, response, "notDestroyed");
 }
 
 export async function createCardViaSet(
@@ -108,14 +150,5 @@ export async function createCardViaSet(
     const err = response.notCreated[creationId];
     throw new Error(err?.description ?? "Contact create failed");
   }
-  const res = await wgwFetch(`/contacts/cards/${encodeURIComponent(serverId)}`, {
-    signal: opts?.signal,
-  });
-  if (!res.ok) {
-    throw new ContactsRequestError(
-      `GET /contacts/cards/${serverId} failed (${res.status})`,
-      res.status,
-    );
-  }
-  return (await wgwReadJson(res)) as ContactCard;
+  return getCard(serverId, { signal: opts?.signal });
 }

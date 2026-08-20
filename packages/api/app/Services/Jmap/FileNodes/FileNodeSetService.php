@@ -6,6 +6,8 @@ namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
 use App\Services\Jmap\Blobs\JmapBlobService;
+use App\Services\Notes\NoteMarkdownCodec;
+use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
 /**
@@ -19,15 +21,19 @@ use App\Storage\WgwStorage;
  * create/update references an uploaded `jb-` blob whose bytes are copied
  * into the file; afterwards the node's blobId is the node-derived `fnb-` id
  * and the upload may expire naturally.
+ *
+ * Note files (`.md` under `.notes`) accept a `note` {title, tags} patch.
+ * Frontmatter writes pass through existing YAML `starred` so `/notes/*` still
+ * round-trips the old client flag. FileNode `note.starred` is never written.
  */
 final class FileNodeSetService
 {
     // `modified` is accepted on create solely for onExists=newest
     // comparisons (draft-14); it is not persisted — mtime is the write time
     // (documented deviation: no client-controlled timestamps).
-    private const SUPPORTED_CREATE_PROPS = ['parentId', 'name', 'nodeType', 'blobId', 'size', 'type', 'modified'];
+    private const SUPPORTED_CREATE_PROPS = ['parentId', 'name', 'nodeType', 'blobId', 'size', 'type', 'modified', 'note'];
 
-    private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size'];
+    private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size', 'note'];
 
     /** @var array<string, array<string, mixed>> */
     private array $created = [];
@@ -53,6 +59,8 @@ final class FileNodeSetService
         private readonly FileNodeAccountSupport $accounts,
         private readonly JmapBlobService $blobs,
         private readonly WgwStorage $storage,
+        private readonly NoteMarkdownCodec $codec,
+        private readonly StoragePaths $paths,
     ) {}
 
     /**
@@ -221,12 +229,17 @@ final class FileNodeSetService
         }
 
         $name = $this->validName($payload['name'] ?? null);
+        $note = $this->notePatch($payload);
         $blobId = $payload['blobId'] ?? null;
-        $nodeType = $payload['nodeType'] ?? (is_string($blobId) ? 'file' : 'directory');
+        $hasBlob = is_string($blobId) && $blobId !== '';
+        $nodeType = $payload['nodeType'] ?? ($hasBlob || $note !== null ? 'file' : 'directory');
         if ($nodeType !== 'file' && $nodeType !== 'directory') {
             throw new FileNodeSetError($this->invalidProperties('nodeType must be "file" or "directory".', ['nodeType']));
         }
-        if ($nodeType === 'file' && (! is_string($blobId) || $blobId === '')) {
+        if ($nodeType === 'directory' && $note !== null) {
+            throw new FileNodeSetError($this->invalidProperties('Directory nodes must not carry a note projection.', ['note']));
+        }
+        if ($nodeType === 'file' && ! $hasBlob && $note === null) {
             throw new FileNodeSetError($this->invalidProperties('File nodes require a blobId.', ['blobId']));
         }
         if ($nodeType === 'directory' && $blobId !== null) {
@@ -241,15 +254,20 @@ final class FileNodeSetService
             $disk->makeDirectory($key);
             $node = $this->index->recordCreate($key);
         } else {
-            $blob = $this->blobs->retrieve($username, (string) $blobId);
-            if ($blob === null) {
-                throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
+            $blobContents = null;
+            if ($hasBlob) {
+                $blob = $this->blobs->retrieve($username, (string) $blobId);
+                if ($blob === null) {
+                    throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
+                }
+                if (array_key_exists('size', $payload) && is_int($payload['size']) && $payload['size'] !== $blob['size']) {
+                    throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
+                }
+                $blobContents = $blob['contents'];
             }
-            if (array_key_exists('size', $payload) && is_int($payload['size']) && $payload['size'] !== $blob['size']) {
-                throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
-            }
-            $disk->put($key, $blob['contents']);
-            $node = $this->index->recordContentWrite($key, hash('sha256', $blob['contents']));
+            $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents, false, null);
+            $disk->put($key, $contents);
+            $node = $this->index->recordContentWrite($key, hash('sha256', $contents));
         }
 
         if ($node === null) {
@@ -289,6 +307,10 @@ final class FileNodeSetService
         }
 
         $serverSet = [];
+        $note = $this->notePatch($patch);
+        $existingStarred = $this->isNoteMarkdownKey((string) $node->storage_key, (string) $node->name)
+            ? $this->yamlStarredOf($this->readMarkdown((string) $node->storage_key))
+            : null;
 
         $wantsMove = array_key_exists('name', $patch) || array_key_exists('parentId', $patch);
         if ($wantsMove) {
@@ -337,28 +359,48 @@ final class FileNodeSetService
             }
         }
 
-        if (array_key_exists('blobId', $patch)) {
+        $wantsContent = array_key_exists('blobId', $patch) || $note !== null;
+        if ($wantsContent) {
             if ($node->is_dir) {
-                throw new FileNodeSetError($this->invalidProperties('Directory nodes have no content.', ['blobId']));
+                throw new FileNodeSetError($this->invalidProperties(
+                    'Directory nodes have no content.',
+                    array_key_exists('blobId', $patch) ? ['blobId'] : ['note'],
+                ));
             }
             if (! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayModifyContent']) {
                 throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to modify content.']);
             }
-            $blobId = $patch['blobId'];
-            if (! is_string($blobId) || $blobId === '') {
-                throw new FileNodeSetError($this->invalidProperties('blobId must be a non-empty id.', ['blobId']));
+            $blobContents = null;
+            if (array_key_exists('blobId', $patch)) {
+                $blobId = $patch['blobId'];
+                if (! is_string($blobId) || $blobId === '') {
+                    throw new FileNodeSetError($this->invalidProperties('blobId must be a non-empty id.', ['blobId']));
+                }
+                $blob = $this->blobs->retrieve($username, $blobId);
+                if ($blob === null) {
+                    throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
+                }
+                if (array_key_exists('size', $patch) && is_int($patch['size']) && $patch['size'] !== $blob['size']) {
+                    throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
+                }
+                $blobContents = $blob['contents'];
             }
-            $blob = $this->blobs->retrieve($username, $blobId);
-            if ($blob === null) {
-                throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
+            $contents = $this->contentsForNoteWrite(
+                (string) $node->storage_key,
+                (string) $node->name,
+                $note,
+                $blobContents,
+                $this->isNoteMarkdownKey((string) $node->storage_key, (string) $node->name),
+                $existingStarred,
+            );
+            $this->storage->files()->put((string) $node->storage_key, $contents);
+            $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $contents)) ?? $node;
+            $shape = $this->mapper->toFileNode($node, $principal);
+            $serverSet['size'] = $shape['size'];
+            $serverSet['blobId'] = $shape['blobId'];
+            if (isset($shape['note'])) {
+                $serverSet['note'] = $shape['note'];
             }
-            if (array_key_exists('size', $patch) && is_int($patch['size']) && $patch['size'] !== $blob['size']) {
-                throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
-            }
-            $this->storage->files()->put((string) $node->storage_key, $blob['contents']);
-            $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $blob['contents'])) ?? $node;
-            $serverSet['size'] = $blob['size'];
-            $serverSet['blobId'] = $this->mapper->blobId($node);
         }
 
         return $serverSet === [] ? null : $serverSet;
@@ -474,6 +516,111 @@ final class FileNodeSetService
         }
 
         return $name;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{title?: string, tags?: list<string>}|null
+     */
+    private function notePatch(array $payload): ?array
+    {
+        if (! array_key_exists('note', $payload)) {
+            return null;
+        }
+        $note = $payload['note'];
+        if (! is_array($note) || array_is_list($note)) {
+            throw new FileNodeSetError($this->invalidProperties('note must be an object.', ['note']));
+        }
+        $unsupported = array_diff(array_keys($note), ['title', 'tags']);
+        if ($unsupported !== []) {
+            throw new FileNodeSetError($this->invalidProperties(
+                'Unsupported note properties: '.implode(', ', array_map(strval(...), $unsupported)).'.',
+                ['note'],
+            ));
+        }
+        $out = [];
+        if (array_key_exists('title', $note)) {
+            if (! is_string($note['title'])) {
+                throw new FileNodeSetError($this->invalidProperties('note.title must be a string.', ['note']));
+            }
+            $out['title'] = $note['title'];
+        }
+        if (array_key_exists('tags', $note)) {
+            $out['tags'] = $this->codec->normalizeTags($note['tags']);
+        }
+
+        return $out;
+    }
+
+    private function isNoteMarkdownKey(string $key, string $name): bool
+    {
+        return $this->paths->isNotePath('/'.ltrim($key, '/')) && $this->codec->isNoteFilename($name);
+    }
+
+    private function yamlStarredOf(string $markdown): ?bool
+    {
+        return $this->codec->parse($markdown, '')[2];
+    }
+
+    private function readMarkdown(string $key): string
+    {
+        $disk = $this->storage->files();
+        try {
+            return $disk->exists($key) ? (string) $disk->get($key) : '';
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /**
+     * @param  array{title?: string, tags?: list<string>}|null  $note
+     */
+    private function composeNoteMarkdown(string $name, ?array $note, string $sourceMarkdown, ?bool $starred): string
+    {
+        $fallback = pathinfo($name, PATHINFO_FILENAME);
+        [$title, $tags, , $body] = $this->codec->parse($sourceMarkdown, $fallback);
+        if ($note !== null) {
+            if (array_key_exists('title', $note)) {
+                $title = $note['title'] !== '' ? $note['title'] : $fallback;
+            }
+            if (array_key_exists('tags', $note)) {
+                $tags = $note['tags'];
+            }
+        }
+
+        return $this->codec->serialize($title, $tags, $starred, $body);
+    }
+
+    /**
+     * @param  array{title?: string, tags?: list<string>}|null  $note
+     */
+    private function contentsForNoteWrite(
+        string $key,
+        string $name,
+        ?array $note,
+        ?string $blobContents,
+        bool $passThroughExistingStarred,
+        ?bool $existingStarred,
+    ): string {
+        $isNote = $this->isNoteMarkdownKey($key, $name);
+        if ($note !== null && ! $isNote) {
+            throw new FileNodeSetError($this->invalidProperties('note is only valid on markdown files under .notes.', ['note']));
+        }
+        if (! $isNote) {
+            if ($blobContents === null) {
+                throw new FileNodeSetError($this->invalidProperties('File nodes require a blobId.', ['blobId']));
+            }
+
+            return $blobContents;
+        }
+
+        $source = $blobContents ?? $this->readMarkdown($key);
+        if ($note === null && ! $passThroughExistingStarred) {
+            return $source;
+        }
+        $starred = $passThroughExistingStarred ? $existingStarred : $this->yamlStarredOf($source);
+
+        return $this->composeNoteMarkdown($name, $note, $source, $starred);
     }
 
     /**

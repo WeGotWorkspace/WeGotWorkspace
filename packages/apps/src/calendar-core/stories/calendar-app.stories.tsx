@@ -26,7 +26,9 @@ const bootstrap = createCalendarAppBootstrap();
  * with full drag interactivity).
  */
 const staticSurface: CalendarSurfaceStore = {
-  events: calendarEventsToEngineMap(bootstrap.data.events),
+  events: calendarEventsToEngineMap(bootstrap.data.events, {
+    sessionEmail: bootstrap.session.user.email,
+  }),
   contextValue: undefined,
   syncNow: () => {},
 };

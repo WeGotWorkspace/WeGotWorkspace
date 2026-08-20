@@ -879,4 +879,41 @@ VCARD;
         $roundTripped = $this->converter->cardFromVCard($vcard);
         $this->assertSame('Bring badge to lobby', $roundTripped['notes'][$noteId]['note'] ?? null);
     }
+
+    public function test_reexport_emits_apple_labels_for_stale_prop_id_tel(): void
+    {
+        $propId = '338c4e93-87cd-4025-879e-8348955d1897';
+        $vcard = <<<VCARD
+BEGIN:VCARD
+VERSION:4.0
+UID:urn:uuid:fc94bdf5-ee77-48ba-ad6e-67a47a18649e
+KIND:individual
+FN:Wouter Vroege
+N:Vroege;Wouter;;;;;
+TEL;PROP-ID={$propId};TYPE=cell:0642345325
+END:VCARD
+
+VCARD;
+
+        $exported = $this->converter->vCardFromCard($this->converter->cardFromVCard($vcard));
+        $unfolded = str_replace(["\r\n ", "\n "], '', $exported);
+
+        $this->assertMatchesRegularExpression('/item\d+\.TEL;PROP-ID='.$propId.';TYPE=cell:/i', $unfolded);
+        $this->assertMatchesRegularExpression('/item\d+\.X-ABLABEL:Mobile/i', $unfolded);
+        $this->assertStringContainsString('PROP-ID='.$propId, $unfolded);
+    }
+
+    public function test_reexport_preserves_apple_properties(): void
+    {
+        $vcard = "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:urn:uuid:apple-1234\r\nFN:Apple User\r\nX-ADDRESSBOOKSERVER-KIND:group\r\nX-ADDRESSBOOKSERVER-MEMBER:urn:uuid:member-1\r\nPHOTO;ENCODING=b;TYPE=JPEG:/9j/fakebase64==\r\nEND:VCARD\r\n";
+
+        $exported = $this->converter->vCardFromCard($this->converter->cardFromVCard($vcard));
+        $unfolded = str_replace(["\r\n ", "\n "], '', $exported);
+
+        $this->assertStringContainsString('BEGIN:VCARD', $exported);
+        $this->assertStringContainsString('FN:Apple User', $exported);
+        $this->assertStringContainsString('X-ADDRESSBOOKSERVER-KIND:group', $unfolded);
+        $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:member-1', $unfolded);
+        $this->assertMatchesRegularExpression('/PHOTO;[^:]*ENCODING=b;[^:]*TYPE=JPEG:/i', $unfolded);
+    }
 }

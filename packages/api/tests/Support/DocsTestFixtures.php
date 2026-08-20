@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Services\Drive\DriveService;
 use App\Storage\WgwStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Testing\TestResponse;
 
 /**
- * Shared Docs workspace fixtures: resumable upload helpers and doc disk seeding.
+ * Shared Docs workspace fixtures: DriveService seeding and GET content helpers.
  */
 trait DocsTestFixtures
 {
@@ -32,22 +33,23 @@ trait DocsTestFixtures
         return '/users/'.$username.'/docs/'.$filename;
     }
 
-    protected function uploadDoc(
-        string $token,
+    protected function storeDoc(
+        string $username,
         string $parentPath,
         string $filename,
         string $content,
-        ?string $identifier = null,
-    ): TestResponse {
-        $identifier ??= 'docs-upload-'.md5($parentPath.'|'.$filename);
+    ): string {
+        $file = UploadedFile::fake()->createWithContent($filename, $content);
 
-        return $this->withBearer($token)->post('/api/v1/files/content?path='.$parentPath, [
-            'file' => UploadedFile::fake()->createWithContent($filename, $content),
-            'resumableFilename' => $filename,
-            'resumableIdentifier' => $identifier,
-            'resumableChunkNumber' => 1,
-            'resumableTotalChunks' => 1,
-        ]);
+        return app(DriveService::class)->handleUpload(
+            $this->drivePrincipal($username),
+            $file,
+            $filename,
+            'docs-upload-'.md5($parentPath.'|'.$filename.'|'.$content),
+            1,
+            1,
+            $parentPath,
+        );
     }
 
     protected function getDocContent(string $token, string $path): TestResponse

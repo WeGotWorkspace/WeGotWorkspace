@@ -41,7 +41,15 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
     `${monday.add({ days: offset }).toString()}T${time}`;
 
   return {
-    session: mockWorkspaceSession,
+    session: {
+      ...mockWorkspaceSession,
+      user: {
+        ...mockWorkspaceSession.user,
+        email: "me@example.test",
+        displayName: "Me",
+        initials: "ME",
+      },
+    },
     data: {
       calendars: [
         {
@@ -98,6 +106,53 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
         mockEvent("school-play", "family", "School play", day(4, "18:30:00"), "PT2H"),
         mockEvent("offsite", "work", "Winter offsite", day(7, "00:00:00"), "P2D", {
           showWithoutTime: true,
+        }),
+        mockEvent("awaiting-reply", "work", "Partner sync", day(1, "15:00:00"), "PT1H", {
+          participants: {
+            org: {
+              "@type": "Participant",
+              email: "ada@example.test",
+              name: "Ada",
+              roles: { owner: true },
+              participationStatus: "accepted",
+            },
+            me: {
+              "@type": "Participant",
+              email: "me@example.test",
+              name: "Me",
+              roles: { attendee: true },
+              participationStatus: "needs-action",
+            },
+          },
+        }),
+        mockEvent("maybe-lunch", "default", "Lunch?", day(2, "12:00:00"), "PT45M", {
+          participants: {
+            org: {
+              "@type": "Participant",
+              email: "bob@example.test",
+              name: "Bob",
+              roles: { owner: true },
+              participationStatus: "accepted",
+            },
+            me: {
+              "@type": "Participant",
+              email: "me@example.test",
+              name: "Me",
+              roles: { attendee: true },
+              participationStatus: "tentative",
+            },
+          },
+        }),
+        mockEvent("declined-hidden", "work", "Skip this", day(3, "16:00:00"), "PT30M", {
+          participants: {
+            me: {
+              "@type": "Participant",
+              email: "me@example.test",
+              name: "Me",
+              roles: { attendee: true },
+              participationStatus: "declined",
+            },
+          },
         }),
       ],
     },

@@ -60,6 +60,7 @@ final class AdminEndpointsTest extends WgwDatabaseTestCase
                 'users',
                 'groups',
                 'mail',
+                'mailDelivery' => ['config', 'capability', 'lastTestSend'],
                 'rtc',
                 'apps',
                 'webdav',

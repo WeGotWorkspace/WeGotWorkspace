@@ -39,11 +39,14 @@ const bootstrap = {
   },
 };
 
-const { updateNoteItem, createNoteItem, deleteNoteItem } = vi.hoisted(() => ({
-  updateNoteItem: vi.fn(),
-  createNoteItem: vi.fn(),
-  deleteNoteItem: vi.fn(),
-}));
+const { updateNoteItem, createNoteItem, deleteNoteItem, listOwnedNotesFromFileNodes } = vi.hoisted(
+  () => ({
+    updateNoteItem: vi.fn(),
+    createNoteItem: vi.fn(),
+    deleteNoteItem: vi.fn(),
+    listOwnedNotesFromFileNodes: vi.fn(),
+  }),
+);
 
 vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/notes")>();
@@ -52,38 +55,41 @@ vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
     updateNoteItem,
     createNoteItem,
     deleteNoteItem,
-    parseNotesItemsPayload: actual.parseNotesItemsPayload,
   };
 });
 
-vi.mock("@/lib/api/wgw/http", () => ({
-  wgwFetch: vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      items: [{ id: "note-1", notebook: "Drafts", updatedAt: "2024-10-11T10:00:00.000Z" }],
-    }),
-  }),
-  wgwReadJson: vi.fn(async (res: { json: () => Promise<unknown> }) => res.json()),
-}));
+vi.mock("@/lib/api/wgw/notes-filenode", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/wgw/notes-filenode")>();
+  return {
+    ...actual,
+    listOwnedNotesFromFileNodes,
+  };
+});
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
 }));
+
+function fileNodeListing(updatedAt = "2024-10-12T10:00:00.000Z") {
+  return {
+    notes: [{ ...note, updatedAt }],
+    notebooks: ["Drafts"],
+    notebookRows: [],
+    sharedNotebooks: [],
+    username,
+  };
+}
 
 describe("flushNotesOutbox", () => {
   beforeEach(async () => {
     updateNoteItem.mockReset();
     createNoteItem.mockReset();
     deleteNoteItem.mockReset();
-    const { wgwFetch } = await import("@/lib/api/wgw/http");
-    vi.mocked(wgwFetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        items: [{ id: "note-1", notebook: "Drafts", updatedAt: "2024-10-12T10:00:00.000Z" }],
-      }),
-    } as never);
+    listOwnedNotesFromFileNodes.mockReset();
+    listOwnedNotesFromFileNodes.mockResolvedValue(fileNodeListing());
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
+    await db.meta.clear();
     await writeNotesBootstrapToCache(username, bootstrap);
   });
 
@@ -116,13 +122,7 @@ describe("flushNotesOutbox", () => {
       note.date,
     );
 
-    const { wgwFetch } = await import("@/lib/api/wgw/http");
-    vi.mocked(wgwFetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        items: [{ id: "note-1", notebook: "Drafts", updatedAt: "2024-10-13T10:00:00.000Z" }],
-      }),
-    } as never);
+    listOwnedNotesFromFileNodes.mockResolvedValue(fileNodeListing("2024-10-13T10:00:00.000Z"));
 
     const result = await flushNotesOutbox(username);
     expect(result.stateMismatches).toEqual(["note-1"]);
@@ -228,5 +228,16 @@ describe("flushNotesOutbox", () => {
       archived: false,
     });
     expect(result.bootstrap?.data.notes.some((row) => row.id === note.id)).toBe(false);
+  });
+
+  it("records Drive stars by path when flushing a starred upsert", async () => {
+    const starredNote = { ...note, starred: true };
+    await enqueueCoalescedNoteUpdate(username, starredNote.id, starredNote, starredNote.date);
+    updateNoteItem.mockResolvedValue(starredNote);
+
+    await flushNotesOutbox(username);
+
+    const { readDocsStarredPaths } = await import("@/lib/offline/docs/docs-stars-store");
+    expect(await readDocsStarredPaths(username)).toEqual(["/users/bob/.notes/Drafts/note-1.md"]);
   });
 });

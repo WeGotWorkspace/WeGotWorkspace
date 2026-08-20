@@ -79,6 +79,12 @@ time-line {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Ancestor stacking context for TimeLine overlays. Isolating the custom-element host
+     does not contain that host's own shadow z-index (create-preview 500 vs dialog z-50);
+     a regular box around the host does, matching week/day's swipe-container trap.
+     Isolation, not transform, so sticky all-day and overflow popovers keep their
+     containing blocks. */
+  isolation: isolate;
 }
 
 time-line.timeline-main {
@@ -139,6 +145,9 @@ time-line.timeline-main {
 .timeline-sidebar {
   grid-row: 1;
   grid-column: 1;
+  /* Above the swipe column so iOS event compositor layers cannot cover the clock badge. */
+  z-index: 2;
+  isolation: isolate;
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
   background-color: var(--_lc-surface-bg, light-dark(#fff, #222));

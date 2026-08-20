@@ -64,12 +64,18 @@ The plugin work also surfaces two **pre-existing** drive bugs this design does n
 
 Indexed and exposed: the account's personal tree (`users/{username}/…`) and member group trees (`groups/{slug}/…`), **excluding**:
 
-- `.notes/` subtrees (notes are their own app surface with their own sharing rules; exposing them as generic files would bypass `NotesPathShare` semantics);
-- collab sidecars (`.{name}.yjs`) and other dot-file internals — mirror `DriveService` listing visibility so REST and FileNode agree on what exists.
+- collab sidecars (`.{name}.yjs`) and other dot-file internals — Drive browse and FileNode still agree that these are not listing entries.
+
+**Exceptions** (indexed as FileNodes; Drive browse still hides them):
+
+- the product trash directory `.Trash` (and its children). Drive “Move to Trash” is a FileNode create/move into that folder;
+- the product notes tree `.notes` (personal and group) and `.archive` **only** when it lives under `.notes`. Notes stay a collection UI; Drive children listings still omit `.notes` via `DriveService::isHiddenNotesPath`. Other `.archive` directories stay hidden.
+- **Note projection (chunk B):** `FileNode/get` on `.md` files under `.notes` includes a `note` object: title/tags/excerpt from `NoteMarkdownCodec` (body omitted), notebook/archived from `storage_key`, starred from the caller's `drive_starred_items` (YAML `starred` is not read). Non-note files omit the property. `FileNode/set` accepts `note` `{title, tags}` and passes through existing YAML `starred`. Owner/member FileNode `myRights` allow structure on their `.notes` tree; REST share rights stay view|edit.
+- **Notes app (chunk D):** live Notes bootstrap/ops use FileNode query/get/set under `.notes`. Starring is per-user Drive `POST|DELETE /files/star` (same as Docs). YAML `starred` is no longer displayed or written by the app; there is no backfill — existing shared YAML stars disappear until each user re-stars. `GET /files/starred` still omits notes.
 
 ## Decision 5 — rights, visibility, and shared nodes
 
-- **`myRights`** is derived at read time by resolving the node's current path through the existing `DriveShareAuthorizer` / `DriveShareAccess::rightsFor()` and mapping onto the draft's 8-boolean `FilesRights` (`mayRead`, `mayWrite` split per draft-14 into `mayAddChildren`/`mayRename`/`mayDelete`/`mayModifyContent`, `mayShare`, `mayReadItems` analogs). No new rights storage; inheritance is the authorizer's deepest-grant-wins walk, which matches the draft's ancestor-derived model.
+- **`myRights`** is derived at read time by resolving the node's current path through the existing `DriveShareAuthorizer` / `DriveShareAccess::rightsFor()` and mapping onto the draft's 8-boolean `FilesRights` (`mayRead`, `mayWrite` split per draft-14 into `mayAddChildren`/`mayRename`/`mayDelete`/`mayModifyContent`, `mayShare`, `mayReadItems` analogs). No new rights storage; inheritance is the authorizer's deepest-grant-wins walk, which matches the draft's ancestor-derived model. `mayShare` follows the authorizer (owners can share children; drive roots cannot) so the REST share dialog can show; `shareWith` writes stay off the envelope.
 - **Phase-1 visible set = own tree + member group trees.** Shared-with-me subtrees (`drive_shares` grants) are **deferred**: the draft's discoverability rules (a grant appearing = a flood of `created` in `/changes`, derived-rights change propagation) interact with the per-account filtering of a global change sequence, and drive shares today are path-rooted rather than node-rooted. Revisit after the core envelope lands; `shareWith` writes stay out of scope entirely (roadmap non-goal).
 
 ## Decision 6 — nodeType, blobs, and content
@@ -86,7 +92,7 @@ Indexed and exposed: the account's personal tree (`users/{username}/…`) and me
 3. `wgw:jmap:filenodes-reindex` backfill/reconcile command.
 4. Envelope methods `FileNode/get|changes|set|copy|query` (+ `queryChanges` → `cannotCalculateChanges`) behind `urn:ietf:params:jmap:filenode` with a `FilesCapabilityProvider` (gate: `files_enabled`); `onExists` (null/`replace`/`rename`/`newest`), `onDestroyRemoveChildren`, `alreadyExists` + `existingId` per draft-14.
 5. Download resolver for `fnb-…` ids.
-6. Tests: rename/move id-stability (one `updated`, same id); WebDAV-side write visible in `/changes`; tombstone pruning → `cannotCalculateChanges`; `.notes`/sidecar exclusion; `onExists` matrix; group-tree visibility; lifecycle contract test per the spec folder.
+6. Tests: rename/move id-stability (one `updated`, same id); WebDAV-side write visible in `/changes`; tombstone pruning → `cannotCalculateChanges`; `.notes` (and `.archive` under it) indexed while Drive browse still hides `.notes`; sidecar / other-dot exclusion; `onExists` matrix; group-tree visibility; lifecycle contract test per the spec folder.
 7. Docs: envelope dispatch rows, deviations (out-of-band rename changes ids; shared-with-me deferred; no symlinks), draft revision pinned.
 
 ## Open questions (explicitly deferred, not blockers)

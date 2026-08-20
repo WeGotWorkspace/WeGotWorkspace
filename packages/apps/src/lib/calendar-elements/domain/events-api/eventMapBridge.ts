@@ -24,6 +24,7 @@ export function eventViewToApiEvent(event: CalendarEventView): CalendarEvent {
     isRecurring: event.isRecurring,
     isException: event.isException,
     pendingOp: event.pendingOp,
+    participationStatus: event.participationStatus,
     data: {
       start: event.start,
       end: event.end,
@@ -55,6 +56,7 @@ export function eventViewFromApiEvent(event: CalendarEvent): CalendarEventView {
     isRecurring: event.isRecurring,
     isException: event.isException,
     pendingOp: event.pendingOp,
+    participationStatus: event.participationStatus,
     start: d.start,
     end,
     allDay: d.allDay,

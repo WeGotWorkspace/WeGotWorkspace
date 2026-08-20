@@ -38,10 +38,11 @@ Planned incremental sync ([#158](https://github.com/WeGotWorkspace/wegotworkspac
 - Converters: `app/Services/Tasks/Conversion/`
 - Persistence: Sabre CalDAV PDO (`calendarobjects`, `calendarinstances`)
 - Feature gate: `tasks_enabled` setting (mirror `contacts_enabled`)
-- Default task list: VTODO-only CalDAV collection uri `inbox` (display name "Inbox"), provisioned on install and upgrade via `InboxTaskListProvisioner` / `wgw:tasks:provision-inbox`
+- Default task list: VTODO-only CalDAV collection uri `tasks-inbox` (display name "Inbox", REST `role: inbox`), provisioned on install and upgrade via `InboxTaskListProvisioner` / `wgw:tasks:provision-inbox`. The CalDAV name `inbox` is reserved for the RFC 6638 schedule-inbox.
 - Strict separation: task list REST returns **VTODO-only** collections; calendar REST returns **VEVENT** collections only
-- Provisioning: `home` / `work` VEVENT calendars plus `tasks-home` / `tasks-work` / `inbox` VTODO lists (display names Home, Work, Inbox) via `UserCalendarCollectionsProvisioner` / migration `2026_07_07_000150_wgw_provision_user_calendar_collections`
-- Legacy mixed `default` calendar: migration `2026_07_07_000140_wgw_migrate_default_mixed_calendar_vtodos` moves VTODOs to `inbox` and strips VTODO from `default`
+- Provisioning: `home` / `work` VEVENT calendars plus `tasks-home` / `tasks-work` / `tasks-inbox` VTODO lists (display names Home, Work, Inbox) via `UserCalendarCollectionsProvisioner` / migration `2026_07_07_000150_wgw_provision_user_calendar_collections`
+- Legacy mixed `default` calendar: migration `2026_07_07_000140_wgw_migrate_default_mixed_calendar_vtodos` moves VTODOs to `tasks-inbox` and strips VTODO from `default`
+- Pre-#482 instances with VTODO uri `inbox` are renamed to `tasks-inbox` by `InboxTaskListProvisioner` / migration `2026_08_19_000240_wgw_rename_tasks_inbox_uri`
 - Task list CRUD: `POST/PATCH/DELETE /tasks/tasklists` (VTODO-only collections)
 - Calendar create via REST remains VEVENT-only; mixed collections are not supported going forward
 

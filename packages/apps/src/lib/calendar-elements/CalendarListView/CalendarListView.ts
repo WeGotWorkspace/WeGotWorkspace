@@ -12,6 +12,7 @@ import {
   isCalendarEventRecurring,
 } from "../types/calendarEventSemantics.js";
 import { clampAgendaDaysPerWeek, daysPerWeekFromInput } from "../utils/DaysPerWeek.js";
+import { eventSelectionOriginFromElement } from "../types/CalendarEventRequests.js";
 import { getEventColorStyles } from "../utils/EventColor.js";
 import { resolveLocale } from "../utils/Locale.js";
 import { formatShortTime } from "../utils/TimeFormatting.js";
@@ -120,7 +121,10 @@ export class CalendarListView extends CalendarViewBase {
     const isRecurring = this.#isRecurringEvent(event);
     const isException = this.#isExceptionEvent(event);
     return html`
-      <li class="agenda-event-item" @click=${() => this.#handleEventClick(item)}>
+      <li
+        class="agenda-event-item"
+        @click=${(clickEvent: MouseEvent) => this.#handleEventClick(item, clickEvent)}
+      >
         <event-card
           layout="flow"
           .lang=${this.lang}
@@ -130,16 +134,28 @@ export class CalendarListView extends CalendarViewBase {
           .recurring=${isRecurring}
           .exception=${isException}
           ?past=${isPast}
+          .rsvp=${event.participationStatus === "needs-action" ||
+          event.participationStatus === "tentative"
+            ? event.participationStatus
+            : ""}
           style=${styleMap(colorStyles)}
         ></event-card>
       </li>
     `;
   }
 
-  #handleEventClick(item: AgendaItem) {
+  #handleEventClick(item: AgendaItem, event: MouseEvent) {
+    const card =
+      event.currentTarget instanceof Element
+        ? (event.currentTarget.querySelector("event-card") ?? event.currentTarget)
+        : null;
+    const origin = eventSelectionOriginFromElement(card);
     this.dispatchEvent(
       new CustomEvent("event-selected", {
-        detail: { key: item.id },
+        detail: {
+          key: item.id,
+          ...(origin ? { origin } : {}),
+        },
       }),
     );
   }

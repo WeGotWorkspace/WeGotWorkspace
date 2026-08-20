@@ -299,6 +299,26 @@ export function resolveVisibleHoursZoom(
 }
 
 /**
+ * Whether a property change should re-apply the one-shot timed-grid scroll (center “now”
+ * when today is in range).
+ *
+ * Week-view swipe moves `startDate` while today stays in range — that must keep the user’s
+ * vertical scroll. Re-center on view/zoom changes, and when today newly enters the range
+ * (Today from another week, or toolbar nav onto this week). Explicit Today while already
+ * in range is `CalendarTimelineView.scrollToNow()`, not this helper.
+ */
+export function shouldRequestInitialTimedScroll(input: {
+  viewOrZoomChanged: boolean;
+  startDateChanged: boolean;
+  todayInRange: boolean;
+  todayWasInRange: boolean;
+}): boolean {
+  if (input.viewOrZoomChanged) return true;
+  if (!input.startDateChanged) return false;
+  return input.todayInRange && !input.todayWasInRange;
+}
+
+/**
  * Vertical scroll offset for the composed day/week timed grid.
  *
  * When `nowDayFraction` is set (today is in the visible range, 0–1 through the day), centers

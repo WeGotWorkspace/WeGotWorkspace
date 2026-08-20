@@ -6,9 +6,10 @@ namespace Tests\Feature\Jmap;
 
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Tests\Support\CalendarsTestFixtures;
-use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -20,7 +21,6 @@ use Tests\Support\WgwDatabaseTestCase;
 final class JmapChangesTest extends WgwDatabaseTestCase
 {
     use CalendarsTestFixtures;
-    use OptimisticConcurrencyTestHelpers;
 
     protected function setUp(): void
     {
@@ -92,28 +92,26 @@ final class JmapChangesTest extends WgwDatabaseTestCase
     {
         $state = $this->currentEventState();
 
-        $create = $this->withBearer($this->userBearerToken())
-            ->postJson('/api/v1/calendars/events', $this->sampleCalendarEventPayload())
-            ->assertCreated();
-        $eventId = (string) $create->json('id');
+        $eventId = (string) $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => $this->sampleCalendarEventPayload()]], 'c'],
+        ])->assertOk()->json('methodResponses.0.1.created.d.id');
 
         $afterCreate = $this->eventChanges($state);
         $this->assertContains($eventId, $afterCreate['created']);
         $state = (string) $afterCreate['newState'];
 
-        $eventUrl = '/api/v1/calendars/events/'.$eventId;
-        $this->withBearer($this->userBearerToken())
-            ->patchJson($eventUrl, ['title' => 'Renamed'], $this->withIfMatch($this->fetchEtagFromGet($eventUrl)))
-            ->assertOk();
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => ['title' => 'Renamed']]], 'u'],
+        ])->assertOk();
 
         $afterUpdate = $this->eventChanges($state);
         $this->assertContains($eventId, $afterUpdate['updated']);
         $this->assertNotContains($eventId, $afterUpdate['created']);
         $state = (string) $afterUpdate['newState'];
 
-        $this->withBearer($this->userBearerToken())
-            ->deleteJson($eventUrl, [], $this->withIfMatch($this->fetchEtagFromGet($eventUrl)))
-            ->assertOk();
+        $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => [$eventId]], 'd'],
+        ])->assertOk();
 
         $afterDestroy = $this->eventChanges($state);
         $this->assertContains($eventId, $afterDestroy['destroyed']);
@@ -250,5 +248,90 @@ final class JmapChangesTest extends WgwDatabaseTestCase
         $this->assertNotContains('', $eventChanges['updated']);
         $this->assertNotContains('', $eventChanges['destroyed']);
         $this->assertNotContains($eventId, $eventChanges['updated']);
+    }
+
+    public function test_event_changes_reports_caldav_backend_mutations(): void
+    {
+        $state = $this->currentEventState();
+        $eventId = $this->seedEventViaPdo('bob', 'caldav-origin.ics', $this->sampleIcs('CalDAV Origin'));
+
+        $afterCreate = $this->eventChanges($state);
+        $this->assertContains($eventId, $afterCreate['created']);
+        $state = (string) $afterCreate['newState'];
+
+        $backend = new CalPDO(DB::connection('wgw')->getPdo());
+        $calendarId = $this->resolveCalendarBackendId('bob', 'default');
+        $backend->updateCalendarObject($calendarId, 'caldav-origin.ics', $this->sampleIcs('CalDAV Renamed'));
+
+        $afterUpdate = $this->eventChanges($state);
+        $this->assertContains($eventId, $afterUpdate['updated']);
+        $state = (string) $afterUpdate['newState'];
+
+        $backend->deleteCalendarObject($calendarId, 'caldav-origin.ics');
+
+        $afterDelete = $this->eventChanges($state);
+        $this->assertContains($eventId, $afterDelete['destroyed']);
+    }
+
+    public function test_event_changes_multi_vevent_object_emits_composite_ids(): void
+    {
+        $state = $this->currentEventState();
+        $this->seedEventViaPdo('bob', 'multi-sync.ics', $this->multiVeventIcs());
+
+        $created = $this->eventChanges($state)['created'];
+        $this->assertContains('multi-sync#uid-alpha', $created);
+        $this->assertContains('multi-sync#uid-beta', $created);
+        $this->assertNotContains('multi-sync', $created);
+    }
+
+    public function test_event_changes_destroy_expands_previously_seen_composite_ids(): void
+    {
+        $this->seedEventViaPdo('bob', 'multi-destroy.ics', $this->multiVeventIcs());
+        $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => null], 'g'],
+        ])->assertOk();
+
+        $state = $this->currentEventState();
+        $backend = new CalPDO(DB::connection('wgw')->getPdo());
+        $backend->deleteCalendarObject($this->resolveCalendarBackendId('bob', 'default'), 'multi-destroy.ics');
+
+        $destroyed = $this->eventChanges($state)['destroyed'];
+        $this->assertContains('multi-destroy', $destroyed);
+        $this->assertContains('multi-destroy#uid-alpha', $destroyed);
+        $this->assertContains('multi-destroy#uid-beta', $destroyed);
+    }
+
+    public function test_event_changes_removed_sub_vevent_id_goes_to_destroyed(): void
+    {
+        $this->seedEventViaPdo('bob', 'multi-shrink.ics', $this->multiVeventIcs());
+        $this->jmap([
+            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => null], 'g'],
+        ])->assertOk();
+
+        $state = $this->currentEventState();
+        $backend = new CalPDO(DB::connection('wgw')->getPdo());
+        $backend->updateCalendarObject(
+            $this->resolveCalendarBackendId('bob', 'default'),
+            'multi-shrink.ics',
+            $this->sampleIcs('Alpha Only', 'uid-alpha'),
+        );
+
+        $changes = $this->eventChanges($state);
+        $this->assertContains('multi-shrink', $changes['updated']);
+        $this->assertContains('multi-shrink#uid-alpha', $changes['destroyed']);
+        $this->assertContains('multi-shrink#uid-beta', $changes['destroyed']);
+    }
+
+    private function multiVeventIcs(string $alphaSummary = 'Alpha Event'): string
+    {
+        $start = gmdate('Ymd\THis\Z', strtotime('+1 day 09:00 UTC'));
+        $end = gmdate('Ymd\THis\Z', strtotime('+1 day 10:00 UTC'));
+        $startB = gmdate('Ymd\THis\Z', strtotime('+2 days 09:00 UTC'));
+        $endB = gmdate('Ymd\THis\Z', strtotime('+2 days 10:00 UTC'));
+
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n"
+            ."BEGIN:VEVENT\r\nUID:uid-alpha\r\nSUMMARY:{$alphaSummary}\r\nDTSTART:{$start}\r\nDTEND:{$end}\r\nEND:VEVENT\r\n"
+            ."BEGIN:VEVENT\r\nUID:uid-beta\r\nSUMMARY:Beta Event\r\nDTSTART:{$startB}\r\nDTEND:{$endB}\r\nEND:VEVENT\r\n"
+            ."END:VCALENDAR\r\n";
     }
 }

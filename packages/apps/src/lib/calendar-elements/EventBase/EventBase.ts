@@ -49,6 +49,9 @@ export abstract class EventBase extends BaseElement {
   @property({ type: Boolean, attribute: "is-exception" })
   isException = false;
 
+  @property({ type: String, reflect: true })
+  rsvp: "" | "needs-action" | "tentative" = "";
+
   static get properties() {
     return {
       start: { type: String },

@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Models\DriveStarredItem;
 use App\Models\JmapFileNode;
+use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Notes\NoteMarkdownCodec;
+use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
 /**
@@ -16,20 +20,42 @@ use App\Storage\WgwStorage;
  * (`fnb-{nodeId}-{sha8}`) and stream from disk via /jmap/download (decision
  * 6). `modified`/`accessed` map to the disk mtime and `changed` to the index
  * row's update time — documented deviations (no per-client timestamps).
+ *
+ * `.md` files under `.notes` also carry a `note` projection (title/tags/excerpt
+ * from {@see NoteMarkdownCodec}, notebook/archived from storage_key, starred
+ * from the caller's DriveStarredItem). YAML `starred` is not read.
  */
 final class FileNodeMapper
 {
     public function __construct(
         private readonly WgwStorage $storage,
         private readonly DriveShareAuthorizer $authorizer,
-        private readonly FileNodeIndexService $index,
+        private readonly StoragePaths $paths,
+        private readonly NoteMarkdownCodec $codec,
+        private readonly DriveGroupResolver $groups,
     ) {}
 
     /**
+     * @param  list<JmapFileNode>  $nodes
      * @param  array{username: string, role: string}  $principal
+     * @return list<array<string, mixed>>
+     */
+    public function toFileNodes(array $nodes, array $principal): array
+    {
+        $starredPaths = $this->starredPathsFor((string) $principal['username']);
+
+        return array_values(array_map(
+            fn (JmapFileNode $node): array => $this->toFileNode($node, $principal, $starredPaths),
+            $nodes,
+        ));
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @param  array<string, true>|null  $starredPaths
      * @return array<string, mixed>
      */
-    public function toFileNode(JmapFileNode $node, array $principal): array
+    public function toFileNode(JmapFileNode $node, array $principal, ?array $starredPaths = null): array
     {
         $key = (string) $node->storage_key;
         $disk = $this->storage->files();
@@ -66,6 +92,14 @@ final class FileNodeMapper
             'shareWith' => null,
             'role' => null,
         ];
+
+        $note = $this->noteProjection(
+            $node,
+            $starredPaths ?? $this->starredPathsFor((string) $principal['username']),
+        );
+        if ($note !== null) {
+            $shape['note'] = $note;
+        }
 
         return $shape;
     }
@@ -130,6 +164,17 @@ final class FileNodeMapper
         $mayView = (bool) ($rights['mayView'] ?? false);
         $mayEdit = (bool) ($rights['mayEditContent'] ?? false);
         $mayStructure = (bool) ($rights['mayManageStructure'] ?? false);
+        $mayShare = (bool) ($rights['mayShare'] ?? false);
+        // REST note-path rights stay view|edit (no structure) for shares.
+        // FileNode/set still needs owner/member structure on their `.notes` tree.
+        $username = (string) ($principal['username'] ?? '');
+        if (
+            $this->paths->isNotePath($virtual)
+            && $username !== ''
+            && $this->paths->isPathAllowed($virtual, $username, $this->groups->allowedGroupSlugs($username), false)
+        ) {
+            $mayStructure = $mayView;
+        }
 
         return [
             'mayRead' => $mayView,
@@ -137,10 +182,63 @@ final class FileNodeMapper
             'mayRename' => $mayStructure,
             'mayDelete' => $mayStructure,
             'mayModifyContent' => $mayEdit,
-            // Sharing writes are out of scope for the envelope (roadmap
-            // non-goal); consistent with shareWith: null.
-            'mayShare' => false,
+            // shareWith writes stay off the envelope; mayShare still
+            // reflects DriveShareAuthorizer so the REST share dialog shows.
+            'mayShare' => $mayShare,
         ];
+    }
+
+    /**
+     * List-row note projection for `.md` files under `.notes`. Starred is the
+     * calling principal's Drive star — YAML `starred` is never read here.
+     *
+     * @param  array<string, true>  $starredPaths
+     * @return array{title: string, tags: list<string>, excerpt: string, notebook: string, archived: bool, starred: bool}|null
+     */
+    public function noteProjection(JmapFileNode $node, array $starredPaths): ?array
+    {
+        if ($node->is_dir) {
+            return null;
+        }
+        $key = (string) $node->storage_key;
+        $virtual = '/'.ltrim($key, '/');
+        if (! $this->paths->isNotePath($virtual) || ! $this->codec->isNoteFilename((string) $node->name)) {
+            return null;
+        }
+
+        $fallback = pathinfo((string) $node->name, PATHINFO_FILENAME);
+        $markdown = '';
+        try {
+            $markdown = (string) $this->storage->files()->get($key);
+        } catch (\Throwable) {
+            // Missing bytes still project path-derived fields.
+        }
+        [$title, $tags] = $this->codec->parse($markdown, $fallback);
+
+        return [
+            'title' => $title,
+            'tags' => $tags,
+            'excerpt' => $this->codec->listPreview($markdown, $fallback),
+            'notebook' => $this->paths->noteNotebookFromKey($key),
+            'archived' => $this->paths->isNotesArchivePath($virtual),
+            'starred' => isset($starredPaths[$this->paths->normalizeVirtualPath($virtual)]),
+        ];
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    public function starredPathsFor(string $username): array
+    {
+        $out = [];
+        foreach (DriveStarredItem::query()->where('username', $username)->pluck('path') as $path) {
+            if (! is_string($path) || $path === '') {
+                continue;
+            }
+            $out[$this->paths->normalizeVirtualPath($path)] = true;
+        }
+
+        return $out;
     }
 
     private function mediaType(string $key): string

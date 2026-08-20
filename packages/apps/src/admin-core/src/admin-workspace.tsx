@@ -11,6 +11,7 @@ import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { useDocumentTitle } from "@/lib/document-title";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 import { AdminBackupsPane } from "@/admin-core/src/admin-backups-pane";
+import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { AdminMailPane } from "@/admin-core/src/admin-mail-pane";
 import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
@@ -114,6 +115,9 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
               />
             ) : null}
             {controller.section === "mail" ? <AdminMailPane controller={controller} /> : null}
+            {controller.section === "email-delivery" ? (
+              <AdminEmailDeliveryPane controller={controller} />
+            ) : null}
             {controller.section === "collaboration" ? (
               <AdminRealtimeCollaborationPane controller={controller} />
             ) : null}

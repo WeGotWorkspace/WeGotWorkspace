@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Drive;
 
 use App\Models\DriveShareGrant;
+use App\Services\Drive\DriveService;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -281,9 +282,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $token = $this->userBearerToken();
         $aliceToken = $this->adminBearerToken();
 
-        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
-            'name' => 'SharedFolder',
-        ])->assertOk();
+        $this->createDriveDirectory('/users/bob', 'SharedFolder');
         $this->createDriveFile($token, '/users/bob/SharedFolder', 'nested.md');
 
         $this->withBearer($token)->postJson('/api/v1/files/shares', [
@@ -300,9 +299,12 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
             'shareWith' => ['alice' => ['access' => 'view']],
         ])->assertOk();
 
-        $this->withBearer($token)->patchJson('/api/v1/files?path=/users/bob/SharedFolder', [
-            'name' => 'RenamedFolder',
-        ])->assertOk();
+        $this->assertSame('Renamed', app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob',
+            '/users/bob/SharedFolder',
+            'RenamedFolder',
+        ));
 
         $this->withBearer($token)
             ->getJson('/api/v1/files/shares?path=/users/bob/RenamedFolder')

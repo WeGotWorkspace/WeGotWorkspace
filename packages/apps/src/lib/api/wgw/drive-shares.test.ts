@@ -6,6 +6,7 @@ import {
   deleteDriveShareInvite,
   fetchDriveShareAtPath,
   fetchDriveShareByPrincipal,
+  fetchDriveSharedWithMe,
   patchDriveShare,
   revokeAllDrivePublicShares,
   searchDriveSharePrincipals,
@@ -31,6 +32,18 @@ function mockOkJson(payload: unknown): void {
 describe("drive-shares client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("GET shared-with-me omits notes unless includeNotes is set", async () => {
+    mockOkJson({ data: [] });
+    await fetchDriveSharedWithMe();
+    expect(wgwFetch).toHaveBeenCalledWith("/files/shared-with-me", { signal: undefined });
+
+    mockOkJson({ data: [] });
+    await fetchDriveSharedWithMe({ includeNotes: true });
+    expect(wgwFetch).toHaveBeenCalledWith("/files/shared-with-me?includeNotes=true", {
+      signal: undefined,
+    });
   });
 
   it("GET at-path encodes the normalized virtual path", async () => {

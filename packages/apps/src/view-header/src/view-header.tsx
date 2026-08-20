@@ -11,7 +11,9 @@ type ViewHeaderLayout = "inline" | "stacked" | "responsive";
 
 type ViewHeaderProps = {
   title: string;
-  /** "default" = large serif display; "sm" = medium sans-serif title (e.g. doc editor file name). */
+  /** Shown instead of `title` when the header main column is narrow. */
+  compactTitle?: string;
+  /** "default" = large serif title (smaller on compact headers); "sm" = medium sans-serif title (e.g. doc editor file name). */
   titleSize?: ViewHeaderTitleSize;
   /**
    * Title-row layout for `view-header__title-cluster` + `view-header__actions`.
@@ -40,6 +42,7 @@ type ViewHeaderProps = {
 
 export function ViewHeader({
   title,
+  compactTitle,
   titleSize = "default",
   layout = "inline",
   titleLeading,
@@ -69,7 +72,7 @@ export function ViewHeader({
 
   return (
     <>
-      <div className="flex items-start gap-3">
+      <div className="view-header">
         {hideSidebarToggle ? null : (
           <WorkspaceSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar ?? (() => {})} />
         )}
@@ -88,7 +91,14 @@ export function ViewHeader({
               <h2
                 className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
               >
-                {title}
+                {compactTitle ? (
+                  <>
+                    <span className="view-header__title-full">{title}</span>
+                    <span className="view-header__title-compact">{compactTitle}</span>
+                  </>
+                ) : (
+                  title
+                )}
               </h2>
             </div>
             <div className="view-header__actions">{actions}</div>

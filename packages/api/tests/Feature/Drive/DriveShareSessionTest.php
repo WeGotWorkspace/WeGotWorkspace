@@ -21,9 +21,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $token = $this->userBearerToken();
-        $this->withBearer($token)->postJson('/api/v1/files/directories?path=/users/bob', [
-            'name' => 'shared',
-        ])->assertOk();
+        $this->createDriveDirectory('/users/bob', 'shared');
         $this->createDriveFile($token, self::SHARE_ROOT, 'guest-note.md');
     }
 
@@ -64,10 +62,22 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonFragment(['name' => 'guest-note.md']);
 
+        $this->withBearer($guestJwt)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertStatus(400);
+
+        $this->withBearer($guestJwt)->getJson('/api/v1/files/starred')
+            ->assertForbidden();
+
+        $this->withBearer($guestJwt)->head('/api/v1/files/content?path='.self::SHARE_ROOT.'/guest-note.md')
+            ->assertOk();
+
+        $this->withBearer($guestJwt)->head('/api/v1/files/content?path='.self::SHARE_ROOT)
+            ->assertStatus(400);
+
         $this->withBearer($guestJwt)->postJson('/api/v1/files/directories?path='.self::SHARE_ROOT, [
             'name' => 'blocked.md',
             'type' => 'file',
-        ])->assertStatus(400);
+        ])->assertNotFound();
     }
 
     public function test_public_share_password_protects_session_exchange(): void

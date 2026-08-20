@@ -2,19 +2,39 @@ export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
 export { JmapCalendarsClient } from "./calendars/JmapCalendarsClient.js";
+export { JmapFileNodePathCache } from "./filenodes/JmapFileNodePathCache.js";
+export { FILENODE_USING, JmapFileNodesClient } from "./filenodes/JmapFileNodesClient.js";
+export type {
+  JmapFileNode,
+  JmapFileNodeCreate,
+  JmapFileNodeFilter,
+  JmapFileNodeNote,
+  JmapFileNodeNotePatch,
+  JmapFileNodeType,
+  JmapFilesRights,
+} from "./filenodes/types.js";
 export type {
   JmapCalendar,
   JmapCalendarEvent,
   JmapCalendarEventFilterCondition,
   JmapCalendarRights,
 } from "./calendars/types.js";
+export { CONTACTS_USING, JmapContactsClient } from "./contacts/JmapContactsClient.js";
+export type {
+  JmapAddressBook,
+  JmapAddressBookRights,
+  JmapContactCard,
+  JmapContactCardFilterCondition,
+} from "./contacts/types.js";
 export { JmapMethodError, JmapRequestError, JmapSetItemError } from "./core/errors.js";
 export type { JmapClientOptions, JmapFetch } from "./core/JmapClient.js";
 export { JmapClient } from "./core/JmapClient.js";
 export {
   CALENDARS_CAPABILITY,
+  CONTACTS_CAPABILITY,
   type ChangesResponse,
   CORE_CAPABILITY,
+  FILENODE_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,

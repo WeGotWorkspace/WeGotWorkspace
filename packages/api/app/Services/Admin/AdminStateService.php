@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
 use App\Services\Update\UpdateStateService;
@@ -17,6 +18,7 @@ final class AdminStateService
         private AdminUserDirectoryService $users,
         private GroupDirectoryService $groups,
         private UpdateStateService $updates,
+        private MailDeliveryService $mailDelivery,
         private ApiUrlBuilder $urls,
     ) {}
 
@@ -38,6 +40,7 @@ final class AdminStateService
                 'smtpPort' => (int) ($cfg[SettingKeys::MAIL_SMTP_PORT] ?? 587),
                 'smtpSecurity' => (string) ($cfg[SettingKeys::MAIL_SMTP_SECURITY] ?? 'starttls'),
             ],
+            'mailDelivery' => $this->mailDelivery->adminState(),
             'rtc' => $this->rtcSettings(),
             'apps' => [
                 'calendars' => (bool) ($cfg[SettingKeys::CALENDAR_ENABLED] ?? true),

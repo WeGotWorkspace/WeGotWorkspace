@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Tests\Feature\Docs;
 
 use App\Models\Principal;
+use App\Services\Drive\DriveService;
 use App\Storage\WgwStorage;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\DocsTestFixtures;
+use Tests\Support\InteractsWithFileNodeJmap;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class DocsAccessControlTest extends WgwDatabaseTestCase
 {
     use DocsTestFixtures;
+    use InteractsWithFileNodeJmap;
 
     protected function setUp(): void
     {
@@ -41,34 +45,45 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $this->assertSame('carol-only', $this->getDocContent($carolToken, '/users/carol/docs/secret.md')->streamedContent());
     }
 
-    public function test_cross_user_cannot_upload_to_private_doc_path(): void
+    public function test_cross_user_cannot_create_private_doc_via_filenode(): void
     {
-        $bobToken = $this->userBearerToken();
+        $this->seedDocFile('carol', 'keep.md', 'x');
+        $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
+        $docsId = $this->fileNodeIdByName($carolNodes, 'docs');
+        $blobId = $this->uploadFileNodeBlob('nope');
 
-        $upload = $this->uploadDoc($bobToken, '/users/carol/docs', 'intrusion.md', 'nope');
-        $this->assertAccessDenied($upload);
+        $create = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'create' => [
+                'f0' => ['parentId' => $docsId, 'name' => 'intrusion.md', 'blobId' => $blobId],
+            ]], 'c0'],
+        ])->assertOk();
+        $create->assertJsonPath('methodResponses.0.1.notCreated.f0.type', 'invalidProperties');
         $this->assertFalse(Storage::disk('wgw_files')->exists('users/carol/docs/intrusion.md'));
     }
 
     public function test_cross_user_cannot_rename_private_doc(): void
     {
         $this->seedDocFile('carol', 'private.md', 'unchanged');
-        $bobToken = $this->userBearerToken();
+        $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
+        $fileId = $this->fileNodeIdByName($carolNodes, 'private.md');
 
-        $rename = $this->withBearer($bobToken)->patchJson('/api/v1/files?path=/users/carol/docs/private.md', [
-            'name' => 'stolen.md',
-        ]);
-        $this->assertAccessDenied($rename);
+        $rename = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [$fileId => ['name' => 'stolen.md']]], 'c0'],
+        ])->assertOk();
+        $rename->assertJsonPath('methodResponses.0.1.notUpdated.'.$fileId.'.type', 'notFound');
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/carol/docs/private.md'));
     }
 
     public function test_cross_user_cannot_delete_private_doc(): void
     {
         $this->seedDocFile('carol', 'private.md', 'unchanged');
-        $bobToken = $this->userBearerToken();
+        $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
+        $fileId = $this->fileNodeIdByName($carolNodes, 'private.md');
 
-        $delete = $this->withBearer($bobToken)->deleteJson('/api/v1/files?path=/users/carol/docs/private.md');
-        $this->assertAccessDenied($delete);
+        $delete = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'destroy' => [$fileId]], 'c0'],
+        ])->assertOk();
+        $delete->assertJsonPath('methodResponses.0.1.notDestroyed.'.$fileId.'.type', 'notFound');
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/carol/docs/private.md'));
     }
 
@@ -79,8 +94,16 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertStatus(400);
 
-        $upload = $this->uploadDoc($adminToken, '/users/carol/docs', 'hack.md', 'nope');
-        $this->assertAccessDenied($upload);
+        $this->expectException(\InvalidArgumentException::class);
+        app(DriveService::class)->handleUpload(
+            $this->drivePrincipal('alice'),
+            UploadedFile::fake()->createWithContent('hack.md', 'nope'),
+            'hack.md',
+            'admin-hack',
+            1,
+            1,
+            '/users/carol/docs',
+        );
     }
 
     public function test_admin_does_not_bypass_group_collaboration_membership(): void
@@ -112,14 +135,12 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
     {
         $token = $this->userBearerToken();
 
-        // download()/upload() re-wrap HttpException as 404 via RuntimeException catch.
         $this->withBearer($token)->getJson('/api/v1/files/content')
             ->assertStatus(404)
             ->assertJsonPath('error', 'Missing path query parameter.');
 
         $this->withBearer($token)->postJson('/api/v1/files/content')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Missing upload file.');
+            ->assertStatus(405);
     }
 
     public function test_missing_path_on_collaboration_returns_bad_request(): void
@@ -165,7 +186,6 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
     public static function guestDocsRoutesProvider(): iterable
     {
         yield 'GET content' => ['GET', '/api/v1/files/content?path=/users/bob/docs/x.md', null];
-        yield 'POST content' => ['POST', '/api/v1/files/content?path=/users/bob/docs', ['resumableFilename' => 'x.md']];
         yield 'GET collaboration' => ['GET', '/api/v1/files/collaboration?path=/groups/team/plan.md', null];
         yield 'PUT collaboration' => ['PUT', '/api/v1/files/collaboration?path=/groups/team/plan.md', ['markdown' => '# x']];
     }
@@ -175,8 +195,6 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
     {
         if ($method === 'GET') {
             $this->getJson($uri)->assertUnauthorized();
-        } elseif ($method === 'POST' && $body === null) {
-            $this->postJson($uri)->assertUnauthorized();
         } else {
             $this->json($method, $uri, $body ?? [])->assertUnauthorized();
         }

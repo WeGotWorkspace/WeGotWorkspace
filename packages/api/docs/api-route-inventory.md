@@ -21,10 +21,7 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 | `GET /api/v1/files/context` | user |
 | `GET /api/v1/files/children?path=` | user |
 | `GET /api/v1/files?search=` | user |
-| `POST /api/v1/files/directories?path=` | user |
-| `PATCH /api/v1/files?path=` | user |
-| `DELETE /api/v1/files?path=` or body `{ paths: [] }` | user |
-| `GET/HEAD/POST /api/v1/files/content?path=` | user |
+| `GET/HEAD /api/v1/files/content?path=` | user |
 | `GET/PUT /api/v1/files/collaboration?path=` | user |
 | `POST/DELETE /api/v1/files/star?path=` | user |
 | `GET /api/v1/files/starred` | user |
@@ -82,6 +79,7 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 | `POST/PATCH/DELETE /api/v1/admin/groups/{group}` | admin |
 | `PUT/DELETE /api/v1/admin/groups/{group}/members/{username}` | admin |
 | `PUT /api/v1/admin/settings` | admin |
+| `POST /api/v1/admin/mail-delivery/test` | admin |
 | `GET /api/v1/admin/updates/state` | admin |
 | `GET/DELETE /api/v1/admin/updates/log` | admin |
 | `POST/DELETE /api/v1/admin/update-jobs/{jobId}` | admin |

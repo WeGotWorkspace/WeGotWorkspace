@@ -9,6 +9,8 @@
 
 .viewport {
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   width: 100%;
   min-height: 100%;
   border: var(--border);
@@ -108,11 +110,19 @@
 }
 
 /* Overlay z-order (events < create-preview < dragging < marker) leaves headroom below 500 so
-   stagger depths (z = 2 + depth per overlap level) can never climb past the overlays. */
+   stagger depths (z = 2 + depth per overlap level) can never climb past the overlays.
+   Those values are local to `.viewport` (isolation + z-index 0 above). Isolating `:host`
+   does not contain this shadow tree versus portaled UI — create-preview 500 would beat
+   Radix dialog z-50. Week/day also get an ancestor trap from swipe-container's
+   transformed `.container`. */
 .marker {
   position: absolute;
   z-index: 700;
   pointer-events: none;
+  /* Own compositor layer so iOS overflow scroll cannot let `will-change` event cards
+     paint over the now line (Safari promotes transformed siblings independently). */
+  isolation: isolate;
+  transform: translateZ(0);
 }
 
 :host([flow="vertical"]) .marker {
@@ -136,7 +146,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) translateZ(0);
 }
 
 /* Horizontal flow uses logical insets so the time axis follows the inline direction (RTL-aware). */
@@ -221,7 +231,6 @@
 
 .event {
   position: absolute;
-  will-change: transform;
   display: flex;
   flex: 1;
   z-index: 2;
@@ -247,8 +256,7 @@
 .event.event--dragging {
   cursor: grabbing;
   z-index: 600;
-  /* Subtle lift for the free-following card (follows the card's shape, not the wrapper box). */
-  filter: drop-shadow(0 3px 8px light-dark(rgb(15 23 42 / 22%), rgb(0 0 0 / 45%)));
+  will-change: transform;
 }
 
 /* Time axis in vertical flow: % on top/bottom resolve against .cell-main height (not margin-% which uses width). */
@@ -346,7 +354,6 @@
 }
 
 .event > * {
-  flex: 1;
   pointer-events: auto;
 }
 
@@ -363,4 +370,23 @@
     --_lc-outside-month-day-color,
     light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%))
   );
+}
+
+.event > event-card {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Overlay the card ends. Must not take flex space or change time geometry. */
+.event > resize-handle {
+  position: absolute;
+  flex: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .event:hover,
+  .event:focus-within {
+    --_lc-resize-handle-event-hover: 0.88;
+  }
 }

@@ -21,9 +21,9 @@ export type Note = {
   notebook: string;
   tags: string[];
   wordCount: number;
-  /** From `GET /notes/items` — seeds local starred state. */
+  /** From FileNode `note.starred` (Drive star for the caller). YAML stars are ignored. */
   starred?: boolean;
-  /** From `GET /notes/items` — seeds archive view. */
+  /** From FileNode `note.archived` (path under `.notes/.archive/`). */
   archived?: boolean;
   /** Personal vs group home; from Notes API / shared listings. */
   scope?: "personal" | "group";
@@ -54,7 +54,8 @@ export type Note = {
   };
   /**
    * True when the current user has outgoing share grants on this note file or
-   * its notebook (from `GET /notes/items` `hasShares`). Owner affordance only.
+   * its notebook. Owner affordance only. FileNode bootstrap does not currently
+   * project `hasShares` — leftover REST rows may still set this.
    */
   isShared?: boolean;
 };

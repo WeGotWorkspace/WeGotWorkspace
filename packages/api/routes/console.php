@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
 use App\Services\Installer\DevInstallBootstrap;
@@ -117,6 +118,18 @@ Artisan::command('wgw:tasks:migrate-default-vtodos', function (DefaultMixedCalen
     return self::SUCCESS;
 })->purpose('Move VTODOs from mixed default calendars into Inbox and strip VTODO from default (idempotent)');
 
+Artisan::command('wgw:calendars:migrate-default-colors', function (DefaultCalendarColorMigrator $migrator): int {
+    $result = $migrator->migrateAll();
+    $this->info(sprintf(
+        'Scanned %d provisioned calendar(s); updated %d; skipped %d.',
+        $result['scanned'],
+        $result['updated'],
+        $result['skipped'],
+    ));
+
+    return self::SUCCESS;
+})->purpose('Assign distinct colors to provisioned calendars still on the shared default (idempotent)');
+
 Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCollectionsProvisioner $provisioner): int {
     $users = $provisioner->ensureForAllUsers();
     $groups = $provisioner->ensureForAllGroups();
@@ -134,7 +147,7 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
     ));
 
     return self::SUCCESS;
-})->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
+})->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/tasks-inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
 
 Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
     $result = $index->reindexAll();

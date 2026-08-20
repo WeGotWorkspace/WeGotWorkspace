@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\MailDelivery\MailDeliverySettingsStore;
 use App\Services\Settings\SettingKeys;
 use App\Support\TimezoneNormalizer;
 
 final class AdminSettingsService
 {
+    public function __construct(private MailDeliverySettingsStore $mailDelivery) {}
+
     /**
      * @param  array<string, mixed>  $values
      * @return array{ok: true, saved: list<string>}
      */
-    public function save(array $values): array
+    public function save(array $values, bool $clearSmtpPassword = false): array
     {
+        $this->mailDelivery->persistAdminSave($values, $clearSmtpPassword);
+        unset($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD], $values[SettingKeys::MAIL_DELIVERY_LAST_TEST_SEND]);
+
         $allowed = array_flip(SettingKeys::all());
         $saved = [];
         foreach ($values as $key => $value) {

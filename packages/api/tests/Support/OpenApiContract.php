@@ -191,10 +191,12 @@ final class OpenApiContract
             '{blobId}' => '550e8400e29b41d4a716446655440000',
             '{calendarId}' => 'default',
             '{eventId}' => 'demo-event',
-            '{taskListId}' => 'inbox',
+            '{taskListId}' => 'tasks-inbox',
             '{taskId}' => 'demo-task',
             '{shareId}' => '550e8400-e29b-41d4-a716-446655440001',
             '{inviteId}' => '550e8400-e29b-41d4-a716-446655440002',
+            '{notificationId}' => 'missing-notification.ics',
+            '{token}' => 'missingrsvptoken',
         ];
 
         $path = $openApiPath;
@@ -241,14 +243,8 @@ final class OpenApiContract
         if ($openApiPath === '/rooms/{roomId}/events' && $method === 'GET') {
             return 'peerId=peer-alpha';
         }
-        if ($openApiPath === '/contacts/cards' && $method === 'GET') {
+        if ($openApiPath === '/contacts/cards/import' && $method === 'POST') {
             return 'addressBookId=default';
-        }
-        if ($openApiPath === '/contacts/addressbooks/changes' && $method === 'GET') {
-            return 'since=0';
-        }
-        if ($openApiPath === '/contacts/cards/changes' && $method === 'GET') {
-            return 'addressBookId=default&since=0';
         }
         if ($openApiPath === '/calendars/events' && $method === 'GET') {
             return 'calendarId=default';

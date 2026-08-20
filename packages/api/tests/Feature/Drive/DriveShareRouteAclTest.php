@@ -34,9 +34,6 @@ final class DriveShareRouteAclTest extends WgwDatabaseTestCase
     public static function driveGuestAuthRoutesProvider(): iterable
     {
         yield 'GET children' => ['GET', '/api/v1/files/children?path=/users/bob', null];
-        yield 'POST directories' => ['POST', '/api/v1/files/directories?path=/users/bob', ['name' => 'x.md', 'type' => 'file']];
-        yield 'PATCH rename' => ['PATCH', '/api/v1/files?path=/users/bob/acl-target.md', ['name' => 'renamed.md']];
-        yield 'DELETE file' => ['DELETE', '/api/v1/files?path=/users/bob/acl-target.md', null];
         yield 'GET content' => ['GET', '/api/v1/files/content?path=/users/bob/acl-target.md', null];
     }
 

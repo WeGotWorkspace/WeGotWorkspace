@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
+use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
 use App\Http\Controllers\Api\V1\Admin\PluginInstallController as AdminPluginInstallController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
@@ -18,13 +19,9 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
-use App\Http\Controllers\Api\V1\Calendars\CalendarEventsController;
-use App\Http\Controllers\Api\V1\Calendars\CalendarsController;
-use App\Http\Controllers\Api\V1\Contacts\AddressBooksController as ContactsAddressBooksController;
-use App\Http\Controllers\Api\V1\Contacts\ContactBlobsController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
-use App\Http\Controllers\Api\V1\Contacts\ContactCardsController;
-use App\Http\Controllers\Api\V1\Contacts\ContactCardVcfController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
 use App\Http\Controllers\Api\V1\Files\DriveShareSessionsController;
@@ -77,6 +74,11 @@ Route::get('.well-known/jwks.json', JwksController::class);
 Route::post('auth/token', TokenController::class);
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
+
+Route::get('calendar/rsvp/{token}', [CalendarRsvpController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+');
+Route::post('calendar/rsvp/{token}', [CalendarRsvpController::class, 'respond'])
+    ->where('token', '[A-Za-z0-9]+');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
@@ -196,6 +198,15 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('notes/shared-with-me', [NotesSharedController::class, 'sharedWithMe']);
     Route::get('notes/shared-notebooks', [NotesSharedController::class, 'sharedNotebooks']);
 
+    Route::middleware('wgw.calendars')->group(function (): void {
+        Route::get('calendars/scheduling/invitees', [CalendarSchedulingNotificationsController::class, 'invitees']);
+        Route::get('calendars/scheduling/notifications', [CalendarSchedulingNotificationsController::class, 'index']);
+        Route::post('calendars/scheduling/notifications/{notificationId}/respond', [CalendarSchedulingNotificationsController::class, 'respond'])
+            ->where('notificationId', '[^/]+');
+        Route::delete('calendars/scheduling/notifications/{notificationId}', [CalendarSchedulingNotificationsController::class, 'destroy'])
+            ->where('notificationId', '[^/]+');
+    });
+
     Route::middleware('wgw.tasks')->group(function (): void {
         Route::get('tasks/capabilities', TasksCapabilitiesController::class);
         Route::get('tasks/tasklists/changes', [TaskCalendarsController::class, 'changes']);
@@ -221,59 +232,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     });
 
     Route::middleware('wgw.contacts')->group(function (): void {
-        Route::get('contacts/addressbooks/changes', [ContactsAddressBooksController::class, 'changes']);
-        Route::get('contacts/addressbooks', [ContactsAddressBooksController::class, 'index']);
-        Route::post('contacts/addressbooks', [ContactsAddressBooksController::class, 'store']);
-        Route::get('contacts/addressbooks/{addressBookId}', [ContactsAddressBooksController::class, 'show'])
-            ->where('addressBookId', '[a-z0-9_-]+');
-        Route::patch('contacts/addressbooks/{addressBookId}', [ContactsAddressBooksController::class, 'update'])
-            ->where('addressBookId', '[a-z0-9_-]+');
-        Route::delete('contacts/addressbooks/{addressBookId}', [ContactsAddressBooksController::class, 'destroy'])
-            ->where('addressBookId', '[a-z0-9_-]+');
-        Route::post('contacts/cards/set', [ContactCardsController::class, 'set']);
-        Route::get('contacts/cards/changes', [ContactCardsController::class, 'changes']);
-        Route::post('contacts/cards/query', [ContactCardsController::class, 'query']);
         Route::post('contacts/cards/import', ContactCardImportController::class);
-        Route::get('contacts/cards', [ContactCardsController::class, 'index']);
-        Route::post('contacts/cards', [ContactCardsController::class, 'store']);
-        Route::get('contacts/cards/{cardId}/vcf', ContactCardVcfController::class)
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::get('contacts/cards/{cardId}', [ContactCardsController::class, 'show'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::put('contacts/cards/{cardId}', [ContactCardsController::class, 'update'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::patch('contacts/cards/{cardId}', [ContactCardsController::class, 'patch'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::delete('contacts/cards/{cardId}', [ContactCardsController::class, 'destroy'])
-            ->where('cardId', '[a-z0-9_-]+');
-        Route::post('contacts/blobs', [ContactBlobsController::class, 'store']);
-        Route::get('contacts/blobs/{blobId}', [ContactBlobsController::class, 'show'])
-            ->where('blobId', '[0-9a-f-]+');
-    });
-
-    Route::middleware('wgw.calendars')->group(function (): void {
-        Route::get('calendars/calendars/changes', [CalendarsController::class, 'changes']);
-        Route::get('calendars/calendars', [CalendarsController::class, 'index']);
-        Route::post('calendars/calendars', [CalendarsController::class, 'store']);
-        Route::get('calendars/calendars/{calendarId}', [CalendarsController::class, 'show'])
-            ->where('calendarId', '[a-z0-9_-]+');
-        Route::patch('calendars/calendars/{calendarId}', [CalendarsController::class, 'update'])
-            ->where('calendarId', '[a-z0-9_-]+');
-        Route::delete('calendars/calendars/{calendarId}', [CalendarsController::class, 'destroy'])
-            ->where('calendarId', '[a-z0-9_-]+');
-        Route::get('calendars/events/changes', [CalendarEventsController::class, 'changes']);
-        Route::post('calendars/events/set', [CalendarEventsController::class, 'set']);
-        Route::post('calendars/events/query', [CalendarEventsController::class, 'query']);
-        Route::get('calendars/events', [CalendarEventsController::class, 'index']);
-        Route::post('calendars/events', [CalendarEventsController::class, 'store']);
-        Route::get('calendars/events/{eventId}', [CalendarEventsController::class, 'show'])
-            ->where('eventId', '[a-z0-9_#%-]+');
-        Route::put('calendars/events/{eventId}', [CalendarEventsController::class, 'update'])
-            ->where('eventId', '[a-z0-9_#%-]+');
-        Route::patch('calendars/events/{eventId}', [CalendarEventsController::class, 'patch'])
-            ->where('eventId', '[a-z0-9_#%-]+');
-        Route::delete('calendars/events/{eventId}', [CalendarEventsController::class, 'destroy'])
-            ->where('eventId', '[a-z0-9_#%-]+');
     });
 
     // JMAP transport envelope (RFC 8620) — deliberately outside any domain
@@ -290,10 +249,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
 Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
-        Route::post('files/directories', [FilesController::class, 'storeDirectory']);
-        Route::patch('files', [FilesController::class, 'patch']);
-        Route::delete('files', [FilesController::class, 'destroy']);
-        Route::match(['GET', 'HEAD', 'POST'], 'files/content', [FilesController::class, 'content']);
+        Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
         Route::get('files/collaboration', [FilesController::class, 'showCollaboration']);
         Route::put('files/collaboration', [FilesController::class, 'updateCollaboration']);
     });
@@ -314,6 +270,7 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
     Route::delete('groups/{group}', [AdminGroupsController::class, 'destroy'])
         ->where('group', '[a-z0-9_-]+');
     Route::put('settings', AdminSettingsController::class);
+    Route::post('mail-delivery/test', AdminMailDeliveryTestController::class);
     Route::get('updates/state', AdminUpdateStateController::class);
     Route::get('updates/log', [AdminUpdateLogController::class, 'show']);
     Route::delete('updates/log', [AdminUpdateLogController::class, 'destroy']);

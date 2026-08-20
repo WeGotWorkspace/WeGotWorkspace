@@ -113,6 +113,16 @@ describe("createHybridNotesOperations", () => {
     expect(outbox[0]?.op).toBe("upsert");
   });
 
+  it("caches Drive star paths offline so flush can replay POST|DELETE /files/star", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, starred: true });
+
+    const { readDocsStarredPaths } = await import("@/lib/offline/docs/docs-stars-store");
+    expect(await readDocsStarredPaths(username)).toEqual(["/users/alice/.notes/Drafts/note-1.md"]);
+  });
+
   it("queues upsert when live API fails with a network error", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     vi.mocked(updateNoteItem).mockRejectedValue(new TypeError("network request failed"));

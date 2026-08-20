@@ -138,4 +138,48 @@ describe("CalendarCalendarDialog", () => {
     fireEvent.click(ownerSelect);
     expect(screen.queryByRole("option")).toBeNull();
   });
+
+  it("keeps the dialog open when the native color well changes", async () => {
+    const onClose = vi.fn();
+
+    render(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "cal-1",
+          name: "Calendar",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: false,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        labels={defaultCalendarLabels}
+        onClose={onClose}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.calendarColorLabel }));
+    const colorInput = screen.getByLabelText("Custom color") as HTMLInputElement;
+    expect(colorInput).toBeTruthy();
+    expect(colorInput.getAttribute("type")).toBe("color");
+
+    fireEvent.focus(colorInput);
+    fireEvent.input(colorInput, { target: { value: "#31c75c" } });
+    fireEvent.change(colorInput, { target: { value: "#31c75c" } });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(colorInput.isConnected).toBe(true);
+    expect(
+      screen.getByRole("heading", { name: defaultCalendarLabels.editCalendarTitle }),
+    ).toBeTruthy();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.pointerDown(document.documentElement);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", { name: defaultCalendarLabels.editCalendarTitle }),
+    ).toBeTruthy();
+  });
 });

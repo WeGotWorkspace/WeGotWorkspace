@@ -39,6 +39,7 @@ export type CalendarUILabels = {
   noEventsInRange: string;
   toastEventCreated: string;
   toastEventUpdated: string;
+  toastEventSaveUndone: string;
   toastEventDeleted: string;
   toastEventDeleteUndone: string;
   toastEventSaveFailed: string;
@@ -64,6 +65,9 @@ export type CalendarUILabels = {
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
   eventNotesLabel: string;
+  /** Compact details popover — opens the existing event dialog. */
+  eventDetailsEdit: string;
+  eventDetailsMoreInvitees: (count: number) => string;
   /** Standalone card heading and select label for busy/free availability. */
   eventShowAs: string;
   eventShowAsBusy: string;
@@ -72,6 +76,12 @@ export type CalendarUILabels = {
   eventAlarmsNone: string;
   eventAlarmAdd: string;
   eventAlarmRemove: string;
+  /** Visible label on each alarm row (not the card title). */
+  eventAlarmRow: string;
+  /** Empty offset option and trailing unused slot. */
+  eventAlarmNone: string;
+  /** Offset select on a single alarm row (not the card title). */
+  eventAlarmOffset: string;
   eventAlarmAtStart: string;
   eventAlarm5Min: string;
   eventAlarm10Min: string;
@@ -79,11 +89,6 @@ export type CalendarUILabels = {
   eventAlarm30Min: string;
   eventAlarm1Hour: string;
   eventAlarm1Day: string;
-  eventAlarmCustom: string;
-  eventAlarmCustomAmount: string;
-  eventAlarmUnitMinutes: string;
-  eventAlarmUnitHours: string;
-  eventAlarmUnitDays: string;
   eventRepeatLabel: string;
   eventRecurrenceEndsLabel: string;
   eventRecurrenceEndsNever: string;
@@ -93,6 +98,46 @@ export type CalendarUILabels = {
   save: string;
   cancel: string;
   delete: string;
+  invitationsSection: string;
+  invitationsEmpty: string;
+  invitationsEmptyResponded: string;
+  invitationsDismiss: string;
+  invitationsClosePanel: string;
+  invitationsCountOne: string;
+  invitationsCountMany: (count: number) => string;
+  invitationsRespondedCountOne: string;
+  invitationsRespondedCountMany: (count: number) => string;
+  invitationsTabNew: string;
+  invitationsTabResponded: string;
+  invitationsFilterAria: string;
+  invitationsToggleShow: string;
+  invitationsToggleHide: string;
+  invitationsOrganizerUnknown: string;
+  eventAttendeesLabel: string;
+  eventAttendeesHint: string;
+  eventAttendeesAdd: string;
+  eventAttendeesEmpty: string;
+  eventAttendeesEmailPlaceholder: string;
+  eventAttendeesEmailAdd: string;
+  eventAttendeesEmailUnavailable: string;
+  eventAttendeesRemove: string;
+  eventAttendeesSearchEmpty: string;
+  eventAttendeesOrganizer: string;
+  eventAttendeesRsvpAccepted: string;
+  eventAttendeesRsvpTentative: string;
+  eventAttendeesRsvpDeclined: string;
+  eventAttendeesRsvpDelegated: string;
+  eventAttendeesRsvpNeedsAction: string;
+  rsvpAccept: string;
+  rsvpMaybe: string;
+  rsvpDecline: string;
+  rsvpLabel: string;
+  rsvpRespond: string;
+  rsvpSeriesHint: string;
+  toastRsvpFailed: string;
+  toastRsvpUpdated: string;
+  toastRsvpUndone: string;
+  toastInvitationCancelled: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -135,6 +180,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   noEventsInRange: "No events in this period.",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
+  toastEventSaveUndone: "Event change undone.",
   toastEventDeleted: "Event deleted",
   toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",
@@ -159,13 +205,18 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
   eventNotesLabel: "Notes",
+  eventDetailsEdit: "Edit",
+  eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
-  eventAlarmAdd: "Add alarm",
-  eventAlarmRemove: "Remove alarm",
+  eventAlarmAdd: "Add alert",
+  eventAlarmRemove: "Remove alert",
+  eventAlarmRow: "Alert",
+  eventAlarmNone: "None",
+  eventAlarmOffset: "Alert time",
   eventAlarmAtStart: "At time of event",
   eventAlarm5Min: "5 minutes before",
   eventAlarm10Min: "10 minutes before",
@@ -173,11 +224,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAlarm30Min: "30 minutes before",
   eventAlarm1Hour: "1 hour before",
   eventAlarm1Day: "1 day before",
-  eventAlarmCustom: "Custom",
-  eventAlarmCustomAmount: "Time before",
-  eventAlarmUnitMinutes: "minutes",
-  eventAlarmUnitHours: "hours",
-  eventAlarmUnitDays: "days",
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
   eventRecurrenceEndsNever: "Never",
@@ -187,6 +233,47 @@ export const defaultCalendarLabels: CalendarUILabels = {
   save: "Save",
   cancel: "Cancel",
   delete: "Delete",
+  invitationsSection: "Invitations",
+  invitationsEmpty: "No pending invitations. Invites you receive will appear here.",
+  invitationsEmptyResponded: "No responded invitations yet.",
+  invitationsDismiss: "Dismiss",
+  invitationsClosePanel: "Close invitations",
+  invitationsCountOne: "1 pending",
+  invitationsCountMany: (count: number) => `${count} pending`,
+  invitationsRespondedCountOne: "1 responded",
+  invitationsRespondedCountMany: (count: number) => `${count} responded`,
+  invitationsTabNew: "New",
+  invitationsTabResponded: "Responded",
+  invitationsFilterAria: "Invitation inbox",
+  invitationsToggleShow: "Show invitations",
+  invitationsToggleHide: "Hide invitations",
+  invitationsOrganizerUnknown: "Organizer",
+  eventAttendeesLabel: "Invitees",
+  eventAttendeesHint: "Add teammates or invite anyone with an email address.",
+  eventAttendeesAdd: "Add people",
+  eventAttendeesEmpty: "No invitees yet.",
+  eventAttendeesEmailPlaceholder: "Add people…",
+  eventAttendeesEmailAdd: "Add email",
+  eventAttendeesEmailUnavailable:
+    "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
+  eventAttendeesRemove: "Remove invitee",
+  eventAttendeesSearchEmpty: "No teammates found",
+  eventAttendeesOrganizer: "Organizer",
+  eventAttendeesRsvpAccepted: "Accepted",
+  eventAttendeesRsvpTentative: "Maybe",
+  eventAttendeesRsvpDeclined: "Declined",
+  eventAttendeesRsvpDelegated: "Delegated",
+  eventAttendeesRsvpNeedsAction: "Needs response",
+  rsvpAccept: "Accept",
+  rsvpMaybe: "Maybe",
+  rsvpDecline: "Decline",
+  rsvpLabel: "RSVP",
+  rsvpRespond: "Respond",
+  rsvpSeriesHint: "Accept and Decline apply to the entire series.",
+  toastRsvpFailed: "Could not send RSVP",
+  toastRsvpUpdated: "Invitation updated",
+  toastRsvpUndone: "Invitation change undone.",
+  toastInvitationCancelled: "This invitation was cancelled",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {
