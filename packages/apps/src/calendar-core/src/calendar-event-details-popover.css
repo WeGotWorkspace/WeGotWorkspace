@@ -7,7 +7,7 @@
 }
 
 .calendar-dialog-surface.calendar-event-details-popover {
-  @apply flex w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-2 overflow-y-auto p-3;
+  @apply box-border flex min-w-0 w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-2 overflow-x-hidden overflow-y-auto p-3;
   /* Margin is overflow for CSS anchor + position-try, so corner fallbacks keep an inset. */
   margin: 0.75rem;
   position-anchor: --calendar-event-details-anchor;
@@ -92,7 +92,8 @@
 
 @media (max-width: 40rem) {
   .calendar-dialog-surface.calendar-event-details-popover {
-    @apply w-[calc(100vw-1.5rem)];
+    /* Inset left/right — do not center with translateX, which compounds Radix's card left. */
+    @apply box-border min-w-0 overflow-x-hidden;
     position-anchor: auto;
     position-area: none;
     position-try-fallbacks: none;
@@ -100,10 +101,13 @@
     position: fixed !important;
     inset: auto !important;
     top: auto !important;
-    left: 50% !important;
-    right: auto !important;
+    left: 0.75rem !important;
+    right: 0.75rem !important;
     bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) !important;
-    transform: translateX(-50%) !important;
+    width: auto !important;
+    max-width: calc(100vw - 1.5rem) !important;
+    max-width: calc(100dvw - 1.5rem) !important;
+    transform: none !important;
     max-height: min(32rem, calc(100dvh - 6rem));
   }
 }

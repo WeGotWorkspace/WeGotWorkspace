@@ -29,5 +29,11 @@ describe("calendar event details popover CSS", () => {
       /@media \(max-width: 40rem\) \{[\s\S]*max-height:\s*min\(32rem,\s*calc\(100dvh - 6rem\)\)/,
     );
     expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*position-try-fallbacks:\s*none;/);
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*left:\s*0\.75rem\s*!important;/);
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*right:\s*0\.75rem\s*!important;/);
+    expect(css).toMatch(
+      /@media \(max-width: 40rem\) \{[\s\S]*max-width:\s*calc\(100dvw - 1\.5rem\)\s*!important;/,
+    );
+    expect(css).toMatch(/@media \(max-width: 40rem\) \{[\s\S]*transform:\s*none\s*!important;/);
   });
 });
