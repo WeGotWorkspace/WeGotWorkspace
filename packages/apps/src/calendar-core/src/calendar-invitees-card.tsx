@@ -175,7 +175,7 @@ export function CalendarInviteesCard({
 
   return (
     <ShareAccessCard
-      className="calendar-event-dialog__card"
+      className="calendar-event-dialog__card calendar-invitees-card"
       titleIcon={<Users className="size-4" />}
       title={labels.eventAttendeesLabel}
       description={labels.eventAttendeesHint}

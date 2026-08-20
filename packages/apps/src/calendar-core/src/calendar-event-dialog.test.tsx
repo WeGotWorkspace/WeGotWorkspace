@@ -190,6 +190,7 @@ describe("CalendarEventDialog", () => {
     expect(whenCard).not.toBeNull();
     expect(repeatCard).not.toBeNull();
     expect(inviteesCard).not.toBeNull();
+    expect(inviteesCard!.classList.contains("calendar-invitees-card")).toBe(true);
     expect(alarmsCard).not.toBeNull();
     expect(whenCard!.querySelector(".card__panel")).toBeNull();
     expect(repeatCard!.querySelector(".card__panel")).toBeNull();
@@ -429,6 +430,33 @@ describe("CalendarEventDialog", () => {
         ],
       }),
     );
+  });
+
+  it("keeps the invitee name in the same row as the RSVP chip and Required control", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      attendees: [
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({ form });
+    const name = screen.getByText("Carol");
+    const row = name.closest(".card__row");
+    expect(row).not.toBeNull();
+    expect(name.classList.contains("card__row-title")).toBe(true);
+    expect(row!.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
+    expect(screen.getByText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Carol: Required/i })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
+    ).toBeTruthy();
+    expect(name.closest(".calendar-invitees-card")).not.toBeNull();
   });
 
   it("changes an invitee from Required to Optional and can remove them", () => {
