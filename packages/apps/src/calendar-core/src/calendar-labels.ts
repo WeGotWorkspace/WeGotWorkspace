@@ -75,6 +75,12 @@ export type CalendarUILabels = {
   eventAlarmsNone: string;
   eventAlarmAdd: string;
   eventAlarmRemove: string;
+  /** Visible label on each alarm row (not the card title). */
+  eventAlarmRow: string;
+  /** Empty offset option and trailing unused slot. */
+  eventAlarmNone: string;
+  /** Offset select on a single alarm row (not the card title). */
+  eventAlarmOffset: string;
   eventAlarmAtStart: string;
   eventAlarm5Min: string;
   eventAlarm10Min: string;
@@ -82,11 +88,6 @@ export type CalendarUILabels = {
   eventAlarm30Min: string;
   eventAlarm1Hour: string;
   eventAlarm1Day: string;
-  eventAlarmCustom: string;
-  eventAlarmCustomAmount: string;
-  eventAlarmUnitMinutes: string;
-  eventAlarmUnitHours: string;
-  eventAlarmUnitDays: string;
   eventRepeatLabel: string;
   eventRecurrenceEndsLabel: string;
   eventRecurrenceEndsNever: string;
@@ -209,8 +210,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventShowAsFree: "Free",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
-  eventAlarmAdd: "Add alarm",
-  eventAlarmRemove: "Remove alarm",
+  eventAlarmAdd: "Add alert",
+  eventAlarmRemove: "Remove alert",
+  eventAlarmRow: "Alert",
+  eventAlarmNone: "None",
+  eventAlarmOffset: "Alert time",
   eventAlarmAtStart: "At time of event",
   eventAlarm5Min: "5 minutes before",
   eventAlarm10Min: "10 minutes before",
@@ -218,11 +222,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAlarm30Min: "30 minutes before",
   eventAlarm1Hour: "1 hour before",
   eventAlarm1Day: "1 day before",
-  eventAlarmCustom: "Custom",
-  eventAlarmCustomAmount: "Time before",
-  eventAlarmUnitMinutes: "minutes",
-  eventAlarmUnitHours: "hours",
-  eventAlarmUnitDays: "days",
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
   eventRecurrenceEndsNever: "Never",

@@ -5,8 +5,8 @@ import { CardRow } from "@/card/src/card-row";
 import { shareLabels } from "@/share-ui/share-labels";
 
 export type ShareAccessRowProps = {
-  mark: ReactNode;
-  title: string;
+  mark?: ReactNode;
+  title?: string;
   subtitle?: string;
   titleExtra?: ReactNode;
   titleEnd?: ReactNode;
