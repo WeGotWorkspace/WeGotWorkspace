@@ -1,0 +1,68 @@
+@import "../../styles.css" reference;
+@import "./calendar-rsvp-actions.css";
+
+.calendar-event-details-popover__anchor {
+  @apply pointer-events-none fixed z-50 size-0;
+}
+
+.calendar-dialog-surface.calendar-event-details-popover {
+  @apply flex w-[min(22rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-3 overflow-y-auto p-4;
+}
+
+.calendar-event-details-popover__header {
+  @apply flex min-w-0 flex-col gap-1;
+}
+
+.calendar-event-details-popover__title {
+  @apply m-0 text-base font-semibold leading-snug text-[color:var(--color-ink)];
+}
+
+.calendar-event-details-popover__calendar {
+  @apply m-0 flex min-w-0 items-center gap-2 text-sm text-[color:var(--field-label-color,inherit)];
+}
+
+.calendar-event-details-popover__swatch {
+  @apply size-2.5 shrink-0 rounded-full;
+}
+
+.calendar-event-details-popover__details {
+  @apply m-0 flex flex-col gap-2.5;
+}
+
+.calendar-event-details-popover__row {
+  @apply flex min-w-0 items-start gap-2.5;
+}
+
+.calendar-event-details-popover__icon {
+  @apply mt-0.5 shrink-0 text-[color:var(--card-title-icon-color,currentColor)];
+}
+
+.calendar-event-details-popover__row-text {
+  @apply min-w-0 flex-1;
+}
+
+.calendar-event-details-popover__dt {
+  @apply text-xs text-[color:var(--field-label-color,inherit)];
+}
+
+.calendar-event-details-popover__dd {
+  @apply m-0 wrap-break-word text-sm;
+}
+
+.calendar-event-details-popover__rsvp {
+  @apply flex flex-col gap-2;
+}
+
+.calendar-event-details-popover__rsvp-hint {
+  @apply m-0 text-xs text-[color:var(--field-label-color,inherit)];
+}
+
+.calendar-event-details-popover__footer {
+  @apply flex justify-end;
+}
+
+@media (max-width: 40rem) {
+  .calendar-dialog-surface.calendar-event-details-popover {
+    @apply w-[calc(100vw-1rem)];
+  }
+}
