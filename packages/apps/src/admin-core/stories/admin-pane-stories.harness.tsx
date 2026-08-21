@@ -10,11 +10,12 @@ export type AdminStoryDataOverride = {
   users?: AdminUIData["users"];
   groups?: AdminUIData["groups"];
   mail?: Partial<AdminUIData["mail"]>;
-  mailDelivery?: Partial<AdminUIData["mailDelivery"]> & {
+  mailDelivery?: {
     config?: Partial<AdminUIData["mailDelivery"]["config"]>;
-    capability?: Partial<AdminUIData["mailDelivery"]["capability"]> & {
+    capability?: Partial<Omit<AdminUIData["mailDelivery"]["capability"], "probes">> & {
       probes?: Partial<AdminUIData["mailDelivery"]["capability"]["probes"]>;
     };
+    lastTestSend?: AdminUIData["mailDelivery"]["lastTestSend"];
   };
   rtc?: Partial<AdminUIData["rtc"]>;
   apps?: Partial<AdminUIData["apps"]>;
