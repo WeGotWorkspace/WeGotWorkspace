@@ -17,7 +17,7 @@ Externals: start a **Discussion** to explore ideas, or file a **bug**. Do **not*
 
 ## Product vs engineering
 
-- **Goals** (`type:goal`) describe user outcomes — maintainers only. Board Status is **Identified → Adopted → Fulfilled**. See [docs/product/](docs/product/) and [GOVERNANCE.md](GOVERNANCE.md).
+- **Goals** (`type:goal`) describe user outcomes — maintainers only. Board Status is **Identified → Adopted → Fulfilled**. Identified is a draft backlog (no milestone until Adopted). Fulfilled Goals are closed; Status stays on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). Start at the [0.9 Roadmap](https://github.com/orgs/WeGotWorkspace/projects/1/views/4). See [docs/product/](docs/product/) and [GOVERNANCE.md](GOVERNANCE.md).
 - **Epics / tasks / chores** (`type:epic` / `type:task` / `type:chore`) track delivery under Goals or pure eng work — maintainers only.
 - Templates: `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml`, `dast-finding.yml` under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
 - The legacy `roadmap` label has been removed — use `type:goal` + the Product roadmap Project.

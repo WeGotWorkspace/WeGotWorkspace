@@ -30,10 +30,12 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 **Milestones may attach to Goals** as the soft release target for when we aim to fulfill the outcome. They are still OK on Epics/Tasks/Bugs (and optional eng chores) for eng packing.
 
 - Goal Status remains **Identified → Adopted → Fulfilled** (product judgment on the board). **A milestone is not Fulfilled** — closing or hitting a milestone does not move Status.
-- Soft release target → optional milestone on the Goal (e.g. `v0.9` / `v1.0`).
+- Soft release target → optional milestone on the Goal (e.g. `v0.9` / `v1.0`) **only when Adopted** for that release. Identified Goals stay off milestones.
 - Eng packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) (includes Goals targeting that release plus delivery work).
 - Product “what’s in flight” → Goals on the board at **Adopted** (eng progress on child Epics/Tasks), not a mega checklist issue.
 - Early research stays in **GitHub Discussions** (Ideas) until a maintainer promotes it to a Goal at **Identified** (then **Adopted** when committing) — do not use board columns for Exploring/Proposed.
+- **Identified is a draft backlog**, not a customer list and not a release commitment. Do **not** Adopt a Goal, and do **not** attach a milestone, until someone is committing that outcome to a release.
+- **Fulfilled Goals are closed** (`completed`). Board Status stays **Fulfilled**. Issue open/closed is not the product status — open Goal means unfinished.
 
 The legacy `future` label on Goals is optional hygiene only — Status on the board is the source of truth; do not mass-retag.
 
@@ -41,18 +43,21 @@ See [GOVERNANCE.md](../../GOVERNANCE.md) and [issue-filing.md](../../.agents/ski
 
 ## How to browse
 
-Use these filters instead of the default open-issue list (which mixes Goals with delivery trackers).
+Start at the **Project**, not the default Issues tab (that list mixes unfinished Goals with delivery and is the wrong index).
 
 ### Product (Goals)
 
-| View | Link |
-|------|------|
-| Goals only (all states) | [issues?q=is:issue+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) |
-| Open Goals | [issues?q=is:issue+is:open+label:type:goal](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal) |
-| Product Project board | [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) — **board filter** `label:type:goal` (Goals only; Status = Identified → Adopted → Fulfilled) |
-| Identified | Board: open [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1), filter `label:type:goal status:Identified` |
-| Adopted | Board filter `label:type:goal status:Adopted` |
-| Fulfilled | Board filter `label:type:goal status:Fulfilled` |
+| View | Link | Filter |
+|------|------|--------|
+| **0.9 Roadmap (beta todo)** | [projects/1/views/4](https://github.com/orgs/WeGotWorkspace/projects/1/views/4) | `status:Adopted milestone:v0.9` |
+| All Goals | [projects/1/views/1](https://github.com/orgs/WeGotWorkspace/projects/1/views/1) | `label:type:goal` |
+| User Goals by App | [projects/1/views/2](https://github.com/orgs/WeGotWorkspace/projects/1/views/2) | `label:type:goal` |
+| User Goals by Version | [projects/1/views/3](https://github.com/orgs/WeGotWorkspace/projects/1/views/3) | `label:type:goal` |
+| 0.9 by area | [Calendar](https://github.com/orgs/WeGotWorkspace/projects/1/views/5) · [Docs](https://github.com/orgs/WeGotWorkspace/projects/1/views/6) · [Drive](https://github.com/orgs/WeGotWorkspace/projects/1/views/7) · [Tasks](https://github.com/orgs/WeGotWorkspace/projects/1/views/8) · [Contacts](https://github.com/orgs/WeGotWorkspace/projects/1/views/9) · [Admin](https://github.com/orgs/WeGotWorkspace/projects/1/views/10) · [Platform](https://github.com/orgs/WeGotWorkspace/projects/1/views/11) · [Notes](https://github.com/orgs/WeGotWorkspace/projects/1/views/12) · [Mail](https://github.com/orgs/WeGotWorkspace/projects/1/views/13) · [Meet](https://github.com/orgs/WeGotWorkspace/projects/1/views/14) | view 4 + `label:area:*` |
+| Identified (draft backlog) | [All Goals](https://github.com/orgs/WeGotWorkspace/projects/1/views/1) filtered `status:Identified` | recognized, not committed |
+| Fulfilled (closed issues) | Board filter `status:Fulfilled` | Status stays on the board after close |
+
+Issue-search fallbacks: [all Goals](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+label%3Atype%3Agoal) · [open unfinished Goals](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal).
 
 Project setup (board workflows): [project-setup.md](./project-setup.md).
 
@@ -78,7 +83,7 @@ Engineering release packing remains the **milestone filter** on delivery issues 
 
 **Externals:** [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas/exploration, plus Bug reports (and DAST where applicable). Blank issues are disabled. Goal / Epic / Task / Chore templates are **maintainers only** (enforced by workflow). See [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-**Maintainer workflow:** explore under **GitHub Discussions** (anyone may start threads) → when ready, file a **Goal** issue at Product Project Status **Identified**, then **Adopted** when committing (or **Adopted** immediately if already committing). Do not put Exploring/Proposed on the board. See [GOVERNANCE.md](../../GOVERNANCE.md).
+**Maintainer workflow:** explore under **GitHub Discussions** (anyone may start threads) → when ready, file a **Goal** issue at Product Project Status **Identified** (draft backlog, no milestone) → **Adopted** + optional milestone only when committing that outcome to a release. Do not Adopt to “look complete.” Do not put Exploring/Proposed on the board. See [GOVERNANCE.md](../../GOVERNANCE.md).
 
 ## Labels
 

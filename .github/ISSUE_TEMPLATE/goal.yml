@@ -58,7 +58,7 @@ body:
     id: status
     attributes:
       label: Status
-      description: Soft product status (also set on the Product roadmap Project). Identified = recognized (often after Discussion); Adopted = committed to pursue (stays Adopted while building — eng progress is on child issues); Fulfilled = product judges outcome met (not auto from closed children). Explore earlier work in Discussions — not on the board.
+      description: Soft product status (also set on the Product roadmap Project). Identified = recognized draft backlog (often after Discussion) — no milestone, not a release commitment. Adopted = committed to a release (stays Adopted while building — eng progress is on child issues). Fulfilled = product judges outcome met (not auto from closed children) — then close the Goal (`completed`); board Status stays Fulfilled. Explore earlier work in Discussions — not on the board.
       options:
         - Identified
         - Adopted
@@ -70,7 +70,7 @@ body:
     id: target_release
     attributes:
       label: Soft target release (optional)
-      description: Optional soft release target — set the matching GitHub milestone on this Goal (milestone ≠ Fulfilled Status). Child Epics/Tasks may also use milestones for eng packing.
+      description: Set only when this Goal is Adopted for that release (milestone ≠ Fulfilled Status). Do not put Identified Goals on a milestone. Child Epics/Tasks/Bugs may also use milestones for eng packing.
       placeholder: e.g. v0.9
     validations:
       required: false
