@@ -64,7 +64,7 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 | Route | Access |
 |-------|--------|
 | `GET/PUT /api/v1/settings/*` | user |
-| `GET/POST/PUT/PATCH/DELETE /api/v1/notes/*` | user |
+| Notes HTTP | FileNode + `PUT /files/collaboration` + `GET /files/shared-with-me?includeNotes=true` (no `/notes/*`) |
 | `GET /api/v1/plugins` | user |
 | `PUT /api/v1/plugins/{id}/activation` | user |
 | `POST /api/v1/plugins/{id}/session` | user |

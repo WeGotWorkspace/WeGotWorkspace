@@ -26,6 +26,8 @@
   --_lc-event-recurring-icon-size: 13px;
   --_lc-event-card-segment-radius: var(--lc-event-card-radius, var(--radius-sm));
   --_lc-resize-handle-color: var(--_lc-event-card-text-color);
+  /* Four-side fill inset; TimeLine `--time-line-event-inset` aliases this. */
+  --_lc-event-card-inset: 1px;
 }
 
 :host([layout="flow"]) {
@@ -74,11 +76,12 @@
 
 :host .event-card-shell::before {
   /* z-0 (not -1): negative z-index paints behind transformed ancestors (e.g. TimeLine drag ghost). */
-  @apply absolute inset-px z-0;
+  @apply absolute z-0;
   @apply bg-[var(--_lc-event-card-bg)];
   @apply text-[var(--_lc-event-card-accent-color)];
   @apply transition-[color,background-color] duration-100;
   content: "";
+  inset: var(--_lc-event-card-inset, 1px);
   border-radius: var(--_lc-event-card-segment-radius);
   outline: var(--_lc-event-focus-ring-width) solid var(--_lc-event-focus-ring-color);
   outline-offset: var(--_lc-event-focus-ring-gap);
@@ -89,7 +92,6 @@
   box-shadow:
     var(--_lc-event-card-cutout-ring, 0 0 0 transparent),
     inset 0 0 0 var(--_lc-event-focus-ring-inset-width) var(--_lc-event-focus-ring-color);
-  height: calc(100% - 2px);
 }
 
 :host .event-card-shell.event-card-overlap::before {
@@ -126,6 +128,7 @@
 }
 
 :host .event-card-compact-time {
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
   font-weight: 300;
   font-variant-numeric: tabular-nums;
 }
@@ -134,11 +137,38 @@
   @apply sticky m-0 flex flex-1 min-w-0 max-w-full items-start gap-1.5 overflow-hidden px-2 pt-2 pb-2 text-start text-xs font-bold leading-tight;
 }
 
+/* Awaiting reply / maybe: Apple/Google convention — dashed accent edge + lighter fill.
+   Accepted stays the solid default. Declined events are filtered out before render. */
+:host([rsvp="needs-action"]) .event-card-shell::before,
+:host([rsvp="tentative"]) .event-card-shell::before {
+  background: color-mix(in srgb, var(--_lc-event-card-bg) 42%, transparent);
+  border: 1.5px dashed var(--_lc-event-accent-color, var(--_lc-event-card-accent-color));
+}
+
+:host([rsvp="tentative"]) .event-card-shell::before {
+  background: color-mix(in srgb, var(--_lc-event-card-bg) 58%, transparent);
+}
+
+:host([rsvp="needs-action"]) .event-card-shell::after,
+:host([rsvp="tentative"]) .event-card-shell::after {
+  opacity: 0.72;
+}
+
 /* Past events fade instead of strikethrough; interaction states (set via
    --_lc-event-card-past-opacity from EventBase) restore emphasis. */
 :host([past]) .event-card-shell {
   opacity: var(--_lc-event-card-past-opacity, 0.55);
   transition-property: transform, opacity;
+}
+
+/* Selected / popover-open: same saturated fill as hover (not the pale rest tint).
+   Outside the hover media so a tap that opens the popover keeps the fill on touch. */
+:host([data-selected]) {
+  --_lc-event-card-bg-active: var(--_lc-event-bg-hover);
+}
+
+:host([past][data-selected]) .event-card-shell {
+  opacity: var(--_lc-event-card-past-opacity, 0.85);
 }
 
 /* Hover: pointer cursor is the resting affordance (edit, not drag). Tint only on
@@ -171,7 +201,16 @@
 }
 
 :host .event-card-time {
-  @apply flex min-w-0 max-w-full items-baseline gap-1 overflow-hidden text-start text-xs font-light leading-tight tabular-nums;
+  @apply flex min-w-0 max-w-full items-baseline gap-1 overflow-hidden text-start font-light leading-tight tabular-nums;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+}
+
+@media (max-width: 40rem) {
+  :host .event-card-compact-time,
+  :host .event-card-time,
+  :host .event-card-location {
+    font-size: var(--_lc-time-label-font-size, 0.625rem);
+  }
 }
 
 :host .event-card-time-main,
@@ -180,7 +219,8 @@
 }
 
 :host .event-card-location {
-  @apply min-w-0 max-w-full overflow-hidden truncate text-xs font-light leading-tight;
+  @apply min-w-0 max-w-full overflow-hidden truncate font-light leading-tight;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
   opacity: 0.84;
 }
 

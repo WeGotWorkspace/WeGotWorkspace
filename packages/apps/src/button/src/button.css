@@ -13,34 +13,35 @@
 
 .button--size-sm {
   @apply px-3 text-xs;
-  min-height: calc(var(--input-height, 2.25rem) - 0.25rem);
-  height: calc(var(--input-height, 2.25rem) - 0.25rem);
+  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+  border-radius: var(--control-radius-button-pill);
   --button-icon-size: 0.875rem;
 }
 
 .button--size-md {
   @apply px-3;
-  min-height: var(--input-height, 2.25rem);
-  height: var(--input-height, 2.25rem);
+  min-height: var(--control-height-md, var(--input-height, 2.25rem));
+  height: var(--control-height-md, var(--input-height, 2.25rem));
   font-size: var(--input-font-size, 0.875rem);
   --button-icon-size: 1rem;
 }
 
 .button--size-lg {
   @apply px-8;
-  min-height: calc(var(--input-height, 2.25rem) + 0.25rem);
-  height: calc(var(--input-height, 2.25rem) + 0.25rem);
+  min-height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
+  height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
   font-size: var(--input-font-size, 0.875rem);
   --button-icon-size: 1rem;
 }
 
 .button--size-icon {
   @apply p-0;
-  width: var(--input-height, 2.25rem);
-  height: var(--input-height, 2.25rem);
-  min-width: var(--input-height, 2.25rem);
-  min-height: var(--input-height, 2.25rem);
+  width: var(--control-height-md, var(--input-height, 2.25rem));
+  height: var(--control-height-md, var(--input-height, 2.25rem));
+  min-width: var(--control-height-md, var(--input-height, 2.25rem));
+  min-height: var(--control-height-md, var(--input-height, 2.25rem));
   --button-icon-size: 1rem;
 }
 

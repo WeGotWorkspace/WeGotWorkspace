@@ -1489,386 +1489,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notes/capabilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Notes capabilities */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes capabilities */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Notes runtime boot state for authenticated user */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/items": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List notes with optional archive/notebook/search filters */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        /** Create a new note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Created note */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/items/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Save/update a note */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
-        /** Delete a note */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Patch note (e.g. archive) */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/notes/items/{id}/archive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Archive a note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Archived note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NoteMutationResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/items/{id}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restore an archived note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Restored note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NoteMutationResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/notebooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List notebooks with active/archive counts */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        /** Create notebook */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/notebooks/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete notebook (archive, move, or purge) */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    name: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Rename notebook */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    name: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook renamed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        trace?: never;
-    };
     "/plugins": {
         parameters: {
             query?: never;
@@ -4752,7 +4372,7 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients; replacement for `GET /notes/shared-with-me`).
+         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).
          */
         get: {
             parameters: {
@@ -5197,84 +4817,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notes/shared-with-me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List note files shared with the current user via path grants
-         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Shared notes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotesSharedWithMeResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/shared-notebooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List shared notebook ACL rows (compat — always empty)
-         * @description Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Compat empty list (personal notebook-directory ACL shares removed). */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotesSharedNotebooksResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/jmap/session": {
         parameters: {
             query?: never;
@@ -5576,6 +5118,231 @@ export interface paths {
                     };
                     content?: never;
                 };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List own calendar scheduling inbox */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scheduling notifications for the signed-in user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingNotificationListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications/{notificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Dismiss a scheduling notification without sending a REPLY */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notificationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification dismissed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications/{notificationId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** RSVP to a scheduling invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notificationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSchedulingNotificationRespond"];
+                };
+            };
+            responses: {
+                /** @description Updated notification after REPLY */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingNotification"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/invitees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List instance users who can be invited */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invitee directory */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingInviteeListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendar/rsvp/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show a public RSVP invitation */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description RSVP target */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarRsvpResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /** Respond to a public RSVP invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSchedulingNotificationRespond"];
+                };
+            };
+            responses: {
+                /** @description Updated RSVP */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarRsvpResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         delete?: never;
@@ -6359,144 +6126,6 @@ export interface components {
         DriveStarUpdateResult: "Updated";
         DriveStarUpdateResponse: {
             data: components["schemas"]["DriveStarUpdateResult"];
-        };
-        NotesCapabilitiesResponse: {
-            enabled: boolean;
-            distReady: boolean;
-            baseUri: string;
-        };
-        NotesStateResponse: {
-            baseUri: string;
-            username: string;
-            displayName: string;
-            logoutUrl: string;
-            notesPath: string;
-            filesEnabled: boolean;
-            distReady: boolean;
-        };
-        NoteTagList: string[];
-        NoteItem: {
-            id: string;
-            username: string;
-            notebook: string;
-            body: string;
-            tags: components["schemas"]["NoteTagList"];
-            starred?: boolean | null;
-            archived: boolean;
-            /**
-             * @description Storage scope: personal (users/{username}/.notes) or group (groups/{slug}/.notes).
-             * @enum {string}
-             */
-            scope: "personal" | "group";
-            /** @description Group slug when scope is group, null for personal notes. */
-            groupSlug: string | null;
-            /** @description Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value. */
-            updatedAt: string;
-            /** @description File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards. */
-            contentUpdatedAt?: string;
-            /** @description True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note. */
-            hasShares?: boolean;
-            /** @description True when this note file or its notebook directory has an active public link share. */
-            hasPublicShare?: boolean;
-            /** @description True when this note file or its notebook directory has active team grants (users or groups). */
-            hasTeamShare?: boolean;
-        };
-        NoteItemList: components["schemas"]["NoteItem"][];
-        NotesItemsResponse: {
-            items: components["schemas"]["NoteItem"][];
-        };
-        NoteMutationResponse: {
-            ok: boolean;
-            item: components["schemas"]["NoteItem"];
-        };
-        /**
-         * @example {
-         *       "id": "n123",
-         *       "notebook": "General",
-         *       "body": "Draft roadmap",
-         *       "tags": [
-         *         "planning"
-         *       ],
-         *       "starred": true,
-         *       "groupSlug": "team"
-         *     }
-         */
-        NoteUpsertRequest: {
-            id?: string;
-            notebook: string;
-            /** @description Optional. Omit the field entirely to update metadata only and preserve the existing body bytes on disk. Sending it (including an empty string) overwrites the body. */
-            body?: string;
-            tags?: components["schemas"]["NoteTagList"];
-            starred?: boolean;
-            archived?: boolean;
-            /** @description Target a shared group notebook (groups/{slug}/.notes). Omit or null for the caller's personal notes. Caller must be a group member. */
-            groupSlug?: string | null;
-        };
-        /**
-         * @example {
-         *       "notebook": "General",
-         *       "archived": false,
-         *       "groupSlug": "team"
-         *     }
-         */
-        NoteDeleteRequest: {
-            notebook: string;
-            archived: boolean;
-            /** @description Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes. */
-            groupSlug?: string | null;
-        };
-        NotebookListItem: {
-            name: string;
-            activeCount: number;
-            archivedCount: number;
-            /**
-             * @description personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes.
-             * @enum {string}
-             */
-            scope?: "personal" | "group";
-            /** @description Group slug when scope is group; null/omitted for personal notebooks. */
-            groupSlug?: string | null;
-            /** @description Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows. */
-            hasShares?: boolean;
-        };
-        NotebookListItemList: components["schemas"]["NotebookListItem"][];
-        NotebookListResponse: {
-            items: components["schemas"]["NotebookListItem"][];
-        };
-        NotebookMutationResponse: {
-            ok: boolean;
-            name?: string;
-            from?: string;
-            to?: string;
-            mode?: string;
-            target?: string;
-        };
-        /**
-         * @example {
-         *       "name": "Ideas"
-         *     }
-         */
-        NotebookCreateRequest: {
-            name: string;
-        };
-        /**
-         * @example {
-         *       "name": "Projects"
-         *     }
-         */
-        NotebookRenameRequest: {
-            name: string;
-        };
-        /**
-         * @example {
-         *       "mode": "move",
-         *       "target": "Archive"
-         *     }
-         */
-        NotebookDeleteRequest: {
-            /** @enum {string} */
-            mode: "archive" | "move" | "purge";
-            target?: string;
         };
         MeetSessionKey: string;
         MeetPeer: {
@@ -8664,47 +8293,6 @@ export interface components {
         DriveShareByPrincipalDataResponse: {
             data: components["schemas"]["DriveShareByPrincipal"];
         };
-        NotesSharedNoteEntry: {
-            /** @description Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md). */
-            path: string;
-            id: string;
-            notebook: string;
-            /** @description List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*. */
-            title: string;
-            /** @description Tags from the note markdown frontmatter. Empty when the file is missing or has no tags. */
-            tags: components["schemas"]["NoteTagList"];
-            /** @description Username or group slug that owns the note tree. */
-            owner: string;
-            /** @enum {string} */
-            scope: "personal" | "group";
-            groupSlug: string | null;
-            access: components["schemas"]["DriveShareAccess"];
-            myRights: components["schemas"]["DriveRights"];
-            /** @description Present when access is via a group grant (groups/{slug}). */
-            viaGroup?: string;
-        };
-        NotesSharedWithMeResponse: {
-            items: components["schemas"]["NotesSharedNoteEntry"][];
-        };
-        NotesSharedNotebookEntry: {
-            /** @description Virtual drive path of the shared notebook directory (…/.notes/{notebook}). */
-            path: string;
-            notebook: string;
-            /** @description Username or group slug that owns the notebook tree. */
-            owner: string;
-            /** @enum {string} */
-            scope: "personal" | "group";
-            groupSlug: string | null;
-            access: components["schemas"]["DriveShareAccess"];
-            myRights: components["schemas"]["DriveRights"];
-            /** @description Present when access is via a group grant (groups/{slug}). */
-            viaGroup?: string;
-        };
-        NotesSharedNotebooksResponse: {
-            items: components["schemas"]["NotesSharedNotebookEntry"][];
-            /** @description Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items. */
-            notes?: components["schemas"]["NotesSharedNoteEntry"][];
-        };
         CalendarRecurrenceNDay: {
             /** @constant */
             "@type": "NDay";
@@ -8920,6 +8508,61 @@ export interface components {
             to?: string;
         };
         AdminMailDeliveryTestResponse: components["schemas"]["AdminMailDeliveryLastTestSend"];
+        /** @description One iTIP scheduling-inbox row (RFC 6638), later-mappable to JMAP CalendarEventNotification. */
+        CalendarSchedulingNotification: {
+            /** @description Scheduling object URI (inbox resource name). */
+            id: string;
+            /** @description VEVENT UID the notification refers to. */
+            uid: string;
+            /** @enum {string} */
+            method: "REQUEST" | "CANCEL" | "REPLY" | "ADD" | "REFRESH" | "COUNTER" | "DECLINECOUNTER";
+            title: string;
+            organizerEmail: string | null;
+            organizerName?: string | null;
+            /** @description UTC start instant when DTSTART is a date-time. */
+            start?: string | null;
+            end?: string | null;
+            location?: string | null;
+            /** @description True when the VEVENT has RRULE or RECURRENCE-ID. */
+            recurring?: boolean;
+            /** @enum {string} */
+            participationStatus: "needs-action" | "accepted" | "tentative" | "declined" | "delegated";
+            /** @description Attendee calendar event id when a local VEVENT copy exists. */
+            eventId?: string | null;
+            etag?: string;
+        };
+        CalendarSchedulingNotificationListResponse: {
+            list: components["schemas"]["CalendarSchedulingNotification"][];
+        };
+        CalendarSchedulingNotificationRespond: {
+            /** @enum {string} */
+            participationStatus: "accepted" | "tentative" | "declined";
+            /** @description Writable calendar for the attendee copy on accept/tentative. Ignored when declined. */
+            calendarId?: string;
+            /** @description JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted. */
+            recurrenceId?: string;
+            /**
+             * @description this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events.
+             * @enum {string}
+             */
+            scope?: "this" | "future";
+        };
+        CalendarSchedulingInvitee: {
+            username: string;
+            email: string;
+            name: string;
+        };
+        CalendarSchedulingInviteeListResponse: {
+            list: components["schemas"]["CalendarSchedulingInvitee"][];
+            /** @description When false, Calendar must not send iMIP to external attendees. */
+            canSubmitEmail: boolean;
+        };
+        CalendarRsvpResponse: {
+            title: string;
+            attendeeEmail: string;
+            /** @enum {string} */
+            participationStatus: "needs-action" | "accepted" | "tentative" | "declined";
+        };
     };
     responses: {
         /** @description Invalid request */

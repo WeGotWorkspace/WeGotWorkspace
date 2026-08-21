@@ -5,6 +5,13 @@
 :host {
   display: block;
   width: 100%;
+  /* Four-side gutter. `--time-line-event-inline-inset` overrides when set. */
+  --time-line-event-inset: var(--time-line-event-inline-inset, var(--_lc-event-card-inset, 1px));
+  /* Selected boost is added inside the same z-index formulas as rest/stagger so a later
+     indent calc cannot wipe a separate 400 rule. Stays below create-preview 500 /
+     dragging 600 / markers 700. */
+  --time-line-event-selected-z: 400;
+  --time-line-event-selected-boost: 0;
 }
 
 .viewport {
@@ -119,6 +126,10 @@
   position: absolute;
   z-index: 700;
   pointer-events: none;
+  /* Own compositor layer so iOS overflow scroll cannot let `will-change` event cards
+     paint over the now line (Safari promotes transformed siblings independently). */
+  isolation: isolate;
+  transform: translateZ(0);
 }
 
 :host([flow="vertical"]) .marker {
@@ -142,7 +153,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) translateZ(0);
 }
 
 /* Horizontal flow uses logical insets so the time axis follows the inline direction (RTL-aware). */
@@ -170,17 +181,17 @@
 
 :host([flow="vertical"]) .move-ghost {
   /* Match event gutters so the drop target aligns with the card, not the column edges. */
-  inset-inline: var(--time-line-event-inline-inset, 0px);
-  top: var(--__start, 0);
-  bottom: var(--__end, 0);
+  inset-inline: var(--time-line-event-inset);
+  top: calc(var(--__start, 0) + var(--time-line-event-inset));
+  bottom: calc(var(--__end, 0) + var(--time-line-event-inset));
 }
 
 :host([flow="horizontal"]) .move-ghost {
   top: 0;
   height: var(--__event-height);
   /* Same end-of-bar gutter as horizontal events (whole span, not per day). */
-  inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inline-inset, 0px));
-  inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inline-inset, 0px));
+  inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inset));
+  inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inset));
 }
 
 /* Horizontal lane layouts: park the ghost on the dragged event's (frozen) lane. */
@@ -204,9 +215,9 @@
 }
 
 :host([flow="vertical"]) .create-preview {
-  inset-inline: var(--time-line-event-inline-inset, 0px);
-  top: var(--__start, 0);
-  bottom: var(--__end, 0);
+  inset-inline: var(--time-line-event-inset);
+  top: calc(var(--__start, 0) + var(--time-line-event-inset));
+  bottom: calc(var(--__end, 0) + var(--time-line-event-inset));
   min-height: var(--time-line-event-min-size, 0px);
 }
 
@@ -215,8 +226,8 @@
 :host([flow="horizontal"]) .create-preview {
   top: 0;
   height: var(--__event-height);
-  inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inline-inset, 0px));
-  inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inline-inset, 0px));
+  inset-inline-start: calc(var(--__start, 0%) + var(--time-line-event-inset));
+  inset-inline-end: calc(var(--__end, 0%) + var(--time-line-event-inset));
 }
 
 .create-preview > * {
@@ -227,10 +238,9 @@
 
 .event {
   position: absolute;
-  will-change: transform;
   display: flex;
   flex: 1;
-  z-index: 2;
+  z-index: calc(2 + var(--time-line-event-selected-boost, 0));
   /* Rest/hover: pointer (edit). Press/drag cursors below; event-card is targeted so its
      :host { cursor-pointer } does not win while the button is down. */
   cursor: pointer;
@@ -246,15 +256,32 @@
   cursor: grab;
 }
 
+.event.event--selected,
+.event[data-selected] {
+  /* Do not set z-index here: `:host([layout="stagger"]) .event` is more specific and
+     would keep `calc(2 + indent)`. Raise via the boost inside that same formula. */
+  --time-line-event-selected-boost: var(--time-line-event-selected-z);
+}
+
+/* Popover-open / selected: same saturated fill as hover. Dragging (below) pins back to rest. */
+.event.event--selected event-card {
+  --_lc-event-card-bg-active: var(--_lc-event-bg-hover);
+  --_lc-event-card-past-opacity: 0.85;
+}
+
 .event.event--dragging event-card {
   cursor: grabbing;
+  /* Keep the resting calendar tint — hover/active mixes look washed-out once the card lifts. */
+  --_lc-event-card-bg-active: var(--_lc-event-bg);
+  --_lc-event-bg-hover: var(--_lc-event-bg);
+  --_lc-event-bg-active: var(--_lc-event-bg);
+  --_lc-event-card-past-opacity: 1;
 }
 
 .event.event--dragging {
   cursor: grabbing;
   z-index: 600;
-  /* Subtle lift for the free-following card (follows the card's shape, not the wrapper box). */
-  filter: drop-shadow(0 3px 8px light-dark(rgb(15 23 42 / 22%), rgb(0 0 0 / 45%)));
+  will-change: transform;
 }
 
 /* Time axis in vertical flow: % on top/bottom resolve against .cell-main height (not margin-% which uses width). */
@@ -264,12 +291,10 @@
    visual/hit area grows, the underlying range (and gesture math, which reads event data and
    .cell-main rects, never this element's height) is untouched. */
 :host([flow="vertical"]) .event {
-  /* --time-line-event-inline-inset: horizontal gutter so day-column separators stay visible
-     beside cards (Google Calendar–style). Default 0; CalendarTimelineView sets it on timed
-     day/week. Applied on the wrapper (and matching ghosts), not box-shadow. */
-  inset-inline: var(--time-line-event-inline-inset, 0px);
-  top: var(--__start, 0);
-  bottom: var(--__end, 0);
+  /* Same gutter on all four sides. Overlap stagger indent is separate. */
+  inset-inline: var(--time-line-event-inset);
+  top: calc(var(--__start, 0) + var(--time-line-event-inset));
+  bottom: calc(var(--__end, 0) + var(--time-line-event-inset));
   height: auto;
   min-height: var(--time-line-event-min-size, 0px);
 }
@@ -278,11 +303,11 @@
 :host([flow="vertical"][layout="timeline"]) .event,
 :host([flow="vertical"][layout="masonry"]) .event {
   inset-inline-start: calc(
-    var(--__lane, 0) * 100% / var(--__lane-count, 1) + var(--time-line-event-inline-inset, 0px)
+    var(--__lane, 0) * 100% / var(--__lane-count, 1) + var(--time-line-event-inset)
   );
   inset-inline-end: calc(
     (var(--__lane-count, 1) - var(--__lane, 0) - 1) * 100% / var(--__lane-count, 1) +
-      var(--time-line-event-inline-inset, 0px)
+      var(--time-line-event-inset)
   );
 }
 
@@ -293,22 +318,22 @@
 :host([flow="vertical"][layout="stagger"]) .event {
   inset-inline-start: calc(
     var(--__lane, 0) * 100% / var(--__lane-count, 1) + var(--__indent, 0) *
-      var(--time-line-stagger-indent, 12px) + var(--time-line-event-inline-inset, 0px)
+      var(--time-line-stagger-indent, 12px) + var(--time-line-event-inset)
   );
   inset-inline-end: calc(
     (var(--__lane-count, 1) - var(--__lane, 0) - 1) * 100% / var(--__lane-count, 1) +
-      var(--time-line-event-inline-inset, 0px)
+      var(--time-line-event-inset)
   );
-  z-index: calc(2 + var(--__indent, 0));
+  z-index: calc(2 + var(--__indent, 0) + var(--time-line-event-selected-boost, 0));
 }
 
-/* The :host([...]) rule above outranks `.event--dragging`; keep the dragged event on top. */
+/* :host+layout outranks `.event` / `.event--selected`. Keep dragging above selected (400). */
 :host([flow="vertical"][layout="stagger"]) .event.event--dragging {
   z-index: 600;
 }
 
 /* Horizontal: --__start/--__end are the time-axis placement (%, or a multi-day calc for
-   --__end when rowSpan > 0). Adding --time-line-event-inline-inset insets only the bar's
+   --__end when rowSpan > 0). Adding --time-line-event-inset insets only the bar's
    overall start/end — mid-span day boundaries stay flush so a multi-day bar reads continuous
    (Google Calendar–style). */
 :host([flow="horizontal"]) .event {
@@ -316,8 +341,8 @@
   min-height: var(--__event-height);
   max-height: var(--__event-height);
   height: var(--__event-height);
-  inset-inline-start: calc(var(--__start) + var(--time-line-event-inline-inset, 0px));
-  inset-inline-end: calc(var(--__end) + var(--time-line-event-inline-inset, 0px));
+  inset-inline-start: calc(var(--__start) + var(--time-line-event-inset));
+  inset-inline-end: calc(var(--__end) + var(--time-line-event-inset));
 }
 
 /* Horizontal flow has no stagger geometry; [layout="stagger"] falls back to masonry lanes
@@ -352,6 +377,39 @@
 }
 
 .event > * {
-  flex: 1;
   pointer-events: auto;
+}
+
+/* Month/year day headers are rendered into this shadow via headerTemplate.
+   CalendarTimelineView's `time-line::part(...)` color rules do not paint these
+   numbers in year mini-months, so the mute must live here (same tree as the
+   buttons). Tokens inherit from calendar-timeline-view's host. */
+.timeline-day-header {
+  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
+}
+
+.timeline-day-header.is-outside-month {
+  color: var(
+    --_lc-outside-month-day-color,
+    light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%))
+  );
+}
+
+.event > event-card {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Overlay the card ends. Must not take flex space or change time geometry. */
+.event > resize-handle {
+  position: absolute;
+  flex: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .event:hover,
+  .event:focus-within {
+    --_lc-resize-handle-event-hover: 0.88;
+  }
 }

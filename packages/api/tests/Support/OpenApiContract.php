@@ -191,27 +191,17 @@ final class OpenApiContract
             '{blobId}' => '550e8400e29b41d4a716446655440000',
             '{calendarId}' => 'default',
             '{eventId}' => 'demo-event',
-            '{taskListId}' => 'inbox',
+            '{taskListId}' => 'tasks-inbox',
             '{taskId}' => 'demo-task',
             '{shareId}' => '550e8400-e29b-41d4-a716-446655440001',
             '{inviteId}' => '550e8400-e29b-41d4-a716-446655440002',
+            '{notificationId}' => 'missing-notification.ics',
+            '{token}' => 'missingrsvptoken',
         ];
 
         $path = $openApiPath;
         foreach ($replacements as $placeholder => $sample) {
-            if ($placeholder === '{id}' && str_starts_with($openApiPath, '/notes/')) {
-                continue;
-            }
-            if ($placeholder === '{name}' && str_starts_with($openApiPath, '/notes/notebooks/')) {
-                continue;
-            }
             $path = str_replace($placeholder, $sample, $path);
-        }
-        if (str_starts_with($openApiPath, '/notes/items/')) {
-            $path = str_replace('{id}', 'note-1', $path);
-        }
-        if (str_starts_with($openApiPath, '/notes/notebooks/')) {
-            $path = str_replace('{name}', 'Inbox', $path);
         }
 
         return $path;

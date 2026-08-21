@@ -41,6 +41,12 @@ export type JmapEventsAdapterOptions = {
   timezone?: string;
   /** Called after any local or remote state change; hosts re-read events/calendars. */
   onChange?: () => void;
+  /**
+   * Called after a local mutation has been confirmed on the server (create/update/
+   * move/delete). Hosts should refresh the bootstrap cache so a reload does not
+   * paint the pre-drag slot from Dexie.
+   */
+  onPersisted?: () => void;
   /** Called when a background push or sync fails (state has been re-fetched by then). */
   onSyncError?: (error: unknown) => void;
 };
@@ -73,6 +79,7 @@ export class JmapEventsAdapter {
   #dirtyMasters = new Set<string>();
   #pushChain: Promise<void> = Promise.resolve();
   #pollTimer: ReturnType<typeof setInterval> | undefined;
+  #pollInFlight = false;
   #lastRange: DateRange | undefined;
 
   constructor(options: JmapEventsAdapterOptions) {
@@ -172,7 +179,12 @@ export class JmapEventsAdapter {
   startPolling(intervalMs: number): void {
     this.stopPolling();
     this.#pollTimer = setInterval(() => {
-      void this.sync();
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (this.#pollInFlight) return;
+      this.#pollInFlight = true;
+      void this.sync().finally(() => {
+        this.#pollInFlight = false;
+      });
     }, intervalMs);
   }
 
@@ -364,6 +376,7 @@ export class JmapEventsAdapter {
       }
       this.#removeLocalRows(masterKey);
       this.#notify();
+      this.#options.onPersisted?.();
       return;
     }
 
@@ -395,6 +408,7 @@ export class JmapEventsAdapter {
     // Re-fetch the canonical server object; replaces rows and clears pending markers.
     await this.#refreshEvent(serverId, masterKey);
     this.#notify();
+    this.#options.onPersisted?.();
   }
 
   /** Rows for one master with pending-deleted exception rows filtered out. */

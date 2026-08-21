@@ -10,12 +10,14 @@ export type DocsCollabSidebarPanelProps = {
   title: string;
   /** "default" = large serif display; "sm" = compact sans-serif (comments/suggestions panels). */
   titleSize?: "default" | "sm";
-  countLabel: string;
+  countLabel?: string;
   closeLabel: string;
   onClose: () => void;
   /** When true, renders a close action in the panel header (mobile drawer). */
   showCloseButton?: boolean;
   headerActions?: ReactNode;
+  /** Pinned below the title row (filters, segmented controls). */
+  toolbar?: ReactNode;
   scrollRef?: RefObject<HTMLDivElement | null>;
   empty?: boolean;
   emptyLabel?: string;
@@ -33,6 +35,7 @@ export function DocsCollabSidebarPanel({
   onClose,
   showCloseButton = false,
   headerActions,
+  toolbar,
   scrollRef,
   empty = false,
   emptyLabel,
@@ -49,7 +52,7 @@ export function DocsCollabSidebarPanel({
           hideSidebarToggle
           title={title}
           titleSize={titleSize}
-          subtitle={countLabel}
+          subtitle={countLabel || undefined}
           actions={
             headerActions || showCloseButton ? (
               <div className="docs-collab-sidebar-panel__header-actions">
@@ -60,6 +63,7 @@ export function DocsCollabSidebarPanel({
                     icon={<X className="size-4" aria-hidden />}
                     size="sm"
                     variant="subtle"
+                    showTooltip={false}
                     onClick={onClose}
                   />
                 ) : null}
@@ -67,6 +71,7 @@ export function DocsCollabSidebarPanel({
             ) : null
           }
         />
+        {toolbar ? <div className="docs-collab-sidebar-panel__toolbar">{toolbar}</div> : null}
       </header>
 
       <div ref={scrollRef} className="docs-collab-sidebar-panel__scroll">

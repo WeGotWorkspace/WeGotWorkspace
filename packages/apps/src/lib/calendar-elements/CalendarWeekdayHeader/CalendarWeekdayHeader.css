@@ -5,10 +5,13 @@
 }
 
 .weekday-header {
-  @apply grid items-center gap-0 pb-1 leading-none font-medium;
+  @apply grid items-center gap-0 leading-none font-medium;
   /* Edge padding is themeable so composing views whose day columns are exact viewport
-     fractions (e.g. the composed timeline's time-line strips) can zero it for alignment. */
+     fractions (e.g. the composed timeline's time-line strips) can zero it for alignment.
+     Block-end padding is a token so the day/week week-number corner can share the same
+     header-row height (min-height + this padding). */
   padding-inline: var(--_lc-weekday-header-inline-padding, 2px);
+  padding-block-end: var(--_lc-weekday-header-padding-block-end, 0.25rem);
   min-height: var(--_lc-weekday-header-height, 26px);
   color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
   --_lc-weekend-day-color: var(
@@ -16,6 +19,12 @@
     light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%))
   );
   font-size: var(--_lc-weekday-header-font-size, 14px);
+}
+
+@media (max-width: 40rem) {
+  .weekday-header {
+    font-size: var(--_lc-weekday-header-font-size, 0.75rem);
+  }
 }
 
 .weekday {
@@ -42,8 +51,9 @@
   font: inherit;
   color: inherit;
   gap: 6px;
-  min-height: 24px;
-  padding-block: 3px;
+  /* Shared with the day/week week-number corner so W## and "Monday 17" share a baseline. */
+  min-height: var(--_lc-weekday-header-item-min-height, 24px);
+  padding-block: var(--_lc-weekday-header-item-padding-block, 3px);
   border-radius: 4px;
   user-select: none;
 }
@@ -60,13 +70,15 @@
   outline-offset: -2px;
 }
 
-/* Day-number pill (date mode). Same metrics as the timeline/grid day-number chrome. */
+/* Day-number pill (date mode). Same metrics as the timeline/grid day-number chrome.
+   Size is a token so the day/week week-number corner can strut to this height and
+   baseline-align with the day-name text (which is flex-centered against this pill). */
 .weekday-day-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
+  min-width: var(--_lc-weekday-day-number-size, 20px);
+  height: var(--_lc-weekday-day-number-size, 20px);
   padding: 0 5px;
   border-radius: 999px;
   font-variant-numeric: tabular-nums;

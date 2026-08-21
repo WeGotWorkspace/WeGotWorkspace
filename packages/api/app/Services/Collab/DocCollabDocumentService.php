@@ -114,12 +114,11 @@ final class DocCollabDocumentService
             $documentKey = $this->paths->virtualToStorageKey($virtual);
             if ($this->paths->isNotePath($virtual)) {
                 // The collab payload is the note body only: merge it back into
-                // the existing frontmatter so a body save never clobbers the
-                // metadata owned by the Notes API. The frontmatter `updated`
-                // marker is preserved so a body save does not advance the note's
-                // metadata state (see NoteRepository::readAt). For legacy notes
+                // the existing frontmatter so a body save never clobbers title
+                // or tags. The frontmatter `updated` marker is preserved so a
+                // body save does not advance metadata state. For legacy notes
                 // without a marker we freeze it at the pre-write mtime so the
-                // first body save still leaves `updatedAt` stable.
+                // first body save still leaves the marker stable.
                 $existing = $disk->fileExists($documentKey) ? (string) $disk->get($documentKey) : '';
                 $preservedUpdated = $this->noteCodec->updatedOf($existing);
                 if ($preservedUpdated === null && $disk->fileExists($documentKey)) {

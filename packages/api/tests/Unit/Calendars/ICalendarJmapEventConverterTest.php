@@ -166,6 +166,38 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertStringContainsString('mailto:carol@example.com', $defolded);
     }
 
+    public function test_jscalendar_owner_role_map_writes_organizer(): void
+    {
+        $ics = $this->converter->icsFromEvent([
+            '@type' => 'Event',
+            'uid' => 'role-map-1',
+            'title' => 'Lunch',
+            'start' => '2026-08-19T10:00:00',
+            'duration' => 'PT1H',
+            'timeZone' => 'UTC',
+            'participants' => [
+                'org' => [
+                    '@type' => 'Participant',
+                    'email' => 'admin@localhost',
+                    'name' => 'Admin',
+                    'roles' => ['owner' => true],
+                ],
+                'att1' => [
+                    '@type' => 'Participant',
+                    'email' => 'wouter',
+                    'name' => 'Wouter',
+                    'roles' => ['attendee' => true],
+                    'expectReply' => true,
+                    'participationStatus' => 'needs-action',
+                ],
+            ],
+        ]);
+        $defolded = str_replace("\r\n ", '', $ics);
+        $this->assertStringContainsString('ORGANIZER;CN=Admin:mailto:admin@localhost', $defolded);
+        $this->assertStringContainsString('ATTENDEE;', $defolded);
+        $this->assertStringContainsString('mailto:wouter', $defolded);
+    }
+
     public function test_geo_url_and_virtual_location_round_trip(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:loc-1\r\nSUMMARY:Online\r\nDTSTART:20260615T100000Z\r\nDTEND:20260615T110000Z\r\nLOCATION:Zoom Room\r\nGEO:37.386013;-122.082932\r\nURL:https://meet.example.com/room\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
@@ -178,6 +210,55 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $roundTrip = $this->converter->icsFromEvent($event);
         $this->assertStringContainsString('GEO:37.386013;-122.082932', $roundTrip);
         $this->assertStringContainsString('https://meet.example.com/room', $roundTrip);
+    }
+
+    public function test_instance_partstat_override_round_trips(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:rsvp-series\r\nSUMMARY:Standup\r\n"
+            ."DTSTART:20300115T100000Z\r\nDTEND:20300115T103000Z\r\nRRULE:FREQ=WEEKLY\r\n"
+            ."ORGANIZER:mailto:bob@example.test\r\n"
+            ."ATTENDEE;PARTSTAT=ACCEPTED:mailto:carol@example.test\r\n"
+            ."END:VEVENT\r\nBEGIN:VEVENT\r\nUID:rsvp-series\r\n"
+            ."RECURRENCE-ID:20300122T100000Z\r\nDTSTART:20300122T100000Z\r\n"
+            ."ORGANIZER:mailto:bob@example.test\r\n"
+            ."ATTENDEE;PARTSTAT=DECLINED:mailto:carol@example.test\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame(
+            'declined',
+            $this->participantStatus(
+                $event['recurrenceOverrides']['2030-01-22T10:00:00Z']['participants'] ?? [],
+                'carol@example.test',
+            ),
+        );
+        $this->assertSame(
+            'accepted',
+            $this->participantStatus($event['participants'] ?? [], 'carol@example.test'),
+        );
+
+        $roundTrip = $this->converter->icsFromEvent($event);
+        $this->assertStringContainsString('RECURRENCE-ID:20300122T100000Z', $roundTrip);
+        $this->assertStringContainsString('PARTSTAT=DECLINED', str_replace("\r\n ", '', $roundTrip));
+    }
+
+    /**
+     * @param  array<string, mixed>  $participants
+     */
+    private function participantStatus(array $participants, string $email): ?string
+    {
+        foreach ($participants as $participant) {
+            if (! is_array($participant)) {
+                continue;
+            }
+            if (strtolower((string) ($participant['email'] ?? '')) !== strtolower($email)) {
+                continue;
+            }
+
+            return strtolower((string) ($participant['participationStatus'] ?? ''));
+        }
+
+        return null;
     }
 
     public function test_rdate_and_exrule_round_trip(): void

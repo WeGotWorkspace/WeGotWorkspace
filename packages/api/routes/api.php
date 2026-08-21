@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -34,11 +36,6 @@ use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
-use App\Http\Controllers\Api\V1\Notes\CapabilitiesController as NotesCapabilitiesController;
-use App\Http\Controllers\Api\V1\Notes\ItemsController as NotesItemsController;
-use App\Http\Controllers\Api\V1\Notes\NotebooksController;
-use App\Http\Controllers\Api\V1\Notes\SharedController as NotesSharedController;
-use App\Http\Controllers\Api\V1\Notes\StateController as NotesStateController;
 use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivationController;
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
@@ -72,6 +69,11 @@ Route::get('.well-known/jwks.json', JwksController::class);
 Route::post('auth/token', TokenController::class);
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
+
+Route::get('calendar/rsvp/{token}', [CalendarRsvpController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+');
+Route::post('calendar/rsvp/{token}', [CalendarRsvpController::class, 'respond'])
+    ->where('token', '[A-Za-z0-9]+');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
@@ -177,19 +179,14 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::delete('mail/messages/{messageId}', [MailController::class, 'messageDestroyById'])
         ->where('messageId', '[^/]+');
 
-    Route::get('notes/capabilities', NotesCapabilitiesController::class);
-    Route::get('notes/state', NotesStateController::class);
-    Route::get('notes/items', [NotesItemsController::class, 'index']);
-    Route::post('notes/items', [NotesItemsController::class, 'store']);
-    Route::put('notes/items/{id}', [NotesItemsController::class, 'update']);
-    Route::patch('notes/items/{id}', [NotesItemsController::class, 'patch']);
-    Route::delete('notes/items/{id}', [NotesItemsController::class, 'destroy']);
-    Route::get('notes/notebooks', [NotebooksController::class, 'index']);
-    Route::post('notes/notebooks', [NotebooksController::class, 'store']);
-    Route::patch('notes/notebooks/{name}', [NotebooksController::class, 'update']);
-    Route::delete('notes/notebooks/{name}', [NotebooksController::class, 'destroy']);
-    Route::get('notes/shared-with-me', [NotesSharedController::class, 'sharedWithMe']);
-    Route::get('notes/shared-notebooks', [NotesSharedController::class, 'sharedNotebooks']);
+    Route::middleware('wgw.calendars')->group(function (): void {
+        Route::get('calendars/scheduling/invitees', [CalendarSchedulingNotificationsController::class, 'invitees']);
+        Route::get('calendars/scheduling/notifications', [CalendarSchedulingNotificationsController::class, 'index']);
+        Route::post('calendars/scheduling/notifications/{notificationId}/respond', [CalendarSchedulingNotificationsController::class, 'respond'])
+            ->where('notificationId', '[^/]+');
+        Route::delete('calendars/scheduling/notifications/{notificationId}', [CalendarSchedulingNotificationsController::class, 'destroy'])
+            ->where('notificationId', '[^/]+');
+    });
 
     Route::middleware('wgw.tasks')->group(function (): void {
         Route::get('tasks/capabilities', TasksCapabilitiesController::class);

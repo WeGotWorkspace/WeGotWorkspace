@@ -14,11 +14,19 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
+type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+  size?: "sm" | "md";
+};
+
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger ref={ref} className={cn("select-trigger", className)} {...props}>
+  SelectTriggerProps
+>(({ className, children, size = "md", ...props }, ref) => (
+  <SelectPrimitive.Trigger
+    ref={ref}
+    className={cn("select-trigger", size === "sm" && "select-trigger--size-sm", className)}
+    {...props}
+  >
     {children}
     <SelectPrimitive.Icon asChild>
       <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-90" />

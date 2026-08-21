@@ -91,7 +91,7 @@ Request validation failures render as `400` with `code: bad_request` app-wide (n
 ## Non-goals (v1)
 
 - Server-side recurrence instance expansion (except optional `expandRecurrences` query on list — see [#159](https://github.com/WeGotWorkspace/wegotworkspace/issues/159))
-- `VTODO`, `VJOURNAL`, scheduling inbox REST
+- `VTODO`, `VJOURNAL`
 - JMAP Sharing (`shareWith` always `null`)
 
 **Implemented (platform #157 / #158):** calendar collection CRUD, `GET /calendars/calendars/changes`, and event item sync (`/changes`, `/set`, `/query` above) — see `docs/contacts/jmap-collection-crud.md` and `docs/contacts/jmap-sync-rest-mapping.md`.

@@ -49,6 +49,16 @@
 
   /* The lit views highlight "today" and previews with this. */
   --lc-higlight-color: var(--calendar-accent);
+
+  /* Docs comments/review panel tokens reused by the invitations inbox. */
+  --docs-surface: var(--color-cream, #ffffff);
+  --docs-text: var(--color-ink);
+  --docs-muted: var(--calendar-muted);
+  --docs-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --docs-accent: var(--calendar-accent);
+  /* 23rem fits Accept | Maybe | Decline on one line inside invitation cards. */
+  --calendar-invitations-column-width: 23rem;
+  --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
 .calendar-workspace .app-sidebar__scroll {
@@ -81,26 +91,208 @@
   --wai-detail-muted: #c7d2fe;
 }
 
-/* Header IconButtons match {@link WorkspaceSidebarToggle}; leave labeled Buttons alone. */
-.calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-.calendar-workspace .calendar-header-actions .button[class*="icon-button--size"] {
-  @apply size-9 shrink-0;
-}
-
-/* Prev/next (ViewHeader titleLeading): inline before the title; stacked at row end. */
-.calendar-workspace .calendar-header-nav {
-  @apply flex shrink-0 items-center gap-0;
-}
-
+/* Inbox is titleTrailing (row 1 end). Prev/next is titleLeading (row 2 end). */
+.calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
+}
+
+/* Labeled Today stays in actions on desktop; icon-only sits before the title on mobile. */
+.calendar-workspace .view-header__title-prefix {
+  @apply hidden;
+}
+
+/*
+ * Small viewports: two-row header matching the calendar mock.
+ *   [☰] [Week] [grid|list]              [inbox]
+ *   [today] [1–7 Feb 2027]              [<] [>]
+ * Viewport media (not a container query): flattening `__main` with
+ * `display: contents` would otherwise drop the query container and snap back.
+ */
+@media (max-width: 40rem) {
+  .calendar-workspace .view-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "toggle actions trailing"
+      "title title leading";
+    align-items: center;
+    column-gap: 0.25rem;
+    row-gap: 0.75rem;
+  }
+
+  .calendar-workspace .view-header__sidebar-toggle {
+    grid-area: toggle;
+  }
+
+  .calendar-workspace .view-header__main,
+  .calendar-workspace .view-header__title-row,
+  .calendar-workspace .view-header__title-cluster,
+  .calendar-workspace .view-header__end {
+    display: contents;
+  }
+
+  .calendar-workspace .view-header__actions {
+    grid-area: actions;
+    justify-self: start;
+  }
+
+  .calendar-workspace .view-header__title-block {
+    grid-area: title;
+    @apply min-w-0;
+  }
+
+  .calendar-workspace .view-header__title-prefix {
+    @apply flex;
+  }
+
+  .calendar-workspace .view-header__title {
+    @apply overflow-visible whitespace-normal text-xl leading-tight;
+    text-overflow: unset;
+  }
+
+  .calendar-workspace .view-header__title-leading {
+    grid-area: leading;
+    justify-self: end;
+  }
+
+  .calendar-workspace .view-header__title-trailing {
+    grid-area: trailing;
+    justify-self: end;
+  }
+
+  .calendar-workspace .calendar-header-today {
+    @apply hidden;
+  }
+
+  .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-today-icon.button[class*="icon-button--size"],
+  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
+    @apply size-8;
+  }
+
+  .calendar-workspace .calendar-header-actions .calendar-view-select {
+    @apply h-8 min-w-0;
+  }
+
+  .calendar-workspace
+    .view-header__title:has(.view-header__title-compact)
+    .view-header__title-full {
+    @apply hidden;
+  }
+
+  .calendar-workspace .view-header__title-compact {
+    @apply inline;
+  }
+}
+
+.calendar-workspace .view-header__end {
+  @apply gap-1;
+}
+
+.calendar-workspace .calendar-header-nav {
+  @apply shrink-0;
+}
+
+.calendar-workspace .workspace-app-layout__main {
+  @apply min-w-0;
+}
+
+.calendar-workspace .workspace-app-layout__panel,
+.calendar-workspace .calendar-workspace__invitations-panel {
+  @apply flex min-h-0 flex-col overflow-hidden border-l;
+  flex: 0 0 var(--calendar-invitations-column-width);
+  width: var(--calendar-invitations-column-width);
+  max-width: var(--calendar-invitations-column-width);
+  border-color: var(--docs-border);
+  background-color: var(--app-sidebar-bg);
+}
+
+/* Closed dock still occupies a translated flex slot over the grid; inert + no hits. */
+.calendar-workspace .calendar-workspace__invitations-panel[data-open="false"] {
+  @apply pointer-events-none;
+}
+
+.calendar-workspace .calendar-invitations-trigger {
+  @apply relative;
+}
+
+/* Open inbox / current-today: indigo wash + stroke glyph. Generic active
+   recolors emerald and fills Lucide solid, which turns icons into blobs. */
+.calendar-workspace
+  :is(
+    .calendar-invitations-trigger,
+    .calendar-header-today,
+    .calendar-header-today-icon
+  ).button--variant-subtle.icon-button--active {
+  --button-active-color: var(--calendar-accent-strong);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+.calendar-workspace
+  :is(
+    .calendar-invitations-trigger,
+    .calendar-header-today,
+    .calendar-header-today-icon
+  ).button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
+  fill: none;
+}
+
+.calendar-workspace .calendar-invitations-trigger::after {
+  content: attr(data-count);
+  @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
+  background-color: var(--calendar-accent-strong);
+  color: #ffffff;
+}
+
+.calendar-workspace .calendar-invitations-trigger:not([data-count])::after {
+  display: none;
 }
 
 .calendar-workspace .calendar-header-actions .calendar-view-select {
   width: auto;
   min-width: 7rem;
-  height: 2.25rem;
   background-color: var(--color-cream, #ffffff);
+}
+
+/* Compact chrome so the date-range title can wrap instead of ellipsizing. */
+@container view-header-main (max-width: 40rem) {
+  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
+    @apply size-8;
+  }
+
+  .calendar-workspace .calendar-header-actions .calendar-view-select {
+    @apply h-8 min-w-0;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (max-width: 40rem) {
+    .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
+    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
+    .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
+      @apply size-8;
+    }
+
+    .calendar-workspace .calendar-header-actions .calendar-view-select {
+      @apply h-8 min-w-0;
+    }
+  }
 }
 
 .calendar-workspace .calendar-sidebar-dot {
@@ -230,13 +422,27 @@
 }
 
 .calendar-workspace .calendar-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  padding: 0.5rem 1rem 1rem;
-  /* Clip the slight zoom so scale does not spill into the header. */
-  overflow: hidden;
+  /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`,
+     `p-3` below 40rem) so grid edges line up with the sidebar toggle and actions.
+     overflow-hidden clips the range-change zoom so scale does not spill into the header.
+     min-w-0 keeps the invitations dock from overflowing the flex row. */
+  @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
+}
+
+@media (max-width: 40rem) {
+  .calendar-workspace .workspace-app-layout__main-header {
+    @apply p-3;
+  }
+
+  .calendar-workspace .calendar-main {
+    @apply px-3 pb-3;
+  }
+}
+
+/* Portaled view dropdown sits over the grid; ignore hits so choosing Week
+   cannot click-through onto a weekday header (day-selection → day bounce). */
+.calendar-workspace .calendar-main[data-view-select-open="true"] {
+  @apply pointer-events-none;
 }
 
 .calendar-workspace .calendar-main__range {
@@ -252,10 +458,23 @@
   min-height: 0;
 }
 
+/* Overlay sidebar only (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY).
+   Opaque sticky day headings stay bright under the 30% scrim; inherit a
+   transparent token into the list shadow tree instead. */
+@media (max-width: 1159px) {
+  .calendar-workspace:has(.app-sidebar[data-open="true"]) {
+    --_lc-list-heading-bg: transparent;
+  }
+}
+
 /**
  * Portaled event dialog sits outside `.calendar-workspace`; repeat the accent
  * tokens so {@link Button} and form chrome match the calendar shell.
  */
+.calendar-dialog-surface .share-access-card {
+  --share-dialog-accent: var(--calendar-accent);
+}
+
 .calendar-dialog-surface {
   --calendar-accent: #6366f1;
   --calendar-accent-strong: #5558e8;
@@ -307,23 +526,11 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-wrap items-center gap-2;
+  @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-offset {
-  @apply min-w-36 flex-1;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-custom {
-  @apply flex min-w-0 items-center gap-2;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-custom input[type="number"] {
-  @apply w-20;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-when {
-  @apply min-w-44 flex-1;
+  @apply min-w-36;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__title-row {
@@ -455,6 +662,10 @@
 .calendar-dialog-surface .calendar-event-dialog__footer {
   /* DialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
   @apply shrink-0 gap-2 sm:gap-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__rsvp {
+  @apply me-auto;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {

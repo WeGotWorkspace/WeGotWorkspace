@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\MailDelivery;
 
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Testing\Fakes\MailFake;
 use Symfony\Component\Mailer\Transport\SendmailTransport;
 
 final class MailDeliveryMailerFactory
@@ -67,7 +68,9 @@ final class MailDeliveryMailerFactory
     {
         $this->ensureSendmailTransport();
         config(['mail.mailers.'.self::MAILER_NAME => $this->mailerConfig($transport, $config)]);
-        Mail::purge(self::MAILER_NAME);
+        if (! Mail::getFacadeRoot() instanceof MailFake) {
+            Mail::purge(self::MAILER_NAME);
+        }
     }
 
     private function ensureSendmailTransport(): void

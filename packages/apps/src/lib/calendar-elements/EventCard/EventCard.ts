@@ -64,6 +64,10 @@ export class EventCard extends BaseElement {
   @property({ type: Boolean, reflect: true })
   exception = false;
 
+  /** Attendee RSVP on the grid: dashed+tint for needs-action / tentative. */
+  @property({ type: String, reflect: true })
+  rsvp: "" | "needs-action" | "tentative" = "";
+
   static get styles() {
     return [...BaseElement.styles, unsafeCSS(componentStyle)];
   }

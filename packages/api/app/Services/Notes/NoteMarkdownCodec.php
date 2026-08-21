@@ -6,6 +6,8 @@ namespace App\Services\Notes;
 
 /**
  * Frontmatter + body codec for note markdown files (pure PHP, no I/O).
+ *
+ * YAML `starred` is ignored: starring is per-user Drive stars, not frontmatter.
  */
 final class NoteMarkdownCodec
 {
@@ -19,7 +21,7 @@ final class NoteMarkdownCodec
     }
 
     /**
-     * @return array{0: string, 1: list<string>, 2: bool|null, 3: string, 4: string|null}
+     * @return array{0: string, 1: list<string>, 2: string, 3: string|null}
      */
     public function parse(string $markdown, string $fallbackTitle): array
     {
@@ -30,7 +32,6 @@ final class NoteMarkdownCodec
         $body = $idx !== false ? substr($normalized, $idx + strlen($token)) : $normalized;
         $title = $fallbackTitle;
         $tags = [];
-        $starred = null;
         $updated = null;
         foreach (array_filter(array_map('trim', explode("\n", $headerText))) as $line) {
             $sep = strpos($line, ':');
@@ -49,17 +50,12 @@ final class NoteMarkdownCodec
 
                 continue;
             }
-            if ($key === 'starred') {
-                $starred = $this->toBool($value);
-
-                continue;
-            }
             if ($key === 'updated') {
                 $updated = $value !== '' ? $value : null;
             }
         }
 
-        return [$title, $tags, $starred, $body, $updated];
+        return [$title, $tags, $body, $updated];
     }
 
     /**
@@ -68,7 +64,7 @@ final class NoteMarkdownCodec
      */
     public function updatedOf(string $markdown): ?string
     {
-        return $this->parse($markdown, '')[4];
+        return $this->parse($markdown, '')[3];
     }
 
     /**
@@ -77,16 +73,13 @@ final class NoteMarkdownCodec
      *                                when null a fresh `now` marker is written so
      *                                metadata mutations advance the note's state.
      */
-    public function serialize(string $title, array $tags, ?bool $starred, string $body, ?string $updated = null): string
+    public function serialize(string $title, array $tags, string $body, ?string $updated = null): string
     {
         $lines = [
             'title: '.trim(str_replace("\n", ' ', $title)),
             'tags: '.implode(', ', $tags),
+            'updated: '.($updated !== null && $updated !== '' ? $updated : date('c')),
         ];
-        if ($starred !== null) {
-            $lines[] = 'starred: '.($starred ? 'true' : 'false');
-        }
-        $lines[] = 'updated: '.($updated !== null && $updated !== '' ? $updated : date('c'));
         $normalizedBody = str_replace(["\r\n", "\r"], "\n", $body);
 
         return implode("\n", $lines)."\n----\n".$normalizedBody;
@@ -97,7 +90,7 @@ final class NoteMarkdownCodec
      */
     public function bodyOf(string $markdown): string
     {
-        [, , , $body] = $this->parse($markdown, '');
+        [, , $body] = $this->parse($markdown, '');
 
         return $body;
     }
@@ -112,7 +105,7 @@ final class NoteMarkdownCodec
      */
     public function listPreview(string $markdown, string $fallbackId, int $maxLen = 180): string
     {
-        [$title, , , $body] = $this->parse($markdown, $fallbackId);
+        [$title, , $body] = $this->parse($markdown, $fallbackId);
         $fromBody = $this->plainPreviewText($body);
         if ($fromBody !== '') {
             return $this->truncatePreview($fromBody, $maxLen);
@@ -173,9 +166,9 @@ final class NoteMarkdownCodec
     /**
      * Re-serialize with new frontmatter while preserving the existing body bytes.
      *
-     * Used by metadata-only mutations so updating title/tags/starred never
-     * clobbers a body that may have been written by the collab persistence path.
-     * A fresh `updated` marker is stamped because this is a metadata mutation.
+     * Used by metadata-only mutations so updating title/tags never clobbers a
+     * body that may have been written by the collab persistence path. A fresh
+     * `updated` marker is stamped because this is a metadata mutation.
      *
      * @param  list<string>  $tags
      */
@@ -183,23 +176,21 @@ final class NoteMarkdownCodec
         string $existingMarkdown,
         string $title,
         array $tags,
-        ?bool $starred,
         string $fallbackTitle,
     ): string {
-        [, , , $body] = $this->parse($existingMarkdown, $fallbackTitle);
+        [, , $body] = $this->parse($existingMarkdown, $fallbackTitle);
 
-        return $this->serialize($title !== '' ? $title : $fallbackTitle, $tags, $starred, $body);
+        return $this->serialize($title !== '' ? $title : $fallbackTitle, $tags, $body);
     }
 
     /**
      * Replace the body section while preserving the existing frontmatter.
      *
      * Used by the collab body persistence path so saving body content never
-     * clobbers the frontmatter owned by the Notes metadata API. The metadata
-     * `updated` marker is preserved (not bumped) so a body-only collab save
-     * does not perturb the note's metadata state — that prevents spurious
-     * "server newer" conflicts when an offline metadata change later flushes
-     * with a pre-body-edit `ifInState`.
+     * clobbers title/tags. The metadata `updated` marker is preserved (not
+     * bumped) so a body-only collab save does not perturb the note's metadata
+     * state — that prevents spurious "server newer" conflicts when an offline
+     * metadata change later flushes with a pre-body-edit `ifInState`.
      *
      * @param  string|null  $preservedUpdated  metadata marker to keep; when null
      *                                         the existing frontmatter marker is
@@ -212,9 +203,9 @@ final class NoteMarkdownCodec
         string $fallbackTitle,
         ?string $preservedUpdated = null,
     ): string {
-        [$title, $tags, $starred, , $updated] = $this->parse($existingMarkdown, $fallbackTitle);
+        [$title, $tags, , $updated] = $this->parse($existingMarkdown, $fallbackTitle);
 
-        return $this->serialize($title, $tags, $starred, $newBody, $preservedUpdated ?? $updated);
+        return $this->serialize($title, $tags, $newBody, $preservedUpdated ?? $updated);
     }
 
     /**
@@ -238,26 +229,5 @@ final class NoteMarkdownCodec
         }
 
         return array_keys($out);
-    }
-
-    public function toBool(mixed $value): ?bool
-    {
-        if (is_bool($value)) {
-            return $value;
-        }
-        if (is_string($value)) {
-            $lower = strtolower(trim($value));
-            if (in_array($lower, ['1', 'true', 'yes', 'on'], true)) {
-                return true;
-            }
-            if (in_array($lower, ['0', 'false', 'no', 'off'], true)) {
-                return false;
-            }
-        }
-        if (is_int($value)) {
-            return $value === 1 ? true : ($value === 0 ? false : null);
-        }
-
-        return null;
     }
 }

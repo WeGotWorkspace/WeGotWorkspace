@@ -34,6 +34,14 @@
   @apply cursor-grabbing;
 }
 
+/* Same resting calendar tint while dragging — do not fade or mix toward the surface. */
+:host([data-dragging]) event-card {
+  --_lc-event-card-bg-active: var(--_lc-event-bg);
+  --_lc-event-bg-hover: var(--_lc-event-bg);
+  --_lc-event-bg-active: var(--_lc-event-bg);
+  --_lc-event-card-past-opacity: 1;
+}
+
 /* Hover / pressed: desktop/fine pointers only so touch does not stick a hover tint. */
 @media (hover: hover) and (pointer: fine) {
   :host .interaction-surface:has(event-card:hover):not(:focus):not(:focus-visible) event-card {
