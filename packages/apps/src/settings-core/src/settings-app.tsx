@@ -1,4 +1,5 @@
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
+import { resolveWgwSameOriginHref } from "@/lib/api/wgw/route-guard";
 import type { SettingsApiSource } from "@/settings-core/src/settings-api-source";
 import { useSettingsAPI } from "@/settings-core/src/use-settings-api";
 import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
@@ -27,7 +28,7 @@ export function SettingsApp({ apiSource }: SettingsAppProps = {}) {
           operations={operations}
           listLoading={listLoading}
           onLogout={() => {
-            window.location.assign(data.logoutUrl ?? "/");
+            window.location.assign(resolveWgwSameOriginHref(data.logoutUrl, "/logout"));
           }}
         />
       )}

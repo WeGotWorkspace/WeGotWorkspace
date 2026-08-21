@@ -1,4 +1,5 @@
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
+import { resolveWgwSameOriginHref } from "@/lib/api/wgw/route-guard";
 import { useAdminAPI } from "@/admin-core/src/use-admin-api";
 import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
 
@@ -21,7 +22,7 @@ export function AdminApp() {
           operations={operations}
           listLoading={listLoading}
           onLogout={() => {
-            window.location.assign(data.logoutUrl ?? "/");
+            window.location.assign(resolveWgwSameOriginHref(data.logoutUrl, "/logout"));
           }}
         />
       )}

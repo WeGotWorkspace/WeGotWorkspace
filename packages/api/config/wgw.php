@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Installer\WgwInstallEnv;
+use App\Support\ApiUrlBuilder;
 use App\Support\UpdateFeedDefaults;
 
 return [
@@ -71,4 +72,12 @@ return [
         /** Set {@code WGW_MAIL_SMTP_VERIFY_TLS=false} for local/dev SMTP with self-signed certs. */
         'smtp_verify_tls' => filter_var(env('WGW_MAIL_SMTP_VERIFY_TLS', true), FILTER_VALIDATE_BOOL),
     ],
+
+    /**
+     * Public SPA origin for {@see ApiUrlBuilder::appPath()} (reset mail, /logout).
+     * Leave unset in production (SPA and API share a host). Local `pnpm dev` uses the Vite
+     * origin from {@code WGW_PUBLIC_WEB_URL} or {@code WGW_VITE_DEV_PORT} in repo-root {@code .env.local}.
+     */
+    'public_web_url' => env('WGW_PUBLIC_WEB_URL'),
+    'vite_dev_port' => env('WGW_VITE_DEV_PORT'),
 ];
