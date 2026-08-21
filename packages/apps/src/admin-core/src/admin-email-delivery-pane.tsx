@@ -35,7 +35,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         message={
           capability.canSubmit
             ? `Capability check passed. Selected transport: ${selected}. This is not a claim that mail will arrive in an inbox.`
-            : "Configure a valid From address and a usable transport before the instance can submit outbound mail."
+            : "Configure a valid From address and a usable transport before the instance can submit outbound mail. Login hides “Forgot password?” until this check passes."
         }
       />
       <Callout
@@ -52,8 +52,8 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
 
       <Card title="From and transport">
         <p className="admin-email-delivery-pane__help">
-          Platform email is separate from the Mail app IMAP/SMTP pane. Recovery and invites will use
-          this path later.
+          Platform email is separate from the Mail app IMAP/SMTP pane. Password recovery uses this
+          From address and transport.
         </p>
         <FormField htmlFor="admin-mail-delivery-from" label="From address">
           <Input

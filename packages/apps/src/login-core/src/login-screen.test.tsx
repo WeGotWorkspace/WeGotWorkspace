@@ -11,10 +11,12 @@ vi.mock("@tanstack/react-router", () => ({
   }: {
     select: (state: { location: { pathname: string } }) => unknown;
   }) => select({ location: { pathname: "/login" } }),
+  Link: ({ to, children }: { to: string; children: string }) => <a href={to}>{children}</a>,
 }));
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwLoginWithCredentials: vi.fn().mockResolvedValue(undefined),
+  wgwFetchPasswordRecoveryEnabled: vi.fn().mockResolvedValue(false),
 }));
 
 describe("LoginScreen return path", () => {
@@ -53,6 +55,16 @@ describe("LoginScreen return path", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/notes" });
     });
+  });
+
+  it("shows Forgot password when recovery is enabled", () => {
+    render(<LoginScreen passwordRecoveryEnabled />);
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toBeTruthy();
+  });
+
+  it("hides Forgot password when recovery is off", () => {
+    render(<LoginScreen passwordRecoveryEnabled={false} />);
+    expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
   });
 
   it("falls back to home when no return is provided", async () => {

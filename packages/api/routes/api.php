@@ -14,9 +14,11 @@ use App\Http\Controllers\Api\V1\Admin\UpdateJobController as AdminUpdateJobContr
 use App\Http\Controllers\Api\V1\Admin\UpdateLogController as AdminUpdateLogController;
 use App\Http\Controllers\Api\V1\Admin\UpdateStateController as AdminUpdateStateController;
 use App\Http\Controllers\Api\V1\Admin\UsersController as AdminUsersController;
+use App\Http\Controllers\Api\V1\Auth\ConsumePasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\JwksController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
+use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
@@ -72,6 +74,9 @@ Route::get('.well-known/jwks.json', JwksController::class);
 Route::post('auth/token', TokenController::class);
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
+Route::post('auth/password-resets', RequestPasswordResetController::class);
+Route::post('auth/password-resets/{token}', ConsumePasswordResetController::class)
+    ->where('token', '[A-Fa-f0-9]+');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])

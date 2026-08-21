@@ -14,7 +14,10 @@ import {
   wgwGuestShareToken,
   wgwHasAuthenticatedSession,
   wgwIsGuestSession,
+  wgwFetchPasswordRecoveryEnabled,
   wgwLoginWithCredentials,
+  wgwRequestPasswordReset,
+  wgwResetPasswordWithToken,
   wgwRedirectGuestShareReauth,
   wgwRefreshInFlight,
   WGW_GUEST_REFRESH_TOKEN,
@@ -327,6 +330,57 @@ describe("wgw auth refresh behavior", () => {
 
     await Promise.all([refreshing, gate]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("password recovery helpers", () => {
+  it("reads auth.passwordRecovery from capabilities", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ auth: { passwordRecovery: true } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    await expect(wgwFetchPasswordRecoveryEnabled()).resolves.toBe(true);
+  });
+
+  it("posts identifier to password-resets", async () => {
+    const fetchMock = vi.fn(async (_input, _init) => {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwRequestPasswordReset(" alice@example.test ")).resolves.toBeUndefined();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/auth/password-resets");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      identifier: "alice@example.test",
+    });
+  });
+
+  it("posts a new password to the token path", async () => {
+    const fetchMock = vi.fn(async (_input) => {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwResetPasswordWithToken("abc", "newpassword12")).resolves.toBeUndefined();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/auth/password-resets/abc");
+  });
+
+  it("rejects short passwords before calling the API", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof fetch;
+    await expect(wgwResetPasswordWithToken("abc", "short")).rejects.toThrow(
+      /at least 10 characters/,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

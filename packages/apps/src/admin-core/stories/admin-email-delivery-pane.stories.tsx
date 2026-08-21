@@ -134,6 +134,7 @@ export const TestFailed: Story = {
 
 export const CannotSubmit: Story = {
   name: "cannot-submit",
+  tags: ["vitest-ci"],
   render: () => (
     <EmailDeliveryHarness
       override={{
@@ -157,4 +158,9 @@ export const CannotSubmit: Story = {
       }}
     />
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/cannot submit yet/i)).toBeInTheDocument();
+    await expect(canvas.getByText(/login hides .*forgot password/i)).toBeInTheDocument();
+  },
 };

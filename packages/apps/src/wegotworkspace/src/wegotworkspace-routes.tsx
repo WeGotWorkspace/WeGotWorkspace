@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   createRoute,
   createRouter,
+  Outlet,
   redirect,
   type AnyRouter,
   type RouterHistory,
@@ -52,8 +53,11 @@ import { WeGotWorkspaceHome } from "@/wegotworkspace/src/wegotworkspace-home";
 import { WeGotWorkspaceLiveHome } from "@/wegotworkspace/src/wegotworkspace-live-home";
 import {
   loginRouteBeforeLoad,
+  WeGotWorkspaceForgotPasswordRoute,
   WeGotWorkspaceLoginRoute,
+  WeGotWorkspaceResetPasswordRoute,
   type LoginSearch,
+  type ResetPasswordSearch,
 } from "@/wegotworkspace/src/wegotworkspace-login-route";
 import { WeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-logout";
 import { withWeGotWorkspaceAuth } from "@/wegotworkspace/src/wegotworkspace-require-auth";
@@ -253,7 +257,28 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
       return: typeof search.return === "string" ? search.return : undefined,
     }),
     beforeLoad: loginRouteBeforeLoad,
+    component: () => <Outlet />,
+  });
+
+  const loginIndexRoute = createRoute({
+    getParentRoute: () => loginRoute,
+    path: "/",
     component: WeGotWorkspaceLoginRoute,
+  });
+
+  const loginForgotRoute = createRoute({
+    getParentRoute: () => loginRoute,
+    path: "forgot",
+    component: WeGotWorkspaceForgotPasswordRoute,
+  });
+
+  const loginResetRoute = createRoute({
+    getParentRoute: () => loginRoute,
+    path: "reset",
+    validateSearch: (search: Record<string, unknown>): ResetPasswordSearch => ({
+      token: typeof search.token === "string" ? search.token : undefined,
+    }),
+    component: WeGotWorkspaceResetPasswordRoute,
   });
 
   const logoutRoute = createRoute({
@@ -585,7 +610,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
 
   return wegotworkspaceRootRoute.addChildren([
     indexRoute,
-    loginRoute,
+    loginRoute.addChildren([loginIndexRoute, loginForgotRoute, loginResetRoute]),
     logoutRoute,
     mailRoute,
     notesIndexRoute,

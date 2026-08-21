@@ -33,6 +33,8 @@ SMTP and sendmail use a **10s** timeout (`DeliveryResult` `timeout`). Forced `tr
 
 Admin UI: **Email delivery** pane (not the Mail IMAP/SMTP pane). Copy splits capability vs last test-send.
 
+`GET /capabilities` `auth.passwordRecovery` is the same `canSubmit` bit. Login offers **Forgot password?** only when it is true. For local/dev, set a valid **From** address and leave **Transport** on Auto when PHP `mail()` or sendmail is available; SMTP is only required when those probes fail.
+
 ## Shared-hosting matrix
 
 | Hosting | Typical choice | Risk |

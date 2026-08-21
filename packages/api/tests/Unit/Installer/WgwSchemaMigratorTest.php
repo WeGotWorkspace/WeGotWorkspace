@@ -90,6 +90,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'meet_peers',
             'meet_messages',
             'api_refresh_tokens',
+            'api_password_reset_tokens',
             'api_revoked_tokens',
             'drive_starred_items',
             'drive_shares',

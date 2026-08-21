@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\System;
 
+use App\Services\MailDelivery\MailDeliveryService;
 use App\Support\ApiUrlBuilder;
 
 final class CapabilitiesService
 {
-    public function __construct(private ApiUrlBuilder $urls) {}
+    public function __construct(
+        private ApiUrlBuilder $urls,
+        private MailDeliveryService $mailDelivery,
+    ) {}
 
     /**
      * @return array{
      *   apiVersion: string,
-     *   auth: array<string, string>,
+     *   auth: array{type: string, tokenEndpoint: string, refreshEndpoint: string, revokeEndpoint: string, jwksEndpoint: string, passwordRecovery: bool},
      *   domains: list<array{name: string, requiredRole: string}>
      * }
      */
@@ -27,9 +31,19 @@ final class CapabilitiesService
                 'refreshEndpoint' => $this->urls->v1('auth/refresh'),
                 'revokeEndpoint' => $this->urls->v1('auth/revoke'),
                 'jwksEndpoint' => $this->urls->v1('.well-known/jwks.json'),
+                'passwordRecovery' => $this->passwordRecoveryEnabled(),
             ],
             'domains' => $this->domains(),
         ];
+    }
+
+    private function passwordRecoveryEnabled(): bool
+    {
+        try {
+            return (bool) ($this->mailDelivery->adminState()['capability']['canSubmit'] ?? false);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
