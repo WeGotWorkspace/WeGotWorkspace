@@ -57,9 +57,15 @@ final class DevInstallBootstrapTest extends TestCase
         WgwInstallFixture::syncDatabaseConnection();
         $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'admin')->count());
         $this->assertSame('SabreDAV', DB::connection('wgw')->table('app_settings')->where('name', 'auth_realm')->value('value'));
+        $seeded = DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count();
+        $this->assertGreaterThan(0, $seeded);
 
         $this->assertTrue(app(AppPaths::class)->isInstalled());
         $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
+        $this->assertSame(
+            $seeded,
+            DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count(),
+        );
     }
 
     public function test_ensure_writes_sqlite_path_into_env(): void

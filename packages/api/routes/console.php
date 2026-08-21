@@ -3,6 +3,8 @@
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
+use App\Services\Installer\DevCalendarEventCatalog;
+use App\Services\Installer\DevCalendarEventSeeder;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\InstallerJwtKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
@@ -148,6 +150,39 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
 
     return self::SUCCESS;
 })->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/tasks-inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
+
+Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', function (DevCalendarEventSeeder $seeder): int {
+    if (app()->environment('production')) {
+        $this->error('Refusing to seed calendar events in production.');
+
+        return self::FAILURE;
+    }
+
+    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
+    $profile = strtolower(trim((string) ($this->option('profile') ?: DevCalendarEventCatalog::PROFILE_FULL)));
+    if ($profile === '') {
+        $profile = DevCalendarEventCatalog::PROFILE_FULL;
+    }
+
+    try {
+        $result = $seeder->seed($username, $profile, (bool) $this->option('force'));
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return self::FAILURE;
+    }
+
+    $this->info(sprintf(
+        'Seeded calendar events for %s (%s): created %d, skipped %d, deleted %d.',
+        $username,
+        $profile,
+        $result['created'],
+        $result['skipped'],
+        $result['deleted'],
+    ));
+
+    return self::SUCCESS;
+})->purpose('Seed hundreds of local-dev calendar events for the admin user (idempotent; --force recreates)');
 
 Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
     $result = $index->reindexAll();
