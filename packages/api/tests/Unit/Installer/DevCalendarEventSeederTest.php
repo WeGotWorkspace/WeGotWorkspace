@@ -12,6 +12,7 @@ use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
 use DateTimeImmutable;
 use DateTimeZone;
+use RuntimeException;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -88,6 +89,34 @@ final class DevCalendarEventSeederTest extends WgwDatabaseTestCase
         $this->assertSame($first['created'], $forced['created']);
         $this->assertSame(0, $forced['skipped']);
         $this->assertSame($first['created'], $this->seededObjectCount());
+    }
+
+    public function test_seed_refuses_outside_local_or_testing(): void
+    {
+        $this->app['env'] = 'production';
+
+        try {
+            $this->calendarSeeder()->seed('admin', DevCalendarEventCatalog::PROFILE_COMPACT, now: $this->now);
+            $this->fail('Expected seed to refuse production.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('outside local/testing', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->seededObjectCount());
+    }
+
+    public function test_seed_refuses_docker_install_channel(): void
+    {
+        config(['wgw.install_channel' => 'docker']);
+
+        try {
+            $this->calendarSeeder()->seed('admin', DevCalendarEventCatalog::PROFILE_COMPACT, now: $this->now);
+            $this->fail('Expected seed to refuse the Docker install channel.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('Docker install channel', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->seededObjectCount());
     }
 
     private function calendarSeeder(): DevCalendarEventSeeder

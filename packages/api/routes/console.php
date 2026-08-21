@@ -152,12 +152,6 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
 })->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/tasks-inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
 
 Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', function (DevCalendarEventSeeder $seeder): int {
-    if (app()->environment('production')) {
-        $this->error('Refusing to seed calendar events in production.');
-
-        return self::FAILURE;
-    }
-
     $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
     $profile = strtolower(trim((string) ($this->option('profile') ?: DevCalendarEventCatalog::PROFILE_FULL)));
     if ($profile === '') {

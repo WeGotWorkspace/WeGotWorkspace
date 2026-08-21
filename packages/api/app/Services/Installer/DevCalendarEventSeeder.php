@@ -28,6 +28,15 @@ final class DevCalendarEventSeeder
         private readonly UserCalendarCollectionsProvisioner $collections,
     ) {}
 
+    public function isAllowed(): bool
+    {
+        if (! app()->environment(['local', 'testing'])) {
+            return false;
+        }
+
+        return $this->installChannel() !== 'docker';
+    }
+
     /**
      * @return array{created: int, skipped: int, deleted: int}
      */
@@ -37,6 +46,8 @@ final class DevCalendarEventSeeder
         bool $force = false,
         ?DateTimeImmutable $now = null,
     ): array {
+        $this->assertAllowed();
+
         $username = strtolower(trim($username));
         if ($username === '' || User::query()->where('username', $username)->doesntExist()) {
             throw new RuntimeException('Cannot seed calendar events: user '.$username.' was not found.');
@@ -75,6 +86,29 @@ final class DevCalendarEventSeeder
             'skipped' => $skipped,
             'deleted' => $deleted,
         ];
+    }
+
+    private function assertAllowed(): void
+    {
+        if ($this->isAllowed()) {
+            return;
+        }
+
+        if (! app()->environment(['local', 'testing'])) {
+            throw new RuntimeException('Refusing to seed calendar events outside local/testing.');
+        }
+
+        throw new RuntimeException('Refusing to seed calendar events on a Docker install channel.');
+    }
+
+    private function installChannel(): string
+    {
+        $configured = config('wgw.install_channel');
+        if (is_string($configured) && trim($configured) !== '') {
+            return strtolower(trim($configured));
+        }
+
+        return strtolower(trim((string) (getenv('WGW_INSTALL_CHANNEL') ?: '')));
     }
 
     private function deleteSeededObjects(string $username): int

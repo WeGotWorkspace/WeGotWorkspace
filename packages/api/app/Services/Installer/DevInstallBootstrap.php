@@ -109,6 +109,10 @@ final class DevInstallBootstrap
 
     private function seedDevCalendarEvents(string $username): void
     {
+        if (! $this->calendarEvents->isAllowed()) {
+            return;
+        }
+
         $this->calendarEvents->seed($username, $this->calendarSeedProfile());
     }
 
