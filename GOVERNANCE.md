@@ -2,7 +2,7 @@
 
 How product intent and contributions are decided for WeGotWorkspace.
 
-**Status:** Structure in place. **External intake** = Discussions (explore) + bug reports. Goals and delivery issues are maintainer-filed. External code PRs wait on the legal entity / CLA.
+**External intake:** Discussions and bug reports. Goals and delivery issues are maintainer-filed. External code PRs are closed until we open contributions after the beta.
 
 ## Three surfaces
 
@@ -26,7 +26,7 @@ Lifecycle (Product Project Status):
 
 **Before Identified / Adopted:** anyone may explore under **GitHub Discussions**. When ready, **maintainers** promote a thread to a Goal issue at **Identified**, then move to **Adopted** when committing (or set **Adopted** immediately if already committing). Do not use Exploring/Proposed board columns.
 
-Goals live on the **Product roadmap** Project (when configured). Engineering epics, tasks, bugs, and chores do **not**.
+Goals live on the **Product roadmap** Project. Engineering epics, tasks, bugs, and chores do **not**.
 
 **One outcome per Goal:** each Goal is one fulfillable user outcome. Do not parent Goal→Goal — group with `area:*` and optional milestone. Design language / suite consistency is a Non-goal constraint, not a Goal. See [issue-filing.md](.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
 
@@ -52,13 +52,8 @@ See [docs/product/README.md](docs/product/README.md).
 
 **Offline / hybrid sync:** no `offline` label — use Goals (e.g. #381, #400) and `area:*`. Details: [docs/product/README.md](docs/product/README.md#labels).
 
-## Future: community and CLA
+## Community
 
-When the legal entity and CLA exist, maintainers may:
+Discussions and bugs are open; no external Goal, Epic, Task, or Chore filing; no external code PRs until we open contributions after the beta. Maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 
-- Accept external code under the CLA
-- Optionally refine Discussion → Goal promotion process (RFC, etc.)
-
-Until then: **Discussions + bugs are open; no external Goal/Epic/Task/Chore filing; no external code contribution.** Maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
-
-This document is not a substitute for a future RFC process; it is a stub so the model can open without another migration.
+Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Commercial terms: [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).

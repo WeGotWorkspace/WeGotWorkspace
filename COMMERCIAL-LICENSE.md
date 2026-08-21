@@ -1,10 +1,12 @@
-## Commercial License Option
+# Commercial license
 
-This project is also available under a separate paid commercial license for organizations that:
+This project is also available under a paid commercial license for organizations that:
 
 - provide hosted/SaaS services with this software, and/or
 - want to distribute modified versions without AGPL copyleft obligations.
 
-Using or distributing the project without a commercial agreement remains available under the terms of `AGPL-3.0-or-later` in `LICENSE`.
+Without a commercial agreement, use remains under `AGPL-3.0-or-later` (`LICENSE`).
 
-To request commercial terms, contact the project owner/maintainer.
+**WeGotWorkspace B.V.** (KvK 42131906, RSIN 869865924)  
+Dorpsstraat 65, 1452PH Ilpendam, The Netherlands  
+[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)
