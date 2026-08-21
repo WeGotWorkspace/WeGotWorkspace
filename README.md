@@ -47,7 +47,7 @@ Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). D
 
 ### Contributing
 
-**Bug reports** and **[Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions)** are welcome. External code PRs wait on a Contributor License Agreement (dual license: AGPL + commercial). Goals stay maintainer-filed. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+**Bug reports** and **[Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions)** are welcome. External code PRs are closed while we land the beta. Goals stay maintainer-filed. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Maintainers
 

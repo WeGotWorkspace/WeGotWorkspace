@@ -2,7 +2,7 @@
 
 How product intent and contributions are decided for WeGotWorkspace.
 
-**External intake:** Discussions and bug reports. Goals and delivery issues are maintainer-filed. External code PRs wait on the [CLA](docs/legal/cla.md) (not yet in force).
+**External intake:** Discussions and bug reports. Goals and delivery issues are maintainer-filed. External code PRs are closed until we open contributions after the beta.
 
 ## Three surfaces
 
@@ -54,6 +54,6 @@ See [docs/product/README.md](docs/product/README.md).
 
 ## Community
 
-Until a CLA is in force: Discussions and bugs are open; no external Goal, Epic, Task, or Chore filing; no external code PRs. Maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
+Discussions and bugs are open; no external Goal, Epic, Task, or Chore filing; no external code PRs until we open contributions after the beta. Maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 
 Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Commercial terms: [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).

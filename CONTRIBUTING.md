@@ -11,7 +11,7 @@ Thank you for your interest in WeGotWorkspace.
 | **Security / DAST findings** | Open — use the DAST finding template where applicable |
 | **Goals / Epics / Tasks / Chores** | **Maintainers only** — non-maintainer filings are closed automatically |
 | **Blank issues** | Disabled |
-| **Code contributions (PRs from outside maintainers)** | **Closed** until a [CLA](docs/legal/cla.md) is in force |
+| **Code contributions (PRs from outside maintainers)** | **Closed** — we are landing the beta first |
 
 Start a **Discussion** or file a **bug**. Do not open Goal, Epic, Task, or Chore issues — maintainers promote promising threads.
 

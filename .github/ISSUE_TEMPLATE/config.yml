@@ -9,4 +9,4 @@ contact_links:
     about: Something broken or incorrect? Use the Bug report template.
   - name: Contributing guidelines
     url: https://github.com/WeGotWorkspace/wegotworkspace/blob/main/CONTRIBUTING.md
-    about: What is open (bugs, Discussions) and what waits on a CLA.
+    about: Bugs and Discussions are open. External PRs are closed while we land the beta.
