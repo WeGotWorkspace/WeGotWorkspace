@@ -42,11 +42,17 @@ const {
   createCalendarEventLive,
   patchCalendarEventLive,
   deleteCalendarEventLive,
+  createCalendarLive,
+  patchCalendarLive,
+  deleteCalendarLive,
   respondCalendarSchedulingNotification,
 } = vi.hoisted(() => ({
   createCalendarEventLive: vi.fn(),
   patchCalendarEventLive: vi.fn(),
   deleteCalendarEventLive: vi.fn(),
+  createCalendarLive: vi.fn(),
+  patchCalendarLive: vi.fn(),
+  deleteCalendarLive: vi.fn(),
   respondCalendarSchedulingNotification: vi.fn(),
 }));
 
@@ -54,6 +60,9 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
   createCalendarEventLive,
   patchCalendarEventLive,
   deleteCalendarEventLive,
+  createCalendarLive,
+  patchCalendarLive,
+  deleteCalendarLive,
 }));
 
 vi.mock("@/lib/api/wgw/calendar-scheduling", async (importOriginal) => {
@@ -177,6 +186,63 @@ describe("flushCalendarsOutbox", () => {
     expect(result.conflicts).toEqual([]);
     expect(result.schedulingConflicts).toEqual(["invite-1.ics"]);
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("replays calendarCreate, calendarUpdate, and calendarDelete rows", async () => {
+    createCalendarLive.mockResolvedValue({
+      id: "cal-2",
+      name: "Team",
+      color: "#22c55e",
+      scope: "group",
+      groupSlug: "engineering",
+    });
+    patchCalendarLive.mockResolvedValue({
+      id: "default",
+      name: "Renamed",
+      color: "#111111",
+      isDefault: true,
+    });
+    deleteCalendarLive.mockResolvedValue(undefined);
+
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "calendarCreate",
+      payload: JSON.stringify({
+        creationId: "local-cal-1",
+        tempCalendarId: "local-cal-1",
+        draft: { name: "Team", color: "#22c55e", groupSlug: "engineering" },
+      }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "calendarUpdate",
+      payload: JSON.stringify({ calendarId: "default", patch: { name: "Renamed" } }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "calendarDelete",
+      payload: JSON.stringify({ calendarId: "gone" }),
+    });
+
+    const result = await flushCalendarsOutbox(username);
+
+    expect(result.conflicts).toEqual([]);
+    expect(createCalendarLive).toHaveBeenCalledWith({
+      name: "Team",
+      color: "#22c55e",
+      groupSlug: "engineering",
+    });
+    expect(patchCalendarLive).toHaveBeenCalledWith("default", { name: "Renamed" });
+    expect(deleteCalendarLive).toHaveBeenCalledWith("gone");
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.calendars.find((calendar) => calendar.id === "cal-2")?.name).toBe("Team");
+    expect(cached?.data.calendars.find((calendar) => calendar.id === "default")?.name).toBe(
+      "Renamed",
+    );
   });
 
   it("drops a queued RSVP when the invitation is gone and reports the notification id", async () => {

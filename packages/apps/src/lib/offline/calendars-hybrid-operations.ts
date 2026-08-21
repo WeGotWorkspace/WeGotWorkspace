@@ -32,6 +32,7 @@ import { applyCalendarEventPatch } from "@/lib/offline/calendars/calendars-patch
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {
   createTempCalendarEventId,
+  createTempCalendarId,
   enqueueCoalescedCalendarEventUpdate,
   enqueueOutboxMutation,
   readCalendarBootstrapFromCache,
@@ -57,6 +58,9 @@ function rethrowUnlessOfflineQueue(error: unknown): void {
 const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<CalendarOutboxFlushResult>();
 
 async function flushCalendarsOutboxAndReport(username: string): Promise<CalendarOutboxFlushResult> {
+  if (!readBrowserOnline()) {
+    return { conflicts: [], schedulingConflicts: [], bootstrap: null };
+  }
   const result = await flushCalendarsOutbox(username);
   reportCalendarsSyncConflicts(result.conflicts);
   reportCalendarsSchedulingConflicts(result.schedulingConflicts);
@@ -186,31 +190,107 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
       }
     },
     createCalendar: async (draft: CalendarDraft) => {
+      const queueOffline = async () => {
+        const tempId = createTempCalendarId();
+        const created: CalendarInfo = {
+          id: tempId,
+          name: draft.name,
+          color: draft.color,
+          mayWrite: true,
+          mayDelete: true,
+          ...(draft.groupSlug
+            ? { scope: "group" as const, groupSlug: draft.groupSlug }
+            : { scope: "personal" as const }),
+        };
+        await writeCalendarsToCache(username, (calendars) => [...calendars, created]);
+        await enqueueOutboxMutation(username, {
+          id: crypto.randomUUID(),
+          domain: CALENDARS_DOMAIN,
+          op: "calendarCreate",
+          payload: JSON.stringify({ creationId: tempId, tempCalendarId: tempId, draft }),
+        });
+        return created;
+      };
       if (!readBrowserOnline()) {
-        throw new Error("Cannot create calendar while offline");
+        return queueOffline();
       }
-      const created = await createCalendarLive(draft);
-      await writeCalendarsToCache(username, (calendars) => [...calendars, created]);
-      return created;
+      try {
+        const created = await createCalendarLive(draft);
+        await writeCalendarsToCache(username, (calendars) => [...calendars, created]);
+        await runner.flush();
+        return created;
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error);
+        return queueOffline();
+      }
     },
     patchCalendar: async (calendarId: string, patch: CalendarPatch) => {
+      const queueOffline = async () => {
+        const cached = await readCalendarBootstrapFromCache(username);
+        const existing = cached?.data.calendars.find((calendar) => calendar.id === calendarId);
+        if (!existing) {
+          throw new Error("Calendar not found in cache while offline");
+        }
+        const updated = { ...existing, ...patch };
+        await writeCalendarsToCache(username, (calendars) =>
+          calendars.map((calendar) => (calendar.id === calendarId ? updated : calendar)),
+        );
+        await enqueueOutboxMutation(username, {
+          id: crypto.randomUUID(),
+          domain: CALENDARS_DOMAIN,
+          op: "calendarUpdate",
+          payload: JSON.stringify({ calendarId, patch }),
+        });
+        return updated;
+      };
       if (!readBrowserOnline()) {
-        throw new Error("Cannot update calendar while offline");
+        return queueOffline();
       }
-      const updated = await patchCalendarLive(calendarId, patch);
-      await writeCalendarsToCache(username, (calendars) =>
-        calendars.map((calendar) => (calendar.id === calendarId ? updated : calendar)),
-      );
-      return updated;
+      try {
+        const updated = await patchCalendarLive(calendarId, patch);
+        await writeCalendarsToCache(username, (calendars) =>
+          calendars.map((calendar) => (calendar.id === calendarId ? updated : calendar)),
+        );
+        await runner.flush();
+        return updated;
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error);
+        return queueOffline();
+      }
     },
     deleteCalendar: async (calendarId: string) => {
+      const queueOffline = async () => {
+        const cached = await readCalendarBootstrapFromCache(username);
+        await writeCalendarsToCache(username, (calendars) =>
+          calendars.filter((calendar) => calendar.id !== calendarId),
+        );
+        for (const event of cached?.data.events ?? []) {
+          const eventCalendarId = Object.keys(event.calendarIds ?? {})[0];
+          if (eventCalendarId === calendarId) {
+            await removeCalendarEventFromCache(username, event.id);
+          }
+        }
+        await enqueueOutboxMutation(username, {
+          id: crypto.randomUUID(),
+          domain: CALENDARS_DOMAIN,
+          op: "calendarDelete",
+          payload: JSON.stringify({ calendarId }),
+        });
+      };
       if (!readBrowserOnline()) {
-        throw new Error("Cannot delete calendar while offline");
+        await queueOffline();
+        return;
       }
-      await deleteCalendarLive(calendarId);
-      await writeCalendarsToCache(username, (calendars) =>
-        calendars.filter((calendar) => calendar.id !== calendarId),
-      );
+      try {
+        await deleteCalendarLive(calendarId);
+        await writeCalendarsToCache(username, (calendars) =>
+          calendars.filter((calendar) => calendar.id !== calendarId),
+        );
+        await runner.flush();
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error);
+        await queueOffline();
+      }
     },
     listSchedulingNotifications: () => fetchCalendarSchedulingNotifications(),
     listInvitees: () => fetchCalendarSchedulingInvitees(),
