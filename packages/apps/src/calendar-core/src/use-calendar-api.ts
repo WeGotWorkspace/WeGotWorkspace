@@ -6,6 +6,7 @@ import {
   createHybridCalendarOperations,
   getCalendarsSyncRunner,
 } from "@/lib/offline/calendars-hybrid-operations";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { readCalendarBootstrapFromCache } from "@/lib/offline/calendars-offline-store";
 import { setCalendarsSyncConflictListener } from "@/lib/offline/calendars-sync-conflicts";
 import {
@@ -65,7 +66,7 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
   });
 
   const applyBootstrapRefresh = useCallback(async () => {
-    if (offlineUsername) {
+    if (offlineUsername && readBrowserOnline()) {
       await getCalendarsSyncRunner(offlineUsername).flush();
     }
     const next = await resolvedSource.loadBootstrap();
