@@ -58,10 +58,6 @@ export function ForgotPasswordScreen() {
         </div>
       ) : (
         <form className="login-screen__form" onSubmit={submitRequest}>
-          <p className="login-screen__hint">
-            Enter your username or email. Users without an email still need an administrator to
-            reset their password.
-          </p>
           <FieldLabelRow htmlFor="identifier" label="Username or email">
             <Input
               id="identifier"
