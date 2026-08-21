@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CalendarDays, MapPin, Pencil, Repeat, StickyNote, Users } from "lucide-react";
+import { CalendarDays, Circle, MapPin, Pencil, Repeat, StickyNote, Users } from "lucide-react";
 import { Button } from "@/button/src/button";
 import {
   isSessionEventInvitee,
@@ -33,6 +33,7 @@ export type CalendarEventDetailsPopoverProps = {
   busy?: boolean;
   sessionEmail?: string;
   untitledLabel: string;
+  pendingSync?: boolean;
   onClose: () => void;
   onEdit?: () => void;
   onRsvp?: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
@@ -63,6 +64,7 @@ export function CalendarEventDetailsPopover({
   busy = false,
   sessionEmail,
   untitledLabel,
+  pendingSync = false,
   onClose,
   onEdit,
   onRsvp,
@@ -146,6 +148,15 @@ export function CalendarEventDetailsPopover({
               />
             ) : null}
             {title}
+            {pendingSync ? (
+              <span
+                className="calendar-event-details-popover__pending-sync"
+                role="img"
+                aria-label={labels.pendingSync}
+              >
+                <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+              </span>
+            ) : null}
           </h2>
         </header>
         <div className="calendar-event-details-popover__details">

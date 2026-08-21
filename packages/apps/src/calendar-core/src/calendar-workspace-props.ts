@@ -24,6 +24,8 @@ export type CalendarWorkspaceProps = {
   onRouteStateChange?: (state: CalendarRouteState, options?: { replace?: boolean }) => void;
   onLogout?: () => void;
   className?: string;
+  /** Event ids with unsynced local writes; drives the pending-sync mark. */
+  pendingEventIds?: ReadonlySet<string>;
 };
 
 export function calendarDirectoryGroupsFromBootstrap(

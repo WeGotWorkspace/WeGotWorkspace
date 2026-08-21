@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Plus } from "lucide-react";
 import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -80,6 +80,8 @@ function CalendarSidebarRows({
   defaultCalendarId,
   canDeleteCalendars,
   editLabel,
+  pendingCalendarIds,
+  pendingSyncLabel,
   onToggleVisibility,
   onSelectDefault,
   onEdit,
@@ -89,6 +91,8 @@ function CalendarSidebarRows({
   defaultCalendarId?: string;
   canDeleteCalendars: boolean;
   editLabel: string;
+  pendingCalendarIds?: ReadonlySet<string>;
+  pendingSyncLabel: string;
   onToggleVisibility: (calendarId: string) => void;
   onSelectDefault: (calendarId: string) => void;
   onEdit: (calendarId: string) => void;
@@ -124,6 +128,15 @@ function CalendarSidebarRows({
               onClick={() => onSelectDefault(calendar.id)}
             >
               <span className="calendar-sidebar-row__name">{calendar.name}</span>
+              {pendingCalendarIds?.has(calendar.id) ? (
+                <span
+                  className="calendar-sidebar-row__pending-sync"
+                  role="img"
+                  aria-label={pendingSyncLabel}
+                >
+                  <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+                </span>
+              ) : null}
             </button>
             {canManage ? (
               <IconButton
@@ -155,6 +168,7 @@ export function CalendarWorkspace({
   onRouteStateChange,
   onLogout,
   className,
+  pendingEventIds,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -240,6 +254,7 @@ export function CalendarWorkspace({
     showError(L.toastInvitationCancelled);
   }, [L.toastInvitationCancelled, showError]);
   const invitations = useCalendarInvitations(operations, {
+    username: session.user.username,
     onResponded: handleInvitationResponded,
     onError: handleInvitationError,
     onSchedulingConflict: handleSchedulingConflict,
@@ -272,6 +287,16 @@ export function CalendarWorkspace({
   const ownerLabel = personalOwnerLabel(session);
   const myCalendars = personalCalendarsForSidebar(calendars);
   const teamCalendars = teamCalendarsForSidebar(calendars);
+  const pendingCalendarIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!pendingEventIds || pendingEventIds.size === 0) return ids;
+    for (const event of data.events) {
+      if (!pendingEventIds.has(event.id)) continue;
+      const calendarId = Object.keys(event.calendarIds ?? {})[0];
+      if (calendarId) ids.add(calendarId);
+    }
+    return ids;
+  }, [data.events, pendingEventIds]);
 
   const viewLabels: Record<CalendarViewId, string> = {
     month: L.viewMonth,
@@ -478,6 +503,8 @@ export function CalendarWorkspace({
                 defaultCalendarId={defaultCalendarId}
                 canDeleteCalendars={Boolean(operations?.deleteCalendar)}
                 editLabel={L.editCalendar}
+                pendingCalendarIds={pendingCalendarIds}
+                pendingSyncLabel={L.pendingSync}
                 onToggleVisibility={toggleCalendarVisibility}
                 onSelectDefault={selectDefaultCalendar}
                 onEdit={openEditCalendarDialog}
@@ -491,6 +518,8 @@ export function CalendarWorkspace({
                   defaultCalendarId={defaultCalendarId}
                   canDeleteCalendars={Boolean(operations?.deleteCalendar)}
                   editLabel={L.editCalendar}
+                  pendingCalendarIds={pendingCalendarIds}
+                  pendingSyncLabel={L.pendingSync}
                   onToggleVisibility={toggleCalendarVisibility}
                   onSelectDefault={selectDefaultCalendar}
                   onEdit={openEditCalendarDialog}
@@ -651,6 +680,7 @@ export function CalendarWorkspace({
           labels={L}
           locale={locale}
           untitledLabel={L.untitledEvent}
+          pendingSync={pendingEventIds?.has(eventPreview.model.eventId) ?? false}
           canEdit={canWrite}
           busy={invitations.busy}
           sessionEmail={organizerAddress(session.user)?.email}
