@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { JmapEventsAdapter } from "../adapter/JmapEventsAdapter.js";
 import { JmapClient } from "../core/JmapClient.js";
 import { personalCalendar, recurringEvent, timedEvent, workCalendar } from "../mock/fixtures.js";
@@ -107,16 +107,25 @@ describe("JmapEventsAdapter optimistic mutations", () => {
   it("pushes moves as start changes", async () => {
     const server = new MockJmapServer();
     seedServer(server);
-    const adapter = await makeAdapter(server);
+    const persisted = vi.fn();
+    const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch });
+    const adapter = new JmapEventsAdapter({
+      client,
+      timezone: "Europe/Amsterdam",
+      onPersisted: persisted,
+    });
+    await adapter.initialize(MARCH);
 
     adapter.move({
       target: { key: "ev-timed" },
       scope: "single",
       delta: Temporal.Duration.from({ days: 1 }),
     });
+    expect(persisted).not.toHaveBeenCalled();
     await adapter.flush();
 
     expect(server.events.get("ev-timed")?.start).toBe("2026-03-11T10:00:00");
+    expect(persisted).toHaveBeenCalled();
   });
 
   it("destroys removed events on the server", async () => {

@@ -179,8 +179,9 @@ export class CalendarTimelineView extends CalendarViewBase {
   visibleHoursStart?: number;
   rtl = false;
   /**
-   * Create-dialog range from React (`formToCreateIntent`). Present only while the create
-   * editor is open; Lit uses it to keep the drag-create card after pointer-up.
+   * Create-dialog range from React (`formToCreateIntent`). Present while the create
+   * editor is open or save is in flight; Lit keeps the drag-create card after pointer-up
+   * until cancel, or until a persisted event occupies the same slot.
    */
   pendingCreateIntent: PendingCreateGeometry | null = null;
   /**
@@ -229,8 +230,9 @@ export class CalendarTimelineView extends CalendarViewBase {
    */
   #pendingOccurrenceGeometry: PendingOccurrenceGeometry | null = null;
   /**
-   * Drag-create slot kept while the create dialog is open. Seeded on pointer-up; React
-   * `pendingCreateIntent` takes over (and follows form edits) until cancel or save.
+   * Drag-create slot kept while the create dialog is open or save is in flight.
+   * Seeded on pointer-up; React `pendingCreateIntent` takes over (and follows form
+   * edits) until cancel, or until a persisted event occupies the same slot.
    */
   #pendingCreateGeometry: PendingCreateGeometry | null = null;
   /** True once the surface has published a create intent for this drag (dialog opened). */
@@ -965,7 +967,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         inert
         aria-hidden="true"
         part="event-card"
-        .summary=${CREATE_PREVIEW_SUMMARY}
+        .summary=${this.#pendingCreateGeometry?.title?.trim() || CREATE_PREVIEW_SUMMARY}
         .time=${timeLabel}
         .color=${this.resolveNewEventColor(calendarId)}
       ></event-card>

@@ -45,8 +45,8 @@ export type CalendarSurfaceProps = {
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
   /**
-   * Open create-dialog range. When set, the Lit timeline keeps the drag-create
-   * event-card in that slot until the dialog closes or a real event replaces it.
+   * Open create-dialog range, or the in-flight save after the dialog closes.
+   * Lit keeps the drag-create card in that slot until a real event replaces it.
    */
   pendingCreateIntent?: CalendarSurfaceCreateIntent | null;
   /**

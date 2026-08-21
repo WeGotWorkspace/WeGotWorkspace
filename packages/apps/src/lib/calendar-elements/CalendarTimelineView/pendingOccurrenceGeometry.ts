@@ -52,11 +52,12 @@ export function shouldRevertPendingGeometry(result: {
   return !result.handled || !result.accepted;
 }
 
-/** Suggested slot for a drag-create while the create dialog is open. */
+/** Suggested slot for a drag-create while the create dialog is open or save is in flight. */
 export type PendingCreateGeometry = {
   start: Temporal.PlainDateTime;
   end: Temporal.PlainDateTime;
   allDay: boolean;
+  title?: string;
 };
 
 export type EngineCreateCandidate = EngineOccurrenceTimes & {

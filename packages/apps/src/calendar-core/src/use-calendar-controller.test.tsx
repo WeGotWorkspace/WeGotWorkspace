@@ -261,6 +261,201 @@ describe("useCalendarController view + create intent", () => {
         timeZone: defaultTimedEventTimeZone(),
       },
     });
+    expect(result.current.pendingCreateIntent).toEqual({
+      calendarId: "work",
+      allDay: false,
+      start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+    });
+  });
+
+  it("keeps pendingCreateIntent after save until the surface event fills the slot", async () => {
+    let resolveCreate!: (event: { id: string }) => void;
+    const createEvent = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ id: string }>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    const { result, rerender } = renderHook(
+      ({ surfaceEvents }: { surfaceEvents?: CalendarEventsMap }) =>
+        useCalendarController({
+          data: bootstrap.data,
+          operations: {
+            createEvent,
+            patchEvent: vi.fn(),
+            deleteEvent: vi.fn(),
+          },
+          surfaceEvents,
+        }),
+      { initialProps: { surfaceEvents: undefined as CalendarEventsMap | undefined } },
+    );
+
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "work",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+        title: "Kickoff",
+      });
+    });
+    expect(result.current.pendingCreateIntent?.title).toBe("Kickoff");
+
+    act(() => {
+      result.current.saveEditor();
+    });
+
+    expect(result.current.editor).toBeNull();
+    expect(result.current.pendingCreateIntent).toEqual({
+      calendarId: "work",
+      allDay: false,
+      start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+      title: "Kickoff",
+    });
+
+    await act(async () => {
+      resolveCreate({ id: "created-1" });
+    });
+    expect(result.current.pendingCreateIntent?.title).toBe("Kickoff");
+
+    const persisted: CalendarEventsMap = new Map();
+    persisted.set("created-1", {
+      eventId: "created-1",
+      calendarId: "work",
+      data: {
+        start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+        duration: Temporal.Duration.from("PT1H"),
+        allDay: false,
+        summary: "Kickoff",
+      },
+    } as CalendarEvent);
+    rerender({ surfaceEvents: persisted });
+
+    expect(result.current.pendingCreateIntent).toBeNull();
+  });
+
+  it("drops a held create preview when dragging a new slot", async () => {
+    const createEvent = vi.fn().mockResolvedValue({ id: "created-1" });
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent,
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "work",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+        title: "Kickoff",
+      });
+    });
+    await act(async () => {
+      result.current.saveEditor();
+    });
+    expect(result.current.pendingCreateIntent?.start.toString()).toBe("2033-01-12T10:00:00");
+
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "work",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T15:00:00"),
+      });
+    });
+    expect(result.current.pendingCreateIntent?.start.toString()).toBe("2033-01-12T14:00:00");
+    expect(result.current.pendingCreateIntent?.title).toBeUndefined();
+  });
+
+  it("drops pendingCreateIntent when create is cancelled or undone", async () => {
+    const createEvent = vi.fn().mockResolvedValue({ id: "created-1" });
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent,
+          patchEvent: vi.fn(),
+          deleteEvent,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "work",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T15:00:00"),
+      });
+    });
+    act(() => {
+      result.current.closeEditor();
+    });
+    expect(result.current.pendingCreateIntent).toBeNull();
+
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "work",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T14:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T15:00:00"),
+        title: "Later",
+      });
+    });
+    await act(async () => {
+      result.current.saveEditor();
+    });
+    await vi.waitFor(() => {
+      expect(createEvent).toHaveBeenCalled();
+    });
+    expect(result.current.pendingCreateIntent?.title).toBe("Later");
+
+    await act(async () => {
+      result.current.undoLatest();
+    });
+    expect(deleteEvent).toHaveBeenCalledWith("created-1");
+    expect(result.current.pendingCreateIntent).toBeNull();
+  });
+
+  it("drops pendingCreateIntent when createEvent fails", async () => {
+    const createEvent = vi.fn().mockRejectedValue(new Error("offline"));
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent,
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "work",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+        title: "Failing",
+      });
+    });
+    await act(async () => {
+      result.current.saveEditor();
+    });
+    await vi.waitFor(() => {
+      expect(createEvent).toHaveBeenCalled();
+    });
+    expect(result.current.editor).toBeNull();
+    expect(result.current.pendingCreateIntent).toBeNull();
   });
 
   it("openEditEventKey opens the editor directly for a recurring occurrence", async () => {

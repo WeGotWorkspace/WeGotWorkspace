@@ -4,10 +4,11 @@ import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { JmapEventsAdapter, type JmapClient } from "@/lib/jmap-client";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { applyOwnRsvpToEngineEvents } from "@/calendar-core/src/calendar-event-model";
 import {
-  applyOwnRsvpToEngineEvents,
-  calendarEventsToEngineMap,
-} from "@/calendar-core/src/calendar-event-model";
+  resolveCalendarSurfaceEvents,
+  type CalendarSurfaceAdapterPhase,
+} from "@/calendar-core/src/calendar-surface-events";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
 import { createOfflineCalendarEventsApi } from "@/calendar-core/src/offline-calendar-events-api";
@@ -28,6 +29,7 @@ export type CalendarSurfaceStore = {
 
 export type UseCalendarSurfaceOptions = {
   operations?: CalendarAPIOperations;
+  /** Refresh Dexie/bootstrap after a drag (or other adapter write) persists. */
   onPersisted?: () => void;
 };
 
@@ -44,22 +46,26 @@ export function useCalendarSurface(
   options?: UseCalendarSurfaceOptions,
 ): CalendarSurfaceStore {
   const [revision, setRevision] = useState(0);
-  const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState<CalendarSurfaceAdapterPhase>(() =>
+    client && readBrowserOnline() ? "loading" : "cache",
+  );
   const [offlineOverlay, setOfflineOverlay] = useState<CalendarEventsMap | null>(null);
   const adapterRef = useRef<JmapEventsAdapter>(undefined);
   const eventsRef = useRef<CalendarEventsMap>(new Map());
   const operations = options?.operations;
-  const onPersisted = options?.onPersisted;
+  const onPersistedRef = useRef(options?.onPersisted);
+  onPersistedRef.current = options?.onPersisted;
 
   useEffect(() => {
     if (!client || !readBrowserOnline()) {
       adapterRef.current = undefined;
-      setReady(false);
+      setPhase("cache");
       return;
     }
     const adapter = new JmapEventsAdapter({
       client,
       onChange: () => setRevision((current) => current + 1),
+      onPersisted: () => onPersistedRef.current?.(),
       onSyncError: () => {
         // Transient (e.g. connectivity loss mid-poll); the reconnect flush and
         // the next poll recover. The surface keeps rendering last-known state.
@@ -67,16 +73,17 @@ export function useCalendarSurface(
     });
     adapterRef.current = adapter;
     let cancelled = false;
+    setPhase("loading");
     void adapter
       .initialize(calendarBootstrapWindow())
       .then(() => {
         if (cancelled) return;
         adapter.startPolling(CALENDAR_BACKGROUND_POLL_MS);
-        setReady(true);
+        setPhase("ready");
         setRevision((current) => current + 1);
       })
       .catch(() => {
-        if (!cancelled) setReady(false);
+        if (!cancelled) setPhase("failed");
       });
     return () => {
       cancelled = true;
@@ -91,17 +98,24 @@ export function useCalendarSurface(
     setOfflineOverlay(null);
   }, [data.events]);
 
-  const adapter = ready ? adapterRef.current : undefined;
+  const adapter = phase === "ready" ? adapterRef.current : undefined;
 
-  const cachedEvents = useMemo<CalendarEventsMap>(() => {
+  const events = useMemo<CalendarEventsMap>(() => {
+    // Adapter mutates in place; onChange only bumps revision so we re-read getEvents().
     void revision;
-    const raw = adapter
-      ? new Map(adapter.getEvents())
-      : (offlineOverlay ?? calendarEventsToEngineMap(data.events, { calendars: data.calendars }));
-    return applyOwnRsvpToEngineEvents(raw, data.events, sessionEmail);
-  }, [adapter, revision, offlineOverlay, data.calendars, data.events, sessionEmail]);
+    if (offlineOverlay && (phase === "cache" || phase === "failed")) {
+      return applyOwnRsvpToEngineEvents(offlineOverlay, [...data.events], sessionEmail);
+    }
+    return resolveCalendarSurfaceEvents({
+      phase,
+      adapterEvents: adapter?.getEvents(),
+      cacheEvents: data.events,
+      sessionEmail,
+      calendars: data.calendars,
+    });
+  }, [adapter, revision, phase, offlineOverlay, data.calendars, data.events, sessionEmail]);
 
-  eventsRef.current = cachedEvents;
+  eventsRef.current = events;
 
   const offlineContext = useMemo(() => {
     if (adapter || !operations) return undefined;
@@ -110,12 +124,12 @@ export function useCalendarSurface(
       calendars: data.calendars,
       operations,
       onEventsChanged: setOfflineOverlay,
-      onPersisted,
+      onPersisted: () => onPersistedRef.current?.(),
     });
-  }, [adapter, operations, data.calendars, onPersisted]);
+  }, [adapter, operations, data.calendars]);
 
   return {
-    events: cachedEvents,
+    events,
     contextValue: adapter ?? offlineContext,
     syncNow: () => {
       void adapterRef.current?.sync().catch(() => {});

@@ -33,11 +33,13 @@ import {
   createIntentToForm,
   emptyCalendarEventForm,
   engineEventToForm,
+  formToCreateIntent,
   formToDraft,
   formToFullPatch,
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending-create";
 import { alertsFromWire, freeBusyStatusFromWire } from "@/calendar-core/src/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import {
@@ -371,12 +373,17 @@ export function useCalendarController({
   );
 
   const [editor, setEditor] = useState<CalendarEditorState | null>(null);
+  /** Create slot kept after save until a matching occurrence is on the surface. */
+  const [heldCreateIntent, setHeldCreateIntent] = useState<CalendarSurfaceCreateIntent | null>(
+    null,
+  );
   const [editorBusy, setEditorBusy] = useState(false);
 
   const openCreateEvent = useCallback(
     (dateISO?: string, startTime?: string) => {
       if (!defaultCalendarId) return;
       ensureCalendarVisible(defaultCalendarId);
+      setHeldCreateIntent(null);
       setEditor({
         mode: "create",
         form: emptyCalendarEventForm(defaultCalendarId, dateISO ?? anchor, startTime),
@@ -391,6 +398,7 @@ export function useCalendarController({
       const calendarId = intent.calendarId || defaultCalendarId;
       if (!calendarId) return;
       ensureCalendarVisible(calendarId);
+      setHeldCreateIntent(null);
       setEditor({
         mode: "create",
         form: createIntentToForm(calendarId, intent),
@@ -440,6 +448,7 @@ export function useCalendarController({
       if (!preview) return;
 
       // Open the editor immediately — recurrence scope is chosen on Save / Delete.
+      setHeldCreateIntent(null);
       setEditor({
         mode: "edit",
         eventId: preview.eventId,
@@ -492,6 +501,7 @@ export function useCalendarController({
     if (editor.mode === "create") {
       ensureCalendarVisible(editor.form.calendarId);
       let createdId: string | undefined;
+      setHeldCreateIntent(formToCreateIntent(editor.form));
       runEditorMutation({
         key: `calendar:create-event:${editor.form.calendarId}`,
         successToast: L.toastEventCreated,
@@ -505,6 +515,8 @@ export function useCalendarController({
           createdId = created.id;
         },
         undo: () => {
+          // queueMutation also runs undo on execute failure.
+          setHeldCreateIntent(null);
           if (createdId) void operations.deleteEvent(createdId);
         },
       });
@@ -1096,8 +1108,14 @@ export function useCalendarController({
     return next;
   }, [surfaceEvents, pendingDeletedEventIds]);
 
+  const pendingCreateIntent = useMemo(
+    () => resolvePendingCreateIntent(editor, heldCreateIntent, surfaceEventsForView),
+    [editor, heldCreateIntent, surfaceEventsForView],
+  );
+
   return {
     editor,
+    pendingCreateIntent,
     editorBusy,
     openCreateEvent,
     openCreateFromSurface,
