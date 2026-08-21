@@ -162,6 +162,29 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it("navigates day → week without rewriting a non-calendar path", () => {
+    mockPathname = "/calendar/day/2026-08-17";
+    livePathname = "/calendar/day/2026-08-17";
+    mockParams = { view: "day", date: "2026-08-17" };
+    const { result } = renderHook(() => useCalendarRouteSync());
+
+    act(() => {
+      result.current.handleRouteStateChange({
+        view: "week",
+        date: "2026-08-17",
+        presentation: "grid",
+      });
+    });
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/calendar/$view/$date",
+      params: { view: "week", date: "2026-08-17" },
+      replace: false,
+    });
+    expect(livePathname).toBe("/calendar/week/2026-08-17");
+  });
+
   it("does not navigate when the path already matches", () => {
     const { result } = renderHook(() => useCalendarRouteSync());
 

@@ -39,7 +39,7 @@
 }
 
 .action-bar__menu-trigger {
-  @apply size-9;
+  @apply shrink-0;
 }
 
 .action-bar__menu-item-icon > svg {

@@ -1,6 +1,12 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { expandEvents, type CalendarEvent, type CalendarEventsMap } from "@/lib/calendar-engine";
 import { jmapEventToInternalRows, type JmapCalendarEvent } from "@/lib/jmap-client";
+import { localToInternalRecurrenceId } from "@/lib/jmap-client/mapping/datetime";
+import type { JmapParticipant } from "@/calendar-core/src/calendar-attendees";
+import {
+  ownEventRsvpPresentation,
+  type CalendarParticipationStatus,
+} from "@/calendar-core/src/calendar-attendees";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
 
 /**
@@ -23,14 +29,109 @@ export type CalendarOccurrence = {
   location?: string;
 };
 
-export function calendarEventsToEngineMap(events: JmapCalendarEvent[]): CalendarEventsMap {
+function wireParticipants(event: JmapCalendarEvent): Record<string, JmapParticipant> | undefined {
+  const raw = event.participants;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  return raw as Record<string, JmapParticipant>;
+}
+
+/**
+ * Series decline on the master hides every instance unless a later this-instance
+ * RSVP (accepted / tentative) overrides it. Stale NEEDS-ACTION exception patches
+ * and unmatched RECURRENCE-ID keys inherit declined.
+ */
+function effectiveOwnRsvp(
+  masterStatus: CalendarParticipationStatus | null | undefined,
+  occurrenceStatus: CalendarParticipationStatus | null | undefined,
+): CalendarParticipationStatus | null | undefined {
+  if (masterStatus === "declined") {
+    if (occurrenceStatus === "accepted" || occurrenceStatus === "tentative") {
+      return occurrenceStatus;
+    }
+    return "declined";
+  }
+  return occurrenceStatus !== undefined ? occurrenceStatus : masterStatus;
+}
+
+function overrideRsvpByRecurrenceId(
+  wire: JmapCalendarEvent,
+  sessionEmail?: string,
+): Map<string, CalendarParticipationStatus | null> {
+  const map = new Map<string, CalendarParticipationStatus | null>();
+  const overrides = wire.recurrenceOverrides;
+  if (!overrides) return map;
+  const allDay = wire.showWithoutTime === true;
+  for (const [rid, patch] of Object.entries(overrides)) {
+    if (!patch || typeof patch !== "object") continue;
+    const rawParticipants = (patch as { participants?: unknown }).participants;
+    const participants =
+      rawParticipants && typeof rawParticipants === "object" && !Array.isArray(rawParticipants)
+        ? (rawParticipants as Record<string, JmapParticipant>)
+        : undefined;
+    const status = ownEventRsvpPresentation(participants ?? wireParticipants(wire), sessionEmail);
+    map.set(rid, status);
+    map.set(rid.replace(/Z$/, ""), status);
+    try {
+      map.set(localToInternalRecurrenceId(rid.replace(/Z$/, ""), allDay), status);
+    } catch {
+      // Compact lookup is best-effort — the local key still matches wire overrides.
+    }
+  }
+  return map;
+}
+
+export function applyOwnRsvpToEngineEvents(
+  events: CalendarEventsMap,
+  wireEvents: readonly JmapCalendarEvent[],
+  sessionEmail?: string,
+): CalendarEventsMap {
+  const byId = new Map<string, CalendarParticipationStatus | null>();
+  const byUid = new Map<string, CalendarParticipationStatus | null>();
+  const overridesById = new Map<string, Map<string, CalendarParticipationStatus | null>>();
+  const overridesByUid = new Map<string, Map<string, CalendarParticipationStatus | null>>();
+  for (const wire of wireEvents) {
+    const status = ownEventRsvpPresentation(wireParticipants(wire), sessionEmail);
+    byId.set(wire.id, status);
+    if (wire.uid) byUid.set(wire.uid, status);
+    const overrides = overrideRsvpByRecurrenceId(wire, sessionEmail);
+    if (overrides.size) {
+      overridesById.set(wire.id, overrides);
+      if (wire.uid) overridesByUid.set(wire.uid, overrides);
+    }
+  }
+
+  const next: CalendarEventsMap = new Map();
+  for (const [key, event] of events) {
+    const masterKey = key.includes("::") ? key.slice(0, key.indexOf("::")) : key;
+    const occurrenceId = key.includes("::") ? key.slice(key.indexOf("::") + 2) : event.recurrenceId;
+    const overrides =
+      overridesById.get(masterKey) ??
+      (event.eventId ? overridesByUid.get(event.eventId) : undefined);
+    const occurrenceStatus = occurrenceId
+      ? (overrides?.get(occurrenceId) ?? overrides?.get(occurrenceId.replace(/Z$/, "")))
+      : undefined;
+    const masterStatus =
+      byId.get(masterKey) ?? (event.eventId ? byUid.get(event.eventId) : undefined);
+    const status = effectiveOwnRsvp(masterStatus, occurrenceStatus);
+    const isOccurrence = Boolean(occurrenceId);
+    const isRecurringMaster = event.isRecurring === true && !isOccurrence;
+    if (status === "declined" && !isOccurrence && !isRecurringMaster) continue;
+    next.set(key, status ? { ...event, participationStatus: status } : event);
+  }
+  return next;
+}
+
+export function calendarEventsToEngineMap(
+  events: JmapCalendarEvent[],
+  options: { sessionEmail?: string } = {},
+): CalendarEventsMap {
   const map: CalendarEventsMap = new Map();
   for (const event of events) {
     for (const row of jmapEventToInternalRows(event)) {
       map.set(row.key, row.event);
     }
   }
-  return map;
+  return applyOwnRsvpToEngineEvents(map, events, options.sessionEmail);
 }
 
 function resolveEnd(event: CalendarEvent): Temporal.PlainDateTime {
@@ -47,20 +148,28 @@ function masterKeyOf(rowKey: string): string {
 export function occurrencesInRange(
   events: JmapCalendarEvent[],
   range: { start: string; end: string },
-  options: { calendars?: CalendarInfo[]; visibleCalendarIds?: ReadonlySet<string> } = {},
+  options: {
+    calendars?: CalendarInfo[];
+    visibleCalendarIds?: ReadonlySet<string>;
+    sessionEmail?: string;
+  } = {},
 ): CalendarOccurrence[] {
   const colorByCalendar = new Map<string, string>();
   for (const calendar of options.calendars ?? []) {
     colorByCalendar.set(calendar.id, calendar.color);
   }
 
-  const expanded = expandEvents(calendarEventsToEngineMap(events), {
-    start: Temporal.PlainDateTime.from(range.start),
-    end: Temporal.PlainDateTime.from(range.end),
-  });
+  const expanded = expandEvents(
+    calendarEventsToEngineMap(events, { sessionEmail: options.sessionEmail }),
+    {
+      start: Temporal.PlainDateTime.from(range.start),
+      end: Temporal.PlainDateTime.from(range.end),
+    },
+  );
 
   const occurrences: CalendarOccurrence[] = [];
   for (const [key, event] of expanded) {
+    if (event.participationStatus === "declined") continue;
     const calendarId = event.calendarId ?? "";
     if (options.visibleCalendarIds && !options.visibleCalendarIds.has(calendarId)) {
       continue;
@@ -124,6 +233,20 @@ export function viewDateRange(view: CalendarViewId, anchorISO: string): Calendar
       return { start: gridStart, end: last.add({ days: trailing }) };
     }
   }
+}
+
+/** True when this view's rendered period is the same as navigating to today. */
+export function isViewShowingToday(
+  view: CalendarViewId,
+  anchorISO: string,
+  todayISO: string = todayISODate(),
+): boolean {
+  const current = viewDateRange(view, anchorISO);
+  const todayRange = viewDateRange(view, todayISO);
+  return (
+    Temporal.PlainDate.compare(current.start, todayRange.start) === 0 &&
+    Temporal.PlainDate.compare(current.end, todayRange.end) === 0
+  );
 }
 
 export function shiftAnchor(view: CalendarViewId, anchorISO: string, direction: 1 | -1): string {

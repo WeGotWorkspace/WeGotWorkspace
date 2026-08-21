@@ -192,7 +192,8 @@ export function WorkspaceSidebarToggle({
         </>
       }
       variant="subtle"
-      className={cn("size-9 shrink-0", hoverClassName)}
+      size="sm"
+      className={cn("shrink-0", hoverClassName)}
       style={WORKSPACE_SIDEBAR_TOGGLE_STYLE}
     />
   );

@@ -13,7 +13,7 @@ const ENRICH_CONCURRENCY = 4;
  * Fill empty list previews from collab y-indexeddb snapshots after a hard reload.
  *
  * Body edits persist through the Docs collab document; a debounced save may not
- * have reached the Notes `.md` file yet, so GET /notes/items (and Dexie after
+ * have reached the Notes `.md` file yet, so FileNode list rows (and Dexie after
  * bootstrap) can still look empty while IndexedDB already has the typed text.
  * Opening a note hydrates the editor — this path does the same for **all** empty
  * rows without mounting TipTap in the list.

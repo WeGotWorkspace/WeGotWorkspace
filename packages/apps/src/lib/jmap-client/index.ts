@@ -8,6 +8,8 @@ export type {
   JmapFileNode,
   JmapFileNodeCreate,
   JmapFileNodeFilter,
+  JmapFileNodeNote,
+  JmapFileNodeNotePatch,
   JmapFileNodeType,
   JmapFilesRights,
 } from "./filenodes/types.js";

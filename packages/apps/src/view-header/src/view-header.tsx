@@ -11,19 +11,31 @@ type ViewHeaderLayout = "inline" | "stacked" | "responsive";
 
 type ViewHeaderProps = {
   title: string;
-  /** "default" = large serif display; "sm" = medium sans-serif title (e.g. doc editor file name). */
+  /** Shown instead of `title` when the header main column is narrow. */
+  compactTitle?: string;
+  /** "default" = large serif title (smaller on compact headers); "sm" = medium sans-serif title (e.g. doc editor file name). */
   titleSize?: ViewHeaderTitleSize;
   /**
-   * Title-row layout for `view-header__title-cluster` + `view-header__actions`.
+   * Title-row layout for `view-header__title-cluster` + `view-header__end`.
    * "inline" (default) = one row; "stacked" = cluster then actions; "responsive" =
    * stacked when the header main column is narrow (container query).
    */
   layout?: ViewHeaderLayout;
   /**
-   * Optional period controls (e.g. calendar prev/next). Inline: before the title.
-   * Stacked / narrow responsive: at the end of the title row.
+   * Optional control immediately before the title (e.g. mobile Today).
+   * Stays with the title in stacked / narrow layouts.
+   */
+  titlePrefix?: ReactNode;
+  /**
+   * Optional period controls (e.g. calendar prev/next). Inline: before the
+   * title. Stacked / narrow responsive: end of row 2 (after the title).
    */
   titleLeading?: ReactNode;
+  /**
+   * Optional first-row trailing control (e.g. calendar inbox). Inline: after
+   * `actions`. Stacked / narrow responsive: end of row 1.
+   */
+  titleTrailing?: ReactNode;
   subtitle?: string;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
@@ -40,9 +52,12 @@ type ViewHeaderProps = {
 
 export function ViewHeader({
   title,
+  compactTitle,
   titleSize = "default",
   layout = "inline",
+  titlePrefix,
   titleLeading,
+  titleTrailing,
   subtitle,
   hideSidebarToggle = false,
   sidebarOpen = false,
@@ -69,9 +84,11 @@ export function ViewHeader({
 
   return (
     <>
-      <div className="flex items-start gap-3">
+      <div className="view-header">
         {hideSidebarToggle ? null : (
-          <WorkspaceSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar ?? (() => {})} />
+          <div className="view-header__sidebar-toggle">
+            <WorkspaceSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar ?? (() => {})} />
+          </div>
         )}
         <div className="view-header__main">
           <div
@@ -85,13 +102,33 @@ export function ViewHeader({
               {titleLeading ? (
                 <div className="view-header__title-leading">{titleLeading}</div>
               ) : null}
-              <h2
-                className={cn("view-header__title", titleSize === "sm" && "view-header__title--sm")}
-              >
-                {title}
-              </h2>
+              <div className="view-header__title-block">
+                {titlePrefix ? (
+                  <div className="view-header__title-prefix">{titlePrefix}</div>
+                ) : null}
+                <h2
+                  className={cn(
+                    "view-header__title",
+                    titleSize === "sm" && "view-header__title--sm",
+                  )}
+                >
+                  {compactTitle ? (
+                    <>
+                      <span className="view-header__title-full">{title}</span>
+                      <span className="view-header__title-compact">{compactTitle}</span>
+                    </>
+                  ) : (
+                    title
+                  )}
+                </h2>
+              </div>
             </div>
-            <div className="view-header__actions">{actions}</div>
+            <div className="view-header__end">
+              <div className="view-header__actions">{actions}</div>
+              {titleTrailing ? (
+                <div className="view-header__title-trailing">{titleTrailing}</div>
+              ) : null}
+            </div>
           </div>
           {subtitle ? (
             <p className={cn("field-label-row__label", "view-header__subtitle")}>{subtitle}</p>

@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .app-switch-button__trigger {
-  @apply inline-flex min-w-0 items-center gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors;
+  @apply inline-flex min-w-0 items-center gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   user-select: none;
   color: var(--app-switch-label-color, currentColor);
   --app-switch-lockup-line: calc(1.875rem * 0.85);

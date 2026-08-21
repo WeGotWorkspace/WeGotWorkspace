@@ -19,9 +19,7 @@ import {
   createDefaultCalendarApiSource,
   type CalendarApiSource,
 } from "@/calendar-core/src/calendar-api-source";
-
-/** Silent online bootstrap + outbox flush cadence (notes uses 10s; calendar prefers 30s). */
-const ONLINE_BOOTSTRAP_POLL_MS = 30_000;
+import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 
 export type UseCalendarAPIOptions = {
   onSyncConflict?: (eventIds: string[]) => void;
@@ -114,7 +112,7 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     const intervalId = window.setInterval(() => {
       if (document.hidden) return;
       runSilentRefresh();
-    }, ONLINE_BOOTSTRAP_POLL_MS);
+    }, CALENDAR_BACKGROUND_POLL_MS);
 
     const onVisibilityChange = () => {
       if (!document.hidden) runSilentRefresh();
@@ -140,5 +138,6 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     operations,
     offlineUsername,
     jmapClient,
+    refreshBootstrap: applyBootstrapRefresh,
   };
 }

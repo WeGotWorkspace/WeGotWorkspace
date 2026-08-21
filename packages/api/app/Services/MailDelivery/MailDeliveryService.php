@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\MailDelivery;
 
-use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
 
 final class MailDeliveryService
@@ -53,14 +52,11 @@ final class MailDeliveryService
 
         $this->mailers->register($resolved->name, $config);
 
+        $message->from = $from;
+
         try {
-            Mail::mailer(MailDeliveryMailerFactory::MAILER_NAME)->raw(
-                $message->textBody,
-                function (Message $outgoing) use ($message, $from): void {
-                    $outgoing->from($from);
-                    $outgoing->to($message->to);
-                    $outgoing->subject($message->subject);
-                }
+            Mail::mailer(MailDeliveryMailerFactory::MAILER_NAME)->send(
+                (new OutboundMessageMail($message))->to($message->to),
             );
         } catch (\Throwable $e) {
             return $this->mapFailure($e, $resolved->name, $at);

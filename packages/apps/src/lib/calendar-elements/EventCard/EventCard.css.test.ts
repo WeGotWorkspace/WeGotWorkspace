@@ -29,6 +29,51 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(/:host\(\[data-dragging\]\)[\s\S]*cursor-grabbing/);
   });
 
+  it("keeps the resting calendar tint on EventBase while data-dragging", () => {
+    const css = readCss("../EventBase/EventBase.css");
+    expect(css).toMatch(
+      /:host\(\[data-dragging\]\)\s+event-card\s*\{[\s\S]*--_lc-event-card-bg-active:\s*var\(--_lc-event-bg\)/,
+    );
+    expect(css).not.toMatch(/:host\(\[data-dragging\]\)\s+event-card\s*\{[\s\S]*color-mix/);
+  });
+
+  it("sizes meta labels from the shared token so small devices can shrink them", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /\.event-card-time\s*\{[\s\S]*font-size:\s*var\(--_lc-time-label-font-size,\s*0\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-compact-time\s*\{[\s\S]*font-size:\s*var\(--_lc-time-label-font-size,\s*0\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-location\s*\{[\s\S]*font-size:\s*var\(--_lc-time-label-font-size,\s*0\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-time-label-font-size,\s*0\.625rem/,
+    );
+    const summaryMain = css.match(/\.event-card-summary-main\s*\{[^}]*\}/)?.[0] ?? "";
+    expect(summaryMain).toBeTruthy();
+    expect(summaryMain).not.toContain("--_lc-time-label-font-size");
+  });
+
+  it("insets the card fill with one shared token on all four sides", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(/--_lc-event-card-inset:\s*1px/);
+    expect(css).toMatch(/inset:\s*var\(--_lc-event-card-inset,\s*1px\)/);
+    expect(css).not.toMatch(/inset-px/);
+  });
+
+  it("uses the hover fill when the card is selected / popover-open", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /:host\(\[data-selected\]\)\s*\{[\s\S]*--_lc-event-card-bg-active:\s*var\(--_lc-event-bg-hover\)/,
+    );
+    const beforeHoverMedia = css.split(
+      /@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)/,
+    )[0];
+    expect(beforeHoverMedia).toMatch(/:host\(\[data-selected\]\)/);
+  });
+
   it("tints the card background on hover only for hover-capable fine pointers", () => {
     const css = readCss("EventCard.css");
     expect(css).toMatch(
@@ -53,6 +98,17 @@ describe("EventCard / EventBase interaction CSS", () => {
       /\.event:active(?:\s*,\s*\.event:active event-card)?\s*\{[\s\S]*cursor:\s*grab/,
     );
     expect(css).toMatch(/\.event\.event--dragging[\s\S]*cursor:\s*grabbing/);
+  });
+
+  it("uses a dashed accent edge and lighter fill for awaiting-reply RSVP", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /:host\(\[rsvp="needs-action"\]\)\s*\.event-card-shell::before[\s\S]*border:\s*1\.5px\s+dashed/,
+    );
+    expect(css).toMatch(/:host\(\[rsvp="tentative"\]\)\s*\.event-card-shell::before/);
+    expect(css).toMatch(
+      /:host\(\[rsvp="needs-action"\]\)\s*\.event-card-shell::before[\s\S]*color-mix\(in srgb,\s*var\(--_lc-event-card-bg\)\s*42%/,
+    );
   });
 
   it("renders TimeLine create-preview as a card slot, not a dashed ghost", () => {

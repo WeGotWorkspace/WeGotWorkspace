@@ -12,6 +12,25 @@ export type JmapFilesRights = {
   mayShare: boolean;
 };
 
+/**
+ * Notes projection on `.md` files under `.notes` (chunk B).
+ * `starred` is the caller's Drive star — never YAML.
+ */
+export type JmapFileNodeNote = {
+  title: string;
+  tags: string[];
+  excerpt: string;
+  notebook: string;
+  archived: boolean;
+  starred: boolean;
+};
+
+/** FileNode/set `note` patch — title/tags only; starred is not writable. */
+export type JmapFileNodeNotePatch = {
+  title?: string;
+  tags?: string[];
+};
+
 /** FileNode object (draft-ietf-jmap-filenode-14 §3.2). */
 export type JmapFileNode = {
   id: JmapId;
@@ -26,6 +45,7 @@ export type JmapFileNode = {
   accessed?: string;
   changed?: string;
   myRights?: JmapFilesRights;
+  note?: JmapFileNodeNote;
   [key: string]: unknown;
 };
 
@@ -46,4 +66,5 @@ export type JmapFileNodeCreate = {
   blobId?: string;
   size?: number;
   type?: string;
+  note?: JmapFileNodeNotePatch;
 };

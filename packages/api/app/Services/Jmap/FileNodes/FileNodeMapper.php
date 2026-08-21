@@ -214,6 +214,9 @@ final class FileNodeMapper
             // Missing bytes still project path-derived fields.
         }
         [$title, $tags] = $this->codec->parse($markdown, $fallback);
+        if ($this->codec->isPlaceholderTitle($title, $fallback)) {
+            $title = '';
+        }
 
         return [
             'title' => $title,

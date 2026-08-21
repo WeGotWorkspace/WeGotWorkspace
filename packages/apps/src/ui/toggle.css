@@ -1,0 +1,41 @@
+@import "../styles.css" reference;
+
+.toggle {
+  @apply inline-flex items-center justify-center gap-2 border-0 font-medium transition-colors;
+  @apply hover:bg-muted hover:text-muted-foreground;
+  @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  @apply disabled:pointer-events-none disabled:opacity-50;
+  @apply data-[state=on]:bg-accent data-[state=on]:text-accent-foreground;
+  border-radius: var(--control-radius-button-pill);
+  background-color: transparent;
+}
+
+.toggle svg {
+  @apply pointer-events-none size-4 shrink-0;
+}
+
+.toggle--outline {
+  @apply border border-input shadow-sm hover:bg-accent hover:text-accent-foreground;
+}
+
+.toggle--size-sm {
+  @apply px-1.5 text-xs;
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  min-width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+}
+
+.toggle--size-md {
+  @apply px-2 text-sm;
+  height: var(--control-height-md, var(--input-height, 2.25rem));
+  min-width: var(--control-height-md, var(--input-height, 2.25rem));
+}
+
+.toggle--size-lg {
+  @apply px-2.5 text-sm;
+  height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
+  min-width: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
+}
+
+.toggle-group {
+  @apply flex items-center justify-center gap-1;
+}

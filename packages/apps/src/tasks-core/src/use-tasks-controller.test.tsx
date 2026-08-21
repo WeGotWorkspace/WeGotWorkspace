@@ -91,6 +91,25 @@ describe("useTasksController URL routing", () => {
     expect(onViewChange).toHaveBeenCalledWith("state:today");
   });
 
+  it("does not call onViewChange when only the callback identity changes", () => {
+    const first = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ onViewChange }: { onViewChange: (view: string) => void }) =>
+        useTasksController({ data: bootstrap.data, initialView: "state:today", onViewChange }),
+      { initialProps: { onViewChange: first } },
+    );
+
+    expect(result.current.view).toBe("state:today");
+    expect(first).not.toHaveBeenCalled();
+
+    const second = vi.fn();
+    rerender({ onViewChange: second });
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).not.toHaveBeenCalled();
+    expect(result.current.view).toBe("state:today");
+  });
+
   it("does not revert optimistic selection when initialView is stale during navigation", () => {
     const onViewChange = vi.fn();
     const { result, rerender } = renderHook(

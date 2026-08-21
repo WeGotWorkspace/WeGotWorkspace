@@ -162,6 +162,7 @@ export function TasksWorkspace({
                     label={L.renameProject}
                     onClick={() => openEditProjectDialog(selectedList.id)}
                     icon={<Pencil className="size-4" aria-hidden />}
+                    size="sm"
                     variant="subtle"
                   />
                 ) : null}
@@ -170,6 +171,7 @@ export function TasksWorkspace({
                     label={showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
                     onClick={toggleShowCompletedTasks}
                     icon={<CheckCircle2 aria-hidden />}
+                    size="sm"
                     variant="subtle"
                     active={showCompletedTasks}
                   />
@@ -182,6 +184,7 @@ export function TasksWorkspace({
                     icon={
                       <RefreshCw className={cn(listRefreshing && "animate-spin")} aria-hidden />
                     }
+                    size="sm"
                     variant="subtle"
                   />
                 ) : null}

@@ -6,14 +6,18 @@ import {
   createNotebook,
   deleteNotebook,
   deleteNoteItem,
-  noteFromWgwItem,
-  parseNotesItemsPayload,
   renameNotebook,
   restoreNoteItem,
   updateNoteItem,
 } from "@/lib/api/wgw/notes";
-import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  findNoteFileNode,
+  listOwnedNotesFromFileNodes,
+  noteFromFileNodeNote,
+} from "@/lib/api/wgw/notes-filenode";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
+import { applyDocsStarToggle } from "@/lib/offline/docs/docs-stars-store";
+import { resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
@@ -34,7 +38,7 @@ export type OutboxFlushResult = {
   bootstrap: NotesAppBootstrap | null;
 };
 
-/** Build a metadata-only `PUT /notes/items/{id}` request — no `body` field. */
+/** Metadata-only FileNode upsert — no `body`; starred is routed to Drive stars. */
 function noteMetadataUpsertRequest(
   noteId: string,
   metadata: NoteUpsertMetadata,
@@ -59,11 +63,33 @@ function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
 }
 
 async function fetchServerNotesById(): Promise<Map<string, { updatedAt?: string }>> {
-  const res = await wgwFetch("/notes/items");
-  if (!res.ok) return new Map();
-  const json = await wgwReadJson(res);
-  const items = parseNotesItemsPayload(json);
-  return new Map(items.map((item) => [item.id, { updatedAt: item.updatedAt }]));
+  try {
+    const listing = await listOwnedNotesFromFileNodes();
+    return new Map(listing.notes.map((item) => [item.id, { updatedAt: item.updatedAt }]));
+  } catch {
+    return new Map();
+  }
+}
+
+async function persistFlushedStar(
+  username: string,
+  noteId: string,
+  metadata: NoteUpsertMetadata,
+  apiPath?: string,
+): Promise<void> {
+  if (metadata.starred === undefined) return;
+  const path = resolveNoteSharePath(
+    {
+      id: noteId,
+      notebook: metadata.notebook,
+      scope: metadata.groupSlug?.trim() ? "group" : "personal",
+      groupSlug: metadata.groupSlug,
+      apiPath,
+    },
+    username,
+    !!metadata.archived,
+  );
+  await applyDocsStarToggle(username, path, metadata.starred);
 }
 
 function serverUpdatedAtMs(
@@ -94,18 +120,15 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           const serverMs = serverUpdatedAtMs(serverNotes, noteId);
           const baseMs = noteUpdatedAtMs(row.ifInState);
           if (serverMs > baseMs) {
-            // Metadata-only conflict. The API derives a note's `updatedAt` from a
-            // frontmatter marker that only metadata mutations bump — body-only
-            // collab saves (`PUT /files/collaboration`) preserve it — so a
-            // server-newer reading here always reflects a genuine frontmatter
-            // divergence, never a concurrent body edit.
+            // Metadata-only conflict. Compare FileNode `changed` (index
+            // updated_at). Body-only collab saves should not bump it; if they
+            // do, this guard may false-conflict (residual until G).
             stateMismatches.push(noteId);
             await markOutboxError(username, row.id, "stateMismatch");
             continue;
           }
         }
-        // Metadata-only PUT preserves the body bytes on disk; the 404 create
-        // fallback seeds an empty body (collab persists the real body separately).
+        // FileNode/set preserves body bytes; 404 create seeds empty markdown.
         const metadataRequest = noteMetadataUpsertRequest(noteId, upsert.metadata);
         let saved;
         try {
@@ -127,6 +150,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           await removeNoteFromCache(username, tempId);
         }
         await upsertNoteInCache(username, saved, false);
+        await persistFlushedStar(username, saved.id, upsert.metadata, saved.apiPath);
         serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
@@ -185,13 +209,17 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
   return { stateMismatches, bootstrap: nextBootstrap };
 }
 
-/** Fetch a single note from the live items list (used by conflict resolution). */
+/** Fetch a single note from FileNode get (used by conflict resolution). */
 export async function fetchServerNote(noteId: string) {
-  const res = await wgwFetch("/notes/items");
-  if (!res.ok) throw new Error(`GET /notes/items failed (${res.status})`);
-  const json = await wgwReadJson(res);
-  const items = parseNotesItemsPayload(json);
-  const row = items.find((item) => item.id === noteId);
-  if (!row) throw new Error(`Note ${noteId} not found on server`);
-  return noteFromWgwItem(row);
+  const found = await findNoteFileNode(noteId);
+  if (!found) throw new Error(`Note ${noteId} not found on server`);
+  return noteFromFileNodeNote({
+    id: found.noteId,
+    projection: found.projection,
+    path: found.path,
+    scope: found.root.scope,
+    groupSlug: found.root.groupSlug,
+    modified: typeof found.node.modified === "string" ? found.node.modified : undefined,
+    changed: typeof found.node.changed === "string" ? found.node.changed : undefined,
+  });
 }

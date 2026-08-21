@@ -1,0 +1,23 @@
+@import "../../styles.css" reference;
+
+.calendar-rsvp-page {
+  @apply mx-auto flex max-w-lg flex-col gap-3 px-6 py-12;
+}
+
+.calendar-rsvp-page__title {
+  @apply text-2xl font-semibold;
+}
+
+.calendar-rsvp-page__email,
+.calendar-rsvp-page__status {
+  @apply text-sm;
+  color: var(--calendar-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+}
+
+.calendar-rsvp-page__actions {
+  @apply flex flex-wrap gap-2 pt-2;
+}
+
+.calendar-rsvp-page--error {
+  @apply text-sm;
+}

@@ -4,6 +4,7 @@
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
  * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
+ * Compact toolbar selects: `.select-trigger--size-sm` uses `--control-height-sm` + `--control-radius-button-pill`.
  */
 .control-surface,
 .input,
@@ -27,8 +28,8 @@
 .input,
 .select-trigger {
   @apply items-center px-[var(--input-padding-x,0.75rem)] py-1;
-  min-height: var(--input-height, 2.25rem);
-  height: var(--input-height, 2.25rem);
+  min-height: var(--control-height-md, var(--input-height, 2.25rem));
+  height: var(--control-height-md, var(--input-height, 2.25rem));
 }
 
 .input {
@@ -49,6 +50,14 @@
   @apply data-[placeholder]:text-muted-foreground data-[state=open]:text-foreground;
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
+}
+
+.select-trigger--size-sm {
+  @apply px-3;
+  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  border-radius: var(--control-radius-button-pill);
+  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
 }
 
 .control-surface:disabled,

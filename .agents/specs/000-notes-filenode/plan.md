@@ -45,7 +45,7 @@ A before B. D after B. G after D. V after G. No parallel delivery PRs.
 - **id:** `notes-filenode-api`
 - **Skill:** api
 - **Package:** packages/api
-- **Inputs:** A, `NoteMarkdownCodec`, [`FileNodeMapper`](../../../packages/api/app/Services/Jmap/FileNodes/FileNodeMapper.php), [`NoteRepository`](../../../packages/api/app/Services/Notes/NoteRepository.php), Drive `GET /files/shared-with-me` (today excludes `isNotePath`)
+- **Inputs:** A, [`NoteMarkdownCodec`](../../../packages/api/app/Services/Notes/NoteMarkdownCodec.php), [`FileNodeMapper`](../../../packages/api/app/Services/Jmap/FileNodes/FileNodeMapper.php), [`NoteStoragePaths`](../../../packages/api/app/Storage/NoteStoragePaths.php), Drive `GET /files/shared-with-me` (today excludes `isNotePath`)
 - **Done when:**
   - `FileNode/query` + `get` returns a `note` projection: codec = title/tags/excerpt; `notebook`/`archived` from `storage_key`; `starred` from `drive_starred_items` for the caller
   - non-note files have no `note` prop
@@ -56,7 +56,7 @@ A before B. D after B. G after D. V after G. No parallel delivery PRs.
   - `NotesPathShare` / note-path rights unchanged
   - path-keyed share listing can return note grants (OpenAPI updated in this PR if the HTTP path changed)
 - **Commits:** (1) `note` projection (2) FileNode/set with YAML starred pass-through (3) share-listing invert/split + OpenAPI if needed
-- **Verify with:** FileNode feature tests on a seeded `.notes` tree; star write on a note path + Drive starred list still empty of notes; share listing tests; **REST starred regression** — `GET`/`PUT /notes/items` still round-trips `starred` ([`NotesItemsTest`](../../../packages/api/tests/Feature/Notes/NotesItemsTest.php), [`NotesMetadataMutationTest`](../../../packages/api/tests/Feature/Notes/NotesMetadataMutationTest.php) stay green; add FileNode/set pass-through → `GET /notes/items` still has the original YAML star if not already covered). Done-gate includes these REST tests.
+- **Verify with:** FileNode feature tests on a seeded `.notes` tree ([`JmapFileNodeNotesTest`](../../../packages/api/tests/Feature/Jmap/JmapFileNodeNotesTest.php)); star write on a note path + Drive starred list still empty of notes; share listing tests. Historical REST starred round-trip lived in `NotesItemsTest` / `NotesMetadataMutationTest` (deleted in G). FileNode/set YAML `starred` pass-through is superseded by G (codec no longer emits `starred:` — [`JmapFileNodeNotesSetTest`](../../../packages/api/tests/Feature/Jmap/JmapFileNodeNotesSetTest.php)).
 - **Parallel with:** none
 
 ### Chunk D: Notes app FileNode client

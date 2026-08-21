@@ -56,15 +56,9 @@
 .hour-labels {
   @apply block h-full min-h-0 pointer-events-none;
   padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
-  /* Same 1px-at-end-of-hour-tile paint as TimeLine `.cell-main--grid`. */
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0 calc(100% - 1px),
-    var(--time-line-grid-color, transparent) calc(100% - 1px) 100%,
-    transparent 100% 100%
-  );
-  background-size: 100% var(--_lc-time-sidebar-hour-cell-height, calc(100% / 24));
-  background-repeat: repeat;
+  /* Hour lines live on the timed grid only (TimeLine `.cell-main--grid`). An opaque
+     gutter so labels sit on a clean surface and no line crosses the glyphs. */
+  background-color: var(--_lc-time-sidebar-layer-bg);
 }
 
 .hour-label-row:last-child {
@@ -77,8 +71,9 @@
 }
 
 .hour-label {
-  @apply text-inherit block text-xs leading-none font-medium whitespace-nowrap text-end tabular-nums;
-  /* Sit the 12px label on the hour line (end of the previous tile) without moving the line. */
+  @apply text-inherit block leading-none font-medium whitespace-nowrap text-end tabular-nums;
+  /* Sit the label on the timed-grid hour line (end of the previous tile). */
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
   transform: translateY(-50%);
 }
 
@@ -92,16 +87,24 @@
   inset-inline-end: 0;
   top: var(--_lc-now-badge-top, 0%);
   z-index: var(--_lc-z-overlay-raised);
-  transform: translateY(-50%);
+  isolation: isolate;
+  transform: translateY(-50%) translateZ(0);
   pointer-events: none;
   padding-block: 2px;
   padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
   border-radius: 999px;
   background: var(--lc-higlight-color, #ff0000);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--_lc-time-label-font-size, 11px);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.01em;
   box-shadow: 0 0 0 1px var(--_lc-time-sidebar-layer-bg, transparent);
+}
+
+@media (max-width: 40rem) {
+  .hour-label,
+  .now-badge {
+    font-size: var(--_lc-time-label-font-size, 0.625rem);
+  }
 }

@@ -4754,7 +4754,7 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients; replacement for `GET /notes/shared-with-me`).
+         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).
          */
         get: {
             parameters: {
@@ -5693,6 +5693,231 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendar/rsvp/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show a public RSVP invitation */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description RSVP target */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarRsvpResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /** Respond to a public RSVP invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSchedulingNotificationRespond"];
+                };
+            };
+            responses: {
+                /** @description Updated RSVP */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarRsvpResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/invitees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List instance users who can be invited */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invitee directory */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingInviteeListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List own calendar scheduling inbox */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scheduling notifications for the signed-in user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingNotificationListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications/{notificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Dismiss a scheduling notification without sending a REPLY */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notificationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification dismissed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/scheduling/notifications/{notificationId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** RSVP to a scheduling invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notificationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSchedulingNotificationRespond"];
+                };
+            };
+            responses: {
+                /** @description Updated notification after REPLY */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSchedulingNotification"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         delete?: never;
@@ -9039,6 +9264,61 @@ export interface components {
             to?: string;
         };
         AdminMailDeliveryTestResponse: components["schemas"]["AdminMailDeliveryLastTestSend"];
+        /** @description One iTIP scheduling-inbox row (RFC 6638), later-mappable to JMAP CalendarEventNotification. */
+        CalendarSchedulingNotification: {
+            /** @description Scheduling object URI (inbox resource name). */
+            id: string;
+            /** @description VEVENT UID the notification refers to. */
+            uid: string;
+            /** @enum {string} */
+            method: "REQUEST" | "CANCEL" | "REPLY" | "ADD" | "REFRESH" | "COUNTER" | "DECLINECOUNTER";
+            title: string;
+            organizerEmail: string | null;
+            organizerName?: string | null;
+            /** @description UTC start instant when DTSTART is a date-time. */
+            start?: string | null;
+            end?: string | null;
+            location?: string | null;
+            /** @description True when the VEVENT has RRULE or RECURRENCE-ID. */
+            recurring?: boolean;
+            /** @enum {string} */
+            participationStatus: "needs-action" | "accepted" | "tentative" | "declined" | "delegated";
+            /** @description Attendee calendar event id when a local VEVENT copy exists. */
+            eventId?: string | null;
+            etag?: string;
+        };
+        CalendarSchedulingNotificationListResponse: {
+            list: components["schemas"]["CalendarSchedulingNotification"][];
+        };
+        CalendarSchedulingInvitee: {
+            username: string;
+            email: string;
+            name: string;
+        };
+        CalendarSchedulingInviteeListResponse: {
+            list: components["schemas"]["CalendarSchedulingInvitee"][];
+            /** @description When false, Calendar must not send iMIP to external attendees. */
+            canSubmitEmail: boolean;
+        };
+        CalendarRsvpResponse: {
+            title: string;
+            attendeeEmail: string;
+            /** @enum {string} */
+            participationStatus: "needs-action" | "accepted" | "tentative" | "declined";
+        };
+        CalendarSchedulingNotificationRespond: {
+            /** @enum {string} */
+            participationStatus: "accepted" | "tentative" | "declined";
+            /** @description Writable calendar for the attendee copy on accept/tentative. Ignored when declined. */
+            calendarId?: string;
+            /** @description JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted. */
+            recurrenceId?: string;
+            /**
+             * @description this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events.
+             * @enum {string}
+             */
+            scope?: "this" | "future";
+        };
     };
     responses: {
         /** @description Invalid request */

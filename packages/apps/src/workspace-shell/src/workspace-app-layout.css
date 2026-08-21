@@ -31,7 +31,8 @@
 }
 
 .workspace-app-layout__user-footer {
-  @apply p-4 md:p-6 flex items-center gap-2 shrink-0 border-t;
+  @apply py-4 md:py-6 flex items-center gap-2 shrink-0 border-t;
+  padding-inline: var(--app-sidebar-padding-x, 1rem);
   color: var(
     --workspace-user-footer-text-color,
     color-mix(in oklab, var(--color-ink) 70%, transparent)
@@ -52,7 +53,7 @@
 }
 
 .workspace-app-layout__panel[data-open="false"] {
-  @apply translate-x-full border-l-0;
+  @apply translate-x-full border-l-0 pointer-events-none;
   margin-right: calc(-1 * var(--workspace-panel-width, 0px));
 }
 

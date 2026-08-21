@@ -493,7 +493,13 @@ export abstract class CalendarViewBase extends BaseElement {
     start: Temporal.PlainDateTime;
     end: Temporal.PlainDateTime;
   }): EventsMap {
-    return expandEvents(this.events ?? new Map(), range, { timezone: this.timezone });
+    const expanded = expandEvents(this.events ?? new Map(), range, { timezone: this.timezone });
+    const visible: EventsMap = new Map();
+    for (const [key, event] of expanded) {
+      if (event.participationStatus === "declined") continue;
+      visible.set(key, event);
+    }
+    return visible;
   }
 
   get pendingByCalendarId(): CalendarEventPendingByCalendarId {

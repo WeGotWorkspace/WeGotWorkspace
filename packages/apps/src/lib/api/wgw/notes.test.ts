@@ -67,6 +67,93 @@ describe("wgwNoteUpsertFromNote", () => {
   });
 });
 
+describe("noteFromFileNodeNote", () => {
+  it("maps FileNode note projection and Drive starred, never YAML", async () => {
+    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
+    const mapped = noteFromFileNodeNote({
+      id: "welcome",
+      path: "/users/bob/.notes/Drafts/welcome.md",
+      scope: "personal",
+      modified: "2026-06-01T12:00:00.000Z",
+      changed: "2024-01-01T00:00:00.000Z",
+      projection: {
+        title: "Welcome",
+        tags: ["intro"],
+        excerpt: "Hello from FileNode",
+        notebook: "Drafts",
+        archived: false,
+        starred: true,
+      },
+    });
+    expect(mapped.starred).toBe(true);
+    expect(mapped.excerpt).toContain("Hello from FileNode");
+    expect(mapped.date).toBe("2026-06-01T12:00:00.000Z");
+    expect(mapped.updatedAt).toBe("2024-01-01T00:00:00.000Z");
+    expect(mapped.apiPath).toBe("/users/bob/.notes/Drafts/welcome.md");
+    expect(mapped.tags).toEqual(["intro"]);
+  });
+
+  it("does not use FileNode title when it is the note id or local-* filename", async () => {
+    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
+    const { noteListTitle, noteHasListableBody } =
+      await import("@/notes-core/src/notes-note-utils");
+    const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
+
+    const untitled = noteFromFileNodeNote({
+      id: localId,
+      path: `/users/bob/.notes/Drafts/${localId}.md`,
+      scope: "personal",
+      projection: {
+        title: localId,
+        tags: [],
+        excerpt: "",
+        notebook: "Drafts",
+        archived: false,
+        starred: false,
+      },
+    });
+    expect(untitled.excerpt).toBe("");
+    expect(untitled.body).toEqual([""]);
+    expect(noteHasListableBody(untitled)).toBe(false);
+    expect(noteListTitle(untitled)).toBe("Untitled note");
+    expect(noteListTitle(untitled)).not.toBe(localId);
+
+    const withBody = noteFromFileNodeNote({
+      id: localId,
+      path: `/users/bob/.notes/Drafts/${localId}.md`,
+      scope: "personal",
+      projection: {
+        title: localId,
+        tags: [],
+        excerpt: "Pasta with garlic and oil",
+        notebook: "Drafts",
+        archived: false,
+        starred: false,
+      },
+    });
+    expect(noteListTitle(withBody)).toBe("Pasta with garlic and oil");
+    expect(noteListTitle(withBody)).not.toMatch(/^local-/);
+  });
+
+  it("treats missing Drive star as unstarred even when a YAML star used to exist", async () => {
+    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
+    const mapped = noteFromFileNodeNote({
+      id: "old",
+      path: "/users/bob/.notes/Drafts/old.md",
+      scope: "personal",
+      projection: {
+        title: "Old",
+        tags: [],
+        excerpt: "was yaml-starred",
+        notebook: "Drafts",
+        archived: false,
+        starred: false,
+      },
+    });
+    expect(mapped.starred).toBe(false);
+  });
+});
+
 describe("noteFromWgwItem", () => {
   it("prefers contentUpdatedAt for display date and keeps metadata updatedAt", () => {
     const row = coerceNoteItem({
@@ -114,6 +201,29 @@ describe("noteFromWgwItem", () => {
 });
 
 describe("shared notes listing parsers", () => {
+  it("maps Drive shared-with-me note paths without calling /notes/shared-*", async () => {
+    const { noteEntryFromDriveSharedPath, noteFromSharedEntry } =
+      await import("@/lib/api/wgw/notes");
+    const entry = noteEntryFromDriveSharedPath({
+      path: "/users/bob/.notes/TeamPad/n1.md",
+      access: "view",
+      myRights: { mayEditContent: false },
+      title: "Hello",
+      tags: ["planning", "shared"],
+    });
+    expect(entry).toMatchObject({
+      path: "/users/bob/.notes/TeamPad/n1.md",
+      id: "n1",
+      notebook: "TeamPad",
+      owner: "bob",
+      scope: "personal",
+      access: "view",
+      myRights: { mayEditContent: false },
+    });
+    expect(noteFromSharedEntry(entry!).sharedInbox).toBe(true);
+    expect(noteEntryFromDriveSharedPath({ path: "/users/bob/drive-doc.md" })).toBeNull();
+  });
+
   it("parses shared-with-me payloads and empty shared-notebooks", async () => {
     const { parseSharedNotesPayload, parseSharedNotebooksPayload, noteFromSharedEntry } =
       await import("@/lib/api/wgw/notes");

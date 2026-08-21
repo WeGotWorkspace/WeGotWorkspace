@@ -5,4 +5,5 @@ export type DayOverflowPopoverEvent = {
   summary: string;
   color: string;
   hidden: boolean;
+  rsvp?: "" | "needs-action" | "tentative";
 };

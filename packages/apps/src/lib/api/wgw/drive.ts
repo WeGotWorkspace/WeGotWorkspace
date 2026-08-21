@@ -44,6 +44,21 @@ function pathQuery(path: string): string {
   return `path=${encodeURIComponent(normalizePath(path))}`;
 }
 
+/** Drive `POST|DELETE /files/star` — used by Drive and Notes (Docs-identical). */
+export async function setDriveFileStar(
+  path: string,
+  starred: boolean,
+  opts?: { signal?: AbortSignal },
+): Promise<void> {
+  const target = `/files/star?${pathQuery(path)}`;
+  if (starred) {
+    await postJson(target, {}, opts);
+    return;
+  }
+  const res = await wgwFetch(target, { method: "DELETE", signal: opts?.signal });
+  if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
+}
+
 function uploadIdentifier(file: File): string {
   const raw = `${file.name}-${file.size}-${file.lastModified}`;
   return raw.replace(/[^0-9A-Za-z_]/g, "_");
@@ -280,13 +295,7 @@ function createSharedDriveOperations(): Pick<
       return payload.data.paths ?? [];
     },
     async setStar(input, opts) {
-      const target = `/files/star?${pathQuery(input.path)}`;
-      if (input.starred) {
-        await postJson(target, {}, opts);
-      } else {
-        const res = await wgwFetch(target, { method: "DELETE", signal: opts?.signal });
-        if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
-      }
+      await setDriveFileStar(input.path, input.starred, opts);
     },
     async downloadUnifiedSearchRecord(input, opts) {
       await downloadWgwUnifiedSearchRecord({ ...input, signal: opts?.signal });

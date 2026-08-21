@@ -88,6 +88,31 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
     ]);
   });
 
+  it("enriches rows whose list label is still a local-* FileNode name", async () => {
+    const username = "alice";
+    const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
+    const stuckOnId: Note = {
+      id: localId,
+      category: "Note",
+      date: "2026-01-01T00:00:00.000Z",
+      excerpt: localId,
+      body: [localId],
+      notebook: "Drafts",
+      tags: [],
+      wordCount: 1,
+    };
+    const path = noteCollabPath({
+      scope: { kind: "personal", username },
+      notebook: "Drafts",
+      noteId: localId,
+    });
+    await seedCollabRoom(docsCollabRoomKey(path), "Typed after offline create");
+
+    const enriched = await enrichNotesListPreviewsFromCollabOffline(username, [stuckOnId]);
+    expect(noteListTitle(enriched[0]!)).toBe("Typed after offline create");
+    expect(enriched[0]?.excerpt).toMatch(/Typed after offline create/);
+  });
+
   it("leaves empty notes alone when no collab snapshot exists", async () => {
     const empty: Note = {
       id: "n-missing",
