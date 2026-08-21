@@ -24,6 +24,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |
 | `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK) |
+| `api_password_reset_tokens` | `App\Models\ApiPasswordResetToken` | Hashed one-time password-reset tokens (`token_hash` PK) |
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |
 | `app_migrations` | `App\Models\AppMigration` | Legacy schema version audit (upgraded installs) |

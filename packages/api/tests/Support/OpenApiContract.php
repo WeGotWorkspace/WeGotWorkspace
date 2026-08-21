@@ -203,6 +203,13 @@ final class OpenApiContract
         foreach ($replacements as $placeholder => $sample) {
             $path = str_replace($placeholder, $sample, $path);
         }
+        if (str_starts_with($openApiPath, '/auth/password-resets/')) {
+            $path = str_replace(
+                '{token}',
+                '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                $openApiPath,
+            );
+        }
 
         return $path;
     }

@@ -22,6 +22,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'cards',
             'app_update_history',
             'api_refresh_tokens',
+            'api_password_reset_tokens',
             'api_revoked_tokens',
             'meet_peers',
             'meet_messages',

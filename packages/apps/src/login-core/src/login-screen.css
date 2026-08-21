@@ -26,6 +26,7 @@
 
 .login-screen__hint {
   color: color-mix(in oklab, #ffffff 72%, transparent);
+  @apply pt-4 text-sm;
 }
 
 .login-screen__hint a {
@@ -41,8 +42,25 @@
 
 .login-screen__error {
   color: var(--destructive, #b14242);
+  @apply mb-5 text-sm;
 }
 
 .login-screen__submit {
   width: 100%;
+}
+
+.login-screen__form {
+  @apply space-y-2;
+}
+
+.login-screen__actions {
+  @apply pt-4;
+}
+
+.login-screen__success {
+  @apply space-y-5 text-sm;
+}
+
+.login-screen__success p {
+  color: color-mix(in oklab, #ffffff 82%, transparent);
 }

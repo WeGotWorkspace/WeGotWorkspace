@@ -7,6 +7,26 @@ export type NotesPaths = {
   [K in keyof paths as K extends `/notes/${string}` ? K : never]: paths[K];
 };
 
+export type NotebookCreateRequest = components["schemas"]["NotebookCreateRequest"];
+export type NotebookDeleteRequest = components["schemas"]["NotebookDeleteRequest"];
+export type NotebookListItem = components["schemas"]["NotebookListItem"];
+export type NotebookListItemList = components["schemas"]["NotebookListItemList"];
+export type NotebookListResponse = components["schemas"]["NotebookListResponse"];
+export type NotebookMutationResponse = components["schemas"]["NotebookMutationResponse"];
+export type NotebookRenameRequest = components["schemas"]["NotebookRenameRequest"];
+export type NoteDeleteRequest = components["schemas"]["NoteDeleteRequest"];
+export type NoteItem = components["schemas"]["NoteItem"];
+export type NoteItemList = components["schemas"]["NoteItemList"];
+export type NoteMutationResponse = components["schemas"]["NoteMutationResponse"];
+export type NotesCapabilitiesResponse = components["schemas"]["NotesCapabilitiesResponse"];
+export type NotesItemsResponse = components["schemas"]["NotesItemsResponse"];
+export type NotesSharedNotebookEntry = components["schemas"]["NotesSharedNotebookEntry"];
+export type NotesSharedNotebooksResponse = components["schemas"]["NotesSharedNotebooksResponse"];
+export type NotesSharedNoteEntry = components["schemas"]["NotesSharedNoteEntry"];
+export type NotesSharedWithMeResponse = components["schemas"]["NotesSharedWithMeResponse"];
+export type NotesStateResponse = components["schemas"]["NotesStateResponse"];
+export type NoteTagList = components["schemas"]["NoteTagList"];
+export type NoteUpsertRequest = components["schemas"]["NoteUpsertRequest"];
 export type OkResponse = components["schemas"]["OkResponse"];
 
 export type { components, paths };

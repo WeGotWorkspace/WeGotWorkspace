@@ -8,8 +8,12 @@ afterEach(() => {
   cleanup();
 });
 
-function EmailDeliveryHarness() {
-  const controller = useAdminPaneStoryController();
+function EmailDeliveryHarness({
+  override,
+}: {
+  override?: Parameters<typeof useAdminPaneStoryController>[0];
+} = {}) {
+  const controller = useAdminPaneStoryController(override);
   return (
     <AdminStoryScope>
       <AdminEmailDeliveryPane controller={controller} />
@@ -25,6 +29,49 @@ describe("AdminEmailDeliveryPane", () => {
     fireEvent.change(fromInput, { target: { value: "noreply@example.test" } });
 
     expect(screen.getByDisplayValue("noreply@example.test")).toBeTruthy();
+    expect(
+      screen.getByText(/password recovery uses this from address and transport/i),
+    ).toBeTruthy();
+    expect(screen.getByText(/noreply@localhost/i)).toBeTruthy();
+  });
+
+  it("explains that a placeholder From is used when none is saved", () => {
+    render(
+      <EmailDeliveryHarness
+        override={{
+          mailDelivery: {
+            config: { from: "" },
+            capability: {
+              canSubmit: true,
+              selectedTransport: "php",
+              probes: { fromConfigured: false },
+            },
+            lastTestSend: null,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/submission is possible/i)).toBeTruthy();
+    expect(screen.getByText(/placeholder from noreply@localhost/i)).toBeTruthy();
+    expect(screen.getByText(/set a real from to improve delivery/i)).toBeTruthy();
+  });
+
+  it("explains that login hides Forgot password until mail can submit", () => {
+    render(
+      <EmailDeliveryHarness
+        override={{
+          mailDelivery: {
+            config: { from: "" },
+            capability: { canSubmit: false, selectedTransport: null },
+            lastTestSend: null,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/cannot submit yet/i)).toBeTruthy();
+    expect(screen.getByText(/login hides .*forgot password/i)).toBeTruthy();
   });
 
   it("collects a recipient before sending a test email", async () => {

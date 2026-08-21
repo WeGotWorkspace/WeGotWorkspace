@@ -5,9 +5,13 @@ import { Card } from "@/card/src/card";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-import { lastTestSendLabel } from "@/admin-core/src/admin-mail-delivery";
+import {
+  lastTestSendLabel,
+  MAIL_DELIVERY_PLACEHOLDER_FROM,
+} from "@/admin-core/src/admin-mail-delivery";
 import { MailDeliveryTestDialog } from "@/admin-core/src/admin-workspace-dialogs";
 import { SECURITY_OPTIONS } from "@/admin-core/src/admin-workspace-utils";
+import type { AdminMailDeliveryCapability } from "@/admin-core/src/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 const TRANSPORT_OPTIONS = [
@@ -16,6 +20,19 @@ const TRANSPORT_OPTIONS = [
   { value: "php", label: "PHP mail()" },
   { value: "sendmail", label: "Sendmail" },
 ] as const;
+
+function capabilityCalloutMessage(
+  capability: AdminMailDeliveryCapability,
+  selected: string,
+): string {
+  if (!capability.canSubmit) {
+    return "Configure a usable transport before the instance can submit outbound mail. Login hides “Forgot password?” until this check passes.";
+  }
+  if (capability.probes.fromConfigured) {
+    return `Capability check passed. Selected transport: ${selected}. This is not a claim that mail will arrive in an inbox.`;
+  }
+  return `Capability check passed using placeholder From ${MAIL_DELIVERY_PLACEHOLDER_FROM}. Selected transport: ${selected}. Set a real From to improve delivery; messages may land in spam.`;
+}
 
 export type AdminEmailDeliveryPaneProps = {
   controller: AdminControllerState;
@@ -32,11 +49,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
       <Callout
         severity={capability.canSubmit ? "info" : "warning"}
         title={capability.canSubmit ? "Submission is possible" : "Cannot submit yet"}
-        message={
-          capability.canSubmit
-            ? `Capability check passed. Selected transport: ${selected}. This is not a claim that mail will arrive in an inbox.`
-            : "Configure a valid From address and a usable transport before the instance can submit outbound mail."
-        }
+        message={capabilityCalloutMessage(capability, selected)}
       />
       <Callout
         severity={
@@ -52,8 +65,9 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
 
       <Card title="From and transport">
         <p className="admin-email-delivery-pane__help">
-          Platform email is separate from the Mail app IMAP/SMTP pane. Recovery and invites will use
-          this path later.
+          Platform email is separate from the Mail app IMAP/SMTP pane. Password recovery uses this
+          From address and transport. If From is empty, outbound mail uses{" "}
+          {MAIL_DELIVERY_PLACEHOLDER_FROM} and may land in spam. Set a real address you control.
         </p>
         <FormField htmlFor="admin-mail-delivery-from" label="From address">
           <Input

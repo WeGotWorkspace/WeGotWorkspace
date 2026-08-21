@@ -23,10 +23,11 @@ final class SystemEndpointsTest extends TestCase
         $response->assertOk();
         $response->assertJsonStructure([
             'apiVersion',
-            'auth' => ['type', 'tokenEndpoint', 'refreshEndpoint', 'revokeEndpoint', 'jwksEndpoint'],
+            'auth' => ['type', 'tokenEndpoint', 'refreshEndpoint', 'revokeEndpoint', 'jwksEndpoint', 'passwordRecovery'],
             'domains',
         ]);
         $this->assertSame('bearer-jwt-rs256', $response->json('auth.type'));
+        $this->assertFalse($response->json('auth.passwordRecovery'));
         $names = array_column($response->json('domains'), 'name');
         $this->assertContains('settings', $names);
     }

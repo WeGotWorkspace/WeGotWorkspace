@@ -4,6 +4,7 @@ import {
   isWgwAuthRoutePathname,
   isWgwPublicRoutePathname,
   requireWgwAuth,
+  resolveWgwSameOriginHref,
   sanitizeWgwReturnPath,
 } from "@/lib/api/wgw/route-guard";
 
@@ -17,6 +18,8 @@ import { wgwHasAuthenticatedSession, wgwLiveApiEnabled } from "@/lib/api/wgw/htt
 describe("isWgwAuthRoutePathname", () => {
   it("detects login and logout routes", () => {
     expect(isWgwAuthRoutePathname("/login")).toBe(true);
+    expect(isWgwAuthRoutePathname("/login/forgot")).toBe(true);
+    expect(isWgwAuthRoutePathname("/login/reset")).toBe(true);
     expect(isWgwAuthRoutePathname("/logout/confirm")).toBe(true);
     expect(isWgwAuthRoutePathname("/mail")).toBe(false);
   });
@@ -72,6 +75,28 @@ describe("buildWgwLoginHref", () => {
 
   it("encodes safe return destinations", () => {
     expect(buildWgwLoginHref("/notes?page=2")).toBe("/login?return=%2Fnotes%3Fpage%3D2");
+  });
+});
+
+describe("resolveWgwSameOriginHref", () => {
+  it("keeps relative app paths", () => {
+    expect(resolveWgwSameOriginHref("/logout", "/login")).toBe("/logout");
+    expect(resolveWgwSameOriginHref("/login?return=%2Fadmin", "/logout")).toBe(
+      "/login?return=%2Fadmin",
+    );
+  });
+
+  it("keeps same-origin absolute URLs as a path", () => {
+    vi.stubGlobal("window", { location: { origin: "http://localhost:5194" } });
+    expect(resolveWgwSameOriginHref("http://localhost:5194/logout", "/login")).toBe("/logout");
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back when the API bind host differs from the SPA", () => {
+    expect(resolveWgwSameOriginHref("http://127.0.0.1:9080/logout", "/logout")).toBe("/logout");
+    expect(resolveWgwSameOriginHref("https://evil.example/logout", "/logout")).toBe("/logout");
+    expect(resolveWgwSameOriginHref("//evil.example/logout", "/logout")).toBe("/logout");
+    expect(resolveWgwSameOriginHref(null, "/logout")).toBe("/logout");
   });
 });
 

@@ -75,16 +75,30 @@ final class MailDeliveryTransportResolverTest extends TestCase
         $this->assertFalse($this->resolver->capability($config)['canSubmit']);
     }
 
-    public function test_capability_requires_valid_from(): void
+    public function test_capability_can_submit_with_empty_from_when_transport_available(): void
     {
+        $resolver = new MailDeliveryTransportResolver(phpMailProbe: static fn (): bool => true);
         $config = self::config(
             from: '',
             transport: MailDeliveryConfig::TRANSPORT_PHP,
         );
-        $capability = $this->resolver->capability($config);
-        $this->assertFalse($capability['canSubmit']);
+        $capability = $resolver->capability($config);
+        $this->assertTrue($capability['canSubmit']);
         $this->assertFalse($capability['probes']['fromConfigured']);
         $this->assertSame('php', $capability['selectedTransport']);
+    }
+
+    public function test_capability_cannot_submit_without_transport_even_with_fallback_from(): void
+    {
+        $resolver = new MailDeliveryTransportResolver(
+            phpMailProbe: static fn (): bool => false,
+            sendmailProbe: static fn (): bool => false,
+        );
+        $config = self::config(from: '', transport: MailDeliveryConfig::TRANSPORT_AUTO);
+        $capability = $resolver->capability($config);
+        $this->assertFalse($capability['canSubmit']);
+        $this->assertFalse($capability['probes']['fromConfigured']);
+        $this->assertNull($capability['selectedTransport']);
     }
 
     public function test_forced_php_when_probe_false_is_unavailable(): void

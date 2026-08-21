@@ -107,6 +107,32 @@ export function buildWgwLoginHref(returnPath?: string | null): string {
   return `/login?return=${encodeURIComponent(safe)}`;
 }
 
+/**
+ * Keep navigation on the current SPA origin. Absolute API-bind URLs (local :9080)
+ * from `logoutUrl` / mail links must not pull the user off Vite.
+ */
+export function resolveWgwSameOriginHref(
+  href: string | null | undefined,
+  fallback: string,
+): string {
+  if (typeof href !== "string") return fallback;
+  const trimmed = href.trim();
+  if (trimmed === "") return fallback;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return trimmed;
+  }
+  try {
+    const url = new URL(trimmed);
+    if (typeof window !== "undefined" && url.origin === window.location.origin) {
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      return next === "" ? fallback : next;
+    }
+  } catch {
+    return fallback;
+  }
+  return fallback;
+}
+
 function returnPathFromLocation(location: RouteLocationLike | undefined): string {
   if (!location) return "/";
   const href = typeof location.href === "string" ? location.href : "";

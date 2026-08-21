@@ -2300,6 +2300,382 @@
                     "data"
                 ]
             },
+            "NotesCapabilitiesResponse": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "distReady": {
+                        "type": "boolean"
+                    },
+                    "baseUri": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "enabled",
+                    "distReady",
+                    "baseUri"
+                ]
+            },
+            "NotesStateResponse": {
+                "type": "object",
+                "properties": {
+                    "baseUri": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "logoutUrl": {
+                        "type": "string"
+                    },
+                    "notesPath": {
+                        "type": "string"
+                    },
+                    "filesEnabled": {
+                        "type": "boolean"
+                    },
+                    "distReady": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "baseUri",
+                    "username",
+                    "displayName",
+                    "logoutUrl",
+                    "notesPath",
+                    "filesEnabled",
+                    "distReady"
+                ]
+            },
+            "NoteTagList": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "NoteItem": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "tags": {
+                        "$ref": "#/components/schemas/NoteTagList"
+                    },
+                    "starred": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ],
+                        "description": "Storage scope: personal (users/{username}/.notes) or group (groups/{slug}/.notes)."
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Group slug when scope is group, null for personal notes."
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "description": "Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value."
+                    },
+                    "contentUpdatedAt": {
+                        "type": "string",
+                        "description": "File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards."
+                    },
+                    "hasShares": {
+                        "type": "boolean",
+                        "description": "True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note."
+                    },
+                    "hasPublicShare": {
+                        "type": "boolean",
+                        "description": "True when this note file or its notebook directory has an active public link share."
+                    },
+                    "hasTeamShare": {
+                        "type": "boolean",
+                        "description": "True when this note file or its notebook directory has active team grants (users or groups)."
+                    }
+                },
+                "required": [
+                    "id",
+                    "username",
+                    "notebook",
+                    "body",
+                    "tags",
+                    "archived",
+                    "scope",
+                    "groupSlug",
+                    "updatedAt"
+                ]
+            },
+            "NoteItemList": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/components/schemas/NoteItem"
+                }
+            },
+            "NotesItemsResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NoteItem"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "NoteMutationResponse": {
+                "type": "object",
+                "properties": {
+                    "ok": {
+                        "type": "boolean"
+                    },
+                    "item": {
+                        "$ref": "#/components/schemas/NoteItem"
+                    }
+                },
+                "required": [
+                    "ok",
+                    "item"
+                ]
+            },
+            "NoteUpsertRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Optional. Omit the field entirely to update metadata only and preserve the existing body bytes on disk. Sending it (including an empty string) overwrites the body."
+                    },
+                    "tags": {
+                        "$ref": "#/components/schemas/NoteTagList"
+                    },
+                    "starred": {
+                        "type": "boolean"
+                    },
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Target a shared group notebook (groups/{slug}/.notes). Omit or null for the caller's personal notes. Caller must be a group member."
+                    }
+                },
+                "required": [
+                    "notebook"
+                ],
+                "example": {
+                    "id": "n123",
+                    "notebook": "General",
+                    "body": "Draft roadmap",
+                    "tags": [
+                        "planning"
+                    ],
+                    "starred": true,
+                    "groupSlug": "team"
+                }
+            },
+            "NoteDeleteRequest": {
+                "type": "object",
+                "properties": {
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes."
+                    }
+                },
+                "required": [
+                    "notebook",
+                    "archived"
+                ],
+                "example": {
+                    "notebook": "General",
+                    "archived": false,
+                    "groupSlug": "team"
+                }
+            },
+            "NotebookListItem": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "activeCount": {
+                        "type": "integer"
+                    },
+                    "archivedCount": {
+                        "type": "integer"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ],
+                        "description": "personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes."
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Group slug when scope is group; null/omitted for personal notebooks."
+                    },
+                    "hasShares": {
+                        "type": "boolean",
+                        "description": "Deprecated for notebook rows — personal notebook-directory shares are unsupported. Omitted/false on group-membership rows."
+                    }
+                },
+                "required": [
+                    "name",
+                    "activeCount",
+                    "archivedCount"
+                ]
+            },
+            "NotebookListItemList": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/components/schemas/NotebookListItem"
+                }
+            },
+            "NotebookListResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotebookListItem"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "NotebookMutationResponse": {
+                "type": "object",
+                "properties": {
+                    "ok": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "from": {
+                        "type": "string"
+                    },
+                    "to": {
+                        "type": "string"
+                    },
+                    "mode": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "ok"
+                ]
+            },
+            "NotebookCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "example": {
+                    "name": "Ideas"
+                }
+            },
+            "NotebookRenameRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "example": {
+                    "name": "Projects"
+                }
+            },
+            "NotebookDeleteRequest": {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "archive",
+                            "move",
+                            "purge"
+                        ]
+                    },
+                    "target": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "mode"
+                ],
+                "example": {
+                    "mode": "move",
+                    "target": "Archive"
+                }
+            },
             "MeetSessionKey": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{32}$"
@@ -8451,6 +8827,155 @@
                 },
                 "additionalProperties": false
             },
+            "NotesSharedNoteEntry": {
+                "type": "object",
+                "required": [
+                    "path",
+                    "id",
+                    "notebook",
+                    "title",
+                    "tags",
+                    "owner",
+                    "scope",
+                    "groupSlug",
+                    "access",
+                    "myRights"
+                ],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md)."
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*."
+                    },
+                    "tags": {
+                        "$ref": "#/components/schemas/NoteTagList",
+                        "description": "Tags from the note markdown frontmatter. Empty when the file is missing or has no tags."
+                    },
+                    "owner": {
+                        "type": "string",
+                        "description": "Username or group slug that owns the note tree."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "access": {
+                        "$ref": "#/components/schemas/DriveShareAccess"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/DriveRights"
+                    },
+                    "viaGroup": {
+                        "type": "string",
+                        "description": "Present when access is via a group grant (groups/{slug})."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedWithMeResponse": {
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotesSharedNoteEntry"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedNotebookEntry": {
+                "type": "object",
+                "required": [
+                    "path",
+                    "notebook",
+                    "owner",
+                    "scope",
+                    "groupSlug",
+                    "access",
+                    "myRights"
+                ],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Virtual drive path of the shared notebook directory (…/.notes/{notebook})."
+                    },
+                    "notebook": {
+                        "type": "string"
+                    },
+                    "owner": {
+                        "type": "string",
+                        "description": "Username or group slug that owns the notebook tree."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "access": {
+                        "$ref": "#/components/schemas/DriveShareAccess"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/DriveRights"
+                    },
+                    "viaGroup": {
+                        "type": "string",
+                        "description": "Present when access is via a group grant (groups/{slug})."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "NotesSharedNotebooksResponse": {
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotesSharedNotebookEntry"
+                        }
+                    },
+                    "notes": {
+                        "type": "array",
+                        "description": "Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items.",
+                        "items": {
+                            "$ref": "#/components/schemas/NotesSharedNoteEntry"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
             "CalendarRecurrenceNDay": {
                 "type": "object",
                 "required": [
@@ -9028,7 +9553,8 @@
                 "additionalProperties": false,
                 "properties": {
                     "fromConfigured": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "True when Admin saved a valid From. False when outbound mail uses the placeholder From."
                     },
                     "smtpEligible": {
                         "type": "boolean"
@@ -9057,7 +9583,8 @@
                 "description": "Function check only. Does not claim inbox placement.",
                 "properties": {
                     "canSubmit": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "True when a transport can attempt send. A placeholder From is used when fromConfigured is false. Not deliverability."
                     },
                     "selectedTransport": {
                         "$ref": "#/components/schemas/AdminMailDeliverySelectedTransport"
@@ -9243,39 +9770,6 @@
                     }
                 }
             },
-            "CalendarSchedulingNotificationRespond": {
-                "type": "object",
-                "required": [
-                    "participationStatus"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                    "participationStatus": {
-                        "type": "string",
-                        "enum": [
-                            "accepted",
-                            "tentative",
-                            "declined"
-                        ]
-                    },
-                    "calendarId": {
-                        "type": "string",
-                        "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
-                    },
-                    "recurrenceId": {
-                        "type": "string",
-                        "description": "JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted."
-                    },
-                    "scope": {
-                        "type": "string",
-                        "enum": [
-                            "this",
-                            "future"
-                        ],
-                        "description": "this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events."
-                    }
-                }
-            },
             "CalendarSchedulingInvitee": {
                 "type": "object",
                 "required": [
@@ -9339,6 +9833,39 @@
                             "tentative",
                             "declined"
                         ]
+                    }
+                }
+            },
+            "CalendarSchedulingNotificationRespond": {
+                "type": "object",
+                "required": [
+                    "participationStatus"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "participationStatus": {
+                        "type": "string",
+                        "enum": [
+                            "accepted",
+                            "tentative",
+                            "declined"
+                        ]
+                    },
+                    "calendarId": {
+                        "type": "string",
+                        "description": "Writable calendar for the attendee copy on accept/tentative. Ignored when declined."
+                    },
+                    "recurrenceId": {
+                        "type": "string",
+                        "description": "JSCalendar local date-time (or compact ICS) of the occurrence. Required for scope=this on a series; defaults to series start when omitted."
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "this",
+                            "future"
+                        ],
+                        "description": "this = one occurrence (RECURRENCE-ID exception). future = this instance and all later ones. Omit on one-off events."
                     }
                 }
             }
@@ -9429,7 +9956,14 @@
                 "summary": "Platform capabilities and domains",
                 "responses": {
                     "200": {
-                        "description": "Capabilities response"
+                        "description": "Capabilities response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CapabilitiesResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -10589,6 +11123,325 @@
                         }
                     }
                 }
+            }
+        },
+        "/notes/capabilities": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Notes capabilities",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notes capabilities"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/state": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Notes runtime boot state for authenticated user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notes state"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/items": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "List notes with optional archive/notebook/search filters",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notes list"
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "post": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Create a new note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created note"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/items/{id}": {
+            "put": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Save/update a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated note"
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Delete a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted note"
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "patch": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Patch note (e.g. archive)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/items/{id}/archive": {
+            "post": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Archive a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Archived note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NoteMutationResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notes/items/{id}/restore": {
+            "post": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Restore an archived note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Restored note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NoteMutationResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notes/notebooks": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "List notebooks with active/archive counts",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook list"
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "post": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Create notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Notebook created"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/notebooks/{name}": {
+            "patch": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Rename notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook renamed"
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Delete notebook (archive, move, or purge)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook deleted"
+                    }
+                },
+                "x-wgw-access": "user"
             }
         },
         "/plugins": {
@@ -13458,6 +14311,60 @@
                 "x-wgw-access": "user"
             }
         },
+        "/notes/shared-with-me": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "List note files shared with the current user via path grants",
+                "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shared notes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotesSharedWithMeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/shared-notebooks": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "List shared notebook ACL rows (compat — always empty)",
+                "description": "Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compat empty list (personal notebook-directory ACL shares removed).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotesSharedNotebooksResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
         "/jmap/session": {
             "get": {
                 "tags": [
@@ -13776,6 +14683,228 @@
                 "x-wgw-access": "admin"
             }
         },
+        "/auth/password-resets": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Request a password reset email",
+                "description": "Always returns a generic success body when not throttled. A reset email is sent only when mail delivery can submit and the identifier matches a user with a principal email.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "identifier"
+                                ],
+                                "properties": {
+                                    "identifier": {
+                                        "type": "string",
+                                        "description": "Username or principal email"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generic acknowledgement (no user/email enumeration)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many password reset requests"
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/auth/password-resets/{token}": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Set a new password using a reset token",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "password"
+                                ],
+                                "properties": {
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 10
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or expired token, or password too short",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/calendar/rsvp/{token}": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Show a public RSVP invitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "RSVP target",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "guest"
+            },
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Respond to a public RSVP invitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated RSVP",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/calendars/scheduling/invitees": {
+            "get": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "List instance users who can be invited",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitee directory",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarSchedulingInviteeListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
         "/calendars/scheduling/notifications": {
             "get": {
                 "tags": [
@@ -13896,114 +15025,6 @@
                     }
                 },
                 "x-wgw-access": "user"
-            }
-        },
-        "/calendars/scheduling/invitees": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "List instance users who can be invited",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Invitee directory",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarSchedulingInviteeListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/calendar/rsvp/{token}": {
-            "get": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Show a public RSVP invitation",
-                "parameters": [
-                    {
-                        "name": "token",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "RSVP target",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "guest"
-            },
-            "post": {
-                "tags": [
-                    "Calendars"
-                ],
-                "summary": "Respond to a public RSVP invitation",
-                "parameters": [
-                    {
-                        "name": "token",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated RSVP",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CalendarRsvpResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/JmapBadRequest"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    }
-                },
-                "x-wgw-access": "guest"
             }
         }
     }

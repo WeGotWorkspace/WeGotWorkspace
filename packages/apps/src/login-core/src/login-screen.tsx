@@ -1,8 +1,8 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
 import { AuthenticationPage } from "@/login-core/src/authentication-page";
-import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";
+import { wgwFetchPasswordRecoveryEnabled, wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 import { sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -12,9 +12,14 @@ type LoginScreenError = "" | "invalid" | "throttled";
 export type LoginScreenProps = {
   returnPath?: string;
   error?: LoginScreenError;
+  passwordRecoveryEnabled?: boolean;
 };
 
-export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
+export function LoginScreen({
+  returnPath,
+  error = "",
+  passwordRecoveryEnabled,
+}: LoginScreenProps = {}) {
   const navigate = useNavigate();
   const search = useMemo(() => {
     if (typeof window === "undefined") return new URLSearchParams();
@@ -26,6 +31,21 @@ export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [runtimeError, setRuntimeError] = useState("");
+  const [showForgot, setShowForgot] = useState(passwordRecoveryEnabled ?? false);
+
+  useEffect(() => {
+    if (passwordRecoveryEnabled !== undefined) {
+      setShowForgot(passwordRecoveryEnabled);
+      return;
+    }
+    let cancelled = false;
+    void wgwFetchPasswordRecoveryEnabled().then((enabled) => {
+      if (!cancelled) setShowForgot(enabled);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [passwordRecoveryEnabled]);
   const errorMessage = useMemo(() => {
     if (runtimeError.trim()) return runtimeError.trim();
     return resolvedError === "invalid"
@@ -66,14 +86,14 @@ export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
   return (
     <AuthenticationPage title="Welcome back.">
       {errorMessage ? (
-        <p className="login-screen__error mb-5 text-sm" role="alert">
+        <p className="login-screen__error" role="alert">
           {errorMessage}
         </p>
       ) : null}
 
-      <form className="space-y-2" onSubmit={submitAuth}>
+      <form className="login-screen__form" onSubmit={submitAuth}>
         <input type="hidden" name="return" value={resolvedReturnPath} />
-        <FieldLabelRow label="Username">
+        <FieldLabelRow htmlFor="username" label="Username">
           <Input
             id="username"
             name="username"
@@ -87,7 +107,7 @@ export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
           />
         </FieldLabelRow>
 
-        <FieldLabelRow label="Password">
+        <FieldLabelRow htmlFor="password" label="Password">
           <Input
             id="password"
             name="password"
@@ -101,7 +121,7 @@ export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
           />
         </FieldLabelRow>
 
-        <div className="pt-4">
+        <div className="login-screen__actions">
           <Button
             type="submit"
             label={submitting ? "Signing in..." : "Sign in"}
@@ -112,6 +132,11 @@ export function LoginScreen({ returnPath, error = "" }: LoginScreenProps = {}) {
             className="login-screen__submit"
           />
         </div>
+        {showForgot ? (
+          <p className="login-screen__hint">
+            <Link to="/login/forgot">Forgot password?</Link>
+          </p>
+        ) : null}
       </form>
     </AuthenticationPage>
   );

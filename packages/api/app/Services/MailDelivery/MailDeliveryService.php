@@ -36,8 +36,9 @@ final class MailDeliveryService
 
     public function send(OutboundMessage $message, ?MailDeliveryConfig $config = null): DeliveryResult
     {
-        $this->assertValidMessage($message);
+        $this->assertHasRecipients($message);
         $config ??= $this->settings->load();
+        $from = $config->resolveFrom($message->from);
         $resolved = $this->resolver->resolve($config);
         $at = now()->toIso8601String();
         $transport = $resolved->name !== '' ? $resolved->name : '';
@@ -50,6 +51,8 @@ final class MailDeliveryService
         }
 
         $this->mailers->register($resolved->name, $config);
+
+        $message->from = $from;
 
         try {
             Mail::mailer(MailDeliveryMailerFactory::MAILER_NAME)->send(
@@ -73,11 +76,8 @@ final class MailDeliveryService
         return $result;
     }
 
-    private function assertValidMessage(OutboundMessage $message): void
+    private function assertHasRecipients(OutboundMessage $message): void
     {
-        if (filter_var(trim($message->from), FILTER_VALIDATE_EMAIL) === false) {
-            throw new InvalidOutboundMessageException('A valid From address is required.');
-        }
         $recipients = array_values(array_filter(
             array_map(static fn (string $email): string => trim($email), $message->to),
             static fn (string $email): bool => filter_var($email, FILTER_VALIDATE_EMAIL) !== false
