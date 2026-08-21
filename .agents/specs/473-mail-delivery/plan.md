@@ -76,5 +76,5 @@ Ship platform outbound mail (Goal #471 / Task #473): internal `MailDeliveryServi
 ## Doc updates
 
 - `.agents/specs/473-mail-delivery/` (this folder)
-- `docs/product/roadmap.md` + `docs/product/project-setup.md` Adopted snapshot
+- Goal #471 on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project (Status Adopted)
 - `packages/api/docs/mail-delivery.md` in chunk C

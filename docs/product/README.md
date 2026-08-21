@@ -1,10 +1,10 @@
 # Product
 
-Product intent for WeGotWorkspace lives here and on GitHub **Goal** issues (`type:goal`).
+Product intent for WeGotWorkspace is **GitHub Goal issues** (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project. This folder is process only — not a second capability map.
 
 | Audience | Where |
 |----------|--------|
-| Anyone | [roadmap.md](./roadmap.md), GitHub Goals + Product roadmap Project; explore in [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) |
+| Anyone | GitHub Goals (`type:goal`) + [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project; explore in [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) |
 | Maintainers / eng | Epics, tasks, bugs; milestones `v0.9` / `v1.0`; [docs/architecture/](../architecture/) |
 
 ## Vision
@@ -54,7 +54,7 @@ Use these filters instead of the default open-issue list (which mixes Goals with
 | Adopted | Board filter `label:type:goal status:Adopted` |
 | Fulfilled | Board filter `label:type:goal status:Fulfilled` |
 
-Capability map (same Goals, table form): [roadmap.md](./roadmap.md). Project setup: [project-setup.md](./project-setup.md).
+Project setup (board workflows): [project-setup.md](./project-setup.md).
 
 ### Delivery (maintainers)
 
