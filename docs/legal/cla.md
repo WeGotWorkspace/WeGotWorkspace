@@ -50,3 +50,7 @@ To the extent permitted by applicable law, you waive and agree not to assert mor
 ### 7. Governing law and forum
 
 This Agreement is governed by the laws of the Netherlands. The courts of Amsterdam, the Netherlands, have exclusive jurisdiction.
+
+### 8. Successors and assignment
+
+This Agreement binds and benefits the parties and their successors and permitted assigns. The Company may assign this Agreement, including the licenses granted under it, to a successor in connection with a merger, acquisition, corporate reorganization, or sale of all or substantially all of the assets relating to the Work. You may not assign this Agreement without the Company’s prior written consent.
