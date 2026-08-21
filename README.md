@@ -47,7 +47,7 @@ Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). D
 
 ### Contributing
 
-We're not accepting external code contributions yet. WeGotWorkspace is establishing its legal structure, including a Contributor License Agreement (CLA) that protects contributors and the dual-license model (AGPL + commercial). Once the CLA is in place, we'll open contributions properly. **Bug reports** are welcome via the [Bug report](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml) template; **ideas, Goals, and feature requests are closed** until the CLA exists. See [CONTRIBUTING.md](CONTRIBUTING.md). Feel free to fork and experiment.
+**Bug reports** and **[Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions)** are welcome. External code PRs wait on a Contributor License Agreement (dual license: AGPL + commercial). Goals stay maintainer-filed. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Maintainers
 
