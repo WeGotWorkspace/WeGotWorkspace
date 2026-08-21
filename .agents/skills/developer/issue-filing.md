@@ -12,7 +12,9 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 **Milestones may attach to Goals** (soft release target for when we aim to fulfill). Still OK on Epics/Tasks/Bugs for eng packing. Far-horizon Goals stay `Identified` or `Adopted` until product marks Fulfilled — **milestone ≠ Fulfilled**. Eng progress is on child issues — Goal Status stays **Adopted** while building.
 
-**Intake:** anyone may explore in GitHub Discussions; **maintainers** file Goals (and Epics/Tasks/Chores) and set Project Status to **Identified** or **Adopted**. Do not put Exploring/Proposed on the board. Externals file bugs / Discussions only — see [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+**Intake:** anyone may explore in GitHub Discussions; **maintainers** file Goals (and Epics/Tasks/Chores) at Project Status **Identified**. Move to **Adopted** and attach a milestone only when committing that outcome to a release. Identified is a draft backlog — not a customer list. Do not Adopt to look busy. Do not put Exploring/Proposed on the board. Externals file bugs / Discussions only — see [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+
+**Fulfilled → close the Goal** (`completed`). Keep the Project item; board Status stays **Fulfilled**. Issue open/closed is not product status — an open Goal means the outcome is unfinished. Already-closed Fulfilled Goals (#383, #384, …) are the pattern.
 
 ## One outcome per Goal
 
@@ -26,7 +28,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 ## Checklist
 
 1. **Classify:** Goal | Epic | Task | Chore | Bug
-2. **Goal** → **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); label `type:goal` + `area:*`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (or **Adopted** if already committing); optional milestone as soft release target (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`
+2. **Goal** → **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); label `type:goal` + `area:*`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (draft; **no milestone**). **Adopted** + optional milestone only when committing to a release (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`. When product marks **Fulfilled**, close the issue (`completed`) and leave Status Fulfilled on the board.
 3. **Epic** → `type:epic`; **required** parent Goal; **not** on Product Project (even when parented under a Goal); milestone OK for release packing
 4. **Task** → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project; milestone OK for release packing
 5. **Chore / bug** → `type:chore` or `bug-report.yml` (`bug` label); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap

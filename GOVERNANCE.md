@@ -12,7 +12,7 @@ How product intent and contributions are decided for WeGotWorkspace.
 | **Delivery** | Epics, Tasks, Bugs — implementable work under Goals |
 | **Release targets & eng packing** | GitHub milestones (`v0.9`, `v1.0`, …) on Goals (soft release target) and on Epics/Tasks/Bugs (eng packing) |
 
-**Milestones may attach to Goals** as the soft release target for when we aim to fulfill the outcome. Goal Status remains Identified → Adopted → Fulfilled — **milestone ≠ Fulfilled**. Far-horizon / not-yet-started intent stays Project Status `Identified` or `Adopted` (not a competing mega-checklist issue). Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
+**Milestones may attach to Goals** as the soft release target for when we aim to fulfill the outcome. Goal Status remains Identified → Adopted → Fulfilled — **milestone ≠ Fulfilled**. Far-horizon intent stays **Identified** (draft backlog, no milestone) until maintainers **Adopt** it for a release. Do not Adopt Identified Goals to look complete. Details: [docs/product/README.md](docs/product/README.md#three-surfaces-systems-model).
 
 ## Who accepts Goals
 
@@ -20,9 +20,9 @@ Only **maintainers** may create, accept, defer, or close product Goals (`type:go
 
 Lifecycle (Product Project Status):
 
-1. **Identified** — recognized as a user goal (often after Discussion). Not yet a delivery commitment.
-2. **Adopted** — maintainers commit to pursue the outcome. Child Epics/Tasks may attach; **Status stays Adopted while building** (eng progress is on sub-issues, not a separate Goal column).
-3. **Fulfilled** — product judges the outcome met for the intended slice (success signals). **Not** auto-set when all children close.
+1. **Identified** — recognized as a user goal (often after Discussion). Draft backlog — not a delivery commitment and **not** a release target. No milestone until Adopted.
+2. **Adopted** — maintainers commit to pursue the outcome on a release. Child Epics/Tasks may attach; **Status stays Adopted while building** (eng progress is on sub-issues, not a separate Goal column).
+3. **Fulfilled** — product judges the outcome met for the intended slice (success signals). **Not** auto-set when all children close. **Close the Goal** (`completed`); keep the Project item so Status stays Fulfilled on the board. Open Goal = unfinished.
 
 **Before Identified / Adopted:** anyone may explore under **GitHub Discussions**. When ready, **maintainers** promote a thread to a Goal issue at **Identified**, then move to **Adopted** when committing (or set **Adopted** immediately if already committing). Do not use Exploring/Proposed board columns.
 
