@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
+  applyCalendarColorsToEngineEvents,
   applyOwnRsvpToEngineEvents,
   calendarEventsToEngineMap,
   occurrencesInRange,
@@ -74,6 +75,36 @@ describe("shiftAnchor", () => {
   it("week and day shift by their period", () => {
     expect(shiftAnchor("week", "2033-01-12", 1)).toBe("2033-01-19");
     expect(shiftAnchor("day", "2033-01-12", -1)).toBe("2033-01-11");
+  });
+});
+
+describe("applyCalendarColorsToEngineEvents", () => {
+  it("joins CalendarInfo.color onto events that have no override", () => {
+    const map = calendarEventsToEngineMap([wireEvent()]);
+    expect(map.get("ev-1")?.data.color).toBeUndefined();
+
+    const colored = applyCalendarColorsToEngineEvents(map, [
+      { id: "work", name: "Work", color: "#0ea5e9" },
+    ]);
+
+    expect(colored.get("ev-1")?.data.color).toBe("#0ea5e9");
+  });
+
+  it("keeps an explicit event color over the calendar collection color", () => {
+    const map = calendarEventsToEngineMap([wireEvent({ color: "#111111" })]);
+    const colored = applyCalendarColorsToEngineEvents(map, [
+      { id: "work", name: "Work", color: "#0ea5e9" },
+    ]);
+
+    expect(colored.get("ev-1")?.data.color).toBe("#111111");
+  });
+
+  it("calendarEventsToEngineMap joins colors when calendars are passed", () => {
+    const map = calendarEventsToEngineMap([wireEvent()], {
+      calendars: [{ id: "work", name: "Work", color: "#f59e0b" }],
+    });
+
+    expect(map.get("ev-1")?.data.color).toBe("#f59e0b");
   });
 });
 

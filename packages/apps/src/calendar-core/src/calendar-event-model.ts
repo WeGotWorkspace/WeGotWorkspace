@@ -121,9 +121,40 @@ export function applyOwnRsvpToEngineEvents(
   return next;
 }
 
+/**
+ * Join each calendar collection color onto engine events that have no override.
+ * Lit chips read `event.data.color` first; offline there is no EventsAPI map.
+ */
+export function applyCalendarColorsToEngineEvents(
+  events: CalendarEventsMap,
+  calendars: readonly CalendarInfo[],
+): CalendarEventsMap {
+  if (calendars.length === 0) return events;
+  const colorByCalendar = new Map<string, string>();
+  for (const calendar of calendars) {
+    if (calendar.color) colorByCalendar.set(calendar.id, calendar.color);
+  }
+  if (colorByCalendar.size === 0) return events;
+
+  const next: CalendarEventsMap = new Map();
+  for (const [key, event] of events) {
+    const override = event.data.color;
+    if (override) {
+      next.set(key, event);
+      continue;
+    }
+    const calendarColor = event.calendarId ? colorByCalendar.get(event.calendarId) : undefined;
+    next.set(
+      key,
+      calendarColor ? { ...event, data: { ...event.data, color: calendarColor } } : event,
+    );
+  }
+  return next;
+}
+
 export function calendarEventsToEngineMap(
   events: JmapCalendarEvent[],
-  options: { sessionEmail?: string } = {},
+  options: { sessionEmail?: string; calendars?: readonly CalendarInfo[] } = {},
 ): CalendarEventsMap {
   const map: CalendarEventsMap = new Map();
   for (const event of events) {
@@ -131,7 +162,8 @@ export function calendarEventsToEngineMap(
       map.set(row.key, row.event);
     }
   }
-  return applyOwnRsvpToEngineEvents(map, events, options.sessionEmail);
+  const withRsvp = applyOwnRsvpToEngineEvents(map, events, options.sessionEmail);
+  return applyCalendarColorsToEngineEvents(withRsvp, options.calendars ?? []);
 }
 
 function resolveEnd(event: CalendarEvent): Temporal.PlainDateTime {
