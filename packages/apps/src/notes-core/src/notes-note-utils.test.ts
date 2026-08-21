@@ -15,9 +15,11 @@ import {
   normalizeNoteBodyMarkdown,
   normalizeTag,
   noteAllowsTagAssignment,
+  isPlaceholderNoteListLabel,
   noteHasListableBody,
   noteListTagOverflow,
   noteListTitle,
+  usableNoteListPreview,
   noteListLocationLabel,
   noteShowsStarControls,
   noteShowsTags,
@@ -63,6 +65,32 @@ describe("notes-note-utils", () => {
     expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
     expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
     expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
+  });
+
+  it("never uses FileNode name / local-* id as the list title", () => {
+    const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
+    expect(isPlaceholderNoteListLabel(localId, localId)).toBe(true);
+    expect(isPlaceholderNoteListLabel("Untitled", localId)).toBe(true);
+    expect(usableNoteListPreview(localId, localId)).toBe("");
+    expect(usableNoteListPreview("Pasta with garlic", localId)).toBe("Pasta with garlic");
+
+    expect(noteListTitle({ id: localId, excerpt: localId, body: [""] })).toBe("Untitled note");
+    expect(noteListTitle({ id: localId, excerpt: localId, body: [localId] })).toBe("Untitled note");
+    expect(noteListTitle({ id: localId, excerpt: localId, body: ["First line of the note"] })).toBe(
+      "First line of the note",
+    );
+    expect(noteHasListableBody({ id: localId, body: [localId] })).toBe(false);
+    expect(noteHasListableBody({ id: localId, body: ["First line of the note"] })).toBe(true);
+
+    const enriched = enrichNote({
+      ...sampleNote,
+      id: localId,
+      excerpt: localId,
+      body: [localId],
+      wordCount: 1,
+    });
+    expect(enriched.excerpt).toBe("");
+    expect(noteListTitle(enriched)).toBe("Untitled note");
   });
 
   it("strips checkbox markdown from list titles and excerpts", () => {

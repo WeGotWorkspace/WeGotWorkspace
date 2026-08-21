@@ -93,6 +93,48 @@ describe("noteFromFileNodeNote", () => {
     expect(mapped.tags).toEqual(["intro"]);
   });
 
+  it("does not use FileNode title when it is the note id or local-* filename", async () => {
+    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
+    const { noteListTitle, noteHasListableBody } =
+      await import("@/notes-core/src/notes-note-utils");
+    const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
+
+    const untitled = noteFromFileNodeNote({
+      id: localId,
+      path: `/users/bob/.notes/Drafts/${localId}.md`,
+      scope: "personal",
+      projection: {
+        title: localId,
+        tags: [],
+        excerpt: "",
+        notebook: "Drafts",
+        archived: false,
+        starred: false,
+      },
+    });
+    expect(untitled.excerpt).toBe("");
+    expect(untitled.body).toEqual([""]);
+    expect(noteHasListableBody(untitled)).toBe(false);
+    expect(noteListTitle(untitled)).toBe("Untitled note");
+    expect(noteListTitle(untitled)).not.toBe(localId);
+
+    const withBody = noteFromFileNodeNote({
+      id: localId,
+      path: `/users/bob/.notes/Drafts/${localId}.md`,
+      scope: "personal",
+      projection: {
+        title: localId,
+        tags: [],
+        excerpt: "Pasta with garlic and oil",
+        notebook: "Drafts",
+        archived: false,
+        starred: false,
+      },
+    });
+    expect(noteListTitle(withBody)).toBe("Pasta with garlic and oil");
+    expect(noteListTitle(withBody)).not.toMatch(/^local-/);
+  });
+
   it("treats missing Drive star as unstarred even when a YAML star used to exist", async () => {
     const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
     const mapped = noteFromFileNodeNote({
