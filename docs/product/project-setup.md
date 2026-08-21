@@ -8,11 +8,13 @@ Setup is **done**: Status options configured; open `type:goal` issues (#378–#3
 
 Identified → Adopted → Fulfilled
 
-| Status | Meaning | Goals (snapshot) |
-|--------|---------|------------------|
-| Identified | Recognized as a user goal (often after Discussion) | — (new Goals as filed) |
-| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building** | #385 #402 #403 #412 #388 #389 #390 #391 #392 #395 #398 #400 #471 |
-| Fulfilled | Product judges outcome met — **not** auto from closed children | #378 #379 #380 #381 #382 #383 #384 #386 #387 |
+| Status | Meaning |
+|--------|---------|
+| Identified | Recognized as a user goal (often after Discussion) |
+| Adopted | Committed to pursue; Epics/Tasks may attach; **stays Adopted while building** |
+| Fulfilled | Product judges outcome met — **not** auto from closed children |
+
+Which Goals sit in which column is **only** on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) board — do not snapshot issue numbers here.
 
 New Goals start as **Identified** (recognized) or **Adopted** (already committed). Eng progress lives on child Epics/Tasks — the Goal Status does **not** move to a separate “Building” column. Early research stays in Discussions — not on this board.
 
