@@ -107,13 +107,50 @@ final class DevCalendarEventSeederTest extends WgwDatabaseTestCase
 
     public function test_seed_refuses_docker_install_channel(): void
     {
+        $this->app['env'] = 'local';
         config(['wgw.install_channel' => 'docker']);
 
         try {
             $this->calendarSeeder()->seed('admin', DevCalendarEventCatalog::PROFILE_COMPACT, now: $this->now);
             $this->fail('Expected seed to refuse the Docker install channel.');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('Docker install channel', $e->getMessage());
+            $this->assertStringContainsString('docker install channel', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->seededObjectCount());
+    }
+
+    public function test_seed_refuses_zip_install_channel(): void
+    {
+        $this->app['env'] = 'local';
+        config(['wgw.install_channel' => 'zip']);
+
+        try {
+            $this->calendarSeeder()->seed('admin', DevCalendarEventCatalog::PROFILE_COMPACT, now: $this->now);
+            $this->fail('Expected seed to refuse the ZIP install channel.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('zip install channel', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->seededObjectCount());
+    }
+
+    public function test_seed_refuses_zip_extract_without_monorepo_workspace(): void
+    {
+        $isolated = sys_get_temp_dir().'/wgw-zip-seed-'.uniqid('', true);
+        mkdir($isolated.'/packages/api', 0775, true);
+        $this->app['env'] = 'local';
+        $this->app->setBasePath($isolated.'/packages/api');
+
+        try {
+            $this->calendarSeeder()->seed('admin', DevCalendarEventCatalog::PROFILE_COMPACT, now: $this->now);
+            $this->fail('Expected seed to refuse a ZIP extract layout.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('monorepo checkout', $e->getMessage());
+        } finally {
+            @rmdir($isolated.'/packages/api');
+            @rmdir($isolated.'/packages');
+            @rmdir($isolated);
         }
 
         $this->assertSame(0, $this->seededObjectCount());

@@ -30,11 +30,19 @@ final class DevCalendarEventSeeder
 
     public function isAllowed(): bool
     {
-        if (! app()->environment(['local', 'testing'])) {
+        if (app()->environment('testing')) {
+            return true;
+        }
+
+        if (! app()->environment('local')) {
             return false;
         }
 
-        return $this->installChannel() !== 'docker';
+        if (in_array($this->installChannel(), ['docker', 'zip'], true)) {
+            return false;
+        }
+
+        return $this->isMonorepoCheckout();
     }
 
     /**
@@ -98,7 +106,29 @@ final class DevCalendarEventSeeder
             throw new RuntimeException('Refusing to seed calendar events outside local/testing.');
         }
 
-        throw new RuntimeException('Refusing to seed calendar events on a Docker install channel.');
+        if (in_array($this->installChannel(), ['docker', 'zip'], true)) {
+            throw new RuntimeException('Refusing to seed calendar events on a '.$this->installChannel().' install channel.');
+        }
+
+        throw new RuntimeException('Refusing to seed calendar events outside a monorepo checkout (ZIP extracts stay empty).');
+    }
+
+    private function isMonorepoCheckout(): bool
+    {
+        $dir = rtrim(str_replace('\\', '/', (string) base_path()), '/');
+        for ($i = 0; $i < 5; $i++) {
+            if (is_file($dir.'/pnpm-workspace.yaml')) {
+                return true;
+            }
+
+            $parent = dirname($dir);
+            if ($parent === $dir) {
+                break;
+            }
+            $dir = $parent;
+        }
+
+        return false;
     }
 
     private function installChannel(): string
