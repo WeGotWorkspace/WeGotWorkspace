@@ -16,15 +16,54 @@ use Tests\Support\WgwDatabaseTestCase;
 
 final class MailDeliveryServiceTest extends WgwDatabaseTestCase
 {
-    public function test_invalid_from_throws(): void
+    public function test_empty_from_uses_placeholder_and_can_submit(): void
     {
-        $this->expectException(InvalidOutboundMessageException::class);
-        $this->delivery()->send(new OutboundMessage(
+        Mail::fake();
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => '',
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
+
+        $config = $this->delivery()->loadConfig();
+        $this->assertSame('', $config->from);
+        $this->assertFalse($config->fromConfigured());
+        $this->assertSame(MailDeliveryConfig::PLACEHOLDER_FROM, $config->effectiveFrom());
+
+        $capability = $this->delivery()->adminState()['capability'];
+        $this->assertFalse($capability['probes']['fromConfigured']);
+        $this->assertTrue($capability['canSubmit']);
+
+        $result = $this->delivery()->send(new OutboundMessage(
+            from: $config->from,
+            to: ['alice@example.test'],
+            subject: 'Test',
+            textBody: 'Body',
+        ));
+
+        $this->assertTrue($result->accepted);
+        $this->assertSame(DeliveryResult::ACCEPTED_BY_TRANSPORT, $result->status);
+        $this->assertSame(MailDeliveryConfig::PLACEHOLDER_FROM, $config->resolveFrom(''));
+    }
+
+    public function test_invalid_from_uses_placeholder(): void
+    {
+        Mail::fake();
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
+
+        $result = $this->delivery()->send(new OutboundMessage(
             from: 'not-an-email',
             to: ['alice@example.test'],
             subject: 'Test',
             textBody: 'Body',
         ));
+
+        $this->assertTrue($result->accepted);
+        $this->assertSame(
+            MailDeliveryConfig::PLACEHOLDER_FROM,
+            $this->delivery()->loadConfig()->resolveFrom('not-an-email'),
+        );
     }
 
     public function test_missing_recipients_throw(): void

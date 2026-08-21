@@ -8,7 +8,10 @@ use App\Models\ApiPasswordResetToken;
 use App\Models\ApiRefreshToken;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Auth\PasswordRecoveryService;
+use App\Services\Auth\PasswordResetMailFactory;
 use App\Services\MailDelivery\MailDeliveryConfig;
+use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Settings\SettingKeys;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -52,6 +55,10 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
 
     public function test_cannot_submit_returns_generic_ok_without_token(): void
     {
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_SMTP,
+            SettingKeys::MAIL_DELIVERY_SMTP_HOST => '',
+        ]);
         $this->seedWgwUser('alice', email: 'alice@example.test');
 
         $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
@@ -59,6 +66,29 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
             ->assertJson(['ok' => true]);
 
         $this->assertSame(0, $this->tokenCount());
+    }
+
+    public function test_empty_from_enables_password_recovery_and_uses_placeholder(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => '',
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $this->assertTrue($this->getJson('/api/v1/capabilities')->json('auth.passwordRecovery'));
+
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertSame(1, $this->tokenCountFor('alice'));
+        $config = $this->app->make(MailDeliveryService::class)->loadConfig();
+        $this->assertFalse($config->fromConfigured());
+        $this->assertSame(MailDeliveryConfig::PLACEHOLDER_FROM, $config->effectiveFrom());
+        $message = $this->app->make(PasswordResetMailFactory::class)
+            ->message($config->effectiveFrom(), 'alice@example.test', str_repeat('ab', 32));
+        $this->assertSame(MailDeliveryConfig::PLACEHOLDER_FROM, $message->from);
     }
 
     public function test_username_match_stores_hashed_token(): void
@@ -74,7 +104,8 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         $row = ApiPasswordResetToken::query()->where('username', 'alice')->first();
         $this->assertNotNull($row);
         $this->assertSame(64, strlen((string) $row->token_hash));
-        $this->assertGreaterThan(time() + 3500, (int) $row->expires_at);
+        $this->assertGreaterThan(time() + 800, (int) $row->expires_at);
+        $this->assertLessThanOrEqual(time() + PasswordRecoveryService::TOKEN_TTL_SECONDS + 2, (int) $row->expires_at);
     }
 
     public function test_email_match_is_case_insensitive(): void
@@ -175,9 +206,19 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
 
     public function test_capabilities_exposes_password_recovery_from_can_submit(): void
     {
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_SMTP,
+            SettingKeys::MAIL_DELIVERY_SMTP_HOST => '',
+        ]);
         $this->assertFalse($this->getJson('/api/v1/capabilities')->json('auth.passwordRecovery'));
 
         $this->enableMailDelivery();
+        $this->assertTrue($this->getJson('/api/v1/capabilities')->json('auth.passwordRecovery'));
+
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => '',
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
         $this->assertTrue($this->getJson('/api/v1/capabilities')->json('auth.passwordRecovery'));
     }
 
@@ -213,7 +254,7 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         ApiPasswordResetToken::query()->create([
             'token_hash' => hash('sha256', $token),
             'username' => $username,
-            'expires_at' => $expiresAt ?? time() + 3600,
+            'expires_at' => $expiresAt ?? time() + PasswordRecoveryService::TOKEN_TTL_SECONDS,
         ]);
 
         return $token;

@@ -9553,7 +9553,8 @@
                 "additionalProperties": false,
                 "properties": {
                     "fromConfigured": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "True when Admin saved a valid From. False when outbound mail uses the placeholder From."
                     },
                     "smtpEligible": {
                         "type": "boolean"
@@ -9582,7 +9583,8 @@
                 "description": "Function check only. Does not claim inbox placement.",
                 "properties": {
                     "canSubmit": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "True when a transport can attempt send. A placeholder From is used when fromConfigured is false. Not deliverability."
                     },
                     "selectedTransport": {
                         "$ref": "#/components/schemas/AdminMailDeliverySelectedTransport"

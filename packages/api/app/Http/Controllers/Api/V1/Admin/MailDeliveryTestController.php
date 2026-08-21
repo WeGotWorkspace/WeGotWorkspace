@@ -38,7 +38,7 @@ final class MailDeliveryTestController
 
         $config = $this->delivery->loadConfig();
         $message = new OutboundMessage(
-            from: $config->from,
+            from: $config->effectiveFrom(),
             to: $to !== '' ? [$to] : [],
             subject: 'WeGotWorkspace email delivery test',
             textBody: 'This is a test message from your WeGotWorkspace instance. Acceptance by the transport does not mean the message reached an inbox.',

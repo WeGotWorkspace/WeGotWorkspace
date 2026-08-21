@@ -129,7 +129,7 @@ function applySettingsMap(
           : "php"
         : data.mailDelivery.config.transport;
   data.mailDelivery.capability = {
-    canSubmit: fromConfigured && selected !== null,
+    canSubmit: selected !== null,
     selectedTransport: selected,
     probes: {
       fromConfigured,

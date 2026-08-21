@@ -9008,6 +9008,7 @@ export interface components {
             smtpPasswordSet: boolean;
         };
         AdminMailDeliveryProbes: {
+            /** @description True when Admin saved a valid From. False when outbound mail uses the placeholder From. */
             fromConfigured: boolean;
             smtpEligible: boolean;
             smtpAuthRequired: boolean;
@@ -9016,6 +9017,7 @@ export interface components {
         };
         /** @description Function check only. Does not claim inbox placement. */
         AdminMailDeliveryCapability: {
+            /** @description True when a transport can attempt send. A placeholder From is used when fromConfigured is false. Not deliverability. */
             canSubmit: boolean;
             selectedTransport: components["schemas"]["AdminMailDeliverySelectedTransport"];
             probes: components["schemas"]["AdminMailDeliveryProbes"];

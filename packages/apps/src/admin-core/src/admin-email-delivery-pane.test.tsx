@@ -32,6 +32,29 @@ describe("AdminEmailDeliveryPane", () => {
     expect(
       screen.getByText(/password recovery uses this from address and transport/i),
     ).toBeTruthy();
+    expect(screen.getByText(/noreply@localhost/i)).toBeTruthy();
+  });
+
+  it("explains that a placeholder From is used when none is saved", () => {
+    render(
+      <EmailDeliveryHarness
+        override={{
+          mailDelivery: {
+            config: { from: "" },
+            capability: {
+              canSubmit: true,
+              selectedTransport: "php",
+              probes: { fromConfigured: false },
+            },
+            lastTestSend: null,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/submission is possible/i)).toBeTruthy();
+    expect(screen.getByText(/placeholder from noreply@localhost/i)).toBeTruthy();
+    expect(screen.getByText(/set a real from to improve delivery/i)).toBeTruthy();
   });
 
   it("explains that login hides Forgot password until mail can submit", () => {

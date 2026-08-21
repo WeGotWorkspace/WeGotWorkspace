@@ -150,7 +150,7 @@ export const CannotSubmit: Story = {
           },
           capability: {
             canSubmit: false,
-            selectedTransport: "php",
+            selectedTransport: null,
             probes: { fromConfigured: false, smtpEligible: false },
           },
           lastTestSend: null,
@@ -162,5 +162,30 @@ export const CannotSubmit: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/cannot submit yet/i)).toBeInTheDocument();
     await expect(canvas.getByText(/login hides .*forgot password/i)).toBeInTheDocument();
+  },
+};
+
+export const PlaceholderFrom: Story = {
+  name: "placeholder-from",
+  tags: ["vitest-ci"],
+  render: () => (
+    <EmailDeliveryHarness
+      override={{
+        mailDelivery: {
+          config: { from: "" },
+          capability: {
+            canSubmit: true,
+            selectedTransport: "php",
+            probes: { fromConfigured: false },
+          },
+          lastTestSend: null,
+        },
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/placeholder from noreply@localhost/i)).toBeInTheDocument();
+    await expect(canvas.getByText(/set a real from to improve delivery/i)).toBeInTheDocument();
   },
 };

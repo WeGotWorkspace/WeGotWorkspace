@@ -34,12 +34,21 @@ final class AdminMailDeliveryTest extends WgwDatabaseTestCase
         $response = $this->withBearer($token)->getJson('/api/v1/admin/state');
         $response->assertOk()
             ->assertJsonPath('mailDelivery.config.transport', 'auto')
+            ->assertJsonPath('mailDelivery.config.from', '')
             ->assertJsonPath('mailDelivery.config.smtpPasswordSet', false)
             ->assertJsonPath('mailDelivery.lastTestSend', null)
-            ->assertJsonPath('mailDelivery.capability.canSubmit', false);
+            ->assertJsonPath('mailDelivery.capability.probes.fromConfigured', false);
 
         $json = $response->json('mailDelivery');
         $this->assertIsArray($json);
+        $capability = $json['capability'];
+        $this->assertIsArray($capability);
+        $this->assertSame(
+            (bool) $capability['canSubmit'],
+            (bool) $capability['probes']['phpMailAvailable']
+            || (bool) $capability['probes']['sendmailAvailable']
+            || (bool) $capability['probes']['smtpEligible'],
+        );
         $this->assertArrayNotHasKey('available', $json);
         $this->assertArrayNotHasKey('smtpPassword', $json['config']);
         $encoded = (string) $response->getContent();
@@ -159,11 +168,29 @@ final class AdminMailDeliveryTest extends WgwDatabaseTestCase
             ->assertJsonPath('mailDelivery.lastTestSend.accepted', true);
     }
 
-    public function test_test_send_without_from_returns_400_not_500(): void
+    public function test_test_send_without_from_uses_placeholder(): void
     {
+        Mail::fake();
         $token = $this->adminBearerToken();
         $this->withBearer($token)
-            ->postJson('/api/v1/admin/mail-delivery/test')
-            ->assertStatus(400);
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+                ],
+            ])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->postJson('/api/v1/admin/mail-delivery/test', ['to' => 'alice@example.test'])
+            ->assertOk()
+            ->assertJsonPath('accepted', true)
+            ->assertJsonPath('status', DeliveryResult::ACCEPTED_BY_TRANSPORT);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('mailDelivery.config.from', '')
+            ->assertJsonPath('mailDelivery.capability.probes.fromConfigured', false)
+            ->assertJsonPath('mailDelivery.capability.canSubmit', true);
     }
 }

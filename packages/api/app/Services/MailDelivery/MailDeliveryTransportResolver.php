@@ -92,11 +92,11 @@ final class MailDeliveryTransportResolver
     {
         $normalized = $this->normalizeSmtp($config);
         $resolved = $this->resolve($config);
-        $fromConfigured = filter_var(trim($config->from), FILTER_VALIDATE_EMAIL) !== false;
+        $fromConfigured = $config->fromConfigured();
         $selected = $resolved->name !== '' ? $resolved->name : null;
 
         return [
-            'canSubmit' => $fromConfigured && $resolved->canAttempt(),
+            'canSubmit' => $resolved->canAttempt(),
             'selectedTransport' => $selected,
             'probes' => [
                 'fromConfigured' => $fromConfigured,
