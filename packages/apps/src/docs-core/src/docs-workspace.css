@@ -164,7 +164,7 @@
 }
 
 .docs-workspace__header-actions-menu-trigger {
-  @apply size-9;
+  @apply shrink-0;
 }
 
 .docs-workspace__header-actions-menu-icon > svg {

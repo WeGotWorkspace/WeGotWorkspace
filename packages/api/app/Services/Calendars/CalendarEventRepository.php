@@ -27,6 +27,7 @@ final class CalendarEventRepository
         private readonly CalendarEventExpansionService $expansion,
         private readonly JmapCalendarEventStateService $eventStates,
         private readonly CalendarRepository $calendars,
+        private readonly CalendarSchedulingService $scheduling,
     ) {}
 
     /**
@@ -576,25 +577,30 @@ final class CalendarEventRepository
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);
-        $eventPayload = $this->normalizeEventPayload($payload);
-        $eventUri = $this->allocateEventUri((int) $instance->calendarid, $eventPayload);
-        $ics = $this->mapper->toIcs($eventPayload);
 
-        $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
-        $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
-        $this->searchIndexSync->sync(
-            'calendars',
-            fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
-            $davPath,
-            $username,
-        );
+        return DB::connection('wgw')->transaction(function () use ($username, $payload, $instance): array {
+            CalendarInstance::query()->whereKey($instance->getKey())->lockForUpdate()->first();
+            $eventPayload = $this->scheduling->withOrganizer($username, $this->normalizeEventPayload($payload));
+            $eventUri = $this->allocateEventUri((int) $instance->calendarid, $eventPayload);
+            $ics = $this->mapper->toIcs($eventPayload);
 
-        $object = $this->findObjectInCalendar((int) $instance->calendarid, $eventUri, fresh: true);
-        if ($object === null) {
-            throw new ApiHttpException(500, 'Could not load created calendar event.', 'server_error');
-        }
+            $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+            $this->scheduling->scheduleAfterWrite($username, null, $ics);
+            $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
+            $this->searchIndexSync->sync(
+                'calendars',
+                fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
+                $davPath,
+                $username,
+            );
 
-        return $this->mapper->toCalendarEvent($object, $this->calendars->apiIdForInstance($instance), null, $username);
+            $object = $this->findObjectInCalendar((int) $instance->calendarid, $eventUri, fresh: true);
+            if ($object === null) {
+                throw new ApiHttpException(500, 'Could not load created calendar event.', 'server_error');
+            }
+
+            return $this->mapper->toCalendarEvent($object, $this->calendars->apiIdForInstance($instance), null, $username);
+        });
     }
 
     /**
@@ -670,23 +676,36 @@ final class CalendarEventRepository
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
     ): array {
-        $located = $this->findOwnedEvent($username, $eventId);
-        if ($located === null) {
-            throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
-        }
+        return DB::connection('wgw')->transaction(function () use ($username, $eventId, $ifMatch, $ifUnmodifiedSince, $requirePrecondition): array {
+            $located = $this->findOwnedEvent($username, $eventId, lock: true);
+            if ($located === null) {
+                throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
+            }
 
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
+            $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
+            return $this->finishDelete($username, $located);
+        });
+    }
+
+    /**
+     * @param  array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}  $located
+     * @return array{ok: true}
+     */
+    private function finishDelete(string $username, array $located): array
+    {
         $instance = $located['instance'];
         $object = $located['object'];
         $eventUri = (string) $object->uri;
         $veventUid = $located['veventUid'];
+        $oldIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
 
         if ($veventUid !== null) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
             $remaining = $this->mapper->removeVEventFromIcs($raw, $veventUid);
             if ($remaining === null) {
                 $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
+                $this->scheduling->scheduleAfterDelete($username, $oldIcs);
                 $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
                     'calendars',
@@ -696,6 +715,7 @@ final class CalendarEventRepository
                 );
             } else {
                 $this->calBackend()->updateCalendarObject($this->calBackendCalendarId($instance), $eventUri, $remaining);
+                $this->scheduling->scheduleAfterWrite($username, $oldIcs, $remaining);
                 $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
                     'calendars',
@@ -706,6 +726,7 @@ final class CalendarEventRepository
             }
         } else {
             $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
+            $this->scheduling->scheduleAfterDelete($username, $oldIcs);
             $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
             $this->searchIndexSync->sync(
                 'calendars',
@@ -731,60 +752,124 @@ final class CalendarEventRepository
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
     ): array {
-        $located = $this->findOwnedEvent($username, $eventId);
-        if ($located === null) {
-            throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
+        return DB::connection('wgw')->transaction(function () use (
+            $username,
+            $eventId,
+            $payload,
+            $deepMerge,
+            $ifMatch,
+            $ifUnmodifiedSince,
+            $requirePrecondition,
+        ): array {
+            $located = $this->findOwnedEvent($username, $eventId, lock: true);
+            if ($located === null) {
+                throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
+            }
+
+            $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
+
+            $instance = $located['instance'];
+            $object = $located['object'];
+            $eventUri = (string) $object->uri;
+            $existingEvent = $this->mapper->toCalendarEvent(
+                $object,
+                $this->calendars->apiIdForInstance($instance),
+                $located['veventUid'],
+                $username,
+            );
+            $eventPayload = $this->scheduling->withOrganizer(
+                $username,
+                $deepMerge
+                    ? $this->normalizeEventPayload(
+                        CalendarConversionSupport::deepMergeEventPatch($existingEvent, $payload),
+                        $existingEvent,
+                    )
+                    : $this->normalizeEventPayload($payload, $existingEvent),
+            );
+
+            $eventPayload['id'] = $existingEvent['id'] ?? $eventId;
+            if ($located['veventUid'] !== null) {
+                $eventPayload['uid'] = $located['veventUid'];
+            } else {
+                $eventPayload['uid'] = $existingEvent['uid'] ?? $eventPayload['uid'] ?? null;
+            }
+            $targetInstance = $this->resolvePatchTargetCalendar($username, $payload, $instance);
+            $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($targetInstance) => true];
+
+            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $ics = $this->scheduling->persistableIcs(
+                $username,
+                $raw,
+                $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']),
+            );
+            $sourceBackendId = $this->calBackendCalendarId($instance);
+            $targetBackendId = $this->calBackendCalendarId($targetInstance);
+            if ($sourceBackendId !== $targetBackendId) {
+                $this->calBackend()->createCalendarObject($targetBackendId, $eventUri, $ics);
+                $this->calBackend()->deleteCalendarObject($sourceBackendId, $eventUri);
+                $oldPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
+                $this->searchIndexSync->sync(
+                    'calendars',
+                    fn () => $this->searchIndexer->deleteDavPath($oldPath),
+                    $oldPath,
+                    $username,
+                );
+            } else {
+                $this->calBackend()->updateCalendarObject($targetBackendId, $eventUri, $ics);
+            }
+            $this->scheduling->scheduleAfterWrite($username, $raw, $ics);
+            $davPath = $this->calDavPath($username, (string) $targetInstance->uri, $eventUri);
+            $this->searchIndexSync->sync(
+                'calendars',
+                fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
+                $davPath,
+                $username,
+            );
+
+            $updated = $this->findObjectInCalendar((int) $targetInstance->calendarid, $eventUri, fresh: true);
+            if ($updated === null) {
+                throw new ApiHttpException(500, 'Could not load updated calendar event.', 'server_error');
+            }
+
+            return $this->mapper->toCalendarEvent(
+                $updated,
+                $this->calendars->apiIdForInstance($targetInstance),
+                $located['veventUid'],
+                $username,
+            );
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function resolvePatchTargetCalendar(
+        string $username,
+        array $payload,
+        CalendarInstance $current,
+    ): CalendarInstance {
+        $calendarIds = $payload['calendarIds'] ?? null;
+        if (! is_array($calendarIds) || $calendarIds === []) {
+            return $current;
         }
 
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
-
-        $instance = $located['instance'];
-        $object = $located['object'];
-        $eventUri = (string) $object->uri;
-        $existingEvent = $this->mapper->toCalendarEvent(
-            $object,
-            $this->calendars->apiIdForInstance($instance),
-            $located['veventUid'],
-            $username,
-        );
-        $eventPayload = $deepMerge
-            ? $this->normalizeEventPayload(
-                CalendarConversionSupport::deepMergeEventPatch($existingEvent, $payload),
-                $existingEvent,
-            )
-            : $this->normalizeEventPayload($payload, $existingEvent);
-
-        $eventPayload['id'] = $existingEvent['id'] ?? $eventId;
-        if ($located['veventUid'] !== null) {
-            $eventPayload['uid'] = $located['veventUid'];
-        } else {
-            $eventPayload['uid'] = $existingEvent['uid'] ?? $eventPayload['uid'] ?? null;
+        $requestedId = null;
+        foreach ($calendarIds as $id => $enabled) {
+            if ($enabled === true) {
+                $requestedId = (string) $id;
+                break;
+            }
         }
-        $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($instance) => true];
-
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-        $ics = $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']);
-        $calendarId = (int) $object->calendarid;
-        $this->calBackend()->updateCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
-        $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
-        $this->searchIndexSync->sync(
-            'calendars',
-            fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
-            $davPath,
-            $username,
-        );
-
-        $updated = $this->findObjectInCalendar($calendarId, $eventUri, fresh: true);
-        if ($updated === null) {
-            throw new ApiHttpException(500, 'Could not load updated calendar event.', 'server_error');
+        if ($requestedId === null || $requestedId === '' || $requestedId === $this->calendars->apiIdForInstance($current)) {
+            return $current;
         }
 
-        return $this->mapper->toCalendarEvent(
-            $updated,
-            $this->calendars->apiIdForInstance($instance),
-            $located['veventUid'],
-            $username,
-        );
+        $target = $this->calendars->findAccessibleCalendar($username, $requestedId);
+        if ($target === null) {
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
+        }
+
+        return $target;
     }
 
     /**
@@ -856,17 +941,20 @@ final class CalendarEventRepository
     /**
      * @return array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}|null
      */
-    private function findOwnedEvent(string $username, string $eventId): ?array
+    private function findOwnedEvent(string $username, string $eventId, bool $lock = false): ?array
     {
         $parsed = CalendarConversionSupport::parseEventId($eventId);
         $eventUri = CalendarEventMapper::eventUriFromId($eventId);
         $principalUris = $this->calendars->accessiblePrincipalUris($username);
-        $object = CalendarObject::query()
+        $query = CalendarObject::query()
             ->where('uri', $eventUri)
             ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
                 $query->whereIn('principaluri', $principalUris);
-            })
-            ->first();
+            });
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+        $object = $query->first();
 
         if ($object === null) {
             return null;

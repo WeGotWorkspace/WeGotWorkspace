@@ -5,6 +5,12 @@ import {
   type JmapCalendarEvent,
   type JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
+import {
+  attendeesEqual,
+  attendeesFromParticipants,
+  type CalendarAttendee,
+  type JmapParticipant,
+} from "@/calendar-core/src/calendar-attendees";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 import {
   alertMapsEqual,
@@ -78,6 +84,7 @@ export type CalendarEventFormValue = {
    * unmatched rule. Cleared when the user picks a predefined preset.
    */
   customRecurrenceRules?: JSCalendarRecurrenceRule[];
+  attendees: CalendarAttendee[];
 };
 
 const DEFAULT_START_TIME = "10:00";
@@ -117,6 +124,7 @@ export function emptyCalendarEventForm(
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
     alerts: [],
     recurrencePreset: "none",
+    attendees: [],
     ...defaultRecurrenceEndsFields(dateISO),
   };
 }
@@ -179,6 +187,7 @@ export function createIntentToForm(
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
     alerts: [],
     recurrencePreset: "none",
+    attendees: [],
     ...defaultRecurrenceEndsFields(startDate),
   };
 }
@@ -309,6 +318,9 @@ export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventForm
     description: typeof event.description === "string" ? event.description : "",
     freeBusyStatus: freeBusyStatusFromWire(event.freeBusyStatus),
     alerts: alertsFromWire(event.alerts),
+    attendees: attendeesFromParticipants(
+      event.participants as Record<string, JmapParticipant> | undefined,
+    ),
     ...recurrenceFieldsFromRules(event.recurrenceRules, startDate),
   };
 }
@@ -506,6 +518,7 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
     freeBusyStatus: form.freeBusyStatus,
     ...(alerts ? { alerts } : {}),
     ...(recurrenceRules?.length ? { recurrenceRules } : {}),
+    ...(form.attendees.length ? { attendees: form.attendees } : {}),
   };
 }
 
@@ -555,6 +568,9 @@ export function formToPatch(
   if (!sameRecurrence) {
     patch.recurrenceRules = nextNormalized;
   }
+  if (!attendeesEqual(form.attendees, originalForm.attendees)) {
+    patch.attendees = form.attendees;
+  }
   return patch;
 }
 
@@ -585,6 +601,7 @@ export function engineEventToForm(event: EngineCalendarEvent): CalendarEventForm
     description: "",
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
     alerts: [],
+    attendees: [],
     ...recurrenceFieldsFromRules(wireRules, startDate),
   };
 }
@@ -604,5 +621,6 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     freeBusyStatus: form.freeBusyStatus,
     alerts: alertsToWire(form.alerts),
     recurrenceRules: formRecurrenceRules(form),
+    ...(form.attendees.length ? { attendees: form.attendees } : {}),
   };
 }

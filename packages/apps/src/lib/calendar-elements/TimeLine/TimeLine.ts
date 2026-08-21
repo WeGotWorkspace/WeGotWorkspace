@@ -8,7 +8,8 @@ import {
 } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import componentStyle from "./TimeLine.css?inline";
-import "../ResizeHandle/ResizeHandle";
+import { isTouchResizeHandleActive } from "../ResizeHandle/ResizeHandle";
+import { getEventColorStyles } from "../utils/EventColor";
 import type {
   TimeLineLayout,
   TimelineEvent,
@@ -216,6 +217,14 @@ export class TimeLine extends LitElement {
 
   @property({ type: Array })
   accessor events: TimelineEvent[] = [];
+
+  /**
+   * Selected event key (from the composing calendar view). On coarse pointers, only this
+   * event’s resize handles become `active` grabbers; others stay hidden so scroll/swipe/move
+   * are not stolen.
+   */
+  @property({ type: String, attribute: "selected-event-key" })
+  accessor selectedEventKey = "";
 
   /**
    * Marker values on the absolute axis (same coordinate space as event `start`/`end`; cell `i`
@@ -492,10 +501,13 @@ export class TimeLine extends LitElement {
   private measureLaneCaps() {
     if (!this.laneClip()) return;
     const n = Math.max(1, this.cells);
-    const br = this.renderRoot?.querySelector(".event")?.getBoundingClientRect();
+    const ev = this.renderRoot?.querySelector(".event") as HTMLElement | null;
+    // offsetHeight ignores ancestor range-zoom scale. getBoundingClientRect does not —
+    // a mid day→week measure fed clipped lane caps back into auto-height cells and
+    // retriggered ResizeObserver forever.
     let lh =
-      br && br.height > 0
-        ? br.height
+      ev && ev.offsetHeight > 0
+        ? ev.offsetHeight
         : parseFloat(getComputedStyle(this).getPropertyValue("--__event-height")) || 32;
     lh = Math.max(lh, 1);
     const next = new Array<number>(n).fill(Infinity);
@@ -1668,11 +1680,24 @@ export class TimeLine extends LitElement {
     return horiz && laneMode ? ` --__lane-stack: calc(${laneCount} * var(--__event-height))` : "";
   }
 
-  #resizeHandleFragment(position: "start" | "end", title: string) {
+  /** Accent tokens for sibling handles. Always after `--__end` so time geometry stays intact. */
+  #eventAccentVars(ev: TimelineEvent): string {
+    const color = ev.color;
+    if (typeof color !== "string" || color.trim() === "") return "";
+    const styles = getEventColorStyles(color);
+    const accent = styles["--_lc-event-accent-color"] ?? color;
+    const border = styles["--_lc-event-border-color"];
+    return border
+      ? `--_lc-event-accent-color:${accent};--_lc-event-border-color:${border};`
+      : `--_lc-event-accent-color:${accent};`;
+  }
+
+  #resizeHandleFragment(position: "start" | "end", title: string, eventKey: unknown) {
     return html`<resize-handle
       .axis=${this.flow}
       position=${position}
       title=${title}
+      ?active=${isTouchResizeHandleActive(eventKey, this.selectedEventKey)}
       @pointerdown=${this.#onResizeHandlePointerDown}
     ></resize-handle>`;
   }
@@ -1685,7 +1710,18 @@ export class TimeLine extends LitElement {
     vl: LaneLayout | null | undefined,
   ) {
     const { ev, index, segIndex, segStart, segEnd, rowSpan, showResizeStart, showResizeEnd } = seg;
-    const draggingClass = this.draggingEventIndex === index ? " event--dragging" : "";
+    const dragging = this.draggingEventIndex === index;
+    const selected = this.selectedEventKey !== "" && String(ev.key ?? "") === this.selectedEventKey;
+    const draggingClass = dragging ? " event--dragging" : "";
+    const selectedClass = selected ? " event--selected" : "";
+    /* Numeric inline z-index on the positioned wrapper beats stylesheet stagger
+       `calc(2 + indent)` (that :host+layout rule is more specific than `.event--selected`).
+       400 stays below create-preview 500 / dragging 600 / markers 700. */
+    const stackStyle = dragging
+      ? "z-index:600;"
+      : selected
+        ? "z-index:400;--time-line-event-selected-boost:400;"
+        : "";
     // Template contract: `templateEv` carries the committed range; the live gesture range (if
     // any) travels separately so templates can render live-updating labels.
     const preview = this.resizePreviewByIndex?.get(index);
@@ -1713,21 +1749,23 @@ export class TimeLine extends LitElement {
 
     return html`
       <div
-        class="event${draggingClass}"
+        class="event${draggingClass}${selectedClass}"
         part="event"
         data-index=${index}
         data-segment=${segIndex}
+        ?data-selected=${selected}
         @pointerdown=${this.#onEventBodyPointerDown}
         style="
         --__lane:${lane};
-        ${staggerVars}${dragTransform}
+        ${staggerVars}${stackStyle}${dragTransform}
         --__start:${this.#axisPct(segStart, w0, w1)}%;
         --__end:${endInset};
+        ${this.#eventAccentVars(templateEv)}
       "
       >
-        ${showResizeStart ? this.#resizeHandleFragment("start", "Resize start") : nothing}
+        ${showResizeStart ? this.#resizeHandleFragment("start", "Resize start", ev.key) : nothing}
         ${this.renderEventTemplate(templateEv, preview)}
-        ${showResizeEnd ? this.#resizeHandleFragment("end", "Resize end") : nothing}
+        ${showResizeEnd ? this.#resizeHandleFragment("end", "Resize end", ev.key) : nothing}
       </div>
     `;
   }

@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { AdminApp } from "@/admin-core/src/admin-app";
 import { CalendarApp } from "@/calendar-core/src/calendar-app";
+import { CalendarRsvpPage } from "@/calendar-core/src/calendar-rsvp-page";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
 import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
@@ -527,6 +528,13 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
 
   // Each calendar path is a root-level route with its own component so `useParams`
   // in CalendarApp resolves view/date on direct page loads (same as notes/tasks).
+  const calendarRsvpRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/calendar/rsvp/$token",
+    head: calendarPwaHead,
+    component: CalendarRsvpPage,
+  });
+
   const calendarIndexRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/calendar",
@@ -621,6 +629,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     tasksTagRoute,
     tasksListRoute,
     tasksPriorityRoute,
+    calendarRsvpRoute,
     calendarIndexRoute,
     calendarListViewDateRoute,
     calendarListViewRoute,

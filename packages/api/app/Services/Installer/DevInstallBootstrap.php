@@ -23,6 +23,7 @@ final class DevInstallBootstrap
         private InstallerJwtKeyGenerator $jwtKeys,
         private ApiRuntimeEnvService $apiEnv,
         private WgwInstallConfig $installConfig,
+        private DevCalendarEventSeeder $calendarEvents,
     ) {}
 
     /**
@@ -37,6 +38,7 @@ final class DevInstallBootstrap
 
         if ($this->paths->isInstalled()) {
             $this->jwtKeys->ensureKeys();
+            $this->seedDevCalendarEvents($username);
 
             return false;
         }
@@ -100,7 +102,29 @@ final class DevInstallBootstrap
         @chmod($this->paths->lockFile(), 0600);
 
         $this->apiEnv->ensure($this->paths->installRoot(), 'http://127.0.0.1:9080');
+        $this->seedDevCalendarEvents($username);
 
         return true;
+    }
+
+    private function seedDevCalendarEvents(string $username): void
+    {
+        if (! $this->calendarEvents->isAllowed()) {
+            return;
+        }
+
+        $this->calendarEvents->seed($username, $this->calendarSeedProfile());
+    }
+
+    private function calendarSeedProfile(): string
+    {
+        $override = strtolower(trim((string) (getenv('WGW_DEV_SEED_CALENDAR_PROFILE') ?: '')));
+        if (in_array($override, [DevCalendarEventCatalog::PROFILE_FULL, DevCalendarEventCatalog::PROFILE_COMPACT], true)) {
+            return $override;
+        }
+
+        return app()->environment('testing')
+            ? DevCalendarEventCatalog::PROFILE_COMPACT
+            : DevCalendarEventCatalog::PROFILE_FULL;
     }
 }

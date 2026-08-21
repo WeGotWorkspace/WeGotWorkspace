@@ -7,20 +7,25 @@
 }
 
 .icon-button--size-sm {
-  width: calc(var(--input-height, 2.25rem) - 0.25rem);
-  height: calc(var(--input-height, 2.25rem) - 0.25rem);
+  width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   --button-icon-size: 0.875rem;
 }
 
+/* Beat `.button` radius so compact icon chrome matches sm buttons / segmented tracks. */
+.button.icon-button--size-sm {
+  border-radius: var(--control-radius-button-pill);
+}
+
 .icon-button--size-md {
-  width: var(--input-height, 2.25rem);
-  height: var(--input-height, 2.25rem);
+  width: var(--control-height-md, var(--input-height, 2.25rem));
+  height: var(--control-height-md, var(--input-height, 2.25rem));
   --button-icon-size: 1rem;
 }
 
 .icon-button--size-lg {
-  width: calc(var(--input-height, 2.25rem) + 0.25rem);
-  height: calc(var(--input-height, 2.25rem) + 0.25rem);
+  width: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
+  height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
   --button-icon-size: 1.25rem;
 }
 

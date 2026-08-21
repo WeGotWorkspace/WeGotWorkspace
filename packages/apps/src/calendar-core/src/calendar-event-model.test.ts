@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
+  applyOwnRsvpToEngineEvents,
+  calendarEventsToEngineMap,
   occurrencesInRange,
   shiftAnchor,
   viewDateRange,
+  isViewShowingToday,
   rangeToPlainDateTimeStrings,
 } from "@/calendar-core/src/calendar-event-model";
 
@@ -43,6 +46,22 @@ describe("viewDateRange", () => {
     const range = viewDateRange("day", "2033-01-12");
     expect(range.start.toString()).toBe("2033-01-12");
     expect(range.end.toString()).toBe("2033-01-13");
+  });
+});
+
+describe("isViewShowingToday", () => {
+  it("is true when the rendered period matches today's period", () => {
+    expect(isViewShowingToday("day", "2033-01-12", "2033-01-12")).toBe(true);
+    expect(isViewShowingToday("week", "2033-01-14", "2033-01-12")).toBe(true);
+    expect(isViewShowingToday("month", "2033-01-28", "2033-01-12")).toBe(true);
+    expect(isViewShowingToday("year", "2033-06-01", "2033-01-12")).toBe(true);
+  });
+
+  it("is false when the rendered period is not today's", () => {
+    expect(isViewShowingToday("day", "2033-01-11", "2033-01-12")).toBe(false);
+    expect(isViewShowingToday("week", "2033-01-19", "2033-01-12")).toBe(false);
+    expect(isViewShowingToday("month", "2033-02-01", "2033-01-12")).toBe(false);
+    expect(isViewShowingToday("year", "2032-12-31", "2033-01-12")).toBe(false);
   });
 });
 
@@ -101,5 +120,141 @@ describe("occurrencesInRange", () => {
 
     expect(occurrences).toHaveLength(1);
     expect(occurrences[0].calendarId).toBe("home");
+  });
+
+  it("hides every occurrence after a series decline, including stale needs-action exceptions", () => {
+    const series = wireEvent({
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "declined",
+        },
+      },
+      recurrenceOverrides: {
+        "2033-01-11T10:00:00": {
+          title: "Moved standup",
+          participants: {
+            me: {
+              "@type": "Participant",
+              email: "me@example.test",
+              roles: { attendee: true },
+              participationStatus: "needs-action",
+            },
+          },
+        },
+      },
+    });
+
+    expect(occurrencesInRange([series], range, { sessionEmail: "me@example.test" })).toEqual([]);
+  });
+
+  it("keeps a later this-instance accept after a series decline", () => {
+    const series = wireEvent({
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "declined",
+        },
+      },
+      recurrenceOverrides: {
+        "2033-01-11T10:00:00": {
+          participants: {
+            me: {
+              "@type": "Participant",
+              email: "me@example.test",
+              roles: { attendee: true },
+              participationStatus: "accepted",
+            },
+          },
+        },
+      },
+    });
+
+    const visible = occurrencesInRange([series], range, { sessionEmail: "me@example.test" });
+    expect(visible).toHaveLength(1);
+    expect(visible[0].start.toString()).toBe("2033-01-11T10:00:00");
+  });
+});
+
+describe("applyOwnRsvpToEngineEvents", () => {
+  it("stamps needs-action and hides declined attendee events", () => {
+    const waiting = wireEvent({
+      id: "wait",
+      uid: "uid-wait",
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "needs-action",
+        },
+      },
+    });
+    const declined = wireEvent({
+      id: "no",
+      uid: "uid-no",
+      title: "Skip",
+      start: "2033-01-10T16:00:00",
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "declined",
+        },
+      },
+    });
+    const map = applyOwnRsvpToEngineEvents(
+      calendarEventsToEngineMap([waiting, declined]),
+      [waiting, declined],
+      "me@example.test",
+    );
+
+    expect([...map.keys()]).toEqual(["wait"]);
+    expect(map.get("wait")?.participationStatus).toBe("needs-action");
+  });
+
+  it("hides one declined occurrence and keeps the accepted series", () => {
+    const series = wireEvent({
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+      participants: {
+        me: {
+          "@type": "Participant",
+          email: "me@example.test",
+          roles: { attendee: true },
+          participationStatus: "accepted",
+        },
+      },
+      recurrenceOverrides: {
+        "2033-01-11T10:00:00": {
+          participants: {
+            me: {
+              "@type": "Participant",
+              email: "me@example.test",
+              roles: { attendee: true },
+              participationStatus: "declined",
+            },
+          },
+        },
+      },
+    });
+    const map = applyOwnRsvpToEngineEvents(
+      calendarEventsToEngineMap([series]),
+      [series],
+      "me@example.test",
+    );
+
+    expect(map.get("ev-1")?.participationStatus).toBe("accepted");
+    const declined = [...map.entries()].find(
+      ([, event]) => event.participationStatus === "declined",
+    );
+    expect(declined?.[1].participationStatus).toBe("declined");
+    expect(map.has("ev-1")).toBe(true);
   });
 });

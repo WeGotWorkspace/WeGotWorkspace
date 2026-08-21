@@ -252,6 +252,18 @@ export function monthDayHeaderPartNames(options: {
 }
 
 /**
+ * Class list for the same header. These classes live in <time-line>'s shadow
+ * (header templates render there), so TimeLine.css can mute outside days without
+ * `::part()` — CalendarTimelineView's outer-tree `::part()` rules do not paint
+ * those numbers in year mini-months.
+ */
+export function monthDayHeaderClassNames(options: { outsideMonth: boolean }): string {
+  return ["timeline-day-header", options.outsideMonth ? "is-outside-month" : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
  * Whether a numeric timeline range overlaps day cell `cellIndex`
  * (cell `i` spans `[i * unitsPerDay, (i + 1) * unitsPerDay)`; ranges are `[start, end)`).
  */
@@ -284,6 +296,26 @@ export function resolveVisibleHoursZoom(
     ? Math.max(0, Math.min(24 - clampedHours, Math.floor(startRaw)))
     : 0;
   return { hours: clampedHours, startHour };
+}
+
+/**
+ * Whether a property change should re-apply the one-shot timed-grid scroll (center “now”
+ * when today is in range).
+ *
+ * Week-view swipe moves `startDate` while today stays in range — that must keep the user’s
+ * vertical scroll. Re-center on view/zoom changes, and when today newly enters the range
+ * (Today from another week, or toolbar nav onto this week). Explicit Today while already
+ * in range is `CalendarTimelineView.scrollToNow()`, not this helper.
+ */
+export function shouldRequestInitialTimedScroll(input: {
+  viewOrZoomChanged: boolean;
+  startDateChanged: boolean;
+  todayInRange: boolean;
+  todayWasInRange: boolean;
+}): boolean {
+  if (input.viewOrZoomChanged) return true;
+  if (!input.startDateChanged) return false;
+  return input.todayInRange && !input.todayWasInRange;
 }
 
 /**

@@ -16,11 +16,18 @@ import {
   patchCalendarEventLive,
   patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
+import {
+  dismissCalendarSchedulingNotification,
+  fetchCalendarSchedulingInvitees,
+  fetchCalendarSchedulingNotifications,
+  respondCalendarSchedulingNotification,
+} from "@/lib/api/wgw/calendar-scheduling";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
+import { draftToJmapEvent } from "@/calendar-core/src/calendar-wire";
 import { applyCalendarEventPatch } from "@/lib/offline/calendars/calendars-patch-merge";
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {
@@ -36,7 +43,10 @@ import {
   flushCalendarsOutbox,
   type CalendarOutboxFlushResult,
 } from "@/lib/offline/calendars-outbox-flush";
-import { reportCalendarsSyncConflicts } from "@/lib/offline/calendars-sync-conflicts";
+import {
+  reportCalendarsSchedulingConflicts,
+  reportCalendarsSyncConflicts,
+} from "@/lib/offline/calendars-sync-conflicts";
 import { readOfflineCalendarsUsername } from "@/lib/offline/offline-session";
 
 function rethrowUnlessOfflineQueue(error: unknown): void {
@@ -49,6 +59,7 @@ const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<CalendarOutboxFlus
 async function flushCalendarsOutboxAndReport(username: string): Promise<CalendarOutboxFlushResult> {
   const result = await flushCalendarsOutbox(username);
   reportCalendarsSyncConflicts(result.conflicts);
+  reportCalendarsSchedulingConflicts(result.schedulingConflicts);
   return result;
 }
 
@@ -59,25 +70,7 @@ function runnerFor(username: string): ConnectivitySyncRunner<CalendarOutboxFlush
 }
 
 function optimisticEventFromDraft(tempId: string, draft: CalendarEventDraft): JmapCalendarEvent {
-  return {
-    "@type": "Event",
-    id: tempId,
-    uid: `urn:uuid:${crypto.randomUUID()}`,
-    calendarIds: { [draft.calendarId]: true },
-    title: draft.title,
-    start: draft.start,
-    duration: draft.duration,
-    ...(draft.timeZone ? { timeZone: draft.timeZone } : {}),
-    ...(draft.allDay ? { showWithoutTime: true } : {}),
-    ...(draft.location
-      ? { locations: { primary: { "@type": "Location", name: draft.location } } }
-      : {}),
-    ...(draft.description ? { description: draft.description } : {}),
-    ...(draft.recurrenceRules?.length ? { recurrenceRules: draft.recurrenceRules } : {}),
-    ...(draft.recurrenceOverrides && Object.keys(draft.recurrenceOverrides).length
-      ? { recurrenceOverrides: draft.recurrenceOverrides }
-      : {}),
-  } as JmapCalendarEvent;
+  return { ...draftToJmapEvent(draft), id: tempId } as JmapCalendarEvent;
 }
 
 async function queueOfflineCreate(
@@ -218,6 +211,56 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
       await writeCalendarsToCache(username, (calendars) =>
         calendars.filter((calendar) => calendar.id !== calendarId),
       );
+    },
+    listSchedulingNotifications: () => fetchCalendarSchedulingNotifications(),
+    listInvitees: () => fetchCalendarSchedulingInvitees(),
+    respondSchedulingNotification: async (notificationId, status, respondOptions) => {
+      const queueOffline = async () => {
+        await enqueueOutboxMutation(username, {
+          id: crypto.randomUUID(),
+          domain: CALENDARS_DOMAIN,
+          op: "respond-scheduling",
+          payload: JSON.stringify({
+            notificationId,
+            participationStatus: status,
+            ...(respondOptions?.calendarId ? { calendarId: respondOptions.calendarId } : {}),
+            ...(respondOptions?.recurrenceId ? { recurrenceId: respondOptions.recurrenceId } : {}),
+            ...(respondOptions?.scope ? { scope: respondOptions.scope } : {}),
+          }),
+        });
+      };
+      if (!readBrowserOnline()) {
+        await queueOffline();
+        return;
+      }
+      try {
+        await respondCalendarSchedulingNotification(notificationId, status, respondOptions);
+        await runner.flush();
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error);
+        await queueOffline();
+      }
+    },
+    dismissSchedulingNotification: async (notificationId) => {
+      const queueOffline = async () => {
+        await enqueueOutboxMutation(username, {
+          id: crypto.randomUUID(),
+          domain: CALENDARS_DOMAIN,
+          op: "dismiss-scheduling",
+          payload: JSON.stringify({ notificationId }),
+        });
+      };
+      if (!readBrowserOnline()) {
+        await queueOffline();
+        return;
+      }
+      try {
+        await dismissCalendarSchedulingNotification(notificationId);
+        await runner.flush();
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error);
+        await queueOffline();
+      }
     },
   };
 }

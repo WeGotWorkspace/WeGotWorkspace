@@ -1,0 +1,40 @@
+@import "../../styles.css" reference;
+@import "../../text-editor-core/docs-collab/docs-collab-card/docs-collab-sidebar-panel.css";
+
+.calendar-invitations-panel-drawer {
+  --side-drawer-width: 23rem;
+}
+
+.calendar-invitations-panel {
+  @apply min-w-0 max-w-full overflow-hidden;
+  --docs-surface: var(--app-sidebar-bg);
+  --docs-collab-sidebar-panel-color: var(--docs-text, var(--color-ink));
+  --docs-collab-sidebar-panel-border-color: var(
+    --docs-border,
+    color-mix(in oklab, var(--color-ink) 8%, transparent)
+  );
+  background-color: var(--app-sidebar-bg);
+}
+
+.calendar-invitations-panel .docs-collab-sidebar-panel__header,
+.calendar-invitations-panel .docs-collab-sidebar-panel__scroll,
+.calendar-invitations-panel .docs-collab-sidebar-panel__empty,
+.calendar-invitations-panel .docs-collab-sidebar-panel__list {
+  background-color: var(--app-sidebar-bg);
+}
+
+.calendar-invitations-panel .docs-collab-sidebar-panel__scroll {
+  @apply px-5 py-6;
+}
+
+.calendar-invitations-panel__list {
+  @apply space-y-4;
+}
+
+.calendar-invitations-panel__filter {
+  @apply flex min-w-0 w-full max-w-full;
+}
+
+.calendar-invitations-panel__filter .segmented-control__button {
+  @apply min-w-0 flex-1;
+}

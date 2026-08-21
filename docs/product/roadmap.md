@@ -54,7 +54,9 @@ Eng progress is on child Epics/Tasks; Goal Status stays **Adopted** until produc
 |------|-------|--------|--------|
 | Manage calendar events (including recurrence) in the browser | [#385](https://github.com/WeGotWorkspace/wegotworkspace/issues/385) | calendar | Split from multi-outcome Calendar Goal; siblings #402, #403; eng parity #137 |
 | Manage calendars (collections) in the browser | [#402](https://github.com/WeGotWorkspace/wegotworkspace/issues/402) | calendar | Sibling of #385 / #403 |
-| Share calendars and events with others (read/write) in the browser | [#403](https://github.com/WeGotWorkspace/wegotworkspace/issues/403) | calendar | Sibling of #385 / #402; not guest Docs/Drive links (#388) |
+| Share calendars and events with others (read/write) in the browser | [#403](https://github.com/WeGotWorkspace/wegotworkspace/issues/403) | calendar | Sibling of #385 / #402; not guest Docs/Drive links (#388); not event invites (#478 / #479) |
+| Invite team members to events and respond to invitations | [#478](https://github.com/WeGotWorkspace/wegotworkspace/issues/478) | calendar | Same-instance iTIP; sibling [#479](https://github.com/WeGotWorkspace/wegotworkspace/issues/479); not ACL sharing (#403) |
+| Invite people outside the instance to events by email | [#479](https://github.com/WeGotWorkspace/wegotworkspace/issues/479) | calendar | iMIP + RSVP links; consumer of [#471](https://github.com/WeGotWorkspace/wegotworkspace/issues/471); sibling #478 |
 | Collaborate on Notes with team members (view/edit) | [#412](https://github.com/WeGotWorkspace/wegotworkspace/issues/412) | notes | Single notes + notebooks; team/group ACL only (not guest links #388) |
 | Share Docs and Drive files with guests via a link | [#388](https://github.com/WeGotWorkspace/wegotworkspace/issues/388) | docs, drive | Must-have for v0.9 |
 | Recover my password without an admin | [#389](https://github.com/WeGotWorkspace/wegotworkspace/issues/389) | admin, platform | Depends on instance email delivery #471 |

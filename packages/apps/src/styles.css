@@ -166,6 +166,10 @@
   --input-height: 2.25rem;
   --input-padding-x: 0.75rem;
   --input-font-size: 1rem;
+  /* Shared control size scale — buttons, icon-buttons, selects, segmented, toggles. */
+  --control-height-sm: calc(var(--input-height) - 0.25rem);
+  --control-height-md: var(--input-height);
+  --control-height-lg: calc(var(--input-height) + 0.25rem);
 }
 
 @media (min-width: 768px) {

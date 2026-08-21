@@ -98,6 +98,7 @@ final class TasksTaskListsTest extends WgwDatabaseTestCase
 
         $response->assertOk()
             ->assertJsonPath('id', InboxTaskListProvisioner::URI)
+            ->assertJsonPath('id', 'tasks-inbox')
             ->assertJsonPath('role', 'inbox')
             ->assertJsonPath('scope', 'personal')
             ->assertJsonPath('groupSlug', null)

@@ -12,11 +12,12 @@ import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../DayOverflowPopover/DayOverflowPopover.js";
 import "../SwipeContainer/SwipeContainer.js";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
-import type {
-  EventCreateRequestDetail,
-  EventDeleteRequestDetail,
-  EventSelectionRequestDetail,
-  EventUpdateRequestDetail,
+import {
+  eventSelectionOriginFromElement,
+  type EventCreateRequestDetail,
+  type EventDeleteRequestDetail,
+  type EventSelectionRequestDetail,
+  type EventUpdateRequestDetail,
 } from "../types/CalendarEventRequests.js";
 import {
   isCalendarEventException,
@@ -46,9 +47,11 @@ import {
   fromTimelineRange,
   fromTimelineValue,
   isOutsideVisibleMonth,
+  monthDayHeaderClassNames,
   monthDayHeaderPartNames,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
+  shouldRequestInitialTimedScroll,
   timelineRangeOverlapsCell,
   toTimelineAllDayRange,
   toTimelineRange,
@@ -115,6 +118,7 @@ type CalendarTimelineEvent = TimelineEvent & {
   past: boolean;
   recurring: boolean;
   exception: boolean;
+  rsvp: "" | "needs-action" | "tentative";
 };
 
 /* Header/footer/event templates render inside <time-line>'s shadow root, out of reach of this
@@ -175,16 +179,21 @@ export class CalendarTimelineView extends CalendarViewBase {
   visibleHoursStart?: number;
   rtl = false;
   /**
-   * Create-dialog range from React (`formToCreateIntent`). Present only while the create
-   * editor is open; Lit uses it to keep the drag-create card after pointer-up.
+   * Create-dialog range from React (`formToCreateIntent`). Present while the create
+   * editor is open or save is in flight; Lit keeps the drag-create card after pointer-up
+   * until cancel, or until a persisted event occupies the same slot.
    */
   pendingCreateIntent: PendingCreateGeometry | null = null;
+  /**
+   * Event open in the details popover (React) or just short-pressed. Coarse resize
+   * grabbers render only for this key. Empty = initial state, no handles.
+   */
+  selectedEventKey = "";
 
   /** Events passed to the timed `<time-line>` in the latest render; commit indexes point here. */
   #renderedTimedEvents: CalendarTimelineEvent[] = [];
   /** Events passed to the all-day `<time-line>` in the latest render. */
   #renderedAllDayEvents: CalendarTimelineEvent[] = [];
-  #selectedEventKey: string | null = null;
   /** Set right after a gesture commit so the trailing click does not also select the event. */
   #suppressNextCardSelect = false;
   #suppressNextCardSelectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -201,11 +210,13 @@ export class CalendarTimelineView extends CalendarViewBase {
   /** Active day column for the narrow-week swipe pager (grid-week `currentDayIndex` parity). */
   #currentDayIndex = 0;
   /**
-   * Apply the initial timed-grid scroll on the next layout pass (once per mount / view change,
-   * not on the 30s now-indicator tick). Centers “now” when today is in range; otherwise
-   * `visibleHoursStart`.
+   * Apply the initial timed-grid scroll on the next layout pass (once per mount / view /
+   * zoom / Today / today-entering-range — not on week swipe or the 30s now-indicator tick).
+   * Centers “now” when today is in range; otherwise `visibleHoursStart`.
    */
   #pendingInitialScroll = true;
+  /** Previous layout pass: today was in the rendered range (used to ignore same-week swipe). */
+  #todayWasInRange = false;
   /** Watches the composed layout + all-day shell to derive the timed viewport height. */
   #composedResizeObserver: ResizeObserver | null = null;
   #observedComposedElements = new Set<Element>();
@@ -219,8 +230,9 @@ export class CalendarTimelineView extends CalendarViewBase {
    */
   #pendingOccurrenceGeometry: PendingOccurrenceGeometry | null = null;
   /**
-   * Drag-create slot kept while the create dialog is open. Seeded on pointer-up; React
-   * `pendingCreateIntent` takes over (and follows form edits) until cancel or save.
+   * Drag-create slot kept while the create dialog is open or save is in flight.
+   * Seeded on pointer-up; React `pendingCreateIntent` takes over (and follows form
+   * edits) until cancel, or until a persisted event occupies the same slot.
    */
   #pendingCreateGeometry: PendingCreateGeometry | null = null;
   /** True once the surface has published a create intent for this drag (dialog opened). */
@@ -248,6 +260,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       rtl: { type: Boolean, reflect: true },
       pendingCreateIntent: { attribute: false },
+      selectedEventKey: { type: String, attribute: "selected-event-key" },
     } as const;
   }
 
@@ -295,25 +308,25 @@ export class CalendarTimelineView extends CalendarViewBase {
         this.numDays = Math.floor(next);
       }
     }
-    if (
+    const viewOrZoomChanged =
       changedProperties.has("mode") ||
       changedProperties.has("visibleHours") ||
-      changedProperties.has("visibleHoursStart")
-    ) {
-      this.#pendingInitialScroll = true;
-    }
-    // Date-window moves: re-center on now only when today is in range (e.g. goToday). Other
-    // weeks keep the user’s scroll so navigation does not fight them.
+      changedProperties.has("visibleHoursStart") ||
+      changedProperties.has("numDays") ||
+      changedProperties.has("daysPerWeek") ||
+      changedProperties.has("weekStart");
+    const todayInRange = this.#composedVertical && this.#nowIndicatorDayFraction != null;
     if (
-      this.#composedVertical &&
-      this.#nowIndicatorDayFraction != null &&
-      (changedProperties.has("startDate") ||
-        changedProperties.has("numDays") ||
-        changedProperties.has("daysPerWeek") ||
-        changedProperties.has("weekStart"))
+      shouldRequestInitialTimedScroll({
+        viewOrZoomChanged,
+        startDateChanged: changedProperties.has("startDate"),
+        todayInRange,
+        todayWasInRange: this.#todayWasInRange,
+      })
     ) {
       this.#pendingInitialScroll = true;
     }
+    this.#todayWasInRange = todayInRange;
     // Keep the swipe pager's active column on the anchor date whenever the window moves
     // (grid-week parity: CalendarWeekView#willUpdate).
     if (
@@ -552,6 +565,10 @@ export class CalendarTimelineView extends CalendarViewBase {
         past: Temporal.PlainDateTime.compare(originalEnd, now) <= 0,
         recurring: isCalendarEventRecurring(event),
         exception: isCalendarEventException(event),
+        rsvp:
+          event.participationStatus === "needs-action" || event.participationStatus === "tentative"
+            ? event.participationStatus
+            : "",
       };
     });
   }
@@ -817,9 +834,8 @@ export class CalendarTimelineView extends CalendarViewBase {
       },
     };
     await this.applyDeleteRequestToEventsAPI(detail);
-    if (this.#selectedEventKey === key) {
-      this.#selectedEventKey = null;
-      this.requestUpdate();
+    if (this.selectedEventKey === key) {
+      this.selectedEventKey = "";
     }
   }
 
@@ -851,14 +867,17 @@ export class CalendarTimelineView extends CalendarViewBase {
     }, 150);
   }
 
-  #selectTimelineEvent(key: string) {
-    if (this.#selectedEventKey !== key) {
-      this.#selectedEventKey = key;
-      this.requestUpdate();
+  #selectTimelineEvent(key: string, card?: EventTarget | null) {
+    if (this.selectedEventKey !== key) {
+      this.selectedEventKey = key;
     }
+    const origin = eventSelectionOriginFromElement(card);
     this.dispatchEvent(
       new CustomEvent("event-selected", {
-        detail: { key } satisfies EventSelectionRequestDetail,
+        detail: {
+          key,
+          ...(origin ? { origin } : {}),
+        } satisfies EventSelectionRequestDetail,
       }),
     );
   }
@@ -876,7 +895,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     if (card instanceof HTMLElement) {
       card.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
     }
-    this.#selectTimelineEvent(key);
+    this.#selectTimelineEvent(key, card);
   }
 
   #handleEventCardKeydown(key: string, event: KeyboardEvent) {
@@ -890,7 +909,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      this.#selectTimelineEvent(key);
+      this.#selectTimelineEvent(key, event.currentTarget);
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
@@ -948,7 +967,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         inert
         aria-hidden="true"
         part="event-card"
-        .summary=${CREATE_PREVIEW_SUMMARY}
+        .summary=${this.#pendingCreateGeometry?.title?.trim() || CREATE_PREVIEW_SUMMARY}
         .time=${timeLabel}
         .color=${this.resolveNewEventColor(calendarId)}
       ></event-card>
@@ -961,7 +980,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     preview?: TimelineEventPreviewRange,
   ): TemplateResult {
     const timelineEvent = event as CalendarTimelineEvent;
-    const selected = this.#selectedEventKey === timelineEvent.key;
+    const selected = this.selectedEventKey === timelineEvent.key;
     const timeLabel = this.#timelineEventTimeLabel(variant, timelineEvent, preview);
     // The card renders inside <time-line>'s shadow root. Selection has no persistent ring
     // (grid parity); it is exposed via aria-pressed and the event-card-selected part.
@@ -976,6 +995,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?past=${timelineEvent.past}
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
+        .rsvp=${timelineEvent.rsvp}
         .summary=${timelineEvent.summary}
         .location=${timelineEvent.location}
         .time=${timeLabel}
@@ -1163,6 +1183,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       summary: ev.summary,
       color: ev.color,
       hidden: false,
+      rsvp: ev.rsvp,
     }));
   }
 
@@ -1243,6 +1264,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     // State variants as extra part names; weekend only inside the anchor month (parity with
     // the plain #dayHeaderTemplate and the old `.is-weekend:not(.is-outside-month)` rule).
     const headerParts = monthDayHeaderPartNames({ outsideMonth, isWeekend });
+    const headerClass = monthDayHeaderClassNames({ outsideMonth });
     const dayNumberParts = [
       "day-number",
       isToday ? "day-number-today" : "",
@@ -1250,18 +1272,23 @@ export class CalendarTimelineView extends CalendarViewBase {
     ]
       .filter(Boolean)
       .join(" ");
+    // Ink is per-cell data (in vs outside month). Set it inline so year mini-months
+    // cannot lose the mute when outer-tree `::part()` fails to paint TimeLine's tree.
+    const headerInk = isToday
+      ? ""
+      : `;color:var(--_lc-${outsideMonth ? "outside" : "in"}-month-day-color)`;
     return html`
       <button
         type="button"
-        class="timeline-day-header"
+        class=${headerClass}
         part=${headerParts}
-        style=${`anchor-name:${anchorName}`}
+        style=${`anchor-name:${anchorName}${headerInk}`}
         .ariaLabel=${fullDateLabel}
         .ariaCurrent=${isToday ? "date" : null}
         @click=${(clickEvent: MouseEvent) =>
           this.#handleMonthDayHeaderClick(cellIndex, day, clickEvent)}
       >
-        <span part=${dayNumberParts}>
+        <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
           ${dayNumberContent}
           ${dotColors.length
             ? html`
@@ -1443,13 +1470,16 @@ export class CalendarTimelineView extends CalendarViewBase {
         },
       }),
     );
-    const popover = event.currentTarget;
+    this.#hideOpenPopover(event.currentTarget);
+  }
+
+  #hideOpenPopover(host: EventTarget | null) {
     if (
-      popover instanceof HTMLElement &&
-      typeof popover.hidePopover === "function" &&
-      popover.matches(":popover-open")
+      host instanceof HTMLElement &&
+      typeof host.hidePopover === "function" &&
+      host.matches(":popover-open")
     ) {
-      popover.hidePopover();
+      host.hidePopover();
     }
   }
 
@@ -1465,7 +1495,11 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   #handleOverflowPopoverSelect = (event: Event) => {
     const key = this.#eventKeyFromPopoverDetail(event);
-    if (key) this.#selectTimelineEvent(key);
+    if (!key) return;
+    const detail = (event as CustomEvent<unknown>).detail;
+    const card = detail instanceof EventTarget ? detail : event.target;
+    this.#selectTimelineEvent(key, card);
+    this.#hideOpenPopover(event.currentTarget);
   };
 
   #handleOverflowPopoverDelete = (event: Event) => {
@@ -1532,6 +1566,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       <time-line
         class="timeline-main"
         .events=${events}
+        .selectedEventKey=${this.selectedEventKey ?? ""}
         .cells=${this.#resolvedNumDays}
         .columns=${this.#resolvedColumns}
         .max=${unitsPerDay}
@@ -1612,6 +1647,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-all-day"
             .events=${allDayEvents}
+            .selectedEventKey=${this.selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}
@@ -1667,6 +1703,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           <time-line
             class="timeline-timed"
             .events=${timedEvents}
+            .selectedEventKey=${this.selectedEventKey ?? ""}
             .cells=${numDays}
             .columns=${numDays}
             .max=${unitsPerDay}
@@ -1694,7 +1731,9 @@ export class CalendarTimelineView extends CalendarViewBase {
    * week's number (day mode: the week containing that day). Same computation as
    * CalendarViewGroup's toolbar `weekNumber` (shared via utils/WeekNumber). Overlaps the
    * sidebar's grid cell and sticks above the shell; all static styling (including the logical
-   * start-corner placement that flips under RTL) lives in CalendarTimelineView.css.
+   * start-corner placement that flips under RTL, shared time-gutter end-alignment, and
+   * a day-number-height strut so W## baselines with the weekday-header name) lives in
+   * CalendarTimelineView.css.
    */
   #renderWeekNumberCorner(): TemplateResult {
     const weekNumber = weekNumberForDate(
@@ -1816,11 +1855,21 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /**
+   * Re-center the timed grid on “now” (Today control). Week swipe must not call this — it
+   * only changes `startDate` while today stays in range.
+   */
+  scrollToNow() {
+    if (!this.#composedVertical) return;
+    this.#pendingInitialScroll = true;
+    this.requestUpdate();
+  }
+
+  /**
    * One-shot scroll for the composed timed grid: center the current-time marker when today is
    * in the visible range; otherwise align to `visibleHoursStart`. Instant `scrollTop` (no
    * smooth scroll) so reduced-motion preferences are respected. Does not re-run on the now
-   * tick — only when `#pendingInitialScroll` is set (mount / view / zoom / today-in-range
-   * date change).
+   * tick — only when `#pendingInitialScroll` is set (mount / view / zoom / Today /
+   * today-entering-range).
    */
   #applyInitialScrollPosition() {
     if (!this.#composedVertical || !this.#pendingInitialScroll) return;

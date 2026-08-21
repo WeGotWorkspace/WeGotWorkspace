@@ -25,8 +25,13 @@
   @apply box-border m-0 flex items-baseline gap-2.5 w-full px-1.5 pt-1 pb-2.5 text-sm font-normal sticky top-0;
   color: light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%));
   z-index: var(--_lc-z-sticky);
-  /* Opaque surface so event cards scrolling underneath don't show through. */
-  background-color: var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)));
+  /* Opaque surface so event cards scrolling underneath don't show through.
+     Workspace can set --_lc-list-heading-bg (e.g. transparent under the
+     mobile sidebar scrim) without flattening the whole calendar surface. */
+  background-color: var(
+    --_lc-list-heading-bg,
+    var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)))
+  );
 }
 
 .agenda-day-weekday {
@@ -67,13 +72,4 @@
   --_lc-event-card-bg-active: var(--_lc-event-bg-active, var(--_lc-event-bg));
   --_lc-event-card-accent-color: var(--_lc-event-accent-color);
   --_lc-event-card-text-color: var(--_lc-event-text-color, CanvasText);
-}
-
-.agenda-empty {
-  @apply h-full min-h-[180px] grid place-content-center p-4;
-  color: light-dark(rgb(51 65 85), rgb(226 232 240 / 0.9));
-}
-
-.agenda-empty-icon {
-  @apply w-14 h-14 opacity-[0.48];
 }

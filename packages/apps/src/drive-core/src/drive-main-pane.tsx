@@ -267,7 +267,7 @@ export function DriveMainPane({
       )}
 
       <div className="drive-main-pane__body">
-        <div className="drive-main-pane__scroll">
+        <div className="drive-main-pane__scroll collection-state-host">
           {showFolderListingBusy ? (
             <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
           ) : visibleItems.length === 0 ? (

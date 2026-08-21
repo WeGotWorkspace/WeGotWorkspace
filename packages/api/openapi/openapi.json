@@ -5219,6 +5219,236 @@
         }
       }
     },
+    "/calendar/rsvp/{token}": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Show a public RSVP invitation",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RSVP target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarRsvpResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "guest"
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Respond to a public RSVP invitation",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated RSVP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarRsvpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "guest"
+      }
+    },
+    "/calendars/scheduling/invitees": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "List instance users who can be invited",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitee directory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSchedulingInviteeListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/scheduling/notifications": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "List own calendar scheduling inbox",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scheduling notifications for the signed-in user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSchedulingNotificationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/scheduling/notifications/{notificationId}": {
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Dismiss a scheduling notification without sending a REPLY",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Notification dismissed"
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/scheduling/notifications/{notificationId}/respond": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "RSVP to a scheduling invitation",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSchedulingNotificationRespond"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated notification after REPLY",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSchedulingNotification"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/jmap": {
       "post": {
         "tags": [

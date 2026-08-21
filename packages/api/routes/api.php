@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -67,6 +69,11 @@ Route::get('.well-known/jwks.json', JwksController::class);
 Route::post('auth/token', TokenController::class);
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
+
+Route::get('calendar/rsvp/{token}', [CalendarRsvpController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+');
+Route::post('calendar/rsvp/{token}', [CalendarRsvpController::class, 'respond'])
+    ->where('token', '[A-Za-z0-9]+');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
@@ -171,6 +178,15 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('messageId', '[^/]+');
     Route::delete('mail/messages/{messageId}', [MailController::class, 'messageDestroyById'])
         ->where('messageId', '[^/]+');
+
+    Route::middleware('wgw.calendars')->group(function (): void {
+        Route::get('calendars/scheduling/invitees', [CalendarSchedulingNotificationsController::class, 'invitees']);
+        Route::get('calendars/scheduling/notifications', [CalendarSchedulingNotificationsController::class, 'index']);
+        Route::post('calendars/scheduling/notifications/{notificationId}/respond', [CalendarSchedulingNotificationsController::class, 'respond'])
+            ->where('notificationId', '[^/]+');
+        Route::delete('calendars/scheduling/notifications/{notificationId}', [CalendarSchedulingNotificationsController::class, 'destroy'])
+            ->where('notificationId', '[^/]+');
+    });
 
     Route::middleware('wgw.tasks')->group(function (): void {
         Route::get('tasks/capabilities', TasksCapabilitiesController::class);

@@ -196,10 +196,6 @@
   @apply flex-1 min-h-0 min-w-0 w-full overflow-x-hidden overflow-y-auto;
 }
 
-.drive-workspace .drive-main-pane__scroll:has(> .collection-state) {
-  @apply flex flex-col items-center justify-center;
-}
-
 .drive-workspace .drive-detail-aside {
   @apply hidden md:flex min-w-0 overflow-hidden border-l flex-col min-h-0 will-change-transform transition-[translate,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)];
   background-color: var(--color-cream, #ffffff);

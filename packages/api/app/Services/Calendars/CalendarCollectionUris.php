@@ -17,22 +17,31 @@ final class CalendarCollectionUris
 
     public const EVENT_WORK = 'work';
 
-    public const TASK_INBOX = 'inbox';
+    public const TASK_INBOX = 'tasks-inbox';
 
     public const TASK_HOME = 'tasks-home';
 
     public const TASK_WORK = 'tasks-work';
 
+    /**
+     * Sabre CalendarHome always exposes this name as the RFC 6638 schedule-inbox.
+     * User VEVENT/VTODO collections must not reuse it.
+     */
+    public const SCHEDULE_INBOX = 'inbox';
+
+    /** Pre-#482 VTODO Inbox collection uri (migrated to {@see self::TASK_INBOX}). */
+    public const LEGACY_TASK_INBOX = 'inbox';
+
     /** @return list<string> */
     public static function reservedEventUris(): array
     {
-        return [self::EVENT_DEFAULT, self::EVENT_HOME, self::EVENT_WORK];
+        return [self::EVENT_DEFAULT, self::EVENT_HOME, self::EVENT_WORK, self::SCHEDULE_INBOX];
     }
 
     /** @return list<string> */
     public static function reservedTaskUris(): array
     {
-        return [self::TASK_INBOX, self::TASK_HOME, self::TASK_WORK];
+        return [self::TASK_INBOX, self::TASK_HOME, self::TASK_WORK, self::SCHEDULE_INBOX];
     }
 
     /** @return list<string> */

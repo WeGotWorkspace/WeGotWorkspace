@@ -11,6 +11,10 @@ export type CollectionStateProps = {
   variant?: "default" | "loading";
 };
 
+/**
+ * Pane empty/loading block (icon + label). Parents that fill a scroll surface
+ * add `collection-state-host` so the block sits slightly above mid-pane (2:3).
+ */
 export function CollectionState({
   variant = "default",
   icon,

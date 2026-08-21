@@ -14,5 +14,8 @@ final class OutboundMessage
         public array $to,
         public string $subject,
         public string $textBody,
+        public ?string $htmlBody = null,
+        public ?string $calendarMethod = null,
+        public ?string $calendarIcs = null,
     ) {}
 }

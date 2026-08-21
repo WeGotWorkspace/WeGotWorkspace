@@ -3,6 +3,18 @@
 
 @import "../../ui/anchored-dropdown.css";
 
+/**
+ * Toggle + title stack. `items-start` keeps the toggle on the title-row
+ * center line (row min-height matches the icon button) when a subtitle follows.
+ */
+.view-header {
+  @apply flex items-start gap-3;
+}
+
+.view-header__sidebar-toggle {
+  @apply flex shrink-0 items-center;
+}
+
 /** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
@@ -10,20 +22,25 @@
 }
 
 /**
- * Grid keeps title truncation predictable; min-height matches default icon-button row (size-md / 2.25rem)
- * so subtitle/search do not jump when actions are present vs absent.
+ * Grid keeps wide inline titles predictable; stacked / narrow responsive
+ * wrap the title instead of ellipsizing first. Min-height matches compact
+ * icon-button row (size-sm) so subtitle/search do not jump when actions
+ * are present vs absent.
  */
 .view-header__title-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   column-gap: 0.75rem;
-  min-height: var(--view-header-title-row-min-height, 2.25rem);
+  min-height: var(
+    --view-header-title-row-min-height,
+    var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem))
+  );
 }
 
-/** Title + optional period controls as one unit. */
+/** Title + optional period controls as one unit (gap-2 = nav-group → title). */
 .view-header__title-cluster {
-  @apply flex min-w-0 items-center gap-1;
+  @apply flex min-w-0 items-center gap-2;
   justify-content: var(--view-header-cluster-justify, flex-start);
 }
 
@@ -32,11 +49,23 @@
   order: var(--view-header-leading-order, 0);
 }
 
-/** Default: large serif display title. */
+.view-header__title-block {
+  @apply flex min-w-0 items-center gap-1;
+}
+
+.view-header__title-prefix {
+  @apply flex shrink-0 items-center;
+}
+
+/**
+ * Default: large serif title on wide headers. Tailwind has no `text-box-*`
+ * utility that emits this, so the trim shorthand is a CSS property.
+ */
 .view-header__title {
   @apply min-w-0 truncate text-2xl leading-none;
   font-family: var(--font-serif);
   color: var(--color-ink);
+  text-box: auto;
 }
 
 /** Compact variant: medium-size, medium-weight, sans-serif (e.g. doc editor file name). */
@@ -45,50 +74,162 @@
   font-family: var(--font-sans);
 }
 
+.view-header__title-compact {
+  @apply hidden;
+}
+
+/** Actions + optional first-row trailing control (inbox). */
+.view-header__end {
+  @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
+}
+
 .view-header__actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
 }
 
+.view-header__title-trailing {
+  @apply flex shrink-0 items-center;
+}
+
 /**
- * Stacked variant: title cluster on row 1 (title at start, prev/next at end),
- * actions on row 2. Used as-is for `layout="stacked"`, and by the
- * container-query / viewport fallback for `layout="responsive"`.
+ * Stacked variant: view actions on row 1 start, optional titleTrailing on
+ * row 1 end, title on row 2 start, optional titleLeading (prev/next) on
+ * row 2 end. Used as-is for `layout="stacked"`, and by the container-query
+ * / viewport fallback for `layout="responsive"`.
+ * `display: contents` on `__end` and `__title-cluster` lets trailing, title,
+ * and leading occupy their own grid areas.
  */
 .view-header__title-row--stacked {
-  --view-header-cluster-justify: space-between;
-  --view-header-leading-order: 1;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-areas:
+    "actions trailing"
+    "title leading";
   row-gap: 0.5rem;
 }
 
+.view-header__title-row--stacked .view-header__end,
+.view-header__title-row--stacked .view-header__title-cluster {
+  display: contents;
+}
+
+.view-header__title-row--stacked .view-header__title-block {
+  grid-area: title;
+}
+
+.view-header__title-row--stacked .view-header__title {
+  @apply overflow-visible whitespace-normal leading-tight;
+  text-overflow: unset;
+}
+
+.view-header__title-row--stacked .view-header__title-leading {
+  grid-area: leading;
+}
+
+.view-header__title-row--stacked .view-header__title-trailing {
+  grid-area: trailing;
+}
+
 .view-header__title-row--stacked .view-header__actions {
-  @apply w-full flex-wrap;
+  grid-area: actions;
+  @apply flex-wrap justify-start;
 }
 
 @container view-header-main (max-width: 40rem) {
+  .view-header__title:not(.view-header__title--sm) {
+    @apply text-xl;
+  }
+
   .view-header__title-row--responsive {
-    --view-header-cluster-justify: space-between;
-    --view-header-leading-order: 1;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      "actions trailing"
+      "title leading";
     row-gap: 0.5rem;
   }
 
+  .view-header__title-row--responsive .view-header__end,
+  .view-header__title-row--responsive .view-header__title-cluster {
+    display: contents;
+  }
+
+  .view-header__title-row--responsive .view-header__title-block {
+    grid-area: title;
+  }
+
+  .view-header__title-row--responsive .view-header__title {
+    @apply overflow-visible whitespace-normal leading-tight;
+    text-overflow: unset;
+  }
+
+  .view-header__title-row--responsive .view-header__title-leading {
+    grid-area: leading;
+  }
+
+  .view-header__title-row--responsive .view-header__title-trailing {
+    grid-area: trailing;
+  }
+
   .view-header__title-row--responsive .view-header__actions {
-    @apply w-full flex-wrap;
+    grid-area: actions;
+    @apply flex-wrap justify-start;
+  }
+
+  .view-header__title:has(.view-header__title-compact) .view-header__title-full {
+    @apply hidden;
+  }
+
+  .view-header__title-compact {
+    @apply inline;
   }
 }
 
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
+    .view-header__title:not(.view-header__title--sm) {
+      @apply text-xl;
+    }
+
     .view-header__title-row--responsive {
-      --view-header-cluster-justify: space-between;
-      --view-header-leading-order: 1;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) max-content;
+      grid-template-areas:
+        "actions trailing"
+        "title leading";
       row-gap: 0.5rem;
     }
 
+    .view-header__title-row--responsive .view-header__end,
+    .view-header__title-row--responsive .view-header__title-cluster {
+      display: contents;
+    }
+
+    .view-header__title-row--responsive .view-header__title-block {
+      grid-area: title;
+    }
+
+    .view-header__title-row--responsive .view-header__title {
+      @apply overflow-visible whitespace-normal leading-tight;
+      text-overflow: unset;
+    }
+
+    .view-header__title-row--responsive .view-header__title-leading {
+      grid-area: leading;
+    }
+
+    .view-header__title-row--responsive .view-header__title-trailing {
+      grid-area: trailing;
+    }
+
     .view-header__title-row--responsive .view-header__actions {
-      @apply w-full flex-wrap;
+      grid-area: actions;
+      @apply flex-wrap justify-start;
+    }
+
+    .view-header__title:has(.view-header__title-compact) .view-header__title-full {
+      @apply hidden;
+    }
+
+    .view-header__title-compact {
+      @apply inline;
     }
   }
 }

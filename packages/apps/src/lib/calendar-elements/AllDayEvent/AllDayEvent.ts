@@ -510,6 +510,7 @@ export class AllDayEvent extends EventBase {
         .recurring=${this.isRecurring}
         .exception=${this.isException}
         ?past=${this.isPast}
+        .rsvp=${this.rsvp}
         style=${styleMap(inset.style)}
       >
         ${!this.interactionDisabled && isFirst && canResizeStart

@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
-import { Trash2 } from "lucide-react";
 import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
-import { IconButton } from "@/button/src/icon-button";
-import { CardRow } from "@/card/src/card-row";
 import {
   SHARE_UI_PERMISSIONS,
   accessToSelectableUIPermission,
   type ShareUIPermission,
 } from "@/share-ui/share-access-map";
+import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
@@ -52,47 +50,42 @@ export function SharePrincipalRow({
     ? shareLabels.inheritedFrom(formatSharePathLabel(inheritedFromPath))
     : undefined;
 
+  const trailing =
+    canEdit && uiPermission ? (
+      <SharePermissionSelect
+        value={uiPermission}
+        title={editHint}
+        permissions={permissions}
+        onChange={(next) => {
+          if (next !== "none") onAccessChange?.(next);
+        }}
+      />
+    ) : uiPermission ? (
+      <SharePermissionSelect
+        value={uiPermission}
+        disabled
+        title={editHint}
+        permissions={permissions}
+        onChange={() => {}}
+      />
+    ) : (
+      <span className="share-dialog__read-only-access" title={editHint}>
+        {accessLabelForReadOnly(access)}
+      </span>
+    );
+
   return (
-    <CardRow
-      leading={mark}
+    <ShareAccessRow
+      mark={mark}
       title={title}
       subtitle={subtitle}
       titleExtra={inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null}
       titleEnd={pending ? <SharePendingTag /> : null}
-    >
-      {canEdit && uiPermission ? (
-        <SharePermissionSelect
-          value={uiPermission}
-          title={editHint}
-          permissions={permissions}
-          onChange={(next) => {
-            if (next !== "none") onAccessChange?.(next);
-          }}
-        />
-      ) : uiPermission ? (
-        <SharePermissionSelect
-          value={uiPermission}
-          disabled
-          title={editHint}
-          permissions={permissions}
-          onChange={() => {}}
-        />
-      ) : (
-        <span className="share-dialog__read-only-access" title={editHint}>
-          {accessLabelForReadOnly(access)}
-        </span>
-      )}
-      {showRemove ? (
-        <IconButton
-          label={shareLabels.removeGrant}
-          icon={<Trash2 className="size-3.5" aria-hidden />}
-          size="sm"
-          variant="outline"
-          disabled={!canRemove}
-          title={inherited ? (editHint ?? inheritedRemoveHint) : undefined}
-          onClick={canRemove ? onRemove : undefined}
-        />
-      ) : null}
-    </CardRow>
+      trailing={trailing}
+      showRemove={showRemove}
+      removeDisabled={!canRemove}
+      removeTitle={inherited ? (editHint ?? inheritedRemoveHint) : undefined}
+      onRemove={canRemove ? onRemove : undefined}
+    />
   );
 }

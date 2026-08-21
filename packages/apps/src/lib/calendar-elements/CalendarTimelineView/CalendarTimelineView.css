@@ -7,13 +7,15 @@
      those trees read --_lc-* with no fallback. In the old grid stack they came from
      CalendarGridView's host; here they must be declared on this host (custom properties
      inherit through the shadow boundary).
-     In-month numbers use near-full ink (primary text, AA). Weekday chrome stays at 72%
-     (slightly muted). Outside-month stays at the AA floor (~63% / ~4.5:1) — that mute
-     only reads against 92% ink; 72% vs 63% was indistinguishable at 12px. */
+     In-month numbers use full ink (primary text, AA). Weekday chrome stays at 72%
+     (slightly muted). Outside-month stays at the AA floor (~63% / ~4.5:1).
+     72% vs 63% was indistinguishable at 12px; the mute is vs full in-month ink.
+     These tokens are consumed inside <time-line>'s shadow (classes + inline color)
+     because outer-tree `::part()` color does not paint year mini-month numbers. */
   --_lc-grid-line-width: 1px;
   --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
   --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
-  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%));
+  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%));
   --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%));
   --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
 }
@@ -33,7 +35,7 @@
     );
     --_lc-in-month-day-color: color-mix(
       in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 92%,
+      var(--lc-grid-base-color, light-dark(#222, #fff)) 100%,
       var(--_lc-surface-bg, light-dark(#fff, #222))
     );
     --_lc-outside-month-day-color: color-mix(
@@ -136,17 +138,40 @@ time-line.timeline-main {
     --_lc-week-section-divider-color,
     light-dark(rgb(15 23 42 / 22%), rgb(255 255 255 / 28%))
   );
-  /* Shared by the time-gutter hour rules and <time-line> `.cell-main--grid`. */
+  /* Hour lines on <time-line> `.cell-main--grid` only (not the time-gutter labels). */
   --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
+  /* Shared gutter inset: hour labels, now-badge, and the week-number corner cell. */
+  --_lc-time-sidebar-inline-padding: 6px;
+}
+
+@media (max-width: 40rem) {
+  .timeline-layout--composed {
+    --_lc-time-sidebar-inline-padding: 4px;
+    --_lc-time-label-font-size: 0.625rem;
+    --_lc-weekday-header-font-size: 0.75rem;
+  }
+}
+
+@container lc-timeline-composed (max-width: 40rem) {
+  .timeline-sidebar,
+  .timeline-swipe,
+  .timeline-week-number,
+  calendar-weekday-header.timeline-day-header-row {
+    --_lc-time-sidebar-inline-padding: 4px;
+    --_lc-time-label-font-size: 0.625rem;
+    --_lc-weekday-header-font-size: 0.75rem;
+  }
 }
 
 .timeline-sidebar {
   grid-row: 1;
   grid-column: 1;
+  /* Above the swipe column so iOS event compositor layers cannot cover the clock badge. */
+  z-index: 2;
+  isolation: isolate;
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
   background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
-  --_lc-time-sidebar-inline-padding: 6px;
   /* Internal layout mirrors the composed column: no weekday header row, an all-day slot as
      tall as the (measured) sticky shell — itself sticky, so it covers the top-left corner
      while scrolling — and the timed hour labels below. */
@@ -166,9 +191,17 @@ time-line.timeline-main {
    Overlaps the sidebar's grid cell (both are explicitly placed at row 1 / column 1) and
    sticks with the shell; grid column 1 is the inline-start column, so the corner flips to
    the right edge automatically under RTL. It paints above the sidebar's sticky slots
-   (z 2/3 in its shadow tree) and the all-day shell (z 3). Metrics mirror the weekday-header
-   row (26px min-height + 4px bottom padding = 30px) so the number centers on it. */
+   (z 2/3 in its shadow tree) and the all-day shell (z 3).
+   Horizontal: same inline-end inset as the time-column labels (shared
+   --_lc-time-sidebar-inline-padding + justify/text-end), so the right edge of W##
+   lines up with the right edge of "12:00 PM".
+   Vertical: date-mode weekday buttons are inline-flex + items-center with the day
+   name beside a --_lc-weekday-day-number-size pill. Copying font/padding alone left
+   W## high — it was centered in a text-only 24px box while "Mo" is centered against
+   that taller pill. A zero-width ::before strut matches the button's flex items so
+   the name and W## share a baseline. */
 .timeline-week-number {
+  box-sizing: border-box;
   grid-row: 1;
   grid-column: 1;
   position: sticky;
@@ -178,19 +211,33 @@ time-line.timeline-main {
   justify-self: stretch;
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 3px 6px;
-  font-size: 11px;
+  justify-content: end;
+  min-height: var(--_lc-weekday-header-item-min-height, 24px);
+  padding-block: var(--_lc-weekday-header-item-padding-block, 3px);
+  padding-inline: var(--_lc-time-sidebar-inline-padding, 6px);
+  font-family: inherit;
+  font-size: var(--_lc-weekday-header-font-size, 14px);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1;
+  text-align: end;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
-  /* WGW a11y: was opacity 0.75 — compounded to ~3.85:1 contrast on white; full-strength
-     72% ink keeps the muted look at ~7:1 (WCAG AA needs 4.5:1 at this 11px size). */
+  /* Dimmer than day-name 72% ink; page muted, then calendar outside-month (AA floor). */
+  color: var(
+    --muted-foreground,
+    var(--_lc-outside-month-day-color, light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%)))
+  );
   pointer-events: none;
   user-select: none;
+}
+
+/* Zero-width stand-in for .weekday-day-number so align-items: center matches the
+   date-mode button (day name + 20px pill), not a text-only box. */
+.timeline-week-number::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: var(--_lc-weekday-day-number-size, 20px);
 }
 
 .timeline-swipe {
@@ -232,7 +279,8 @@ time-line.timeline-main {
 }
 
 /* Narrow-week pager breakpoints (grid-week parity: CalendarWeekView.css). Touch-first: the
-   pointer:fine override below restores all columns on desktop, where there is no swipe. */
+   pointer:fine override below restores all columns on desktop, where there is no swipe.
+   Floor is 3 days so a phone-width week still shows a useful stretch of the range. */
 @container lc-timeline-composed (max-width: 1100px) {
   .timeline-swipe {
     --_lc-timeline-visible-columns: 6;
@@ -254,12 +302,6 @@ time-line.timeline-main {
 @container lc-timeline-composed (max-width: 700px) {
   .timeline-swipe {
     --_lc-timeline-visible-columns: 3;
-  }
-}
-
-@container lc-timeline-composed (max-width: 540px) {
-  .timeline-swipe {
-    --_lc-timeline-visible-columns: 2;
   }
 }
 
@@ -287,14 +329,13 @@ time-line.timeline-all-day {
   /* Let vertical touch pans reach the composed scroll container; drags still work via
      TimeLine's touch long-press activation. */
   --time-line-touch-action: pan-y;
-  /* Match timed day/week cards: 4px gutter so all-day bars and timed cards share inline edges
-     within a day column (see --time-line-event-inline-inset on .timeline-timed). */
-  --time-line-event-inline-inset: 4px;
+  /* Same four-side gutter as timed day/week cards (block-size --time-line-event-inset). */
+  --time-line-event-inline-inset: 1px;
 }
 
 /* Standalone all-day presentation (variant="all-day", class timeline-main): same gutter. */
 :host([variant="all-day"]) time-line.timeline-main {
-  --time-line-event-inline-inset: 4px;
+  --time-line-event-inline-inset: 1px;
 }
 
 time-line.timeline-timed {
@@ -326,11 +367,8 @@ time-line.timeline-timed {
      so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
      each event-card. */
   --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, light-dark(#fff, #222));
-  /* Horizontal gutter beside timed cards so day-column separators stay visible (the cutout ring
-     alone only separates overlaps; solo cards were flush to the column edges). 4px clears the
-     1.5px cutout ring and leaves a thin surface strip over the cell outline. Same token on
-     .timeline-all-day so all-day bars line up with timed cards in the composed day/week view. */
-  --time-line-event-inline-inset: 4px;
+  /* Same four-side gutter as all-day bars. */
+  --time-line-event-inline-inset: 1px;
 }
 
 /* Drop the 0.5px block-axis viewport border so hour tiles are exactly
@@ -482,13 +520,15 @@ time-line::part(day-header) {
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
-  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 92%)));
+  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
 }
 
 time-line::part(day-header-outside-month),
 time-line::part(day-number-outside-month) {
   /* Color (not opacity) so compact year event dots stay at full strength. Mute is
-     vs in-month 92% ink, not vs the 72% weekday token (that pairing is invisible). */
+     vs in-month 100% ink, not vs the 72% weekday token (that pairing is invisible).
+     Year mini-months also set this via TimeLine.css + inline color — `::part()`
+     alone does not paint those numbers. */
   color: var(--_lc-outside-month-day-color);
 }
 
