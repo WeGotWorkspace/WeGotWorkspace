@@ -26,7 +26,11 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     refreshBootstrap,
   } = useCalendarAPI(apiSource);
 
-  const surface = useCalendarSurface(jmapClient, data, session.user.email);
+  const surface = useCalendarSurface(jmapClient, data, session.user.email, {
+    onPersisted: () => {
+      void refreshBootstrap();
+    },
+  });
   const syncedSurface = useMemo(
     () => ({
       ...surface,

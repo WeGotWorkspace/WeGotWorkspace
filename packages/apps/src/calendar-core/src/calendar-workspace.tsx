@@ -34,7 +34,6 @@ import {
   type CalendarEventPreviewModel,
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
-import { formToCreateIntent } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import {
@@ -197,6 +196,7 @@ export function CalendarWorkspace({
     defaultCalendarId,
     litSurface,
     editor,
+    pendingCreateIntent,
     editorBusy,
     openCreateEvent,
     openCreateFromSurface,
@@ -611,9 +611,7 @@ export function CalendarWorkspace({
                       }
                     : undefined
                 }
-                pendingCreateIntent={
-                  editor?.mode === "create" ? formToCreateIntent(editor.form) : null
-                }
+                pendingCreateIntent={pendingCreateIntent}
                 selectedEventKey={eventPreview ? eventPreviewOccurrenceKey(eventPreview.model) : ""}
               />
             </div>
