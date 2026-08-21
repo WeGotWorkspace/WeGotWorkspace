@@ -18,19 +18,12 @@ export function resolveCalendarSurfaceEvents(input: {
   cacheEvents: readonly JmapCalendarEvent[];
   sessionEmail?: string;
 }): CalendarEventsMap {
+  const cache = [...input.cacheEvents];
   if (input.phase === "ready" && input.adapterEvents) {
-    return applyOwnRsvpToEngineEvents(
-      new Map(input.adapterEvents),
-      input.cacheEvents,
-      input.sessionEmail,
-    );
+    return applyOwnRsvpToEngineEvents(new Map(input.adapterEvents), cache, input.sessionEmail);
   }
   if (input.phase === "ready" || input.phase === "loading") {
-    return applyOwnRsvpToEngineEvents(new Map(), input.cacheEvents, input.sessionEmail);
+    return applyOwnRsvpToEngineEvents(new Map(), cache, input.sessionEmail);
   }
-  return applyOwnRsvpToEngineEvents(
-    calendarEventsToEngineMap(input.cacheEvents),
-    input.cacheEvents,
-    input.sessionEmail,
-  );
+  return applyOwnRsvpToEngineEvents(calendarEventsToEngineMap(cache), cache, input.sessionEmail);
 }
