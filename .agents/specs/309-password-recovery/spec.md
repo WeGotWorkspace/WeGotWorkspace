@@ -1,4 +1,4 @@
-Source: #309 (body-hash: 9854908b)
+Source: #309 (body-hash: 53e90fa4)
 Goal: #389
 
 # Self-service password recovery
@@ -11,7 +11,7 @@ Give a self-hosted instance a guest forgot-password / reset-token path so a user
 
 ## Non-goals
 
-- SMTP / Mail-app sending or changing `MailDeliveryService` (Goal #471 / Task #473)
+- SMTP / Mail-app sending (Goal #471 / Task #473). Placeholder From lives in `MailDelivery` so recovery and later consumers share it.
 - Extra account-takeover controls (CAPTCHA, MFA, device signals)
 - OIDC / social recovery (Goal #395)
 - Auto-login after reset
@@ -27,10 +27,10 @@ Give a self-hosted instance a guest forgot-password / reset-token path so a user
 ## Technical constraints
 
 - OpenAPI first; both operations `x-wgw-access: guest`. Register outside `wgw.auth` in `routes/api.php`.
-- Do **not** use Laravel’s Password broker or the scaffold `password_reset_tokens` table (wrong connection; WGW `User` has no email). Follow `api_refresh_tokens`: `bin2hex(random_bytes(32))`, store `hash('sha256', $token)` only.
+- Do **not** use Laravel’s Password broker or the scaffold `password_reset_tokens` table (wrong connection; WGW `User` has no email). Follow `api_refresh_tokens`: `bin2hex(random_bytes(32))`, store `hash('sha256', $token)` only. Token TTL is **15 minutes**.
 - Email is on `principals`, not `users`. Identifier matches `users.username` (lowercased) **or** `principals.email` (case-insensitive).
-- Inject `App\Services\MailDelivery\MailDeliveryService` only. Build `OutboundMessage` with `from` from `loadConfig()->from`, `to` = principal email, plain `textBody` (no Mailable). `send()` failures stay `DeliveryResult` — still return generic 200 to the client.
-- `canSubmit` is a preflight (`fromConfigured && transport canAttempt`), not inbox proof. Copy must not claim placement.
+- Inject `App\Services\MailDelivery\MailDeliveryService` only. Build `OutboundMessage` with `from` from `loadConfig()->effectiveFrom()` (saved `mail_delivery_from` when valid, otherwise `noreply@localhost`), `to` = principal email, plain `textBody` (no Mailable). `send()` failures stay `DeliveryResult` — still return generic 200 to the client.
+- `fromConfigured` is whether Admin saved a valid From (stay honest). `canSubmit` is transport `canAttempt`; unset From uses the placeholder. Not inbox proof. Copy must not claim placement.
 - Password write reuses the same ≥10 / `users.digest` rule as `UserProfileService::updatePassword`. On success, revoke that username’s refresh tokens. Do not issue a JWT.
 - Rate-limit the request endpoint in the service layer (same family as `LoginRateLimiter`).
 - SPA routes nest under `/login` so `UiStaticServer::shellRoutePrefixes()` and `AUTH_ROUTE_PREFIXES` already cover them. No new top-level prefix. Guest screens reuse `AuthenticationPage`.
@@ -42,6 +42,6 @@ Give a self-hosted instance a guest forgot-password / reset-token path so a user
 - New request for the same user replaces the previous token
 - Expired or already-consumed token → 400, no user leak
 - Delivery `accepted === false` after `send()` → still 200 to the client; log `DeliveryResult` for operators
-- Invalid From / no recipients throws `InvalidOutboundMessageException` — treat as no-send, still generic 200
+- Empty or invalid From is replaced by `noreply@localhost`; no recipients still throws `InvalidOutboundMessageException` — treat as no-send, still generic 200
 - Users without email keep Admin → Users KeyRound
 - Missing inbox after `accepted_by_transport` is DNS/SPF/DKIM, not this task

@@ -32,6 +32,7 @@ final class PasswordResetMailFactoryTest extends TestCase
         $this->assertSame(['alice@example.test'], $message->to);
         $this->assertSame('Reset your WeGotWorkspace password', $message->subject);
         $this->assertStringContainsString('http://workspace.test/login/reset?token='.$token, $message->textBody);
+        $this->assertStringContainsString('valid for 15 minutes', $message->textBody);
         $this->assertStringContainsString('does not mean it reached an inbox', $message->textBody);
     }
 

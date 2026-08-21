@@ -22,7 +22,7 @@ final class PasswordResetMailFactory
             textBody: implode("\n", [
                 'A password reset was requested for your WeGotWorkspace account.',
                 '',
-                'Open this link to choose a new password (valid for 60 minutes):',
+                'Open this link to choose a new password (valid for 15 minutes):',
                 $link,
                 '',
                 'If you did not request this, you can ignore this message.',

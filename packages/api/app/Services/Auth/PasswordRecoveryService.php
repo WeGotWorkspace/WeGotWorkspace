@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 final class PasswordRecoveryService
 {
-    public const int TOKEN_TTL_SECONDS = 3600;
+    public const int TOKEN_TTL_SECONDS = 15 * 60;
 
     public function __construct(
         private MailDeliveryService $mailDelivery,
@@ -50,7 +50,7 @@ final class PasswordRecoveryService
 
         $token = bin2hex(random_bytes(32));
         $this->replaceToken((string) $user->username, $token);
-        $message = $this->resetMail->message($config->from, $email, $token);
+        $message = $this->resetMail->message($config->effectiveFrom(), $email, $token);
 
         try {
             $result = $this->mailDelivery->send($message, $config);
