@@ -23,8 +23,7 @@ use App\Storage\WgwStorage;
  * and the upload may expire naturally.
  *
  * Note files (`.md` under `.notes`) accept a `note` {title, tags} patch.
- * Frontmatter writes pass through existing YAML `starred` so `/notes/*` still
- * round-trips the old client flag. FileNode `note.starred` is never written.
+ * Frontmatter does not parse or emit YAML `starred` — starring is Drive stars.
  */
 final class FileNodeSetService
 {
@@ -265,7 +264,7 @@ final class FileNodeSetService
                 }
                 $blobContents = $blob['contents'];
             }
-            $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents, false, null);
+            $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
             $disk->put($key, $contents);
             $node = $this->index->recordContentWrite($key, hash('sha256', $contents));
         }
@@ -308,9 +307,6 @@ final class FileNodeSetService
 
         $serverSet = [];
         $note = $this->notePatch($patch);
-        $existingStarred = $this->isNoteMarkdownKey((string) $node->storage_key, (string) $node->name)
-            ? $this->yamlStarredOf($this->readMarkdown((string) $node->storage_key))
-            : null;
 
         $wantsMove = array_key_exists('name', $patch) || array_key_exists('parentId', $patch);
         if ($wantsMove) {
@@ -390,8 +386,6 @@ final class FileNodeSetService
                 (string) $node->name,
                 $note,
                 $blobContents,
-                $this->isNoteMarkdownKey((string) $node->storage_key, (string) $node->name),
-                $existingStarred,
             );
             $this->storage->files()->put((string) $node->storage_key, $contents);
             $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $contents)) ?? $node;
@@ -557,11 +551,6 @@ final class FileNodeSetService
         return $this->paths->isNotePath('/'.ltrim($key, '/')) && $this->codec->isNoteFilename($name);
     }
 
-    private function yamlStarredOf(string $markdown): ?bool
-    {
-        return $this->codec->parse($markdown, '')[2];
-    }
-
     private function readMarkdown(string $key): string
     {
         $disk = $this->storage->files();
@@ -575,10 +564,10 @@ final class FileNodeSetService
     /**
      * @param  array{title?: string, tags?: list<string>}|null  $note
      */
-    private function composeNoteMarkdown(string $name, ?array $note, string $sourceMarkdown, ?bool $starred): string
+    private function composeNoteMarkdown(string $name, ?array $note, string $sourceMarkdown): string
     {
         $fallback = pathinfo($name, PATHINFO_FILENAME);
-        [$title, $tags, , $body] = $this->codec->parse($sourceMarkdown, $fallback);
+        [$title, $tags, $body] = $this->codec->parse($sourceMarkdown, $fallback);
         if ($note !== null) {
             if (array_key_exists('title', $note)) {
                 $title = $note['title'] !== '' ? $note['title'] : $fallback;
@@ -588,7 +577,7 @@ final class FileNodeSetService
             }
         }
 
-        return $this->codec->serialize($title, $tags, $starred, $body);
+        return $this->codec->serialize($title, $tags, $body);
     }
 
     /**
@@ -599,8 +588,6 @@ final class FileNodeSetService
         string $name,
         ?array $note,
         ?string $blobContents,
-        bool $passThroughExistingStarred,
-        ?bool $existingStarred,
     ): string {
         $isNote = $this->isNoteMarkdownKey($key, $name);
         if ($note !== null && ! $isNote) {
@@ -615,12 +602,11 @@ final class FileNodeSetService
         }
 
         $source = $blobContents ?? $this->readMarkdown($key);
-        if ($note === null && ! $passThroughExistingStarred) {
+        if ($note === null) {
             return $source;
         }
-        $starred = $passThroughExistingStarred ? $existingStarred : $this->yamlStarredOf($source);
 
-        return $this->composeNoteMarkdown($name, $note, $source, $starred);
+        return $this->composeNoteMarkdown($name, $note, $source);
     }
 
     /**

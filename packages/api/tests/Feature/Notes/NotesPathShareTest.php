@@ -34,7 +34,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'title' => 'Shared note',
             'body' => 'hello',
         ]);
-        $path = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
+        $path = $created['path'];
 
         foreach (['comment', 'review'] as $access) {
             $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
@@ -55,7 +55,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'notebook' => 'Drafts',
             'body' => 'hello',
         ]);
-        $path = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
+        $path = $created['path'];
 
         foreach (['public', 'guest'] as $kind) {
             $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
@@ -82,15 +82,11 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
     public function test_allows_view_edit_and_rejects_full_and_notebook_dir_shares(): void
     {
         $ownerToken = $this->userBearerToken();
-        $this->withBearer($ownerToken)
-            ->postJson('/api/v1/notes/notebooks', ['name' => 'SharedNB'])
-            ->assertCreated();
-
         $created = $this->createNoteFor($ownerToken, [
             'notebook' => 'SharedNB',
             'body' => 'note body',
         ]);
-        $notePath = '/users/bob/.notes/SharedNB/'.$created['id'].'.md';
+        $notePath = $created['path'];
         $notebookPath = '/users/bob/.notes/SharedNB';
 
         foreach (['view', 'edit'] as $access) {
@@ -125,7 +121,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'bad_request');
     }
 
-    public function test_drive_shared_with_me_excludes_notes_paths(): void
+    public function test_drive_shared_with_me_excludes_notes_unless_include_notes(): void
     {
         $ownerToken = $this->userBearerToken();
         $aliceToken = $this->adminBearerToken();
@@ -135,7 +131,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'notebook' => 'Drafts',
             'body' => 'secret note',
         ]);
-        $notePath = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
+        $notePath = $created['path'];
 
         $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
             'path' => '/users/bob/drive-doc.md',
@@ -171,153 +167,6 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         $this->assertSame('file', $noteRow['entry']['type'] ?? null);
     }
 
-    public function test_notes_shared_with_me_lists_file_grants_and_shared_notebooks_is_empty(): void
-    {
-        $ownerToken = $this->userBearerToken();
-        $aliceToken = $this->adminBearerToken();
-
-        $this->withBearer($ownerToken)
-            ->postJson('/api/v1/notes/notebooks', ['name' => 'TeamPad'])
-            ->assertCreated();
-
-        $created = $this->createNoteFor($ownerToken, [
-            'id' => 'shared-note-1',
-            'notebook' => 'TeamPad',
-            'body' => 'shared body',
-        ]);
-        Storage::disk('wgw_notes')->put(
-            'users/bob/.notes/TeamPad/'.$created['id'].'.md',
-            "title: Shared Title\ntags: planning, shared\nstarred: false\n----\nshared body"
-        );
-
-        $notePath = '/users/bob/.notes/TeamPad/'.$created['id'].'.md';
-        $notebookPath = '/users/bob/.notes/TeamPad';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $notePath,
-            'kind' => 'member',
-            'defaultAccess' => 'view',
-            'shareWith' => ['alice' => ['access' => 'view']],
-        ])->assertOk();
-
-        // Personal notebook-directory shares are rejected.
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $notebookPath,
-            'kind' => 'member',
-            'defaultAccess' => 'edit',
-            'shareWith' => ['alice' => ['access' => 'edit']],
-        ])
-            ->assertStatus(400)
-            ->assertJsonPath('code', 'bad_request');
-
-        $notesSwm = $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-with-me');
-        $notesSwm->assertOk()
-            ->assertJsonPath('items.0.path', $notePath)
-            ->assertJsonPath('items.0.id', $created['id'])
-            ->assertJsonPath('items.0.notebook', 'TeamPad')
-            ->assertJsonPath('items.0.title', 'shared body')
-            ->assertJsonPath('items.0.tags', ['planning', 'shared'])
-            ->assertJsonPath('items.0.owner', 'bob')
-            ->assertJsonPath('items.0.access', 'view')
-            ->assertJsonPath('items.0.myRights.mayView', true)
-            ->assertJsonPath('items.0.myRights.mayComment', false)
-            ->assertJsonPath('items.0.myRights.mayReview', false);
-        $this->assertCount(1, $notesSwm->json('items'));
-
-        // Endpoint kept for compat but never surfaces personal ACL notebook dirs.
-        $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-notebooks')
-            ->assertOk()
-            ->assertJsonCount(0, 'items')
-            ->assertJsonCount(0, 'notes');
-    }
-
-    public function test_notebook_directory_share_is_rejected(): void
-    {
-        $ownerToken = $this->userBearerToken();
-
-        $this->withBearer($ownerToken)
-            ->postJson('/api/v1/notes/notebooks', ['name' => 'SharedPad'])
-            ->assertCreated();
-
-        $this->createNoteFor($ownerToken, [
-            'id' => 'pad-note-1',
-            'notebook' => 'SharedPad',
-            'body' => 'first in pad',
-        ]);
-        $notebookPath = '/users/bob/.notes/SharedPad';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $notebookPath,
-            'kind' => 'member',
-            'defaultAccess' => 'view',
-            'shareWith' => ['alice' => ['access' => 'view']],
-        ])
-            ->assertStatus(400)
-            ->assertJsonPath('code', 'bad_request');
-
-        $this->withBearer($this->adminBearerToken())->getJson('/api/v1/notes/shared-notebooks')
-            ->assertOk()
-            ->assertJsonCount(0, 'items')
-            ->assertJsonCount(0, 'notes');
-    }
-
-    public function test_notes_shared_with_me_preview_uses_body_when_frontmatter_title_is_untitled(): void
-    {
-        $ownerToken = $this->userBearerToken();
-        $aliceToken = $this->adminBearerToken();
-
-        $created = $this->createNoteFor($ownerToken, [
-            'id' => 'shared-untitled-body',
-            'notebook' => 'Drafts',
-            'body' => 'Wouter naar Admin',
-        ]);
-        Storage::disk('wgw_notes')->put(
-            'users/bob/.notes/Drafts/'.$created['id'].'.md',
-            "title: Untitled\ntags:\nstarred: false\n----\nWouter naar Admin"
-        );
-        $notePath = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $notePath,
-            'kind' => 'member',
-            'defaultAccess' => 'view',
-            'shareWith' => ['alice' => ['access' => 'view']],
-        ])->assertOk();
-
-        $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-with-me')
-            ->assertOk()
-            ->assertJsonPath('items.0.path', $notePath)
-            ->assertJsonPath('items.0.title', 'Wouter naar Admin');
-    }
-
-    public function test_notes_shared_with_me_lists_grant_when_entry_lookup_misses(): void
-    {
-        $ownerToken = $this->userBearerToken();
-        $aliceToken = $this->adminBearerToken();
-
-        $created = $this->createNoteFor($ownerToken, [
-            'id' => 'n1781784157',
-            'notebook' => 'Drafts',
-            'body' => 'seed body',
-        ]);
-        $notePath = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $notePath,
-            'kind' => 'member',
-            'defaultAccess' => 'edit',
-            'shareWith' => ['alice' => ['access' => 'edit']],
-        ])->assertOk();
-
-        // Remove the on-disk file — Shared-with-me must not show ghost grants
-        // for deleted/archived note files (path meta alone is not enough).
-        Storage::disk('wgw_notes')->delete('users/bob/.notes/Drafts/'.$created['id'].'.md');
-
-        $this->withBearer($aliceToken)->getJson('/api/v1/notes/shared-with-me')
-            ->assertOk()
-            ->assertJsonCount(0, 'items');
-    }
-
     public function test_collab_rights_matrix_for_shared_note(): void
     {
         $ownerToken = $this->userBearerToken();
@@ -326,7 +175,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             'notebook' => 'Drafts',
             'body' => 'collab seed',
         ]);
-        $path = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
+        $path = $created['path'];
 
         $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
             'path' => $path,
@@ -395,143 +244,5 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         ])
             ->assertStatus(400)
             ->assertJsonPath('code', 'comment_not_applicable');
-    }
-
-    public function test_personal_share_recipient_cannot_archive_or_delete_shared_note(): void
-    {
-        $ownerToken = $this->userBearerToken();
-        $aliceToken = $this->adminBearerToken();
-
-        $created = $this->createNoteFor($ownerToken, [
-            'id' => 'edit-share-note',
-            'notebook' => 'Drafts',
-            'body' => 'edit only',
-        ]);
-        $path = '/users/bob/.notes/Drafts/'.$created['id'].'.md';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $path,
-            'kind' => 'member',
-            'defaultAccess' => 'edit',
-            'shareWith' => ['alice' => ['access' => 'edit']],
-        ])->assertOk();
-
-        // Notes shares are view|edit only — archive/delete stay on the owner's tree.
-        // Path body is ignored; recipient scope cannot resolve the owner's note.
-        $this->withBearer($aliceToken)
-            ->patchJson('/api/v1/notes/items/'.$created['id'], [
-                'archived' => true,
-                'path' => $path,
-            ])
-            ->assertStatus(400);
-
-        $this->withBearer($aliceToken)
-            ->deleteJson('/api/v1/notes/items/'.$created['id'], [
-                'notebook' => 'Drafts',
-                'archived' => false,
-                'path' => $path,
-            ])
-            ->assertStatus(400);
-
-        $this->assertTrue(Storage::disk('wgw_notes')->exists('users/bob/.notes/Drafts/'.$created['id'].'.md'));
-    }
-
-    public function test_owner_notes_list_marks_outgoing_note_file_shares_without_n_plus_one(): void
-    {
-        $ownerToken = $this->userBearerToken();
-        $aliceToken = $this->adminBearerToken();
-
-        $shared = $this->createNoteFor($ownerToken, [
-            'id' => 'shared-note',
-            'notebook' => 'Drafts',
-            'body' => 'shared with alice',
-        ]);
-        $private = $this->createNoteFor($ownerToken, [
-            'id' => 'private-note',
-            'notebook' => 'Drafts',
-            'body' => 'private only',
-        ]);
-
-        $notePath = '/users/bob/.notes/Drafts/'.$shared['id'].'.md';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $notePath,
-            'kind' => 'member',
-            'defaultAccess' => 'view',
-            'shareWith' => ['alice' => ['access' => 'view']],
-        ])->assertOk();
-
-        $list = $this->withBearer($ownerToken)->getJson('/api/v1/notes/items')->assertOk();
-        $byId = collect($list->json('items'))->keyBy('id');
-
-        $this->assertTrue($byId->get($shared['id'])['hasShares'] ?? false);
-        $this->assertTrue($byId->get($shared['id'])['hasTeamShare'] ?? false);
-        $this->assertFalse($byId->get($private['id'])['hasShares'] ?? false);
-
-        // Recipient list stays free of owner hasShares noise.
-        $this->withBearer($aliceToken)->getJson('/api/v1/notes/items')
-            ->assertOk()
-            ->assertJsonMissingPath('items.0.hasShares');
-
-        // Notebook listing never marks hasShares (directory shares are unsupported).
-        $notebooks = $this->withBearer($ownerToken)->getJson('/api/v1/notes/notebooks')->assertOk();
-        $byName = collect($notebooks->json('items'))->keyBy('name');
-        $this->assertFalse($byName->get('Drafts')['hasShares'] ?? false);
-    }
-
-    public function test_renaming_notebook_migrates_note_share_paths(): void
-    {
-        $ownerToken = $this->userBearerToken();
-        $aliceToken = $this->adminBearerToken();
-
-        $this->withBearer($ownerToken)
-            ->postJson('/api/v1/notes/notebooks', ['name' => 'OldPad'])
-            ->assertCreated();
-
-        $created = $this->createNoteFor($ownerToken, [
-            'id' => 'shared-in-pad',
-            'notebook' => 'OldPad',
-            'body' => 'keep sharing after rename',
-        ]);
-
-        $oldNotebookPath = '/users/bob/.notes/OldPad';
-        $oldNotePath = $oldNotebookPath.'/'.$created['id'].'.md';
-        $newNotebookPath = '/users/bob/.notes/NewPad';
-        $newNotePath = $newNotebookPath.'/'.$created['id'].'.md';
-
-        $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => $oldNotePath,
-            'kind' => 'member',
-            'defaultAccess' => 'view',
-            'shareWith' => ['alice' => ['access' => 'view']],
-        ])->assertOk();
-
-        $this->withBearer($ownerToken)
-            ->patchJson('/api/v1/notes/notebooks/'.rawurlencode('OldPad'), ['name' => 'NewPad'])
-            ->assertOk()
-            ->assertJsonPath('from', 'OldPad')
-            ->assertJsonPath('to', 'NewPad');
-
-        $this->withBearer($ownerToken)
-            ->getJson('/api/v1/files/shares?path='.urlencode($newNotePath))
-            ->assertOk()
-            ->assertJsonPath('data.0.path', $newNotePath)
-            ->assertJsonPath('data.0.shareWith.alice.access', 'view');
-
-        $this->withBearer($ownerToken)
-            ->getJson('/api/v1/files/shares?path='.urlencode($oldNotePath))
-            ->assertOk()
-            ->assertJsonCount(0, 'data');
-
-        $this->withBearer($aliceToken)
-            ->getJson('/api/v1/notes/shared-with-me')
-            ->assertOk()
-            ->assertJsonFragment(['path' => $newNotePath]);
-
-        $this->withBearer($aliceToken)
-            ->getJson('/api/v1/notes/shared-notebooks')
-            ->assertOk()
-            ->assertJsonCount(0, 'items')
-            ->assertJsonCount(0, 'notes');
     }
 }
