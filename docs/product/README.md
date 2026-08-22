@@ -22,7 +22,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 | Surface | What | Browse |
 |---------|------|--------|
 | **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
-| **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, `bug`) — implementable work under Goals | Issue filters below; **not** on the Product Project |
+| **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, GitHub type **Bug**) — implementable work under Goals | Issue filters below; **not** on the Product Project |
 | **3. Release targets & eng packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Soft release target on Goals; pack Epics/Tasks/Bugs for a release train |
 
 ### Milestones on Goals (and delivery)
@@ -66,7 +66,7 @@ Project setup (board workflows): [project-setup.md](./project-setup.md).
 | View | Link |
 |------|------|
 | Open delivery (epic or task, not Goals) | [label:type:task OR label:type:epic, open](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+-label%3Atype%3Agoal+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
-| Bugs | [label:bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Abug) |
+| Bugs | [type:Bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+type%3ABug) |
 | Chores / eng trackers | [label:type:chore](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Achore) |
 | Milestone v0.9 (eng packing) | [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) |
 | Milestone v1.0 (eng packing) | [milestone:v1.0](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av1.0) |
@@ -93,7 +93,7 @@ Engineering release packing remains the **milestone filter** on delivery issues 
 | Epic | `type:epic` | No | Yes (release packing) |
 | Task | `type:task` | No | Yes (release packing) |
 | Chore | `type:chore` | No | Optional |
-| Bug | `bug` (+ `needs-triage`) | No | Yes (release packing) |
+| Bug | GitHub type **Bug** (+ `needs-triage`) | No | Yes (release packing) |
 | Area | `area:*` (mail, drive, docs, …) | On Goals (and optionally delivery) | Groups siblings; not a Goal parent |
 
 Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
