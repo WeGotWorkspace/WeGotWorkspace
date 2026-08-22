@@ -96,6 +96,31 @@ export type CalendarUILabels = {
   eventRecurrenceEndsOnDate: string;
   eventRecurrenceEndsAfter: string;
   eventRecurrenceEndsCountSuffix: string;
+  eventRecurrenceFrequencyLabel: string;
+  eventRecurrenceFrequencyDaily: string;
+  eventRecurrenceFrequencyWeekly: string;
+  eventRecurrenceFrequencyMonthly: string;
+  eventRecurrenceFrequencyYearly: string;
+  eventRecurrenceIntervalLabel: string;
+  eventRecurrenceIntervalDays: string;
+  eventRecurrenceIntervalWeeks: string;
+  eventRecurrenceIntervalMonths: string;
+  eventRecurrenceIntervalYears: string;
+  eventRecurrenceByDayLabel: string;
+  eventRecurrenceOnMonthDays: string;
+  eventRecurrenceOnMonths: string;
+  eventRecurrenceOnThe: string;
+  eventRecurrenceOrdinalLabel: string;
+  eventRecurrenceDayKindLabel: string;
+  eventRecurrenceOrdinal1: string;
+  eventRecurrenceOrdinal2: string;
+  eventRecurrenceOrdinal3: string;
+  eventRecurrenceOrdinal4: string;
+  eventRecurrenceOrdinal5: string;
+  eventRecurrenceOrdinalLast: string;
+  eventRecurrenceDayKindDay: string;
+  eventRecurrenceDayKindWeekday: string;
+  eventRecurrenceDayKindWeekend: string;
   save: string;
   cancel: string;
   delete: string;
@@ -231,6 +256,31 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventRecurrenceEndsOnDate: "On date",
   eventRecurrenceEndsAfter: "After",
   eventRecurrenceEndsCountSuffix: "times",
+  eventRecurrenceFrequencyLabel: "Frequency",
+  eventRecurrenceFrequencyDaily: "Daily",
+  eventRecurrenceFrequencyWeekly: "Weekly",
+  eventRecurrenceFrequencyMonthly: "Monthly",
+  eventRecurrenceFrequencyYearly: "Yearly",
+  eventRecurrenceIntervalLabel: "Every",
+  eventRecurrenceIntervalDays: "days",
+  eventRecurrenceIntervalWeeks: "weeks",
+  eventRecurrenceIntervalMonths: "months",
+  eventRecurrenceIntervalYears: "years",
+  eventRecurrenceByDayLabel: "Repeat on",
+  eventRecurrenceOnMonthDays: "Days of the month",
+  eventRecurrenceOnMonths: "Months",
+  eventRecurrenceOnThe: "On the",
+  eventRecurrenceOrdinalLabel: "Which",
+  eventRecurrenceDayKindLabel: "Day",
+  eventRecurrenceOrdinal1: "1st",
+  eventRecurrenceOrdinal2: "2nd",
+  eventRecurrenceOrdinal3: "3rd",
+  eventRecurrenceOrdinal4: "4th",
+  eventRecurrenceOrdinal5: "5th",
+  eventRecurrenceOrdinalLast: "last",
+  eventRecurrenceDayKindDay: "day",
+  eventRecurrenceDayKindWeekday: "weekday",
+  eventRecurrenceDayKindWeekend: "weekend day",
   save: "Save",
   cancel: "Cancel",
   delete: "Delete",

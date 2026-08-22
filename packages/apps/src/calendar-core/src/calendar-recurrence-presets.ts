@@ -7,7 +7,7 @@ import type {
 
 /**
  * Predefined recurrence presets for the event dialog.
- * Custom / unmatched JSCalendar rules are display-only (not editable yet).
+ * Unmatched JSCalendar rules map to `"custom"` and are edited in the custom fields.
  */
 
 export type RecurrencePresetId =
@@ -37,6 +37,10 @@ const WEEKDAYS: JSCalendarWeekday[] = ["mo", "tu", "we", "th", "fr"];
 
 function jsWeekday(date: Temporal.PlainDate): JSCalendarWeekday {
   return ISO_TO_JS[date.dayOfWeek] ?? "mo";
+}
+
+export function weekdayFromIsoDate(startDateISO: string): JSCalendarWeekday {
+  return jsWeekday(Temporal.PlainDate.from(startDateISO));
 }
 
 /** 1–4 or -1 (last occurrence of that weekday in the month). */
