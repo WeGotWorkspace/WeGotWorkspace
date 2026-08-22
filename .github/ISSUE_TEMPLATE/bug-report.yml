@@ -1,7 +1,7 @@
 name: Bug report
 description: Report something that is broken or not working correctly in WeGotWorkspace
+type: Bug
 labels:
-  - bug
   - needs-triage
 body:
   - type: markdown

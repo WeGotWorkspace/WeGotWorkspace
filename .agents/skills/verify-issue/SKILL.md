@@ -21,7 +21,7 @@ Product governance splits GitHub issues into layers. Detect mode from labels (`t
 |------|--------|----------------|-----------------|
 | **Goal** | `type:goal` | Outcome / **Success looks like** + child delivery issues | **Never** — Goals are never `Source:` |
 | **Epic / Task** | `type:epic`, `type:task`, or default eng issue | Implementer AC (`- [ ]`, Done when) + body-hash | **Yes** — `Source: #<task-or-epic>` |
-| **Bug / chore** | `bug`, `type:chore` | Bug expected behavior / chore checklist | Usually no `feat/` spec |
+| **Bug / chore** | GitHub type **Bug**, `type:chore` | Bug expected behavior / chore checklist | Usually no `feat/` spec |
 
 **Goal mode rules:**
 

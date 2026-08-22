@@ -46,7 +46,7 @@ Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened 
 | Goal | **One** user outcome, success signals, non-goals, decisions (`goal.yml`); may take a milestone (soft release target; ≠ Fulfilled); never parented under another Goal |
 | Epic / Task | Implementable acceptance criteria; may take a milestone (`epic.yml` / `task.yml`) |
 | Chore | Eng debt / trackers (`chore.yml`); no Goal required; not a product roadmap |
-| Bug | Defects via `bug-report.yml` (`bug` label); may take a milestone |
+| Bug | Defects via `bug-report.yml` (GitHub issue type **Bug**); may take a milestone |
 
 See [docs/product/README.md](docs/product/README.md).
 

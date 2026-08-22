@@ -40,7 +40,7 @@ If the delivery issue does not exist yet, file it before writing `spec.md`. Shor
 2. Goal → product language; `type:goal`; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`
 3. Epic → `type:epic`; required parent Goal; not on Product Project; milestone OK for release packing
 4. Task → `type:task`; parent Epic or Goal; implementable `- [ ]` AC; not on Product Project; milestone OK
-5. Chore → `type:chore`; no Goal required. Bug → `bug-report.yml` (`bug` label); not on Product Project
+5. Chore → `type:chore`; no Goal required. Bug → `bug-report.yml` (GitHub issue type **Bug**); not on Product Project
 6. Prefer templates `goal.yml` / `epic.yml` / `task.yml` / `chore.yml` / `bug-report.yml` under `.github/ISSUE_TEMPLATE/` (or `gh issue create --template`); specialized `dast-finding.yml`
 7. `feat/` closes Task/Epic; `spec.md` `Source:` from that issue — not Goal
 
