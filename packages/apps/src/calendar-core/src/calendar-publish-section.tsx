@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { Copy, Globe2 } from "lucide-react";
+import { Copy, ExternalLink, Globe2 } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
-import { buttonVariants } from "@/button/src/button";
+import { Button, buttonVariants } from "@/button/src/button";
+import {
+  BUTTON_ICON_SLOT_CLASSNAME,
+  ICON_BUTTON_SIZE_CLASSNAMES,
+} from "@/button/src/button.shared";
 import { Switch } from "@/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +22,7 @@ import {
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import type { CalendarFeedInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
 import "./calendar-publish-section.css";
 
@@ -27,7 +33,6 @@ export type CalendarPublishSectionProps = {
   disabled?: boolean;
   onToggle: (enabled: boolean) => void;
   onCopyHttps: () => void;
-  onCopyWebcal: () => void;
 };
 
 export function CalendarPublishSection({
@@ -37,7 +42,6 @@ export function CalendarPublishSection({
   disabled = false,
   onToggle,
   onCopyHttps,
-  onCopyWebcal,
 }: CalendarPublishSectionProps) {
   const enabled = Boolean(feed);
   const [confirmUnpublish, setConfirmUnpublish] = useState(false);
@@ -66,7 +70,7 @@ export function CalendarPublishSection({
       }
     >
       {enabled && feed ? (
-        <div className="share-dialog__link-controls">
+        <div className="share-dialog__link-controls calendar-publish-section__link-controls">
           <div className="share-dialog__link-row">
             <ShareDialogInput
               type="text"
@@ -82,22 +86,23 @@ export function CalendarPublishSection({
               variant="outline"
               onClick={onCopyHttps}
             />
-          </div>
-          <div className="share-dialog__link-row">
-            <ShareDialogInput
-              type="text"
-              value={feed.webcalUrl}
-              readOnly
-              mono
-              aria-label={labels.publishCalendarWebcalLabel}
-            />
-            <IconButton
-              label={labels.copyWebcalUrl}
-              icon={<Copy className="size-3.5" aria-hidden />}
-              size="sm"
-              variant="outline"
-              onClick={onCopyWebcal}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  asChild
+                  variant="outline"
+                  className={cn("calendar-publish-section__open", ICON_BUTTON_SIZE_CLASSNAMES.sm)}
+                  aria-label={labels.openInCalendar}
+                >
+                  <a href={feed.webcalUrl}>
+                    <span className={BUTTON_ICON_SLOT_CLASSNAME}>
+                      <ExternalLink className="size-3.5" aria-hidden />
+                    </span>
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{labels.openInCalendar}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       ) : null}

@@ -46,9 +46,9 @@ export type CalendarUILabels = {
   publishCalendarEnabledHint: string;
   publishCalendarDisabledHint: string;
   publishCalendarHttpsLabel: string;
-  publishCalendarWebcalLabel: string;
   copyHttpsUrl: string;
-  copyWebcalUrl: string;
+  /** Tooltip / accessible name for the webcal:// subscribe link. */
+  openInCalendar: string;
   unpublishCalendarTitle: string;
   unpublishCalendarDescription: string;
   unpublishCalendarConfirm: string;
@@ -221,9 +221,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
   publishCalendarDisabledHint: "Turn on to publish this calendar as an ICS / webcal feed.",
   publishCalendarHttpsLabel: "Web address",
-  publishCalendarWebcalLabel: "webcal",
   copyHttpsUrl: "Copy link",
-  copyWebcalUrl: "Copy webcal link",
+  openInCalendar: "Open in Calendar",
   unpublishCalendarTitle: "Stop publishing?",
   unpublishCalendarDescription:
     "The feed URL will stop working. You can publish again later with a new URL.",

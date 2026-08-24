@@ -10,7 +10,6 @@ const meta: Meta<typeof CalendarPublishSection> = {
     labels: defaultCalendarLabels,
     onToggle: fn(),
     onCopyHttps: fn(),
-    onCopyWebcal: fn(),
   },
 };
 

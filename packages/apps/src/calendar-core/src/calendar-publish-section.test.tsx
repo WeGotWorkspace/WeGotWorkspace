@@ -19,7 +19,6 @@ function renderSection(overrides: Partial<ComponentProps<typeof CalendarPublishS
         feed={null}
         onToggle={vi.fn()}
         onCopyHttps={vi.fn()}
-        onCopyWebcal={vi.fn()}
         {...overrides}
       />
     </TooltipProvider>,
@@ -40,16 +39,17 @@ describe("CalendarPublishSection", () => {
     expect(onToggle).toHaveBeenCalledWith(true);
   });
 
-  it("asks before unpublishing and copies both URLs", () => {
+  it("asks before unpublishing, copies the https URL, and opens webcal", () => {
     const onToggle = vi.fn();
     const onCopyHttps = vi.fn();
-    const onCopyWebcal = vi.fn();
-    renderSection({ feed, onToggle, onCopyHttps, onCopyWebcal });
+    renderSection({ feed, onToggle, onCopyHttps });
 
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyWebcalUrl }));
     expect(onCopyHttps).toHaveBeenCalled();
-    expect(onCopyWebcal).toHaveBeenCalled();
+
+    const openLink = screen.getByRole("link", { name: defaultCalendarLabels.openInCalendar });
+    expect(openLink.getAttribute("href")).toBe(feed.webcalUrl);
+    expect(screen.queryByDisplayValue(feed.webcalUrl)).toBeNull();
 
     const toggle = screen.getByRole("group", { name: defaultCalendarLabels.publishCalendarTitle });
     fireEvent.click(toggle.querySelector('button[aria-label="Off"]')!);

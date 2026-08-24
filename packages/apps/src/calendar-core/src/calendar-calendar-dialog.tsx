@@ -76,7 +76,6 @@ export type CalendarCalendarDialogPublish = {
   busy?: boolean;
   onToggle: (enabled: boolean) => void;
   onCopyHttps: () => void;
-  onCopyWebcal: () => void;
 };
 
 type CalendarCalendarDialogProps = {
@@ -261,7 +260,6 @@ export function CalendarCalendarDialog({
                 disabled={busy}
                 onToggle={publish.onToggle}
                 onCopyHttps={publish.onCopyHttps}
-                onCopyWebcal={publish.onCopyWebcal}
               />
             ) : null}
 

@@ -324,7 +324,6 @@ describe("CalendarCalendarDialog", () => {
           },
           onToggle: vi.fn(),
           onCopyHttps: vi.fn(),
-          onCopyWebcal: vi.fn(),
         }}
         onClose={vi.fn()}
         onConfirm={vi.fn()}
