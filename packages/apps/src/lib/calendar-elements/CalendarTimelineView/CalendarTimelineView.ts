@@ -49,6 +49,8 @@ import {
   isOutsideVisibleMonth,
   monthDayHeaderClassNames,
   monthDayHeaderPartNames,
+  monthGridDays,
+  occurrenceDayKeys,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
   shouldRequestInitialTimedScroll,
@@ -56,6 +58,8 @@ import {
   toTimelineAllDayRange,
   toTimelineRange,
   toTimelineValue,
+  uniqueDayDotColors,
+  yearGridWindow,
   yearMonthStarts,
 } from "./CalendarTimelineScale.js";
 import {
@@ -91,7 +95,7 @@ type ModePreset = {
   variant: TimelineVariant;
 };
 
-/* Year mode has no preset: it composes twelve month-mode instances instead of configuring
+/* Year mode has no preset: it renders twelve cheap month-dot cards instead of configuring
  * a single <time-line> (see #renderYearGrid). */
 const MODE_PRESETS: Record<Exclude<CalendarTimelineViewMode, "year">, ModePreset> = {
   day: { numDays: 1, flow: "vertical", layout: "stagger", variant: "timed" },
@@ -121,6 +125,11 @@ type CalendarTimelineEvent = TimelineEvent & {
   rsvp: "" | "needs-action" | "tentative";
 };
 
+type YearDayChip = Pick<
+  CalendarTimelineEvent,
+  "key" | "summary" | "color" | "originalStart" | "originalEnd" | "allDay" | "rsvp"
+>;
+
 /* Header/footer/event templates render inside <time-line>'s shadow root, out of reach of this
  * component's plain selectors. The rendered elements carry `part` attributes instead and all
  * their static chrome lives in CalendarTimelineView.css as `time-line::part(...)` rules
@@ -143,11 +152,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   allDayRow = false;
   /**
    * Keeps a month-mode instance in the compact (year-style) treatment regardless of measured
-   * width. Year mode sets this on the twelve months it composes: relying only on the size-based
-   * container query would leave gaps — the year grid's 1-column breakpoint (512px) exceeds the
-   * 504px compact threshold, and 4-column cards outgrow it again on very wide screens
-   * ((w − 3·gap) / 4 > 504px once the grid passes ~2208px) — so composed months force it
-   * instead. The container query remains for standalone month views that shrink.
+   * width. The container query remains for standalone month views that shrink; this flag
+   * forces the same treatment when the host cannot rely on width (narrow embeds).
    */
   forceCompact = false;
   startDate = Temporal.Now.plainDateISO().toString();
@@ -199,8 +205,10 @@ export class CalendarTimelineView extends CalendarViewBase {
   #suppressNextCardSelectTimeout: ReturnType<typeof setTimeout> | null = null;
   /** Cell whose overflow popover is (being) opened; its popover renders the full event list. */
   #activeOverflowCellIndex: number | null = null;
-  /** Cell whose compact-month day-header popover is (being) opened (month/year compact mode). */
+  /** Cell whose compact-month day-header popover is (being) opened (month compact mode). */
   #activeHeaderPopoverCellIndex: number | null = null;
+  /** ISO date whose year-grid day popover is open. */
+  #activeYearPopoverDay: string | null = null;
   /**
    * Live TimeLine gestures (`kind:gestureId` keys from `timeline-gesture-start/-end`); while
    * non-empty, swipe navigation is suppressed so drags never fight the pager (grid-week
@@ -1177,7 +1185,7 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /** Popover payload for a day's events (shared by the overflow footer and compact header). */
-  #popoverEventsFor(events: CalendarTimelineEvent[]): DayOverflowPopoverEvent[] {
+  #popoverEventsFor(events: YearDayChip[]): DayOverflowPopoverEvent[] {
     return events.map((ev) => ({
       id: ev.key,
       start: ev.allDay ? ev.originalStart.toPlainDate().toString() : ev.originalStart.toString(),
@@ -1203,17 +1211,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /** Up to three unique event colors marking an event day in the compact treatment. */
-  #dayDotColors(events: CalendarTimelineEvent[]): string[] {
-    const colors: string[] = [];
-    const seen = new Set<string>();
-    for (const dayEvent of events) {
-      const color = dayEvent.color || "currentColor";
-      if (seen.has(color)) continue;
-      seen.add(color);
-      colors.push(color);
-      if (colors.length === 3) break;
-    }
-    return colors;
+  #dayDotColors(events: YearDayChip[]): string[] {
+    return uniqueDayDotColors(events.map((dayEvent) => dayEvent.color));
   }
 
   /**
@@ -1585,6 +1584,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           ? this.#renderAllDayCreatePreview
           : this.#renderTimedCreatePreview}
         .heldCreatePreview=${this.#heldCreatePreviewFor(variant)}
+        .resizeHandles=${this.mode !== "month"}
         .headerTemplate=${this.mode === "month"
           ? this.#monthDayHeaderTemplate
           : this.#dayHeaderTemplate}
@@ -1909,23 +1909,186 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /**
-   * Year mode: twelve month-mode instances (January … December of `startDate`'s year) composed
-   * into the grid year view's responsive layout. Each instance brings the full month machinery
-   * (42-cell window, day chips, overflow popovers) and degrades to the compact treatment on its
-   * own via the container query, so this stays chrome-free: no sidebar, no all-day row, and the
-   * compact cells expose no drag surface. Each card composes the shared
-   * <calendar-weekday-header> above its day grid (same chrome the view group composes above
-   * the regular timeline month), forced narrow so the one-letter variant shows at any card
-   * width; both align on the same 7-column geometry. Inner-month events must be re-forwarded
-   * composed: React listens on `wgw-calendar-surface`, and a non-composed re-dispatch plus
-   * `stopPropagation` never leaves the year shadow (year click then snaps back to year).
+   * Year mode: twelve cheap month cards (January … December of `startDate`'s year). Day
+   * numbers + up to three color dots; no nested timelines, event cards, or resize
+   * handles. Event days open one shared overflow popover; empty days emit composed
+   * `day-selection` so React can navigate from `wgw-calendar-surface`.
    */
+  #yearEventsByDay(weekStart: number): Map<string, YearDayChip[]> {
+    const window = yearGridWindow(this.#parsedStartDate, weekStart);
+    const rendered = this.getRenderedEvents({
+      start: window.start.toPlainDateTime(Temporal.PlainTime.from("00:00")),
+      end: window.end.toPlainDateTime(Temporal.PlainTime.from("00:00")),
+    });
+    const byDay = new Map<string, YearDayChip[]>();
+    for (const [key, event] of rendered) {
+      const originalStart = event.data.start;
+      const originalEnd = resolvedDataEnd(event.data);
+      const chip: YearDayChip = {
+        key,
+        summary: event.data.summary,
+        color: this.resolveEventDisplayColor(event),
+        originalStart,
+        originalEnd,
+        allDay: event.data.allDay === true,
+        rsvp:
+          event.participationStatus === "needs-action" || event.participationStatus === "tentative"
+            ? event.participationStatus
+            : "",
+      };
+      for (const dayKey of occurrenceDayKeys(originalStart, originalEnd)) {
+        const bucket = byDay.get(dayKey);
+        if (bucket) bucket.push(chip);
+        else byDay.set(dayKey, [chip]);
+      }
+    }
+    return byDay;
+  }
+
+  #handleYearDayClick(
+    day: Temporal.PlainDate,
+    cellIndex: number,
+    dayEvents: YearDayChip[],
+    event: MouseEvent,
+  ) {
+    if (dayEvents.length > 0) {
+      void this.#openYearDayPopover(day.toString(), event.currentTarget);
+      return;
+    }
+    this.#emitDaySelection(day, cellIndex, event);
+  }
+
+  async #openYearDayPopover(dayIso: string, target: EventTarget | null) {
+    const button = target instanceof HTMLElement ? target : null;
+    if (this.#activeYearPopoverDay !== dayIso) {
+      this.#activeYearPopoverDay = dayIso;
+      this.requestUpdate();
+      await this.updateComplete;
+    }
+    const popover = this.renderRoot.querySelector<HTMLElement>(
+      "day-overflow-popover.year-day-popover",
+    );
+    if (
+      popover &&
+      button &&
+      typeof popover.showPopover === "function" &&
+      !popover.matches(":popover-open")
+    ) {
+      this.#setHeaderPopoverInlineAlign(popover, button);
+      popover.showPopover();
+    }
+  }
+
+  #handleYearPopoverToggle(dayIso: string, event: Event) {
+    const newState = (event as ToggleEvent).newState;
+    if (newState === "open" && this.#activeYearPopoverDay !== dayIso) {
+      this.#activeYearPopoverDay = dayIso;
+      this.requestUpdate();
+      return;
+    }
+    if (newState === "closed" && this.#activeYearPopoverDay === dayIso) {
+      this.#activeYearPopoverDay = null;
+      (event.currentTarget as HTMLElement | null)?.removeAttribute("data-inline-align");
+      this.requestUpdate();
+    }
+  }
+
+  #renderYearDay(
+    day: Temporal.PlainDate,
+    monthAnchor: Temporal.PlainDate,
+    cellIndex: number,
+    dayEvents: YearDayChip[],
+  ): TemplateResult {
+    const outsideMonth = isOutsideVisibleMonth(day, monthAnchor);
+    const isToday = Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) === 0;
+    const isWeekend = this.#isWeekendDay(day);
+    const dayDate = new Date(Date.UTC(day.year, day.month - 1, day.day));
+    const fullDateLabel = new Intl.DateTimeFormat(this.#locale, { dateStyle: "full" }).format(
+      dayDate,
+    );
+    const dayIso = day.toString();
+    const dotColors = this.#dayDotColors(dayEvents);
+    const headerClass = [
+      "year-day",
+      outsideMonth ? "is-outside-month" : "",
+      isWeekend && !outsideMonth ? "is-weekend" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const numberClass = ["year-day-number", isToday ? "is-today" : ""].filter(Boolean).join(" ");
+    return html`
+      <button
+        type="button"
+        class=${headerClass}
+        style=${`anchor-name:--year-day-anchor-${dayIso}`}
+        .ariaLabel=${fullDateLabel}
+        .ariaCurrent=${isToday ? "date" : null}
+        @click=${(clickEvent: MouseEvent) =>
+          this.#handleYearDayClick(day, cellIndex, dayEvents, clickEvent)}
+      >
+        <span class=${numberClass}>
+          ${new Intl.NumberFormat(this.#locale).format(day.day)}
+          ${dotColors.length
+            ? html`
+                <span class="year-day-dots" aria-hidden="true">
+                  ${dotColors.map(
+                    (color) =>
+                      html`<span class="year-day-dot" style=${`background-color:${color}`}></span>`,
+                  )}
+                </span>
+              `
+            : nothing}
+        </span>
+      </button>
+    `;
+  }
+
+  #renderYearSharedPopover(
+    eventsByDay: Map<string, YearDayChip[]>,
+  ): TemplateResult | typeof nothing {
+    const dayIso = this.#activeYearPopoverDay;
+    if (!dayIso) return nothing;
+    const dayEvents = eventsByDay.get(dayIso) ?? [];
+    if (!dayEvents.length) return nothing;
+    const day = Temporal.PlainDate.from(dayIso);
+    const isToday = Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) === 0;
+    const isWeekend = this.#isWeekendDay(day);
+    const dayDate = new Date(Date.UTC(day.year, day.month - 1, day.day));
+    const fullDateLabel = new Intl.DateTimeFormat(this.#locale, { dateStyle: "full" }).format(
+      dayDate,
+    );
+    return html`
+      <day-overflow-popover
+        class="year-day-popover"
+        popover="auto"
+        role="dialog"
+        .ariaLabel=${`Events on ${fullDateLabel}`}
+        style=${styleMap({
+          "position-anchor": `--year-day-anchor-${dayIso}`,
+          "--_lc-all-day-day-number-space": "36px",
+        })}
+        .dayIso=${dayIso}
+        .dayLabel=${new Intl.NumberFormat(this.#locale).format(day.day)}
+        ?is-current-day=${isToday}
+        ?is-weekend=${isWeekend}
+        .events=${this.#popoverEventsFor(dayEvents)}
+        @day-label-selection=${(event: Event) => this.#handlePopoverDaySelection(day, 0, event)}
+        @toggle=${(event: Event) => this.#handleYearPopoverToggle(dayIso, event)}
+        @select=${this.#handleOverflowPopoverSelect}
+        @delete=${this.#handleOverflowPopoverDelete}
+      ></day-overflow-popover>
+    `;
+  }
+
   #renderYearGrid(direction: "ltr" | "rtl"): TemplateResult {
+    const weekStart = this.resolveWeekStart(this.weekStart, this.lang);
+    const eventsByDay = this.#yearEventsByDay(weekStart);
     const monthFormatter = new Intl.DateTimeFormat(this.#locale, { month: "long" });
     return html`
       <div class="year-grid" dir=${direction}>
-        ${yearMonthStarts(this.#parsedStartDate).map(
-          (firstOfMonth) => html`
+        ${yearMonthStarts(this.#parsedStartDate).map((firstOfMonth) => {
+          const days = monthGridDays(firstOfMonth, weekStart);
+          return html`
             <section class="month-card">
               <h3 class="month-title">
                 ${monthFormatter.format(
@@ -1939,27 +2102,20 @@ export class CalendarTimelineView extends CalendarViewBase {
                 .daysPerWeek=${7}
                 ?rtl=${this.rtl}
               ></calendar-weekday-header>
-              <calendar-timeline-view
-                mode="month"
-                force-compact
-                .startDate=${firstOfMonth.toString()}
-                .events=${this.events}
-                .lang=${this.lang}
-                .timezone=${this.timezone}
-                .currentTime=${this.currentTime}
-                .weekStart=${this.weekStart}
-                .selectedCalendarId=${this.selectedCalendarId}
-                ?rtl=${this.rtl}
-                @day-selection=${this.forwardComposedCalendarEvent}
-                @event-create-requested=${this.forwardComposedCalendarEvent}
-                @event-created=${this.forwardComposedCalendarEvent}
-                @event-selected=${this.forwardComposedCalendarEvent}
-                @event-updated=${this.forwardComposedCalendarEvent}
-                @event-deleted=${this.forwardComposedCalendarEvent}
-              ></calendar-timeline-view>
+              <div class="year-days">
+                ${days.map((day, cellIndex) =>
+                  this.#renderYearDay(
+                    day,
+                    firstOfMonth,
+                    cellIndex,
+                    eventsByDay.get(day.toString()) ?? [],
+                  ),
+                )}
+              </div>
             </section>
-          `,
-        )}
+          `;
+        })}
+        ${this.#renderYearSharedPopover(eventsByDay)}
       </div>
     `;
   }

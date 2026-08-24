@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :host {
   box-sizing: border-box;
   display: flex;
@@ -65,11 +67,7 @@ time-line {
 }
 
 /* Month mode: the layout wrapper is the query container driving the compact treatment for
-   standalone month views that shrink. Cells are 1/7th of it, so 504px = 7 x 72px cells. Months
-   composed by year mode do NOT rely on this query — year-grid column breakpoints leave
-   card-width windows above 504px (1-column cards up to 512px; 4-column cards past ~2208px
-   grids), so those instances are forced compact via `forceCompact` instead (see the
-   :host([force-compact]) compact block below). */
+   standalone month views that shrink. Cells are 1/7th of it, so 504px = 7 x 72px cells. */
 .timeline-layout--month {
   container: lc-timeline-month / inline-size;
 }
@@ -397,45 +395,60 @@ time-line.timeline-timed::part(viewport) {
   }
 }
 
-/* Year mode: responsive grid of twelve month-mode instances, mirroring the grid stack's
-   CalendarYearView layout (4/3/2/1 columns, month titles, square month blocks). */
+/* Year mode: responsive grid of twelve cheap month-dot cards (4/3/2/1 columns). */
 :host([mode="year"]) {
   overflow: auto;
   container: lc-timeline-year / inline-size;
 }
 
 .year-grid {
-  flex: 1 1 auto;
-  display: grid;
+  @apply flex-auto grid w-full min-h-full h-max content-start;
   grid-template-columns: repeat(var(--_lc-year-grid-effective-columns, 4), minmax(0, 1fr));
   gap: var(--_lc-year-grid-gap, 64px);
-  width: 100%;
-  height: max-content;
-  min-height: 100%;
-  align-content: start;
 }
 
 .month-card {
-  min-width: 0;
-  display: grid;
+  @apply min-w-0 grid;
   grid-template-rows: auto auto 1fr;
 }
 
-/* Square month blocks (grid-year parity); the outer-tree min-height wins over the nested
-   instance's own :host floor. */
-.month-card calendar-timeline-view {
-  aspect-ratio: 1 / 1;
-  height: auto;
-  min-height: 0;
+.year-days {
+  @apply grid min-h-0 aspect-square grid-cols-7;
+}
+
+.year-day {
+  @apply appearance-none border-0 m-0 p-0 min-w-0 min-h-0 flex items-center justify-center cursor-pointer bg-transparent;
+  color: var(--_lc-in-month-day-color);
+}
+
+.year-day.is-outside-month {
+  color: var(--_lc-outside-month-day-color);
+}
+
+.year-day.is-weekend:not(.is-outside-month) {
+  color: var(--lc-weekend-day-label-color, light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%)));
+}
+
+.year-day-number {
+  @apply relative inline-flex items-center justify-center min-w-5 h-5 px-[5px] rounded-full;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-day-number.is-today {
+  @apply text-white font-semibold;
+  background: var(--lc-higlight-color, #ff0000);
+}
+
+.year-day-dots {
+  @apply absolute top-full left-1/2 inline-flex items-center gap-[3px] mt-px -translate-x-1/2 pointer-events-none;
+}
+
+.year-day-dot {
+  @apply size-1 rounded-full opacity-90 shrink-0;
 }
 
 .month-title {
-  margin: 0;
-  padding: 0 2px 14px;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-align: start;
+  @apply m-0 px-0.5 pb-3.5 text-[17px] font-semibold leading-tight text-start;
   color: var(--lc-higlight-color, #ff0000);
 }
 
@@ -457,11 +470,8 @@ time-line.timeline-timed::part(viewport) {
   }
 }
 
-/* Weekday initials above each composed month card: the shared calendar-weekday-header (same
-   component the view group composes above the regular timeline month), forced to its narrow
-   one-letter variant — year cards are compact regardless of measured width, so the header's
-   own width-based container query cannot be relied on (same rationale as forceCompact).
-   Compact-treatment metrics via the component's theming tokens. */
+/* Weekday initials above each year month card: the shared calendar-weekday-header forced
+   to its narrow one-letter variant — year cards are compact regardless of measured width. */
 .month-card calendar-weekday-header {
   --_lc-weekday-header-height: 20px;
   --_lc-weekday-header-font-size: 11px;
@@ -656,8 +666,8 @@ time-line::part(overflow-dot) {
    Applied behind the lc-timeline-month size container query for standalone month views that
    shrink (504px = 7 x 72px minimum cells; the container is .timeline-layout--month above —
    container lookup follows the flat tree, so it resolves for parts inside <time-line>'s
-   shadow root too), and unconditionally under the reflected force-compact attribute for the
-   twelve months composed by year mode. Keep both blocks in sync. */
+   shadow root too), and unconditionally under the reflected force-compact attribute. Keep
+   both blocks in sync. */
 
 @container lc-timeline-month (max-width: 504px) {
   /* Compact flag: inherits into <time-line>'s shadow content so click handlers can read it
@@ -714,9 +724,8 @@ time-line::part(overflow-dot) {
   }
 }
 
-/* force-compact duplicate of the container-query block above (year mode cannot rely on the
-   size query — see the .timeline-layout--month comment). The flag custom property is not set
-   here: #isCompactMonthPresentation short-circuits on the forceCompact property. */
+/* force-compact duplicate of the container-query block above. The flag custom property is
+   not set here: #isCompactMonthPresentation short-circuits on the forceCompact property. */
 :host([force-compact]) time-line.timeline-main::part(viewport) {
   border: none;
 }

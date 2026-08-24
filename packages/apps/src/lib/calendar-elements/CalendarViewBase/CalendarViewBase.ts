@@ -1,7 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { ContextConsumer } from "@lit/context";
 import {
-  expandEvents,
   parseRecurrenceId,
   resolveCalendarEventColor,
   shiftDateValue,
@@ -11,6 +10,7 @@ import {
   type CalendarEventsMap,
   type EventOperation,
 } from "@/lib/calendar-engine";
+import { cachedVisibleEventsInRange, type RenderedEventsCache } from "./renderedEvents.js";
 import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
 import { BaseElement } from "../BaseElement/BaseElement.js";
 import { type EventsAPIContextValue, eventsAPIContext } from "../context/EventsAPIContext.js";
@@ -52,6 +52,7 @@ export abstract class CalendarViewBase extends BaseElement {
   #timezone?: string;
   #currentTime?: string;
   #eventsAPI?: EventsAPIContextValue;
+  #renderedEventsCache: RenderedEventsCache | null = null;
   #eventsAPIConsumer = new ContextConsumer(this, {
     context: eventsAPIContext,
     subscribe: true,
@@ -489,17 +490,19 @@ export abstract class CalendarViewBase extends BaseElement {
     });
   }
 
+  /** Cached expand + declined filter; identity of `events` plus range/timezone is the key. */
   getRenderedEvents(range: {
     start: Temporal.PlainDateTime;
     end: Temporal.PlainDateTime;
   }): EventsMap {
-    const expanded = expandEvents(this.events ?? new Map(), range, { timezone: this.timezone });
-    const visible: EventsMap = new Map();
-    for (const [key, event] of expanded) {
-      if (event.participationStatus === "declined") continue;
-      visible.set(key, event);
-    }
-    return visible;
+    const next = cachedVisibleEventsInRange(
+      this.#renderedEventsCache,
+      this.events,
+      range,
+      this.timezone,
+    );
+    this.#renderedEventsCache = next.cache;
+    return next.value;
   }
 
   get pendingByCalendarId(): CalendarEventPendingByCalendarId {
