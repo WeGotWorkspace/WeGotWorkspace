@@ -255,15 +255,21 @@
      (py-2 clips at the 20px lane) and center the single-line title. */
   :host .event-card-heading,
   :host([layout="flow"]) .event-card-heading {
-    @apply overflow-hidden whitespace-nowrap text-ellipsis;
+    @apply overflow-hidden whitespace-nowrap;
     align-items: var(--_lc-event-card-heading-align-items, flex-start);
     padding-block: var(--_lc-event-card-heading-padding-block, 0.5rem);
     line-height: var(--_lc-event-card-heading-line-height, 1.25);
+    text-overflow: var(--_lc-event-card-heading-overflow, ellipsis);
+    mask-image: var(--_lc-event-card-heading-mask, none);
+    -webkit-mask-image: var(--_lc-event-card-heading-mask, none);
   }
 
   :host .event-card-compact-label {
-    @apply block min-w-0 max-w-full truncate;
+    @apply block min-w-0 max-w-full overflow-hidden whitespace-nowrap;
     display: var(--_lc-event-card-compact-label-display, block);
+    text-overflow: var(--_lc-event-card-heading-overflow, ellipsis);
+    mask-image: var(--_lc-event-card-heading-mask, none);
+    -webkit-mask-image: var(--_lc-event-card-heading-mask, none);
   }
 
   :host .event-card-summary-main,
