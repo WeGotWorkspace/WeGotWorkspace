@@ -7,12 +7,13 @@ import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refres
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("CALENDAR_BACKGROUND_POLL_MS", () => {
-  it("is 15 seconds and drives calendar bootstrap, surface, and invitation polls", () => {
-    expect(CALENDAR_BACKGROUND_POLL_MS).toBe(15_000);
+  it("is 10 seconds and drives inbound surface and invitation polls, not hybrid bootstrap", () => {
+    expect(CALENDAR_BACKGROUND_POLL_MS).toBe(10_000);
     const api = readFileSync(join(here, "use-calendar-api.ts"), "utf8");
     const surface = readFileSync(join(here, "use-calendar-surface.ts"), "utf8");
     const invitations = readFileSync(join(here, "use-calendar-invitations.ts"), "utf8");
-    expect(api).toContain("CALENDAR_BACKGROUND_POLL_MS");
+    expect(api).not.toContain("CALENDAR_BACKGROUND_POLL_MS");
+    expect(api).not.toContain("setInterval");
     expect(surface).toContain("CALENDAR_BACKGROUND_POLL_MS");
     expect(invitations).toContain("CALENDAR_BACKGROUND_POLL_MS");
   });

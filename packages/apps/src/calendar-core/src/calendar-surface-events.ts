@@ -4,26 +4,27 @@ import {
   applyOwnRsvpToEngineEvents,
   calendarEventsToEngineMap,
 } from "@/calendar-core/src/calendar-event-model";
+import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import {
+  alignOfflineEventIds,
+  mergeOfflineCacheEvents,
+  omitPendingDeletedEvents,
+} from "@/calendar-core/src/calendar-events-api";
 
 /**
- * How the surface picks events: adapter once ready, empty while an online
- * client is still initializing (stale cache would flash the pre-drag slot),
- * otherwise Dexie/bootstrap cache (offline or adapter init failed).
+ * Paint path: working set merged with Dexie/bootstrap cache. Pending move/slot
+ * wins over a stale cache. Never reads `JmapEventsAdapter.getEvents()`.
  */
-export type CalendarSurfaceAdapterPhase = "cache" | "loading" | "ready" | "failed";
-
 export function resolveCalendarSurfaceEvents(input: {
-  phase: CalendarSurfaceAdapterPhase;
-  adapterEvents?: CalendarEventsMap;
+  workingSet?: CalendarEventsMap;
   cacheEvents: readonly JmapCalendarEvent[];
+  calendars?: readonly CalendarInfo[];
   sessionEmail?: string;
 }): CalendarEventsMap {
   const cache = [...input.cacheEvents];
-  if (input.phase === "ready" && input.adapterEvents) {
-    return applyOwnRsvpToEngineEvents(new Map(input.adapterEvents), cache, input.sessionEmail);
-  }
-  if (input.phase === "ready" || input.phase === "loading") {
-    return applyOwnRsvpToEngineEvents(new Map(), cache, input.sessionEmail);
-  }
-  return applyOwnRsvpToEngineEvents(calendarEventsToEngineMap(cache), cache, input.sessionEmail);
+  const cacheMap = calendarEventsToEngineMap(cache, { calendars: input.calendars });
+  const merged = omitPendingDeletedEvents(
+    alignOfflineEventIds(mergeOfflineCacheEvents(input.workingSet, cacheMap)),
+  );
+  return applyOwnRsvpToEngineEvents(merged, cache, input.sessionEmail);
 }

@@ -4,7 +4,23 @@ import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refres
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import {
+  readCalendarSchedulingInbox,
+  writeCalendarSchedulingInbox,
+} from "@/lib/offline/calendars-scheduling-offline-store";
 import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars-sync-conflicts";
+
+vi.mock("@/lib/offline/core/browser-online", () => ({
+  readBrowserOnline: vi.fn(() => true),
+}));
+
+vi.mock("@/lib/offline/calendars-scheduling-offline-store", () => ({
+  readCalendarSchedulingInbox: vi.fn(async () => []),
+  writeCalendarSchedulingInbox: vi.fn(async () => undefined),
+  readCalendarInviteesDirectory: vi.fn(async () => null),
+  writeCalendarInviteesDirectory: vi.fn(async () => undefined),
+}));
 
 function operationsWithList(
   listSchedulingNotifications: CalendarAPIOperations["listSchedulingNotifications"],
@@ -20,6 +36,7 @@ function operationsWithList(
 describe("useCalendarInvitations", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
   });
 
@@ -190,5 +207,45 @@ describe("useCalendarInvitations", () => {
 
     expect(result.current.notifications).toEqual([]);
     expect(onSchedulingConflict).toHaveBeenCalledWith(["invite-1.ics"]);
+  });
+
+  it("applies RSVP locally while offline and skips the live inbox refresh", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const invite: CalendarSchedulingNotification = {
+      id: "invite-1.ics",
+      uid: "uid-1",
+      method: "REQUEST",
+      title: "Standup",
+      organizerEmail: "bob@example.test",
+      participationStatus: "needs-action",
+    };
+    vi.mocked(readCalendarSchedulingInbox).mockResolvedValue([invite]);
+    const listSchedulingNotifications = vi.fn().mockRejectedValue(new Error("offline"));
+    const respondSchedulingNotification = vi.fn().mockResolvedValue(undefined);
+    const operations: CalendarAPIOperations = {
+      ...operationsWithList(listSchedulingNotifications),
+      respondSchedulingNotification,
+    };
+    const { result } = renderHook(() => useCalendarInvitations(operations, { username: "alice" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.notifications).toEqual([invite]);
+    expect(listSchedulingNotifications).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.respond("invite-1.ics", "accepted");
+    });
+
+    expect(respondSchedulingNotification).toHaveBeenCalledWith(
+      "invite-1.ics",
+      "accepted",
+      undefined,
+    );
+    expect(result.current.notifications[0]?.participationStatus).toBe("accepted");
+    expect(listSchedulingNotifications).not.toHaveBeenCalled();
+    expect(writeCalendarSchedulingInbox).toHaveBeenCalled();
   });
 });

@@ -14,6 +14,11 @@ describe("CalendarTimelineView overflow chip select", () => {
     expect(source).toContain("this.#selectTimelineEvent(key, card)");
     expect(source).toContain("this.#hideOpenPopover(event.currentTarget)");
   });
+
+  it("stamps data-event-id from the map key so dragend can resolve the card", () => {
+    expect(source).toContain("data-event-id=${timelineEvent.key}");
+    expect(source).toContain(".eventId=${timelineEvent.key}");
+  });
 });
 
 describe("CalendarTimelineView year inner-month forwarding", () => {

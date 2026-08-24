@@ -349,8 +349,7 @@
 }
 
 .calendar-workspace .calendar-sidebar-row__select {
-  flex: 1;
-  min-width: 0;
+  @apply flex min-w-0 flex-1 items-center gap-1.5;
   margin: 0;
   padding: 0;
   border: 0;
@@ -361,6 +360,11 @@
   cursor: pointer;
 }
 
+.calendar-workspace .calendar-sidebar-row__pending-sync {
+  @apply inline-flex size-2.5 shrink-0 items-center justify-center;
+  color: var(--calendar-accent);
+}
+
 .calendar-workspace .calendar-sidebar-row__select:focus-visible {
   outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
   outline-offset: 1px;
@@ -368,10 +372,7 @@
 }
 
 .calendar-workspace .calendar-sidebar-row__name {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  @apply min-w-0 flex-1 truncate;
 }
 
 /* Match `.sidebar-section__add` (size-6); muted so it stays lighter than row text. */

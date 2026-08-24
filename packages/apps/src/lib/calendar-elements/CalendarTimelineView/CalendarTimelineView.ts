@@ -991,6 +991,8 @@ export class CalendarTimelineView extends CalendarViewBase {
         role="button"
         part=${selected ? "event-card event-card-selected" : "event-card"}
         aria-pressed=${selected ? "true" : "false"}
+        data-event-id=${timelineEvent.key}
+        .eventId=${timelineEvent.key}
         ?data-selected=${selected}
         ?past=${timelineEvent.past}
         ?recurring=${timelineEvent.recurring}

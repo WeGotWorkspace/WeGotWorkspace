@@ -37,6 +37,7 @@ describe("core outbox store", () => {
     expect(rows.map((r) => r.id)).toEqual(["a", "b"]);
     expect(rows[0]?.retries).toBe(0);
     expect(typeof rows[0]?.createdAt).toBe("number");
+    expect(rows[1]?.createdAt).toBeGreaterThan(rows[0]?.createdAt ?? 0);
   });
 
   it("filters by domain", async () => {

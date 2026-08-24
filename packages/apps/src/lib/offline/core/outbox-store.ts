@@ -7,9 +7,10 @@ export async function enqueueOutboxMutation(
   row: Omit<OfflineOutboxRow, "createdAt" | "retries">,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const newest = await db.outbox.orderBy("createdAt").last();
   await db.outbox.put({
     ...row,
-    createdAt: Date.now(),
+    createdAt: Math.max(Date.now(), (newest?.createdAt ?? 0) + 1),
     retries: 0,
   });
 }

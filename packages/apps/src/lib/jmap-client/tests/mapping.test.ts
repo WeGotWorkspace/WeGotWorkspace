@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { JmapCalendarEvent } from "../calendars/types.js";
 import {
   collectInternalGroup,
@@ -30,6 +30,62 @@ describe("jmapEventToInternalRows", () => {
     expect(row.event.data.timeZone).toBe("Europe/Amsterdam");
     expect(row.event.data.location).toBe("Room 4");
     expect(row.event.data.allDay).toBeUndefined();
+  });
+
+  it("maps a timed Instant start (trailing Z) as a local PlainDateTime", () => {
+    // Seed/CalDAV UTC DTSTART is often emitted as Instant (`…Z`); JSCalendar start is LocalDateTime.
+    const [row, ...rest] = jmapEventToInternalRows(
+      { ...timedEvent, start: "2026-03-10T10:00:00Z" },
+      { accountId: "account1" },
+    );
+    expect(rest).toHaveLength(0);
+    expect(row.event.data.start.toString()).toBe("2026-03-10T10:00:00");
+    expect(row.event.data.duration?.toString()).toBe("PT1H30M");
+  });
+
+  it("maps a year-month start (YYYY-MM) as the first of that month", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const [row, ...rest] = jmapEventToInternalRows(
+      { ...allDayEvent, id: "dev-seed-0327", start: "2026-10", duration: undefined },
+      { accountId: "account1" },
+    );
+    expect(rest).toHaveLength(0);
+    expect(row.event.data.start.toString()).toBe("2026-10-01T00:00:00");
+    expect(row.event.data.allDay).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("maps an all-day calendar date (YYYY-MM-DD) without treating -DD as an offset", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const [row, ...rest] = jmapEventToInternalRows(
+      { ...allDayEvent, start: "2026-10-24", end: "2026-10-25", duration: undefined },
+      { accountId: "account1" },
+    );
+    expect(rest).toHaveLength(0);
+    expect(row.event.data.start.toString()).toBe("2026-10-24T00:00:00");
+    expect(row.event.data.duration?.toString()).toBe("P1D");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("maps Instant recurrence-override keys and start patches", () => {
+    const rows = jmapEventToInternalRows({
+      ...recurringEvent,
+      start: "2026-03-09T09:00:00Z",
+      recurrenceOverrides: {
+        "2026-03-09T09:00:00Z": { excluded: true },
+        "2026-03-11T09:00:00Z": {
+          title: "Standup (moved)",
+          start: "2026-03-11T11:00:00Z",
+        },
+      },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows[0].event.data.start.toString()).toBe("2026-03-09T09:00:00");
+    expect(rows[0].event.data.exclusionDates).toEqual(new Set(["20260309T090000"]));
+    expect(rows[1].key).toBe("ev-recurring::20260311T090000");
+    expect(rows[1].event.data.start.toString()).toBe("2026-03-11T11:00:00");
   });
 
   it("maps an all-day event", () => {
