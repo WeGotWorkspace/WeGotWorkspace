@@ -44,10 +44,10 @@ final class SsrfSafeIcsFetcher
     public function fetch(string $url): string
     {
         $current = $this->normalizeUrl($url);
-        $this->assertSafeUrl($current);
+        $validatedIps = $this->assertSafeUrl($current);
 
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
-            $response = $this->request($current);
+            $response = $this->request($current, $validatedIps);
 
             if ($response->redirect()) {
                 $location = trim((string) $response->header('Location'));
@@ -55,7 +55,7 @@ final class SsrfSafeIcsFetcher
                     throw new ApiHttpException(400, 'The calendar feed redirected without a Location header.', 'bad_request');
                 }
                 $current = $this->absoluteUrl($current, $location);
-                $this->assertSafeUrl($current);
+                $validatedIps = $this->assertSafeUrl($current);
 
                 continue;
             }
@@ -82,7 +82,14 @@ final class SsrfSafeIcsFetcher
         throw new ApiHttpException(400, 'The calendar feed redirected too many times.', 'bad_request');
     }
 
-    public function assertSafeUrl(string $url): void
+    /**
+     * Resolve once, reject private / reserved addresses, and return the
+     * validated public IPs. Callers must pin the HTTP client to these IPs
+     * and must not resolve the host again (DNS rebinding).
+     *
+     * @return list<string>
+     */
+    public function assertSafeUrl(string $url): array
     {
         $parts = parse_url($url);
         if (! is_array($parts)) {
@@ -107,19 +114,21 @@ final class SsrfSafeIcsFetcher
         foreach ($ips as $ip) {
             $this->assertPublicIp($ip);
         }
+
+        return $ips;
     }
 
     /**
+     * @param  list<string>  $validatedIps
      * @return Response
      */
-    private function request(string $url)
+    private function request(string $url, array $validatedIps)
     {
         $parts = parse_url($url);
         $host = $this->resolver->normalizeHost((string) ($parts['host'] ?? ''));
         $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
         $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'http' ? 80 : 443);
-        $ips = $this->resolver->resolve($host);
-        $connectIp = $ips[0] ?? $host;
+        $connectIp = $validatedIps[0] ?? $host;
 
         try {
             return Http::withOptions([
