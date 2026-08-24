@@ -31,6 +31,17 @@ async function echoViewChanged(host: WgwCalendarSurface, view: "day" | "week") {
   host.dispatchEvent(new CustomEvent("view-changed", { bubbles: true, composed: true }));
 }
 
+type LitHost = HTMLElement & { updateComplete?: Promise<unknown> };
+
+/** Year grid re-forwards inner-month `day-selection`; React only hears it when composed. */
+async function yearInnerMonth(host: WgwCalendarSurface): Promise<Element | null> {
+  const group = host.shadowRoot?.querySelector("calendar-view-group") as LitHost | null;
+  await group?.updateComplete;
+  const yearView = group?.shadowRoot?.querySelector("calendar-timeline-view") as LitHost | null;
+  await yearView?.updateComplete;
+  return yearView?.shadowRoot?.querySelector("calendar-timeline-view") ?? null;
+}
+
 describe("CalendarSurface Lit view echo", () => {
   beforeEach(() => {
     cleanup();
@@ -94,6 +105,41 @@ describe("CalendarSurface Lit view echo", () => {
     await act(async () => {
       await host!.updateComplete;
       host!.dispatchEvent(
+        new CustomEvent("day-selection", {
+          bubbles: true,
+          composed: true,
+          detail: { date: "2026-08-18" },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(onViewChange).toHaveBeenCalledWith("day");
+    });
+    expect(onStartDateChange).toHaveBeenCalledWith("2026-08-18");
+  });
+
+  it("navigates to day from a year inner-month day-selection", async () => {
+    const onViewChange = vi.fn();
+    const onStartDateChange = vi.fn();
+    render(
+      <CalendarSurface
+        view="year"
+        presentation="grid"
+        startDate="2026-01-01"
+        events={new Map()}
+        onViewChange={onViewChange}
+        onStartDateChange={onStartDateChange}
+      />,
+    );
+
+    const host = document.querySelector("wgw-calendar-surface") as WgwCalendarSurface | null;
+    expect(host).toBeTruthy();
+    await act(async () => {
+      await host!.updateComplete;
+      const innerMonth = await yearInnerMonth(host!);
+      expect(innerMonth).toBeTruthy();
+      innerMonth!.dispatchEvent(
         new CustomEvent("day-selection", {
           bubbles: true,
           composed: true,

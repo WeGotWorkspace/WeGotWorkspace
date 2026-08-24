@@ -15,3 +15,10 @@ describe("CalendarTimelineView overflow chip select", () => {
     expect(source).toContain("this.#hideOpenPopover(event.currentTarget)");
   });
 });
+
+describe("CalendarTimelineView year inner-month forwarding", () => {
+  it("re-forwards day-selection as composed so React can navigate", () => {
+    expect(source).toContain("@day-selection=${this.forwardComposedCalendarEvent}");
+    expect(source).not.toContain("@day-selection=${this.forwardCalendarEvent}");
+  });
+});
