@@ -28,8 +28,8 @@ final class CalendarRepository
     /** @var array<string, array<string, string>> */
     private array $subscriptionIdsByUser = [];
 
-    /** @var array<string, string>|null calendar_uri => subscription id (any principal) */
-    private ?array $subscriptionIdsByUri = null;
+    /** @var array<string, list<array{id: string, username: string}>>|null */
+    private ?array $subscriptionRowsByUri = null;
 
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
@@ -209,8 +209,19 @@ final class CalendarRepository
 
     public function isSubscriptionCalendar(string $username, string $calendarId): bool
     {
-        return isset($this->subscriptionIdMap($username)[$calendarId])
-            || isset($this->subscriptionIdByCalendarUri()[$calendarId]);
+        if (isset($this->subscriptionIdMap($username)[$calendarId])) {
+            return true;
+        }
+
+        $instance = $this->findAccessibleCalendar($username, $calendarId);
+        if ($instance === null) {
+            return false;
+        }
+
+        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId)
+            ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+
+        return $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
     }
 
     public function findOwnedPersonalCalendar(string $username, string $calendarId): CalendarInstance
@@ -516,21 +527,51 @@ final class CalendarRepository
 
     private function subscriptionIdForInstance(CalendarInstance $instance, ?string $groupSlug = null): ?string
     {
-        return $this->subscriptionIdByCalendarUri()[(string) $instance->uri] ?? null;
+        $uri = (string) $instance->uri;
+        $owner = $this->usernameFromPrincipalUri((string) $instance->principaluri);
+        if ($owner !== null) {
+            return $this->subscriptionIdMap($owner)[$uri] ?? null;
+        }
+
+        $groupSlug ??= $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+        if ($groupSlug === null) {
+            return null;
+        }
+
+        return $this->sharedGroupSubscriptionId($uri);
     }
 
     /**
-     * @return array<string, string>
+     * Group-shared collection: same uri on the group principal. A personal
+     * subscription that reuses the slug must not attach to this collection.
      */
-    private function subscriptionIdByCalendarUri(): array
+    private function sharedGroupSubscriptionId(string $calendarUri): ?string
     {
-        if ($this->subscriptionIdsByUri === null) {
-            $this->subscriptionIdsByUri = CalendarSubscription::query()
-                ->pluck('id', 'calendar_uri')
-                ->all();
+        foreach ($this->subscriptionRowsForUri($calendarUri) as $row) {
+            if ($this->findCalendarInstance($this->principalUri($row['username']), $calendarUri) === null) {
+                return $row['id'];
+            }
         }
 
-        return $this->subscriptionIdsByUri;
+        return null;
+    }
+
+    /**
+     * @return list<array{id: string, username: string}>
+     */
+    private function subscriptionRowsForUri(string $calendarUri): array
+    {
+        if ($this->subscriptionRowsByUri === null) {
+            $this->subscriptionRowsByUri = [];
+            foreach (CalendarSubscription::query()->get(['id', 'username', 'calendar_uri']) as $row) {
+                $this->subscriptionRowsByUri[(string) $row->calendar_uri][] = [
+                    'id' => (string) $row->id,
+                    'username' => (string) $row->username,
+                ];
+            }
+        }
+
+        return $this->subscriptionRowsByUri[$calendarUri] ?? [];
     }
 
     /**
@@ -551,6 +592,7 @@ final class CalendarRepository
     private function forgetCalendarSideTables(string $username, string $calendarUri): void
     {
         CalendarSubscription::query()
+            ->where('username', $username)
             ->where('calendar_uri', $calendarUri)
             ->delete();
         CalendarFeedToken::query()
@@ -558,7 +600,7 @@ final class CalendarRepository
             ->where('calendar_uri', $calendarUri)
             ->delete();
         unset($this->subscriptionIdsByUser[$username]);
-        $this->subscriptionIdsByUri = null;
+        $this->subscriptionRowsByUri = null;
     }
 
     private function usernameFromPrincipalUri(string $principalUri): ?string

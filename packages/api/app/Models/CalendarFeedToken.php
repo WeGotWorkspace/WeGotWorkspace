@@ -7,6 +7,14 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Published ICS/webcal feed token.
+ *
+ * token_hash is SHA-256 for public GET lookup (same as RSVP). token_cipher is
+ * Laravel-encrypted (APP_KEY) so GET /calendars/{id}/feed can redisplay the
+ * existing URL without regenerating. Hash-only storage cannot re-show the
+ * token; a compromised APP_KEY recovers issued feed URLs.
+ */
 final class CalendarFeedToken extends Model
 {
     use UsesWgwConnection;

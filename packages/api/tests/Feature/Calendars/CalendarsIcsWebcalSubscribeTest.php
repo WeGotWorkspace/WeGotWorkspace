@@ -11,6 +11,7 @@ use App\Services\Calendars\HostIpResolver;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\FakeHostIpResolver;
@@ -266,6 +267,63 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
             ->json('methodResponses.0.1.list.0');
         $this->assertSame($created['id'], $carolCalendar['subscriptionId']);
         $this->assertSame('team', $carolCalendar['groupSlug']);
+    }
+
+    public function test_subscription_id_is_scoped_to_the_calendar_owner(): void
+    {
+        $this->seedNamedCalendarFor('bob', 'work', 'Work');
+        $this->seedNamedCalendarFor('carol', 'work', 'Work');
+        $subscription = CalendarSubscription::query()->create([
+            'id' => (string) Str::uuid(),
+            'username' => 'bob',
+            'calendar_uri' => 'work',
+            'url' => self::FEED_URL,
+            'name' => 'Work',
+            'last_fetched_at' => now(),
+        ]);
+
+        $bobCalendar = $this->jmapCalendar('work');
+        $this->assertSame((string) $subscription->id, $bobCalendar['subscriptionId']);
+        $this->assertFalse($bobCalendar['myRights']['mayWriteAll']);
+
+        $carolCalendar = $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->postJson('/api/v1/jmap', [
+                'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+                'methodCalls' => [
+                    ['Calendar/get', ['accountId' => 'carol', 'ids' => ['work']], 'c0'],
+                ],
+            ])
+            ->assertOk()
+            ->json('methodResponses.0.1.list.0');
+        $this->assertSame('work', $carolCalendar['id']);
+        $this->assertNull($carolCalendar['subscriptionId']);
+        $this->assertTrue($carolCalendar['myRights']['mayWriteAll']);
+    }
+
+    public function test_deleting_a_personal_calendar_does_not_remove_another_users_subscription(): void
+    {
+        $this->seedNamedCalendarFor('bob', 'work', 'Work');
+        $this->seedNamedCalendarFor('carol', 'work', 'Work');
+        $subscription = CalendarSubscription::query()->create([
+            'id' => (string) Str::uuid(),
+            'username' => 'bob',
+            'calendar_uri' => 'work',
+            'url' => self::FEED_URL,
+            'name' => 'Work',
+            'last_fetched_at' => now(),
+        ]);
+
+        $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->postJson('/api/v1/jmap', [
+                'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+                'methodCalls' => [
+                    ['Calendar/set', ['accountId' => 'carol', 'destroy' => ['work']], 'c1'],
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertTrue(CalendarSubscription::query()->whereKey($subscription->id)->exists());
+        $this->assertSame((string) $subscription->id, $this->jmapCalendar('work')['subscriptionId']);
     }
 
     public function test_other_users_cannot_read_or_delete_a_subscription(): void

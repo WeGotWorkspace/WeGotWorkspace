@@ -52,6 +52,8 @@ final class CalendarFeedService
         $raw = Str::lower(Str::random(48));
         CalendarFeedToken::query()->create([
             'token_hash' => CalendarFeedToken::hashRaw($raw),
+            // Encrypted so show()/publish() can return the same public URL.
+            // RSVP tokens are hash-only and cannot be redisplayed.
             'token_cipher' => $raw,
             'owner_username' => $username,
             'calendar_uri' => $calendarId,

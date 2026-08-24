@@ -37,7 +37,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `drive_starred_items` | `App\Models\DriveStarredItem` | Per-user starred drive paths |
 | `calendar_rsvp_tokens` | `App\Models\CalendarRsvpToken` | Public iMIP RSVP tokens (`token_hash` SHA-256, event uid + attendee mailto + expiry) |
 | `calendar_subscriptions` | `App\Models\CalendarSubscription` | Live ICS/webcal subscriptions (owner username + personal calendar uri + normalized source URL) |
-| `calendar_feed_tokens` | `App\Models\CalendarFeedToken` | Published ICS/webcal feed tokens (`token_hash` SHA-256; encrypted raw token for owner URL display) |
+| `calendar_feed_tokens` | `App\Models\CalendarFeedToken` | Published ICS/webcal feed tokens (`token_hash` SHA-256; `token_cipher` Laravel-encrypted with APP_KEY so the owner URL can be re-shown — not hash-only like RSVP) |
 | `calendarobjects` | `App\Models\CalendarObject` | CalDAV objects (`VEVENT`/`VTODO` blobs; Calendars REST + Tasks REST; search indexer) |
 | `calendars` | `App\Models\Calendar` | CalDAV calendar collection root (`components` includes `VTODO` for task lists) |
 | `calendarinstances` | `App\Models\CalendarInstance` | Per-principal calendar instances (Calendars REST reads; Tasks REST `TaskList.id` = instance `uri`) |

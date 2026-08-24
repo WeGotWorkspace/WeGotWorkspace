@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Calendars;
 
 use App\Models\CalendarFeedToken;
+use App\Models\CalendarSubscription;
 use App\Services\Calendars\CalendarFeedRateLimiter;
 use App\Services\Calendars\HostIpResolver;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\FakeHostIpResolver;
 use Tests\Support\WgwDatabaseTestCase;
@@ -75,6 +77,25 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->get('/api/v1/calendars/feeds/'.$raw)->assertNotFound();
         $this->get('/api/v1/calendars/feeds/'.$this->tokenFromHttpsUrl($republished['httpsUrl']))
             ->assertOk();
+    }
+
+    public function test_personal_calendar_stays_publishable_when_another_user_subscribed_the_same_uri(): void
+    {
+        $this->seedNamedCalendarFor('bob', 'work', 'Work');
+        $this->seedNamedCalendarFor('carol', 'work', 'Work');
+        CalendarSubscription::query()->create([
+            'id' => (string) Str::uuid(),
+            'username' => 'bob',
+            'calendar_uri' => 'work',
+            'url' => 'https://feeds.example.test/holidays.ics',
+            'name' => 'Work',
+            'last_fetched_at' => now(),
+        ]);
+
+        $this->asBob()->postJson('/api/v1/calendars/work/feed')->assertForbidden();
+        $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->postJson('/api/v1/calendars/work/feed')
+            ->assertCreated();
     }
 
     public function test_subscription_calendars_cannot_be_published(): void

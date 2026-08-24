@@ -16,6 +16,8 @@ return new class extends WgwMigration
         $this->wgw()->create('calendar_feed_tokens', function (Blueprint $table): void {
             $table->increments('id');
             $table->string('token_hash', 64)->unique();
+            // Encrypted raw token (APP_KEY) so the owner feed URL can be re-shown.
+            // Not hash-only like calendar_rsvp_tokens; compromised APP_KEY recovers issued URLs.
             $table->text('token_cipher');
             $table->string('owner_username', 255);
             $table->string('calendar_uri', 255);

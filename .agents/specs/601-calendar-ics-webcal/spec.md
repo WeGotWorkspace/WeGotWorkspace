@@ -60,7 +60,7 @@ GET|POST|DELETE /calendars/{calendarId}/feed
 GET /calendars/feeds/{token}          # public, also .ics suffix OK
 ```
 
-- Owner `POST` creates or returns `{ httpsUrl, webcalUrl }`. Token stored **hashed** (`calendar_rsvp_tokens` pattern). Unknown/revoked → 404.
+- Owner `POST` creates or returns `{ httpsUrl, webcalUrl }`. Lookup uses SHA-256 `token_hash` (same as RSVP). The raw token is also stored Laravel-encrypted as `token_cipher` (APP_KEY) so `GET /calendars/{id}/feed` can re-show the existing URL without regenerating — an intentional tradeoff vs hash-only RSVP tokens. Compromised APP_KEY recovers issued feed URLs. Unknown/revoked → 404.
 - Allowed on **owned personal** calendars the user can manage. Reject subscription calendars. No guest JWT.
 - Feed body: one `VCALENDAR` of that collection's VEVENTs (stored objects / existing converters).
 - `DELETE` revokes; subsequent public GET is 404. Rate-limit the public GET.
