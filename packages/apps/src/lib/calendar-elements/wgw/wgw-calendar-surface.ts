@@ -118,6 +118,7 @@ export class WgwCalendarSurface extends LitElement {
         .selectedEventKey=${this.selectedEventKey}
         @view-changed=${this.#syncFromViewGroup}
         @start-date-changed=${this.#syncFromViewGroup}
+        @day-selection=${this.#syncFromViewGroup}
         @presentation-changed=${this.#syncFromViewGroup}
       ></calendar-view-group>
     `;
