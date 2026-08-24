@@ -139,6 +139,12 @@ export type CalendarUILabels = {
   toastRsvpUpdated: string;
   toastRsvpUndone: string;
   toastInvitationCancelled: string;
+  pendingSync: string;
+  conflictTitle: string;
+  conflictDescription: (title: string) => string;
+  conflictRemaining: (count: number) => string;
+  conflictKeepMine: string;
+  conflictUseServer: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -275,6 +281,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastRsvpUpdated: "Invitation updated",
   toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
+  pendingSync: "Pending sync",
+  conflictTitle: "Sync conflict",
+  conflictDescription: (title) =>
+    `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,
+  conflictRemaining: (count) =>
+    count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
+  conflictKeepMine: "Keep mine",
+  conflictUseServer: "Use server",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

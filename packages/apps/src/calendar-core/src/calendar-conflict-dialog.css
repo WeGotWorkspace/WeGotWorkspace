@@ -1,0 +1,14 @@
+@import "../../styles.css" reference;
+
+.calendar-conflict-dialog.calendar-dialog-surface {
+  max-width: min(32rem, calc(100vw - 2rem));
+}
+
+.calendar-conflict-dialog__remaining {
+  @apply m-0 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+}
+
+.calendar-conflict-dialog__actions {
+  @apply flex justify-end gap-2;
+}

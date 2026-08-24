@@ -1,5 +1,7 @@
 export { CalendarApp } from "./calendar-app";
 export type { CalendarAppProps } from "./calendar-app";
+export { CalendarConflictDialog } from "./calendar-conflict-dialog";
+export type { CalendarConflictDialogProps } from "./calendar-conflict-dialog";
 export { CalendarWorkspace } from "./calendar-workspace";
 export type { CalendarWorkspaceProps } from "./calendar-workspace-props";
 export { useCalendarAPI } from "./use-calendar-api";

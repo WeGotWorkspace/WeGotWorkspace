@@ -8,13 +8,26 @@ import {
   type CalendarSchedulingRespondOptions,
   type CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import {
+  readCalendarInviteesDirectory,
+  readCalendarSchedulingInbox,
+  writeCalendarInviteesDirectory,
+  writeCalendarSchedulingInbox,
+} from "@/lib/offline/calendars-scheduling-offline-store";
 import { setCalendarsSchedulingConflictListener } from "@/lib/offline/calendars-sync-conflicts";
+import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
 
 export type UseCalendarInvitationsOptions = {
+  username?: string;
   onResponded?: () => void;
   onError?: (error: unknown) => void;
   onSchedulingConflict?: (notificationIds: string[]) => void;
 };
+
+function cacheUsername(sessionUsername?: string): string | null {
+  return resolveCalendarsOfflineUsername(sessionUsername);
+}
 
 export function useCalendarInvitations(
   operations?: CalendarAPIOperations,
@@ -25,20 +38,39 @@ export function useCalendarInvitations(
   const [canSubmitEmail, setCanSubmitEmail] = useState(false);
   const [busy, setBusy] = useState(false);
   const refreshInFlightRef = useRef(false);
+  const username = cacheUsername(options?.username);
 
   const refresh = useCallback(async () => {
     if (!operations?.listSchedulingNotifications) {
-      setNotifications([]);
+      if (username) {
+        const cached = await readCalendarSchedulingInbox(username);
+        setNotifications(cached);
+      } else {
+        setNotifications([]);
+      }
       return;
     }
     refreshInFlightRef.current = true;
     try {
-      const next = await operations.listSchedulingNotifications();
-      setNotifications(next);
+      if (!readBrowserOnline()) {
+        if (username) {
+          setNotifications(await readCalendarSchedulingInbox(username));
+        }
+        return;
+      }
+      try {
+        const next = await operations.listSchedulingNotifications();
+        setNotifications(next);
+        if (username) await writeCalendarSchedulingInbox(username, next);
+      } catch {
+        if (username) {
+          setNotifications(await readCalendarSchedulingInbox(username));
+        }
+      }
     } finally {
       refreshInFlightRef.current = false;
     }
-  }, [operations]);
+  }, [operations, username]);
 
   const refreshIfIdle = useCallback(async () => {
     if (refreshInFlightRef.current) return;
@@ -51,15 +83,39 @@ export function useCalendarInvitations(
 
   useEffect(() => {
     if (!operations?.listInvitees) {
-      setInvitees([]);
-      setCanSubmitEmail(false);
+      if (!username) {
+        setInvitees([]);
+        setCanSubmitEmail(false);
+        return;
+      }
+      void readCalendarInviteesDirectory(username).then((cached) => {
+        setInvitees(cached?.list ?? []);
+        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
+      });
       return;
     }
-    void operations.listInvitees().then((next) => {
-      setInvitees(next.list);
-      setCanSubmitEmail(next.canSubmitEmail);
-    });
-  }, [operations]);
+    if (!readBrowserOnline()) {
+      if (!username) return;
+      void readCalendarInviteesDirectory(username).then((cached) => {
+        setInvitees(cached?.list ?? []);
+        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
+      });
+      return;
+    }
+    void operations
+      .listInvitees()
+      .then(async (next) => {
+        setInvitees(next.list);
+        setCanSubmitEmail(next.canSubmitEmail);
+        if (username) await writeCalendarInviteesDirectory(username, next);
+      })
+      .catch(async () => {
+        if (!username) return;
+        const cached = await readCalendarInviteesDirectory(username);
+        setInvitees(cached?.list ?? []);
+        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
+      });
+  }, [operations, username]);
 
   useEffect(() => {
     if (!operations?.listSchedulingNotifications) return;
@@ -73,6 +129,7 @@ export function useCalendarInvitations(
       void refreshIfIdle().catch(() => undefined);
     };
 
+    // Invitations keep their own interval; event `/changes` is inbound-only.
     const intervalId = window.setInterval(runSilentRefresh, CALENDAR_BACKGROUND_POLL_MS);
     const onVisibilityChange = () => {
       if (!document.hidden) runSilentRefresh();
@@ -109,10 +166,16 @@ export function useCalendarInvitations(
       setBusy(true);
       try {
         await operations.respondSchedulingNotification(id, status, respondOptions);
-        setNotifications((current) =>
-          current.map((row) => (row.id === id ? { ...row, participationStatus: status } : row)),
-        );
-        await refresh();
+        const next = (current: CalendarSchedulingNotification[]) =>
+          current.map((row) => (row.id === id ? { ...row, participationStatus: status } : row));
+        setNotifications(next);
+        if (username) {
+          const cached = await readCalendarSchedulingInbox(username);
+          await writeCalendarSchedulingInbox(username, next(cached));
+        }
+        if (readBrowserOnline()) {
+          await refresh();
+        }
         options?.onResponded?.();
       } catch (error) {
         if (error instanceof CalendarSchedulingGoneError) {
@@ -124,7 +187,7 @@ export function useCalendarInvitations(
         setBusy(false);
       }
     },
-    [dropNotifications, operations, options?.onError, options?.onResponded, refresh],
+    [dropNotifications, operations, options?.onError, options?.onResponded, refresh, username],
   );
 
   const dismiss = useCallback(
@@ -134,11 +197,18 @@ export function useCalendarInvitations(
       try {
         await operations.dismissSchedulingNotification(id);
         setNotifications((current) => current.filter((row) => row.id !== id));
+        if (username) {
+          const cached = await readCalendarSchedulingInbox(username);
+          await writeCalendarSchedulingInbox(
+            username,
+            cached.filter((row) => row.id !== id),
+          );
+        }
       } finally {
         setBusy(false);
       }
     },
-    [operations],
+    [operations, username],
   );
 
   return {

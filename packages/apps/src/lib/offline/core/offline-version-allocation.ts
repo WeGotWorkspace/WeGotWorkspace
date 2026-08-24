@@ -56,6 +56,8 @@ export const TASKS_OFFLINE_VERSION = {
 /** Calendars version steps within the calendars block (50–59). */
 export const CALENDARS_OFFLINE_VERSION = {
   tables: 50,
+  groups: 51,
+  scheduling: 52,
 } as const;
 
 const versionOwners = new Map<number, string>();

@@ -6,8 +6,10 @@ import {
   calendarEventToForm,
   createIntentToForm,
   emptyCalendarEventForm,
+  engineEventToForm,
   formToCreateIntent,
   formToDraft,
+  formToFullPatch,
   formToPatch,
   patchCalendarEventForm,
   resolveCreateIntentAllDay,
@@ -711,5 +713,21 @@ describe("formToPatch", () => {
     expect(formToPatch({ ...form, title: "Still custom" }, custom)).toEqual({
       title: "Still custom",
     });
+  });
+});
+
+describe("engineEventToForm", () => {
+  it("derives duration from data.end after a resize (duration stripped)", () => {
+    const form = engineEventToForm({
+      eventId: "ev-1",
+      calendarId: "work",
+      data: {
+        summary: "Standup",
+        start: Temporal.PlainDateTime.from("2033-01-10T10:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-10T12:00:00"),
+      },
+    });
+    expect(formToDraft(form).duration).toBe("PT2H");
+    expect(formToFullPatch(form).duration).toBe("PT2H");
   });
 });

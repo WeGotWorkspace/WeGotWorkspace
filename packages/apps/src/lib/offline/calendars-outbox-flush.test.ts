@@ -12,6 +12,7 @@ import {
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
+import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { flushCalendarsOutbox } from "@/lib/offline/calendars-outbox-flush";
 
@@ -42,11 +43,17 @@ const {
   createCalendarEventLive,
   patchCalendarEventLive,
   deleteCalendarEventLive,
+  createCalendarLive,
+  patchCalendarLive,
+  deleteCalendarLive,
   respondCalendarSchedulingNotification,
 } = vi.hoisted(() => ({
   createCalendarEventLive: vi.fn(),
   patchCalendarEventLive: vi.fn(),
   deleteCalendarEventLive: vi.fn(),
+  createCalendarLive: vi.fn(),
+  patchCalendarLive: vi.fn(),
+  deleteCalendarLive: vi.fn(),
   respondCalendarSchedulingNotification: vi.fn(),
 }));
 
@@ -54,6 +61,9 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
   createCalendarEventLive,
   patchCalendarEventLive,
   deleteCalendarEventLive,
+  createCalendarLive,
+  patchCalendarLive,
+  deleteCalendarLive,
 }));
 
 vi.mock("@/lib/api/wgw/calendar-scheduling", async (importOriginal) => {
@@ -114,6 +124,49 @@ describe("flushCalendarsOutbox", () => {
     const cached = await readCalendarBootstrapFromCache(username);
     expect(cached?.data.events.find((event) => event.id === "ev-1")?.title).toBe("Patched");
     expect(cached?.data.events.some((event) => event.id === "ev-2")).toBe(true);
+  });
+
+  it("retargets a coalesced update from the temp id to the server id after create", async () => {
+    createCalendarEventLive.mockResolvedValue(wireEvent("ev-2", "Created"));
+    patchCalendarEventLive.mockResolvedValue(wireEvent("ev-2", "Moved"));
+
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: "local-1",
+        tempEventId: "local-1",
+        draft: {
+          calendarId: "default",
+          title: "Created",
+          start: "2033-01-11T09:00:00",
+          duration: "PT1H",
+        },
+      }),
+    });
+    await enqueueCoalescedCalendarEventUpdate(username, "local-1", {
+      start: "2033-01-11T10:00:00",
+    });
+
+    const queued = await listOutboxMutations(username);
+    const createRow = queued.find((row) => row.op === "create");
+    const updateRow = queued.find((row) => row.op === "update");
+    expect(createRow && updateRow).toBeTruthy();
+    await putOutboxMutation(username, { ...updateRow!, createdAt: 1 });
+    await putOutboxMutation(username, { ...createRow!, createdAt: 2 });
+
+    const result = await flushCalendarsOutbox(username);
+
+    expect(result.conflicts).toEqual([]);
+    expect(createCalendarEventLive).toHaveBeenCalledTimes(1);
+    expect(patchCalendarEventLive).toHaveBeenCalledWith("ev-2", { start: "2033-01-11T10:00:00" });
+    expect(patchCalendarEventLive).not.toHaveBeenCalledWith("local-1", expect.anything());
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.events.find((event) => event.id === "ev-2")?.title).toBe("Moved");
+    expect(cached?.data.events.some((event) => event.id === "local-1")).toBe(false);
   });
 
   it("coalesces successive patches for the same event into one outbox row", async () => {
@@ -177,6 +230,63 @@ describe("flushCalendarsOutbox", () => {
     expect(result.conflicts).toEqual([]);
     expect(result.schedulingConflicts).toEqual(["invite-1.ics"]);
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("replays calendarCreate, calendarUpdate, and calendarDelete rows", async () => {
+    createCalendarLive.mockResolvedValue({
+      id: "cal-2",
+      name: "Team",
+      color: "#22c55e",
+      scope: "group",
+      groupSlug: "engineering",
+    });
+    patchCalendarLive.mockResolvedValue({
+      id: "default",
+      name: "Renamed",
+      color: "#111111",
+      isDefault: true,
+    });
+    deleteCalendarLive.mockResolvedValue(undefined);
+
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "calendarCreate",
+      payload: JSON.stringify({
+        creationId: "local-cal-1",
+        tempCalendarId: "local-cal-1",
+        draft: { name: "Team", color: "#22c55e", groupSlug: "engineering" },
+      }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "calendarUpdate",
+      payload: JSON.stringify({ calendarId: "default", patch: { name: "Renamed" } }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CALENDARS_DOMAIN,
+      op: "calendarDelete",
+      payload: JSON.stringify({ calendarId: "gone" }),
+    });
+
+    const result = await flushCalendarsOutbox(username);
+
+    expect(result.conflicts).toEqual([]);
+    expect(createCalendarLive).toHaveBeenCalledWith({
+      name: "Team",
+      color: "#22c55e",
+      groupSlug: "engineering",
+    });
+    expect(patchCalendarLive).toHaveBeenCalledWith("default", { name: "Renamed" });
+    expect(deleteCalendarLive).toHaveBeenCalledWith("gone");
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.calendars.find((calendar) => calendar.id === "cal-2")?.name).toBe("Team");
+    expect(cached?.data.calendars.find((calendar) => calendar.id === "default")?.name).toBe(
+      "Renamed",
+    );
   });
 
   it("drops a queued RSVP when the invitation is gone and reports the notification id", async () => {

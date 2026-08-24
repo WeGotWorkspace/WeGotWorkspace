@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
+  applyCalendarColorsToEngineEvents,
   applyOwnRsvpToEngineEvents,
   calendarEventsToEngineMap,
   occurrencesInRange,
@@ -74,6 +75,53 @@ describe("shiftAnchor", () => {
   it("week and day shift by their period", () => {
     expect(shiftAnchor("week", "2033-01-12", 1)).toBe("2033-01-19");
     expect(shiftAnchor("day", "2033-01-12", -1)).toBe("2033-01-11");
+  });
+});
+
+describe("applyCalendarColorsToEngineEvents", () => {
+  it("joins CalendarInfo.color onto events that have no override", () => {
+    const map = calendarEventsToEngineMap([wireEvent()]);
+    expect(map.get("ev-1")?.data.color).toBeUndefined();
+
+    const colored = applyCalendarColorsToEngineEvents(map, [
+      { id: "work", name: "Work", color: "#0ea5e9" },
+    ]);
+
+    expect(colored.get("ev-1")?.data.color).toBe("#0ea5e9");
+  });
+
+  it("keeps an explicit event color over the calendar collection color", () => {
+    const map = calendarEventsToEngineMap([wireEvent({ color: "#111111" })]);
+    const colored = applyCalendarColorsToEngineEvents(map, [
+      { id: "work", name: "Work", color: "#0ea5e9" },
+    ]);
+
+    expect(colored.get("ev-1")?.data.color).toBe("#111111");
+  });
+
+  it("calendarEventsToEngineMap joins colors when calendars are passed", () => {
+    const map = calendarEventsToEngineMap([wireEvent()], {
+      calendars: [{ id: "work", name: "Work", color: "#f59e0b" }],
+    });
+
+    expect(map.get("ev-1")?.data.color).toBe("#f59e0b");
+  });
+});
+
+describe("calendarEventsToEngineMap", () => {
+  it("maps Instant UTC start and skips a single unparseable neighbor", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const map = calendarEventsToEngineMap([
+      wireEvent({ id: "utc", uid: "uid-utc", start: "2033-01-10T10:00:00Z" }),
+      wireEvent({ id: "bad", uid: "uid-bad", start: "not-a-datetime" }),
+      wireEvent({ id: "ok", uid: "uid-ok", start: "2033-01-10T11:00:00" }),
+    ]);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+
+    expect(map.get("utc")?.data.start.toString()).toBe("2033-01-10T10:00:00");
+    expect(map.get("ok")?.data.start.toString()).toBe("2033-01-10T11:00:00");
+    expect(map.has("bad")).toBe(false);
   });
 });
 

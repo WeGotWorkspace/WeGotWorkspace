@@ -135,6 +135,18 @@ export function jmapEventToInternalRows(
   jmapEvent: JmapCalendarEvent,
   options: { accountId?: string; masterKey?: string } = {},
 ): InternalEventRow[] {
+  try {
+    return mapJmapEventToInternalRows(jmapEvent, options);
+  } catch (error) {
+    console.warn("[jmap] skipped unmappable calendar event", jmapEvent.id ?? jmapEvent.uid, error);
+    return [];
+  }
+}
+
+function mapJmapEventToInternalRows(
+  jmapEvent: JmapCalendarEvent,
+  options: { accountId?: string; masterKey?: string },
+): InternalEventRow[] {
   const masterKey = options.masterKey ?? jmapEvent.id;
   const allDay = jmapEvent.showWithoutTime === true;
   const start = localToPlainDateTime(jmapEvent.start);

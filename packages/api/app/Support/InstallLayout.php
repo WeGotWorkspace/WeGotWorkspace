@@ -20,6 +20,18 @@ final class InstallLayout
     }
 
     /**
+     * True for the git checkout root (has {@code pnpm-workspace.yaml} + {@code apps/wegotworkspace}).
+     * That directory is not the install tree — artisan cwd often is the repo root.
+     */
+    public static function isMonorepoCheckoutRoot(string $dir): bool
+    {
+        $normalized = rtrim(str_replace('\\', '/', $dir), '/');
+
+        return is_file($normalized.'/pnpm-workspace.yaml')
+            && is_dir($normalized.'/apps/wegotworkspace');
+    }
+
+    /**
      * @param  callable(string): list<string>  $pathsForRoot
      * @return list<string>
      */

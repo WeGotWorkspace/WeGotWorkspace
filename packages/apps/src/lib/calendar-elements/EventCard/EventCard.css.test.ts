@@ -136,3 +136,10 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(beforeHoverMedia).not.toMatch(/event-card:hover/);
   });
 });
+
+describe("EventCard event identity", () => {
+  it("reflects the working-set map key as data-event-id", () => {
+    const source = readFileSync(join(here, "EventCard.ts"), "utf8");
+    expect(source).toMatch(/attribute:\s*"data-event-id",\s*reflect:\s*true/);
+  });
+});

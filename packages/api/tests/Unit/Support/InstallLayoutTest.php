@@ -38,6 +38,14 @@ final class InstallLayoutTest extends TestCase
     }
 
     #[Test]
+    public function monorepo_checkout_root_is_not_an_install_tree(): void
+    {
+        $this->assertTrue(InstallLayout::isMonorepoCheckoutRoot(dirname(__DIR__, 5)));
+        $this->assertFalse(InstallLayout::isMonorepoCheckoutRoot('/srv/sabre-installer/apps/wegotworkspace'));
+        $this->assertFalse(InstallLayout::isMonorepoCheckoutRoot('/var/www/vhosts/xxx.com'));
+    }
+
+    #[Test]
     public function path_candidates_prefer_monorepo_paths_in_dev_layout(): void
     {
         $paths = InstallLayout::pathCandidates(
