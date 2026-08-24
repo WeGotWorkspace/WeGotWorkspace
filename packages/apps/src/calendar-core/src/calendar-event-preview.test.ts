@@ -43,6 +43,18 @@ describe("resolveCalendarEventPreview", () => {
       }),
     ).toBeNull();
   });
+
+  it("opens a preview for a timed event whose start is a UTC Instant (…Z)", () => {
+    const dentist = bootstrap.data.events.find((entry) => entry.id === "dentist");
+    expect(dentist).toBeDefined();
+    const wire = { ...dentist!, start: "2033-01-13T11:00:00Z" };
+    expect(() => resolveCalendarEventPreview("dentist", { events: [wire] })).not.toThrow();
+    const preview = resolveCalendarEventPreview("dentist", { events: [wire] });
+    expect(preview).not.toBeNull();
+    expect(preview?.form.startDate).toBe("2033-01-13");
+    expect(preview?.form.startTime).toBe("11:00");
+    expect(preview?.form.allDay).toBe(false);
+  });
 });
 
 describe("event preview formatters", () => {

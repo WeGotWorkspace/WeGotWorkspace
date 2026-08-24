@@ -159,6 +159,14 @@ describe("calendarEventToForm", () => {
     delete (floating as { timeZone?: string | null }).timeZone;
     expect(calendarEventToForm(floating).timeZone).toBeNull();
   });
+
+  it("maps a timed Instant start (trailing Z) to UTC wall-clock fields", () => {
+    const form = calendarEventToForm({ ...timedEvent, start: "2033-01-12T14:00:00Z" });
+    expect(form.startDate).toBe("2033-01-12");
+    expect(form.startTime).toBe("14:00");
+    expect(form.endDate).toBe("2033-01-12");
+    expect(form.endTime).toBe("15:30");
+  });
 });
 
 describe("emptyCalendarEventForm", () => {
