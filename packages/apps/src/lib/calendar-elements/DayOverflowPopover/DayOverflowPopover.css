@@ -18,6 +18,7 @@
   --_lc-event-card-accent-bar-display: initial;
   --_lc-event-card-heading-overflow: initial;
   --_lc-event-card-heading-mask: initial;
+  --_lc-event-card-heading-mask-rtl: initial;
   --_lc-event-card-compact-label-display: block;
   @apply hidden m-0 rounded-[10px] border-0 overflow-hidden p-0 fixed h-auto text-inherit;
   z-index: var(--_lc-z-popover);

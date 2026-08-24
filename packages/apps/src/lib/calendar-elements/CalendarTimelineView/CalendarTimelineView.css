@@ -700,7 +700,12 @@ time-line::part(overflow-dot) {
     --_lc-event-card-accent-bar-display: none;
     --_lc-event-card-heading-padding-inline-start: 4px;
     --_lc-event-card-heading-overflow: clip;
-    --_lc-event-card-heading-mask: linear-gradient(to inline-end, #000 80%, transparent);
+    --_lc-event-card-heading-mask: linear-gradient(to right, #000 calc(100% - 12px), transparent);
+    --_lc-event-card-heading-mask-rtl: linear-gradient(
+      to left,
+      #000 calc(100% - 12px),
+      transparent
+    );
   }
 
   /* Chrome off: no outer border, no vertical cell grid. Keep a hairline between week rows. */
@@ -762,7 +767,8 @@ time-line::part(overflow-dot) {
   --_lc-event-card-accent-bar-display: none;
   --_lc-event-card-heading-padding-inline-start: 4px;
   --_lc-event-card-heading-overflow: clip;
-  --_lc-event-card-heading-mask: linear-gradient(to inline-end, #000 80%, transparent);
+  --_lc-event-card-heading-mask: linear-gradient(to right, #000 calc(100% - 12px), transparent);
+  --_lc-event-card-heading-mask-rtl: linear-gradient(to left, #000 calc(100% - 12px), transparent);
 }
 
 :host([force-compact]) time-line.timeline-main::part(viewport) {

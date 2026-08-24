@@ -29,6 +29,7 @@ describe("DayOverflowPopover EventCard chrome", () => {
       "--_lc-event-card-accent-bar-display",
       "--_lc-event-card-heading-overflow",
       "--_lc-event-card-heading-mask",
+      "--_lc-event-card-heading-mask-rtl",
     ]) {
       expect(hostBlock, name).toMatch(new RegExp(`${name}:\\s*initial`));
     }

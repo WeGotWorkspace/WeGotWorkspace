@@ -57,7 +57,10 @@ function expectSlimLaneTokens(block: string) {
   expect(headingInlineStart).toBeLessThan(13);
   expect(block).toMatch(/--_lc-event-card-heading-overflow:\s*clip/);
   expect(block).toMatch(
-    /--_lc-event-card-heading-mask:\s*linear-gradient\(\s*to inline-end,\s*#000 80%,\s*transparent\s*\)/,
+    /--_lc-event-card-heading-mask:\s*linear-gradient\(\s*to right,\s*#000 calc\(100% - 12px\),\s*transparent\s*\)/,
+  );
+  expect(block).toMatch(
+    /--_lc-event-card-heading-mask-rtl:\s*linear-gradient\(\s*to left,\s*#000 calc\(100% - 12px\),\s*transparent\s*\)/,
   );
 }
 

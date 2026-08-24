@@ -86,7 +86,10 @@ describe("EventCard / EventBase interaction CSS", () => {
       /@container\s*\(max-height:\s*47px\)[\s\S]*text-overflow:\s*var\(\s*--_lc-event-card-heading-overflow,\s*ellipsis\s*\)/,
     );
     expect(css).toMatch(
-      /@container\s*\(max-height:\s*47px\)[\s\S]*mask-image:\s*var\(\s*--_lc-event-card-heading-mask,\s*none\s*\)/,
+      /\.event-card-compact-label\s*\{[\s\S]*width:\s*100%;[\s\S]*mask-image:\s*var\(\s*--_lc-event-card-heading-mask,\s*none\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-compact-label\s*\{[\s\S]*-webkit-mask-image:\s*var\(\s*--_lc-event-card-heading-mask,\s*none\s*\)/,
     );
   });
 

@@ -255,21 +255,38 @@
      (py-2 clips at the 20px lane) and center the single-line title. */
   :host .event-card-heading,
   :host([layout="flow"]) .event-card-heading {
-    @apply overflow-hidden whitespace-nowrap;
+    @apply min-w-0 w-full overflow-hidden whitespace-nowrap;
     align-items: var(--_lc-event-card-heading-align-items, flex-start);
     padding-block: var(--_lc-event-card-heading-padding-block, 0.5rem);
     line-height: var(--_lc-event-card-heading-line-height, 1.25);
     text-overflow: var(--_lc-event-card-heading-overflow, ellipsis);
-    mask-image: var(--_lc-event-card-heading-mask, none);
-    -webkit-mask-image: var(--_lc-event-card-heading-mask, none);
   }
 
+  :host .event-card-content {
+    @apply min-w-0 max-w-full overflow-hidden;
+  }
+
+  /* Fade lives on the single-line label: it must be the card width (not max-content)
+     or the mask stop sits past the clip edge and looks like a hard cut. */
   :host .event-card-compact-label {
-    @apply block min-w-0 max-w-full overflow-hidden whitespace-nowrap;
+    @apply min-w-0 max-w-full overflow-hidden whitespace-nowrap;
     display: var(--_lc-event-card-compact-label-display, block);
+    width: 100%;
     text-overflow: var(--_lc-event-card-heading-overflow, ellipsis);
     mask-image: var(--_lc-event-card-heading-mask, none);
     -webkit-mask-image: var(--_lc-event-card-heading-mask, none);
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+    mask-size: 100% 100%;
+    -webkit-mask-size: 100% 100%;
+  }
+
+  :host .event-card-shell[dir="rtl"] .event-card-compact-label {
+    mask-image: var(--_lc-event-card-heading-mask-rtl, var(--_lc-event-card-heading-mask, none));
+    -webkit-mask-image: var(
+      --_lc-event-card-heading-mask-rtl,
+      var(--_lc-event-card-heading-mask, none)
+    );
   }
 
   :host .event-card-summary-main,
