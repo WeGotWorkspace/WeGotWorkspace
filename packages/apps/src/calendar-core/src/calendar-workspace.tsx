@@ -793,7 +793,7 @@ export function CalendarWorkspace({
                 feed: publishFeed,
                 busy: publishBusy,
                 onToggle: toggleCalendarPublish,
-                onCopyHttps: () => void copyCalendarFeedUrl("https"),
+                onCopyHttps: () => void copyCalendarFeedUrl(),
               }
             : undefined
         }

@@ -1072,15 +1072,12 @@ export function useCalendarController({
     ],
   );
 
-  const copyCalendarFeedUrl = useCallback(
-    async (kind: "https" | "webcal") => {
-      const value = kind === "https" ? publishFeed?.httpsUrl : publishFeed?.webcalUrl;
-      if (!value) return;
-      const copied = await copyShareText(value);
-      if (copied) show(L.toastFeedCopied);
-    },
-    [publishFeed, show, L.toastFeedCopied],
-  );
+  const copyCalendarFeedUrl = useCallback(async () => {
+    const value = publishFeed?.httpsUrl;
+    if (!value) return;
+    const copied = await copyShareText(value);
+    if (copied) show(L.toastFeedCopied);
+  }, [publishFeed, show, L.toastFeedCopied]);
 
   const truncateSeriesFromOccurrence = useCallback(
     async (args: { masterId: string; recurrenceId: string; allDay?: boolean }) => {
