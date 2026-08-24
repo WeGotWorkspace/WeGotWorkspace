@@ -42,12 +42,14 @@ type TimelineMoveSession = {
   /** Host element so capture survives re-renders while the preview geometry updates. */
   captureTarget: HTMLElement;
   /**
-   * Mouse sessions defer pointer capture until the first real pointermove: capturing on
-   * pointerdown would retarget the trailing `click` to the host, so a plain click would never
-   * reach the event card (breaking click-to-select). Touch-activated sessions capture
-   * immediately — they only start after the long-press, when the gesture is unambiguous.
+   * Mouse sessions defer pointer capture until the drag threshold: capturing earlier
+   * retargets the trailing `click` to the host, so a plain click never reaches the
+   * event card (breaking click-to-select). Touch-activated sessions capture immediately
+   * — they only start after the long-press, when the gesture is unambiguous.
    */
   captured: boolean;
+  /** True once travel passes the drag threshold (or the session started via long-press). */
+  dragging: boolean;
   eventIndex: number;
   originPointerGridT: number;
   /** Pointer position at pointerdown; raw deltas from here drive the free-following card. */
@@ -91,8 +93,8 @@ type PendingTouchGesture = {
   timerId: number;
 };
 
-/** Pointer travel (px) required before a create gesture starts producing a preview. */
-const CREATE_DRAG_THRESHOLD_PX = 4;
+/** Pointer travel (px) before a move/create gesture leaves click-to-select / empty-click. */
+const POINTER_DRAG_THRESHOLD_PX = 4;
 
 /** Touch hold (ms) before a move/create gesture activates (grid-view parity). */
 const TOUCH_GESTURE_ACTIVATION_MS = 160;
@@ -452,6 +454,12 @@ export class TimeLine extends LitElement {
   readonly #onMoveWindowPointerMove = (e: PointerEvent) => {
     const session = this.#moveSession;
     if (!session || e.pointerId !== session.pointerId) return;
+    if (!session.dragging) {
+      const dx = e.clientX - session.originClientX;
+      const dy = e.clientY - session.originClientY;
+      if (dx * dx + dy * dy < POINTER_DRAG_THRESHOLD_PX * POINTER_DRAG_THRESHOLD_PX) return;
+      this.#activateMoveDrag(session);
+    }
     if (e.cancelable) e.preventDefault();
     if (!session.captured) {
       this.#trySetPointerCapture(session.captureTarget, session.pointerId);
@@ -973,9 +981,9 @@ export class TimeLine extends LitElement {
     this.#moveSession = null;
     this.#releasePointerCaptureSafe(session.captureTarget, session.pointerId);
     this.draggingEventIndex = null;
-    this.#emitGestureSignal("end", "move", session.gestureId);
+    if (session.dragging) this.#emitGestureSignal("end", "move", session.gestureId);
 
-    if (!cancelled) {
+    if (!cancelled && session.dragging) {
       this.#applyMovePointer(clientX, clientY, session);
     }
     this.moveDragOffset = null;
@@ -984,7 +992,12 @@ export class TimeLine extends LitElement {
     const previousStart = session.initialStart;
     const previousEnd = session.initialEnd;
 
-    if (cancelled || !preview || (preview.start === previousStart && preview.end === previousEnd)) {
+    if (
+      cancelled ||
+      !session.dragging ||
+      !preview ||
+      (preview.start === previousStart && preview.end === previousEnd)
+    ) {
       this.resizePreviewByIndex = null;
       return;
     }
@@ -1025,7 +1038,7 @@ export class TimeLine extends LitElement {
     if (!session.dragging) {
       const dx = clientX - session.originClientX;
       const dy = clientY - session.originClientY;
-      if (dx * dx + dy * dy < CREATE_DRAG_THRESHOLD_PX * CREATE_DRAG_THRESHOLD_PX) return;
+      if (dx * dx + dy * dy < POINTER_DRAG_THRESHOLD_PX * POINTER_DRAG_THRESHOLD_PX) return;
       session.dragging = true;
       this.#emitGestureSignal("start", "create", session.gestureId);
     }
@@ -1147,7 +1160,9 @@ export class TimeLine extends LitElement {
     }
 
     e.stopPropagation();
-    if (e.cancelable) e.preventDefault();
+    // Do not preventDefault on mouse pointerdown: that can suppress the trailing
+    // click (click-to-select). Capture / preventDefault start only after the drag
+    // threshold, same as empty-cell create.
 
     this.#startMoveSession(index, e.pointerId, e.clientX, e.clientY, false);
   };
@@ -1162,8 +1177,8 @@ export class TimeLine extends LitElement {
     const ev = this.events[index];
     if (!ev) return;
 
-    // Mouse: capture is deferred to the first pointermove (see TimelineMoveSession.captured)
-    // so a movement-free click still reaches the event card for click-to-select.
+    // Mouse: capture and visual drag wait for the travel threshold so a click
+    // still reaches the event card. Touch-activated sessions start immediately.
     if (touchActivated) this.#trySetPointerCapture(this, pointerId);
 
     const layout = this.#readGridLayout();
@@ -1174,6 +1189,7 @@ export class TimeLine extends LitElement {
       pointerId,
       captureTarget: this,
       captured: touchActivated,
+      dragging: touchActivated,
       eventIndex: index,
       originPointerGridT,
       originClientX: clientX,
@@ -1185,12 +1201,26 @@ export class TimeLine extends LitElement {
       gestureId,
     };
 
+    this.#attachMoveWindowListeners();
+    if (touchActivated) {
+      this.#beginMoveDragVisual(index);
+      this.#attachGestureTouchMoveBlocker();
+      this.#emitGestureSignal("start", "move", gestureId);
+    }
+  }
+
+  #beginMoveDragVisual(index: number) {
+    const ev = this.events[index];
+    if (!ev) return;
     this.draggingEventIndex = index;
     this.moveDragOffset = { x: 0, y: 0 };
     this.#beginSingleEventResizePreview(index, ev.start, ev.end);
-    this.#attachMoveWindowListeners();
-    if (touchActivated) this.#attachGestureTouchMoveBlocker();
-    this.#emitGestureSignal("start", "move", gestureId);
+  }
+
+  #activateMoveDrag(session: TimelineMoveSession) {
+    session.dragging = true;
+    this.#beginMoveDragVisual(session.eventIndex);
+    this.#emitGestureSignal("start", "move", session.gestureId);
   }
 
   #onResizeHandlePointerDown = (e: PointerEvent) => {

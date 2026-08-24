@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import {
   createCalendarAppBootstrap,
   MOCK_CALENDAR_ANCHOR,
@@ -190,6 +190,22 @@ export const Week: Story = {
     surface: staticSurface,
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "week",
+  },
+  play: async ({ canvasElement }) => {
+    const timedCard = await waitFor(() => {
+      const timedHost = queryDeep(canvasElement, "time-line.timeline-timed");
+      const card = timedHost?.shadowRoot?.querySelector("event-card");
+      if (!(card instanceof HTMLElement)) {
+        throw new Error("timed event-card not ready");
+      }
+      return card;
+    });
+    await userEvent.click(timedCard);
+    await waitFor(() => {
+      expect(
+        canvasElement.ownerDocument.querySelector(".calendar-event-details-popover"),
+      ).toBeTruthy();
+    });
   },
 };
 
