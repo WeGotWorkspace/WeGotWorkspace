@@ -1916,7 +1916,9 @@ export class CalendarTimelineView extends CalendarViewBase {
    * compact cells expose no drag surface. Each card composes the shared
    * <calendar-weekday-header> above its day grid (same chrome the view group composes above
    * the regular timeline month), forced narrow so the one-letter variant shows at any card
-   * width; both align on the same 7-column geometry.
+   * width; both align on the same 7-column geometry. Inner-month events must be re-forwarded
+   * composed: React listens on `wgw-calendar-surface`, and a non-composed re-dispatch plus
+   * `stopPropagation` never leaves the year shadow (year click then snaps back to year).
    */
   #renderYearGrid(direction: "ltr" | "rtl"): TemplateResult {
     const monthFormatter = new Intl.DateTimeFormat(this.#locale, { month: "long" });
@@ -1948,12 +1950,12 @@ export class CalendarTimelineView extends CalendarViewBase {
                 .weekStart=${this.weekStart}
                 .selectedCalendarId=${this.selectedCalendarId}
                 ?rtl=${this.rtl}
-                @day-selection=${this.forwardCalendarEvent}
-                @event-create-requested=${this.forwardCalendarEvent}
-                @event-created=${this.forwardCalendarEvent}
-                @event-selected=${this.forwardCalendarEvent}
-                @event-updated=${this.forwardCalendarEvent}
-                @event-deleted=${this.forwardCalendarEvent}
+                @day-selection=${this.forwardComposedCalendarEvent}
+                @event-create-requested=${this.forwardComposedCalendarEvent}
+                @event-created=${this.forwardComposedCalendarEvent}
+                @event-selected=${this.forwardComposedCalendarEvent}
+                @event-updated=${this.forwardComposedCalendarEvent}
+                @event-deleted=${this.forwardComposedCalendarEvent}
               ></calendar-timeline-view>
             </section>
           `,
