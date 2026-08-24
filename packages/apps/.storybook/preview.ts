@@ -76,6 +76,11 @@ const preview: Preview = {
       options: {
         [DEFAULT_VIEWPORT]: responsiveViewport,
         ...MINIMAL_VIEWPORTS,
+        compactMonth: {
+          name: "Compact month 390",
+          styles: { width: "390px", height: "844px" },
+          type: "mobile",
+        },
       },
     },
 
