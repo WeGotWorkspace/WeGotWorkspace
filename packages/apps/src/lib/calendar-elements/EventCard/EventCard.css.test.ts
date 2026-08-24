@@ -82,6 +82,12 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(
       /padding-inline-start:\s*var\(\s*--_lc-event-card-heading-padding-inline-start,\s*13px\s*\)/,
     );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*text-overflow:\s*var\(\s*--_lc-event-card-heading-overflow,\s*ellipsis\s*\)/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*mask-image:\s*var\(\s*--_lc-event-card-heading-mask,\s*none\s*\)/,
+    );
   });
 
   it("insets the card fill with one shared token on all four sides", () => {

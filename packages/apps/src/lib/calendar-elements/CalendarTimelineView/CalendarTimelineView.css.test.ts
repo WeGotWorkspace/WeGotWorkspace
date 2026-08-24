@@ -55,6 +55,10 @@ function expectSlimLaneTokens(block: string) {
   const headingInlineStart = tokenPx(block, "--_lc-event-card-heading-padding-inline-start");
   expect(headingInlineStart).toBeGreaterThanOrEqual(2);
   expect(headingInlineStart).toBeLessThan(13);
+  expect(block).toMatch(/--_lc-event-card-heading-overflow:\s*clip/);
+  expect(block).toMatch(
+    /--_lc-event-card-heading-mask:\s*linear-gradient\(\s*to inline-end,\s*#000 80%,\s*transparent\s*\)/,
+  );
 }
 
 function expectViewOnlyHits(block: string) {
