@@ -21,9 +21,16 @@ describe("CalendarTimelineView overflow chip select", () => {
   });
 });
 
-describe("CalendarTimelineView year inner-month forwarding", () => {
-  it("re-forwards day-selection as composed so React can navigate", () => {
-    expect(source).toContain("@day-selection=${this.forwardComposedCalendarEvent}");
-    expect(source).not.toContain("@day-selection=${this.forwardCalendarEvent}");
+describe("CalendarTimelineView year grid", () => {
+  it("renders cheap month-dot cards instead of nested month timelines", () => {
+    expect(source).toContain("#renderYearDay");
+    expect(source).toContain("#yearEventsByDay");
+    expect(source).toContain('class="year-days"');
+    expect(source).not.toContain("Inner-month events must be re-forwarded");
+  });
+
+  it("emits composed day-selection from the year view itself", () => {
+    expect(source).toContain('new CustomEvent("day-selection"');
+    expect(source).toContain("composed: true");
   });
 });

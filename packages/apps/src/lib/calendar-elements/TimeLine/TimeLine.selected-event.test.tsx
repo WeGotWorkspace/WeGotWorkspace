@@ -22,6 +22,19 @@ describe("TimeLine selected-event resize handles", () => {
     vi.restoreAllMocks();
   });
 
+  it("omits resize handles when resizeHandles is false", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 1;
+    el.max = 100;
+    el.resizeHandles = false;
+    el.events = [{ start: 10, end: 40, key: "dentist", color: "#6366f1" }];
+    el.selectedEventKey = "dentist";
+    document.body.append(el);
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelectorAll("resize-handle")).toHaveLength(0);
+  });
+
   it("activates grabbers only for the selected event key", async () => {
     const el = document.createElement("time-line") as TimeLine;
     el.cells = 1;

@@ -103,6 +103,53 @@ function isMidnight(dateTime: Temporal.PlainDateTime): boolean {
   );
 }
 
+/** Month / year grids always cover six weeks (7 × 6). */
+export const MONTH_GRID_CELL_COUNT = 42;
+
+export function exclusiveEndDate(end: Temporal.PlainDateTime): Temporal.PlainDate {
+  return isMidnight(end) ? end.toPlainDate() : end.toPlainDate().add({ days: 1 });
+}
+
+/** Inclusive start date through exclusive end date of an occurrence (all-day snap). */
+export function occurrenceDaySpan(
+  start: Temporal.PlainDateTime,
+  end: Temporal.PlainDateTime,
+): { first: Temporal.PlainDate; lastExclusive: Temporal.PlainDate } {
+  const first = start.toPlainDate();
+  let lastExclusive = exclusiveEndDate(end);
+  if (Temporal.PlainDate.compare(lastExclusive, first) <= 0) {
+    lastExclusive = first.add({ days: 1 });
+  }
+  return { first, lastExclusive };
+}
+
+export function occurrenceDayKeys(
+  start: Temporal.PlainDateTime,
+  end: Temporal.PlainDateTime,
+): string[] {
+  const { first, lastExclusive } = occurrenceDaySpan(start, end);
+  const keys: string[] = [];
+  let cursor = first;
+  while (Temporal.PlainDate.compare(cursor, lastExclusive) < 0) {
+    keys.push(cursor.toString());
+    cursor = cursor.add({ days: 1 });
+  }
+  return keys;
+}
+
+export function uniqueDayDotColors(colors: Iterable<string>, limit = 3): string[] {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of colors) {
+    const color = raw || "currentColor";
+    if (seen.has(color)) continue;
+    seen.add(color);
+    unique.push(color);
+    if (unique.length === limit) break;
+  }
+  return unique;
+}
+
 /**
  * Converts a time range into a day-snapped range:
  * - start snaps to start-of-day of the original start date
@@ -114,13 +161,12 @@ export function toTimelineAllDayRange(
   end: Temporal.PlainDateTime,
   scale: CalendarTimelineScale,
 ): { start: number; end: number } {
-  const dayStart = start.toPlainDate().toPlainDateTime(Temporal.PlainTime.from("00:00"));
-  const endDate = isMidnight(end) ? end.toPlainDate() : end.toPlainDate().add({ days: 1 });
-  let dayEndExclusive = endDate.toPlainDateTime(Temporal.PlainTime.from("00:00"));
-  if (Temporal.PlainDateTime.compare(dayEndExclusive, dayStart) <= 0) {
-    dayEndExclusive = dayStart.add({ days: 1 });
-  }
-  return toTimelineRange(dayStart, dayEndExclusive, scale);
+  const { first, lastExclusive } = occurrenceDaySpan(start, end);
+  return toTimelineRange(
+    first.toPlainDateTime(Temporal.PlainTime.from("00:00")),
+    lastExclusive.toPlainDateTime(Temporal.PlainTime.from("00:00")),
+    scale,
+  );
 }
 
 /**
@@ -218,10 +264,33 @@ export function alignedMonthGridStart(
 
 /**
  * First day of each month (January … December) of `anchor`'s calendar year — the twelve
- * month-mode windows composed by the timeline year view.
+ * month cards in the timeline year view.
  */
 export function yearMonthStarts(anchor: Temporal.PlainDate): Temporal.PlainDate[] {
   return Array.from({ length: 12 }, (_, index) => anchor.with({ month: index + 1, day: 1 }));
+}
+
+/** Inclusive first grid day through exclusive last grid day of the year view. */
+export function yearGridWindow(
+  yearAnchor: Temporal.PlainDate,
+  weekStart: number,
+): { start: Temporal.PlainDate; end: Temporal.PlainDate } {
+  const months = yearMonthStarts(yearAnchor);
+  const first = alignedMonthGridStart(months[0]!, weekStart);
+  const last = alignedMonthGridStart(months[11]!, weekStart).add({
+    days: MONTH_GRID_CELL_COUNT,
+  });
+  return { start: first, end: last };
+}
+
+export function monthGridDays(
+  monthAnchor: Temporal.PlainDate,
+  weekStart: number,
+): Temporal.PlainDate[] {
+  const gridStart = alignedMonthGridStart(monthAnchor, weekStart);
+  return Array.from({ length: MONTH_GRID_CELL_COUNT }, (_, index) =>
+    gridStart.add({ days: index }),
+  );
 }
 
 /** True when `day` is a leading/trailing cell outside `anchor`'s calendar month. */

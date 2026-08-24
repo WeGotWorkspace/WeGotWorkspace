@@ -227,6 +227,13 @@ export class TimeLine extends LitElement {
   accessor selectedEventKey = "";
 
   /**
+   * When false, event segments render without resize grabbers (month / compact
+   * surfaces). Day and week keep the default `true`.
+   */
+  @property({ type: Boolean, attribute: "resize-handles" })
+  accessor resizeHandles = true;
+
+  /**
    * Marker values on the absolute axis (same coordinate space as event `start`/`end`; cell `i`
    * spans `[i * max, (i + 1) * max)`). Each renders a thin line inside its cell, themeable via
    * `--time-line-marker-color`. Values outside `[0, cells * max)` are ignored. Pass one value
@@ -1348,6 +1355,9 @@ export class TimeLine extends LitElement {
     evEndRaw: number,
     gridMax: number,
   ): { showResizeStart: boolean; showResizeEnd: boolean } {
+    if (!this.resizeHandles) {
+      return { showResizeStart: false, showResizeEnd: false };
+    }
     const eps = 1e-6;
     const atLogicalStart = Math.abs(segmentAbsStart - evStart) < eps;
     const atClampedEnd = Math.abs(segmentAbsEnd - evEndClamped) < eps;

@@ -24,8 +24,11 @@ import {
   toTimelineAllDayRange,
   toTimelineRange,
   toTimelineValue,
+  uniqueDayDotColors,
   visibleHoursWindow,
+  yearGridWindow,
   yearMonthStarts,
+  occurrenceDayKeys,
 } from "./CalendarTimelineScale.js";
 
 const MINUTES_PER_DAY = 24 * 60;
@@ -604,6 +607,37 @@ describe("yearMonthStarts (year-mode month windows)", () => {
     const fromJanuary = yearMonthStarts(Temporal.PlainDate.from("2024-01-01"));
     const fromLeapDay = yearMonthStarts(Temporal.PlainDate.from("2024-02-29"));
     expect(fromJanuary.map(String)).toEqual(fromLeapDay.map(String));
+  });
+});
+
+describe("yearGridWindow / occurrenceDayKeys", () => {
+  it("covers the first week-aligned cell through the last December grid cell", () => {
+    const window = yearGridWindow(Temporal.PlainDate.from("2026-08-01"), 1);
+    expect(window.start.toString()).toBe("2025-12-29");
+    expect(window.end.toString()).toBe("2027-01-11");
+  });
+
+  it("lists each overlapping day for timed and exclusive all-day ends", () => {
+    expect(
+      occurrenceDayKeys(
+        Temporal.PlainDateTime.from("2026-08-18T09:00:00"),
+        Temporal.PlainDateTime.from("2026-08-18T10:00:00"),
+      ),
+    ).toEqual(["2026-08-18"]);
+    expect(
+      occurrenceDayKeys(
+        Temporal.PlainDateTime.from("2026-08-18T00:00:00"),
+        Temporal.PlainDateTime.from("2026-08-20T00:00:00"),
+      ),
+    ).toEqual(["2026-08-18", "2026-08-19"]);
+  });
+
+  it("keeps at most three unique day-dot colors", () => {
+    expect(uniqueDayDotColors(["#f00", "#f00", "#0f0", "#00f", "#abc"])).toEqual([
+      "#f00",
+      "#0f0",
+      "#00f",
+    ]);
   });
 });
 

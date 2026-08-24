@@ -94,28 +94,66 @@ function toRRuleOptions(
   return options;
 }
 
+type MemoizedRule = {
+  ruleSet: RRuleSet;
+  betweenByRange: Map<string, Temporal.PlainDateTime[]>;
+};
+
+type PreparedRule = MemoizedRule & { rangeKey: string };
+
+const ruleMemo = new WeakMap<CalendarEvent, Map<string, MemoizedRule>>();
+
+function tzMemoKey(tzid: string | null): string {
+  return tzid ?? "";
+}
+
+function ruleSetFor(
+  event: CalendarEvent,
+  rangeStart: Temporal.PlainDateTime,
+  rangeEnd: Temporal.PlainDateTime,
+  options: ExpandRecurringOptions,
+): PreparedRule | null {
+  if (!event.data.recurrenceRule) return null;
+  const dtstart = toPlainDateTime(event.data.start);
+  const tzid = event.data.timeZone ?? options.timezone ?? null;
+  const tzKey = tzMemoKey(tzid);
+  const rangeKey = `${rangeStart.toString()}|${rangeEnd.toString()}|${tzKey}`;
+  let byTz = ruleMemo.get(event);
+  if (!byTz) {
+    byTz = new Map();
+    ruleMemo.set(event, byTz);
+  }
+  const cached = byTz.get(tzKey);
+  if (cached) return { ruleSet: cached.ruleSet, rangeKey, betweenByRange: cached.betweenByRange };
+
+  const ruleSet = new RRuleSet();
+  ruleSet.rrule(new RRule(toRRuleOptions(event.data.recurrenceRule, dtstart, tzid)));
+  if (event.data.exclusionDates?.size) {
+    for (const recurrenceId of event.data.exclusionDates) {
+      const parsed = parseRecurrenceId(recurrenceId, event.data.allDay ?? false, event.data.start);
+      if (!parsed) continue;
+      ruleSet.exdate(toUtcFloatingDate(toPlainDateTime(parsed)));
+    }
+  }
+  const memo: MemoizedRule = { ruleSet, betweenByRange: new Map() };
+  byTz.set(tzKey, memo);
+  return { ruleSet, rangeKey, betweenByRange: memo.betweenByRange };
+}
+
 export function expandRecurringStarts(
   event: CalendarEvent,
   rangeStart: Temporal.PlainDateTime,
   rangeEnd: Temporal.PlainDateTime,
   options: ExpandRecurringOptions = {},
 ): Temporal.PlainDateTime[] {
-  if (!event.data.recurrenceRule) return [];
-  const dtstart = toPlainDateTime(event.data.start);
-  const tzid = event.data.timeZone ?? options.timezone ?? null;
-  const ruleSet = new RRuleSet();
-  ruleSet.rrule(new RRule(toRRuleOptions(event.data.recurrenceRule, dtstart, tzid)));
+  const prepared = ruleSetFor(event, rangeStart, rangeEnd, options);
+  if (!prepared) return [];
+  const cachedStarts = prepared.betweenByRange.get(prepared.rangeKey);
+  if (cachedStarts) return cachedStarts;
 
-  if (event.data.exclusionDates?.size) {
-    for (const recurrenceId of event.data.exclusionDates) {
-      const parsed = parseRecurrenceId(recurrenceId, event.data.allDay ?? false, event.data.start);
-      if (!parsed) continue;
-      const exDate = toPlainDateTime(parsed);
-      ruleSet.exdate(toUtcFloatingDate(exDate));
-    }
-  }
-
-  return ruleSet
+  const starts = prepared.ruleSet
     .between(toUtcFloatingDate(rangeStart), toUtcFloatingDate(rangeEnd), true)
     .map(fromUtcFloatingDate);
+  prepared.betweenByRange.set(prepared.rangeKey, starts);
+  return starts;
 }

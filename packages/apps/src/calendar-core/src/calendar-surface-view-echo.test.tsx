@@ -33,13 +33,13 @@ async function echoViewChanged(host: WgwCalendarSurface, view: "day" | "week") {
 
 type LitHost = HTMLElement & { updateComplete?: Promise<unknown> };
 
-/** Year grid re-forwards inner-month `day-selection`; React only hears it when composed. */
-async function yearInnerMonth(host: WgwCalendarSurface): Promise<Element | null> {
+/** Year grid emits composed `day-selection` from the year timeline itself. */
+async function yearTimeline(host: WgwCalendarSurface): Promise<Element | null> {
   const group = host.shadowRoot?.querySelector("calendar-view-group") as LitHost | null;
   await group?.updateComplete;
   const yearView = group?.shadowRoot?.querySelector("calendar-timeline-view") as LitHost | null;
   await yearView?.updateComplete;
-  return yearView?.shadowRoot?.querySelector("calendar-timeline-view") ?? null;
+  return yearView ?? null;
 }
 
 describe("CalendarSurface Lit view echo", () => {
@@ -119,7 +119,7 @@ describe("CalendarSurface Lit view echo", () => {
     expect(onStartDateChange).toHaveBeenCalledWith("2026-08-18");
   });
 
-  it("navigates to day from a year inner-month day-selection", async () => {
+  it("navigates to day from a year-grid day-selection", async () => {
     const onViewChange = vi.fn();
     const onStartDateChange = vi.fn();
     render(
@@ -137,9 +137,9 @@ describe("CalendarSurface Lit view echo", () => {
     expect(host).toBeTruthy();
     await act(async () => {
       await host!.updateComplete;
-      const innerMonth = await yearInnerMonth(host!);
-      expect(innerMonth).toBeTruthy();
-      innerMonth!.dispatchEvent(
+      const yearView = await yearTimeline(host!);
+      expect(yearView).toBeTruthy();
+      yearView!.dispatchEvent(
         new CustomEvent("day-selection", {
           bubbles: true,
           composed: true,
