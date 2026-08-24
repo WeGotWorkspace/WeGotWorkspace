@@ -6,6 +6,7 @@ import {
   createHybridCalendarOperations,
   getCalendarsSyncRunner,
 } from "@/lib/offline/calendars-hybrid-operations";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { readCalendarBootstrapFromCache } from "@/lib/offline/calendars-offline-store";
 import { setCalendarsSyncConflictListener } from "@/lib/offline/calendars-sync-conflicts";
 import {
@@ -19,7 +20,6 @@ import {
   createDefaultCalendarApiSource,
   type CalendarApiSource,
 } from "@/calendar-core/src/calendar-api-source";
-import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 
 export type UseCalendarAPIOptions = {
   onSyncConflict?: (eventIds: string[]) => void;
@@ -65,7 +65,7 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
   });
 
   const applyBootstrapRefresh = useCallback(async () => {
-    if (offlineUsername) {
+    if (offlineUsername && readBrowserOnline()) {
       await getCalendarsSyncRunner(offlineUsername).flush();
     }
     const next = await resolvedSource.loadBootstrap();
@@ -97,10 +97,8 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     if (!offlineUsername || !online || phase !== "ready") return;
     if (typeof window === "undefined") return;
 
-    let cancelled = false;
-
-    const runSilentRefresh = () => {
-      if (cancelled || reconnectSyncing || refreshInFlightRef.current) return;
+    const onVisibilityChange = () => {
+      if (document.hidden || reconnectSyncing || refreshInFlightRef.current) return;
       refreshInFlightRef.current = true;
       void applyBootstrapRefresh()
         .catch(() => undefined)
@@ -108,20 +106,9 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
           refreshInFlightRef.current = false;
         });
     };
-
-    const intervalId = window.setInterval(() => {
-      if (document.hidden) return;
-      runSilentRefresh();
-    }, CALENDAR_BACKGROUND_POLL_MS);
-
-    const onVisibilityChange = () => {
-      if (!document.hidden) runSilentRefresh();
-    };
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [applyBootstrapRefresh, offlineUsername, online, phase, reconnectSyncing]);
@@ -139,5 +126,13 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     offlineUsername,
     jmapClient,
     refreshBootstrap: applyBootstrapRefresh,
+    reloadFromCache: async () => {
+      if (!offlineUsername) return;
+      const cached = await readCalendarBootstrapFromCache(offlineUsername);
+      if (cached) {
+        patchBootstrap(() => cached);
+        setBootstrapRevision((revision) => revision + 1);
+      }
+    },
   };
 }

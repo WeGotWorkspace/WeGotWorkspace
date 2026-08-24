@@ -1,9 +1,17 @@
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
-import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
+import type {
+  CalendarDraft,
+  CalendarEventDraft,
+  CalendarEventPatch,
+  CalendarPatch,
+} from "@/calendar-core/src/calendar-types";
 import {
   createCalendarEventLive,
+  createCalendarLive,
   deleteCalendarEventLive,
+  deleteCalendarLive,
   patchCalendarEventLive,
+  patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
 import {
   CalendarSchedulingGoneError,
@@ -20,6 +28,7 @@ import {
   removeCalendarEventFromCache,
   removeOutboxMutation,
   upsertCalendarEventInCache,
+  writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
 
 export type CalendarOutboxFlushResult = {
@@ -67,6 +76,8 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
   const rows = await listOutboxMutations(username);
   const conflicts: string[] = [];
   const schedulingConflicts: string[] = [];
+  const tempToServerId = new Map<string, string>();
+  const resolveEventId = (eventId: string) => tempToServerId.get(eventId) ?? eventId;
 
   for (const row of rows) {
     if (row.domain !== CALENDARS_DOMAIN) continue;
@@ -76,17 +87,69 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const draft = payload.draft as CalendarEventDraft;
         const tempId = String(payload.tempEventId ?? "");
         const event = await createCalendarEventLive(draft);
-        if (tempId) await removeCalendarEventFromCache(username, tempId);
+        if (tempId) {
+          await removeCalendarEventFromCache(username, tempId);
+          if (event.id) tempToServerId.set(tempId, event.id);
+        }
         await upsertCalendarEventInCache(username, event, false);
       } else if (row.op === "update") {
-        const eventId = String(payload.eventId ?? "");
+        const eventId = resolveEventId(String(payload.eventId ?? ""));
         const patch = payload.patch as CalendarEventPatch;
         const event = await patchCalendarEventLive(eventId, patch);
         await upsertCalendarEventInCache(username, event, false);
       } else if (row.op === "delete") {
-        const eventId = String(payload.eventId ?? "");
+        const eventId = resolveEventId(String(payload.eventId ?? ""));
         await deleteCalendarEventLive(eventId);
         await removeCalendarEventFromCache(username, eventId);
+      } else if (row.op === "calendarCreate") {
+        const draft = payload.draft as CalendarDraft;
+        const tempId = String(payload.tempCalendarId ?? "");
+        const created = await createCalendarLive(draft);
+        const latest = await readCalendarBootstrapFromCache(username);
+        if (latest) {
+          await writeCalendarBootstrapToCache(username, {
+            ...latest,
+            data: {
+              ...latest.data,
+              calendars: [
+                ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
+                created,
+              ],
+            },
+          });
+        }
+      } else if (row.op === "calendarUpdate") {
+        const calendarId = String(payload.calendarId ?? "");
+        const patch = payload.patch as CalendarPatch;
+        const updated = await patchCalendarLive(calendarId, patch);
+        const latest = await readCalendarBootstrapFromCache(username);
+        if (latest) {
+          await writeCalendarBootstrapToCache(username, {
+            ...latest,
+            data: {
+              ...latest.data,
+              calendars: latest.data.calendars.map((calendar) =>
+                calendar.id === calendarId ? updated : calendar,
+              ),
+            },
+          });
+        }
+      } else if (row.op === "calendarDelete") {
+        const calendarId = String(payload.calendarId ?? "");
+        await deleteCalendarLive(calendarId);
+        const latest = await readCalendarBootstrapFromCache(username);
+        if (latest) {
+          await writeCalendarBootstrapToCache(username, {
+            ...latest,
+            data: {
+              ...latest.data,
+              calendars: latest.data.calendars.filter((calendar) => calendar.id !== calendarId),
+              events: latest.data.events.filter(
+                (event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId,
+              ),
+            },
+          });
+        }
       } else if (row.op === "respond-scheduling") {
         await respondCalendarSchedulingNotification(
           String(payload.notificationId ?? ""),

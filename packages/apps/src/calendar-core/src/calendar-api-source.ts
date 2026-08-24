@@ -24,7 +24,7 @@ import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 export type CalendarApiSource = {
   loadBootstrap: () => Promise<CalendarAppBootstrap>;
   createOperations: (bootstrap?: CalendarAppBootstrap) => CalendarAPIOperations | undefined;
-  /** Client for the interactive lit surface's JmapEventsAdapter (undefined = read-only surface). */
+  /** Inbound JMAP client (undefined = no live `/changes` poll). */
   createJmapClient?: () => JmapClient;
 };
 

@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalendarEvent as EngineCalendarEvent } from "@/lib/calendar-engine";
+import { resolveEventEnd, type CalendarEvent as EngineCalendarEvent } from "@/lib/calendar-engine";
 import {
   internalRecurrenceRuleToJs,
   type JmapCalendarEvent,
@@ -581,8 +581,7 @@ export function formToPatch(
 export function engineEventToForm(event: EngineCalendarEvent): CalendarEventFormValue {
   const allDay = event.data.allDay === true;
   const start = event.data.start;
-  const duration = event.data.duration ?? Temporal.Duration.from(allDay ? "P1D" : "PT1H");
-  const end = start.add(duration);
+  const end = resolveEventEnd(event.data);
   const formEnd = allDay ? end.subtract({ days: 1 }) : end;
   const startDate = start.toPlainDate().toString();
   const wireRules = event.data.recurrenceRule

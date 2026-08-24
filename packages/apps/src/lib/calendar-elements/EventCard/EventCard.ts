@@ -36,6 +36,10 @@ export class EventCard extends BaseElement {
     },
   });
 
+  /** Working-set map key; reflected so live e2e / drag can resolve the card. */
+  @property({ type: String, attribute: "data-event-id", reflect: true })
+  eventId = "";
+
   @property({ type: String })
   summary = "";
 

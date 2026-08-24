@@ -47,6 +47,11 @@ export type CalendarViewId = "month" | "week" | "day" | "year";
 export type CalendarPresentation = "grid" | "list";
 
 export type CalendarEventDraft = {
+  /**
+   * Optional persist id. Offline create reuses an engine `local-` key so the
+   * working-set map key and Dexie row stay aligned (`eventId` === map key).
+   */
+  id?: string;
   calendarId: string;
   title: string;
   /** JSCalendar LocalDateTime, e.g. "2033-01-10T10:00:00". */
@@ -82,7 +87,7 @@ export type CalendarEventDraft = {
   organizer?: { email: string; name?: string };
 };
 
-export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId">> & {
+export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId" | "id">> & {
   calendarId?: string;
 };
 

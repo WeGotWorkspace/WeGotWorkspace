@@ -1,2 +1,6 @@
-/** Silent background refresh for bootstrap, surface sync, and invitations. */
-export const CALENDAR_BACKGROUND_POLL_MS = 15_000;
+/**
+ * Shared poll interval. Inbound JMAP (`use-calendar-surface` adapter) owns the
+ * event `/changes` timer; invitations keep their own loop. Hybrid
+ * `use-calendar-api` is on-demand only — no `setInterval`.
+ */
+export const CALENDAR_BACKGROUND_POLL_MS = 10_000;

@@ -167,12 +167,13 @@ Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', 
     }
 
     $this->info(sprintf(
-        'Seeded calendar events for %s (%s): created %d, skipped %d, deleted %d.',
+        'Seeded calendar events for %s (%s): created %d, skipped %d, deleted %d [%s].',
         $username,
         $profile,
         $result['created'],
         $result['skipped'],
         $result['deleted'],
+        (string) config('database.connections.wgw.database'),
     ));
 
     return self::SUCCESS;

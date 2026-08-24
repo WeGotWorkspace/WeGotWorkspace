@@ -49,6 +49,9 @@ export type JmapEventsAdapterOptions = {
   onPersisted?: () => void;
   /** Called when a background push or sync fails (state has been re-fetched by then). */
   onSyncError?: (error: unknown) => void;
+  /** Inbound `/changes` ingest: write Dexie, skip pending outbox rows. */
+  onRemoteEvent?: (event: JmapCalendarEvent) => void;
+  onRemoteEventDestroyed?: (eventId: JmapId) => void;
 };
 
 /**
@@ -164,6 +167,7 @@ export class JmapEventsAdapter {
         for (const id of changes.destroyed) {
           const key = this.#keyByJmapId.get(id) ?? id;
           this.#removeLocalRows(key);
+          this.#options.onRemoteEventDestroyed?.(id);
         }
       }
       this.#notify();
@@ -316,6 +320,7 @@ export class JmapEventsAdapter {
     this.#originals.set(masterKey, jmapEvent);
     this.#jmapIdByKey.set(masterKey, jmapEvent.id);
     this.#keyByJmapId.set(jmapEvent.id, masterKey);
+    this.#options.onRemoteEvent?.(jmapEvent);
   }
 
   #hasPendingRows(masterKey: string): boolean {

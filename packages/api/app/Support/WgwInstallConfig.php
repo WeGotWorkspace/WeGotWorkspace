@@ -165,6 +165,13 @@ final class WgwInstallConfig
     {
         $dir = rtrim(str_replace('\\', '/', $dir), '/');
 
+        // Repo checkout root has packages/api/.env but is not the install tree.
+        // php artisan from the monorepo root must use apps/wegotworkspace (same
+        // SQLite as WgwAppBootstrap / php -S), not ./wgw-content at cwd.
+        if (InstallLayout::isMonorepoCheckoutRoot($dir)) {
+            return false;
+        }
+
         return is_file($dir.'/index.php')
             || is_file($dir.'/packages/api/.env');
     }
