@@ -142,3 +142,12 @@ describe("TimeLine touch resize selection wiring", () => {
     expect(timeLineTs).toContain("?data-selected=${selected}");
   });
 });
+
+describe("TimeLine last-row cell export", () => {
+  const timeLineTs = readCss("TimeLine.ts");
+
+  it("exports cell-last-row on the final grid row so consumers can drop the trailing hairline", () => {
+    expect(timeLineTs).toContain("cell-last-row");
+    expect(timeLineTs).toContain('part="cell${lastRowPart}"');
+  });
+});

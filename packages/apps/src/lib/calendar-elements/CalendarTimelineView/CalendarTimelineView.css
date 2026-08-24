@@ -713,14 +713,27 @@ time-line::part(overflow-dot) {
     border: none;
   }
 
+  /* 1fr is minmax(auto, 1fr): nowrap / spanning event min-content stretches some days.
+     minmax(0, 1fr) keeps seven equal tracks. Do not clip cell-main — multi-day bars
+     paint across cells on purpose. */
+  time-line.timeline-main::part(cells) {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
   time-line.timeline-main::part(cell) {
+    @apply min-w-0;
     outline: none;
     border-block-end: var(--_lc-grid-line-width, 1px) solid var(--_lc-grid-line-color);
   }
 
+  /* Structural ::part(cell):nth-last-child does not apply. TimeLine exports cell-last-row. */
+  time-line.timeline-main::part(cell-last-row) {
+    border-block-end-width: 0;
+  }
+
   /* Show the event layer and +N footer as view-only bars; empty-cell drag-create is off. */
   time-line.timeline-main::part(cell-main) {
-    @apply pointer-events-none;
+    @apply min-w-0 pointer-events-none;
   }
 
   /* Outer ::part wins over TimeLine's `.event > * { pointer-events: auto }`. */
@@ -775,13 +788,22 @@ time-line::part(overflow-dot) {
   border: none;
 }
 
+:host([force-compact]) time-line.timeline-main::part(cells) {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 :host([force-compact]) time-line.timeline-main::part(cell) {
+  @apply min-w-0;
   outline: none;
   border-block-end: var(--_lc-grid-line-width, 1px) solid var(--_lc-grid-line-color);
 }
 
+:host([force-compact]) time-line.timeline-main::part(cell-last-row) {
+  border-block-end-width: 0;
+}
+
 :host([force-compact]) time-line.timeline-main::part(cell-main) {
-  @apply pointer-events-none;
+  @apply min-w-0 pointer-events-none;
 }
 
 :host([force-compact]) time-line.timeline-main::part(event),

@@ -85,10 +85,15 @@ function expectCompactMonthLayout(block: string) {
   expect(block).toMatch(
     /::part\(day-header\)[^{]*\{[^}]*(?:justify-content:\s*center|@apply[^{}]*justify-center)/,
   );
+  expect(block).toMatch(
+    /::part\(cells\)[^{]*\{[^}]*grid-template-columns:\s*repeat\(\s*7,\s*minmax\(\s*0,\s*1fr\s*\)\s*\)/,
+  );
+  expect(block).toMatch(/::part\(cell\)[^{]*\{[^}]*(?:min-width:\s*0|@apply[^{}]*min-w-0)/);
   expect(block).toMatch(/::part\(cell\)[^{]*\{[^}]*outline:\s*none/);
   expect(block).toMatch(
     /::part\(cell\)[^{]*\{[^}]*border-block-end:\s*var\(\s*--_lc-grid-line-width,\s*1px\s*\)\s+solid\s+var\(\s*--_lc-grid-line-color\s*\)/,
   );
+  expect(block).toMatch(/::part\(cell-last-row\)[^{]*\{[^}]*border-block-end-width:\s*0/);
   expect(block).not.toMatch(/::part\(cell\)[^{]*\{[^}]*border(?:-inline|-right|-left)\s*:/);
   expectSlimLaneTokens(block);
   expectViewOnlyHits(block);
