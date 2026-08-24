@@ -61,6 +61,31 @@ describe("calendar workspace sidebar overlay", () => {
   });
 });
 
+describe("calendar workspace sidebar heading", () => {
+  it("does not render Plus or subscribe icon buttons on the My calendars heading", () => {
+    expect(tsx).toMatch(/<SidebarSection title=\{L\.myCalendarsSection\}>/);
+    expect(tsx).not.toMatch(/headingActions=/);
+    expect(tsx).not.toMatch(/onAdd=\{canCreateCalendar/);
+    expect(tsx).not.toMatch(/addLabel=\{L\.newCalendar\}/);
+  });
+});
+
+describe("calendar workspace subscribed sidebar row", () => {
+  it("places an Rss mark immediately after the title, not in a trailing action slot", () => {
+    expect(tsx).toMatch(
+      /calendar-sidebar-row__title[\s\S]*calendar-sidebar-row__name[\s\S]*SubscribedCalendarMark/,
+    );
+    expect(tsx).toMatch(/<Rss className="size-3\.5"/);
+    expect(tsx).not.toMatch(/Link2/);
+    expect(tsx).not.toMatch(/calendar-sidebar-row__edit[\s\S]*SubscribedCalendarMark/);
+    expect(css).toMatch(/\.calendar-sidebar-row__title \{[^}]*inline-flex/);
+    expect(css).toMatch(/\.calendar-sidebar-row__subscription \{[^}]*size-3\.5/);
+    expect(
+      css.match(/\.calendar-workspace \.calendar-sidebar-row__name \{[^}]+\}/)?.[0],
+    ).not.toMatch(/flex-1/);
+  });
+});
+
 describe("calendar workspace stacked header", () => {
   it("uses a viewport two-row grid so flattening main cannot drop the query", () => {
     expect(css).toMatch(

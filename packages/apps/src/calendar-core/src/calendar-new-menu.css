@@ -1,0 +1,20 @@
+@import "../../styles.css" reference;
+
+.calendar-new-menu {
+  @apply flex w-full min-w-0 items-stretch gap-0;
+}
+
+.calendar-new-menu__main--solo {
+  @apply w-full;
+}
+
+/* Beat `.button.button--pill` (equal 2-class specificity / unstable CSS order). */
+.calendar-new-menu .calendar-new-menu__main.button.button--pill {
+  @apply min-w-0 flex-1 rounded-e-none;
+}
+
+.calendar-new-menu .calendar-new-menu__menu.button {
+  @apply w-9 shrink-0 rounded-s-none rounded-e-[var(--control-radius-button-pill)] px-0;
+  border-inline-start: 1px solid
+    color-mix(in oklab, var(--button-primary-fg, #ffffff) 22%, transparent);
+}

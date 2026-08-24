@@ -33,6 +33,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'search_terms',
             'jmap_contact_states',
             'calendar_rsvp_tokens',
+            'calendar_subscriptions',
+            'calendar_feed_tokens',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -43,5 +45,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'owner_user'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token_hash'));
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token_hash'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token'));
     }
 }

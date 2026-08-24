@@ -2,6 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { resolveEventEnd, type CalendarEvent as EngineCalendarEvent } from "@/lib/calendar-engine";
 import {
   internalRecurrenceRuleToJs,
+  localToPlainDateTime,
   type JmapCalendarEvent,
   type JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
@@ -299,7 +300,7 @@ export function formRecurrenceRules(
 
 export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventFormValue {
   const allDay = event.showWithoutTime === true;
-  const start = Temporal.PlainDateTime.from(event.start);
+  const start = localToPlainDateTime(event.start);
   const duration = Temporal.Duration.from(event.duration ?? (allDay ? "P1D" : "PT1H"));
   const end = start.add(duration);
   // All-day events span [startDate, endDate); the form shows the inclusive last day.

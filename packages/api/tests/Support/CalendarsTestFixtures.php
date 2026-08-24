@@ -68,6 +68,15 @@ trait CalendarsTestFixtures
         ]);
     }
 
+    protected function seedNamedCalendarFor(string $username, string $uri, string $displayName): void
+    {
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $caldav->createCalendar('principals/'.$username, $uri, [
+            '{DAV:}displayname' => $displayName,
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
+        ]);
+    }
+
     protected function seedEventViaPdo(
         string $username,
         string $eventUri,

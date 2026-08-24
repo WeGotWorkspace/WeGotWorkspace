@@ -5,7 +5,9 @@ import type {
   CalendarEventDraft,
   CalendarInfo,
   CalendarPatch,
+  CalendarSubscriptionDraft,
 } from "@/calendar-core/src/calendar-types";
+import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import {
   createCalendarEventLive,
@@ -16,6 +18,16 @@ import {
   patchCalendarEventLive,
   patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
+import {
+  createCalendarSubscriptionLive,
+  deleteCalendarSubscriptionLive,
+  getCalendarFeedLive,
+  getCalendarSubscriptionLive,
+  listCalendarSubscriptionsLive,
+  publishCalendarFeedLive,
+  refreshStaleCalendarSubscriptionsLive,
+  unpublishCalendarFeedLive,
+} from "@/lib/api/wgw/calendar-ics-webcal";
 import {
   dismissCalendarSchedulingNotification,
   fetchCalendarSchedulingInvitees,
@@ -53,6 +65,30 @@ import { readOfflineCalendarsUsername } from "@/lib/offline/offline-session";
 function rethrowUnlessOfflineQueue(error: unknown): void {
   if (error instanceof DOMException && error.name === "AbortError") throw error;
   if (!isFetchNetworkError(error)) throw error;
+}
+
+function requireOnline(action: string): void {
+  if (!readBrowserOnline()) {
+    throw new Error(`${action} requires a connection`);
+  }
+}
+
+async function withSubscriptionUrls(
+  bootstrap: CalendarAppBootstrap,
+): Promise<CalendarAppBootstrap> {
+  const list = await listCalendarSubscriptionsLive().catch(() => []);
+  if (list.length === 0) return bootstrap;
+  const urlById = new Map(list.map((row) => [row.id, row.url]));
+  return {
+    ...bootstrap,
+    data: {
+      ...bootstrap.data,
+      calendars: bootstrap.data.calendars.map((calendar) => {
+        const url = calendar.subscriptionId ? urlById.get(calendar.subscriptionId) : undefined;
+        return url ? { ...calendar, subscriptionUrl: url } : calendar;
+      }),
+    },
+  };
 }
 
 const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<CalendarOutboxFlushResult>();
@@ -253,6 +289,60 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         return queueOffline();
       }
     },
+    subscribeCalendar: async (draft: CalendarSubscriptionDraft) => {
+      requireOnline("Subscribe");
+      const subscription = await createCalendarSubscriptionLive({
+        url: draft.url,
+        ...(draft.name?.trim() ? { name: draft.name.trim() } : {}),
+        ...(draft.color?.trim() ? { color: draft.color.trim() } : {}),
+        ...(draft.groupSlug?.trim() ? { groupSlug: draft.groupSlug.trim() } : {}),
+      });
+      const groupSlug = draft.groupSlug?.trim() || null;
+      const created: CalendarInfo = {
+        id: subscription.calendarId,
+        name: subscription.name?.trim() || draft.name?.trim() || "Subscribed calendar",
+        color: subscription.color?.trim() || draft.color?.trim() || DEFAULT_CALENDAR_COLOR,
+        mayWrite: false,
+        mayDelete: true,
+        subscriptionId: subscription.id,
+        subscriptionUrl: subscription.url,
+        ...(groupSlug ? { scope: "group" as const, groupSlug } : { scope: "personal" as const }),
+      };
+      await writeCalendarsToCache(username, (calendars) => [...calendars, created]);
+      await runner.flush();
+      return created;
+    },
+    getCalendarSubscription: async (subscriptionId) => {
+      requireOnline("Load subscription");
+      return getCalendarSubscriptionLive(subscriptionId);
+    },
+    unsubscribeCalendar: async (subscriptionId) => {
+      requireOnline("Unsubscribe");
+      const subscription = await getCalendarSubscriptionLive(subscriptionId).catch(() => null);
+      await deleteCalendarSubscriptionLive(subscriptionId);
+      if (subscription?.calendarId) {
+        await writeCalendarsToCache(username, (calendars) =>
+          calendars.filter((calendar) => calendar.id !== subscription.calendarId),
+        );
+      }
+      await runner.flush();
+    },
+    refreshStaleCalendarSubscriptions: async () => {
+      if (!readBrowserOnline()) return false;
+      return refreshStaleCalendarSubscriptionsLive();
+    },
+    getCalendarFeed: async (calendarId) => {
+      requireOnline("Load calendar feed");
+      return getCalendarFeedLive(calendarId);
+    },
+    publishCalendarFeed: async (calendarId) => {
+      requireOnline("Publish");
+      return publishCalendarFeedLive(calendarId);
+    },
+    unpublishCalendarFeed: async (calendarId) => {
+      requireOnline("Unpublish");
+      await unpublishCalendarFeedLive(calendarId);
+    },
     deleteCalendar: async (calendarId: string) => {
       const queueOffline = async () => {
         const cached = await readCalendarBootstrapFromCache(username);
@@ -341,7 +431,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
 }
 
 export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstrap> {
-  const bootstrap = await fetchCalendarLiveBootstrap();
+  let bootstrap = await fetchCalendarLiveBootstrap();
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Calendar bootstrap missing username");
@@ -352,6 +442,15 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   await writeCalendarBootstrapToCache(username, bootstrap);
   if (readBrowserOnline()) {
     await flushCalendarsOutboxAndReport(username);
+    const refreshed = await refreshStaleCalendarSubscriptionsLive().catch(() => false);
+    if (refreshed) {
+      bootstrap = await fetchCalendarLiveBootstrap();
+      await writeCalendarBootstrapToCache(username, bootstrap);
+      await flushCalendarsOutboxAndReport(username);
+    }
+    const merged = (await readCalendarBootstrapFromCache(username)) ?? bootstrap;
+    bootstrap = await withSubscriptionUrls(merged).catch(() => merged);
+    await writeCalendarBootstrapToCache(username, bootstrap);
   }
   const cached = await readCalendarBootstrapFromCache(username);
   return cached ?? bootstrap;

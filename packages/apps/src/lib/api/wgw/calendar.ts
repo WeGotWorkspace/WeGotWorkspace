@@ -96,6 +96,9 @@ function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
     mayDelete: calendar.myRights ? calendar.myRights.mayDelete === true : true,
     scope: calendar.scope === "group" || groupSlug ? "group" : "personal",
     groupSlug,
+    ...(typeof calendar.subscriptionId === "string" && calendar.subscriptionId
+      ? { subscriptionId: calendar.subscriptionId }
+      : {}),
   };
 }
 

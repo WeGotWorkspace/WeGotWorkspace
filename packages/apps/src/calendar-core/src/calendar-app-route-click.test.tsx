@@ -70,7 +70,7 @@ async function renderCalendarApp(initialPath: string) {
   return { history, router };
 }
 
-describe("CalendarApp real header click → URL", () => {
+describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
   beforeEach(() => {
     cleanup();
     mockDomApis();

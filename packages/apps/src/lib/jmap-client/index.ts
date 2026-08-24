@@ -63,6 +63,7 @@ export {
   internalGroupToJmapEvent,
   jmapEventToInternalRows,
 } from "./mapping/event.js";
+export { localToPlainDateTime } from "./mapping/datetime.js";
 export { internalRecurrenceRuleToJs, jsRecurrenceRuleToInternal } from "./mapping/recurrence.js";
 export {
   allDayEvent as mockAllDayEvent,

@@ -577,6 +577,7 @@ final class CalendarEventRepository
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);
+        $this->assertAcceptsEventWrites($username, $instance);
 
         return DB::connection('wgw')->transaction(function () use ($username, $payload, $instance): array {
             CalendarInstance::query()->whereKey($instance->getKey())->lockForUpdate()->first();
@@ -683,6 +684,7 @@ final class CalendarEventRepository
             }
 
             $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
+            $this->assertAcceptsEventWrites($username, $located['instance']);
 
             return $this->finishDelete($username, $located);
         });
@@ -769,6 +771,7 @@ final class CalendarEventRepository
             $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
             $instance = $located['instance'];
+            $this->assertAcceptsEventWrites($username, $instance);
             $object = $located['object'];
             $eventUri = (string) $object->uri;
             $existingEvent = $this->mapper->toCalendarEvent(
@@ -868,8 +871,16 @@ final class CalendarEventRepository
         if ($target === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
+        $this->assertAcceptsEventWrites($username, $target);
 
         return $target;
+    }
+
+    private function assertAcceptsEventWrites(string $username, CalendarInstance $instance): void
+    {
+        if ($this->calendars->isSubscriptionCalendar($username, $this->calendars->apiIdForInstance($instance))) {
+            throw new ApiHttpException(403, 'Subscription calendars are read-only.', 'forbidden');
+        }
     }
 
     /**

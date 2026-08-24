@@ -6,6 +6,7 @@ import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type {
   CalendarAPIOperations,
   CalendarEventDraft,
+  CalendarFeedInfo,
   CalendarInfo,
   CalendarPresentation,
   CalendarUIData,
@@ -54,6 +55,12 @@ import type {
 } from "@/calendar-core/src/calendar-calendar-dialog";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import { sortCalendarsForSidebar } from "@/calendar-core/src/calendar-sidebar-order";
+import {
+  canPublishCalendar,
+  isSubscribedCalendar,
+  writableCalendarId,
+} from "@/calendar-core/src/calendar-subscription";
+import { copyShareText } from "@/share-ui/share-path-utils";
 import type { CalendarRecurrenceScopeDialogState } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import {
   eventIsRecurringSeries,
@@ -190,6 +197,8 @@ export function useCalendarController({
   );
   const [calendarDialog, setCalendarDialog] = useState<CalendarCalendarDialogState>(null);
   const [calendarDialogBusy, setCalendarDialogBusy] = useState(false);
+  const [publishFeed, setPublishFeed] = useState<CalendarFeedInfo | null>(null);
+  const [publishBusy, setPublishBusy] = useState(false);
   const [recurrenceScopeDialog, setRecurrenceScopeDialog] =
     useState<CalendarRecurrenceScopeDialogState>(null);
   const pendingScopeResolveRef = useRef<((scope: RecurrenceScopeChoice | null) => void) | null>(
@@ -381,21 +390,22 @@ export function useCalendarController({
 
   const openCreateEvent = useCallback(
     (dateISO?: string, startTime?: string) => {
-      if (!defaultCalendarId) return;
-      ensureCalendarVisible(defaultCalendarId);
+      const calendarId = writableCalendarId(calendars, defaultCalendarId);
+      if (!calendarId) return;
+      ensureCalendarVisible(calendarId);
       setHeldCreateIntent(null);
       setEditor({
         mode: "create",
-        form: emptyCalendarEventForm(defaultCalendarId, dateISO ?? anchor, startTime),
+        form: emptyCalendarEventForm(calendarId, dateISO ?? anchor, startTime),
       });
     },
-    [defaultCalendarId, anchor, ensureCalendarVisible],
+    [calendars, defaultCalendarId, anchor, ensureCalendarVisible],
   );
 
   /** Drag/click create from the Lit surface — dialog only; nothing persisted yet. */
   const openCreateFromSurface = useCallback(
     (intent: CalendarSurfaceCreateIntent) => {
-      const calendarId = intent.calendarId || defaultCalendarId;
+      const calendarId = writableCalendarId(calendars, intent.calendarId || defaultCalendarId);
       if (!calendarId) return;
       ensureCalendarVisible(calendarId);
       setHeldCreateIntent(null);
@@ -404,7 +414,7 @@ export function useCalendarController({
         form: createIntentToForm(calendarId, intent),
       });
     },
-    [defaultCalendarId, ensureCalendarVisible],
+    [calendars, defaultCalendarId, ensureCalendarVisible],
   );
 
   const askRecurrenceScope = useCallback((request: RecurrenceScopeRequest) => {
@@ -446,6 +456,8 @@ export function useCalendarController({
         pendingDeletedEventIds,
       });
       if (!preview) return;
+      const calendar = calendars.find((entry) => entry.id === preview.form.calendarId);
+      if (calendar && calendar.mayWrite === false) return;
 
       // Open the editor immediately — recurrence scope is chosen on Save / Delete.
       setHeldCreateIntent(null);
@@ -456,7 +468,7 @@ export function useCalendarController({
         ...(preview.recurrenceId ? { recurrenceId: preview.recurrenceId } : {}),
       });
     },
-    [data.events, surfaceEvents, pendingDeletedEventIds],
+    [calendars, data.events, surfaceEvents, pendingDeletedEventIds],
   );
 
   const closeEditor = useCallback(() => {
@@ -802,18 +814,31 @@ export function useCalendarController({
   ]);
 
   const canCreateCalendar = Boolean(operations?.createCalendar);
+  const canSubscribeCalendar = Boolean(operations?.subscribeCalendar);
   const openCreateCalendarDialog = useCallback(() => {
     if (!canCreateCalendar) return;
+    setPublishFeed(null);
     setCalendarDialog({ mode: "create" });
   }, [canCreateCalendar]);
+
+  const openSubscribeCalendarDialog = useCallback(() => {
+    if (!canSubscribeCalendar) return;
+    setPublishFeed(null);
+    setCalendarDialog({ mode: "subscribe" });
+  }, [canSubscribeCalendar]);
 
   const openEditCalendarDialog = useCallback(
     (calendarId: string) => {
       const calendar = calendars.find((entry) => entry.id === calendarId);
       if (!calendar) return;
-      const mayEdit = calendar.mayWrite !== false;
-      const mayDelete = calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
+      const subscribed = isSubscribedCalendar(calendar);
+      const mayEdit = calendar.mayWrite !== false || subscribed;
+      const mayDelete = subscribed
+        ? Boolean(operations?.unsubscribeCalendar)
+        : calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
       if (!mayEdit && !mayDelete) return;
+      const canPublish = canPublishCalendar(calendar) && Boolean(operations?.publishCalendarFeed);
+      setPublishFeed(null);
       setCalendarDialog({
         mode: "edit",
         calendarId: calendar.id,
@@ -822,9 +847,43 @@ export function useCalendarController({
         mayDelete,
         scope: calendar.scope === "group" ? "group" : "personal",
         groupSlug: calendar.groupSlug ?? null,
+        subscriptionId: calendar.subscriptionId ?? null,
+        sourceUrl: calendar.subscriptionUrl,
+        canPublish,
       });
+      if (subscribed && calendar.subscriptionId && !calendar.subscriptionUrl) {
+        void operations
+          ?.getCalendarSubscription?.(calendar.subscriptionId)
+          .then((subscription) => {
+            setCalendarDialog((current) =>
+              current?.mode === "edit" && current.calendarId === calendarId
+                ? { ...current, sourceUrl: subscription.url }
+                : current,
+            );
+            setCalendars((prev) =>
+              prev.map((entry) =>
+                entry.id === calendarId ? { ...entry, subscriptionUrl: subscription.url } : entry,
+              ),
+            );
+          })
+          .catch(() => undefined);
+      }
+      if (canPublish && operations?.getCalendarFeed) {
+        setPublishBusy(true);
+        void operations
+          .getCalendarFeed(calendar.id)
+          .then((feed) => {
+            setPublishFeed(feed);
+          })
+          .catch(() => {
+            setPublishFeed(null);
+          })
+          .finally(() => {
+            setPublishBusy(false);
+          });
+      }
     },
-    [calendars, operations?.deleteCalendar],
+    [calendars, operations],
   );
 
   const closeCalendarDialog = useCallback(() => {
@@ -836,11 +895,26 @@ export function useCalendarController({
       if (!operations || !calendarDialog) return;
       const name = input.name.trim();
       const color = input.color.trim() || DEFAULT_CALENDAR_COLOR;
-      if (!name) return;
+      if (calendarDialog.mode !== "subscribe" && !name) return;
 
       setCalendarDialogBusy(true);
       void (async () => {
         try {
+          if (calendarDialog.mode === "subscribe") {
+            if (!operations.subscribeCalendar || !input.url?.trim()) return;
+            const created = await operations.subscribeCalendar({
+              url: input.url.trim(),
+              ...(input.nameTouched && name ? { name } : {}),
+              color,
+              ...(input.groupSlug?.trim() ? { groupSlug: input.groupSlug.trim() } : {}),
+            });
+            setCalendars((prev) => sortCalendarsForSidebar([...prev, created]));
+            selectDefaultCalendar(created.id);
+            show(L.toastCalendarSubscribed);
+            setCalendarDialog(null);
+            onMutated?.();
+            return;
+          }
           if (calendarDialog.mode === "create") {
             if (!operations.createCalendar) return;
             const created = await operations.createCalendar({
@@ -878,7 +952,11 @@ export function useCalendarController({
           setCalendarDialog(null);
           onMutated?.();
         } catch {
-          showError(L.toastCalendarSaveFailed);
+          showError(
+            calendarDialog.mode === "subscribe"
+              ? L.toastCalendarSubscribeFailed
+              : L.toastCalendarSaveFailed,
+          );
         } finally {
           setCalendarDialogBusy(false);
         }
@@ -893,18 +971,28 @@ export function useCalendarController({
       onMutated,
       L.toastCalendarCreated,
       L.toastCalendarUpdated,
+      L.toastCalendarSubscribed,
+      L.toastCalendarSubscribeFailed,
       L.toastCalendarSaveFailed,
     ],
   );
 
   const deleteCalendarFromDialog = useCallback(() => {
-    const deleteCalendar = operations?.deleteCalendar;
-    if (!deleteCalendar || calendarDialog?.mode !== "edit") return;
+    if (calendarDialog?.mode !== "edit") return;
     const calendarId = calendarDialog.calendarId;
+    const subscriptionId = calendarDialog.subscriptionId;
+    const unsubscribe = subscriptionId ? operations?.unsubscribeCalendar : undefined;
+    const deleteCalendar = operations?.deleteCalendar;
+    if (subscriptionId && !unsubscribe) return;
+    if (!subscriptionId && !deleteCalendar) return;
     setCalendarDialogBusy(true);
     void (async () => {
       try {
-        await deleteCalendar(calendarId);
+        if (subscriptionId && unsubscribe) {
+          await unsubscribe(subscriptionId);
+        } else if (deleteCalendar) {
+          await deleteCalendar(calendarId);
+        }
         setCalendars((prev) => {
           const next = prev.filter((entry) => entry.id !== calendarId);
           const nextDefault = pickDefaultCalendarId(next);
@@ -917,7 +1005,7 @@ export function useCalendarController({
           next.delete(calendarId);
           return next;
         });
-        show(L.toastCalendarDeleted);
+        show(subscriptionId ? L.toastCalendarUnsubscribed : L.toastCalendarDeleted);
         setCalendarDialog(null);
         onMutated?.();
       } catch {
@@ -933,8 +1021,63 @@ export function useCalendarController({
     showError,
     onMutated,
     L.toastCalendarDeleted,
+    L.toastCalendarUnsubscribed,
     L.toastCalendarSaveFailed,
   ]);
+
+  const toggleCalendarPublish = useCallback(
+    (enabled: boolean) => {
+      if (calendarDialog?.mode !== "edit" || !calendarDialog.canPublish) return;
+      const calendarId = calendarDialog.calendarId;
+      if (enabled) {
+        if (!operations?.publishCalendarFeed) return;
+        setPublishBusy(true);
+        void operations
+          .publishCalendarFeed(calendarId)
+          .then((feed) => {
+            setPublishFeed(feed);
+            show(L.toastFeedPublished);
+          })
+          .catch(() => {
+            showError(L.toastFeedFailed);
+          })
+          .finally(() => {
+            setPublishBusy(false);
+          });
+        return;
+      }
+      if (!operations?.unpublishCalendarFeed) return;
+      setPublishBusy(true);
+      void operations
+        .unpublishCalendarFeed(calendarId)
+        .then(() => {
+          setPublishFeed(null);
+          show(L.toastFeedUnpublished);
+        })
+        .catch(() => {
+          showError(L.toastFeedFailed);
+        })
+        .finally(() => {
+          setPublishBusy(false);
+        });
+    },
+    [
+      calendarDialog,
+      operations,
+      show,
+      showError,
+      L.toastFeedPublished,
+      L.toastFeedUnpublished,
+      L.toastFeedFailed,
+    ],
+  );
+
+  const copyCalendarFeedUrl = useCallback(async () => {
+    const value = publishFeed?.httpsUrl;
+    if (!value) return;
+    const copied = await copyShareText(value);
+    if (copied) show(L.toastFeedCopied);
+  }, [publishFeed, show, L.toastFeedCopied]);
 
   const truncateSeriesFromOccurrence = useCallback(
     async (args: { masterId: string; recurrenceId: string; allDay?: boolean }) => {
@@ -1152,13 +1295,19 @@ export function useCalendarController({
     defaultCalendarId,
     operations,
     canCreateCalendar,
+    canSubscribeCalendar,
     calendarDialog,
     calendarDialogBusy,
     openCreateCalendarDialog,
+    openSubscribeCalendarDialog,
     openEditCalendarDialog,
     closeCalendarDialog,
     saveCalendarDialog,
     deleteCalendarFromDialog,
+    publishFeed,
+    publishBusy,
+    toggleCalendarPublish,
+    copyCalendarFeedUrl,
     undoLatest,
     queueMutation,
     surfaceEventsForView,

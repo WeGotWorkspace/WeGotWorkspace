@@ -21,8 +21,10 @@ use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -79,6 +81,8 @@ Route::get('calendar/rsvp/{token}', [CalendarRsvpController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+');
 Route::post('calendar/rsvp/{token}', [CalendarRsvpController::class, 'respond'])
     ->where('token', '[A-Za-z0-9]+');
+Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicShow'])
+    ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
@@ -191,6 +195,21 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
             ->where('notificationId', '[^/]+');
         Route::delete('calendars/scheduling/notifications/{notificationId}', [CalendarSchedulingNotificationsController::class, 'destroy'])
             ->where('notificationId', '[^/]+');
+
+        Route::get('calendars/subscriptions', [CalendarSubscriptionsController::class, 'index']);
+        Route::post('calendars/subscriptions', [CalendarSubscriptionsController::class, 'store']);
+        Route::get('calendars/subscriptions/{id}', [CalendarSubscriptionsController::class, 'show'])
+            ->where('id', '[A-Za-z0-9-]+');
+        Route::delete('calendars/subscriptions/{id}', [CalendarSubscriptionsController::class, 'destroy'])
+            ->where('id', '[A-Za-z0-9-]+');
+        Route::post('calendars/subscriptions/{id}/refresh', [CalendarSubscriptionsController::class, 'refresh'])
+            ->where('id', '[A-Za-z0-9-]+');
+        Route::get('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'show'])
+            ->where('calendarId', '[A-Za-z0-9_-]+');
+        Route::post('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'store'])
+            ->where('calendarId', '[A-Za-z0-9_-]+');
+        Route::delete('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'destroy'])
+            ->where('calendarId', '[A-Za-z0-9_-]+');
     });
 
     Route::middleware('wgw.tasks')->group(function (): void {

@@ -192,7 +192,15 @@
             "type": "boolean"
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "JMAP Calendar visibility (whether the calendar is shown). Not a remote ICS/webcal subscription marker."
+          },
+          "subscriptionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Owner-visible id of the live ICS/webcal subscription backing this collection; null for ordinary calendars. Distinct from isSubscribed."
           },
           "scope": {
             "type": "string",
@@ -240,6 +248,7 @@
           "sortOrder": 0,
           "isDefault": true,
           "isSubscribed": true,
+          "subscriptionId": null,
           "scope": "personal",
           "groupSlug": null,
           "shareWith": null,
@@ -5631,6 +5640,381 @@
           }
         },
         "x-wgw-access": "user"
+      }
+    },
+    "/calendars/subscriptions": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "List ICS / webcal subscriptions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscriptions owned by the signed-in user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscriptionListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Subscribe to a remote ICS / webcal URL",
+        "description": "Fetches the remote feed (SSRF-safe), creates a personal read-only calendar collection, and persists VEVENTs. webcal:// is normalized to https://.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSubscriptionCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription created after a successful first fetch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/subscriptions/{id}": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Show an ICS / webcal subscription",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Unsubscribe and delete the subscription calendar",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Subscription and its calendar collection removed"
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/subscriptions/{id}/refresh": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Refresh a remote ICS / webcal subscription",
+        "description": "Re-fetches the remote feed (SSRF-safe) and upserts or deletes VEVENTs by UID.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription after a successful refresh",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/{calendarId}/feed": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Get published ICS / webcal feed URLs for a calendar",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "calendarId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published feed URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeed"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Publish a calendar as an ICS / webcal feed",
+        "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "calendarId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing published feed URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeed"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Feed published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeed"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Revoke a published ICS / webcal feed",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "calendarId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Feed revoked; subsequent public GET is 404"
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/feeds/{token}": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Download a public ICS / webcal feed",
+        "description": "Unauthenticated VCALENDAR of the published collection. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens are 404.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque feed token. An optional .ics suffix is accepted (e.g. {token}.ics)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "VCALENDAR of the published collection",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "guest"
       }
     },
     "/jmap": {

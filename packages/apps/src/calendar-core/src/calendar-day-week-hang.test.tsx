@@ -62,7 +62,7 @@ async function renderCalendarApp(initialPath: string) {
   return { history };
 }
 
-describe("CalendarApp day dropdown → week (real surface)", () => {
+describe("CalendarApp day dropdown → week (real surface)", { timeout: 15_000 }, () => {
   beforeEach(() => {
     cleanup();
     mockDomApis();

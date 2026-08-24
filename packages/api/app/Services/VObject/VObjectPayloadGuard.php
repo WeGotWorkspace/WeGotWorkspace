@@ -63,6 +63,27 @@ final class VObjectPayloadGuard
         return $document;
     }
 
+    /**
+     * Remote ICS / webcal feeds are size-capped but may contain more VEVENTs
+     * than a user-uploaded object (holiday / team calendars).
+     */
+    public function readICalendarFeed(string $ics, string $domain = 'calendars'): VCalendar
+    {
+        $this->assertIcsSize($ics, $domain);
+
+        try {
+            $document = Reader::read($ics);
+        } catch (\Throwable) {
+            throw new ApiHttpException(400, 'Invalid iCalendar payload.', 'bad_request');
+        }
+
+        if (! $document instanceof VCalendar) {
+            throw new ApiHttpException(400, 'Input is not an iCalendar document.', 'bad_request');
+        }
+
+        return $document;
+    }
+
     public function assertVCardSize(string $vcard, string $domain = 'contacts'): void
     {
         $bytes = strlen($vcard);
