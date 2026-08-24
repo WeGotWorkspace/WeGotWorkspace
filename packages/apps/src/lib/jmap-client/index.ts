@@ -53,6 +53,7 @@ export type {
   JSCalendarLocalDateTime,
   JSCalendarPatchObject,
   JSCalendarRecurrenceRule,
+  JSCalendarWeekday,
 } from "./jscalendar/types.js";
 export { jmapCalendarsToMap, jmapCalendarToInternal } from "./mapping/calendar.js";
 export type { InternalEventGroup, InternalEventRow } from "./mapping/event.js";

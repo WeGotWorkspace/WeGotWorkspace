@@ -1940,9 +1940,16 @@ export class TimeLine extends LitElement {
     const { w0, w1 } = this.#effectiveWindow(span);
     const windowed = w0 > 0 || w1 < span;
     const gridClass = this.#effectiveGridInterval() > 0 && w1 > w0 ? " cell-main--grid" : "";
+    const isLastRow = Math.floor(cell / cols) === Math.floor((cellCount - 1) / cols);
+    const lastRowPart = isLastRow ? " cell-last-row" : "";
 
     return html`
-      <div class="cell" part="cell" data-cell=${cell} style="${laneVars}">
+      <div
+        class="cell${lastRowPart}"
+        part="cell${lastRowPart}"
+        data-cell=${cell}
+        style="${laneVars}"
+      >
         ${this.headerTemplate
           ? html`<div class="cell-header" part="cell-header">
               ${this.renderHeaderTemplate(cell)}

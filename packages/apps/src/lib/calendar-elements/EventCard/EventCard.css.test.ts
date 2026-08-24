@@ -56,6 +56,43 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(summaryMain).not.toContain("--_lc-time-label-font-size");
   });
 
+  it("lets compact month override heading padding and shell pointer-events", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(
+      /\.event-card-shell\s*\{[\s\S]*pointer-events:\s*var\(\s*--_lc-event-card-pointer-events,\s*auto\s*\)/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*align-items:\s*var\(\s*--_lc-event-card-heading-align-items,\s*flex-start\s*\)/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*padding-block:\s*var\(\s*--_lc-event-card-heading-padding-block,\s*0\.5rem\s*\)/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*line-height:\s*var\(\s*--_lc-event-card-heading-line-height,\s*1\.25\s*\)/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*31px\)[\s\S]*padding-block:\s*var\(\s*--_lc-event-card-heading-padding-block,\s*0\.375rem\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-recurring-icon-wrap\s*\{[\s\S]*display:\s*var\(\s*--_lc-event-card-recurring-icon-display,\s*inline-flex\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-shell::after[\s\S]*display:\s*var\(\s*--_lc-event-card-accent-bar-display,\s*block\s*\)/,
+    );
+    expect(css).toMatch(
+      /padding-inline-start:\s*var\(\s*--_lc-event-card-heading-padding-inline-start,\s*13px\s*\)/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*text-overflow:\s*var\(\s*--_lc-event-card-heading-overflow,\s*ellipsis\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-compact-label\s*\{[\s\S]*width:\s*100%;[\s\S]*mask-image:\s*var\(\s*--_lc-event-card-heading-mask,\s*none\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.event-card-compact-label\s*\{[\s\S]*-webkit-mask-image:\s*var\(\s*--_lc-event-card-heading-mask,\s*none\s*\)/,
+    );
+  });
+
   it("insets the card fill with one shared token on all four sides", () => {
     const css = readCss("EventCard.css");
     expect(css).toMatch(/--_lc-event-card-inset:\s*1px/);

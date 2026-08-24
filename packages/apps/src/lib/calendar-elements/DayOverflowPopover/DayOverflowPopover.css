@@ -4,6 +4,21 @@
 :host {
   --_lc-overflow-popover-gap: 8px;
   --_lc-event-height: var(--_lc-default-event-height, 32px);
+  --event-height: var(--_lc-default-event-height, 32px);
+  --time-line-event-min-size: var(--_lc-default-event-height, 32px);
+  /* Isolate from compact-month timeline tokens (they inherit into this host).
+     `initial` is the guaranteed-invalid custom property so EventCard fallbacks apply. */
+  --_lc-event-card-heading-padding-block: initial;
+  --_lc-event-card-heading-align-items: initial;
+  --_lc-event-card-heading-line-height: initial;
+  --_lc-event-card-heading-padding-inline-start: initial;
+  --_lc-time-label-font-size: initial;
+  --_lc-event-card-pointer-events: initial;
+  --_lc-event-card-recurring-icon-display: initial;
+  --_lc-event-card-accent-bar-display: initial;
+  --_lc-event-card-heading-overflow: initial;
+  --_lc-event-card-heading-mask: initial;
+  --_lc-event-card-heading-mask-rtl: initial;
   --_lc-event-card-compact-label-display: block;
   @apply hidden m-0 rounded-[10px] border-0 overflow-hidden p-0 fixed h-auto text-inherit;
   z-index: var(--_lc-z-popover);
