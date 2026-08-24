@@ -47,8 +47,18 @@ describe("CalendarPublishSection", () => {
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
     expect(onCopyHttps).toHaveBeenCalled();
 
+    const httpsField = screen.getByRole("textbox", {
+      name: defaultCalendarLabels.publishCalendarHttpsLabel,
+    }) as HTMLInputElement;
+    expect(httpsField.value).toBe(feed.httpsUrl);
+    expect(httpsField.classList.contains("share-dialog__input")).toBe(true);
+    expect(httpsField.closest(".share-dialog__link-row")).not.toBeNull();
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+
     const openLink = screen.getByRole("link", { name: defaultCalendarLabels.openInCalendar });
     expect(openLink.getAttribute("href")).toBe(feed.webcalUrl);
+    expect(openLink.classList.contains("share-dialog__icon-link")).toBe(true);
+    expect(openLink.classList.contains("icon-button--size-sm")).toBe(true);
     expect(screen.queryByDisplayValue(feed.webcalUrl)).toBeNull();
 
     const toggle = screen.getByRole("group", { name: defaultCalendarLabels.publishCalendarTitle });

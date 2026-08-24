@@ -154,6 +154,10 @@
   @apply flex min-w-0 items-center gap-2;
 }
 
+.share-dialog__icon-link {
+  @apply no-underline;
+}
+
 .share-dialog__input {
   @apply min-w-0 flex-1;
 }

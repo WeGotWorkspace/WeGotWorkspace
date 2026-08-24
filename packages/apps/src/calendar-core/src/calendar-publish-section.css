@@ -3,15 +3,3 @@
 .calendar-publish-section {
   @apply mt-4;
 }
-
-.calendar-publish-section__link-controls {
-  @apply mt-1;
-}
-
-.calendar-publish-section__open.icon-button--size-sm {
-  @apply no-underline px-0;
-  width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  --button-icon-size: 0.875rem;
-}

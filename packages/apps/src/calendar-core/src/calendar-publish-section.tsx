@@ -2,13 +2,8 @@ import { useState } from "react";
 import { Copy, ExternalLink, Globe2 } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
-import { Button, buttonVariants } from "@/button/src/button";
-import {
-  BUTTON_ICON_SLOT_CLASSNAME,
-  ICON_BUTTON_SIZE_CLASSNAMES,
-} from "@/button/src/button.shared";
+import { buttonVariants } from "@/button/src/button";
 import { Switch } from "@/ui/switch";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,10 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
+import { ShareDialogIconLink } from "@/share-ui/share-dialog-icon-link";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import type { CalendarFeedInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
 import "./calendar-publish-section.css";
 
@@ -48,7 +43,7 @@ export function CalendarPublishSection({
 
   return (
     <Card
-      className="calendar-publish-section"
+      className="calendar-publish-section share-dialog"
       titleIcon={<Globe2 className="size-4" />}
       title={labels.publishCalendarTitle}
       description={enabled ? labels.publishCalendarEnabledHint : labels.publishCalendarDisabledHint}
@@ -70,7 +65,7 @@ export function CalendarPublishSection({
       }
     >
       {enabled && feed ? (
-        <div className="share-dialog__link-controls calendar-publish-section__link-controls">
+        <div className="share-dialog__link-controls">
           <div className="share-dialog__link-row">
             <ShareDialogInput
               type="text"
@@ -86,23 +81,11 @@ export function CalendarPublishSection({
               variant="outline"
               onClick={onCopyHttps}
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  asChild
-                  variant="outline"
-                  className={cn("calendar-publish-section__open", ICON_BUTTON_SIZE_CLASSNAMES.sm)}
-                  aria-label={labels.openInCalendar}
-                >
-                  <a href={feed.webcalUrl}>
-                    <span className={BUTTON_ICON_SLOT_CLASSNAME}>
-                      <ExternalLink className="size-3.5" aria-hidden />
-                    </span>
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{labels.openInCalendar}</TooltipContent>
-            </Tooltip>
+            <ShareDialogIconLink
+              href={feed.webcalUrl}
+              label={labels.openInCalendar}
+              icon={<ExternalLink className="size-3.5" aria-hidden />}
+            />
           </div>
         </div>
       ) : null}
