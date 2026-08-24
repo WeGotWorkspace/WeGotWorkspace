@@ -421,6 +421,19 @@ time-line.timeline-timed::part(viewport) {
   color: var(--_lc-in-month-day-color);
 }
 
+.year-day:hover {
+  @apply rounded;
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+.year-day:focus-visible {
+  @apply rounded outline-2 outline-solid -outline-offset-2;
+  outline-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+}
+
 .year-day.is-outside-month {
   color: var(--_lc-outside-month-day-color);
 }
@@ -430,7 +443,7 @@ time-line.timeline-timed::part(viewport) {
 }
 
 .year-day-number {
-  @apply relative inline-flex items-center justify-center min-w-5 h-5 px-[5px] rounded-full;
+  @apply relative inline-flex items-center justify-center min-w-5 h-5 px-[5px] rounded-full text-[12px] font-medium leading-tight;
   font-variant-numeric: tabular-nums;
 }
 
