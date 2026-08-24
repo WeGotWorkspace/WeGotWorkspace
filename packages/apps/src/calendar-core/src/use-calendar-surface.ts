@@ -24,10 +24,7 @@ export type CalendarSurfaceStore = {
   contextValue: EventsAPIContextValue | undefined;
   /** Pulls remote changes (inbound adapter / later Dexie ingest). */
   syncNow: () => void;
-  /**
-   * Persist id for an engine key. Prefers the working-set / map key; adapter
-   * flush remap is a fallback until inbound-only sync owns remaps.
-   */
+  /** Persist id for an engine key (working-set / Dexie map key). */
   resolveJmapId: (engineKey: string) => Promise<string | undefined>;
 };
 
@@ -70,12 +67,8 @@ export function useCalendarSurface(
     }
     const adapter = new JmapEventsAdapter({
       client,
-      onChange: () => {
-        // Inbound-only: surface paint comes from working set + Dexie, not adapter events.
-      },
-      onPersisted: () => onPersistedRef.current?.(),
       onSyncError: () => {
-        // Transient; reconnect flush and the next poll recover.
+        // Transient; the next poll recovers.
       },
       onRemoteEvent: (event) => {
         const username = usernameRef.current;
