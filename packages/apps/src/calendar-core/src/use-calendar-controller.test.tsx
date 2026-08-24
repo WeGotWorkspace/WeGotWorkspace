@@ -1550,4 +1550,167 @@ describe("useCalendarController create calendar directory", () => {
       color: "#ec4899",
     });
   });
+
+  it("subscribes through operations and adds the read-only calendar", async () => {
+    const subscribeCalendar = vi.fn().mockResolvedValue({
+      id: "subscribed-1",
+      name: "Holidays",
+      color: "#8b5cf6",
+      mayWrite: false,
+      mayDelete: true,
+      subscriptionId: "sub-1",
+      subscriptionUrl: "https://feeds.example.test/holidays.ics",
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          subscribeCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openSubscribeCalendarDialog();
+    });
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Holidays",
+        color: "#8b5cf6",
+        url: "webcal://feeds.example.test/holidays.ics",
+        nameTouched: true,
+        groupSlug: "team",
+      });
+    });
+
+    expect(subscribeCalendar).toHaveBeenCalledWith({
+      url: "webcal://feeds.example.test/holidays.ics",
+      name: "Holidays",
+      color: "#8b5cf6",
+      groupSlug: "team",
+    });
+    expect(result.current.calendars.find((entry) => entry.id === "subscribed-1")).toMatchObject({
+      subscriptionId: "sub-1",
+      mayWrite: false,
+    });
+  });
+
+  it("omits inferred names so the API can prefer X-WR-CALNAME", async () => {
+    const subscribeCalendar = vi.fn().mockResolvedValue({
+      id: "subscribed-2",
+      name: "ICS Holidays",
+      color: "#8b5cf6",
+      mayWrite: false,
+      mayDelete: true,
+      subscriptionId: "sub-2",
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          subscribeCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openSubscribeCalendarDialog();
+    });
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Us Public Holidays",
+        color: "#8b5cf6",
+        url: "https://feeds.example.test/us-public-holidays.ics",
+        nameTouched: false,
+      });
+    });
+
+    expect(subscribeCalendar).toHaveBeenCalledWith({
+      url: "https://feeds.example.test/us-public-holidays.ics",
+      color: "#8b5cf6",
+    });
+    expect(result.current.calendars.find((entry) => entry.id === "subscribed-2")?.name).toBe(
+      "ICS Holidays",
+    );
+  });
+
+  it("unsubscribes instead of deleting a subscription calendar", async () => {
+    const unsubscribeCalendar = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          deleteCalendar: vi.fn(),
+          unsubscribeCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("holidays");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      subscriptionId: "sub-holidays",
+    });
+
+    await act(async () => {
+      result.current.deleteCalendarFromDialog();
+    });
+
+    expect(unsubscribeCalendar).toHaveBeenCalledWith("sub-holidays");
+    expect(result.current.calendars.find((entry) => entry.id === "holidays")).toBeUndefined();
+  });
+
+  it("publishes and unpublishes through feed operations", async () => {
+    const publishCalendarFeed = vi.fn().mockResolvedValue({
+      httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
+      webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+    });
+    const unpublishCalendarFeed = vi.fn().mockResolvedValue(undefined);
+    const getCalendarFeed = vi.fn().mockResolvedValue(null);
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          getCalendarFeed,
+          publishCalendarFeed,
+          unpublishCalendarFeed,
+        },
+      }),
+    );
+
+    await act(async () => {
+      result.current.openEditCalendarDialog("default");
+    });
+    expect(getCalendarFeed).toHaveBeenCalledWith("default");
+
+    await act(async () => {
+      result.current.toggleCalendarPublish(true);
+    });
+    expect(publishCalendarFeed).toHaveBeenCalledWith("default");
+    expect(result.current.publishFeed?.httpsUrl).toContain("/calendars/feeds/");
+
+    await act(async () => {
+      result.current.toggleCalendarPublish(false);
+    });
+    expect(unpublishCalendarFeed).toHaveBeenCalledWith("default");
+    expect(result.current.publishFeed).toBeNull();
+  });
 });

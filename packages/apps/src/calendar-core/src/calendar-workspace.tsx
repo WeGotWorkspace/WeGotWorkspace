@@ -1,9 +1,10 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Rss } from "lucide-react";
 import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@/button/src/button";
+import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
-import { TooltipProvider } from "@/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
 import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -59,6 +60,7 @@ import {
   personalCalendarsForSidebar,
   teamCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
+import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { SideDrawer } from "@/ui/side-drawer";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
@@ -73,12 +75,27 @@ function closeSidebarOnMobile(close: () => void) {
   close();
 }
 
+function SubscribedCalendarMark({ label }: { label: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="calendar-sidebar-row__subscription" role="img" aria-label={label}>
+          <Rss className="size-3.5" aria-hidden />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function CalendarSidebarRows({
   calendars,
   hiddenCalendarIds,
   defaultCalendarId,
   canDeleteCalendars,
+  canUnsubscribe,
   editLabel,
+  subscribedLabel,
   pendingCalendarIds,
   pendingSyncLabel,
   onToggleVisibility,
@@ -89,7 +106,9 @@ function CalendarSidebarRows({
   hiddenCalendarIds: ReadonlySet<string>;
   defaultCalendarId?: string;
   canDeleteCalendars: boolean;
+  canUnsubscribe: boolean;
   editLabel: string;
+  subscribedLabel: string;
   pendingCalendarIds?: ReadonlySet<string>;
   pendingSyncLabel: string;
   onToggleVisibility: (calendarId: string) => void;
@@ -100,8 +119,11 @@ function CalendarSidebarRows({
     <>
       {calendars.map((calendar) => {
         const visible = !hiddenCalendarIds.has(calendar.id);
-        const mayEdit = calendar.mayWrite !== false;
-        const mayDelete = calendar.mayDelete !== false && canDeleteCalendars;
+        const subscribed = isSubscribedCalendar(calendar);
+        const mayEdit = calendar.mayWrite !== false || subscribed;
+        const mayDelete = subscribed
+          ? canUnsubscribe
+          : calendar.mayDelete !== false && canDeleteCalendars;
         const canManage = mayEdit || mayDelete;
         const selected = calendar.id === defaultCalendarId;
         return (
@@ -126,7 +148,10 @@ function CalendarSidebarRows({
               className="calendar-sidebar-row__select"
               onClick={() => onSelectDefault(calendar.id)}
             >
-              <span className="calendar-sidebar-row__name">{calendar.name}</span>
+              <span className="calendar-sidebar-row__title">
+                <span className="calendar-sidebar-row__name">{calendar.name}</span>
+                {subscribed ? <SubscribedCalendarMark label={subscribedLabel} /> : null}
+              </span>
               {pendingCalendarIds?.has(calendar.id) ? (
                 <span
                   className="calendar-sidebar-row__pending-sync"
@@ -222,13 +247,19 @@ export function CalendarWorkspace({
     deleteEditorEvent,
     setAnchor,
     canCreateCalendar,
+    canSubscribeCalendar,
     calendarDialog,
     calendarDialogBusy,
     openCreateCalendarDialog,
+    openSubscribeCalendarDialog,
     openEditCalendarDialog,
     closeCalendarDialog,
     saveCalendarDialog,
     deleteCalendarFromDialog,
+    publishFeed,
+    publishBusy,
+    toggleCalendarPublish,
+    copyCalendarFeedUrl,
     surfaceEventsForView,
     askRecurrenceScope,
     recurrenceScopeDialog,
@@ -455,18 +486,29 @@ export function CalendarWorkspace({
             onCloseMobile={() => setSidebarOpen(false)}
             primaryButton={
               canWrite ? (
-                <Button
-                  label={L.newEvent}
-                  icon={<Plus />}
-                  onClick={() => {
+                <CalendarNewMenu
+                  labels={L}
+                  onCreateEvent={() => {
                     closeEventPreview();
                     openCreateEvent();
                     closeSidebarOnMobile(() => setSidebarOpen(false));
                   }}
-                  size="lg"
-                  pill
-                  variant="primary"
-                  className="w-full"
+                  onCreateCalendar={
+                    canCreateCalendar
+                      ? () => {
+                          openCreateCalendarDialog();
+                          closeSidebarOnMobile(() => setSidebarOpen(false));
+                        }
+                      : undefined
+                  }
+                  onSubscribeCalendar={
+                    canSubscribeCalendar
+                      ? () => {
+                          openSubscribeCalendarDialog();
+                          closeSidebarOnMobile(() => setSidebarOpen(false));
+                        }
+                      : undefined
+                  }
                 />
               ) : (
                 <Button
@@ -492,17 +534,15 @@ export function CalendarWorkspace({
               />
             }
           >
-            <SidebarSection
-              title={L.myCalendarsSection}
-              onAdd={canCreateCalendar ? openCreateCalendarDialog : undefined}
-              addLabel={L.newCalendar}
-            >
+            <SidebarSection title={L.myCalendarsSection}>
               <CalendarSidebarRows
                 calendars={myCalendars}
                 hiddenCalendarIds={hiddenCalendarIds}
                 defaultCalendarId={defaultCalendarId}
                 canDeleteCalendars={Boolean(operations?.deleteCalendar)}
+                canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
                 editLabel={L.editCalendar}
+                subscribedLabel={L.subscribedCalendarBadge}
                 pendingCalendarIds={pendingCalendarIds}
                 pendingSyncLabel={L.pendingSync}
                 onToggleVisibility={toggleCalendarVisibility}
@@ -517,7 +557,9 @@ export function CalendarWorkspace({
                   hiddenCalendarIds={hiddenCalendarIds}
                   defaultCalendarId={defaultCalendarId}
                   canDeleteCalendars={Boolean(operations?.deleteCalendar)}
+                  canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
                   editLabel={L.editCalendar}
+                  subscribedLabel={L.subscribedCalendarBadge}
                   pendingCalendarIds={pendingCalendarIds}
                   pendingSyncLabel={L.pendingSync}
                   onToggleVisibility={toggleCalendarVisibility}
@@ -679,11 +721,21 @@ export function CalendarWorkspace({
           locale={locale}
           untitledLabel={L.untitledEvent}
           pendingSync={pendingEventIds?.has(eventPreview.model.eventId) ?? false}
-          canEdit={canWrite}
+          canEdit={
+            canWrite &&
+            calendars.find((calendar) => calendar.id === eventPreview.model.form.calendarId)
+              ?.mayWrite !== false
+          }
           busy={invitations.busy}
           sessionEmail={organizerAddress(session.user)?.email}
           onClose={closeEventPreview}
-          onEdit={canWrite ? openEditFromPreview : undefined}
+          onEdit={
+            canWrite &&
+            calendars.find((calendar) => calendar.id === eventPreview.model.form.calendarId)
+              ?.mayWrite !== false
+              ? openEditFromPreview
+              : undefined
+          }
           onRsvp={(status) => {
             const eventId = eventPreview.model.eventId;
             const notification = inviteeNotifications.find((row) => row.eventId === eventId);
@@ -735,6 +787,17 @@ export function CalendarWorkspace({
         groups={directoryGroups}
         personalOwnerLabel={ownerLabel}
         busy={calendarDialogBusy}
+        publish={
+          calendarDialog?.mode === "edit" && calendarDialog.canPublish
+            ? {
+                feed: publishFeed,
+                busy: publishBusy,
+                onToggle: toggleCalendarPublish,
+                onCopyHttps: () => void copyCalendarFeedUrl("https"),
+                onCopyWebcal: () => void copyCalendarFeedUrl("webcal"),
+              }
+            : undefined
+        }
         onClose={closeCalendarDialog}
         onConfirm={saveCalendarDialog}
         onDelete={

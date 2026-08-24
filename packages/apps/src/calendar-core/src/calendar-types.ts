@@ -33,6 +33,13 @@ export type CalendarInfo = {
   mayDelete?: boolean;
   scope?: "personal" | "group";
   groupSlug?: string | null;
+  /**
+   * Owner-visible ICS/webcal subscription id from JMAP `Calendar.subscriptionId`.
+   * Distinct from JMAP `isSubscribed` (visibility).
+   */
+  subscriptionId?: string | null;
+  /** Normalized source URL from GET /calendars/subscriptions/{id}; UI-only cache. */
+  subscriptionUrl?: string;
 };
 
 export type CalendarUIData = {
@@ -102,6 +109,27 @@ export type CalendarPatch = {
   color?: string;
 };
 
+export type CalendarSubscriptionDraft = {
+  url: string;
+  name?: string;
+  color?: string;
+  groupSlug?: string | null;
+};
+
+export type CalendarSubscriptionInfo = {
+  id: string;
+  url: string;
+  calendarId: string;
+  name?: string | null;
+  color?: string | null;
+  lastFetchedAt?: string | null;
+};
+
+export type CalendarFeedInfo = {
+  httpsUrl: string;
+  webcalUrl: string;
+};
+
 export type CalendarAPIOperations = {
   createEvent: (draft: CalendarEventDraft) => Promise<JmapCalendarEvent>;
   patchEvent: (eventId: string, patch: CalendarEventPatch) => Promise<JmapCalendarEvent>;
@@ -109,6 +137,13 @@ export type CalendarAPIOperations = {
   createCalendar?: (draft: CalendarDraft) => Promise<CalendarInfo>;
   patchCalendar?: (calendarId: string, patch: CalendarPatch) => Promise<CalendarInfo>;
   deleteCalendar?: (calendarId: string) => Promise<void>;
+  subscribeCalendar?: (draft: CalendarSubscriptionDraft) => Promise<CalendarInfo>;
+  getCalendarSubscription?: (subscriptionId: string) => Promise<CalendarSubscriptionInfo>;
+  unsubscribeCalendar?: (subscriptionId: string) => Promise<void>;
+  refreshStaleCalendarSubscriptions?: () => Promise<boolean>;
+  getCalendarFeed?: (calendarId: string) => Promise<CalendarFeedInfo | null>;
+  publishCalendarFeed?: (calendarId: string) => Promise<CalendarFeedInfo>;
+  unpublishCalendarFeed?: (calendarId: string) => Promise<void>;
   listSchedulingNotifications?: () => Promise<CalendarSchedulingNotification[]>;
   respondSchedulingNotification?: (
     notificationId: string,

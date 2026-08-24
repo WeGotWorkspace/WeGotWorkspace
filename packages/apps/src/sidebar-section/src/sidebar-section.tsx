@@ -6,10 +6,18 @@ import { cn } from "@/lib/utils";
 import "@/ui/field-label-row.css";
 import "@/sidebar-section/src/sidebar-section.css";
 
+export type SidebarSectionHeadingAction = {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+};
+
 type SidebarSectionProps = {
   title?: string;
   onAdd?: () => void;
   addLabel?: string;
+  headingActions?: SidebarSectionHeadingAction[];
   items?: MenuItemProps[];
   children?: ReactNode;
   className?: string;
@@ -25,11 +33,13 @@ export function SidebarSection({
   title,
   onAdd,
   addLabel = "Add item",
+  headingActions = [],
   items,
   children,
   className,
 }: SidebarSectionProps) {
   const titleId = useId();
+  const hasHeadingActions = Boolean(onAdd) || headingActions.length > 0;
 
   return (
     <section
@@ -41,15 +51,30 @@ export function SidebarSection({
           <h3 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
             {title}
           </h3>
-          {onAdd ? (
-            <IconButton
-              label={addLabel}
-              icon={<Plus className="size-3.5" aria-hidden />}
-              size="sm"
-              variant="subtle"
-              onClick={onAdd}
-              className="sidebar-section__add"
-            />
+          {hasHeadingActions ? (
+            <div className="sidebar-section__heading-actions">
+              {onAdd ? (
+                <IconButton
+                  label={addLabel}
+                  icon={<Plus className="size-3.5" aria-hidden />}
+                  size="sm"
+                  variant="subtle"
+                  onClick={onAdd}
+                  className="sidebar-section__add"
+                />
+              ) : null}
+              {headingActions.map((action) => (
+                <IconButton
+                  key={action.id}
+                  label={action.label}
+                  icon={action.icon}
+                  size="sm"
+                  variant="subtle"
+                  onClick={action.onClick}
+                  className="sidebar-section__add"
+                />
+              ))}
+            </div>
           ) : null}
         </div>
       ) : null}

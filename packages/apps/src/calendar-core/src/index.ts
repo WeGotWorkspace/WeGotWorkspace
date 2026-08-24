@@ -25,8 +25,11 @@ export { CalendarInvitationsPanel } from "./calendar-invitations-panel";
 export type { CalendarInvitationsPanelProps } from "./calendar-invitations-panel";
 export { CalendarRsvpPage, CalendarRsvpView } from "./calendar-rsvp-page";
 export type { CalendarRsvpViewProps } from "./calendar-rsvp-page";
+export { CalendarCalendarDialog } from "./calendar-calendar-dialog";
 export { CalendarEventDialog } from "./calendar-event-dialog";
 export type { CalendarEventDialogProps } from "./calendar-event-dialog";
+export { CalendarPublishSection } from "./calendar-publish-section";
+export type { CalendarPublishSectionProps } from "./calendar-publish-section";
 export { CalendarEventDetailsPopover } from "./calendar-event-details-popover";
 export type { CalendarEventDetailsPopoverProps } from "./calendar-event-details-popover";
 export {

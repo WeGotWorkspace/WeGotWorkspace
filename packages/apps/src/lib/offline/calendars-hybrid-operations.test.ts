@@ -56,6 +56,17 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
   fetchCalendarLiveBootstrap,
 }));
 
+vi.mock("@/lib/api/wgw/calendar-ics-webcal", () => ({
+  createCalendarSubscriptionLive: vi.fn(),
+  deleteCalendarSubscriptionLive: vi.fn(),
+  getCalendarFeedLive: vi.fn(),
+  getCalendarSubscriptionLive: vi.fn(),
+  listCalendarSubscriptionsLive: vi.fn(async () => []),
+  publishCalendarFeedLive: vi.fn(),
+  refreshStaleCalendarSubscriptionsLive: vi.fn(async () => false),
+  unpublishCalendarFeedLive: vi.fn(),
+}));
+
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
   isFetchNetworkError: vi.fn((error: unknown) => {
@@ -215,6 +226,18 @@ describe("flushCalendarsOutboxAndReport", () => {
     await getCalendarsSyncRunner(username).flush();
 
     expect(createCalendarEventLive).toHaveBeenCalledTimes(1);
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("does not queue subscribe or publish while offline", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridCalendarOperations(username);
+    await expect(
+      operations.subscribeCalendar!({ url: "https://feeds.example.test/holidays.ics" }),
+    ).rejects.toThrow(/requires a connection/);
+    await expect(operations.publishCalendarFeed!("default")).rejects.toThrow(
+      /requires a connection/,
+    );
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
 });

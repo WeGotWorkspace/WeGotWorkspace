@@ -78,6 +78,16 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
           sortOrder: 2,
         },
         {
+          id: "holidays",
+          name: "US Holidays",
+          color: "#8b5cf6",
+          mayWrite: false,
+          mayDelete: true,
+          subscriptionId: "sub-holidays",
+          subscriptionUrl: "https://feeds.example.test/holidays.ics",
+          sortOrder: 3,
+        },
+        {
           id: "group-editorial",
           name: "Editorial",
           color: "#22c55e",
@@ -104,6 +114,9 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
         }),
         mockEvent("dentist", "default", "Dentist", day(3, "11:00:00"), "PT45M"),
         mockEvent("school-play", "family", "School play", day(4, "18:30:00"), "PT2H"),
+        mockEvent("mlk-day", "holidays", "Martin Luther King Jr. Day", day(6, "00:00:00"), "P1D", {
+          showWithoutTime: true,
+        }),
         mockEvent("offsite", "work", "Winter offsite", day(7, "00:00:00"), "P2D", {
           showWithoutTime: true,
         }),

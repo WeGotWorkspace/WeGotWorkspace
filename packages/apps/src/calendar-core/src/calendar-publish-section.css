@@ -1,0 +1,9 @@
+@import "../../styles.css" reference;
+
+.calendar-publish-section {
+  @apply mt-4;
+}
+
+.calendar-publish-section .share-dialog__link-controls {
+  @apply mt-1;
+}

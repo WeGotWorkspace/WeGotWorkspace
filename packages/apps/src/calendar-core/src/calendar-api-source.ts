@@ -20,6 +20,7 @@ import {
 } from "@/lib/offline/calendars-hybrid-operations";
 import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 
 export type CalendarApiSource = {
   loadBootstrap: () => Promise<CalendarAppBootstrap>;
@@ -63,6 +64,7 @@ function createMockJmapServer(): MockJmapServer {
       ...(typeof calendar.sortOrder === "number" ? { sortOrder: calendar.sortOrder } : {}),
       ...(calendar.scope ? { scope: calendar.scope } : {}),
       ...(calendar.groupSlug ? { groupSlug: calendar.groupSlug } : {}),
+      ...(calendar.subscriptionId ? { subscriptionId: calendar.subscriptionId } : {}),
     } as JmapCalendar);
   }
   for (const event of bootstrap.data.events) {
@@ -99,6 +101,7 @@ export function createMockCalendarApiSource(): CalendarApiSource {
       createCalendar: (draft) => createCalendarLive(draft, opsClient),
       patchCalendar: (calendarId, patch) => patchCalendarLive(calendarId, patch, opsClient),
       deleteCalendar: (calendarId) => deleteCalendarLive(calendarId, opsClient),
+      ...createMockCalendarIcsOperations(),
       listSchedulingNotifications: async () => [],
       listInvitees: async () => ({
         list: [

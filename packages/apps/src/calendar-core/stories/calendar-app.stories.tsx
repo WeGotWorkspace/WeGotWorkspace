@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect } from "storybook/test";
+import { expect, within } from "storybook/test";
 import {
   createCalendarAppBootstrap,
   MOCK_CALENDAR_ANCHOR,
@@ -7,8 +7,10 @@ import {
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
 
 function queryDeep(root: ParentNode, selector: string): Element | null {
   const direct = root.querySelector(selector);
@@ -22,11 +24,42 @@ function queryDeep(root: ParentNode, selector: string): Element | null {
   return null;
 }
 
+const storyEvent = {
+  "@type": "Event",
+  id: "story-event",
+  uid: "urn:uuid:story-event",
+  calendarIds: { default: true },
+  title: "Story",
+  start: "2033-01-12T09:00:00",
+  duration: "PT1H",
+  timeZone: "Etc/UTC",
+} as JmapCalendarEvent;
+
+const storyOperations: CalendarAPIOperations = {
+  createEvent: async () => storyEvent,
+  patchEvent: async () => storyEvent,
+  deleteEvent: async () => {},
+  createCalendar: async (draft) => ({
+    id: "story-cal",
+    name: draft.name,
+    color: draft.color ?? "#6366f1",
+  }),
+  subscribeCalendar: async (draft) => ({
+    id: "story-sub",
+    name: draft.name ?? "Subscribed",
+    color: draft.color ?? "#8b5cf6",
+    subscriptionId: "sub-story",
+  }),
+};
+
 const meta: Meta<typeof CalendarWorkspace> = {
   title: "Apps/Calendar",
   component: CalendarWorkspace,
   parameters: {
     layout: "fullscreen",
+  },
+  args: {
+    operations: storyOperations,
   },
 };
 
@@ -68,6 +101,42 @@ export const Default: Story = {
     surface: staticSurface,
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "month",
+  },
+  play: async ({ canvasElement }) => {
+    const name = [...canvasElement.querySelectorAll(".calendar-sidebar-row__name")].find(
+      (el) => el.textContent === "US Holidays",
+    );
+    const title = name?.closest(".calendar-sidebar-row__title");
+    const mark = title?.querySelector(".calendar-sidebar-row__subscription");
+    const edit = name
+      ?.closest(".calendar-sidebar-row")
+      ?.querySelector(".calendar-sidebar-row__edit");
+    await expect(mark?.getAttribute("aria-label")).toBe(
+      defaultCalendarLabels.subscribedCalendarBadge,
+    );
+    await expect(
+      Boolean(title && name && title.contains(name) && mark && title.contains(mark)),
+    ).toBe(true);
+    await expect(
+      !edit ||
+        (mark != null &&
+          (mark.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0),
+    ).toBe(true);
+    const personal = [...canvasElement.querySelectorAll(".calendar-sidebar-row__name")].find(
+      (el) => el.textContent === "Personal",
+    );
+    await expect(
+      personal
+        ?.closest(".calendar-sidebar-row__title")
+        ?.querySelector(".calendar-sidebar-row__subscription"),
+    ).toBeNull();
+    await expect(canvasElement.querySelector(".sidebar-section__heading-actions")).toBeNull();
+    await expect(canvasElement.querySelector(".sidebar-section__add")).toBeNull();
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: defaultCalendarLabels.newEvent })).toBeTruthy();
+    await expect(
+      canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }),
+    ).toBeTruthy();
   },
 };
 

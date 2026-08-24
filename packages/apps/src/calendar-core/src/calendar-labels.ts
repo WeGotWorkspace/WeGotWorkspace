@@ -14,6 +14,8 @@ export type CalendarUILabels = {
   previousPeriod: string;
   nextPeriod: string;
   newEvent: string;
+  /** Accessible name for the New event split-button chevron. */
+  newEventMenu: string;
   calendarsSection: string;
   myCalendarsSection: string;
   teamCalendarsSection: string;
@@ -22,6 +24,7 @@ export type CalendarUILabels = {
   calendarDirectoryGroup: (name: string) => string;
   calendarDirectoryReadOnlyLabel: string;
   newCalendar: string;
+  createCalendar: string;
   editCalendar: string;
   editCalendarTitle: string;
   createCalendarTitle: string;
@@ -30,9 +33,35 @@ export type CalendarUILabels = {
   deleteCalendar: string;
   deleteCalendarConfirmTitle: string;
   deleteCalendarConfirmDescription: string;
+  subscribeCalendar: string;
+  subscribeCalendarTitle: string;
+  subscribeUrlLabel: string;
+  subscribeUrlPlaceholder: string;
+  unsubscribeCalendar: string;
+  unsubscribeCalendarConfirmTitle: string;
+  unsubscribeCalendarConfirmDescription: string;
+  /** Tooltip / accessible name for the subscribed-calendar sidebar mark. */
+  subscribedCalendarBadge: string;
+  publishCalendarTitle: string;
+  publishCalendarEnabledHint: string;
+  publishCalendarDisabledHint: string;
+  publishCalendarHttpsLabel: string;
+  publishCalendarWebcalLabel: string;
+  copyHttpsUrl: string;
+  copyWebcalUrl: string;
+  unpublishCalendarTitle: string;
+  unpublishCalendarDescription: string;
+  unpublishCalendarConfirm: string;
   toastCalendarCreated: string;
   toastCalendarUpdated: string;
   toastCalendarDeleted: string;
+  toastCalendarSubscribed: string;
+  toastCalendarUnsubscribed: string;
+  toastCalendarSubscribeFailed: string;
+  toastFeedPublished: string;
+  toastFeedUnpublished: string;
+  toastFeedCopied: string;
+  toastFeedFailed: string;
   toastCalendarSaveFailed: string;
   viewsSection: string;
   untitledEvent: string;
@@ -160,6 +189,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   previousPeriod: "Previous",
   nextPeriod: "Next",
   newEvent: "New event",
+  newEventMenu: "More calendar actions",
   calendarsSection: "Calendars",
   myCalendarsSection: "My calendars",
   teamCalendarsSection: "Team calendars",
@@ -168,6 +198,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   calendarDirectoryGroup: defaultOwnerScopeLabels.group,
   calendarDirectoryReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
   newCalendar: "New calendar",
+  createCalendar: "Create calendar",
   editCalendar: "Edit calendar",
   editCalendarTitle: "Edit calendar",
   createCalendarTitle: "New calendar",
@@ -177,9 +208,36 @@ export const defaultCalendarLabels: CalendarUILabels = {
   deleteCalendarConfirmTitle: "Delete calendar?",
   deleteCalendarConfirmDescription:
     "Events on this calendar will be permanently deleted. This cannot be undone.",
+  subscribeCalendar: "Subscribe to a calendar",
+  subscribeCalendarTitle: "Subscribe to calendar",
+  subscribeUrlLabel: "Calendar URL",
+  subscribeUrlPlaceholder: "https://… or webcal://…",
+  unsubscribeCalendar: "Unsubscribe",
+  unsubscribeCalendarConfirmTitle: "Unsubscribe?",
+  unsubscribeCalendarConfirmDescription:
+    "This removes the subscribed calendar and its events. The remote feed is unchanged.",
+  subscribedCalendarBadge: "Subscribed calendar",
+  publishCalendarTitle: "Public feed",
+  publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
+  publishCalendarDisabledHint: "Turn on to publish this calendar as an ICS / webcal feed.",
+  publishCalendarHttpsLabel: "Web address",
+  publishCalendarWebcalLabel: "webcal",
+  copyHttpsUrl: "Copy link",
+  copyWebcalUrl: "Copy webcal link",
+  unpublishCalendarTitle: "Stop publishing?",
+  unpublishCalendarDescription:
+    "The feed URL will stop working. You can publish again later with a new URL.",
+  unpublishCalendarConfirm: "Stop publishing",
   toastCalendarCreated: "Calendar created",
   toastCalendarUpdated: "Calendar updated",
   toastCalendarDeleted: "Calendar deleted",
+  toastCalendarSubscribed: "Calendar subscribed",
+  toastCalendarUnsubscribed: "Unsubscribed",
+  toastCalendarSubscribeFailed: "Could not subscribe to calendar",
+  toastFeedPublished: "Calendar published",
+  toastFeedUnpublished: "Feed unpublished",
+  toastFeedCopied: "Link copied",
+  toastFeedFailed: "Could not update calendar feed",
   toastCalendarSaveFailed: "Could not save calendar",
   viewsSection: "Views",
   untitledEvent: "Untitled event",
