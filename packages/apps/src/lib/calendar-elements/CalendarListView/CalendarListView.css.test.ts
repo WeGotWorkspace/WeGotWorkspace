@@ -12,4 +12,14 @@ describe("CalendarListView heading CSS", () => {
       /\.agenda-day-heading \{[\s\S]*background-color:\s*var\(\s*--_lc-list-heading-bg/,
     );
   });
+
+  it("keeps the host as the agenda scrollport", () => {
+    expect(css).toMatch(/:host \{[\s\S]*?@apply[^;]*overflow-y-auto/);
+  });
+
+  it("skips layout for off-screen event lists without changing scroll metrics", () => {
+    expect(css).toMatch(
+      /\.agenda-event-list\s*\{[\s\S]*?content-visibility:\s*auto;[\s\S]*?contain-intrinsic-block-size:\s*auto 130px;/,
+    );
+  });
 });
