@@ -38,4 +38,25 @@ describe("expandRecurringStarts memo", () => {
     expect(betweenSpy).toHaveBeenCalledTimes(2);
     betweenSpy.mockRestore();
   });
+
+  it("rebuilds RRuleSet when options.timezone changes for the same event", () => {
+    const rruleSpy = vi.spyOn(RRuleSet.prototype, "rrule");
+    const event = createDailySeriesState().get("daily")!;
+    const rangeStart = Temporal.PlainDateTime.from("2025-01-13T00:00:00");
+    const rangeEnd = Temporal.PlainDateTime.from("2025-01-20T00:00:00");
+
+    expandRecurringStarts(event, rangeStart, rangeEnd, { timezone: "UTC" });
+    expandRecurringStarts(event, rangeStart, rangeEnd, { timezone: "Europe/Amsterdam" });
+
+    expect(rruleSpy).toHaveBeenCalledTimes(2);
+    const tzids = rruleSpy.mock.calls.map((call) => {
+      const rule = call[0] as {
+        options?: { tzid?: string | null };
+        origOptions?: { tzid?: string | null };
+      };
+      return rule.options?.tzid ?? rule.origOptions?.tzid ?? null;
+    });
+    expect(tzids).toEqual(["UTC", "Europe/Amsterdam"]);
+    rruleSpy.mockRestore();
+  });
 });

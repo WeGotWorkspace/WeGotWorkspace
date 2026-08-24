@@ -99,20 +99,32 @@ type MemoizedRule = {
   betweenByRange: Map<string, Temporal.PlainDateTime[]>;
 };
 
-const ruleMemo = new WeakMap<CalendarEvent, MemoizedRule>();
+type PreparedRule = MemoizedRule & { rangeKey: string };
+
+const ruleMemo = new WeakMap<CalendarEvent, Map<string, MemoizedRule>>();
+
+function tzMemoKey(tzid: string | null): string {
+  return tzid ?? "";
+}
 
 function ruleSetFor(
   event: CalendarEvent,
   rangeStart: Temporal.PlainDateTime,
   rangeEnd: Temporal.PlainDateTime,
   options: ExpandRecurringOptions,
-): { ruleSet: RRuleSet; rangeKey: string } | null {
+): PreparedRule | null {
   if (!event.data.recurrenceRule) return null;
   const dtstart = toPlainDateTime(event.data.start);
   const tzid = event.data.timeZone ?? options.timezone ?? null;
-  const rangeKey = `${rangeStart.toString()}|${rangeEnd.toString()}|${tzid ?? ""}`;
-  const cached = ruleMemo.get(event);
-  if (cached) return { ruleSet: cached.ruleSet, rangeKey };
+  const tzKey = tzMemoKey(tzid);
+  const rangeKey = `${rangeStart.toString()}|${rangeEnd.toString()}|${tzKey}`;
+  let byTz = ruleMemo.get(event);
+  if (!byTz) {
+    byTz = new Map();
+    ruleMemo.set(event, byTz);
+  }
+  const cached = byTz.get(tzKey);
+  if (cached) return { ruleSet: cached.ruleSet, rangeKey, betweenByRange: cached.betweenByRange };
 
   const ruleSet = new RRuleSet();
   ruleSet.rrule(new RRule(toRRuleOptions(event.data.recurrenceRule, dtstart, tzid)));
@@ -123,8 +135,9 @@ function ruleSetFor(
       ruleSet.exdate(toUtcFloatingDate(toPlainDateTime(parsed)));
     }
   }
-  ruleMemo.set(event, { ruleSet, betweenByRange: new Map() });
-  return { ruleSet, rangeKey };
+  const memo: MemoizedRule = { ruleSet, betweenByRange: new Map() };
+  byTz.set(tzKey, memo);
+  return { ruleSet, rangeKey, betweenByRange: memo.betweenByRange };
 }
 
 export function expandRecurringStarts(
@@ -135,13 +148,12 @@ export function expandRecurringStarts(
 ): Temporal.PlainDateTime[] {
   const prepared = ruleSetFor(event, rangeStart, rangeEnd, options);
   if (!prepared) return [];
-  const memo = ruleMemo.get(event);
-  const cachedStarts = memo?.betweenByRange.get(prepared.rangeKey);
+  const cachedStarts = prepared.betweenByRange.get(prepared.rangeKey);
   if (cachedStarts) return cachedStarts;
 
   const starts = prepared.ruleSet
     .between(toUtcFloatingDate(rangeStart), toUtcFloatingDate(rangeEnd), true)
     .map(fromUtcFloatingDate);
-  memo?.betweenByRange.set(prepared.rangeKey, starts);
+  prepared.betweenByRange.set(prepared.rangeKey, starts);
   return starts;
 }

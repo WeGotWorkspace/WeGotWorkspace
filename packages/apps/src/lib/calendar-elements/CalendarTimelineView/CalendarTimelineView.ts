@@ -75,6 +75,11 @@ import componentStyle from "./CalendarTimelineView.css?inline";
 /** Placeholder title on the drag-to-create event-card (matches calendar-labels `newEvent`). */
 const CREATE_PREVIEW_SUMMARY = "New event";
 
+/** Unique per year-grid cell so overlapping ISO dates on neighbor month cards do not collide. */
+function yearDayAnchorName(monthKey: string, dayIso: string): string {
+  return `--year-day-anchor-${monthKey}-${dayIso}`;
+}
+
 const MINUTES_PER_DAY = 24 * 60;
 const SECONDS_PER_DAY = MINUTES_PER_DAY * 60;
 
@@ -207,8 +212,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   #activeOverflowCellIndex: number | null = null;
   /** Cell whose compact-month day-header popover is (being) opened (month compact mode). */
   #activeHeaderPopoverCellIndex: number | null = null;
-  /** ISO date whose year-grid day popover is open. */
-  #activeYearPopoverDay: string | null = null;
+  /** Year-grid cell whose day popover is open (month card + ISO date). */
+  #activeYearPopover: { monthKey: string; dayIso: string } | null = null;
   /**
    * Live TimeLine gestures (`kind:gestureId` keys from `timeline-gesture-start/-end`); while
    * non-empty, swipe navigation is suppressed so drags never fight the pager (grid-week
@@ -1947,21 +1952,24 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   #handleYearDayClick(
     day: Temporal.PlainDate,
+    monthKey: string,
     cellIndex: number,
     dayEvents: YearDayChip[],
     event: MouseEvent,
   ) {
     if (dayEvents.length > 0) {
-      void this.#openYearDayPopover(day.toString(), event.currentTarget);
+      void this.#openYearDayPopover(day.toString(), monthKey, event.currentTarget);
       return;
     }
     this.#emitDaySelection(day, cellIndex, event);
   }
 
-  async #openYearDayPopover(dayIso: string, target: EventTarget | null) {
+  async #openYearDayPopover(dayIso: string, monthKey: string, target: EventTarget | null) {
     const button = target instanceof HTMLElement ? target : null;
-    if (this.#activeYearPopoverDay !== dayIso) {
-      this.#activeYearPopoverDay = dayIso;
+    const alreadyActive =
+      this.#activeYearPopover?.dayIso === dayIso && this.#activeYearPopover.monthKey === monthKey;
+    if (!alreadyActive) {
+      this.#activeYearPopover = { monthKey, dayIso };
       this.requestUpdate();
       await this.updateComplete;
     }
@@ -1979,15 +1987,17 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
   }
 
-  #handleYearPopoverToggle(dayIso: string, event: Event) {
+  #handleYearPopoverToggle(dayIso: string, monthKey: string, event: Event) {
     const newState = (event as ToggleEvent).newState;
-    if (newState === "open" && this.#activeYearPopoverDay !== dayIso) {
-      this.#activeYearPopoverDay = dayIso;
+    const alreadyActive =
+      this.#activeYearPopover?.dayIso === dayIso && this.#activeYearPopover.monthKey === monthKey;
+    if (newState === "open" && !alreadyActive) {
+      this.#activeYearPopover = { monthKey, dayIso };
       this.requestUpdate();
       return;
     }
-    if (newState === "closed" && this.#activeYearPopoverDay === dayIso) {
-      this.#activeYearPopoverDay = null;
+    if (newState === "closed" && alreadyActive) {
+      this.#activeYearPopover = null;
       (event.currentTarget as HTMLElement | null)?.removeAttribute("data-inline-align");
       this.requestUpdate();
     }
@@ -2007,6 +2017,8 @@ export class CalendarTimelineView extends CalendarViewBase {
       dayDate,
     );
     const dayIso = day.toString();
+    const monthKey = monthAnchor.toString();
+    const anchorName = yearDayAnchorName(monthKey, dayIso);
     const dotColors = this.#dayDotColors(dayEvents);
     const headerClass = [
       "year-day",
@@ -2020,11 +2032,11 @@ export class CalendarTimelineView extends CalendarViewBase {
       <button
         type="button"
         class=${headerClass}
-        style=${`anchor-name:--year-day-anchor-${dayIso}`}
+        style=${`anchor-name:${anchorName}`}
         .ariaLabel=${fullDateLabel}
         .ariaCurrent=${isToday ? "date" : null}
         @click=${(clickEvent: MouseEvent) =>
-          this.#handleYearDayClick(day, cellIndex, dayEvents, clickEvent)}
+          this.#handleYearDayClick(day, monthKey, cellIndex, dayEvents, clickEvent)}
       >
         <span class=${numberClass}>
           ${new Intl.NumberFormat(this.#locale).format(day.day)}
@@ -2046,8 +2058,9 @@ export class CalendarTimelineView extends CalendarViewBase {
   #renderYearSharedPopover(
     eventsByDay: Map<string, YearDayChip[]>,
   ): TemplateResult | typeof nothing {
-    const dayIso = this.#activeYearPopoverDay;
-    if (!dayIso) return nothing;
+    const active = this.#activeYearPopover;
+    if (!active) return nothing;
+    const { dayIso, monthKey } = active;
     const dayEvents = eventsByDay.get(dayIso) ?? [];
     if (!dayEvents.length) return nothing;
     const day = Temporal.PlainDate.from(dayIso);
@@ -2064,7 +2077,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         role="dialog"
         .ariaLabel=${`Events on ${fullDateLabel}`}
         style=${styleMap({
-          "position-anchor": `--year-day-anchor-${dayIso}`,
+          "position-anchor": yearDayAnchorName(monthKey, dayIso),
           "--_lc-all-day-day-number-space": "36px",
         })}
         .dayIso=${dayIso}
@@ -2073,7 +2086,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?is-weekend=${isWeekend}
         .events=${this.#popoverEventsFor(dayEvents)}
         @day-label-selection=${(event: Event) => this.#handlePopoverDaySelection(day, 0, event)}
-        @toggle=${(event: Event) => this.#handleYearPopoverToggle(dayIso, event)}
+        @toggle=${(event: Event) => this.#handleYearPopoverToggle(dayIso, monthKey, event)}
         @select=${this.#handleOverflowPopoverSelect}
         @delete=${this.#handleOverflowPopoverDelete}
       ></day-overflow-popover>
