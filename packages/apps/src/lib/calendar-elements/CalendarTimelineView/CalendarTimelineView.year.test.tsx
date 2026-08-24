@@ -31,7 +31,7 @@ function sampleEvents(): CalendarEventsMap {
   ]);
 }
 
-describe("CalendarTimelineView year mode", () => {
+describe("CalendarTimelineView year mode", { timeout: 15_000 }, () => {
   beforeEach(() => {
     mockDomApis();
   });

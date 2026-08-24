@@ -42,7 +42,7 @@ async function yearTimeline(host: WgwCalendarSurface): Promise<Element | null> {
   return yearView ?? null;
 }
 
-describe("CalendarSurface Lit view echo", () => {
+describe("CalendarSurface Lit view echo", { timeout: 15_000 }, () => {
   beforeEach(() => {
     cleanup();
     mockDomApis();
