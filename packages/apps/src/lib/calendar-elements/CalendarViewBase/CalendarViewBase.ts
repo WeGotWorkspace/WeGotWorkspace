@@ -10,7 +10,12 @@ import {
   type CalendarEventsMap,
   type EventOperation,
 } from "@/lib/calendar-engine";
-import { cachedVisibleEventsInRange, type RenderedEventsCache } from "./renderedEvents.js";
+import {
+  adjacentRenderedEventRanges,
+  cachedVisibleEventsInRange,
+  prefetchVisibleEventsInRange,
+  type RenderedEventsCache,
+} from "./renderedEvents.js";
 import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
 import { BaseElement } from "../BaseElement/BaseElement.js";
 import { type EventsAPIContextValue, eventsAPIContext } from "../context/EventsAPIContext.js";
@@ -53,6 +58,8 @@ export abstract class CalendarViewBase extends BaseElement {
   #currentTime?: string;
   #eventsAPI?: EventsAPIContextValue;
   #renderedEventsCache: RenderedEventsCache | null = null;
+  #prefetchIdleId: number | null = null;
+  #prefetchTimeoutId: ReturnType<typeof setTimeout> | null = null;
   #eventsAPIConsumer = new ContextConsumer(this, {
     context: eventsAPIContext,
     subscribe: true,
@@ -179,6 +186,11 @@ export abstract class CalendarViewBase extends BaseElement {
   connectedCallback() {
     super.connectedCallback();
     void this.#eventsAPIConsumer;
+  }
+
+  disconnectedCallback() {
+    this.#cancelRenderedEventsPrefetch();
+    super.disconnectedCallback();
   }
 
   /** Prefer the bound map; context `getEvents()` is already `@lit-calendar/events-api` state. */
@@ -502,7 +514,40 @@ export abstract class CalendarViewBase extends BaseElement {
       this.timezone,
     );
     this.#renderedEventsCache = next.cache;
+    this.#scheduleAdjacentRenderedEventsPrefetch(range);
     return next.value;
+  }
+
+  #cancelRenderedEventsPrefetch(): void {
+    if (this.#prefetchIdleId !== null && typeof cancelIdleCallback === "function") {
+      cancelIdleCallback(this.#prefetchIdleId);
+    }
+    this.#prefetchIdleId = null;
+    if (this.#prefetchTimeoutId !== null) {
+      clearTimeout(this.#prefetchTimeoutId);
+    }
+    this.#prefetchTimeoutId = null;
+  }
+
+  #scheduleAdjacentRenderedEventsPrefetch(range: {
+    start: Temporal.PlainDateTime;
+    end: Temporal.PlainDateTime;
+  }): void {
+    this.#cancelRenderedEventsPrefetch();
+    const run = (): void => {
+      this.#prefetchIdleId = null;
+      this.#prefetchTimeoutId = null;
+      const { prev, next } = adjacentRenderedEventRanges(range);
+      let cache = this.#renderedEventsCache;
+      cache = prefetchVisibleEventsInRange(cache, this.events, prev, this.timezone);
+      cache = prefetchVisibleEventsInRange(cache, this.events, next, this.timezone);
+      this.#renderedEventsCache = cache;
+    };
+    if (typeof requestIdleCallback === "function") {
+      this.#prefetchIdleId = requestIdleCallback(run);
+      return;
+    }
+    this.#prefetchTimeoutId = setTimeout(run, 0);
   }
 
   get pendingByCalendarId(): CalendarEventPendingByCalendarId {
