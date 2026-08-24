@@ -1,23 +1,18 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { resolveEventEnd } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
 
-const adapterGetEvents = vi.fn(() => new Map());
-
 vi.mock("@/lib/jmap-client", async () => {
   const actual = await vi.importActual<typeof import("@/lib/jmap-client")>("@/lib/jmap-client");
   class MockAdapter {
-    getEvents = adapterGetEvents;
     initialize = vi.fn(async () => undefined);
     startPolling = vi.fn();
     stopPolling = vi.fn();
     sync = vi.fn(async () => undefined);
-    flush = vi.fn(async () => undefined);
-    jmapIdForKey = vi.fn((key: string) => key);
   }
   return { ...actual, JmapEventsAdapter: MockAdapter };
 });
@@ -70,13 +65,8 @@ const data: CalendarUIData = {
 const fakeClient = {} as import("@/lib/jmap-client").JmapClient;
 
 describe("useCalendarSurface", () => {
-  beforeEach(() => {
-    adapterGetEvents.mockReset();
-    adapterGetEvents.mockReturnValue(new Map());
-  });
-
   it.each([true, false] as const)(
-    "uses the same EventsAPI context when online is %s and never paints adapter.getEvents",
+    "uses the same EventsAPI context when online is %s and never treats the adapter as the store",
     async (online) => {
       void online;
       const operations = operationsStub();
@@ -104,7 +94,6 @@ describe("useCalendarSurface", () => {
       });
 
       await waitFor(() => expect(operations.createEvent).toHaveBeenCalled());
-      expect(adapterGetEvents).not.toHaveBeenCalled();
       expect(
         [...result.current.events.values()].some((event) => event.data.summary === "New"),
       ).toBe(true);

@@ -8,12 +8,12 @@ import "../CalendarViewGroup/CalendarViewGroup.js";
 
 /**
  * WGW-owned host for the vendored lit-calendar views (this file is ours, not
- * vendored): provides the events-api context (a JmapEventsAdapter in the app,
- * a MockJmapServer-backed adapter in stories, or nothing for read-only
- * offline rendering) and renders `<calendar-view-group>` with the visibility
- * filtering the reference `<event-calendar>` shell applies. React drives it
- * through properties; the host mirrors view-group navigation (day-number → day
- * view, etc.) onto its own properties so React can stay the source of truth.
+ * vendored): provides the events-api context (Dexie-first EventsAPI in the app,
+ * a mock in stories, or nothing for read-only offline rendering) and renders
+ * `<calendar-view-group>` with the visibility filtering the reference
+ * `<event-calendar>` shell applies. React drives it through properties; the
+ * host mirrors view-group navigation (day-number → day view, etc.) onto its
+ * own properties so React can stay the source of truth.
  * Interaction events (`event-selected`, `event-create-requested`, …) bubble out
  * composed.
  */

@@ -1,6 +1,6 @@
-import { Temporal } from "@js-temporal/polyfill";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { JmapEventsAdapter } from "../adapter/JmapEventsAdapter.js";
+import type { JmapCalendarEvent } from "../calendars/types.js";
 import { JmapClient } from "../core/JmapClient.js";
 import { personalCalendar, recurringEvent, timedEvent, workCalendar } from "../mock/fixtures.js";
 import { MockJmapServer } from "../mock/MockJmapServer.js";
@@ -10,9 +10,19 @@ const MARCH: { utcStart: Date; utcEnd: Date } = {
   utcEnd: new Date("2026-04-01T00:00:00Z"),
 };
 
-async function makeAdapter(server: MockJmapServer, onSyncError?: (error: unknown) => void) {
+async function makeAdapter(
+  server: MockJmapServer,
+  hooks: {
+    onRemoteEvent?: (event: JmapCalendarEvent) => void;
+    onRemoteEventDestroyed?: (eventId: string) => void;
+  } = {},
+) {
   const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch });
-  const adapter = new JmapEventsAdapter({ client, timezone: "Europe/Amsterdam", onSyncError });
+  const adapter = new JmapEventsAdapter({
+    client,
+    onRemoteEvent: hooks.onRemoteEvent,
+    onRemoteEventDestroyed: hooks.onRemoteEventDestroyed,
+  });
   await adapter.initialize(MARCH);
   return adapter;
 }
@@ -25,10 +35,15 @@ function seedServer(server: MockJmapServer): void {
 }
 
 describe("JmapEventsAdapter initialization", () => {
-  it("loads calendars (with rights/visibility) and windowed events", async () => {
+  it("loads calendars (with rights/visibility) and forwards the window inbound", async () => {
     const server = new MockJmapServer();
     seedServer(server);
-    const adapter = await makeAdapter(server);
+    const remoteEvents: string[] = [];
+    const adapter = await makeAdapter(server, {
+      onRemoteEvent: (event) => {
+        if (event.id) remoteEvents.push(event.id);
+      },
+    });
 
     const calendars = adapter.getCalendars();
     expect(calendars.size).toBe(2);
@@ -43,133 +58,27 @@ describe("JmapEventsAdapter initialization", () => {
     expect(adapter.getSelectedCalendarId()).toBe("cal-work");
     expect(adapter.getCalendarAccounts()).toEqual(new Set([server.accountId]));
 
-    const events = adapter.getEvents();
-    expect(events.get("ev-timed")?.data.summary).toBe("Design review");
-    expect(events.get("ev-recurring")?.isRecurring).toBe(true);
-    expect(events.get("ev-recurring::20260311T090000")?.isException).toBe(true);
-  });
-});
-
-describe("JmapEventsAdapter optimistic mutations", () => {
-  it("creates optimistically, pushes, and confirms with the server id mapping", async () => {
-    const server = new MockJmapServer();
-    seedServer(server);
-    const adapter = await makeAdapter(server);
-
-    const start = Temporal.PlainDateTime.from("2026-03-20T14:00:00");
-    const result = adapter.create({
-      event: {
-        calendarId: "cal-work",
-        data: { start, end: start.add({ hours: 1 }), summary: "New meeting" },
-      },
-    });
-    const [change] = result.changes;
-    if (change.type !== "created") throw new Error("expected created change");
-    const localKey = change.key;
-
-    // Optimistic: visible immediately, marked pending.
-    expect(adapter.getEvents().get(localKey)?.pendingOp).toBe("created");
-
-    await adapter.flush();
-
-    // Confirmed: same local key, pending cleared, present on the server.
-    const confirmed = adapter.getEvents().get(localKey);
-    expect(confirmed?.pendingOp).toBeUndefined();
-    expect(confirmed?.data.summary).toBe("New meeting");
-    const serverCopy = [...server.events.values()].find((ev) => ev.title === "New meeting");
-    expect(serverCopy).toBeDefined();
-    expect(serverCopy?.calendarIds).toEqual({ "cal-work": true });
-    expect(serverCopy?.duration).toBe("PT1H");
-  });
-
-  it("updates optimistically and preserves opaque server properties on push", async () => {
-    const server = new MockJmapServer();
-    seedServer(server);
-    const adapter = await makeAdapter(server);
-
-    adapter.update({
-      target: { key: "ev-timed" },
-      scope: "single",
-      patch: { summary: "Design review (v2)" },
-    });
-    expect(adapter.getEvents().get("ev-timed")?.pendingOp).toBe("updated");
-
-    await adapter.flush();
-
-    expect(adapter.getEvents().get("ev-timed")?.pendingOp).toBeUndefined();
-    const serverCopy = server.events.get("ev-timed");
-    expect(serverCopy?.title).toBe("Design review (v2)");
-    // Participants/alerts the internal model does not render survived the update:
-    expect(serverCopy?.participants).toEqual(timedEvent.participants);
-    expect(serverCopy?.alerts).toEqual(timedEvent.alerts);
-  });
-
-  it("pushes moves as start changes", async () => {
-    const server = new MockJmapServer();
-    seedServer(server);
-    const persisted = vi.fn();
-    const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch });
-    const adapter = new JmapEventsAdapter({
-      client,
-      timezone: "Europe/Amsterdam",
-      onPersisted: persisted,
-    });
-    await adapter.initialize(MARCH);
-
-    adapter.move({
-      target: { key: "ev-timed" },
-      scope: "single",
-      delta: Temporal.Duration.from({ days: 1 }),
-    });
-    expect(persisted).not.toHaveBeenCalled();
-    await adapter.flush();
-
-    expect(server.events.get("ev-timed")?.start).toBe("2026-03-11T10:00:00");
-    expect(persisted).toHaveBeenCalled();
-  });
-
-  it("destroys removed events on the server", async () => {
-    const server = new MockJmapServer();
-    seedServer(server);
-    const adapter = await makeAdapter(server);
-
-    adapter.remove({ target: { key: "ev-timed" }, scope: "series" });
-    // Optimistic: row still present but marked deleted (hidden from expansion).
-    expect(adapter.getEvents().get("ev-timed")?.pendingOp).toBe("deleted");
-
-    await adapter.flush();
-
-    expect(adapter.getEvents().has("ev-timed")).toBe(false);
-    expect(server.events.has("ev-timed")).toBe(false);
-  });
-
-  it("recovers from a rejected push by restoring server truth", async () => {
-    const server = new MockJmapServer();
-    seedServer(server);
-    const errors: unknown[] = [];
-    const adapter = await makeAdapter(server, (error) => errors.push(error));
-
-    server.failNextSetWith = { type: "forbidden" };
-    adapter.update({
-      target: { key: "ev-timed" },
-      scope: "single",
-      patch: { summary: "Not allowed" },
-    });
-    await adapter.flush();
-
-    expect(errors).toHaveLength(1);
-    // Local state rolled back to the server copy:
-    expect(adapter.getEvents().get("ev-timed")?.data.summary).toBe("Design review");
-    expect(adapter.getEvents().get("ev-timed")?.pendingOp).toBeUndefined();
-    expect(server.events.get("ev-timed")?.title).toBe("Design review");
+    expect(remoteEvents).toEqual(expect.arrayContaining(["ev-timed", "ev-recurring"]));
+    expect(adapter).not.toHaveProperty("getEvents");
+    expect(adapter).not.toHaveProperty("apply");
   });
 });
 
 describe("JmapEventsAdapter sync", () => {
-  it("applies remote creates, updates and destroys via /changes", async () => {
+  it("forwards remote creates, updates and destroys via /changes", async () => {
     const server = new MockJmapServer();
     seedServer(server);
-    const adapter = await makeAdapter(server);
+    const titlesById = new Map<string, string | undefined>();
+    const destroyed: string[] = [];
+    const adapter = await makeAdapter(server, {
+      onRemoteEvent: (event) => {
+        if (event.id) titlesById.set(event.id, event.title);
+      },
+      onRemoteEventDestroyed: (eventId) => {
+        destroyed.push(eventId);
+        titlesById.delete(eventId);
+      },
+    });
 
     server.remoteUpdateEvent("ev-timed", { title: "Renamed remotely" });
     const remoteId = server.remoteCreateEvent({
@@ -184,45 +93,9 @@ describe("JmapEventsAdapter sync", () => {
 
     await adapter.sync();
 
-    const events = adapter.getEvents();
-    expect(events.get("ev-timed")?.data.summary).toBe("Renamed remotely");
-    expect(events.get(remoteId)?.data.summary).toBe("Remote event");
-    expect(events.has("ev-recurring")).toBe(false);
-    expect(events.has("ev-recurring::20260311T090000")).toBe(false);
-  });
-
-  it("does not clobber local pending edits with remote data", async () => {
-    const server = new MockJmapServer();
-    seedServer(server);
-
-    // Block pushes so the local edit stays pending during sync.
-    let releasePush: (() => void) | undefined;
-    const gate = new Promise<void>((resolve) => {
-      releasePush = resolve;
-    });
-    const gatedFetch: typeof server.fetch = async (input, init) => {
-      if (init?.method === "POST" && String(init.body).includes('"CalendarEvent/set"')) {
-        await gate;
-      }
-      return server.fetch(input, init);
-    };
-    const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: gatedFetch });
-    const adapter = new JmapEventsAdapter({ client, timezone: "Europe/Amsterdam" });
-    await adapter.initialize(MARCH);
-
-    adapter.update({
-      target: { key: "ev-timed" },
-      scope: "single",
-      patch: { summary: "Local edit" },
-    });
-    server.remoteUpdateEvent("ev-timed", { title: "Remote edit" });
-    await adapter.sync();
-
-    // Local pending edit wins until the push completes.
-    expect(adapter.getEvents().get("ev-timed")?.data.summary).toBe("Local edit");
-
-    releasePush?.();
-    await adapter.flush();
-    expect(server.events.get("ev-timed")?.title).toBe("Local edit");
+    expect(titlesById.get("ev-timed")).toBe("Renamed remotely");
+    expect(titlesById.get(remoteId)).toBe("Remote event");
+    expect(destroyed).toContain("ev-recurring");
+    expect(titlesById.has("ev-recurring")).toBe(false);
   });
 });
