@@ -12,6 +12,7 @@ import {
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
+import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { flushCalendarsOutbox } from "@/lib/offline/calendars-outbox-flush";
 
@@ -147,6 +148,13 @@ describe("flushCalendarsOutbox", () => {
     await enqueueCoalescedCalendarEventUpdate(username, "local-1", {
       start: "2033-01-11T10:00:00",
     });
+
+    const queued = await listOutboxMutations(username);
+    const createRow = queued.find((row) => row.op === "create");
+    const updateRow = queued.find((row) => row.op === "update");
+    expect(createRow && updateRow).toBeTruthy();
+    await putOutboxMutation(username, { ...updateRow!, createdAt: 1 });
+    await putOutboxMutation(username, { ...createRow!, createdAt: 2 });
 
     const result = await flushCalendarsOutbox(username);
 

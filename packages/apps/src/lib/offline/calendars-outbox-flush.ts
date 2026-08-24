@@ -74,13 +74,18 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
   }
 
   const rows = await listOutboxMutations(username);
+  const calendarRows = rows.filter((row) => row.domain === CALENDARS_DOMAIN);
+  // Creates first so temp→server remaps exist even when createdAt ties invert FIFO.
+  const orderedRows = [
+    ...calendarRows.filter((row) => row.op === "create" || row.op === "calendarCreate"),
+    ...calendarRows.filter((row) => row.op !== "create" && row.op !== "calendarCreate"),
+  ];
   const conflicts: string[] = [];
   const schedulingConflicts: string[] = [];
   const tempToServerId = new Map<string, string>();
   const resolveEventId = (eventId: string) => tempToServerId.get(eventId) ?? eventId;
 
-  for (const row of rows) {
-    if (row.domain !== CALENDARS_DOMAIN) continue;
+  for (const row of orderedRows) {
     try {
       const payload = JSON.parse(row.payload) as Record<string, unknown>;
       if (row.op === "create") {
