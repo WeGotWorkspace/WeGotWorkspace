@@ -5926,6 +5926,332 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List ICS / webcal subscriptions */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Subscriptions owned by the signed-in user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSubscriptionListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        /**
+         * Subscribe to a remote ICS / webcal URL
+         * @description Fetches the remote feed (SSRF-safe), creates a personal read-only calendar collection, and persists VEVENTs. webcal:// is normalized to https://.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarSubscriptionCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Subscription created after a successful first fetch */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSubscription"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show an ICS / webcal subscription */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Subscription */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSubscription"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Unsubscribe and delete the subscription calendar */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Subscription and its calendar collection removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/subscriptions/{id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh a remote ICS / webcal subscription
+         * @description Re-fetches the remote feed (SSRF-safe) and upserts or deletes VEVENTs by UID.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Subscription after a successful refresh */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarSubscription"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/{calendarId}/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get published ICS / webcal feed URLs for a calendar */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    calendarId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Published feed URLs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarFeed"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /**
+         * Publish a calendar as an ICS / webcal feed
+         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    calendarId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Existing published feed URLs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarFeed"];
+                    };
+                };
+                /** @description Feed published */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarFeed"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        /** Revoke a published ICS / webcal feed */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    calendarId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Feed revoked; subsequent public GET is 404 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/feeds/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a public ICS / webcal feed
+         * @description Unauthenticated VCALENDAR of the published collection. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens are 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Opaque feed token. An optional .ics suffix is accepted (e.g. {token}.ics). */
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description VCALENDAR of the published collection */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/calendar": string;
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8300,6 +8626,7 @@ export interface components {
          *       "sortOrder": 0,
          *       "isDefault": true,
          *       "isSubscribed": true,
+         *       "subscriptionId": null,
          *       "scope": "personal",
          *       "groupSlug": null,
          *       "shareWith": null,
@@ -8319,7 +8646,10 @@ export interface components {
             color?: string | null;
             sortOrder: number;
             isDefault: boolean;
+            /** @description JMAP Calendar visibility (whether the calendar is shown). Not a remote ICS/webcal subscription marker. */
             isSubscribed: boolean;
+            /** @description Owner-visible id of the live ICS/webcal subscription backing this collection; null for ordinary calendars. Distinct from isSubscribed. */
+            subscriptionId?: string | null;
             /**
              * @description Storage scope: personal (principals/{username}) or group (principals/groups/{slug}).
              * @enum {string}
@@ -9318,6 +9648,41 @@ export interface components {
              * @enum {string}
              */
             scope?: "this" | "future";
+        };
+        /** @description Subscribe to a remote ICS or webcal URL. webcal:// is normalized to https://; only http/https are accepted. */
+        CalendarSubscriptionCreateRequest: {
+            /** @description Remote ICS or webcal URL. webcal:// is accepted and normalized to https:// before fetch. */
+            url: string;
+            name?: string;
+            color?: string | null;
+            /** @description Group slug when creating the collection on a team principal (same as Calendar/set). Omit or null for a personal calendar. Group members then see the subscribed collection. */
+            groupSlug?: string | null;
+        };
+        /** @description Live remote ICS/webcal subscription. Fetch URL and status live here, not on JMAP Calendar.isSubscribed. */
+        CalendarSubscription: {
+            /** @description Subscription id (also exposed as Calendar.subscriptionId on Calendar/get). */
+            id: string;
+            /** @description Normalized http(s) source URL. */
+            url: string;
+            name?: string | null;
+            color?: string | null;
+            /** @description Read-only calendar collection created for this subscription (personal or team principal). */
+            calendarId: components["schemas"]["JmapId"];
+            /** Format: date-time */
+            lastFetchedAt?: string | null;
+        };
+        CalendarSubscriptionListResponse: {
+            list: components["schemas"]["CalendarSubscription"][];
+        };
+        /** @description Owner-visible published ICS/webcal feed URLs for an owned personal calendar. */
+        CalendarFeed: {
+            /**
+             * Format: uri
+             * @description Public https URL for GET /calendars/feeds/{token}.
+             */
+            httpsUrl: string;
+            /** @description Same feed advertised as webcal:// for calendar clients. */
+            webcalUrl: string;
         };
     };
     responses: {

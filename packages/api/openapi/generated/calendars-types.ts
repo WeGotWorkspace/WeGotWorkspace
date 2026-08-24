@@ -28,6 +28,7 @@ export type CalendarEventRelativeAlertTrigger = components["schemas"]["CalendarE
 export type CalendarEventSetCreated = components["schemas"]["CalendarEventSetCreated"];
 export type CalendarEventSetRequest = components["schemas"]["CalendarEventSetRequest"];
 export type CalendarEventSetResponse = components["schemas"]["CalendarEventSetResponse"];
+export type CalendarFeed = components["schemas"]["CalendarFeed"];
 export type CalendarListResponse = components["schemas"]["CalendarListResponse"];
 export type CalendarPatch = components["schemas"]["CalendarPatch"];
 export type CalendarRecurrenceNDay = components["schemas"]["CalendarRecurrenceNDay"];
@@ -40,6 +41,9 @@ export type CalendarSchedulingNotification = components["schemas"]["CalendarSche
 export type CalendarSchedulingNotificationListResponse = components["schemas"]["CalendarSchedulingNotificationListResponse"];
 export type CalendarSchedulingNotificationRespond = components["schemas"]["CalendarSchedulingNotificationRespond"];
 export type CalendarSetError = components["schemas"]["CalendarSetError"];
+export type CalendarSubscription = components["schemas"]["CalendarSubscription"];
+export type CalendarSubscriptionCreateRequest = components["schemas"]["CalendarSubscriptionCreateRequest"];
+export type CalendarSubscriptionListResponse = components["schemas"]["CalendarSubscriptionListResponse"];
 export type CalendarTimeZone = components["schemas"]["CalendarTimeZone"];
 export type OkResponse = components["schemas"]["OkResponse"];
 

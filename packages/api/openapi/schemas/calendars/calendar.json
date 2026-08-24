@@ -25,7 +25,14 @@
       "color": { "type": ["string", "null"] },
       "sortOrder": { "type": "integer", "minimum": 0 },
       "isDefault": { "type": "boolean" },
-      "isSubscribed": { "type": "boolean" },
+      "isSubscribed": {
+        "type": "boolean",
+        "description": "JMAP Calendar visibility (whether the calendar is shown). Not a remote ICS/webcal subscription marker."
+      },
+      "subscriptionId": {
+        "type": ["string", "null"],
+        "description": "Owner-visible id of the live ICS/webcal subscription backing this collection; null for ordinary calendars. Distinct from isSubscribed."
+      },
       "scope": {
         "type": "string",
         "enum": ["personal", "group"],
@@ -58,6 +65,7 @@
       "sortOrder": 0,
       "isDefault": true,
       "isSubscribed": true,
+      "subscriptionId": null,
       "scope": "personal",
       "groupSlug": null,
       "shareWith": null,

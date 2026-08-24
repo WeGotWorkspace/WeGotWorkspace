@@ -1,0 +1,86 @@
+{
+  "CalendarSubscriptionCreateRequest": {
+    "type": "object",
+    "required": ["url"],
+    "additionalProperties": false,
+    "description": "Subscribe to a remote ICS or webcal URL. webcal:// is normalized to https://; only http/https are accepted.",
+    "properties": {
+      "url": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Remote ICS or webcal URL. webcal:// is accepted and normalized to https:// before fetch."
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "Group slug when creating the collection on a team principal (same as Calendar/set). Omit or null for a personal calendar. Group members then see the subscribed collection."
+      }
+    }
+  },
+  "CalendarSubscription": {
+    "type": "object",
+    "required": ["id", "url", "calendarId"],
+    "additionalProperties": false,
+    "description": "Live remote ICS/webcal subscription. Fetch URL and status live here, not on JMAP Calendar.isSubscribed.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Subscription id (also exposed as Calendar.subscriptionId on Calendar/get)."
+      },
+      "url": {
+        "type": "string",
+        "description": "Normalized http(s) source URL."
+      },
+      "name": {
+        "type": ["string", "null"]
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "calendarId": {
+        "$ref": "#/components/schemas/JmapId",
+        "description": "Read-only calendar collection created for this subscription (personal or team principal)."
+      },
+      "lastFetchedAt": {
+        "type": ["string", "null"],
+        "format": "date-time"
+      }
+    }
+  },
+  "CalendarSubscriptionListResponse": {
+    "type": "object",
+    "required": ["list"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/CalendarSubscription" }
+      }
+    }
+  },
+  "CalendarFeed": {
+    "type": "object",
+    "required": ["httpsUrl", "webcalUrl"],
+    "additionalProperties": false,
+    "description": "Owner-visible published ICS/webcal feed URLs for an owned personal calendar.",
+    "properties": {
+      "httpsUrl": {
+        "type": "string",
+        "format": "uri",
+        "description": "Public https URL for GET /calendars/feeds/{token}."
+      },
+      "webcalUrl": {
+        "type": "string",
+        "description": "Same feed advertised as webcal:// for calendar clients."
+      }
+    }
+  }
+}

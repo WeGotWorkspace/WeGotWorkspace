@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
+use App\Models\CalendarFeedToken;
 use App\Models\CalendarInstance;
+use App\Models\CalendarSubscription;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Drive\DriveGroupResolver;
@@ -22,6 +24,12 @@ final class CalendarRepository
 {
     /** Sabre CalDAV PDO maps this Apple property onto `calendarinstances.calendarcolor`. */
     private const CALENDAR_COLOR_PROPERTY = '{http://apple.com/ns/ical/}calendar-color';
+
+    /** @var array<string, array<string, string>> */
+    private array $subscriptionIdsByUser = [];
+
+    /** @var array<string, string>|null calendar_uri => subscription id (any principal) */
+    private ?array $subscriptionIdsByUri = null;
 
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
@@ -183,13 +191,43 @@ final class CalendarRepository
         }
 
         $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
-        if ($instance->objects()->where('componenttype', 'VEVENT')->exists() && ! $removeContents) {
+        $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
+        if ($instance->objects()->where('componenttype', 'VEVENT')->exists() && ! $removeContents && ! $isSubscription) {
             throw new ApiHttpException(409, 'Calendar contains events.', 'calendarHasContents');
         }
 
         $this->calBackend()->deleteCalendar($this->calBackendCalendarId($instance));
+        $this->forgetCalendarSideTables($username, (string) $instance->uri);
 
         return ['ok' => true];
+    }
+
+    public function deleteIncludingContents(string $username, string $calendarId): void
+    {
+        $this->delete($username, $calendarId, ['onDestroyRemoveContents' => true]);
+    }
+
+    public function isSubscriptionCalendar(string $username, string $calendarId): bool
+    {
+        return isset($this->subscriptionIdMap($username)[$calendarId])
+            || isset($this->subscriptionIdByCalendarUri()[$calendarId]);
+    }
+
+    public function findOwnedPersonalCalendar(string $username, string $calendarId): CalendarInstance
+    {
+        if (CalendarCollectionUris::parseGroupCalendarApiId($calendarId) !== null) {
+            throw new ApiHttpException(403, 'Only owned personal calendars can be published.', 'forbidden');
+        }
+
+        $instance = $this->findCalendarInstance($this->principalUri($username), $calendarId);
+        if ($instance === null) {
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
+        }
+        if ($this->groupSlugFromPrincipalUri((string) $instance->principaluri) !== null) {
+            throw new ApiHttpException(403, 'Only owned personal calendars can be published.', 'forbidden');
+        }
+
+        return $instance;
     }
 
     public function changes(string $username, ?string $since): array
@@ -438,6 +476,7 @@ final class CalendarRepository
 
         $isGroup = $groupSlug !== null;
         $isProvisionedGroup = $this->isProvisionedGroupCalendar($instance, $groupSlug);
+        $subscriptionId = $this->subscriptionIdForInstance($instance, $groupSlug);
 
         $rights = match ((int) ($instance->access ?? 1)) {
             2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => false],
@@ -449,6 +488,14 @@ final class CalendarRepository
                 'mayDelete' => ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
             ],
         };
+        if ($subscriptionId !== null) {
+            $rights = [
+                'mayRead' => true,
+                'mayWrite' => false,
+                'mayShare' => false,
+                'mayDelete' => true,
+            ];
+        }
 
         return [
             'id' => $isProvisionedGroup ? CalendarCollectionUris::groupCalendarApiId($groupSlug) : $uri,
@@ -459,11 +506,72 @@ final class CalendarRepository
             'sortOrder' => (int) ($instance->calendarorder ?? 0),
             'isDefault' => ! $isGroup && $uri === CalendarCollectionUris::EVENT_DEFAULT,
             'isSubscribed' => true,
+            'subscriptionId' => $subscriptionId,
             'scope' => $isGroup ? 'group' : 'personal',
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => null,
             'myRights' => $rights,
         ];
+    }
+
+    private function subscriptionIdForInstance(CalendarInstance $instance, ?string $groupSlug = null): ?string
+    {
+        return $this->subscriptionIdByCalendarUri()[(string) $instance->uri] ?? null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function subscriptionIdByCalendarUri(): array
+    {
+        if ($this->subscriptionIdsByUri === null) {
+            $this->subscriptionIdsByUri = CalendarSubscription::query()
+                ->pluck('id', 'calendar_uri')
+                ->all();
+        }
+
+        return $this->subscriptionIdsByUri;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function subscriptionIdMap(string $username): array
+    {
+        if (! array_key_exists($username, $this->subscriptionIdsByUser)) {
+            $this->subscriptionIdsByUser[$username] = CalendarSubscription::query()
+                ->where('username', $username)
+                ->pluck('id', 'calendar_uri')
+                ->all();
+        }
+
+        return $this->subscriptionIdsByUser[$username];
+    }
+
+    private function forgetCalendarSideTables(string $username, string $calendarUri): void
+    {
+        CalendarSubscription::query()
+            ->where('calendar_uri', $calendarUri)
+            ->delete();
+        CalendarFeedToken::query()
+            ->where('owner_username', $username)
+            ->where('calendar_uri', $calendarUri)
+            ->delete();
+        unset($this->subscriptionIdsByUser[$username]);
+        $this->subscriptionIdsByUri = null;
+    }
+
+    private function usernameFromPrincipalUri(string $principalUri): ?string
+    {
+        if (! str_starts_with($principalUri, 'principals/')) {
+            return null;
+        }
+        $username = substr($principalUri, strlen('principals/'));
+        if ($username === '' || str_starts_with($username, 'groups/')) {
+            return null;
+        }
+
+        return $username;
     }
 
     /**
