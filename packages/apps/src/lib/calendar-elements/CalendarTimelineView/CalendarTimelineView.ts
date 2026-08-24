@@ -156,9 +156,10 @@ export class CalendarTimelineView extends CalendarViewBase {
    */
   allDayRow = false;
   /**
-   * Keeps a month-mode instance in the compact (year-style) treatment regardless of measured
-   * width. The container query remains for standalone month views that shrink; this flag
-   * forces the same treatment when the host cannot rely on width (narrow embeds).
+   * Keeps a month-mode instance in the compact (slim view-only event bars) treatment
+   * regardless of measured width. The container query remains for standalone month views
+   * that shrink; this flag forces the same treatment when the host cannot rely on width
+   * (narrow embeds). Year is a separate dots grid and does not use this flag.
    */
   forceCompact = false;
   startDate = Temporal.Now.plainDateISO().toString();
@@ -1094,10 +1095,10 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /**
-   * Whether the month presentation is currently compact (tiny cells). The flag is a custom
-   * property flipped by the `lc-timeline-month` container query in CalendarTimelineView.css and
-   * inherits into <time-line>'s shadow content, so it can be read from the clicked element
-   * (same computed-style pattern as the grid's `--_lc-compact-month-view`).
+   * Whether the month presentation is currently compact (slim view-only event bars). The flag
+   * is a custom property flipped by the `lc-timeline-month` container query in
+   * CalendarTimelineView.css and inherits into <time-line>'s shadow content, so it can be read
+   * from the clicked element (same computed-style pattern as the grid's `--_lc-compact-month-view`).
    */
   #isCompactMonthPresentation(element: Element): boolean {
     if (this.forceCompact) return true;

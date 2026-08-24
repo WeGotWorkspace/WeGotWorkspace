@@ -585,8 +585,8 @@ time-line::part(day-month-prefix) {
   white-space: pre;
 }
 
-/* Event-day bullets: hidden at regular size, shown by the compact treatment below. Absolute
-   under the day number so it stays perfectly centered in the compact cell. */
+/* Event-day bullets: hidden by default. Year uses its own `.year-day-dot` marks; compact
+   month shows slim EventCard bars instead, so these stay off. */
 time-line::part(day-dots) {
   display: none;
   position: absolute;
@@ -675,48 +675,60 @@ time-line::part(overflow-dot) {
    exposed via aria-pressed/part=event-card-selected, and keyboard users see the
    :focus-visible ring. */
 
-/* ---- Compact (year-style) month treatment -------------------------------------------------
+/* ---- Compact month: slim view-only event bars -------------------------------------------
    Applied behind the lc-timeline-month size container query for standalone month views that
    shrink (504px = 7 x 72px minimum cells; the container is .timeline-layout--month above —
    container lookup follows the flat tree, so it resolves for parts inside <time-line>'s
    shadow root too), and unconditionally under the reflected force-compact attribute. Keep
-   both blocks in sync. */
+   both blocks in sync. Year stays a separate dots grid and does not set force-compact. */
 
 @container lc-timeline-month (max-width: 504px) {
-  /* Compact flag: inherits into <time-line>'s shadow content so click handlers can read it
-     via getComputedStyle (same pattern as the grid's --_lc-compact-month-view). */
+  /* Compact flag + slim density: the flag inherits into <time-line>'s shadow so click
+     handlers can read it via getComputedStyle (same pattern as the grid's
+     --_lc-compact-month-view). Lane tokens stay in the 18–22px text-tier band. */
   time-line.timeline-main {
     --_lc-timeline-compact-month: 1;
+    --event-height: 20px;
+    --_lc-event-height: 20px;
+    --time-line-event-min-size: 20px;
+    --_lc-event-card-heading-padding-block: 1px;
+    --_lc-event-card-heading-align-items: center;
+    --_lc-event-card-heading-line-height: 1;
+    --_lc-time-label-font-size: 0.625rem;
+    --_lc-event-card-pointer-events: none;
+    --_lc-event-card-recurring-icon-display: none;
+    --_lc-event-card-accent-bar-display: none;
+    --_lc-event-card-heading-padding-inline-start: 4px;
   }
 
-  /* Chrome off: no outer border, no per-cell borders. */
+  /* Chrome off: no outer border, no vertical cell grid. Keep a hairline between week rows. */
   time-line.timeline-main::part(viewport) {
     border: none;
   }
 
   time-line.timeline-main::part(cell) {
     outline: none;
+    border-block-end: var(--_lc-grid-line-width, 1px) solid var(--_lc-grid-line-color);
   }
 
-  /* No chips, markers or drag-create surface in tiny cells; the "+N" footer goes too. */
-  time-line.timeline-main::part(cell-main),
+  /* Show the event layer and +N footer as view-only bars; empty-cell drag-create is off. */
+  time-line.timeline-main::part(cell-main) {
+    @apply pointer-events-none;
+  }
+
+  /* Outer ::part wins over TimeLine's `.event > * { pointer-events: auto }`. */
+  time-line.timeline-main::part(event),
+  time-line.timeline-main::part(event-card) {
+    @apply pointer-events-none;
+  }
+
+  time-line.timeline-main::part(cell-header),
   time-line.timeline-main::part(cell-footer) {
-    display: none;
-  }
-
-  /* The header becomes the whole cell so the day number centers in it. */
-  time-line.timeline-main::part(cell-header) {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
+    @apply pointer-events-auto;
   }
 
   time-line.timeline-main::part(day-header) {
-    flex: 1 1 auto;
-    justify-content: center;
-    gap: 0;
-    min-height: 0;
-    padding: 0;
+    @apply justify-center;
   }
 
   time-line.timeline-main::part(day-header-outside-month),
@@ -729,45 +741,53 @@ time-line::part(overflow-dot) {
   }
 
   time-line.timeline-main::part(day-month-prefix) {
-    display: none;
-  }
-
-  time-line.timeline-main::part(day-dots) {
-    display: inline-flex;
+    @apply hidden;
   }
 }
 
 /* force-compact duplicate of the container-query block above. The flag custom property is
    not set here: #isCompactMonthPresentation short-circuits on the forceCompact property. */
+:host([force-compact]) time-line.timeline-main {
+  --event-height: 20px;
+  --_lc-event-height: 20px;
+  --time-line-event-min-size: 20px;
+  --_lc-event-card-heading-padding-block: 1px;
+  --_lc-event-card-heading-align-items: center;
+  --_lc-event-card-heading-line-height: 1;
+  --_lc-time-label-font-size: 0.625rem;
+  --_lc-event-card-pointer-events: none;
+  --_lc-event-card-recurring-icon-display: none;
+  --_lc-event-card-accent-bar-display: none;
+  --_lc-event-card-heading-padding-inline-start: 4px;
+}
+
 :host([force-compact]) time-line.timeline-main::part(viewport) {
   border: none;
 }
 
 :host([force-compact]) time-line.timeline-main::part(cell) {
   outline: none;
+  border-block-end: var(--_lc-grid-line-width, 1px) solid var(--_lc-grid-line-color);
 }
 
-:host([force-compact]) time-line.timeline-main::part(cell-main),
+:host([force-compact]) time-line.timeline-main::part(cell-main) {
+  @apply pointer-events-none;
+}
+
+:host([force-compact]) time-line.timeline-main::part(event),
+:host([force-compact]) time-line.timeline-main::part(event-card) {
+  @apply pointer-events-none;
+}
+
+:host([force-compact]) time-line.timeline-main::part(cell-header),
 :host([force-compact]) time-line.timeline-main::part(cell-footer) {
-  display: none;
-}
-
-:host([force-compact]) time-line.timeline-main::part(cell-header) {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
+  @apply pointer-events-auto;
 }
 
 :host([force-compact]) time-line.timeline-main::part(day-header) {
-  flex: 1 1 auto;
-  justify-content: center;
-  gap: 0;
-  min-height: 0;
-  padding: 0;
+  @apply justify-center;
 }
 
-/* Same specificity as the compact day-header rule above; later so outside ink cannot
-   lose if that block later sets color. Year mini-months always take this path. */
 :host([force-compact]) time-line.timeline-main::part(day-header-outside-month),
 :host([force-compact]) time-line.timeline-main::part(day-number-outside-month) {
   color: var(--_lc-outside-month-day-color);
@@ -778,9 +798,5 @@ time-line::part(overflow-dot) {
 }
 
 :host([force-compact]) time-line.timeline-main::part(day-month-prefix) {
-  display: none;
-}
-
-:host([force-compact]) time-line.timeline-main::part(day-dots) {
-  display: inline-flex;
+  @apply hidden;
 }

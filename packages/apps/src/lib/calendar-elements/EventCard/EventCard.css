@@ -64,7 +64,8 @@
 }
 
 :host .event-card-shell {
-  @apply relative h-full pointer-events-auto transition-transform duration-100;
+  @apply relative h-full transition-transform duration-100;
+  pointer-events: var(--_lc-event-card-pointer-events, auto);
 }
 
 :host([layout="flow"]) > div {
@@ -115,6 +116,7 @@
   border-radius: 999px;
   background: var(--_lc-event-card-accent-color);
   pointer-events: none;
+  display: var(--_lc-event-card-accent-bar-display, block);
 }
 
 :host([layout="flow"]) .event-card-heading {
@@ -225,7 +227,8 @@
 }
 
 :host .event-card-recurring-icon-wrap {
-  @apply pointer-events-none inline-flex shrink-0 items-center justify-center self-start;
+  @apply pointer-events-none shrink-0 items-center justify-center self-start;
+  display: var(--_lc-event-card-recurring-icon-display, inline-flex);
   margin-inline-start: auto;
   margin-top: 1px;
   width: var(--_lc-event-recurring-icon-size);
@@ -247,10 +250,15 @@
     @apply flex gap-1 whitespace-nowrap;
   }
 
-  /* Also listed with [layout="flow"] so the tighter padding outranks the flow base rule. */
+  /* Also listed with [layout="flow"] so the tighter padding outranks the flow base rule.
+     Compact month can shrink padding-block via --_lc-event-card-heading-padding-block
+     (py-2 clips at the 20px lane) and center the single-line title. */
   :host .event-card-heading,
   :host([layout="flow"]) .event-card-heading {
-    @apply items-start overflow-hidden whitespace-nowrap text-ellipsis py-2;
+    @apply overflow-hidden whitespace-nowrap text-ellipsis;
+    align-items: var(--_lc-event-card-heading-align-items, flex-start);
+    padding-block: var(--_lc-event-card-heading-padding-block, 0.5rem);
+    line-height: var(--_lc-event-card-heading-line-height, 1.25);
   }
 
   :host .event-card-compact-label {
@@ -284,16 +292,18 @@
 
   :host .event-card-heading,
   :host([layout="flow"]) .event-card-heading {
-    @apply px-2 py-1.5;
+    @apply px-2;
+    padding-block: var(--_lc-event-card-heading-padding-block, 0.375rem);
   }
 }
 
 /* Content clears the inset accent bar: 6px inset + 3px bar + 4px gap. Placed after the base,
    flow and compact heading rules above so this start padding wins over their symmetric px-*
-   values in every tier (equal-or-higher specificity, later in the file). */
+   values in every tier (equal-or-higher specificity, later in the file). Compact month can
+   drop the bar and reclaim this start inset via --_lc-event-card-heading-padding-inline-start. */
 :host .event-card-heading,
 :host([layout="flow"]) .event-card-heading {
-  padding-inline-start: 13px;
+  padding-inline-start: var(--_lc-event-card-heading-padding-inline-start, 13px);
 }
 
 /* Very small cards: hide compact time, keep summary visible. */
