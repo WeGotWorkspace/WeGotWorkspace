@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useParams, useRouter } from "@tanstack/react-router";
 import {
+  persistCalendarRoutePrefs,
+  readCalendarViewPrefs,
+} from "@/calendar-core/src/calendar-view-prefs";
+import {
   calendarNavigateTarget,
   calendarPathFromState,
   calendarStateFromLocation,
@@ -16,7 +20,7 @@ export function useCalendarRouteSync() {
   const params = useParams({ strict: false }) as CalendarRouteParams;
 
   const routeState = useMemo(
-    () => calendarStateFromLocation(location.pathname, params),
+    () => calendarStateFromLocation(location.pathname, params, readCalendarViewPrefs()),
     [location.pathname, params],
   );
 
@@ -28,6 +32,7 @@ export function useCalendarRouteSync() {
       if (!isCalendarPathname(livePath)) return;
       const path = calendarPathFromState(state);
       if (livePath === path) return;
+      persistCalendarRoutePrefs(state.view, state.presentation);
       // Must go through navigate() so TanStack builds a new location (same
       // `/calendar/$view/$date` route, new params). Raw history.push updates
       // the in-memory history object but createBrowserHistory coalesces a
@@ -43,10 +48,12 @@ export function useCalendarRouteSync() {
   useEffect(() => {
     const livePath = router.state.location.pathname;
     if (!isCalendarPathname(livePath)) return;
-    const canonical = calendarPathFromState(calendarStateFromLocation(livePath));
+    persistCalendarRoutePrefs(routeState.view, routeState.presentation);
+    const prefs = readCalendarViewPrefs();
+    const canonical = calendarPathFromState(calendarStateFromLocation(livePath, {}, prefs));
     if (livePath === canonical) return;
-    writeState(calendarStateFromLocation(livePath), true);
-  }, [location.pathname, router, writeState]);
+    writeState(calendarStateFromLocation(livePath, {}, prefs), true);
+  }, [location.pathname, routeState.presentation, routeState.view, router, writeState]);
 
   const handleRef = useRef(writeState);
   handleRef.current = writeState;

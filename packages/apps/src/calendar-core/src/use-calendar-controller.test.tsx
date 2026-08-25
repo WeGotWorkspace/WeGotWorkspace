@@ -22,6 +22,10 @@ vi.mock("@/hooks/use-app-toast", () => ({
 
 const bootstrap = createCalendarAppBootstrap();
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 describe("useCalendarController view + create intent", () => {
   beforeEach(() => {
     Object.defineProperty(window, "matchMedia", {

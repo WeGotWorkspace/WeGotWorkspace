@@ -40,12 +40,17 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 import { todayISODate } from "@/calendar-core/src/calendar-event-model";
+import {
+  persistCalendarRoutePrefs,
+  readCalendarViewPrefs,
+} from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 
 describe("useCalendarRouteSync", () => {
   beforeEach(() => {
     navigate.mockClear();
     historyFlush.mockReset();
+    window.localStorage.clear();
     mockPathname = "/calendar/month/2026-08-17";
     mockParams = { view: "month", date: "2026-08-17" };
     livePathname = "/calendar/month/2026-08-17";
@@ -124,6 +129,7 @@ describe("useCalendarRouteSync", () => {
     });
     unmount();
     navigate.mockClear();
+    window.localStorage.clear();
 
     mockPathname = "/calendar/list";
     livePathname = "/calendar/list";
@@ -147,6 +153,37 @@ describe("useCalendarRouteSync", () => {
       to: "/calendar/$view/$date",
       params: { view: "month", date: todayISODate() },
       replace: true,
+    });
+  });
+
+  it("hydrates a bare /calendar path from stored view prefs", () => {
+    persistCalendarRoutePrefs("week", "list");
+    mockPathname = "/calendar";
+    livePathname = "/calendar";
+    mockParams = {};
+    const { result } = renderHook(() => useCalendarRouteSync());
+
+    expect(result.current.initialView).toBe("week");
+    expect(result.current.initialPresentation).toBe("list");
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/calendar/list/$view/$date",
+      params: { view: "week", date: todayISODate() },
+      replace: true,
+    });
+  });
+
+  it("lets an explicit path win over stored prefs and then stores that view", () => {
+    persistCalendarRoutePrefs("year", "list");
+    mockPathname = "/calendar/day/2026-08-17";
+    livePathname = "/calendar/day/2026-08-17";
+    mockParams = { view: "day", date: "2026-08-17" };
+    const { result } = renderHook(() => useCalendarRouteSync());
+
+    expect(result.current.initialView).toBe("day");
+    expect(result.current.initialPresentation).toBe("grid");
+    expect(readCalendarViewPrefs()).toMatchObject({
+      view: "day",
+      presentation: "grid",
     });
   });
 
