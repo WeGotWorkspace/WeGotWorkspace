@@ -230,7 +230,11 @@ export async function patchCalendarLive(
 
 export async function deleteCalendarLive(calendarId: string, client?: JmapClient): Promise<void> {
   const { calendars, accountId } = await connectedCalendars(client);
-  await calendars.setCalendars({ accountId, destroy: [calendarId] });
+  await calendars.setCalendars({
+    accountId,
+    destroy: [calendarId],
+    onDestroyRemoveEvents: true,
+  });
 }
 
 export class CalendarImportError extends Error {

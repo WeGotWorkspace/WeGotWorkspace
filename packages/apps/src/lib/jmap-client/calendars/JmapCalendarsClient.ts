@@ -72,7 +72,11 @@ export class JmapCalendarsClient {
   }
 
   async setCalendars(
-    args: Omit<SetArgs<JmapCalendar>, "accountId"> & { accountId: JmapId },
+    args: Omit<SetArgs<JmapCalendar>, "accountId"> & {
+      accountId: JmapId;
+      /** draft-ietf-jmap-calendars: destroy events with the collection. */
+      onDestroyRemoveEvents?: boolean;
+    },
   ): Promise<SetResponse<JmapCalendar>> {
     const response = await this.client.call<SetResponse<JmapCalendar>>("Calendar/set", args);
     this.client.setState(args.accountId, CALENDAR_TYPE, response.newState);
