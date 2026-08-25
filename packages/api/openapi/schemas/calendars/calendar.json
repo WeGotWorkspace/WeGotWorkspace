@@ -5,8 +5,8 @@
     "properties": {
       "mayRead": { "type": "boolean" },
       "mayWrite": { "type": "boolean" },
-      "mayShare": { "type": "boolean", "description": "May modify shareWith. True for personal calendar owners." },
-      "mayDelete": { "type": "boolean" }
+      "mayShare": { "type": "boolean", "description": "May modify shareWith. True for personal calendar owners and group members." },
+      "mayDelete": { "type": "boolean", "description": "On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false." }
     },
     "additionalProperties": false,
     "description": "JMAP CalendarRights."

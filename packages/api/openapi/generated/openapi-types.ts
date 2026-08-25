@@ -8657,8 +8657,9 @@ export interface components {
         CalendarRights: {
             mayRead: boolean;
             mayWrite: boolean;
-            /** @description May modify shareWith. True for personal calendar owners. */
+            /** @description May modify shareWith. True for personal calendar owners and group members. */
             mayShare: boolean;
+            /** @description On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false. */
             mayDelete: boolean;
         };
         /**
@@ -8926,7 +8927,7 @@ export interface components {
             id?: components["schemas"]["JmapId"];
             /** @description When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope. */
             groupSlug?: string | null;
-            /** @description Initial share grants. Same shape as Calendar.shareWith; rejected on group calendars. */
+            /** @description Initial share grants. Same shape as Calendar.shareWith. Allowed for personal owners and group-collection managers. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -8937,7 +8938,7 @@ export interface components {
             timeZone?: string | null;
             color?: string | null;
             isSubscribed?: boolean;
-            /** @description Patch share grants for a personal owned calendar. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Group calendars reject this property. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;

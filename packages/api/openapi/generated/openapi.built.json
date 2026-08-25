@@ -6200,10 +6200,11 @@
                     },
                     "mayShare": {
                         "type": "boolean",
-                        "description": "May modify shareWith. True for personal calendar owners."
+                        "description": "May modify shareWith. True for personal calendar owners and group members."
                     },
                     "mayDelete": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false."
                     }
                 },
                 "additionalProperties": false,
@@ -7146,7 +7147,7 @@
                         "description": "When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope."
                     },
                     "shareWith": {
-                        "description": "Initial share grants. Same shape as Calendar.shareWith; rejected on group calendars.",
+                        "description": "Initial share grants. Same shape as Calendar.shareWith. Allowed for personal owners and group-collection managers.",
                         "oneOf": [
                             {
                                 "type": "object",
@@ -7202,7 +7203,7 @@
                         "type": "boolean"
                     },
                     "shareWith": {
-                        "description": "Patch share grants for a personal owned calendar. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Group calendars reject this property.",
+                        "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers.",
                         "oneOf": [
                             {
                                 "type": "object",

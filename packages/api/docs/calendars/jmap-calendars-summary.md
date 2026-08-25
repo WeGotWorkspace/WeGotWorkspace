@@ -17,7 +17,7 @@ Returned by `GET /calendars/calendars` and `GET /calendars/calendars/{calendarId
 | `isDefault` | boolean | `true` when uri is `default` |
 | `isSubscribed` | boolean | Always `true` for owned instances in v1 |
 | `shareWith` | object \| null | Owner map of JMAP id (`alice`, `groups/{slug}`) → rights. Recipients and unshared calendars are `null`. Null grant on `Calendar/set` revokes. Same grants are visible over CalDAV `{CS:}invite` / `{DAV:}invite`; inbound `CS:share` / `DAV:share-resource` with `mailto:` maps back to the JMAP id. Apple Calendar: this-instance CalDAV account only (not iCloud), `principals.email` must match the sharee `mailto:`, invites auto-accept, group share is JMAP-only. |
-| `myRights` | object | Derived from CalDAV `access` (1 owner / 2 read / 3 read-write). Personal owners and group members have `mayShare: true`. |
+| `myRights` | object | Derived from CalDAV `access` (1 owner / 2 read / 3 read-write). Personal owners and group members have `mayShare: true`. On a sharee instance, `mayDelete: true` means dismiss/hide (`calendar_share_dismissals`), not delete the owner's collection; owner `shareWith` grants stay `mayDelete: false`. |
 
 ## CalendarEvent
 

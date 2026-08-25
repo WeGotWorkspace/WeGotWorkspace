@@ -13,7 +13,7 @@
         "description": "When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope."
       },
       "shareWith": {
-        "description": "Initial share grants. Same shape as Calendar.shareWith; rejected on group calendars.",
+        "description": "Initial share grants. Same shape as Calendar.shareWith. Allowed for personal owners and group-collection managers.",
         "oneOf": [
           {
             "type": "object",
@@ -40,7 +40,7 @@
       "color": { "type": ["string", "null"] },
       "isSubscribed": { "type": "boolean" },
       "shareWith": {
-        "description": "Patch share grants for a personal owned calendar. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Group calendars reject this property.",
+        "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers.",
         "oneOf": [
           {
             "type": "object",
