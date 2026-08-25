@@ -159,6 +159,54 @@ describe("occurrencesInRange", () => {
     expect(occurrences.every((o) => o.isRecurring)).toBe(true);
   });
 
+  it("replaces the series instance when a this-instance override exists (#609)", () => {
+    const occurrences = occurrencesInRange(
+      [
+        wireEvent({
+          title: "Standup",
+          recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+          recurrenceOverrides: {
+            "2033-01-11T10:00:00": {
+              title: "Standup (moved)",
+              start: "2033-01-11T11:00:00",
+            },
+          },
+        }),
+      ],
+      range,
+    );
+
+    const onOverrideDate = occurrences.filter((row) =>
+      row.start.toString().startsWith("2033-01-11"),
+    );
+    expect(onOverrideDate).toHaveLength(1);
+    expect(onOverrideDate[0]?.title).toBe("Standup (moved)");
+    expect(onOverrideDate[0]?.start.toString()).toBe("2033-01-11T11:00:00");
+    expect(occurrences.map((row) => row.title)).toEqual(["Standup", "Standup (moved)", "Standup"]);
+  });
+
+  it("replaces the series instance for a title-only this-instance override (#609)", () => {
+    const occurrences = occurrencesInRange(
+      [
+        wireEvent({
+          title: "Standup",
+          recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+          recurrenceOverrides: {
+            "2033-01-11T10:00:00": { title: "Standup (renamed)" },
+          },
+        }),
+      ],
+      range,
+    );
+
+    const onOverrideDate = occurrences.filter((row) =>
+      row.start.toString().startsWith("2033-01-11"),
+    );
+    expect(onOverrideDate).toHaveLength(1);
+    expect(onOverrideDate[0]?.title).toBe("Standup (renamed)");
+    expect(onOverrideDate[0]?.start.toString()).toBe("2033-01-11T10:00:00");
+  });
+
   it("filters by visible calendars", () => {
     const occurrences = occurrencesInRange(
       [wireEvent(), wireEvent({ id: "ev-2", uid: "uid-2", calendarIds: { home: true } })],
