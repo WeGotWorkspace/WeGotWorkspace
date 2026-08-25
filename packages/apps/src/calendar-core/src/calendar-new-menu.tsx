@@ -1,4 +1,4 @@
-import { CalendarPlus, ChevronDown, Plus, Rss } from "lucide-react";
+import { CalendarPlus, ChevronDown, Plus, Rss, Upload } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
@@ -8,11 +8,12 @@ import "./calendar-new-menu.css";
 export type CalendarNewMenuProps = {
   labels: Pick<
     CalendarUILabels,
-    "newEvent" | "newEventMenu" | "createCalendar" | "subscribeCalendar"
+    "newEvent" | "newEventMenu" | "createCalendar" | "subscribeCalendar" | "importIcs"
   >;
   onCreateEvent: () => void;
   onCreateCalendar?: () => void;
   onSubscribeCalendar?: () => void;
+  onImportEvents?: () => void;
 };
 
 export function CalendarNewMenu({
@@ -20,6 +21,7 @@ export function CalendarNewMenu({
   onCreateEvent,
   onCreateCalendar,
   onSubscribeCalendar,
+  onImportEvents,
 }: CalendarNewMenuProps) {
   const items: DropdownMenuItemProps[] = [];
   if (onCreateCalendar) {
@@ -36,6 +38,14 @@ export function CalendarNewMenu({
       label: labels.subscribeCalendar,
       icon: <Rss aria-hidden />,
       onClick: onSubscribeCalendar,
+    });
+  }
+  if (onImportEvents) {
+    items.push({
+      id: "import-ics",
+      label: labels.importIcs,
+      icon: <Upload aria-hidden />,
+      onClick: onImportEvents,
     });
   }
 

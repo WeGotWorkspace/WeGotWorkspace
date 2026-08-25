@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CalendarEventCalendarPicker,
@@ -34,5 +34,10 @@ describe("CalendarEventCalendarPicker", () => {
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
     expect(trigger.querySelector(".calendar-color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".calendar-color-swatch-trigger__chevron")).toBeTruthy();
+
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    const personal = screen.getByRole("menuitem", { name: "Personal" });
+    expect(personal.querySelector(".calendar-sidebar-dot")).toBeTruthy();
   });
 });

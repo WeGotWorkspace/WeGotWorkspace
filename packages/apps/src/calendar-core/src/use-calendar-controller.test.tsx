@@ -1769,3 +1769,41 @@ describe("useCalendarController create calendar directory", () => {
     expect(result.current.publishFeed).toBeNull();
   });
 });
+
+describe("useCalendarController ICS import", () => {
+  it("adds a created import destination to the sidebar calendars", async () => {
+    const createCalendar = vi.fn().mockResolvedValue({
+      id: "travel",
+      name: "Travel",
+      color: "#22c55e",
+      mayWrite: true,
+    });
+    const importEvents = vi.fn().mockResolvedValue({ list: [{ id: "imported-1" }], errors: [] });
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          createCalendar,
+          importEvents,
+        },
+      }),
+    );
+
+    const file = new File(["BEGIN:VCALENDAR"], "events.ics");
+    act(() => {
+      result.current.beginImport(file);
+    });
+    await act(async () => {
+      result.current.submitImportDialog(file, {
+        mode: "create",
+        name: "Travel",
+        color: "#22c55e",
+      });
+    });
+
+    expect(result.current.calendars.some((calendar) => calendar.id === "travel")).toBe(true);
+  });
+});
