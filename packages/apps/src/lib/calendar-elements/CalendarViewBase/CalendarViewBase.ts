@@ -4,6 +4,7 @@ import {
   parseRecurrenceId,
   resolveCalendarEventColor,
   shiftDateValue,
+  splitOccurrenceKey,
   type ApplyResult,
   type CalendarEvent as ApiCalendarEvent,
   type CalendarEventPendingOperation,
@@ -25,6 +26,10 @@ import {
   fromUpdateRequest,
   moveFromUpdateRequest,
 } from "../domain/events-api/adapters.js";
+import {
+  resolveEventMapKey,
+  shouldAskSeriesScope,
+} from "../domain/events-api/resolveEventMapKey.js";
 import type {
   CalendarEventPendingByCalendarId,
   CalendarEventPendingByOperation,
@@ -195,10 +200,7 @@ export abstract class CalendarViewBase extends BaseElement {
 
   /** Prefer the bound map; context `getEvents()` is already `@lit-calendar/events-api` state. */
   #viewMapFromContext(api: EventsAPIContextValue): EventsMap {
-    if (this.events !== undefined) {
-      return this.events;
-    }
-    return api.getEvents() ?? new Map();
+    return api.getEvents() ?? this.events ?? new Map();
   }
 
   /**
@@ -281,7 +283,7 @@ export abstract class CalendarViewBase extends BaseElement {
   }> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return { handled: false, accepted: true };
     const events = this.#viewMapFromContext(this.#eventsAPI);
-    const eventKey = this.#resolveEventMapKey(events, detail.envelope);
+    const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return { handled: false, accepted: true };
     const current = events.get(eventKey);
     if (!current) return { handled: false, accepted: true };
@@ -289,8 +291,12 @@ export abstract class CalendarViewBase extends BaseElement {
     const data = current.data;
     const currentEnd = resolvedDataEnd(data);
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
-    const shouldPromptForSeries = isRecurring && !isCalendarEventException(current);
     const recurrenceId = detail.envelope.recurrenceId ?? current.recurrenceId;
+    const shouldPromptForSeries = shouldAskSeriesScope({
+      isRecurring,
+      events,
+      eventKey,
+    });
     const occurrenceStart =
       data.recurrenceRule && !current.recurrenceId && recurrenceId
         ? (parseRecurrenceId(recurrenceId, data.allDay ?? false, data.start) ?? data.start)
@@ -307,9 +313,7 @@ export abstract class CalendarViewBase extends BaseElement {
     if (shouldPromptForSeries && recurrenceId) {
       // Engine/JMAP map key — not JSCalendar uid (`envelope.eventId`). React
       // truncate/fork looks up bootstrap + surface by this key.
-      const seriesMasterKey = eventKey.includes("::")
-        ? eventKey.slice(0, eventKey.indexOf("::"))
-        : eventKey;
+      const seriesMasterKey = splitOccurrenceKey(eventKey).masterId;
       const moveTarget = this.#formatScopeMoveTarget(detail.content.start, Boolean(data.allDay));
       const scope = await this.#askRecurrenceScope({
         action: "update",
@@ -364,6 +368,32 @@ export abstract class CalendarViewBase extends BaseElement {
       return { handled: true, accepted: true };
     }
 
+    // Already a this-instance exception, but the working set still has the master
+    // at this key — upsert the override instead of shifting the series.
+    if (
+      recurrenceId &&
+      !isCalendarEventException(current) &&
+      !current.recurrenceId &&
+      (detail.envelope.isException || current.data.exclusionDates?.has(recurrenceId))
+    ) {
+      return this.#applyUpdateAndNotify(eventKey, {
+        type: "add-exception",
+        input: {
+          target: { key: eventKey },
+          recurrenceId,
+          event: {
+            start: detail.content.start,
+            end: detail.content.end,
+            summary: detail.content.summary,
+            color: detail.content.color,
+            location: detail.content.location,
+            calendarId: detail.envelope.calendarId,
+            accountId: detail.envelope.accountId,
+          },
+        },
+      });
+    }
+
     if (updateKind === "move") {
       const delta = this.#toPlainDateTime(occurrenceStart).until(
         this.#toPlainDateTime(detail.content.start),
@@ -415,19 +445,21 @@ export abstract class CalendarViewBase extends BaseElement {
   ): Promise<boolean> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return false;
     const events = this.#viewMapFromContext(this.#eventsAPI);
-    const eventKey = this.#resolveEventMapKey(events, detail.envelope);
+    const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return false;
     const current = events.get(eventKey);
     if (!current) return false;
 
     const recurrenceId = detail.envelope.recurrenceId ?? current.recurrenceId;
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
-    const shouldPromptForSeries = isRecurring && !isCalendarEventException(current);
+    const shouldPromptForSeries = shouldAskSeriesScope({
+      isRecurring,
+      events,
+      eventKey,
+    });
 
     if (shouldPromptForSeries) {
-      const seriesMasterKey = eventKey.includes("::")
-        ? eventKey.slice(0, eventKey.indexOf("::"))
-        : eventKey;
+      const seriesMasterKey = splitOccurrenceKey(eventKey).masterId;
       const scope = await this.#askRecurrenceScope({
         action: "delete",
         masterId: seriesMasterKey,
@@ -693,25 +725,6 @@ export abstract class CalendarViewBase extends BaseElement {
     const result = this.#eventsAPI.apply(operation);
     this.events = result.nextState;
     return result;
-  }
-
-  #resolveEventMapKey(
-    events: EventsMap,
-    envelope: { eventId?: string; accountId?: string; calendarId?: string; recurrenceId?: string },
-  ): string | undefined {
-    if (!envelope.eventId) return undefined;
-    if (events.has(envelope.eventId)) return envelope.eventId;
-    let fallbackSeriesKey: string | undefined;
-    for (const [key, event] of events.entries()) {
-      if (event.eventId !== envelope.eventId) continue;
-      if (envelope.calendarId !== undefined && event.calendarId !== envelope.calendarId) continue;
-      if (envelope.accountId !== undefined && event.accountId !== envelope.accountId) continue;
-      if (envelope.recurrenceId === undefined || event.recurrenceId === envelope.recurrenceId)
-        return key;
-      if (event.recurrenceId === undefined && fallbackSeriesKey === undefined)
-        fallbackSeriesKey = key;
-    }
-    return fallbackSeriesKey;
   }
 
   #toPlainDateTime(value: Temporal.PlainDateTime): Temporal.PlainDateTime {

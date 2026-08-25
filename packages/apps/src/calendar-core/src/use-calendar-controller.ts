@@ -67,6 +67,7 @@ import {
   eventIsRecurringSeries,
   exclusionRecurrenceOverrides,
   forkSeriesDraftWithSplitOverrides,
+  occurrenceHasThisInstanceOverride,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
   resolveSeriesRecurrenceOverrides,
@@ -551,13 +552,17 @@ export function useCalendarController({
 
       let recurrenceScope: RecurrenceEditScope | undefined;
       if (isRecurring && editor.recurrenceId) {
-        const asked = await askRecurrenceScope({
-          action: "edit",
-          masterId: editor.eventId,
-          recurrenceId: editor.recurrenceId,
-        });
-        if (asked !== "thisInstance" && asked !== "thisAndFuture") return;
-        recurrenceScope = asked;
+        if (occurrenceHasThisInstanceOverride(original, editor.recurrenceId)) {
+          recurrenceScope = "thisInstance";
+        } else {
+          const asked = await askRecurrenceScope({
+            action: "edit",
+            masterId: editor.eventId,
+            recurrenceId: editor.recurrenceId,
+          });
+          if (asked !== "thisInstance" && asked !== "thisAndFuture") return;
+          recurrenceScope = asked;
+        }
       }
 
       // Only-this-instance: persist a JSCalendar recurrenceOverrides patch on the master.

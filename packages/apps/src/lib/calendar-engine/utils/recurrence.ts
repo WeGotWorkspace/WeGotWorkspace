@@ -50,11 +50,41 @@ export function parseRecurrenceId(
   });
 }
 
+const OCCURRENCE_KEY_SEPARATOR = "::";
+
+/** Engine keys detached exceptions / expanded occurrences as `${masterId}::${recurrenceId}`. */
+export function splitOccurrenceKey(key: string): { masterId: string; recurrenceId?: string } {
+  const separator = key.indexOf(OCCURRENCE_KEY_SEPARATOR);
+  if (separator === -1) return { masterId: key };
+  return { masterId: key.slice(0, separator), recurrenceId: key.slice(separator + 2) };
+}
+
+export function occurrenceMapKey(masterId: string, recurrenceId: string): string {
+  return `${masterId}${OCCURRENCE_KEY_SEPARATOR}${recurrenceId}`;
+}
+
 export function isDetachedException(event: CalendarEvent): boolean {
   if (event.isException === true) return true;
   if (!event.recurrenceId) return false;
   if (isExcludedOccurrence(event, event.recurrenceId)) return false;
   return !event.data.recurrenceRule;
+}
+
+/**
+ * True when this working-set key is already a this-instance override.
+ * Callers that already resolved a map key must use this — do not re-parse
+ * `"::"` or re-walk the map for the same question.
+ */
+export function isThisInstanceOverride(events: CalendarEventsMap, key: string): boolean {
+  const event = events.get(key);
+  if (event) return isDetachedException(event);
+  const { masterId, recurrenceId } = splitOccurrenceKey(key);
+  if (!recurrenceId) return false;
+  for (const row of events.values()) {
+    if (row.eventId !== masterId || row.recurrenceId !== recurrenceId) continue;
+    if (isDetachedException(row)) return true;
+  }
+  return false;
 }
 
 export function isExcludedOccurrence(master: CalendarEvent, recurrenceId: string): boolean {
@@ -66,7 +96,7 @@ export function collectDetachedExceptionKeys(events: CalendarEventsMap): Set<str
   for (const [, event] of events) {
     if (event.pendingOp === "deleted") continue;
     if (!event.eventId || !event.recurrenceId) continue;
-    detachedExceptionKeys.add(`${event.eventId}::${event.recurrenceId}`);
+    detachedExceptionKeys.add(occurrenceMapKey(event.eventId, event.recurrenceId));
   }
   return detachedExceptionKeys;
 }
