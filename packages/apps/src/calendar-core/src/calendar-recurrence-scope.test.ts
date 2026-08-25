@@ -340,6 +340,78 @@ describe("calendar-recurrence-scope", () => {
     expect(masterStarts.filter((start) => forkStarts.includes(start))).toEqual([]);
   });
 
+  it("a later this-and-future does not resurrect original times after an earlier cutoff", () => {
+    // Daily 10:00. First: move 3rd + future → 11:00. Second: move 1st + future → 09:00.
+    // RFC 8984 §4.1.3: the earlier object stays truncated; the 3rd+ sibling keeps its
+    // start shift. The second fork must keep that until or it paints twins on day 3+.
+    const daily: NonNullable<JmapCalendarEvent["recurrenceRules"]> = [
+      { "@type": "RecurrenceRule", frequency: "daily" },
+    ];
+    const firstSplit = "2033-01-12T10:00:00";
+    const firstUntil = untilBeforeRecurrenceId(firstSplit, false, "2033-01-10T10:00:00");
+    const laterSibling = {
+      id: "fork-from-third",
+      "@type": "Event",
+      uid: "u-later",
+      title: "Daily",
+      start: "2033-01-12T11:00:00",
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: daily,
+    } as JmapCalendarEvent;
+
+    const truncatedMasterRules = truncateRecurrenceRules(daily, firstUntil);
+    const secondForm: CalendarEventFormValue = {
+      ...emptyCalendarEventForm("work", "2033-01-10", "09:00"),
+      title: "Daily",
+      endDate: "2033-01-10",
+      endTime: "09:30",
+      recurrencePreset: "custom",
+      customRecurrenceRules: truncatedMasterRules,
+    };
+    const secondFork = forkSeriesDraftWithSplitOverrides(
+      secondForm,
+      truncatedMasterRules,
+      { start: "2033-01-10T10:00:00", showWithoutTime: false },
+      "2033-01-10T10:00:00",
+    );
+
+    expect(secondFork.recurrenceRules).toEqual([
+      expect.objectContaining({
+        frequency: "daily",
+        until: "2033-01-12T08:59:59",
+      }),
+    ]);
+
+    const secondForkWire = {
+      id: "fork-from-first",
+      "@type": "Event",
+      uid: "u-second",
+      title: secondFork.title,
+      start: secondFork.start,
+      duration: secondFork.duration,
+      calendarIds: { work: true },
+      recurrenceRules: secondFork.recurrenceRules ?? undefined,
+    } as JmapCalendarEvent;
+
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-10T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-15T00:00:00"),
+    };
+    const combined = expandEvents(calendarEventsToEngineMap([secondForkWire, laterSibling]), range);
+    const starts = [...combined.values()]
+      .map((event) => event.data.start.toString())
+      .sort((left, right) => left.localeCompare(right));
+
+    expect(starts).toEqual([
+      "2033-01-10T09:00:00",
+      "2033-01-11T09:00:00",
+      "2033-01-12T11:00:00",
+      "2033-01-13T11:00:00",
+      "2033-01-14T11:00:00",
+    ]);
+  });
+
   it("builds an exclusion override for only-this delete", () => {
     const original = {
       id: "ev-1",

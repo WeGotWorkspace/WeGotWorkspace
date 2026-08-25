@@ -468,11 +468,43 @@ export function forkSeriesDraftFromForm(
   if (!baseRule) {
     return withOverrides(draft);
   }
-  const { until: _until, count: _count, ...rest } = baseRule;
   return withOverrides({
     ...draft,
-    recurrenceRules: [rest],
+    recurrenceRules: [forkRecurrenceRule(baseRule, draft.start, form.allDay, options)],
   });
+}
+
+/**
+ * Continue the object being split (RFC 8984 this-and-future). Keep `until` when
+ * it still ends after the fork DTSTART so a later sibling series is not
+ * overlapped. Shift that until by the same wall-clock delta as DTSTART (a 10:00
+ * cutoff must stay a cutoff after the series moves to 09:00). Drop `count` —
+ * it counted from the previous DTSTART.
+ */
+function forkRecurrenceRule(
+  baseRule: JSCalendarRecurrenceRule,
+  forkStart: string,
+  allDay: boolean,
+  options?: ForkSeriesDraftOptions,
+): JSCalendarRecurrenceRule {
+  const { count: _count, until, ...rest } = baseRule;
+  if (!until) return rest;
+  const templateStart = options?.templateStart ?? forkStart;
+  let nextUntil = until;
+  if (options?.splitRecurrenceId) {
+    const from = recurrenceIdAsPlainDateTime(options.splitRecurrenceId, allDay, templateStart);
+    const to = recurrenceIdAsPlainDateTime(forkStart, allDay, templateStart);
+    const untilAt = recurrenceIdAsPlainDateTime(until, allDay, templateStart);
+    if (from && to && untilAt) {
+      nextUntil = formatLocalRecurrenceKey(untilAt.add(from.until(to)), allDay);
+    }
+  }
+  const untilAt = recurrenceIdAsPlainDateTime(nextUntil, allDay, forkStart);
+  const startAt = recurrenceIdAsPlainDateTime(forkStart, allDay, forkStart);
+  if (untilAt && startAt && Temporal.PlainDateTime.compare(untilAt, startAt) < 0) {
+    return rest;
+  }
+  return { ...rest, until: nextUntil };
 }
 
 /**
