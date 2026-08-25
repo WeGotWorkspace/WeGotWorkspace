@@ -61,4 +61,20 @@ final class CalendarPrincipalAddressesTest extends WgwDatabaseTestCase
         $this->assertNotNull($bare);
         $this->assertSame('bare', $addresses->canonicalCalendarUserAddress($bare));
     }
+
+    public function test_share_href_and_jmap_id_for_users_and_groups(): void
+    {
+        $team = Principal::factory()->forGroup('team', 'Team')->create();
+        $addresses = app(CalendarPrincipalAddresses::class);
+        $wouter = Principal::forUsername('wouter');
+        $this->assertNotNull($wouter);
+
+        $this->assertSame('mailto:wouter@woutervroege.nl', $addresses->shareHrefForPrincipal($wouter));
+        $this->assertSame('mailto:groups/team', $addresses->shareHrefForPrincipal($team));
+        $this->assertSame('wouter', $addresses->jmapIdForPrincipalUri((string) $wouter->uri));
+        $this->assertSame('groups/team', $addresses->jmapIdForPrincipalUri((string) $team->uri));
+        $this->assertSame('principals/wouter', $addresses->principalForJmapId('wouter')?->uri);
+        $this->assertSame('principals/groups/team', $addresses->principalForJmapId('groups/team')?->uri);
+        $this->assertSame('groups/team', $addresses->jmapIdForShareHref('mailto:groups/team'));
+    }
 }

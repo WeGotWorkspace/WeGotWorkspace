@@ -40,6 +40,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending-create";
 import { alertsFromWire, freeBusyStatusFromWire } from "@/calendar-core/src/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
@@ -142,7 +143,7 @@ function draftFromForm(
 }
 
 function pickDefaultCalendarId(calendars: CalendarInfo[], preferred?: string): string | undefined {
-  const writable = calendars.filter((c) => c.mayWrite !== false);
+  const writable = calendars.filter((c) => canWriteCalendarCollection(c));
   if (preferred && writable.some((c) => c.id === preferred)) return preferred;
   if (preferred && calendars.some((c) => c.id === preferred)) return preferred;
   return (writable.find((c) => c.isDefault) ?? writable[0])?.id;
@@ -409,6 +410,8 @@ export function useCalendarController({
     (intent: CalendarSurfaceCreateIntent) => {
       const calendarId = writableCalendarId(calendars, intent.calendarId || defaultCalendarId);
       if (!calendarId) return;
+      const calendar = calendars.find((entry) => entry.id === calendarId);
+      if (!canWriteCalendarCollection(calendar)) return;
       ensureCalendarVisible(calendarId);
       setHeldCreateIntent(null);
       setEditor({
@@ -860,7 +863,7 @@ export function useCalendarController({
       const calendar = calendars.find((entry) => entry.id === calendarId);
       if (!calendar) return;
       const subscribed = isSubscribedCalendar(calendar);
-      const mayEdit = calendar.mayWrite !== false || subscribed;
+      const mayEdit = canWriteCalendarCollection(calendar) || subscribed;
       const mayDelete = subscribed
         ? Boolean(operations?.unsubscribeCalendar)
         : calendar.mayDelete !== false && Boolean(operations?.deleteCalendar);
@@ -917,6 +920,16 @@ export function useCalendarController({
   const closeCalendarDialog = useCallback(() => {
     if (!calendarDialogBusy) setCalendarDialog(null);
   }, [calendarDialogBusy]);
+
+  const upsertCalendar = useCallback((updated: CalendarInfo) => {
+    setCalendars((prev) =>
+      sortCalendarsForSidebar(
+        prev.some((entry) => entry.id === updated.id)
+          ? prev.map((entry) => (entry.id === updated.id ? { ...entry, ...updated } : entry))
+          : [...prev, updated],
+      ),
+    );
+  }, []);
 
   const saveCalendarDialog = useCallback(
     (input: CalendarCalendarDialogConfirmInput) => {
@@ -1344,6 +1357,7 @@ export function useCalendarController({
     publishBusy,
     toggleCalendarPublish,
     copyCalendarFeedUrl,
+    upsertCalendar,
     undoLatest,
     queueMutation,
     surfaceEventsForView,

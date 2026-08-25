@@ -8657,6 +8657,7 @@ export interface components {
         CalendarRights: {
             mayRead: boolean;
             mayWrite: boolean;
+            /** @description May modify shareWith. True for personal calendar owners. */
             mayShare: boolean;
             mayDelete: boolean;
         };
@@ -8678,7 +8679,7 @@ export interface components {
          *       "myRights": {
          *         "mayRead": true,
          *         "mayWrite": true,
-         *         "mayShare": false,
+         *         "mayShare": true,
          *         "mayDelete": false
          *       }
          *     }
@@ -8702,6 +8703,7 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group; null for personal calendars. */
             groupSlug: string | null;
+            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -8924,6 +8926,10 @@ export interface components {
             id?: components["schemas"]["JmapId"];
             /** @description When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope. */
             groupSlug?: string | null;
+            /** @description Initial share grants. Same shape as Calendar.shareWith; rejected on group calendars. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
         };
         CalendarPatch: {
             name?: string;
@@ -8931,6 +8937,10 @@ export interface components {
             timeZone?: string | null;
             color?: string | null;
             isSubscribed?: boolean;
+            /** @description Patch share grants for a personal owned calendar. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Group calendars reject this property. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
         };
         CalendarDeleteOptions: {
             /** @default false */

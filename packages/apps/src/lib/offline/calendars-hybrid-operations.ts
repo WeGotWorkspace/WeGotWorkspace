@@ -18,6 +18,7 @@ import {
   importEventsLive,
   patchCalendarEventLive,
   patchCalendarLive,
+  searchCalendarSharePrincipalsLive,
 } from "@/lib/api/wgw/calendar";
 import {
   createCalendarSubscriptionLive,
@@ -239,6 +240,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
           name: draft.name,
           color: draft.color,
           mayWrite: true,
+          mayShare: !draft.groupSlug,
           mayDelete: true,
           ...(draft.groupSlug
             ? { scope: "group" as const, groupSlug: draft.groupSlug }
@@ -267,7 +269,11 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
       }
     },
     patchCalendar: async (calendarId: string, patch: CalendarPatch) => {
+      const isShareMutation = patch.shareWith !== undefined;
       const queueOffline = async () => {
+        if (isShareMutation) {
+          throw new Error("Sharing changes require a connection.");
+        }
         const cached = await readCalendarBootstrapFromCache(username);
         const existing = cached?.data.calendars.find((calendar) => calendar.id === calendarId);
         if (!existing) {
@@ -296,6 +302,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         await runner.flush();
         return updated;
       } catch (error) {
+        if (isShareMutation) throw error;
         rethrowUnlessOfflineQueue(error);
         return queueOffline();
       }
@@ -354,6 +361,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
       requireOnline("Unpublish");
       await unpublishCalendarFeedLive(calendarId);
     },
+    searchSharePrincipals: (query) => searchCalendarSharePrincipalsLive(query, username),
     deleteCalendar: async (calendarId: string) => {
       const queueOffline = async () => {
         const cached = await readCalendarBootstrapFromCache(username);

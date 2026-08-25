@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Rss } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Rss, Share2 } from "lucide-react";
 import {
   type ChangeEvent,
   type CSSProperties,
@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
@@ -51,6 +52,7 @@ import {
   personalOwnerLabel,
 } from "@/calendar-core/src/calendar-workspace-props";
 import {
+  isSessionEventOrganizer,
   organizerAddress,
   sessionEventInviteeStatus,
   type CalendarAttendee,
@@ -65,6 +67,19 @@ import {
 } from "@/calendar-core/src/calendar-rsvp-scope";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
+import {
+  canWriteCalendarCollection,
+  isCalendarCollectionOwner,
+  isCalendarEventFormReadOnly,
+} from "@/calendar-core/src/calendar-collection-write";
+import { CalendarShareDialog } from "@/calendar-core/src/calendar-share-dialog";
+import {
+  calendarSharePrincipalsFromDirectory,
+  filterCalendarSharePrincipals,
+  isSharedWithMeCalendar,
+  type CalendarShareWith,
+} from "@/calendar-core/src/calendar-share";
+import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   personalCalendarsForSidebar,
   teamCalendarsForSidebar,
@@ -107,9 +122,12 @@ function CalendarSidebarRows({
   subscribedLabel,
   pendingCalendarIds,
   pendingSyncLabel,
+  shareLabel,
+  sharedLabel,
   onToggleVisibility,
   onSelectDefault,
   onEdit,
+  onShare,
 }: {
   calendars: CalendarInfo[];
   hiddenCalendarIds: ReadonlySet<string>;
@@ -120,9 +138,12 @@ function CalendarSidebarRows({
   subscribedLabel: string;
   pendingCalendarIds?: ReadonlySet<string>;
   pendingSyncLabel: string;
+  shareLabel: string;
+  sharedLabel: string;
   onToggleVisibility: (calendarId: string) => void;
   onSelectDefault: (calendarId: string) => void;
   onEdit: (calendarId: string) => void;
+  onShare: (calendarId: string) => void;
 }) {
   return (
     <>
@@ -134,6 +155,8 @@ function CalendarSidebarRows({
           ? canUnsubscribe
           : calendar.mayDelete !== false && canDeleteCalendars;
         const canManage = mayEdit || mayDelete;
+        const canShare = isCalendarCollectionOwner(calendar);
+        const sharedWithMe = isSharedWithMeCalendar(calendar);
         const selected = calendar.id === defaultCalendarId;
         return (
           <li
@@ -160,6 +183,15 @@ function CalendarSidebarRows({
               <span className="calendar-sidebar-row__title">
                 <span className="calendar-sidebar-row__name">{calendar.name}</span>
                 {subscribed ? <SubscribedCalendarMark label={subscribedLabel} /> : null}
+                {sharedWithMe ? (
+                  <span
+                    className="calendar-sidebar-row__shared-pip"
+                    role="img"
+                    aria-label={sharedLabel}
+                  >
+                    <Share2 className="size-3 calendar-sidebar-row__shared-icon" aria-hidden />
+                  </span>
+                ) : null}
               </span>
               {pendingCalendarIds?.has(calendar.id) ? (
                 <span
@@ -171,13 +203,23 @@ function CalendarSidebarRows({
                 </span>
               ) : null}
             </button>
+            {canShare ? (
+              <IconButton
+                label={shareLabel}
+                icon={<Share2 className="size-3.5" aria-hidden />}
+                size="sm"
+                variant="ghost"
+                className="calendar-sidebar-row__action calendar-sidebar-row__share"
+                onClick={() => onShare(calendar.id)}
+              />
+            ) : null}
             {canManage ? (
               <IconButton
                 label={editLabel}
                 icon={<Pencil className="size-3.5" aria-hidden />}
                 size="sm"
                 variant="ghost"
-                className="calendar-sidebar-row__edit"
+                className="calendar-sidebar-row__action calendar-sidebar-row__edit"
                 onClick={() => onEdit(calendar.id)}
               />
             ) : null}
@@ -277,6 +319,7 @@ export function CalendarWorkspace({
     publishBusy,
     toggleCalendarPublish,
     copyCalendarFeedUrl,
+    upsertCalendar,
     surfaceEventsForView,
     askRecurrenceScope,
     recurrenceScopeDialog,
@@ -317,7 +360,44 @@ export function CalendarWorkspace({
   );
   const invitationsLayout = useDocsCommentsLayout();
   const useInvitationsDrawer = invitationsLayout === "drawer";
+  const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
   const [invitationsOpen, setInvitationsOpen] = useState(false);
+  const [shareCalendarId, setShareCalendarId] = useState<string | null>(null);
+  const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
+  const shareCalendar = calendars.find((calendar) => calendar.id === shareCalendarId) ?? null;
+  const sharePrincipals = useMemo(
+    () =>
+      calendarSharePrincipalsFromDirectory({
+        invitees: invitations.invitees,
+        groups: directoryGroups,
+        excludeUsername: session.user.username,
+      }),
+    [directoryGroups, invitations.invitees, session.user.username],
+  );
+  const searchSharePrincipals = useCallback(
+    async (query: string) => {
+      if (operations?.searchSharePrincipals) {
+        return operations.searchSharePrincipals(query);
+      }
+      return filterCalendarSharePrincipals(query, sharePrincipals);
+    },
+    [operations, sharePrincipals],
+  );
+  const patchShareWith = useCallback(
+    async (calendarId: string, shareWith: CalendarShareWith) => {
+      if (!operations?.patchCalendar) {
+        throw new Error(L.shareCalendarFailed);
+      }
+      try {
+        const updated = await operations.patchCalendar(calendarId, { shareWith });
+        upsertCalendar(updated);
+      } catch (error) {
+        showError(L.shareCalendarFailed);
+        throw error;
+      }
+    },
+    [L.shareCalendarFailed, operations, showError, upsertCalendar],
+  );
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
   const icsFileInputRef = useRef<HTMLInputElement>(null);
   const [eventPreview, setEventPreview] = useState<{
@@ -331,8 +411,23 @@ export function CalendarWorkspace({
     setInvitationsOpen((open) => !open);
   };
 
-  const canWrite = Boolean(operations) && calendars.some((c) => c.mayWrite !== false);
-  const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
+  const canWrite = Boolean(operations) && calendars.some((c) => canWriteCalendarCollection(c));
+  const sessionEmail = organizerAddress(session.user)?.email;
+  const previewCalendar = eventPreview
+    ? calendars.find((entry) => entry.id === eventPreview.model.form.calendarId)
+    : undefined;
+  const previewCanEdit =
+    Boolean(operations) &&
+    !isCalendarEventFormReadOnly({
+      mode: "edit",
+      calendar: previewCalendar,
+      isOrganizer: isSessionEventOrganizer(
+        eventPreview?.model.form.attendees ?? [],
+        sessionEmail,
+        invitations.invitees,
+      ),
+    });
+  const previewCanResize = Boolean(operations) && canWriteCalendarCollection(previewCalendar);
   const ownerLabel = personalOwnerLabel(session);
   const myCalendars = personalCalendarsForSidebar(calendars);
   const teamCalendars = teamCalendarsForSidebar(calendars);
@@ -572,9 +667,12 @@ export function CalendarWorkspace({
                 subscribedLabel={L.subscribedCalendarBadge}
                 pendingCalendarIds={pendingCalendarIds}
                 pendingSyncLabel={L.pendingSync}
+                shareLabel={L.shareCalendar}
+                sharedLabel={L.sharedCalendar}
                 onToggleVisibility={toggleCalendarVisibility}
                 onSelectDefault={selectDefaultCalendar}
                 onEdit={openEditCalendarDialog}
+                onShare={setShareCalendarId}
               />
             </SidebarSection>
             {teamCalendars.length > 0 ? (
@@ -589,9 +687,12 @@ export function CalendarWorkspace({
                   subscribedLabel={L.subscribedCalendarBadge}
                   pendingCalendarIds={pendingCalendarIds}
                   pendingSyncLabel={L.pendingSync}
+                  shareLabel={L.shareCalendar}
+                  sharedLabel={L.sharedCalendar}
                   onToggleVisibility={toggleCalendarVisibility}
                   onSelectDefault={selectDefaultCalendar}
                   onEdit={openEditCalendarDialog}
+                  onShare={setShareCalendarId}
                 />
               </SidebarSection>
             ) : null}
@@ -702,15 +803,22 @@ export function CalendarWorkspace({
                 onViewChange={selectView}
                 onStartDateChange={setAnchor}
                 onCreateRequested={
-                  canWrite
+                  operations
                     ? (intent) => {
+                        const calendarId = intent.calendarId || defaultCalendarId;
+                        const calendar = calendars.find((entry) => entry.id === calendarId);
+                        if (!canWriteCalendarCollection(calendar)) return;
                         closeEventPreview();
                         openCreateFromSurface(intent);
                       }
                     : undefined
                 }
                 pendingCreateIntent={pendingCreateIntent}
-                selectedEventKey={eventPreview ? eventPreviewOccurrenceKey(eventPreview.model) : ""}
+                selectedEventKey={
+                  eventPreview && previewCanResize
+                    ? eventPreviewOccurrenceKey(eventPreview.model)
+                    : ""
+                }
               />
             </div>
           </div>
@@ -748,21 +856,11 @@ export function CalendarWorkspace({
           locale={locale}
           untitledLabel={L.untitledEvent}
           pendingSync={pendingEventIds?.has(eventPreview.model.eventId) ?? false}
-          canEdit={
-            canWrite &&
-            calendars.find((calendar) => calendar.id === eventPreview.model.form.calendarId)
-              ?.mayWrite !== false
-          }
+          canEdit={previewCanEdit}
           busy={invitations.busy}
-          sessionEmail={organizerAddress(session.user)?.email}
+          sessionEmail={sessionEmail}
           onClose={closeEventPreview}
-          onEdit={
-            canWrite &&
-            calendars.find((calendar) => calendar.id === eventPreview.model.form.calendarId)
-              ?.mayWrite !== false
-              ? openEditFromPreview
-              : undefined
-          }
+          onEdit={previewCanEdit ? openEditFromPreview : undefined}
           onRsvp={(status) => {
             const eventId = eventPreview.model.eventId;
             const notification = inviteeNotifications.find((row) => row.eventId === eventId);
@@ -789,7 +887,7 @@ export function CalendarWorkspace({
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
           invitees={invitations.invitees}
           canSubmitEmail={invitations.canSubmitEmail}
-          sessionEmail={organizerAddress(session.user)?.email}
+          sessionEmail={sessionEmail}
           onRsvp={
             editor.mode === "edit"
               ? (status, calendarId) => {
@@ -859,6 +957,18 @@ export function CalendarWorkspace({
           onImport={submitImportDialog}
         />
       ) : null}
+      <CalendarShareDialog
+        open={shareCalendar != null}
+        calendar={shareCalendar}
+        labels={L}
+        knownPrincipals={sharePrincipals}
+        online={online}
+        onOpenChange={(open) => {
+          if (!open) setShareCalendarId(null);
+        }}
+        onSearchPrincipals={searchSharePrincipals}
+        onPatchShareWith={patchShareWith}
+      />
       <CalendarRecurrenceScopeDialog dialog={recurrenceScopeDialog} labels={L} />
     </TooltipProvider>
   );

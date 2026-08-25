@@ -3,8 +3,10 @@ import { CalendarDays, Circle, MapPin, Pencil, Repeat, StickyNote, Users } from 
 import { Button } from "@/button/src/button";
 import {
   isSessionEventInvitee,
+  isSessionEventOrganizer,
   sessionEventInviteeStatus,
 } from "@/calendar-core/src/calendar-attendees";
+import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import {
   detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
@@ -73,6 +75,11 @@ export function CalendarEventDetailsPopover({
 
   const form = preview.form;
   const calendar = calendars.find((entry) => entry.id === form.calendarId);
+  const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail);
+  const showEdit =
+    canEdit &&
+    Boolean(onEdit) &&
+    !isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
   const title = form.title.trim() || untitledLabel;
   const when = formatEventPreviewWhen(form, locale);
   const notes = eventPreviewNotesExcerpt(form.description);
@@ -208,7 +215,7 @@ export function CalendarEventDetailsPopover({
             />
           </div>
         ) : null}
-        {canEdit && onEdit ? (
+        {showEdit && onEdit ? (
           <footer className="calendar-event-details-popover__footer">
             <Button
               type="button"

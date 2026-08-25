@@ -135,7 +135,8 @@
             "type": "boolean"
           },
           "mayShare": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "May modify shareWith. True for personal calendar owners."
           },
           "mayDelete": {
             "type": "boolean"
@@ -218,6 +219,7 @@
             "description": "Group slug when scope is group; null for personal calendars."
           },
           "shareWith": {
+            "description": "Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null.",
             "oneOf": [
               {
                 "type": "object",
@@ -255,7 +257,7 @@
           "myRights": {
             "mayRead": true,
             "mayWrite": true,
-            "mayShare": false,
+            "mayShare": true,
             "mayDelete": false
           }
         }
@@ -314,6 +316,30 @@
               "null"
             ],
             "description": "When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope."
+          },
+          "shareWith": {
+            "description": "Initial share grants. Same shape as Calendar.shareWith; rejected on group calendars.",
+            "oneOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/components/schemas/JmapId"
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CalendarRights"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -346,6 +372,30 @@
           },
           "isSubscribed": {
             "type": "boolean"
+          },
+          "shareWith": {
+            "description": "Patch share grants for a personal owned calendar. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Group calendars reject this property.",
+            "oneOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/components/schemas/JmapId"
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CalendarRights"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false

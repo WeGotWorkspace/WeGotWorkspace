@@ -16,8 +16,8 @@ Returned by `GET /calendars/calendars` and `GET /calendars/calendars/{calendarId
 | `sortOrder` | integer | `calendarorder` |
 | `isDefault` | boolean | `true` when uri is `default` |
 | `isSubscribed` | boolean | Always `true` for owned instances in v1 |
-| `shareWith` | null | JMAP Sharing deferred |
-| `myRights` | object | Static rights derived from CalDAV `access` |
+| `shareWith` | object \| null | Owner map of JMAP id (`alice`, `groups/{slug}`) → rights. Recipients and unshared calendars are `null`. Null grant on `Calendar/set` revokes. Same grants are visible over CalDAV `{CS:}invite` / `{DAV:}invite`; inbound `CS:share` / `DAV:share-resource` with `mailto:` maps back to the JMAP id. Apple Calendar: this-instance CalDAV account only (not iCloud), `principals.email` must match the sharee `mailto:`, invites auto-accept, group share is JMAP-only. |
+| `myRights` | object | Derived from CalDAV `access` (1 owner / 2 read / 3 read-write). Personal owners have `mayShare: true`. |
 
 ## CalendarEvent
 
@@ -92,6 +92,6 @@ Request validation failures render as `400` with `code: bad_request` app-wide (n
 
 - Server-side recurrence instance expansion (except optional `expandRecurrences` query on list — see [#159](https://github.com/WeGotWorkspace/wegotworkspace/issues/159))
 - `VTODO`, `VJOURNAL`
-- JMAP Sharing (`shareWith` always `null`)
+- Single-event ACL, delegation, guest links, iCloud-native sharing (collection `shareWith` is implemented for personal owners)
 
 **Implemented (platform #157 / #158):** calendar collection CRUD, `GET /calendars/calendars/changes`, and event item sync (`/changes`, `/set`, `/query` above) — see `docs/contacts/jmap-collection-crud.md` and `docs/contacts/jmap-sync-rest-mapping.md`.

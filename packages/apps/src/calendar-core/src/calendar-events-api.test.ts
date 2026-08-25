@@ -194,6 +194,59 @@ describe("createCalendarEventsApi", () => {
     expect(context.getCalendars().get("work")?.color).toBe("#0ea5e9");
   });
 
+  it("maps collection write rights onto engine calendars", () => {
+    const mapped = calendarInfosToEngineMap([
+      { id: "work", name: "Work", color: "#0ea5e9", mayWrite: true, mayShare: true },
+      { id: "family", name: "Family", color: "#f59e0b", mayWrite: false, mayShare: false },
+    ]);
+    expect(mapped.get("work")?.myRights).toMatchObject({ mayWriteAll: true, mayShare: true });
+    expect(mapped.get("family")?.myRights).toMatchObject({ mayWriteAll: false, mayShare: false });
+  });
+
+  it("rejects create, move, and resize on a read-only collection", async () => {
+    const operations = operationsStub();
+    const events = new Map<string, CalendarEvent>([
+      ["school-play", { ...engineEvent("school-play", "School play"), calendarId: "family" }],
+    ]);
+    const context = createCalendarEventsApi({
+      getEvents: () => events,
+      calendars: [
+        { id: "work", name: "Work", color: "#0ea5e9", mayWrite: true },
+        { id: "family", name: "Family", color: "#f59e0b", mayWrite: false, mayShare: false },
+      ],
+      operations,
+    });
+
+    const created = context.create({
+      event: {
+        calendarId: "family",
+        data: {
+          summary: "Blocked",
+          start: Temporal.PlainDateTime.from("2033-01-11T09:00:00"),
+          duration: Temporal.Duration.from("PT1H"),
+        },
+      },
+    });
+    expect(created.changes).toEqual([]);
+    expect(operations.createEvent).not.toHaveBeenCalled();
+
+    const moved = context.move({
+      target: { key: "school-play" },
+      scope: "single",
+      delta: Temporal.Duration.from("PT1H"),
+    });
+    expect(moved.changes).toEqual([]);
+    expect(operations.patchEvent).not.toHaveBeenCalled();
+
+    const resized = context.resizeEnd({
+      target: { key: "school-play" },
+      scope: "single",
+      toEnd: Temporal.PlainDateTime.from("2033-01-10T12:00:00"),
+    });
+    expect(resized.changes).toEqual([]);
+    expect(operations.patchEvent).not.toHaveBeenCalled();
+  });
+
   it("routes create through hybrid operations", async () => {
     const operations = operationsStub();
     const context = createCalendarEventsApi({

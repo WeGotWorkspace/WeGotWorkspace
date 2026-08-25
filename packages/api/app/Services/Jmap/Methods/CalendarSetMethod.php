@@ -15,8 +15,8 @@ use App\Services\Jmap\Methods\Concerns\ValidatesSetArguments;
 /**
  * Calendar/set over the existing CalendarRepository create/update/delete,
  * wrapped in the RFC 8620 §5.3 SetResponse shape with genuine top-level
- * ifInState and envelope-codec oldState/newState. The client supports this
- * method but the adapter never calls it (spec dispatch table).
+ * ifInState and envelope-codec oldState/newState. shareWith patches are
+ * persisted by CalendarRepository via Sabre updateInvites.
  */
 final class CalendarSetMethod implements JmapMethodInterface
 {

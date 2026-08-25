@@ -11,6 +11,22 @@
       "groupSlug": {
         "type": ["string", "null"],
         "description": "When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope."
+      },
+      "shareWith": {
+        "description": "Initial share grants. Same shape as Calendar.shareWith; rejected on group calendars.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": { "$ref": "#/components/schemas/JmapId" },
+            "additionalProperties": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/CalendarRights" },
+                { "type": "null" }
+              ]
+            }
+          },
+          { "type": "null" }
+        ]
       }
     },
     "additionalProperties": false
@@ -22,7 +38,23 @@
       "description": { "type": ["string", "null"] },
       "timeZone": { "type": ["string", "null"] },
       "color": { "type": ["string", "null"] },
-      "isSubscribed": { "type": "boolean" }
+      "isSubscribed": { "type": "boolean" },
+      "shareWith": {
+        "description": "Patch share grants for a personal owned calendar. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Group calendars reject this property.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": { "$ref": "#/components/schemas/JmapId" },
+            "additionalProperties": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/CalendarRights" },
+                { "type": "null" }
+              ]
+            }
+          },
+          { "type": "null" }
+        ]
+      }
     },
     "additionalProperties": false
   },

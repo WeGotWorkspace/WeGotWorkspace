@@ -17,6 +17,7 @@ import {
   formToFullPatch,
 } from "@/calendar-core/src/calendar-editor-model";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
+import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,
@@ -36,9 +37,56 @@ export function calendarInfosToEngineMap(calendars: readonly CalendarInfo[]): Ca
       isVisible: calendar.isVisible !== false,
       isDefault: calendar.isDefault === true,
       ...(typeof calendar.sortOrder === "number" ? { sortOrder: calendar.sortOrder } : {}),
+      myRights: {
+        mayWriteAll: canWriteCalendarCollection(calendar),
+        mayWriteOwn: canWriteCalendarCollection(calendar),
+        ...(typeof calendar.mayShare === "boolean" ? { mayShare: calendar.mayShare } : {}),
+        ...(typeof calendar.mayDelete === "boolean" ? { mayDelete: calendar.mayDelete } : {}),
+      },
     });
   }
   return map;
+}
+
+function eventForTarget(
+  events: CalendarEventsMap,
+  target: { key: string } | { eventId: string; calendarId?: string },
+): CalendarEvent | undefined {
+  if ("key" in target) {
+    return events.get(target.key) ?? events.get(persistEventId(target.key));
+  }
+  return (
+    events.get(target.eventId) ??
+    [...events.values()].find((event) => event.eventId === target.eventId)
+  );
+}
+
+function operationCalendarIds(operation: EventOperation, events: CalendarEventsMap): string[] {
+  const ids = new Set<string>();
+  if (operation.type === "create") {
+    if (operation.input.event.calendarId) ids.add(operation.input.event.calendarId);
+    return [...ids];
+  }
+  const target = "target" in operation.input ? operation.input.target : undefined;
+  if (!target) return [];
+  if ("calendarId" in target && target.calendarId) ids.add(target.calendarId);
+  const event = eventForTarget(events, target);
+  if (event?.calendarId) ids.add(event.calendarId);
+  if (operation.type === "update" && operation.input.patch.calendarId) {
+    ids.add(operation.input.patch.calendarId);
+  }
+  return [...ids];
+}
+
+function blocksCollectionWrite(
+  operation: EventOperation,
+  events: CalendarEventsMap,
+  calendars: readonly CalendarInfo[],
+): boolean {
+  return operationCalendarIds(operation, events).some((id) => {
+    const calendar = calendars.find((entry) => entry.id === id);
+    return calendar != null && !canWriteCalendarCollection(calendar);
+  });
 }
 
 /** Engine map key / offline persist id. Occurrence keys are `${id}::${recurrenceId}`. */
@@ -326,6 +374,9 @@ export function createCalendarEventsApi(args: CreateCalendarEventsApiArgs): Cale
   };
 
   const apply = (operation: EventOperation): ApplyResult => {
+    if (blocksCollectionWrite(operation, currentEvents(), args.calendars)) {
+      return { nextState: currentEvents(), changes: [], effects: [] };
+    }
     const api = new EventsAPI(currentEvents(), { trackPending: true });
     const result = api.apply(stabilizeCreateOperation(operation));
     publishOverlay(result.nextState);

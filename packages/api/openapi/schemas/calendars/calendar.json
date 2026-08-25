@@ -5,7 +5,7 @@
     "properties": {
       "mayRead": { "type": "boolean" },
       "mayWrite": { "type": "boolean" },
-      "mayShare": { "type": "boolean" },
+      "mayShare": { "type": "boolean", "description": "May modify shareWith. True for personal calendar owners." },
       "mayDelete": { "type": "boolean" }
     },
     "additionalProperties": false,
@@ -43,6 +43,7 @@
         "description": "Group slug when scope is group; null for personal calendars."
       },
       "shareWith": {
+        "description": "Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null.",
         "oneOf": [
           {
             "type": "object",
@@ -72,7 +73,7 @@
       "myRights": {
         "mayRead": true,
         "mayWrite": true,
-        "mayShare": false,
+        "mayShare": true,
         "mayDelete": false
       }
     }

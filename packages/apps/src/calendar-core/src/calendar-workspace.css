@@ -386,7 +386,7 @@
 }
 
 /* Match `.sidebar-section__add` (size-6); muted so it stays lighter than row text. */
-.calendar-workspace .calendar-sidebar-row__edit.button {
+.calendar-workspace .calendar-sidebar-row__action.button {
   @apply size-6 shrink-0;
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
   transition:
@@ -394,19 +394,28 @@
     color 0.12s ease;
 }
 
-.calendar-workspace .calendar-sidebar-row__edit:hover,
-.calendar-workspace .calendar-sidebar-row__edit:focus-visible {
+.calendar-workspace .calendar-sidebar-row__action:hover,
+.calendar-workspace .calendar-sidebar-row__action:focus-visible {
   color: var(--color-ink);
 }
 
-/* Fine pointers: hide until row hover / focus-within. Touch keeps pencils visible. */
+.calendar-workspace .calendar-sidebar-row__shared-pip {
+  @apply inline-flex size-3 shrink-0 items-center justify-center;
+}
+
+.calendar-workspace .calendar-sidebar-row__shared-icon {
+  @apply size-3 shrink-0 block;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+/* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */
 @media (hover: hover) and (pointer: fine) {
-  .calendar-workspace .calendar-sidebar-row__edit.button {
+  .calendar-workspace .calendar-sidebar-row__action.button {
     opacity: 0;
   }
 
-  .calendar-workspace .calendar-sidebar-row:hover .calendar-sidebar-row__edit.button,
-  .calendar-workspace .calendar-sidebar-row:focus-within .calendar-sidebar-row__edit.button {
+  .calendar-workspace .calendar-sidebar-row:hover .calendar-sidebar-row__action.button,
+  .calendar-workspace .calendar-sidebar-row:focus-within .calendar-sidebar-row__action.button {
     opacity: 1;
   }
 }

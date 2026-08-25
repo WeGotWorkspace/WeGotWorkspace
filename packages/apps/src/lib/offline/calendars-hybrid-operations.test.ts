@@ -41,13 +41,16 @@ const bootstrap = {
 const {
   createCalendarEventLive,
   patchCalendarEventLive,
+  patchCalendarLive,
   fetchCalendarLiveBootstrap,
   importEventsLive,
 } = vi.hoisted(() => ({
   createCalendarEventLive: vi.fn(),
   patchCalendarEventLive: vi.fn(),
+  patchCalendarLive: vi.fn(),
   fetchCalendarLiveBootstrap: vi.fn(),
   importEventsLive: vi.fn(),
+  searchCalendarSharePrincipalsLive: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/calendar", () => ({
@@ -55,10 +58,11 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
   patchCalendarEventLive,
   deleteCalendarEventLive: vi.fn(),
   createCalendarLive: vi.fn(),
-  patchCalendarLive: vi.fn(),
+  patchCalendarLive,
   deleteCalendarLive: vi.fn(),
   fetchCalendarLiveBootstrap,
   importEventsLive,
+  searchCalendarSharePrincipalsLive: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/calendar-ics-webcal", () => ({
@@ -222,6 +226,37 @@ describe("flushCalendarsOutboxAndReport", () => {
     expect(patchCalendarEventLive).toHaveBeenCalledWith("ev-1", { title: "Offline edit" });
     expect(next.data.events.find((event) => event.id === "ev-1")?.title).toBe("Offline edit");
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("persists shareWith on cached calendars and refuses offline share grants", async () => {
+    const shareWith = {
+      alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
+    };
+    patchCalendarLive.mockResolvedValue({
+      id: "default",
+      name: "Personal",
+      color: "#6366f1",
+      isDefault: true,
+      mayWrite: true,
+      mayShare: true,
+      shareWith,
+    });
+
+    const operations = createHybridCalendarOperations(username);
+    const updated = await operations.patchCalendar!("default", { shareWith });
+    expect(updated.shareWith).toEqual(shareWith);
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.calendars.find((calendar) => calendar.id === "default")?.shareWith).toEqual(
+      shareWith,
+    );
+
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await expect(
+      operations.patchCalendar!("default", {
+        shareWith: { bob: { mayWrite: true } },
+      }),
+    ).rejects.toThrow("Sharing changes require a connection.");
+    await expect(listOutboxMutations(username)).resolves.toEqual([]);
   });
 
   it("flushes pending outbox rows when online", async () => {

@@ -314,6 +314,7 @@ export function createSeededCalendarAppBootstrap(
               name: "Home",
               color: "#14b8a6",
               mayWrite: true,
+              mayShare: true,
               mayDelete: true,
               sortOrder: 3,
             },

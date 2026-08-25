@@ -178,6 +178,18 @@ export type CalendarUILabels = {
   toastRsvpUndone: string;
   toastInvitationCancelled: string;
   pendingSync: string;
+  shareCalendar: string;
+  shareCalendarTitle: (name: string) => string;
+  shareCalendarDescription: string;
+  shareCalendarSectionTitle: string;
+  shareCalendarSectionHint: string;
+  shareCalendarAddPlaceholder: string;
+  shareCalendarSearchEmpty: string;
+  shareCalendarOffline: string;
+  shareCalendarFailed: string;
+  sharedCalendar: string;
+  removeCalendarShareTitle: string;
+  removeCalendarShareConfirm: string;
   conflictTitle: string;
   conflictDescription: (title: string) => string;
   conflictRemaining: (count: number) => string;
@@ -357,6 +369,18 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
   pendingSync: "Pending sync",
+  shareCalendar: "Share calendar",
+  shareCalendarTitle: (name) => `Share ${name}`,
+  shareCalendarDescription: "Grant access to teammates or a group.",
+  shareCalendarSectionTitle: "Team access",
+  shareCalendarSectionHint: "Grant read or read-and-write access to people or groups.",
+  shareCalendarAddPlaceholder: "Add people or groups…",
+  shareCalendarSearchEmpty: "No people or groups found",
+  shareCalendarOffline: "Sharing changes require a connection.",
+  shareCalendarFailed: "Could not update sharing.",
+  sharedCalendar: "Shared with you",
+  removeCalendarShareTitle: "Remove access?",
+  removeCalendarShareConfirm: "This person or group will lose access to this calendar. Continue?",
   conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,

@@ -34,6 +34,7 @@ final class CalendarRepository
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly DriveGroupResolver $groups,
+        private readonly CalendarShareInvites $shareInvites,
     ) {}
 
     public function list(string $username): array
@@ -79,6 +80,10 @@ final class CalendarRepository
             : null;
         if ($groupSlug === '') {
             $groupSlug = null;
+        }
+
+        if (array_key_exists('shareWith', $payload) && $groupSlug !== null) {
+            throw new ApiHttpException(403, 'Group calendars cannot be shared with shareWith.', 'forbidden');
         }
 
         if ($groupSlug !== null) {
@@ -132,6 +137,11 @@ final class CalendarRepository
             throw new ApiHttpException(500, 'Could not load created calendar.', 'server_error');
         }
 
+        if (array_key_exists('shareWith', $payload)) {
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+            $instance->refresh();
+        }
+
         return $this->mapCalendar($instance, $groupSlug);
     }
 
@@ -168,6 +178,10 @@ final class CalendarRepository
             $propPatch = new PropPatch($mutations);
             $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
             $propPatch->commit();
+        }
+
+        if (array_key_exists('shareWith', $payload)) {
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
         }
 
         $instance->refresh();
@@ -355,6 +369,13 @@ final class CalendarRepository
         return $uris;
     }
 
+    public function assertEventWritable(CalendarInstance $instance): void
+    {
+        if ($this->shareInvites->isReadOnly($instance)) {
+            throw new ApiHttpException(403, 'This calendar is read-only.', 'forbidden');
+        }
+    }
+
     /**
      * @return Collection<int, CalendarInstance>
      */
@@ -493,6 +514,7 @@ final class CalendarRepository
         $isGroup = $groupSlug !== null;
         $isProvisionedGroup = $this->isProvisionedGroupCalendar($instance, $groupSlug);
         $subscriptionId = $this->subscriptionIdForInstance($instance, $groupSlug);
+        $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
 
         $rights = match ((int) ($instance->access ?? 1)) {
             2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => false],
@@ -500,7 +522,7 @@ final class CalendarRepository
             default => [
                 'mayRead' => true,
                 'mayWrite' => true,
-                'mayShare' => false,
+                'mayShare' => $mayShare,
                 'mayDelete' => ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
             ],
         };
@@ -525,7 +547,7 @@ final class CalendarRepository
             'subscriptionId' => $subscriptionId,
             'scope' => $isGroup ? 'group' : 'personal',
             'groupSlug' => $isGroup ? $groupSlug : null,
-            'shareWith' => null,
+            'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'myRights' => $rights,
         ];
     }

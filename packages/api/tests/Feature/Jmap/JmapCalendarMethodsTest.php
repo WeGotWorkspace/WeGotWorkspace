@@ -59,7 +59,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertNotNull($calendar);
         $this->assertSame('Calendar', $calendar['name']);
 
-        // spec §6 owner row: everything but mayShare, mayDelete false for 'default'.
+        // spec §6 owner row: personal owners may share; mayDelete false for 'default'.
         $this->assertSame([
             'mayReadFreeBusy' => true,
             'mayReadItems' => true,
@@ -67,7 +67,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
             'mayWriteOwn' => true,
             'mayUpdatePrivate' => true,
             'mayRSVP' => true,
-            'mayShare' => false,
+            'mayShare' => true,
             'mayDelete' => false,
         ], $calendar['myRights']);
     }
@@ -373,7 +373,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertCount(3, array_unique($colors));
     }
 
-    public function test_calendar_set_create_accepts_description_and_ignores_share_with(): void
+    public function test_calendar_set_create_accepts_description_and_persists_share_with(): void
     {
         $create = $this->jmap([
             ['Calendar/set', ['accountId' => 'bob', 'create' => ['c' => [
@@ -385,6 +385,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertSame('work', $create['id']);
         $this->assertSame('Work-only events', $create['description']);
         $this->assertTrue($create['myRights']['mayDelete']);
+        $this->assertTrue($create['myRights']['mayShare']);
 
         $updated = $this->jmap([
             ['Calendar/set', ['accountId' => 'bob', 'update' => ['default' => [
@@ -393,7 +394,12 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
             ['Calendar/get', ['accountId' => 'bob', 'ids' => ['default']], 'c1'],
         ])->assertOk();
         $this->assertNull($updated->json('methodResponses.0.1.notUpdated.default'));
-        $this->assertNull($updated->json('methodResponses.1.1.list.0.shareWith'));
+        $shareWith = $updated->json('methodResponses.1.1.list.0.shareWith');
+        $this->assertIsArray($shareWith);
+        $this->assertArrayHasKey('alice', $shareWith);
+        $this->assertTrue($shareWith['alice']['mayReadItems']);
+        $this->assertFalse($shareWith['alice']['mayWriteAll']);
+        $this->assertTrue($updated->json('methodResponses.1.1.list.0.myRights.mayShare'));
     }
 
     public function test_calendar_event_query_time_range_title_sort_and_recurrence(): void

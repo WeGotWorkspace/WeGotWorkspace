@@ -80,6 +80,55 @@ describe("JmapCalendarsClient windowed queries", () => {
     expect(client.getState(server.accountId, "CalendarEvent")).toBe(server.state);
   });
 
+  it("merges Calendar/set shareWith add, change, and null revoke", async () => {
+    const server = new MockJmapServer();
+    server.seedCalendar({
+      ...workCalendar,
+      shareWith: {
+        alice: {
+          mayReadFreeBusy: true,
+          mayReadItems: true,
+          mayWriteAll: false,
+          mayWriteOwn: false,
+          mayUpdatePrivate: false,
+          mayRSVP: true,
+          mayShare: false,
+          mayDelete: false,
+        },
+      },
+    });
+    const client = makeClient(server);
+    await client.connect();
+    const calendars = new JmapCalendarsClient(client);
+
+    await calendars.setCalendars({
+      accountId: server.accountId,
+      update: {
+        [workCalendar.id]: {
+          shareWith: {
+            alice: null,
+            bob: {
+              mayReadFreeBusy: true,
+              mayReadItems: true,
+              mayWriteAll: true,
+              mayWriteOwn: true,
+              mayUpdatePrivate: true,
+              mayRSVP: true,
+              mayShare: false,
+              mayDelete: false,
+            },
+          },
+        },
+      },
+    });
+
+    const next = server.calendars.get(workCalendar.id);
+    expect(next?.shareWith).toMatchObject({
+      bob: expect.objectContaining({ mayWriteAll: true }),
+    });
+    expect(next?.shareWith).not.toHaveProperty("alice");
+  });
+
   it("reports rejected set records as typed errors", async () => {
     const server = new MockJmapServer();
     server.seedEvent(timedEvent);
