@@ -62,6 +62,26 @@ final class ICalendarDateTimeTest extends TestCase
         $this->assertSame('Europe/Amsterdam', $timed['timeZone']);
     }
 
+    public function test_write_property_utc_identifier_uses_z_not_tzid(): void
+    {
+        $calendar = new VCalendar;
+        $event = $calendar->add('VEVENT', []);
+        ICalendarDateTime::writeProperty($event, 'DTSTART', '2026-06-15T10:00:00', false, 'UTC');
+
+        $this->assertSame('20260615T100000Z', (string) $event->DTSTART);
+        $this->assertFalse(isset($event->DTSTART['TZID']));
+    }
+
+    public function test_write_property_skips_unknown_tzid(): void
+    {
+        $calendar = new VCalendar;
+        $event = $calendar->add('VEVENT', []);
+        ICalendarDateTime::writeProperty($event, 'DTSTART', '2026-06-15T10:00:00', false, 'Not/A-Real-Zone');
+
+        $this->assertSame('20260615T100000', (string) $event->DTSTART);
+        $this->assertFalse(isset($event->DTSTART['TZID']));
+    }
+
     public function test_exdate_list_uses_sabre_multi_value_not_comma_split(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:x\r\nDTSTART:20260601T080000Z\r\nEXDATE:20260608T080000Z,20260615T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";

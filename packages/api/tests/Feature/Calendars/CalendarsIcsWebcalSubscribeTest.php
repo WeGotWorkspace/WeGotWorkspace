@@ -326,6 +326,26 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         $this->assertSame((string) $subscription->id, $this->jmapCalendar('work')['subscriptionId']);
     }
 
+    public function test_subscribe_persists_remote_vtimezone_on_stored_objects(): void
+    {
+        $uid = 'apple-tz@example.test';
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VTIMEZONE\r\nTZID:Europe/Amsterdam\r\nBEGIN:STANDARD\r\nDTSTART:19701025T030000\r\nTZOFFSETFROM:+0200\r\nTZOFFSETTO:+0100\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:19700329T020000\r\nTZOFFSETFROM:+0100\r\nTZOFFSETTO:+0200\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU\r\nEND:DAYLIGHT\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:Apple meeting\r\nDTSTART;TZID=Europe/Amsterdam:20260615T100000\r\nDTEND;TZID=Europe/Amsterdam:20260615T110000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        Http::fake([
+            self::FEED_URL => Http::response($ics, 200, ['Content-Type' => 'text/calendar']),
+        ]);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => self::FEED_URL,
+        ])->assertCreated();
+
+        $stored = CalendarObject::query()->where('uid', $uid)->first();
+        $this->assertNotNull($stored);
+        $raw = is_string($stored->calendardata) ? $stored->calendardata : (string) $stored->calendardata;
+        $this->assertStringContainsString('BEGIN:VTIMEZONE', $raw);
+        $this->assertStringContainsString('TZID:Europe/Amsterdam', $raw);
+        $this->assertStringContainsString('DTSTART;TZID=Europe/Amsterdam:20260615T100000', $raw);
+    }
+
     public function test_other_users_cannot_read_or_delete_a_subscription(): void
     {
         Http::fake([
