@@ -82,6 +82,12 @@ const storyOperations: CalendarAPIOperations = {
     name: draft.name,
     color: draft.color ?? "#6366f1",
   }),
+  patchCalendar: async (calendarId, patch) => ({
+    id: calendarId,
+    name: patch.name ?? "Calendar",
+    color: patch.color ?? "#6366f1",
+  }),
+  deleteCalendar: async () => {},
   subscribeCalendar: async (draft) => ({
     id: "story-sub",
     name: draft.name ?? "Subscribed",
