@@ -1,5 +1,12 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Rss } from "lucide-react";
-import { type CSSProperties, useCallback, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type CSSProperties,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -27,6 +34,8 @@ import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitatio
 import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
+import { CalendarImportDialog } from "@/calendar-core/src/calendar-import-dialog";
+import { ICS_FILE_ACCEPT, icsFileFromList } from "@/calendar-core/src/calendar-ics-import";
 import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
 import { CalendarEventDetailsPopover } from "@/calendar-core/src/calendar-event-details-popover";
 import {
@@ -248,6 +257,13 @@ export function CalendarWorkspace({
     setAnchor,
     canCreateCalendar,
     canSubscribeCalendar,
+    canImportEvents,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    openImportDialog,
+    closeImportDialog,
+    submitImportDialog,
     calendarDialog,
     calendarDialogBusy,
     openCreateCalendarDialog,
@@ -302,6 +318,8 @@ export function CalendarWorkspace({
   const useInvitationsDrawer = invitationsLayout === "drawer";
   const [invitationsOpen, setInvitationsOpen] = useState(false);
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const icsFileInputRef = useRef<HTMLInputElement>(null);
   const [eventPreview, setEventPreview] = useState<{
     model: CalendarEventPreviewModel;
     origin?: CalendarEventSelectionOrigin;
@@ -506,6 +524,15 @@ export function CalendarWorkspace({
                       ? () => {
                           openSubscribeCalendarDialog();
                           closeSidebarOnMobile(() => setSidebarOpen(false));
+                        }
+                      : undefined
+                  }
+                  onImportEvents={
+                    canImportEvents
+                      ? () => {
+                          closeEventPreview();
+                          closeSidebarOnMobile(() => setSidebarOpen(false));
+                          icsFileInputRef.current?.click();
                         }
                       : undefined
                   }
@@ -805,6 +832,38 @@ export function CalendarWorkspace({
             : undefined
         }
       />
+      <input
+        ref={icsFileInputRef}
+        type="file"
+        accept={ICS_FILE_ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          const file = icsFileFromList(event.target.files);
+          event.target.value = "";
+          if (!file) return;
+          setImportFile(file);
+          openImportDialog();
+        }}
+      />
+      {importFile ? (
+        <CalendarImportDialog
+          open={importDialogOpen}
+          file={importFile}
+          labels={L}
+          calendars={calendars}
+          preferredCalendarId={defaultCalendarId}
+          busy={importDialogBusy}
+          error={importDialogError}
+          onClose={() => {
+            if (importDialogBusy) return;
+            closeImportDialog();
+            setImportFile(null);
+          }}
+          onImport={submitImportDialog}
+        />
+      ) : null}
       <CalendarRecurrenceScopeDialog dialog={recurrenceScopeDialog} labels={L} />
     </TooltipProvider>
   );

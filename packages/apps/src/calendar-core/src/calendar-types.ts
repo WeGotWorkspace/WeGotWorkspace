@@ -134,6 +134,10 @@ export type CalendarAPIOperations = {
   createEvent: (draft: CalendarEventDraft) => Promise<JmapCalendarEvent>;
   patchEvent: (eventId: string, patch: CalendarEventPatch) => Promise<JmapCalendarEvent>;
   deleteEvent: (eventId: string) => Promise<void>;
+  importEvents?: (
+    icsText: string,
+    opts: { calendarId: string },
+  ) => Promise<{ list: JmapCalendarEvent[]; errors: Array<{ index: number; message: string }> }>;
   createCalendar?: (draft: CalendarDraft) => Promise<CalendarInfo>;
   patchCalendar?: (calendarId: string, patch: CalendarPatch) => Promise<CalendarInfo>;
   deleteCalendar?: (calendarId: string) => Promise<void>;

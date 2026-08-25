@@ -13,6 +13,7 @@ const meta: Meta<typeof CalendarNewMenu> = {
     onCreateEvent: fn(),
     onCreateCalendar: fn(),
     onSubscribeCalendar: fn(),
+    onImportEvents: fn(),
   },
   render: (args) => (
     <div className="calendar-workspace max-w-xs p-6">
@@ -42,6 +43,10 @@ export const Default: Story = {
       screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }),
     );
     await expect(args.onSubscribeCalendar).toHaveBeenCalledOnce();
+
+    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }));
+    await userEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.importIcs }));
+    await expect(args.onImportEvents).toHaveBeenCalledOnce();
   },
 };
 
@@ -49,5 +54,6 @@ export const EventOnly: Story = {
   args: {
     onCreateCalendar: undefined,
     onSubscribeCalendar: undefined,
+    onImportEvents: undefined,
   },
 };

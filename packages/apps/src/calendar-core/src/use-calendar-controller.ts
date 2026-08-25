@@ -54,6 +54,11 @@ import type {
   CalendarCalendarDialogState,
 } from "@/calendar-core/src/calendar-calendar-dialog";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import {
+  readIcsFile,
+  runCalendarIcsImport,
+  type CalendarIcsImportDestination,
+} from "@/calendar-core/src/calendar-ics-import";
 import { sortCalendarsForSidebar } from "@/calendar-core/src/calendar-sidebar-order";
 import {
   canPublishCalendar,
@@ -199,6 +204,9 @@ export function useCalendarController({
   const [calendarDialogBusy, setCalendarDialogBusy] = useState(false);
   const [publishFeed, setPublishFeed] = useState<CalendarFeedInfo | null>(null);
   const [publishBusy, setPublishBusy] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importDialogBusy, setImportDialogBusy] = useState(false);
+  const [importDialogError, setImportDialogError] = useState<string | null>(null);
   const [recurrenceScopeDialog, setRecurrenceScopeDialog] =
     useState<CalendarRecurrenceScopeDialogState>(null);
   const pendingScopeResolveRef = useRef<((scope: RecurrenceScopeChoice | null) => void) | null>(
@@ -815,6 +823,53 @@ export function useCalendarController({
 
   const canCreateCalendar = Boolean(operations?.createCalendar);
   const canSubscribeCalendar = Boolean(operations?.subscribeCalendar);
+  const canImportEvents = Boolean(operations?.importEvents);
+  const openImportDialog = useCallback(() => {
+    if (!canImportEvents) return;
+    setImportDialogError(null);
+    setImportDialogOpen(true);
+  }, [canImportEvents]);
+  const closeImportDialog = useCallback(() => {
+    if (!importDialogBusy) setImportDialogOpen(false);
+  }, [importDialogBusy]);
+  const submitImportDialog = useCallback(
+    (file: File, destination: CalendarIcsImportDestination) => {
+      if (!operations?.importEvents) return;
+      setImportDialogBusy(true);
+      setImportDialogError(null);
+      void (async () => {
+        try {
+          const icsText = await readIcsFile(file);
+          if (icsText.trim() === "") {
+            setImportDialogError(L.importFileInvalid);
+            return;
+          }
+          const result = await runCalendarIcsImport(operations, icsText, destination);
+          if (result.createdCalendar) {
+            setCalendars((prev) => sortCalendarsForSidebar([...prev, result.createdCalendar!]));
+            selectDefaultCalendar(result.createdCalendar.id);
+          }
+          if (result.list.length === 0) {
+            setImportDialogError(L.toastImportFailed);
+            return;
+          }
+          show(result.errors.length > 0 ? L.toastImportPartial : L.toastImportSuccess);
+          setImportDialogOpen(false);
+          onMutated?.();
+        } catch (error) {
+          const message =
+            error instanceof Error && error.message.trim() !== ""
+              ? error.message
+              : L.toastImportFailed;
+          setImportDialogError(message);
+          showError(message.includes("internet") ? L.toastImportOffline : L.toastImportFailed);
+        } finally {
+          setImportDialogBusy(false);
+        }
+      })();
+    },
+    [L, onMutated, operations, selectDefaultCalendar, show, showError],
+  );
   const openCreateCalendarDialog = useCallback(() => {
     if (!canCreateCalendar) return;
     setPublishFeed(null);
@@ -1296,6 +1351,13 @@ export function useCalendarController({
     operations,
     canCreateCalendar,
     canSubscribeCalendar,
+    canImportEvents,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    openImportDialog,
+    closeImportDialog,
+    submitImportDialog,
     calendarDialog,
     calendarDialogBusy,
     openCreateCalendarDialog,

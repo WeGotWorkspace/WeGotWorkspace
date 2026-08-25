@@ -7,8 +7,16 @@
   height: var(--input-height, 2.25rem);
 }
 
+.calendar-color-swatch-trigger--labeled {
+  @apply w-full justify-between;
+}
+
 .calendar-color-swatch-trigger__dot {
   @apply size-3 shrink-0 rounded-full;
+}
+
+.calendar-color-swatch-trigger__caption {
+  @apply min-w-0 flex-1 truncate text-left;
 }
 
 .calendar-color-swatch-trigger__chevron {
