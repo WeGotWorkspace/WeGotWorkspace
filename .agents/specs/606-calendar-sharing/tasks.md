@@ -13,7 +13,7 @@ Source plan: [plan.md](./plan.md)
 | `api-sharewith` | builder | api | `packages/api/app/Services/Calendars/CalendarRepository.php`, `CalendarSetMethod.php`, `CalendarPrincipalAddresses.php`, `tests/Feature/Jmap/JmapCalendarMethodsTest.php`, `tests/Feature/Calendars/` | targeted PHPUnit + `pnpm test:api-done-gate` | done |
 | `caldav-share-interop` | builder | api | `packages/api/tests/Feature/Calendars/CalendarsCalDavSharingTest.php`, CalDAV share POST/PROPFIND | CalDAV sharing tests (targeted PHPUnit; full `pnpm test:api-done-gate` is Chunk V) | done |
 | `dialog-acl` | builder | workspace | `packages/apps/src/calendar-core/src/calendar-event-dialog.tsx`, `calendar-event-dialog.test.tsx`, `packages/apps/src/lib/api/wgw/calendar.ts`, `calendar-types.ts` | `vitest run calendar-event-dialog.test.tsx` | done |
-| `calendar-share-ui` | builder | workspace, apps-ui, storybook | `packages/apps/src/share-ui/`, new `CalendarShareDialog`, `calendar-workspace.tsx`, `MockJmapServer` | targeted Vitest/Storybook + `pnpm test:apps-done-gate` | done |
+| `calendar-share-ui` | builder | workspace, apps-ui, storybook | `packages/apps/src/share-ui/`, new `CalendarShareSection`, `calendar-workspace.tsx`, `MockJmapServer` | targeted Vitest/Storybook + `pnpm test:apps-done-gate` | done |
 | `verify` | verifier | testing | merged tree; Task #606; Bug #489; Goal #403 | verify-issue + `pnpm test:api-done-gate` + `pnpm test:apps-done-gate` | done |
 | `followup-edit-acl` | builder | workspace, apps-ui | edit-calendar combines publish + `CalendarShareSection`; owner-only publish; revoke ingest | targeted Vitest + PHPUnit share/feed | done |
 

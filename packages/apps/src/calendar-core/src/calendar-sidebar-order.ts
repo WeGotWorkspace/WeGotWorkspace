@@ -29,31 +29,23 @@ export function isGroupCalendar(calendar: Pick<CalendarInfo, "scope" | "groupSlu
   return calendar.scope === "group" && Boolean(calendar.groupSlug?.trim());
 }
 
-/** Inbound ACL sharee — not team membership and not an ICS subscription. */
-export function isAclSharedWithMeCalendar(
+/** Inbound ACL sharee — not group membership and not an ICS subscription. */
+export function isSharedWithMeCalendar(
   calendar: Pick<CalendarInfo, "scope" | "groupSlug" | "mayShare" | "subscriptionId">,
 ): boolean {
   return !isGroupCalendar(calendar) && calendar.mayShare === false && !calendar.subscriptionId;
-}
-
-export function personalCalendarsForSidebar<T extends CalendarInfo>(calendars: readonly T[]): T[] {
-  return sortCalendarsForSidebar(calendars.filter((calendar) => !isGroupCalendar(calendar)));
-}
-
-export function teamCalendarsForSidebar<T extends CalendarInfo>(calendars: readonly T[]): T[] {
-  return sortCalendarsForSidebar(calendars.filter((calendar) => isGroupCalendar(calendar)));
 }
 
 export function ownedAndTeamCalendarsForSidebar<T extends CalendarInfo>(
   calendars: readonly T[],
 ): T[] {
   return sortCalendarsAlphabetically(
-    calendars.filter((calendar) => !isAclSharedWithMeCalendar(calendar)),
+    calendars.filter((calendar) => !isSharedWithMeCalendar(calendar)),
   );
 }
 
 export function sharedWithMeCalendarsForSidebar<T extends CalendarInfo>(
   calendars: readonly T[],
 ): T[] {
-  return sortCalendarsAlphabetically(calendars.filter(isAclSharedWithMeCalendar));
+  return sortCalendarsAlphabetically(calendars.filter(isSharedWithMeCalendar));
 }

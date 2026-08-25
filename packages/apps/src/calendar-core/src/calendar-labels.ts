@@ -25,9 +25,7 @@ export type CalendarUILabels = {
   toastImportPartial: string;
   toastImportFailed: string;
   toastImportOffline: string;
-  calendarsSection: string;
   myCalendarsSection: string;
-  teamCalendarsSection: string;
   sharedWithMeSection: string;
   subscribedCalendarsSection: string;
   teamCalendarBadge: string;
@@ -225,9 +223,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportPartial: "Some events could not be imported",
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
-  calendarsSection: "Calendars",
   myCalendarsSection: "My calendars",
-  teamCalendarsSection: "Team calendars",
   sharedWithMeSection: "Shared with me",
   subscribedCalendarsSection: "Subscriptions",
   teamCalendarBadge: "Team calendar",

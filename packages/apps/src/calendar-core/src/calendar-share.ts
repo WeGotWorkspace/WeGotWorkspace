@@ -6,10 +6,10 @@ import type {
   CalendarShareRights,
   CalendarShareWith,
 } from "@/calendar-core/src/calendar-types";
-import { isGroupCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import type { JmapCalendar } from "@/lib/jmap-client";
 
+export { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 export type { CalendarSharePrincipal, CalendarShareRights, CalendarShareWith };
 
 const GROUP_PREFIX = "groups/";
@@ -42,13 +42,6 @@ export function calendarSharePermissionFromRights(
 
 export function isCalendarShareGroupId(id: string): boolean {
   return id.startsWith(GROUP_PREFIX);
-}
-
-/** Inbound ACL sharee — not group membership and not an ICS subscription. */
-export function isSharedWithMeCalendar(
-  calendar: Pick<CalendarInfo, "scope" | "groupSlug" | "mayShare" | "subscriptionId">,
-): boolean {
-  return !isGroupCalendar(calendar) && calendar.mayShare === false && !calendar.subscriptionId;
 }
 
 export function mergeCalendarShareWith(

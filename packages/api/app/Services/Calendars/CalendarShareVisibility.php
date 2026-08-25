@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Models\CalendarInstance;
 use App\Models\CalendarShareDismissal;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
  * Per-user hide of an inbound share. Does not change the owner's shareWith grant.
@@ -60,8 +61,8 @@ final class CalendarShareVisibility
 
         return $instances
             ->filter(function (CalendarInstance $instance) use ($ids): bool {
-                $access = (int) ($instance->access ?? 1);
-                if ($access !== 2 && $access !== 3) {
+                $access = (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER);
+                if ($access !== SharingPlugin::ACCESS_READ && $access !== SharingPlugin::ACCESS_READWRITE) {
                     return true;
                 }
 

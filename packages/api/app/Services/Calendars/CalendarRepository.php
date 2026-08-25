@@ -315,7 +315,8 @@ final class CalendarRepository
 
     public function instanceMayWrite(CalendarInstance $instance): bool
     {
-        return (int) ($instance->access ?? 1) !== 2;
+        return (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)
+            !== SharingPlugin::ACCESS_READ;
     }
 
     public function findAccessibleCalendar(string $username, string $calendarId): ?CalendarInstance
@@ -550,9 +551,9 @@ final class CalendarRepository
         $subscriptionId = $this->subscriptionIdForInstance($instance, $groupSlug);
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
 
-        $rights = match ((int) ($instance->access ?? 1)) {
-            2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => true],
-            3 => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => true],
+        $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
+            SharingPlugin::ACCESS_READ => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => true],
+            SharingPlugin::ACCESS_READWRITE => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => true],
             default => [
                 'mayRead' => true,
                 'mayWrite' => true,

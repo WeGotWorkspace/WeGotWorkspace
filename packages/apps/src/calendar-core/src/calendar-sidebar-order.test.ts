@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ownedAndTeamCalendarsForSidebar,
-  personalCalendarsForSidebar,
   sharedWithMeCalendarsForSidebar,
   sortCalendarsForSidebar,
-  teamCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 
@@ -82,24 +80,6 @@ describe("calendar sidebar sections", () => {
       mayWrite: false,
     },
   ];
-
-  it("keeps personal calendars out of team sections", () => {
-    expect(personalCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
-      "family",
-      "default",
-      "holidays",
-      "work",
-    ]);
-  });
-
-  it("lists team calendars in one flat list without group headings", () => {
-    expect(teamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
-      "group-design",
-      "group-eng",
-      "group-holidays",
-      "sprint",
-    ]);
-  });
 
   it("unifies owned, team, and subscription calendars A–Z and keeps ACL sharees out", () => {
     expect(ownedAndTeamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
