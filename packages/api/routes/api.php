@@ -229,13 +229,13 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         Route::get('tasks/items', [TasksController::class, 'index']);
         Route::post('tasks/items', [TasksController::class, 'store']);
         Route::get('tasks/items/{taskId}', [TasksController::class, 'show'])
-            ->where('taskId', '[a-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#-]+');
         Route::put('tasks/items/{taskId}', [TasksController::class, 'update'])
-            ->where('taskId', '[a-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#-]+');
         Route::patch('tasks/items/{taskId}', [TasksController::class, 'patch'])
-            ->where('taskId', '[a-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#-]+');
         Route::delete('tasks/items/{taskId}', [TasksController::class, 'destroy'])
-            ->where('taskId', '[a-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#-]+');
     });
 
     Route::middleware('wgw.contacts')->group(function (): void {
