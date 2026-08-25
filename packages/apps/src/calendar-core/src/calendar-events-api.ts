@@ -288,9 +288,20 @@ function patchFromEngineEvent(
   event: CalendarEvent,
 ): CalendarEventPatch {
   const patch = formToFullPatch(engineEventToForm(event));
-  const overrides = recurrenceOverridesFromEngineMap(events, masterKey);
+  const overrides = recurrenceOverridesFromEngineMap(events, persistEventId(masterKey));
   if (overrides) patch.recurrenceOverrides = overrides;
   return patch;
+}
+
+/**
+ * Persist this-instance rows as master `recurrenceOverrides`, never a second
+ * CalendarEvent. Use the occurrence key (`::`) as well as
+ * `isThisInstanceOverride` — consolidation missed `::` rows that are not
+ * flagged as detached (second move then patched the series start / dropped
+ * the original rid and the series slot came back).
+ */
+function persistAsSeriesOverride(events: CalendarEventsMap, key: string): boolean {
+  return Boolean(splitOccurrenceKey(key).recurrenceId) || isThisInstanceOverride(events, key);
 }
 
 export async function persistCalendarEventChanges(
@@ -301,7 +312,7 @@ export async function persistCalendarEventChanges(
   for (const change of result.changes) {
     // Detached exceptions persist as JSCalendar recurrenceOverrides on the master
     // — never as a second CalendarEvent (that paints the original + the override).
-    if (isThisInstanceOverride(result.nextState, change.key)) {
+    if (persistAsSeriesOverride(result.nextState, change.key)) {
       const masterKey = persistEventId(change.key);
       const masterAlsoWritten = result.changes.some(
         (entry) => entry.key === masterKey && entry.type !== "removed",
