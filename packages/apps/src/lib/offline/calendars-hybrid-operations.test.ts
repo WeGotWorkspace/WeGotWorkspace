@@ -38,13 +38,17 @@ const bootstrap = {
   },
 } satisfies CalendarAppBootstrap;
 
-const { createCalendarEventLive, patchCalendarEventLive, fetchCalendarLiveBootstrap } = vi.hoisted(
-  () => ({
-    createCalendarEventLive: vi.fn(),
-    patchCalendarEventLive: vi.fn(),
-    fetchCalendarLiveBootstrap: vi.fn(),
-  }),
-);
+const {
+  createCalendarEventLive,
+  patchCalendarEventLive,
+  fetchCalendarLiveBootstrap,
+  importEventsLive,
+} = vi.hoisted(() => ({
+  createCalendarEventLive: vi.fn(),
+  patchCalendarEventLive: vi.fn(),
+  fetchCalendarLiveBootstrap: vi.fn(),
+  importEventsLive: vi.fn(),
+}));
 
 vi.mock("@/lib/api/wgw/calendar", () => ({
   createCalendarEventLive,
@@ -54,6 +58,7 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
   patchCalendarLive: vi.fn(),
   deleteCalendarLive: vi.fn(),
   fetchCalendarLiveBootstrap,
+  importEventsLive,
 }));
 
 vi.mock("@/lib/api/wgw/calendar-ics-webcal", () => ({
@@ -238,6 +243,41 @@ describe("flushCalendarsOutboxAndReport", () => {
     await expect(operations.publishCalendarFeed!("default")).rejects.toThrow(
       /requires a connection/,
     );
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+});
+
+describe("hybrid importEvents", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.outbox.clear();
+    await db.meta.clear();
+    await writeCalendarBootstrapToCache(username, bootstrap);
+  });
+
+  it("upserts imported events into Dexie when online", async () => {
+    importEventsLive.mockResolvedValue({
+      list: [wireEvent("imported-1", "Imported")],
+      errors: [],
+    });
+    const operations = createHybridCalendarOperations(username);
+    const result = await operations.importEvents!("BEGIN:VCALENDAR", { calendarId: "default" });
+
+    expect(importEventsLive).toHaveBeenCalledWith("BEGIN:VCALENDAR", { calendarId: "default" });
+    expect(result.list[0]?.id).toBe("imported-1");
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.events.some((event) => event.id === "imported-1")).toBe(true);
+  });
+
+  it("throws when offline and does not queue", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridCalendarOperations(username);
+    await expect(
+      operations.importEvents!("BEGIN:VCALENDAR", { calendarId: "default" }),
+    ).rejects.toThrow(/internet connection/);
+    expect(importEventsLive).not.toHaveBeenCalled();
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
 });

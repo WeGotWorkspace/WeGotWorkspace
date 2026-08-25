@@ -10,6 +10,38 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 
+export type CalendarPickerMenuItemProps = {
+  name: string;
+  selected: boolean;
+  onSelect: () => void;
+  /** Omit for action rows (e.g. New calendar) that should not show a color dot. */
+  color?: string;
+};
+
+/** Shared calendar option: color dot + name + check, matching the event-dialog picker. */
+export function CalendarPickerMenuItem({
+  name,
+  color,
+  selected,
+  onSelect,
+}: CalendarPickerMenuItemProps) {
+  return (
+    <DropdownMenuItem className="calendar-event-dialog__calendar-option" onSelect={onSelect}>
+      {color != null && color !== "" ? (
+        <span className="calendar-sidebar-dot" style={{ backgroundColor: color }} aria-hidden />
+      ) : null}
+      <span className="calendar-event-dialog__calendar-name">{name}</span>
+      <Check
+        className={cn(
+          "calendar-event-dialog__calendar-check",
+          selected ? "opacity-100" : "opacity-0",
+        )}
+        aria-hidden
+      />
+    </DropdownMenuItem>
+  );
+}
+
 export type CalendarEventCalendarPickerProps = {
   calendars: CalendarInfo[];
   calendarId: string;
@@ -64,25 +96,13 @@ export function CalendarEventCalendarPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
         {writableCalendars.map((calendar) => (
-          <DropdownMenuItem
+          <CalendarPickerMenuItem
             key={calendar.id}
-            className="calendar-event-dialog__calendar-option"
+            name={calendar.name}
+            color={calendar.color}
+            selected={calendarId === calendar.id}
             onSelect={() => onCalendarIdChange(calendar.id)}
-          >
-            <span
-              className="calendar-sidebar-dot"
-              style={{ backgroundColor: calendar.color }}
-              aria-hidden
-            />
-            <span className="calendar-event-dialog__calendar-name">{calendar.name}</span>
-            <Check
-              className={cn(
-                "calendar-event-dialog__calendar-check",
-                calendarId === calendar.id ? "opacity-100" : "opacity-0",
-              )}
-              aria-hidden
-            />
-          </DropdownMenuItem>
+          />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

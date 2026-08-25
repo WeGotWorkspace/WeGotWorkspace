@@ -140,11 +140,33 @@ final class ICalendarDateTime
             $icsValue = self::toIcs(substr(trim($value), 0, 10));
         } else {
             $icsValue = self::toIcs($value);
-            if (! str_ends_with(trim($value), 'Z') && $timeZone !== null && $timeZone !== '') {
-                $params['TZID'] = $timeZone;
+            if (self::isUtcIdentifier($timeZone)) {
+                if (! str_ends_with($icsValue, 'Z')) {
+                    $icsValue .= 'Z';
+                }
+            } elseif (! str_ends_with(trim($value), 'Z') && $timeZone !== null && $timeZone !== '') {
+                try {
+                    new DateTimeZone($timeZone);
+                    $params['TZID'] = $timeZone;
+                } catch (\Exception) {
+                    // Unknown TZID: write floating local time rather than a dangling TZID.
+                }
             }
         }
 
         $component->add($name, $icsValue, $params);
+    }
+
+    private static function isUtcIdentifier(?string $timeZone): bool
+    {
+        if ($timeZone === null || trim($timeZone) === '') {
+            return false;
+        }
+
+        return in_array(
+            strtoupper(str_replace(' ', '', $timeZone)),
+            ['UTC', 'ETC/UTC', 'GMT', 'ETC/GMT', 'Z'],
+            true,
+        );
     }
 }

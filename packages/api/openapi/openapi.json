@@ -5491,6 +5491,61 @@
         "x-wgw-access": "guest"
       }
     },
+    "/calendars/events/import": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Import calendar events from an ICS file",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "calendarId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/calendar": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Imported calendar events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/calendars/scheduling/invitees": {
       "get": {
         "tags": [

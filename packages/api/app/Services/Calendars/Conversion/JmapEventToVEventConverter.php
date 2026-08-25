@@ -50,6 +50,7 @@ final class JmapEventToVEventConverter
 
         $event['uid'] = $targetUid;
         $this->appendSeriesVevents($document, $event);
+        TimeZoneSupport::writeTimeZonesToCalendar($document, $event);
 
         $updated = $document->serialize();
         $this->guard->assertIcsSize($updated);
@@ -92,8 +93,8 @@ final class JmapEventToVEventConverter
         $calendar = new VCalendar([], false);
         $calendar->add('VERSION', '2.0');
         $calendar->add('PRODID', '-//WeGotWorkspace//Calendars REST//EN');
-        TimeZoneSupport::writeTimeZonesToCalendar($calendar, $event);
         $this->appendSeriesVevents($calendar, $event);
+        TimeZoneSupport::writeTimeZonesToCalendar($calendar, $event);
 
         return $calendar;
     }

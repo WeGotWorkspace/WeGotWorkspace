@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks\Conversion;
 
+use App\Services\Calendars\Conversion\TimeZoneSupport;
 use App\Services\VObject\ICalendarDateList;
 use App\Services\VObject\ICalendarDateTime;
 use App\Services\VObject\ICalendarRecurrence;
@@ -29,6 +30,7 @@ final class JmapToIcsTaskConverter
         ]);
 
         $this->writeTaskSeries($calendar, $task);
+        TimeZoneSupport::writeTimeZonesToCalendar($calendar, $task);
 
         return $this->writeCalendar($calendar);
     }
@@ -53,6 +55,7 @@ final class JmapToIcsTaskConverter
         }
 
         $this->writeTaskSeries($calendar, $task);
+        TimeZoneSupport::writeTimeZonesToCalendar($calendar, $task);
 
         return $this->writeCalendar($calendar);
     }

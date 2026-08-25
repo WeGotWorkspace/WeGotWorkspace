@@ -6252,6 +6252,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/events/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import calendar events from an ICS file */
+        post: {
+            parameters: {
+                query: {
+                    calendarId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            responses: {
+                /** @description Imported calendar events */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarEventImportResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9683,6 +9728,15 @@ export interface components {
             httpsUrl: string;
             /** @description Same feed advertised as webcal:// for calendar clients. */
             webcalUrl: string;
+        };
+        CalendarEventImportError: {
+            index: number;
+            message: string;
+        };
+        /** @description REST response for POST /calendars/events/import. */
+        CalendarEventImportResponse: {
+            list: components["schemas"]["CalendarEvent"][];
+            errors: components["schemas"]["CalendarEventImportError"][];
         };
     };
     responses: {

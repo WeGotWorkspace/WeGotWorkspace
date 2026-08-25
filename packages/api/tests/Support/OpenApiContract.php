@@ -241,6 +241,9 @@ final class OpenApiContract
         if ($openApiPath === '/contacts/cards/import' && $method === 'POST') {
             return 'addressBookId=default';
         }
+        if ($openApiPath === '/calendars/events/import' && $method === 'POST') {
+            return 'calendarId=default';
+        }
         if ($openApiPath === '/calendars/events' && $method === 'GET') {
             return 'calendarId=default';
         }

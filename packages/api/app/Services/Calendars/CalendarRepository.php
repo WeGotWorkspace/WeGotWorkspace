@@ -298,6 +298,11 @@ final class CalendarRepository
         return ['oldState' => $since, 'newState' => $currentState, 'hasMoreChanges' => false, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
+    public function instanceMayWrite(CalendarInstance $instance): bool
+    {
+        return (int) ($instance->access ?? 1) !== 2;
+    }
+
     public function findAccessibleCalendar(string $username, string $calendarId): ?CalendarInstance
     {
         $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId);

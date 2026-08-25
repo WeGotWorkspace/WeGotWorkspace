@@ -9,8 +9,11 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
+use App\Services\Calendars\Conversion\CalendarIcsSplitSupport;
+use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Services\VObject\VObjectPayloadGuard;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -602,6 +605,118 @@ final class CalendarEventRepository
 
             return $this->mapper->toCalendarEvent($object, $this->calendars->apiIdForInstance($instance), null, $username);
         });
+    }
+
+    /**
+     * Import VEVENT UID groups from an ICS file. Does not run iTIP/iMIP.
+     *
+     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string}>}
+     */
+    public function importFromIcs(string $username, string $icsText, string $calendarId): array
+    {
+        $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
+        if ($instance === null) {
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
+        }
+        if (! $this->calendars->instanceMayWrite($instance)) {
+            throw new ApiHttpException(403, 'Calendar is not writable.', 'forbidden');
+        }
+
+        (new VObjectPayloadGuard)->assertIcsSize($icsText);
+
+        try {
+            $groups = CalendarIcsSplitSupport::splitUidGroups($icsText);
+        } catch (\InvalidArgumentException $exception) {
+            throw new ApiHttpException(400, $exception->getMessage(), 'bad_request');
+        }
+
+        if ($groups === []) {
+            throw new ApiHttpException(400, 'No VEVENT data found.', 'bad_request');
+        }
+
+        $list = [];
+        $errors = [];
+        foreach ($groups as $index => $group) {
+            try {
+                foreach ($this->persistImportedUidGroup($username, $instance, $group['ics']) as $event) {
+                    $list[] = $event;
+                }
+            } catch (ApiHttpException $exception) {
+                $errors[] = ['index' => $index, 'message' => $exception->getMessage()];
+            } catch (\Throwable) {
+                $errors[] = ['index' => $index, 'message' => 'Could not import event.'];
+            }
+        }
+
+        return ['list' => $list, 'errors' => $errors];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function persistImportedUidGroup(string $username, CalendarInstance $instance, string $ics): array
+    {
+        return DB::connection('wgw')->transaction(function () use ($username, $instance, $ics): array {
+            CalendarInstance::query()->whereKey($instance->getKey())->lockForUpdate()->first();
+            $this->assertImportableGroupIcs($ics);
+
+            $eventUri = $this->allocateEventUri((int) $instance->calendarid, [
+                'title' => $this->importedEventTitle($ics),
+            ]);
+            $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+
+            $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
+            $this->searchIndexSync->sync(
+                'calendars',
+                fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
+                $davPath,
+                $username,
+            );
+
+            $object = $this->findObjectInCalendar((int) $instance->calendarid, $eventUri, fresh: true);
+            if ($object === null) {
+                throw new ApiHttpException(500, 'Could not load imported calendar event.', 'server_error');
+            }
+
+            return $this->mapper->toCalendarEvents(
+                $object,
+                $this->calendars->apiIdForInstance($instance),
+                $username,
+            );
+        });
+    }
+
+    private function assertImportableGroupIcs(string $ics): void
+    {
+        $events = (new ICalendarJmapEventConverter)->eventsFromIcs($ics);
+        $knownFrequencies = ['secondly', 'minutely', 'hourly', 'daily', 'weekly', 'monthly', 'yearly'];
+        foreach ($events as $event) {
+            $rules = $event['recurrenceRules'] ?? [];
+            if (! is_array($rules)) {
+                continue;
+            }
+            foreach ($rules as $rule) {
+                if (! is_array($rule)) {
+                    continue;
+                }
+                $frequency = strtolower((string) ($rule['frequency'] ?? ''));
+                if ($frequency !== '' && ! in_array($frequency, $knownFrequencies, true)) {
+                    throw new ApiHttpException(400, 'Unparseable recurrence rule.', 'bad_request');
+                }
+            }
+        }
+    }
+
+    private function importedEventTitle(string $ics): string
+    {
+        if (preg_match('/^SUMMARY:(.*)$/mi', $ics, $matches) === 1) {
+            $title = trim(str_replace('\\,', ',', $matches[1]));
+            if ($title !== '') {
+                return $title;
+            }
+        }
+
+        return 'event';
     }
 
     /**
