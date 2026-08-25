@@ -55,6 +55,7 @@ describe("recurrence helpers", () => {
       recurrenceId: "20330111T100000",
       isException: true,
       data: {
+        summary: "Daily",
         start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
         duration: Temporal.Duration.from("PT30M"),
       },
@@ -66,6 +67,7 @@ describe("recurrence helpers", () => {
           eventId: "ev-1",
           isRecurring: true,
           data: {
+            summary: "Daily",
             start: Temporal.PlainDateTime.from("2033-01-10T10:00:00"),
             duration: Temporal.Duration.from("PT30M"),
             recurrenceRule: { freq: "DAILY", interval: 1 },
@@ -85,6 +87,7 @@ describe("recurrence helpers", () => {
       recurrenceId: "20330111T100000",
       isException: true,
       data: {
+        summary: "Daily",
         start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
         duration: Temporal.Duration.from("PT30M"),
       },
