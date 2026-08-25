@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  canManageCalendarSharing,
+  canOpenCalendarSettings,
+  canRenameCalendar,
   canWriteCalendarCollection,
   isCalendarCollectionOwner,
   isCalendarEventFormReadOnly,
@@ -21,6 +24,29 @@ describe("isCalendarCollectionOwner", () => {
     expect(isCalendarCollectionOwner({ scope: "group", mayShare: false, mayWrite: true })).toBe(
       false,
     );
+    expect(isCalendarCollectionOwner({ scope: "group", mayShare: true, mayWrite: true })).toBe(
+      false,
+    );
+  });
+});
+
+describe("canManageCalendarSharing", () => {
+  it("allows personal owners and group members with mayShare", () => {
+    expect(canManageCalendarSharing({ mayWrite: true })).toBe(true);
+    expect(canManageCalendarSharing({ mayShare: true, mayWrite: true })).toBe(true);
+    expect(canManageCalendarSharing({ scope: "group", mayShare: true, mayWrite: true })).toBe(true);
+    expect(canManageCalendarSharing({ mayShare: false, mayWrite: true })).toBe(false);
+    expect(canManageCalendarSharing({ scope: "group", mayWrite: true })).toBe(false);
+  });
+});
+
+describe("calendar settings rights", () => {
+  it("lets ACL sharees open edit and rename their instance", () => {
+    const sharee = { mayShare: false as const, mayWrite: false };
+    expect(canOpenCalendarSettings(sharee)).toBe(true);
+    expect(canRenameCalendar(sharee)).toBe(true);
+    expect(canRenameCalendar({ mayShare: true, mayWrite: true })).toBe(true);
+    expect(canRenameCalendar({ subscriptionId: "sub-1", mayWrite: false })).toBe(true);
   });
 });
 
@@ -72,6 +98,13 @@ describe("isCalendarEventFormReadOnly", () => {
       isCalendarEventFormReadOnly({
         mode: "edit",
         calendar: { scope: "group", mayShare: false, mayWrite: true },
+        isOrganizer: false,
+      }),
+    ).toBe(false);
+    expect(
+      isCalendarEventFormReadOnly({
+        mode: "edit",
+        calendar: { scope: "group", mayShare: true, mayWrite: true },
         isOrganizer: false,
       }),
     ).toBe(false);

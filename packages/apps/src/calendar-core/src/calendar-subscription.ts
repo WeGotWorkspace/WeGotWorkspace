@@ -1,16 +1,15 @@
+import { canManageCalendarSharing } from "@/calendar-core/src/calendar-collection-write";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 
 export function isSubscribedCalendar(calendar: Pick<CalendarInfo, "subscriptionId">): boolean {
   return Boolean(calendar.subscriptionId);
 }
 
-/** Owned personal calendars only — not subscriptions or group collections. */
+/** Administrators only — not subscriptions or sharees. Group members with mayShare can publish. */
 export function canPublishCalendar(
-  calendar: Pick<CalendarInfo, "subscriptionId" | "scope" | "mayWrite">,
+  calendar: Pick<CalendarInfo, "subscriptionId" | "scope" | "mayShare">,
 ): boolean {
-  return (
-    !isSubscribedCalendar(calendar) && calendar.scope !== "group" && calendar.mayWrite !== false
-  );
+  return !isSubscribedCalendar(calendar) && canManageCalendarSharing(calendar);
 }
 
 export function writableCalendarId(

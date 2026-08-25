@@ -9,7 +9,7 @@ namespace App\Services\Jmap\Methods;
  * access column) onto the JMAP calendars draft's 8-property CalendarRights
  * (spec §6). The REST flags fully determine the 8-property row:
  * read-only (access=2) has mayWrite=false; read-write (access=3) and owner
- * differ in mayShare (personal owners only) and mayDelete.
+ * differ in mayShare (personal owners and group members) and mayDelete.
  */
 final class CalendarRightsMapper
 {

@@ -1,7 +1,8 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Circle, Pencil, Rss, Share2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Pencil, Rss } from "lucide-react";
 import {
   type ChangeEvent,
   type CSSProperties,
+  type ReactNode,
   useCallback,
   useMemo,
   useRef,
@@ -68,11 +69,11 @@ import {
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import {
+  canManageCalendarSharing,
+  canOpenCalendarSettings,
   canWriteCalendarCollection,
-  isCalendarCollectionOwner,
   isCalendarEventFormReadOnly,
 } from "@/calendar-core/src/calendar-collection-write";
-import { CalendarShareDialog } from "@/calendar-core/src/calendar-share-dialog";
 import {
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
@@ -81,8 +82,8 @@ import {
 } from "@/calendar-core/src/calendar-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
-  personalCalendarsForSidebar,
-  teamCalendarsForSidebar,
+  ownedAndTeamCalendarsForSidebar,
+  sharedWithMeCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
@@ -99,12 +100,20 @@ function closeSidebarOnMobile(close: () => void) {
   close();
 }
 
-function SubscribedCalendarMark({ label }: { label: string }) {
+function CalendarSidebarMark({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className: string;
+  children: ReactNode;
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="calendar-sidebar-row__subscription" role="img" aria-label={label}>
-          <Rss className="size-3.5" aria-hidden />
+        <span className={className} role="img" aria-label={label}>
+          {children}
         </span>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
@@ -120,14 +129,12 @@ function CalendarSidebarRows({
   canUnsubscribe,
   editLabel,
   subscribedLabel,
+  viewOnlyLabel,
   pendingCalendarIds,
   pendingSyncLabel,
-  shareLabel,
-  sharedLabel,
   onToggleVisibility,
   onSelectDefault,
   onEdit,
-  onShare,
 }: {
   calendars: CalendarInfo[];
   hiddenCalendarIds: ReadonlySet<string>;
@@ -136,27 +143,25 @@ function CalendarSidebarRows({
   canUnsubscribe: boolean;
   editLabel: string;
   subscribedLabel: string;
+  viewOnlyLabel: string;
   pendingCalendarIds?: ReadonlySet<string>;
   pendingSyncLabel: string;
-  shareLabel: string;
-  sharedLabel: string;
   onToggleVisibility: (calendarId: string) => void;
   onSelectDefault: (calendarId: string) => void;
   onEdit: (calendarId: string) => void;
-  onShare: (calendarId: string) => void;
 }) {
   return (
     <>
       {calendars.map((calendar) => {
         const visible = !hiddenCalendarIds.has(calendar.id);
         const subscribed = isSubscribedCalendar(calendar);
-        const mayEdit = calendar.mayWrite !== false || subscribed;
+        const viewOnly = !canWriteCalendarCollection(calendar);
+        const mayEdit = canOpenCalendarSettings(calendar);
         const mayDelete = subscribed
           ? canUnsubscribe
-          : calendar.mayDelete !== false && canDeleteCalendars;
+          : (calendar.mayDelete !== false || isSharedWithMeCalendar(calendar)) &&
+            canDeleteCalendars;
         const canManage = mayEdit || mayDelete;
-        const canShare = isCalendarCollectionOwner(calendar);
-        const sharedWithMe = isSharedWithMeCalendar(calendar);
         const selected = calendar.id === defaultCalendarId;
         return (
           <li
@@ -182,15 +187,21 @@ function CalendarSidebarRows({
             >
               <span className="calendar-sidebar-row__title">
                 <span className="calendar-sidebar-row__name">{calendar.name}</span>
-                {subscribed ? <SubscribedCalendarMark label={subscribedLabel} /> : null}
-                {sharedWithMe ? (
-                  <span
-                    className="calendar-sidebar-row__shared-pip"
-                    role="img"
-                    aria-label={sharedLabel}
+                {subscribed ? (
+                  <CalendarSidebarMark
+                    label={subscribedLabel}
+                    className="calendar-sidebar-row__mark calendar-sidebar-row__subscription"
                   >
-                    <Share2 className="size-3 calendar-sidebar-row__shared-icon" aria-hidden />
-                  </span>
+                    <Rss className="size-3.5" aria-hidden />
+                  </CalendarSidebarMark>
+                ) : null}
+                {viewOnly && !subscribed ? (
+                  <CalendarSidebarMark
+                    label={viewOnlyLabel}
+                    className="calendar-sidebar-row__mark calendar-sidebar-row__readonly"
+                  >
+                    <Eye className="size-3.5" aria-hidden />
+                  </CalendarSidebarMark>
                 ) : null}
               </span>
               {pendingCalendarIds?.has(calendar.id) ? (
@@ -203,16 +214,6 @@ function CalendarSidebarRows({
                 </span>
               ) : null}
             </button>
-            {canShare ? (
-              <IconButton
-                label={shareLabel}
-                icon={<Share2 className="size-3.5" aria-hidden />}
-                size="sm"
-                variant="ghost"
-                className="calendar-sidebar-row__action calendar-sidebar-row__share"
-                onClick={() => onShare(calendar.id)}
-              />
-            ) : null}
             {canManage ? (
               <IconButton
                 label={editLabel}
@@ -362,9 +363,11 @@ export function CalendarWorkspace({
   const useInvitationsDrawer = invitationsLayout === "drawer";
   const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
   const [invitationsOpen, setInvitationsOpen] = useState(false);
-  const [shareCalendarId, setShareCalendarId] = useState<string | null>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
-  const shareCalendar = calendars.find((calendar) => calendar.id === shareCalendarId) ?? null;
+  const editCalendar =
+    calendarDialog?.mode === "edit"
+      ? (calendars.find((calendar) => calendar.id === calendarDialog.calendarId) ?? null)
+      : null;
   const sharePrincipals = useMemo(
     () =>
       calendarSharePrincipalsFromDirectory({
@@ -429,8 +432,8 @@ export function CalendarWorkspace({
     });
   const previewCanResize = Boolean(operations) && canWriteCalendarCollection(previewCalendar);
   const ownerLabel = personalOwnerLabel(session);
-  const myCalendars = personalCalendarsForSidebar(calendars);
-  const teamCalendars = teamCalendarsForSidebar(calendars);
+  const myCalendars = ownedAndTeamCalendarsForSidebar(calendars);
+  const sharedWithMeCalendars = sharedWithMeCalendarsForSidebar(calendars);
   const pendingCalendarIds = useMemo(() => {
     const ids = new Set<string>();
     if (!pendingEventIds || pendingEventIds.size === 0) return ids;
@@ -665,34 +668,30 @@ export function CalendarWorkspace({
                 canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
                 editLabel={L.editCalendar}
                 subscribedLabel={L.subscribedCalendarBadge}
+                viewOnlyLabel={L.viewOnlyCalendarBadge}
                 pendingCalendarIds={pendingCalendarIds}
                 pendingSyncLabel={L.pendingSync}
-                shareLabel={L.shareCalendar}
-                sharedLabel={L.sharedCalendar}
                 onToggleVisibility={toggleCalendarVisibility}
                 onSelectDefault={selectDefaultCalendar}
                 onEdit={openEditCalendarDialog}
-                onShare={setShareCalendarId}
               />
             </SidebarSection>
-            {teamCalendars.length > 0 ? (
-              <SidebarSection title={L.teamCalendarsSection}>
+            {sharedWithMeCalendars.length > 0 ? (
+              <SidebarSection title={L.sharedWithMeSection}>
                 <CalendarSidebarRows
-                  calendars={teamCalendars}
+                  calendars={sharedWithMeCalendars}
                   hiddenCalendarIds={hiddenCalendarIds}
                   defaultCalendarId={defaultCalendarId}
                   canDeleteCalendars={Boolean(operations?.deleteCalendar)}
                   canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
                   editLabel={L.editCalendar}
                   subscribedLabel={L.subscribedCalendarBadge}
+                  viewOnlyLabel={L.viewOnlyCalendarBadge}
                   pendingCalendarIds={pendingCalendarIds}
                   pendingSyncLabel={L.pendingSync}
-                  shareLabel={L.shareCalendar}
-                  sharedLabel={L.sharedCalendar}
                   onToggleVisibility={toggleCalendarVisibility}
                   onSelectDefault={selectDefaultCalendar}
                   onEdit={openEditCalendarDialog}
-                  onShare={setShareCalendarId}
                 />
               </SidebarSection>
             ) : null}
@@ -922,6 +921,17 @@ export function CalendarWorkspace({
               }
             : undefined
         }
+        share={
+          editCalendar && canManageCalendarSharing(editCalendar)
+            ? {
+                calendar: editCalendar,
+                knownPrincipals: sharePrincipals,
+                online,
+                onSearchPrincipals: searchSharePrincipals,
+                onPatchShareWith: patchShareWith,
+              }
+            : undefined
+        }
         onClose={closeCalendarDialog}
         onConfirm={saveCalendarDialog}
         onDelete={
@@ -957,18 +967,6 @@ export function CalendarWorkspace({
           onImport={submitImportDialog}
         />
       ) : null}
-      <CalendarShareDialog
-        open={shareCalendar != null}
-        calendar={shareCalendar}
-        labels={L}
-        knownPrincipals={sharePrincipals}
-        online={online}
-        onOpenChange={(open) => {
-          if (!open) setShareCalendarId(null);
-        }}
-        onSearchPrincipals={searchSharePrincipals}
-        onPatchShareWith={patchShareWith}
-      />
       <CalendarRecurrenceScopeDialog dialog={recurrenceScopeDialog} labels={L} />
     </TooltipProvider>
   );

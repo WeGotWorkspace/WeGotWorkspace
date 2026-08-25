@@ -6,6 +6,7 @@ namespace Tests\Feature\Calendars;
 
 use App\Models\CalendarFeedToken;
 use App\Models\CalendarSubscription;
+use App\Models\Principal;
 use App\Services\Calendars\CalendarFeedRateLimiter;
 use App\Services\Calendars\HostIpResolver;
 use Illuminate\Support\Facades\Http;
@@ -115,9 +116,17 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
             ->assertForbidden();
     }
 
-    public function test_group_calendars_cannot_be_published(): void
+    public function test_group_members_can_publish_group_calendar_feeds(): void
     {
-        $this->asBob()->postJson('/api/v1/calendars/group-team/feed')->assertForbidden();
+        $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $bob = Principal::forUsername('bob');
+        $this->assertNotNull($bob);
+        $this->addPrincipalToGroup($team, $bob);
+
+        $this->asBob()->postJson('/api/v1/calendars/group-team/feed')->assertCreated();
+        $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->postJson('/api/v1/calendars/group-team/feed')
+            ->assertNotFound();
     }
 
     public function test_other_users_cannot_manage_the_feed(): void

@@ -42,6 +42,7 @@ describe("calendar share helpers", () => {
       false,
     );
     expect(isSharedWithMeCalendar({ mayShare: undefined })).toBe(false);
+    expect(isSharedWithMeCalendar({ mayShare: false, subscriptionId: "sub-1" })).toBe(false);
   });
 
   it("merges shareWith add, change, and null revoke", () => {

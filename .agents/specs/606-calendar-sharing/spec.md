@@ -22,24 +22,28 @@ Persist JMAP `Calendar/set` `shareWith` through Sabre `CalPDO::updateInvites` so
 ## Affected packages
 
 - `packages/api` — `CalendarRepository` / `CalendarSetMethod`, event ACL, CalDAV sharing interop, PHPUnit, stub docs (`jmap-calendars-summary.md`, `jmap-collection-crud.md`)
-- `packages/apps` — `calendar-core` dialog/popover/surface write helper; `CalendarShareDialog` from `share-ui` primitives; calendar cache `myRights` / `shareWith`
+- `packages/apps` — `calendar-core` dialog/popover/surface write helper; `CalendarShareSection` from `share-ui` primitives on the edit-calendar surface; calendar cache `myRights` / `shareWith`
 
 ## Technical constraints
 
 - JMAP-first — no new REST share resource. OpenAPI `calendar.json` already has `shareWith`; tighten only if it still implies null-only
-- Who can share: personal owned instances (`access === 1`, not group principal). `myRights.mayShare: true` for those. Group calendars stay membership-only (no `shareWith` writes)
+- Who can share / publish: personal owners and group-collection managers (`access === 1` / `mayShare: true`). Sharees (`access` 2/3) cannot share or publish. Sharees may change **their instance name and color** (`calendarinstances.displayname` / `calendarcolor`); shareWith / publish stay owner-side.
 - Principal ids: username (`alice`) and `groups/{slug}` (same as Drive)
 - Persist CalDAV `share_href` as `mailto:` via `CalendarPrincipalAddresses` (profile email, else `mailto:{username}`) so Apple Calendar / Sabre `findByUri` resolve
 - Rights: `shareWith` values are `JmapCalendarRights`. `mayWriteAll === true` → access 3; otherwise access 2. Null grant = revoke
 - Owner `Calendar/get`: `shareWith` from `getInvites` (skip owner instance). Recipient: `shareWith: null`, `myRights` from `access`
 - Event create/update/delete must `403 forbidden` when the resolved instance is `access === 2`. Group instances stay `access === 1`
-- UI: do **not** reuse Drive/Notes `ShareDialog` as-is (path ACL). Compose `CalendarShareDialog` from `ShareAccessCard`, `SharePrincipalSearchDropdown`, `SharePermissionSelect`, `SharePrincipalRow`
+- UI: do **not** reuse Drive/Notes `ShareDialog` as-is (path ACL). Compose `CalendarShareSection` from `ShareAccessCard`, `SharePrincipalSearchDropdown`, `SharePermissionSelect`, `SharePrincipalRow`. Calendar administrators (`mayShare`) see public ICS/webcal publish **and** member ACL on the **edit calendar** surface only — no sidebar share button. Sharees get neither control; they can still open Edit calendar to set a personal name and color. Sidebar: unified A–Z My calendars (owned + team + ICS subscriptions), **Shared with me** for inbound ACL. Subscriptions get an Rss mark; view-only ACL items get an eye mark. No group mark on sidebar rows.
+- Publish is owner/`mayShare` only (same as sharing) — not `mayWrite`. API `POST/GET/DELETE …/feed` rejects sharee instances (`access !== SHAREDOWNER`).
+- Revoke must drop the sharee's calendar from sidebar, events, and open edit dialogs without `location.reload()`. Apply `Calendar/changes` destroyed/created into Dexie (`ingestRemoteCalendar*`) and reconcile controller selection.
 - Chunk A must land before Chunk B so live `mayShare` exists. Treat **undefined** `mayShare` like owner on non-group calendars so the invitee RSVP lock does not drop
 - Hybrid/offline: persist `mayWrite` / `mayShare` / `shareWith` on cached calendars; share mutations stay online (like Notes)
 
 ## Edge cases
 
-- Non-owner / group calendar: `Calendar/set` `shareWith` rejected
+- Non-owner sharee: `Calendar/set` `shareWith` rejected. Group members can share and publish the group collection.
+- Sharing an owned calendar with a group you belong to must not list a second view-only copy. `Calendar/get` and `Calendar/changes` keep one instance per `calendarid` (prefer owner).
+- Sharee **Remove** hides the collection for that user only (`calendar_share_dismissals`). Owner `shareWith` is unchanged so a later “add again” is `CalendarShareVisibility::restore` — do not model leave as `deleteCalendar` of the owner collection.
 - Read-only share (`access === 2`): JMAP event mutation and CalDAV `PUT` denied
 - Revoke on JMAP or CalDAV clears the other side
 - Incoming CalDAV `CS:share` / `DAV:share-resource` with `mailto:alice@…` maps back to JMAP id `alice` (or `groups/{slug}`)

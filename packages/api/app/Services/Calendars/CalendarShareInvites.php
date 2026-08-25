@@ -23,13 +23,22 @@ final class CalendarShareInvites
 
     public function canShare(CalendarInstance $instance, ?string $groupSlug): bool
     {
-        return $groupSlug === null
-            && (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER) === SharingPlugin::ACCESS_SHAREDOWNER;
+        // Personal owners and group members both sit on ACCESS_SHAREDOWNER.
+        // $groupSlug is unused: membership is already resolved onto this instance.
+        return (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER) === SharingPlugin::ACCESS_SHAREDOWNER;
     }
 
     public function isReadOnly(CalendarInstance $instance): bool
     {
         return (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER) === SharingPlugin::ACCESS_READ;
+    }
+
+    /** Inbound ACL sharee (read or write) — not the collection owner / group manager. */
+    public function isSharee(CalendarInstance $instance): bool
+    {
+        $access = (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER);
+
+        return $access === SharingPlugin::ACCESS_READ || $access === SharingPlugin::ACCESS_READWRITE;
     }
 
     /**
@@ -59,7 +68,7 @@ final class CalendarShareInvites
     public function apply(CalendarInstance $instance, ?string $groupSlug, mixed $shareWith): void
     {
         if (! $this->canShare($instance, $groupSlug)) {
-            throw new ApiHttpException(403, 'Only the personal calendar owner can change sharing.', 'forbidden');
+            throw new ApiHttpException(403, 'Only calendar administrators can change sharing.', 'forbidden');
         }
 
         $currentInvites = $this->calBackend()->getInvites($this->backendId($instance));

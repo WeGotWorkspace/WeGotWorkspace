@@ -9,15 +9,15 @@ Returned by `GET /calendars/calendars` and `GET /calendars/calendars/{calendarId
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | string | `calendarinstances.uri` for the authenticated principal |
-| `name` | string | `{DAV:}displayname` or uri fallback |
+| `name` | string | `{DAV:}displayname` or uri fallback. Sharees may set this on their instance without changing the owner. |
 | `description` | string \| null | Instance description |
 | `timeZone` | string \| null | VTIMEZONE or TZID reference when set |
-| `color` | string \| null | `calendarcolor` |
+| `color` | string \| null | `calendarcolor`. Sharees may set this on their instance without changing the owner. |
 | `sortOrder` | integer | `calendarorder` |
 | `isDefault` | boolean | `true` when uri is `default` |
 | `isSubscribed` | boolean | Always `true` for owned instances in v1 |
 | `shareWith` | object \| null | Owner map of JMAP id (`alice`, `groups/{slug}`) → rights. Recipients and unshared calendars are `null`. Null grant on `Calendar/set` revokes. Same grants are visible over CalDAV `{CS:}invite` / `{DAV:}invite`; inbound `CS:share` / `DAV:share-resource` with `mailto:` maps back to the JMAP id. Apple Calendar: this-instance CalDAV account only (not iCloud), `principals.email` must match the sharee `mailto:`, invites auto-accept, group share is JMAP-only. |
-| `myRights` | object | Derived from CalDAV `access` (1 owner / 2 read / 3 read-write). Personal owners have `mayShare: true`. |
+| `myRights` | object | Derived from CalDAV `access` (1 owner / 2 read / 3 read-write). Personal owners and group members have `mayShare: true`. |
 
 ## CalendarEvent
 
@@ -92,6 +92,6 @@ Request validation failures render as `400` with `code: bad_request` app-wide (n
 
 - Server-side recurrence instance expansion (except optional `expandRecurrences` query on list — see [#159](https://github.com/WeGotWorkspace/wegotworkspace/issues/159))
 - `VTODO`, `VJOURNAL`
-- Single-event ACL, delegation, guest links, iCloud-native sharing (collection `shareWith` is implemented for personal owners)
+- Single-event ACL, delegation, guest links, iCloud-native sharing (collection `shareWith` is implemented for personal owners and group-collection managers)
 
 **Implemented (platform #157 / #158):** calendar collection CRUD, `GET /calendars/calendars/changes`, and event item sync (`/changes`, `/set`, `/query` above) — see `docs/contacts/jmap-collection-crud.md` and `docs/contacts/jmap-sync-rest-mapping.md`.

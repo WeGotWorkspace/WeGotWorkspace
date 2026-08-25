@@ -19,6 +19,7 @@ use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\PropPatch;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class CalendarRepository
 {
@@ -35,22 +36,19 @@ final class CalendarRepository
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly DriveGroupResolver $groups,
         private readonly CalendarShareInvites $shareInvites,
+        private readonly CalendarShareVisibility $shareVisibility,
     ) {}
 
     public function list(string $username): array
     {
-        $instances = $this->personalVeventInstances($username);
+        $calendars = $this->accessibleVeventInstances($username)
+            ->map(function (CalendarInstance $instance): array {
+                $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        $calendars = $instances
-            ->map(fn (CalendarInstance $instance): array => $this->mapCalendar($instance))
+                return $this->mapCalendar($instance, $groupSlug);
+            })
             ->values()
             ->all();
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupVeventInstances($slug) as $instance) {
-                $calendars[] = $this->mapCalendar($instance, $slug);
-            }
-        }
 
         return ['list' => $calendars];
     }
@@ -80,10 +78,6 @@ final class CalendarRepository
             : null;
         if ($groupSlug === '') {
             $groupSlug = null;
-        }
-
-        if (array_key_exists('shareWith', $payload) && $groupSlug !== null) {
-            throw new ApiHttpException(403, 'Group calendars cannot be shared with shareWith.', 'forbidden');
         }
 
         if ($groupSlug !== null) {
@@ -153,6 +147,16 @@ final class CalendarRepository
         }
         [$instance, $groupSlug] = $resolved;
 
+        if ($this->shareInvites->isSharee($instance)) {
+            $disallowed = array_values(array_filter(
+                ['description', 'timeZone', 'shareWith'],
+                static fn (string $key): bool => array_key_exists($key, $payload),
+            ));
+            if ($disallowed !== []) {
+                throw new ApiHttpException(403, 'Sharees can only change their own calendar name and color.', 'forbidden');
+            }
+        }
+
         $mutations = [];
         if (array_key_exists('name', $payload)) {
             $name = trim((string) $payload['name']);
@@ -197,6 +201,12 @@ final class CalendarRepository
         }
         [$instance, $groupSlug] = $resolved;
 
+        if ($this->shareInvites->isSharee($instance)) {
+            $this->shareVisibility->dismiss($username, (int) $instance->calendarid);
+
+            return ['ok' => true];
+        }
+
         if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
         }
@@ -238,18 +248,15 @@ final class CalendarRepository
         return $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
     }
 
-    public function findOwnedPersonalCalendar(string $username, string $calendarId): CalendarInstance
+    public function findPublishableCalendar(string $username, string $calendarId): CalendarInstance
     {
-        if (CalendarCollectionUris::parseGroupCalendarApiId($calendarId) !== null) {
-            throw new ApiHttpException(403, 'Only owned personal calendars can be published.', 'forbidden');
-        }
-
-        $instance = $this->findCalendarInstance($this->principalUri($username), $calendarId);
-        if ($instance === null) {
+        $resolved = $this->resolveWritableCalendar($username, $calendarId);
+        if ($resolved === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
-        if ($this->groupSlugFromPrincipalUri((string) $instance->principaluri) !== null) {
-            throw new ApiHttpException(403, 'Only owned personal calendars can be published.', 'forbidden');
+        [$instance, $groupSlug] = $resolved;
+        if (! $this->shareInvites->canShare($instance, $groupSlug)) {
+            throw new ApiHttpException(403, 'Only calendar administrators can publish a feed.', 'forbidden');
         }
 
         return $instance;
@@ -257,13 +264,7 @@ final class CalendarRepository
 
     public function changes(string $username, ?string $since): array
     {
-        $instances = $this->personalVeventInstances($username);
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupVeventInstances($slug) as $groupInstance) {
-                $instances->push($groupInstance);
-            }
-        }
+        $instances = $this->accessibleVeventInstances($username);
 
         $currentState = $this->computeInstancesState($instances);
         $previous = $this->parseInstancesState($since);
@@ -388,7 +389,40 @@ final class CalendarRepository
             }
         }
 
-        return $instances;
+        return $this->shareVisibility->rejectDismissedSharees(
+            $username,
+            $this->preferHighestAccessPerCalendar($instances),
+        );
+    }
+
+    /**
+     * Sharing a personal calendar with a group you belong to creates a second
+     * instance (group sharee) of the same calendarid. Keep the owner copy.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    private function preferHighestAccessPerCalendar($instances)
+    {
+        $chosen = [];
+        foreach ($instances as $instance) {
+            $calendarId = (int) $instance->calendarid;
+            $rank = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
+                SharingPlugin::ACCESS_SHAREDOWNER => 3,
+                SharingPlugin::ACCESS_READWRITE => 2,
+                SharingPlugin::ACCESS_READ => 1,
+                default => 0,
+            };
+            if (! isset($chosen[$calendarId]) || $rank > $chosen[$calendarId]['rank']) {
+                $chosen[$calendarId] = ['rank' => $rank, 'instance' => $instance];
+            }
+        }
+
+        return $instances
+            ->filter(function (CalendarInstance $instance) use ($chosen): bool {
+                return $chosen[(int) $instance->calendarid]['instance']->is($instance);
+            })
+            ->values();
     }
 
     /**
@@ -517,8 +551,8 @@ final class CalendarRepository
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
 
         $rights = match ((int) ($instance->access ?? 1)) {
-            2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => false],
-            3 => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => false],
+            2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => true],
+            3 => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => true],
             default => [
                 'mayRead' => true,
                 'mayWrite' => true,

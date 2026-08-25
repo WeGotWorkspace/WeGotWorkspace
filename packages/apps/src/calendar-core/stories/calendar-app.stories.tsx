@@ -4,6 +4,7 @@ import {
   createCalendarAppBootstrap,
   MOCK_CALENDAR_ANCHOR,
 } from "@/lib/api/mock/calendar-bootstrap";
+import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
@@ -82,12 +83,7 @@ const storyOperations: CalendarAPIOperations = {
     name: draft.name,
     color: draft.color ?? "#6366f1",
   }),
-  subscribeCalendar: async (draft) => ({
-    id: "story-sub",
-    name: draft.name ?? "Subscribed",
-    color: draft.color ?? "#8b5cf6",
-    subscriptionId: "sub-story",
-  }),
+  ...createMockCalendarIcsOperations(),
 };
 
 const meta: Meta<typeof CalendarWorkspace> = {
@@ -172,7 +168,38 @@ export const Default: Story = {
     ).toBeNull();
     await expect(canvasElement.querySelector(".sidebar-section__heading-actions")).toBeNull();
     await expect(canvasElement.querySelector(".sidebar-section__add")).toBeNull();
+    await expect(canvasElement.querySelector(".calendar-sidebar-row__share")).toBeNull();
+    await expect(
+      personal?.closest(".calendar-sidebar-row")?.querySelector(".calendar-sidebar-row__edit"),
+    ).toBeTruthy();
     const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: "Share calendar" })).toBeNull();
+    await expect(
+      canvas.getByRole("heading", { name: defaultCalendarLabels.sharedWithMeSection }),
+    ).toBeTruthy();
+    await expect(
+      canvas.queryByRole("heading", { name: defaultCalendarLabels.subscribedCalendarsSection }),
+    ).toBeNull();
+    const family = [...canvasElement.querySelectorAll(".calendar-sidebar-row__name")].find(
+      (el) => el.textContent === "Family",
+    );
+    await expect(
+      family
+        ?.closest(".calendar-sidebar-row__title")
+        ?.querySelector(".calendar-sidebar-row__readonly")
+        ?.getAttribute("aria-label"),
+    ).toBe(defaultCalendarLabels.viewOnlyCalendarBadge);
+    await expect(
+      family?.closest(".calendar-sidebar-row")?.querySelector(".calendar-sidebar-row__edit"),
+    ).toBeTruthy();
+    const editorial = [...canvasElement.querySelectorAll(".calendar-sidebar-row__name")].find(
+      (el) => el.textContent === "Editorial",
+    );
+    await expect(
+      editorial
+        ?.closest(".calendar-sidebar-row__title")
+        ?.querySelector(".calendar-sidebar-row__team"),
+    ).toBeNull();
     await expect(canvas.getByRole("button", { name: defaultCalendarLabels.newEvent })).toBeTruthy();
     await expect(
       canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }),

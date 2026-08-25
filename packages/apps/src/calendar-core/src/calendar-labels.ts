@@ -28,6 +28,10 @@ export type CalendarUILabels = {
   calendarsSection: string;
   myCalendarsSection: string;
   teamCalendarsSection: string;
+  sharedWithMeSection: string;
+  subscribedCalendarsSection: string;
+  teamCalendarBadge: string;
+  viewOnlyCalendarBadge: string;
   calendarDirectoryLabel: string;
   calendarDirectoryPersonal: (ownerLabel: string) => string;
   calendarDirectoryGroup: (name: string) => string;
@@ -49,6 +53,9 @@ export type CalendarUILabels = {
   unsubscribeCalendar: string;
   unsubscribeCalendarConfirmTitle: string;
   unsubscribeCalendarConfirmDescription: string;
+  removeSharedCalendar: string;
+  removeSharedCalendarConfirmTitle: string;
+  removeSharedCalendarConfirmDescription: string;
   /** Tooltip / accessible name for the subscribed-calendar sidebar mark. */
   subscribedCalendarBadge: string;
   publishCalendarTitle: string;
@@ -66,6 +73,7 @@ export type CalendarUILabels = {
   toastCalendarDeleted: string;
   toastCalendarSubscribed: string;
   toastCalendarUnsubscribed: string;
+  toastCalendarShareRemoved: string;
   toastCalendarSubscribeFailed: string;
   toastFeedPublished: string;
   toastFeedUnpublished: string;
@@ -178,9 +186,6 @@ export type CalendarUILabels = {
   toastRsvpUndone: string;
   toastInvitationCancelled: string;
   pendingSync: string;
-  shareCalendar: string;
-  shareCalendarTitle: (name: string) => string;
-  shareCalendarDescription: string;
   shareCalendarSectionTitle: string;
   shareCalendarSectionHint: string;
   shareCalendarAddPlaceholder: string;
@@ -223,6 +228,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   calendarsSection: "Calendars",
   myCalendarsSection: "My calendars",
   teamCalendarsSection: "Team calendars",
+  sharedWithMeSection: "Shared with me",
+  subscribedCalendarsSection: "Subscriptions",
+  teamCalendarBadge: "Team calendar",
+  viewOnlyCalendarBadge: "View only",
   calendarDirectoryLabel: defaultOwnerScopeLabels.label,
   calendarDirectoryPersonal: defaultOwnerScopeLabels.personal,
   calendarDirectoryGroup: defaultOwnerScopeLabels.group,
@@ -246,6 +255,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   unsubscribeCalendarConfirmTitle: "Unsubscribe?",
   unsubscribeCalendarConfirmDescription:
     "This removes the subscribed calendar and its events. The remote feed is unchanged.",
+  removeSharedCalendar: "Remove calendar",
+  removeSharedCalendarConfirmTitle: "Remove this calendar?",
+  removeSharedCalendarConfirmDescription:
+    "It disappears from your list. The owner’s share is unchanged, so it can be added again later.",
   subscribedCalendarBadge: "Subscribed calendar",
   publishCalendarTitle: "Public feed",
   publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
@@ -262,6 +275,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastCalendarDeleted: "Calendar deleted",
   toastCalendarSubscribed: "Calendar subscribed",
   toastCalendarUnsubscribed: "Unsubscribed",
+  toastCalendarShareRemoved: "Calendar removed",
   toastCalendarSubscribeFailed: "Could not subscribe to calendar",
   toastFeedPublished: "Calendar published",
   toastFeedUnpublished: "Feed unpublished",
@@ -369,9 +383,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
   pendingSync: "Pending sync",
-  shareCalendar: "Share calendar",
-  shareCalendarTitle: (name) => `Share ${name}`,
-  shareCalendarDescription: "Grant access to teammates or a group.",
   shareCalendarSectionTitle: "Team access",
   shareCalendarSectionHint: "Grant read or read-and-write access to people or groups.",
   shareCalendarAddPlaceholder: "Add people or groups…",

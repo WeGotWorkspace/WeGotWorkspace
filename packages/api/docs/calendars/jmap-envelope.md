@@ -91,7 +91,7 @@ Sabre's 3-level access maps onto the draft's 8-property `CalendarRights` (`Calen
 | `2` (read-only) | true | true | false | false | false | false | false | false |
 | `3` (read-write) | true | true | true | true | true | true | false | false |
 | owner (personal) | true | true | true | true | true | true | true | `uri !== 'default'` |
-| owner (group) | true | true | true | true | true | true | false | `uri !== 'default'` (provisioned group calendars cannot be deleted) |
+| owner (group) | true | true | true | true | true | true | true | `uri !== 'default'` (provisioned group calendars cannot be deleted) |
 
 ## Documented deviations
 

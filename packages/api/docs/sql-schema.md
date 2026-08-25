@@ -38,6 +38,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `calendar_rsvp_tokens` | `App\Models\CalendarRsvpToken` | Public iMIP RSVP tokens (`token_hash` SHA-256, event uid + attendee mailto + expiry) |
 | `calendar_subscriptions` | `App\Models\CalendarSubscription` | Live ICS/webcal subscriptions (owner username + personal calendar uri + normalized source URL) |
 | `calendar_feed_tokens` | `App\Models\CalendarFeedToken` | Published ICS/webcal feed tokens (`token_hash` SHA-256; `token_cipher` Laravel-encrypted with APP_KEY so the owner URL can be re-shown — not hash-only like RSVP) |
+| `calendar_share_dismissals` | `App\Models\CalendarShareDismissal` | Per-user hide of an inbound ACL share (`username` + Sabre `calendarid`). Owner `shareWith` is unchanged; restore deletes the row. |
 | `calendarobjects` | `App\Models\CalendarObject` | CalDAV objects (`VEVENT`/`VTODO` blobs; Calendars REST + Tasks REST; search indexer) |
 | `calendars` | `App\Models\Calendar` | CalDAV calendar collection root (`components` includes `VTODO` for task lists) |
 | `calendarinstances` | `App\Models\CalendarInstance` | Per-principal calendar instances (Calendars REST reads; Tasks REST `TaskList.id` = instance `uri`) |
@@ -70,10 +71,11 @@ Installer connectivity, user probes, and install readiness use `WgwDatabaseProbe
 ## Adding a table
 
 1. Add a migration under `database/migrations/wgw/` using `WgwMigration` + `Schema::hasTable()` guards.
-2. Add `app/Models/{Name}.php` with `UsesWgwConnection` and documented `$fillable`.
-3. Use the model from `app/Services/{Domain}/` — no `DB::table()`.
-4. Extend `tests/Architecture/WgwSchemaParityTest.php` expected table list.
-5. Add a feature or database test on `WgwDatabaseTestCase` (SQLite). MySQL parity is covered automatically — every `WgwDatabaseTestCase` descendant is part of the `MySQLParity` testsuite that CI runs against MySQL (see Tests → CI tiers below).
+2. Bump `WgwSchemaMigrator::CURRENT_SCHEMA_VERSION` to the new `database/migrations/wgw/` file count, and extend that migrator test’s expected-table list.
+3. Add `app/Models/{Name}.php` with `UsesWgwConnection` and documented `$fillable`.
+4. Use the model from `app/Services/{Domain}/` — no `DB::table()`.
+5. Extend `tests/Architecture/WgwSchemaParityTest.php` expected table list.
+6. Add a feature or database test on `WgwDatabaseTestCase` (SQLite). MySQL parity is covered automatically — every `WgwDatabaseTestCase` descendant is part of the `MySQLParity` testsuite that CI runs against MySQL (see Tests → CI tiers below).
 
 ## Tests
 

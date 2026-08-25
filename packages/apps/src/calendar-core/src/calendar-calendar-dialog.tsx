@@ -21,10 +21,16 @@ import {
 } from "@/ui/alert-dialog";
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import type { CalendarDirectoryGroup, CalendarFeedInfo } from "@/calendar-core/src/calendar-types";
+import type {
+  CalendarDirectoryGroup,
+  CalendarFeedInfo,
+  CalendarInfo,
+} from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 import { CalendarPublishSection } from "@/calendar-core/src/calendar-publish-section";
+import { CalendarShareSection } from "@/calendar-core/src/calendar-share-section";
+import type { CalendarSharePrincipal, CalendarShareWith } from "@/calendar-core/src/calendar-share";
 import {
   inferCalendarNameFromUrl,
   isLikelyCalendarFeedUrl,
@@ -60,6 +66,10 @@ export type CalendarCalendarDialogState =
       subscriptionId?: string | null;
       sourceUrl?: string;
       canPublish?: boolean;
+      /** Lock the name field. ACL sharees leave this unset so they can rename their instance. */
+      nameReadOnly?: boolean;
+      /** ACL sharee leave — does not delete the owner's collection. */
+      removeShared?: boolean;
     };
 
 export type CalendarCalendarDialogConfirmInput = {
@@ -78,6 +88,14 @@ export type CalendarCalendarDialogPublish = {
   onCopyHttps: () => void;
 };
 
+export type CalendarCalendarDialogShare = {
+  calendar: CalendarInfo;
+  knownPrincipals?: readonly CalendarSharePrincipal[];
+  online?: boolean;
+  onSearchPrincipals: (query: string) => Promise<CalendarSharePrincipal[]>;
+  onPatchShareWith: (calendarId: string, shareWith: CalendarShareWith) => Promise<void>;
+};
+
 type CalendarCalendarDialogProps = {
   dialog: CalendarCalendarDialogState;
   labels: CalendarUILabels;
@@ -85,6 +103,7 @@ type CalendarCalendarDialogProps = {
   personalOwnerLabel?: string;
   busy?: boolean;
   publish?: CalendarCalendarDialogPublish;
+  share?: CalendarCalendarDialogShare;
   onClose: () => void;
   onConfirm: (input: CalendarCalendarDialogConfirmInput) => void;
   onDelete?: () => void;
@@ -97,6 +116,7 @@ export function CalendarCalendarDialog({
   personalOwnerLabel = "Me",
   busy = false,
   publish,
+  share,
   onClose,
   onConfirm,
   onDelete,
@@ -111,7 +131,10 @@ export function CalendarCalendarDialog({
   const isCreate = dialog?.mode === "create";
   const isSubscribe = dialog?.mode === "subscribe";
   const isSubscriptionEdit = dialog?.mode === "edit" && Boolean(dialog.subscriptionId);
+  const nameReadOnly = dialog?.mode === "edit" && Boolean(dialog.nameReadOnly);
+  const isSharedRemove = dialog?.mode === "edit" && Boolean(dialog.removeShared);
   const showPublish = dialog?.mode === "edit" && dialog.canPublish && Boolean(publish);
+  const showShare = dialog?.mode === "edit" && Boolean(share);
 
   useEffect(() => {
     if (!dialog) {
@@ -163,14 +186,26 @@ export function CalendarCalendarDialog({
     : isCreate
       ? labels.createCalendarTitle
       : labels.editCalendarTitle;
-  const removeLabel = isSubscriptionEdit ? labels.unsubscribeCalendar : labels.deleteCalendar;
+  const removeLabel = isSubscriptionEdit
+    ? labels.unsubscribeCalendar
+    : isSharedRemove
+      ? labels.removeSharedCalendar
+      : labels.deleteCalendar;
   const removeTitle = isSubscriptionEdit
     ? labels.unsubscribeCalendarConfirmTitle
-    : labels.deleteCalendarConfirmTitle;
+    : isSharedRemove
+      ? labels.removeSharedCalendarConfirmTitle
+      : labels.deleteCalendarConfirmTitle;
   const removeDescription = isSubscriptionEdit
     ? labels.unsubscribeCalendarConfirmDescription
-    : labels.deleteCalendarConfirmDescription;
-  const removeActionLabel = isSubscriptionEdit ? labels.unsubscribeCalendar : labels.delete;
+    : isSharedRemove
+      ? labels.removeSharedCalendarConfirmDescription
+      : labels.deleteCalendarConfirmDescription;
+  const removeActionLabel = isSubscriptionEdit
+    ? labels.unsubscribeCalendar
+    : isSharedRemove
+      ? labels.removeSharedCalendar
+      : labels.delete;
 
   return (
     <>
@@ -219,9 +254,10 @@ export function CalendarCalendarDialog({
                 <Input
                   id="calendar-calendar-name"
                   className="calendar-calendar-dialog__name-input"
-                  autoFocus={!isSubscribe}
+                  autoFocus={!isSubscribe && !nameReadOnly}
                   value={name}
-                  disabled={busy}
+                  disabled={busy || nameReadOnly}
+                  readOnly={nameReadOnly}
                   onChange={(event) => {
                     setNameTouched(true);
                     setName(event.target.value);
@@ -261,6 +297,20 @@ export function CalendarCalendarDialog({
                 onToggle={publish.onToggle}
                 onCopyHttps={publish.onCopyHttps}
               />
+            ) : null}
+
+            {showShare && share ? (
+              <div className="calendar-calendar-dialog__share">
+                <CalendarShareSection
+                  calendar={share.calendar}
+                  labels={labels}
+                  knownPrincipals={share.knownPrincipals}
+                  disabled={busy}
+                  online={share.online}
+                  onSearchPrincipals={share.onSearchPrincipals}
+                  onPatchShareWith={share.onPatchShareWith}
+                />
+              </div>
             ) : null}
 
             <DialogFooter className="calendar-calendar-dialog__footer">

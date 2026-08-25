@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CalendarCalendarDialog,
   DEFAULT_CALENDAR_COLOR,
 } from "@/calendar-core/src/calendar-calendar-dialog";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import { shareLabels } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
 function renderDialog(ui: ReactNode) {
@@ -335,6 +336,292 @@ describe("CalendarCalendarDialog", () => {
       (screen.getByLabelText(defaultCalendarLabels.publishCalendarHttpsLabel) as HTMLInputElement)
         .value,
     ).toBe("https://example.test/api/v1/calendars/feeds/abc");
+  });
+
+  it("shows team access on an owned calendar and hides it for a sharee", () => {
+    const share = {
+      calendar: {
+        id: "default",
+        name: "Personal",
+        color: DEFAULT_CALENDAR_COLOR,
+        mayShare: true,
+        shareWith: {
+          alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
+        },
+      },
+      knownPrincipals: [{ id: "alice", displayName: "Alice", principalType: "user" as const }],
+      onSearchPrincipals: vi.fn(async () => []),
+      onPatchShareWith: vi.fn(async () => {}),
+    };
+
+    const { rerender } = renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "default",
+          name: "Personal",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+          canPublish: true,
+        }}
+        labels={defaultCalendarLabels}
+        publish={{
+          feed: null,
+          onToggle: vi.fn(),
+          onCopyHttps: vi.fn(),
+        }}
+        share={share}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(defaultCalendarLabels.publishCalendarTitle)).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.shareCalendarSectionTitle)).toBeTruthy();
+    expect(screen.getByText("Alice")).toBeTruthy();
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <CalendarCalendarDialog
+          dialog={{
+            mode: "edit",
+            calendarId: "shared",
+            name: "Shared write",
+            color: DEFAULT_CALENDAR_COLOR,
+            mayDelete: false,
+          }}
+          labels={defaultCalendarLabels}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.queryByText(defaultCalendarLabels.shareCalendarSectionTitle)).toBeNull();
+    expect(screen.queryByLabelText(defaultCalendarLabels.publishCalendarTitle)).toBeNull();
+  });
+
+  it("shows public feed and team access on a group calendar", () => {
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "group-editorial",
+          name: "Editorial",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: false,
+          scope: "group",
+          groupSlug: "editorial",
+          canPublish: true,
+        }}
+        labels={defaultCalendarLabels}
+        publish={{
+          feed: null,
+          onToggle: vi.fn(),
+          onCopyHttps: vi.fn(),
+        }}
+        share={{
+          calendar: {
+            id: "group-editorial",
+            name: "Editorial",
+            color: DEFAULT_CALENDAR_COLOR,
+            scope: "group",
+            groupSlug: "editorial",
+            mayShare: true,
+            mayWrite: true,
+          },
+          knownPrincipals: [],
+          onSearchPrincipals: vi.fn(async () => []),
+          onPatchShareWith: vi.fn(async () => {}),
+        }}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(defaultCalendarLabels.publishCalendarTitle)).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.shareCalendarSectionTitle)).toBeTruthy();
+  });
+
+  it("adds, edits, and revokes team access from the edit calendar surface", async () => {
+    const onPatchShareWith = vi.fn(async () => {});
+    const onSearchPrincipals = vi.fn(async (query: string) =>
+      query.toLowerCase().includes("bob")
+        ? [{ id: "bob", displayName: "Bob", principalType: "user" as const }]
+        : [],
+    );
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "default",
+          name: "Personal",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+          canPublish: true,
+        }}
+        labels={defaultCalendarLabels}
+        share={{
+          calendar: {
+            id: "default",
+            name: "Personal",
+            color: DEFAULT_CALENDAR_COLOR,
+            mayShare: true,
+            shareWith: {
+              alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
+            },
+          },
+          knownPrincipals: [
+            { id: "alice", displayName: "Alice", principalType: "user" },
+            { id: "bob", displayName: "Bob", principalType: "user" },
+          ],
+          onSearchPrincipals,
+          onPatchShareWith,
+        }}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText(defaultCalendarLabels.shareCalendarAddPlaceholder),
+      { target: { value: "bob" } },
+    );
+    await waitFor(() => expect(onSearchPrincipals).toHaveBeenCalledWith("bob"));
+    fireEvent.mouseDown(screen.getByRole("option", { name: /Bob/ }));
+    await waitFor(() => {
+      expect(onPatchShareWith).toHaveBeenCalledWith("default", {
+        bob: expect.objectContaining({ mayWrite: false, mayWriteAll: false }),
+      });
+    });
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Can view" }));
+    fireEvent.click(screen.getByRole("option", { name: "Can edit" }));
+    await waitFor(() => {
+      expect(onPatchShareWith).toHaveBeenCalledWith("default", {
+        alice: expect.objectContaining({ mayWrite: true, mayWriteAll: true }),
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: shareLabels.removeGrant }));
+    fireEvent.click(screen.getByRole("button", { name: shareLabels.confirmContinue }));
+    await waitFor(() => {
+      expect(onPatchShareWith).toHaveBeenCalledWith("default", { alice: null });
+    });
+  });
+
+  it("blocks team-access mutations while offline", () => {
+    const onPatchShareWith = vi.fn(async () => {});
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "default",
+          name: "Personal",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+        }}
+        labels={defaultCalendarLabels}
+        share={{
+          calendar: {
+            id: "default",
+            name: "Personal",
+            color: DEFAULT_CALENDAR_COLOR,
+            mayShare: true,
+            shareWith: {
+              alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
+            },
+          },
+          knownPrincipals: [{ id: "alice", displayName: "Alice", principalType: "user" }],
+          online: false,
+          onSearchPrincipals: vi.fn(async () => []),
+          onPatchShareWith,
+        }}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(defaultCalendarLabels.shareCalendarOffline)).toBeTruthy();
+    expect(
+      (
+        screen.getByPlaceholderText(
+          defaultCalendarLabels.shareCalendarAddPlaceholder,
+        ) as HTMLInputElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: shareLabels.removeGrant }));
+    expect(screen.queryByRole("button", { name: shareLabels.confirmContinue })).toBeNull();
+    expect(onPatchShareWith).not.toHaveBeenCalled();
+  });
+
+  it("lets a sharee rename and recolor their instance", () => {
+    const onConfirm = vi.fn();
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "family",
+          name: "Family",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: false,
+          removeShared: true,
+        }}
+        labels={defaultCalendarLabels}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const nameInput = screen.getByLabelText(
+      defaultCalendarLabels.calendarNameLabel,
+    ) as HTMLInputElement;
+    expect(nameInput.disabled).toBe(false);
+    expect(nameInput.readOnly).toBe(false);
+    fireEvent.change(nameInput, { target: { value: "Family (mine)" } });
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.calendarColorLabel }));
+    const colorInput = screen.getByLabelText("Custom color") as HTMLInputElement;
+    fireEvent.change(colorInput, { target: { value: "#ef4444" } });
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.save }));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: "Family (mine)",
+      color: "#ef4444",
+    });
+  });
+
+  it("offers Remove calendar for a sharee instead of Delete", () => {
+    const onDelete = vi.fn();
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "family",
+          name: "Family",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+          removeShared: true,
+        }}
+        labels={defaultCalendarLabels}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.deleteCalendar })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.removeSharedCalendar }),
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: defaultCalendarLabels.removeSharedCalendar }).at(-1)!,
+    );
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("keeps the dialog open when the native color well changes", async () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ownedAndTeamCalendarsForSidebar,
   personalCalendarsForSidebar,
+  sharedWithMeCalendarsForSidebar,
   sortCalendarsForSidebar,
   teamCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
@@ -56,11 +58,36 @@ describe("calendar sidebar sections", () => {
       scope: "group",
       groupSlug: "design",
     },
+    {
+      id: "family",
+      name: "Family",
+      color: "#f59e0b",
+      mayShare: false,
+      mayWrite: false,
+    },
+    {
+      id: "holidays",
+      name: "US Holidays",
+      color: "#8b5cf6",
+      subscriptionId: "sub-holidays",
+      mayWrite: false,
+    },
+    {
+      id: "group-holidays",
+      name: "Team Holidays",
+      color: "#a855f7",
+      scope: "group",
+      groupSlug: "eng",
+      subscriptionId: "sub-team-holidays",
+      mayWrite: false,
+    },
   ];
 
   it("keeps personal calendars out of team sections", () => {
     expect(personalCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
+      "family",
       "default",
+      "holidays",
       "work",
     ]);
   });
@@ -69,7 +96,21 @@ describe("calendar sidebar sections", () => {
     expect(teamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
       "group-design",
       "group-eng",
+      "group-holidays",
       "sprint",
     ]);
+  });
+
+  it("unifies owned, team, and subscription calendars A–Z and keeps ACL sharees out", () => {
+    expect(ownedAndTeamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
+      "group-design",
+      "group-eng",
+      "default",
+      "sprint",
+      "group-holidays",
+      "holidays",
+      "work",
+    ]);
+    expect(sharedWithMeCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual(["family"]);
   });
 });

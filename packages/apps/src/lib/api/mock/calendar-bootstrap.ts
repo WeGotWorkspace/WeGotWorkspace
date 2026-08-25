@@ -80,7 +80,7 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
           color: "#f59e0b",
           mayWrite: false,
           mayShare: false,
-          mayDelete: false,
+          mayDelete: true,
           sortOrder: 2,
         },
         {
@@ -100,7 +100,7 @@ export function createCalendarAppBootstrap(): CalendarAppBootstrap {
           scope: "group",
           groupSlug: "editorial",
           mayWrite: true,
-          mayShare: false,
+          mayShare: true,
           mayDelete: false,
           sortOrder: 0,
         },

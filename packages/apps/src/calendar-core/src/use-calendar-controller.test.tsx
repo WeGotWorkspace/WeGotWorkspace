@@ -1606,6 +1606,84 @@ describe("useCalendarController create calendar directory", () => {
     });
   });
 
+  it("lets a sharee patch their instance name and color", async () => {
+    const patchCalendar = vi.fn().mockResolvedValue({
+      id: "family",
+      name: "Family (mine)",
+      color: "#ef4444",
+      mayWrite: false,
+      mayShare: false,
+      mayDelete: false,
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          patchCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("family");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      calendarId: "family",
+      nameReadOnly: false,
+      removeShared: true,
+      canPublish: false,
+    });
+
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Family (mine)",
+        color: "#ef4444",
+      });
+    });
+
+    expect(patchCalendar).toHaveBeenCalledWith("family", {
+      name: "Family (mine)",
+      color: "#ef4444",
+    });
+  });
+
+  it("removes a shared calendar through deleteCalendar without treating it as owner delete", async () => {
+    const deleteCalendar = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          deleteCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("family");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      removeShared: true,
+      mayDelete: true,
+    });
+
+    await act(async () => {
+      result.current.deleteCalendarFromDialog();
+    });
+
+    expect(deleteCalendar).toHaveBeenCalledWith("family");
+    expect(result.current.calendars.find((entry) => entry.id === "family")).toBeUndefined();
+    expect(result.current.calendarDialog).toBeNull();
+  });
+
   it("subscribes through operations and adds the read-only calendar", async () => {
     const subscribeCalendar = vi.fn().mockResolvedValue({
       id: "subscribed-1",
@@ -1767,6 +1845,98 @@ describe("useCalendarController create calendar directory", () => {
     });
     expect(unpublishCalendarFeed).toHaveBeenCalledWith("default");
     expect(result.current.publishFeed).toBeNull();
+  });
+
+  it("does not offer publish on a write-sharee calendar", async () => {
+    const getCalendarFeed = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: {
+          ...bootstrap.data,
+          calendars: [
+            ...bootstrap.data.calendars,
+            {
+              id: "shared-write",
+              name: "Shared write",
+              color: "#14b8a6",
+              mayWrite: true,
+              mayShare: false,
+              mayDelete: false,
+            },
+          ],
+        },
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          getCalendarFeed,
+          publishCalendarFeed: vi.fn(),
+        },
+      }),
+    );
+
+    await act(async () => {
+      result.current.openEditCalendarDialog("shared-write");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      calendarId: "shared-write",
+      canPublish: false,
+    });
+    expect(getCalendarFeed).not.toHaveBeenCalled();
+  });
+
+  it("offers publish on a group calendar the member can administer", async () => {
+    const getCalendarFeed = vi.fn().mockResolvedValue(null);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          getCalendarFeed,
+          publishCalendarFeed: vi.fn(),
+        },
+      }),
+    );
+
+    await act(async () => {
+      result.current.openEditCalendarDialog("group-editorial");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      calendarId: "group-editorial",
+      canPublish: true,
+    });
+    expect(getCalendarFeed).toHaveBeenCalledWith("group-editorial");
+  });
+
+  it("drops a revoked calendar from the sidebar and falls back the selection", () => {
+    const { result, rerender } = renderHook(({ data }) => useCalendarController({ data }), {
+      initialProps: { data: bootstrap.data },
+    });
+
+    act(() => {
+      result.current.selectDefaultCalendar("family");
+      result.current.openEditCalendarDialog("work");
+    });
+    expect(result.current.defaultCalendarId).toBe("family");
+    expect(result.current.calendarDialog).toMatchObject({ mode: "edit", calendarId: "work" });
+
+    rerender({
+      data: {
+        ...bootstrap.data,
+        calendars: bootstrap.data.calendars.filter(
+          (calendar) => calendar.id !== "family" && calendar.id !== "work",
+        ),
+      },
+    });
+
+    expect(result.current.calendars.find((calendar) => calendar.id === "family")).toBeUndefined();
+    expect(result.current.calendars.find((calendar) => calendar.id === "work")).toBeUndefined();
+    expect(result.current.defaultCalendarId).toBe("default");
+    expect(result.current.calendarDialog).toBeNull();
   });
 });
 

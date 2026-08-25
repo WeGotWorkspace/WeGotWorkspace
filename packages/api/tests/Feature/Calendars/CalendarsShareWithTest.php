@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Calendars;
 
 use App\Models\CalendarInstance;
+use App\Models\CalendarShareDismissal;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
@@ -175,6 +177,124 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
         $this->assertNotContains('Revoke Share', $aliceNames);
     }
 
+    public function test_revoke_reports_calendar_destroyed_on_sharee_changes(): void
+    {
+        $calendarId = $this->createPersonalCalendar('bob', 'Changes Revoke', 'changes-revoke');
+        $before = $this->jmapAs('alice', [
+            ['Calendar/get', ['accountId' => 'alice', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.state');
+
+        $this->shareCalendar('bob', $calendarId, 'alice', write: false);
+        $sharedId = (string) $this->calendarNamed('alice', 'Changes Revoke')['id'];
+        $afterShare = $this->jmapAs('alice', [
+            ['Calendar/changes', ['accountId' => 'alice', 'sinceState' => $before], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertContains($sharedId, $afterShare['created']);
+
+        $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
+                'shareWith' => ['alice' => null],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $afterRevoke = $this->jmapAs('alice', [
+            ['Calendar/changes', ['accountId' => 'alice', 'sinceState' => $afterShare['newState']], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertContains($sharedId, $afterRevoke['destroyed']);
+    }
+
+    public function test_sharee_can_set_own_name_and_color_without_changing_owner(): void
+    {
+        $calendarId = $this->createPersonalCalendar('bob', 'Color Share', 'color-share', '#6366f1');
+        $this->shareCalendar('bob', $calendarId, 'alice', write: false);
+        $sharedId = (string) $this->calendarNamed('alice', 'Color Share')['id'];
+
+        $response = $this->jmapAs('alice', [
+            ['Calendar/set', ['accountId' => 'alice', 'update' => [$sharedId => [
+                'name' => 'Family (mine)',
+                'color' => '#ef4444',
+            ]]], 'c0'],
+            ['Calendar/get', ['accountId' => 'alice', 'ids' => [$sharedId]], 'c1'],
+        ])->assertOk();
+        $this->assertNull($response->json('methodResponses.0.1.notUpdated.'.$sharedId));
+        $this->assertSame('Family (mine)', $response->json('methodResponses.1.1.list.0.name'));
+        $this->assertSame('#ef4444', $response->json('methodResponses.1.1.list.0.color'));
+
+        $owner = $this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('#6366f1', $owner['color']);
+        $this->assertSame('Color Share', $owner['name']);
+    }
+
+    public function test_sharee_cannot_change_owner_fields_on_a_shared_calendar(): void
+    {
+        $calendarId = $this->createPersonalCalendar('bob', 'Locked Fields', 'locked-fields', '#0ea5e9');
+        $this->shareCalendar('bob', $calendarId, 'alice', write: true);
+        $sharedId = (string) $this->calendarNamed('alice', 'Locked Fields')['id'];
+
+        $patched = $this->jmapAs('alice', [
+            ['Calendar/set', ['accountId' => 'alice', 'update' => [$sharedId => [
+                'description' => 'Hijacked',
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame('forbidden', $patched['notUpdated'][$sharedId]['type']);
+
+        $owner = $this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('Locked Fields', $owner['name']);
+        $this->assertSame('#0ea5e9', $owner['color']);
+    }
+
+    public function test_sharee_can_dismiss_shared_calendar_without_revoking_owner_grant(): void
+    {
+        $calendarId = $this->createPersonalCalendar('bob', 'Leave Me', 'leave-me');
+        $this->shareCalendar('bob', $calendarId, 'alice', write: false);
+        $shared = $this->calendarNamed('alice', 'Leave Me');
+        $sharedId = (string) $shared['id'];
+        $this->assertTrue($shared['myRights']['mayDelete']);
+        $calendarPk = (int) CalendarInstance::query()
+            ->where('principaluri', 'principals/alice')
+            ->where('uri', $sharedId)
+            ->value('calendarid');
+
+        $destroyed = $this->jmapAs('alice', [
+            ['Calendar/set', ['accountId' => 'alice', 'destroy' => [$sharedId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame([$sharedId], $destroyed['destroyed']);
+        $this->assertTrue(
+            CalendarShareDismissal::query()->where('username', 'alice')->where('calendarid', $calendarPk)->exists(),
+            'Expected a share dismissal for alice',
+        );
+
+        $aliceNames = array_column($this->jmapAs('alice', [
+            ['Calendar/get', ['accountId' => 'alice', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list'), 'name');
+        $this->assertNotContains('Leave Me', $aliceNames);
+
+        $owner = $this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('Leave Me', $owner['name']);
+        $this->assertIsArray($owner['shareWith']['alice']);
+
+        app(CalendarShareVisibility::class)->restore('alice', $calendarPk);
+        $this->assertSame('Leave Me', $this->calendarNamed('alice', 'Leave Me')['name']);
+    }
+
+    public function test_write_sharee_cannot_publish_or_unpublish_feed(): void
+    {
+        $calendarId = $this->createPersonalCalendar('bob', 'Feed Share', 'feed-share');
+        $this->shareCalendar('bob', $calendarId, 'alice', write: true);
+        $sharedId = (string) $this->calendarNamed('alice', 'Feed Share')['id'];
+        $alice = $this->withBearer($this->issueBearerTokenFor('alice'));
+
+        $alice->postJson('/api/v1/calendars/'.$sharedId.'/feed')->assertForbidden();
+        $alice->getJson('/api/v1/calendars/'.$sharedId.'/feed')->assertForbidden();
+        $alice->deleteJson('/api/v1/calendars/'.$sharedId.'/feed')->assertForbidden();
+    }
+
     public function test_owner_can_share_personal_calendar_with_a_group(): void
     {
         $calendarId = $this->createPersonalCalendar('bob', 'Group Share', 'shared-with-team');
@@ -197,7 +317,21 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
             ->value('share_href');
         $this->assertSame('mailto:groups/'.self::TEAM, $href);
 
-        $shared = $this->calendarNamed('bob', 'Group Share', skipId: $calendarId);
+        $bobNames = array_column($this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list'), 'name');
+        $this->assertSame(1, count(array_filter($bobNames, static fn (string $name): bool => $name === 'Group Share')));
+        $owned = $this->calendarNamed('bob', 'Group Share');
+        $this->assertSame($calendarId, $owned['id']);
+        $this->assertTrue($owned['myRights']['mayShare']);
+
+        $alice = Principal::forUsername('alice');
+        $team = Principal::query()->where('uri', 'principals/groups/'.self::TEAM)->first();
+        $this->assertNotNull($alice);
+        $this->assertNotNull($team);
+        $this->addPrincipalToGroup($team, $alice);
+        $shared = $this->calendarNamed('alice', 'Group Share');
+        $this->assertNotSame($calendarId, $shared['id']);
         $this->assertTrue($shared['myRights']['mayWriteAll']);
         $this->assertNull($shared['shareWith']);
 
@@ -205,6 +339,23 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
             ['Calendar/get', ['accountId' => 'carol', 'ids' => null], 'c0'],
         ])->assertOk()->json('methodResponses.0.1.list'), 'name');
         $this->assertNotContains('Group Share', $carolIds);
+    }
+
+    public function test_sharing_home_with_own_group_does_not_list_it_twice(): void
+    {
+        $homeId = $this->createPersonalCalendar('bob', 'Home', CalendarCollectionUris::EVENT_HOME);
+        $this->shareCalendar('bob', $homeId, 'groups/'.self::TEAM, write: false);
+
+        $homes = array_values(array_filter(
+            $this->jmapAs('bob', [
+                ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
+            ])->assertOk()->json('methodResponses.0.1.list'),
+            static fn (array $row): bool => $row['name'] === 'Home',
+        ));
+        $this->assertCount(1, $homes);
+        $this->assertSame($homeId, $homes[0]['id']);
+        $this->assertTrue($homes[0]['myRights']['mayShare']);
+        $this->assertTrue($homes[0]['myRights']['mayWriteAll']);
     }
 
     public function test_non_owner_cannot_share(): void
@@ -228,26 +379,39 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
         $this->assertSame('notFound', $outsider['notUpdated'][$calendarId]['type']);
     }
 
-    public function test_group_calendar_rejects_share_with(): void
+    public function test_group_member_can_share_group_calendar(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
 
-        $args = $this->jmapAs('bob', [
+        $response = $this->jmapAs('bob', [
             ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
                 'shareWith' => ['alice' => ['mayReadItems' => true]],
             ]]], 'c0'],
-        ])->assertOk()->json('methodResponses.0.1');
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
+        ])->assertOk();
 
-        $this->assertSame('forbidden', $args['notUpdated'][$calendarId]['type'] ?? null);
+        $this->assertNull($response->json('methodResponses.0.1.notUpdated.'.$calendarId));
+        $grant = $response->json('methodResponses.1.1.list.0.shareWith.alice');
+        $this->assertIsArray($grant);
+        $this->assertTrue($grant['mayReadItems']);
+        $this->assertFalse($grant['mayWriteAll']);
+        $this->assertTrue($response->json('methodResponses.1.1.list.0.myRights.mayShare'));
+
+        $shared = $this->calendarNamed('alice', 'Team');
+        $this->assertNull($shared['shareWith']);
+        $this->assertFalse($shared['myRights']['mayShare']);
+        $this->assertFalse($shared['myRights']['mayWriteAll']);
+        $this->assertTrue($shared['myRights']['mayReadItems']);
     }
 
-    private function createPersonalCalendar(string $username, string $name, string $id): string
+    private function createPersonalCalendar(string $username, string $name, string $id, ?string $color = null): string
     {
         $created = $this->jmapAs($username, [
-            ['Calendar/set', ['accountId' => $username, 'create' => ['c' => [
+            ['Calendar/set', ['accountId' => $username, 'create' => ['c' => array_filter([
                 'name' => $name,
                 'id' => $id,
-            ]]], 'c0'],
+                'color' => $color,
+            ], static fn (mixed $value): bool => $value !== null)]], 'c0'],
         ])->assertOk()->json('methodResponses.0.1.created.c');
 
         return (string) $created['id'];

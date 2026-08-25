@@ -44,11 +44,11 @@ export function isCalendarShareGroupId(id: string): boolean {
   return id.startsWith(GROUP_PREFIX);
 }
 
-/** Personal collection the caller does not own (`mayShare === false`). */
+/** Inbound ACL sharee — not group membership and not an ICS subscription. */
 export function isSharedWithMeCalendar(
-  calendar: Pick<CalendarInfo, "scope" | "groupSlug" | "mayShare">,
+  calendar: Pick<CalendarInfo, "scope" | "groupSlug" | "mayShare" | "subscriptionId">,
 ): boolean {
-  return !isGroupCalendar(calendar) && calendar.mayShare === false;
+  return !isGroupCalendar(calendar) && calendar.mayShare === false && !calendar.subscriptionId;
 }
 
 export function mergeCalendarShareWith(

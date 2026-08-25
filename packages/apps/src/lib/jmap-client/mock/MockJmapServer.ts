@@ -111,6 +111,18 @@ export class MockJmapServer {
     this.#bumpState("CalendarEvent", "destroyed", id);
   }
 
+  remoteCreateCalendar(calendar: Omit<JmapCalendar, "id"> & { id?: string }): string {
+    const id = calendar.id ?? this.nextId("cal");
+    this.calendars.set(id, { ...(calendar as JmapCalendar), id });
+    this.#bumpState("Calendar", "created", id);
+    return id;
+  }
+
+  remoteDestroyCalendar(id: string): void {
+    this.calendars.delete(id);
+    this.#bumpState("Calendar", "destroyed", id);
+  }
+
   nextId(prefix: string): string {
     this.#idCounter += 1;
     return `${prefix}-${this.#idCounter}`;

@@ -80,14 +80,22 @@ Implement Task #606: personal-calendar `shareWith` (user or group, read | write)
 - **Verify with:** `pnpm test:api-done-gate`, `pnpm test:apps-done-gate`, verify-issue
 - **Parallel with:** none
 
+### Chunk follow-up: Combined edit + live revoke
+
+- **id:** `followup-edit-acl`
+- **Skill:** workspace, apps-ui, testing
+- **Done when:** owners see public feed + member ACL on edit-calendar; sharees cannot publish or edit ACL; revoke applies `Calendar/changes` into Dexie and reconciles sidebar/selection without `location.reload()`
+- **Verify with:** targeted Vitest + PHPUnit share/feed, then apps/api done gates
+
 PR (when asked) closes Task #606 + #489, links Epic #494 / Goal #403 — **never** `fixes #403` alone.
 
 ## Test plan
 
 - [ ] API: failing JMAP feature tests first (share, read-denied write, write, revoke, group share, group-member update/delete) → `pnpm test:api-done-gate`
 - [ ] CalDAV: JMAP→PROPFIND invite / recipient home; CS:share→JMAP `shareWith`; revoke both ways; read-only PUT denied
-- [ ] UI: invitee lock preserved; group-member / write-share editable; Share dialog mock-tier story → `pnpm test:apps-done-gate`
-- [ ] Browser (when implementing UI): owner share → second user sees calendar → read cannot edit → write can edit → revoke hides access
+- [ ] UI: invitee lock preserved; group-member / write-share editable; edit-calendar share panel mock-tier story → `pnpm test:apps-done-gate`
+- [ ] Browser (when implementing UI): owner share → second user sees calendar → read cannot edit → write can edit → revoke hides access **without a full window refresh**
+- [ ] Owner edit-calendar shows public feed + member ACL; sharee edit does not show either
 - [ ] Manual (optional): CalDAV account in Apple Calendar on this instance — share to a teammate email that matches `principals.email`
 
 ## Doc updates (only if user wants)

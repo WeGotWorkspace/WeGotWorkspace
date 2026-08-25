@@ -370,6 +370,7 @@
   color: var(--calendar-accent);
 }
 
+.calendar-workspace .calendar-sidebar-row__mark,
 .calendar-workspace .calendar-sidebar-row__subscription {
   @apply inline-flex size-3.5 shrink-0 items-center justify-center;
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
@@ -397,15 +398,6 @@
 .calendar-workspace .calendar-sidebar-row__action:hover,
 .calendar-workspace .calendar-sidebar-row__action:focus-visible {
   color: var(--color-ink);
-}
-
-.calendar-workspace .calendar-sidebar-row__shared-pip {
-  @apply inline-flex size-3 shrink-0 items-center justify-center;
-}
-
-.calendar-workspace .calendar-sidebar-row__shared-icon {
-  @apply size-3 shrink-0 block;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
 /* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */

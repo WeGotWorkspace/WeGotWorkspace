@@ -4,8 +4,6 @@ export { CalendarConflictDialog } from "./calendar-conflict-dialog";
 export type { CalendarConflictDialogProps } from "./calendar-conflict-dialog";
 export { CalendarWorkspace } from "./calendar-workspace";
 export type { CalendarWorkspaceProps } from "./calendar-workspace-props";
-export { CalendarShareDialog } from "./calendar-share-dialog";
-export type { CalendarShareDialogProps } from "./calendar-share-dialog";
 export {
   calendarInfoFromJmap,
   calendarRightsAllowWrite,
@@ -29,6 +27,7 @@ export type {
   CalendarViewId,
 } from "./calendar-types";
 export {
+  canManageCalendarSharing,
   canWriteCalendarCollection,
   isCalendarCollectionOwner,
   isCalendarEventFormReadOnly,

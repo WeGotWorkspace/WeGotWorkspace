@@ -99,7 +99,7 @@ final class CalendarFeedService
 
     private function assertPublishable(string $username, string $calendarId): void
     {
-        $this->calendars->findOwnedPersonalCalendar($username, $calendarId);
+        $this->calendars->findPublishableCalendar($username, $calendarId);
         if ($this->calendars->isSubscriptionCalendar($username, $calendarId)) {
             throw new ApiHttpException(403, 'Subscription calendars cannot be published.', 'forbidden');
         }
