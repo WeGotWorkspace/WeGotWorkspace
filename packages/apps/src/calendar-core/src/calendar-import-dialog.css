@@ -1,0 +1,25 @@
+@import "../../styles.css" reference;
+
+.calendar-import-dialog {
+  @apply flex flex-col gap-4;
+}
+
+.calendar-import-dialog__destination {
+  @apply w-full;
+}
+
+.calendar-import-dialog__destination-menu {
+  @apply min-w-[var(--radix-dropdown-menu-trigger-width)];
+}
+
+.calendar-import-dialog__create-fields {
+  @apply flex flex-col gap-3;
+}
+
+.calendar-import-dialog__name-color-row {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.calendar-import-dialog__name-input {
+  @apply min-w-0 flex-1;
+}

@@ -9,6 +9,7 @@ import {
   deleteCalendarEventLive,
   deleteCalendarLive,
   fetchCalendarBootstrapForClient,
+  importEventsLive,
   patchCalendarEventLive,
   patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
@@ -98,6 +99,7 @@ export function createMockCalendarApiSource(): CalendarApiSource {
       createEvent: (draft) => createCalendarEventLive(draft, opsClient),
       patchEvent: (eventId, patch) => patchCalendarEventLive(eventId, patch, opsClient),
       deleteEvent: (eventId) => deleteCalendarEventLive(eventId, opsClient),
+      importEvents: (icsText, opts) => importEventsLive(icsText, opts),
       createCalendar: (draft) => createCalendarLive(draft, opsClient),
       patchCalendar: (calendarId, patch) => patchCalendarLive(calendarId, patch, opsClient),
       deleteCalendar: (calendarId) => deleteCalendarLive(calendarId, opsClient),
