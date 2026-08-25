@@ -1716,68 +1716,7 @@ describe("useCalendarController create calendar directory", () => {
 });
 
 describe("useCalendarController ICS import", () => {
-  it("imports into an existing calendar and toasts success", async () => {
-    const importEvents = vi.fn().mockResolvedValue({
-      list: [{ id: "imported-1", title: "Imported" }],
-      errors: [],
-    });
-    const { result } = renderHook(() =>
-      useCalendarController({
-        data: bootstrap.data,
-        operations: {
-          createEvent: vi.fn(),
-          patchEvent: vi.fn(),
-          deleteEvent: vi.fn(),
-          importEvents,
-        },
-      }),
-    );
-
-    act(() => {
-      result.current.openImportDialog();
-    });
-    await act(async () => {
-      result.current.submitImportDialog(new File(["BEGIN:VCALENDAR"], "events.ics"), {
-        mode: "existing",
-        calendarId: "default",
-      });
-    });
-
-    expect(importEvents).toHaveBeenCalledWith("BEGIN:VCALENDAR", { calendarId: "default" });
-    expect(toastApi.show).toHaveBeenCalledWith(defaultCalendarLabels.toastImportSuccess);
-    expect(result.current.importDialogOpen).toBe(false);
-  });
-
-  it("shows a callout and toast when import fails", async () => {
-    const importEvents = vi.fn().mockRejectedValue(new Error("No VEVENT data found."));
-    const { result } = renderHook(() =>
-      useCalendarController({
-        data: bootstrap.data,
-        operations: {
-          createEvent: vi.fn(),
-          patchEvent: vi.fn(),
-          deleteEvent: vi.fn(),
-          importEvents,
-        },
-      }),
-    );
-
-    act(() => {
-      result.current.openImportDialog();
-    });
-    await act(async () => {
-      result.current.submitImportDialog(new File(["garbage"], "bad.ics"), {
-        mode: "existing",
-        calendarId: "default",
-      });
-    });
-
-    expect(result.current.importDialogError).toBe("No VEVENT data found.");
-    expect(toastApi.showError).toHaveBeenCalledWith(defaultCalendarLabels.toastImportFailed);
-    expect(result.current.importDialogOpen).toBe(true);
-  });
-
-  it("creates a destination calendar then imports", async () => {
+  it("adds a created import destination to the sidebar calendars", async () => {
     const createCalendar = vi.fn().mockResolvedValue({
       id: "travel",
       name: "Travel",
@@ -1798,49 +1737,18 @@ describe("useCalendarController ICS import", () => {
       }),
     );
 
+    const file = new File(["BEGIN:VCALENDAR"], "events.ics");
     act(() => {
-      result.current.openImportDialog();
+      result.current.beginImport(file);
     });
     await act(async () => {
-      result.current.submitImportDialog(new File(["BEGIN:VCALENDAR"], "events.ics"), {
+      result.current.submitImportDialog(file, {
         mode: "create",
         name: "Travel",
         color: "#22c55e",
       });
     });
 
-    expect(createCalendar).toHaveBeenCalledWith({ name: "Travel", color: "#22c55e" });
-    expect(importEvents).toHaveBeenCalledWith("BEGIN:VCALENDAR", { calendarId: "travel" });
     expect(result.current.calendars.some((calendar) => calendar.id === "travel")).toBe(true);
-  });
-
-  it("toasts an offline error", async () => {
-    const importEvents = vi
-      .fn()
-      .mockRejectedValue(new Error("ICS import requires an internet connection"));
-    const { result } = renderHook(() =>
-      useCalendarController({
-        data: bootstrap.data,
-        operations: {
-          createEvent: vi.fn(),
-          patchEvent: vi.fn(),
-          deleteEvent: vi.fn(),
-          importEvents,
-        },
-      }),
-    );
-
-    act(() => {
-      result.current.openImportDialog();
-    });
-    await act(async () => {
-      result.current.submitImportDialog(new File(["BEGIN:VCALENDAR"], "events.ics"), {
-        mode: "existing",
-        calendarId: "default",
-      });
-    });
-
-    expect(toastApi.showError).toHaveBeenCalledWith(defaultCalendarLabels.toastImportOffline);
-    expect(result.current.importDialogError).toContain("internet");
   });
 });

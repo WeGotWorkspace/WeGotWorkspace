@@ -258,10 +258,11 @@ export function CalendarWorkspace({
     canCreateCalendar,
     canSubscribeCalendar,
     canImportEvents,
+    importFile,
     importDialogOpen,
     importDialogBusy,
     importDialogError,
-    openImportDialog,
+    beginImport,
     closeImportDialog,
     submitImportDialog,
     calendarDialog,
@@ -318,7 +319,6 @@ export function CalendarWorkspace({
   const useInvitationsDrawer = invitationsLayout === "drawer";
   const [invitationsOpen, setInvitationsOpen] = useState(false);
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
   const icsFileInputRef = useRef<HTMLInputElement>(null);
   const [eventPreview, setEventPreview] = useState<{
     model: CalendarEventPreviewModel;
@@ -843,8 +843,7 @@ export function CalendarWorkspace({
           const file = icsFileFromList(event.target.files);
           event.target.value = "";
           if (!file) return;
-          setImportFile(file);
-          openImportDialog();
+          beginImport(file);
         }}
       />
       {importFile ? (
@@ -856,11 +855,7 @@ export function CalendarWorkspace({
           preferredCalendarId={defaultCalendarId}
           busy={importDialogBusy}
           error={importDialogError}
-          onClose={() => {
-            if (importDialogBusy) return;
-            closeImportDialog();
-            setImportFile(null);
-          }}
+          onClose={closeImportDialog}
           onImport={submitImportDialog}
         />
       ) : null}

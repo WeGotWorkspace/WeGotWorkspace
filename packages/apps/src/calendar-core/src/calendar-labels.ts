@@ -14,7 +14,7 @@ export type CalendarUILabels = {
   previousPeriod: string;
   nextPeriod: string;
   newEvent: string;
-  /** Accessible name for the New event split-button chevron. */
+  /** Accessible name for the New event menu chevron. */
   newEventMenu: string;
   importIcs: string;
   importDialogTitle: string;

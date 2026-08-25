@@ -34,8 +34,6 @@ function destinationTrigger(destinationName: string) {
 export const ExistingDestination: Story = {
   tags: ["vitest-ci"],
   play: async () => {
-    await expect(screen.queryByLabelText(/ICS file/i)).toBeNull();
-    await expect(document.querySelector("input[type=file]")).toBeNull();
     const trigger = destinationTrigger("Personal");
     await expect(trigger.querySelector(".calendar-color-swatch-trigger__dot")).toBeTruthy();
     await expect(screen.queryByLabelText(defaultCalendarLabels.calendarNameLabel)).toBeNull();

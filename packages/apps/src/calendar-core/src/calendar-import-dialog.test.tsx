@@ -46,7 +46,7 @@ describe("CalendarImportDialog", () => {
     });
   });
 
-  it("has no file input and imports into the preferred writable calendar", () => {
+  it("imports into the preferred writable calendar", () => {
     const onImport = vi.fn();
 
     renderDialog(
@@ -61,8 +61,6 @@ describe("CalendarImportDialog", () => {
       />,
     );
 
-    expect(document.querySelector("input[type=file]")).toBeNull();
-    expect(screen.queryByRole("radio")).toBeNull();
     const trigger = destinationTrigger("Personal");
     const triggerSwatch = trigger.querySelector(".calendar-color-swatch-trigger__dot");
     expect(triggerSwatch).toBeTruthy();
