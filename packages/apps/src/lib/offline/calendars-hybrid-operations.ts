@@ -15,6 +15,7 @@ import {
   deleteCalendarEventLive,
   deleteCalendarLive,
   fetchCalendarLiveBootstrap,
+  importEventsLive,
   patchCalendarEventLive,
   patchCalendarLive,
 } from "@/lib/api/wgw/calendar";
@@ -196,6 +197,16 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         rethrowUnlessOfflineQueue(error);
         return queueOffline();
       }
+    },
+    importEvents: async (icsText, opts) => {
+      if (!readBrowserOnline()) {
+        throw new Error("ICS import requires an internet connection");
+      }
+      const result = await importEventsLive(icsText, opts);
+      for (const event of result.list) {
+        await upsertCalendarEventInCache(username, event, false);
+      }
+      return result;
     },
     deleteEvent: async (eventId) => {
       const queueOffline = async () => {

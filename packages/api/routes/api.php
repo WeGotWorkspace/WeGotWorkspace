@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarEventImportController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
@@ -189,6 +190,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('messageId', '[^/]+');
 
     Route::middleware('wgw.calendars')->group(function (): void {
+        Route::post('calendars/events/import', CalendarEventImportController::class);
         Route::get('calendars/scheduling/invitees', [CalendarSchedulingNotificationsController::class, 'invitees']);
         Route::get('calendars/scheduling/notifications', [CalendarSchedulingNotificationsController::class, 'index']);
         Route::post('calendars/scheduling/notifications/{notificationId}/respond', [CalendarSchedulingNotificationsController::class, 'respond'])

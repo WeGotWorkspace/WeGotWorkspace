@@ -54,6 +54,7 @@ import type {
   CalendarCalendarDialogState,
 } from "@/calendar-core/src/calendar-calendar-dialog";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { useCalendarIcsImport } from "@/calendar-core/src/use-calendar-ics-import";
 import { sortCalendarsForSidebar } from "@/calendar-core/src/calendar-sidebar-order";
 import {
   canPublishCalendar,
@@ -815,6 +816,28 @@ export function useCalendarController({
 
   const canCreateCalendar = Boolean(operations?.createCalendar);
   const canSubscribeCalendar = Boolean(operations?.subscribeCalendar);
+  const handleImportCalendarCreated = useCallback(
+    (calendar: CalendarInfo) => {
+      setCalendars((prev) => sortCalendarsForSidebar([...prev, calendar]));
+      selectDefaultCalendar(calendar.id);
+    },
+    [selectDefaultCalendar],
+  );
+  const {
+    canImportEvents,
+    importFile,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    beginImport,
+    closeImportDialog,
+    submitImportDialog,
+  } = useCalendarIcsImport({
+    operations,
+    labels: L,
+    onCalendarCreated: handleImportCalendarCreated,
+    onMutated,
+  });
   const openCreateCalendarDialog = useCallback(() => {
     if (!canCreateCalendar) return;
     setPublishFeed(null);
@@ -1296,6 +1319,14 @@ export function useCalendarController({
     operations,
     canCreateCalendar,
     canSubscribeCalendar,
+    canImportEvents,
+    importFile,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    beginImport,
+    closeImportDialog,
+    submitImportDialog,
     calendarDialog,
     calendarDialogBusy,
     openCreateCalendarDialog,

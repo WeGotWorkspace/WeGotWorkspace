@@ -232,3 +232,45 @@ export async function deleteCalendarLive(calendarId: string, client?: JmapClient
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendars({ accountId, destroy: [calendarId] });
 }
+
+export class CalendarImportError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "CalendarImportError";
+  }
+}
+
+export async function importEventsLive(
+  icsText: string,
+  opts: { calendarId: string; signal?: AbortSignal },
+): Promise<{ list: JmapCalendarEvent[]; errors: Array<{ index: number; message: string }> }> {
+  if (!opts.calendarId.trim()) {
+    throw new CalendarImportError("calendarId is required for ICS import", 400);
+  }
+  const query = `?calendarId=${encodeURIComponent(opts.calendarId)}`;
+  const res = await wgwFetch(`/calendars/events/import${query}`, {
+    method: "POST",
+    headers: { "Content-Type": "text/calendar" },
+    body: icsText,
+    signal: opts.signal,
+  });
+  if (!res.ok) {
+    let message = `POST /calendars/events/import failed (${res.status})`;
+    try {
+      const body = (await wgwReadJson(res)) as { error?: string };
+      if (typeof body.error === "string" && body.error.trim() !== "") {
+        message = body.error;
+      }
+    } catch {
+      // Keep the status fallback when the body is not JSON.
+    }
+    throw new CalendarImportError(message, res.status);
+  }
+  return (await wgwReadJson(res)) as {
+    list: JmapCalendarEvent[];
+    errors: Array<{ index: number; message: string }>;
+  };
+}

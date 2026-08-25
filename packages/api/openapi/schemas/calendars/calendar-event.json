@@ -381,5 +381,35 @@
     },
     "additionalProperties": false,
     "description": "REST list response for GET /calendars/events."
+  },
+  "CalendarEventImportError": {
+    "type": "object",
+    "required": ["index", "message"],
+    "properties": {
+      "index": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "message": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  },
+  "CalendarEventImportResponse": {
+    "type": "object",
+    "required": ["list", "errors"],
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/CalendarEvent" }
+      },
+      "errors": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/CalendarEventImportError" }
+      }
+    },
+    "additionalProperties": false,
+    "description": "REST response for POST /calendars/events/import."
   }
 }

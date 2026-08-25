@@ -31,12 +31,14 @@ describe("CalendarNewMenu", () => {
   it("opens calendar actions from the chevron", () => {
     const onCreateCalendar = vi.fn();
     const onSubscribeCalendar = vi.fn();
+    const onImportEvents = vi.fn();
     render(
       <CalendarNewMenu
         labels={L}
         onCreateEvent={vi.fn()}
         onCreateCalendar={onCreateCalendar}
         onSubscribeCalendar={onSubscribeCalendar}
+        onImportEvents={onImportEvents}
       />,
     );
 
@@ -50,6 +52,11 @@ describe("CalendarNewMenu", () => {
     fireEvent.click(chevron);
     fireEvent.click(screen.getByRole("button", { name: L.subscribeCalendar }));
     expect(onSubscribeCalendar).toHaveBeenCalledOnce();
+
+    fireEvent.pointerDown(chevron);
+    fireEvent.click(chevron);
+    fireEvent.click(screen.getByRole("button", { name: L.importIcs }));
+    expect(onImportEvents).toHaveBeenCalledOnce();
   });
 
   it("hides the chevron when there are no calendar actions", () => {

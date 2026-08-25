@@ -9989,6 +9989,46 @@
                         "description": "Same feed advertised as webcal:// for calendar clients."
                     }
                 }
+            },
+            "CalendarEventImportError": {
+                "type": "object",
+                "required": [
+                    "index",
+                    "message"
+                ],
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CalendarEventImportResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "errors"
+                ],
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarEvent"
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CalendarEventImportError"
+                        }
+                    }
+                },
+                "additionalProperties": false,
+                "description": "REST response for POST /calendars/events/import."
             }
         },
         "responses": {
@@ -15521,6 +15561,61 @@
                     }
                 },
                 "x-wgw-access": "guest"
+            }
+        },
+        "/calendars/events/import": {
+            "post": {
+                "tags": [
+                    "Calendars"
+                ],
+                "summary": "Import calendar events from an ICS file",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "calendarId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "text/calendar": {
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Imported calendar events",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarEventImportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
             }
         }
     }
