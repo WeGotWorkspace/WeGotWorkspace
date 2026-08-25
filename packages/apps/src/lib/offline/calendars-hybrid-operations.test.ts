@@ -259,6 +259,15 @@ describe("flushCalendarsOutboxAndReport", () => {
     await expect(listOutboxMutations(username)).resolves.toEqual([]);
   });
 
+  it("refuses offline owner transfers", async () => {
+    const operations = createHybridCalendarOperations(username);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await expect(operations.patchCalendar!("work", { groupSlug: "editorial" })).rejects.toThrow(
+      "Owner changes require a connection.",
+    );
+    await expect(listOutboxMutations(username)).resolves.toEqual([]);
+  });
+
   it("flushes pending outbox rows when online", async () => {
     createCalendarEventLive.mockResolvedValue(wireEvent("ev-2", "Created"));
     await enqueuePendingCreate();

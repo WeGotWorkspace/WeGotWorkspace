@@ -116,6 +116,47 @@ describe("CalendarCalendarDialog", () => {
     expect(ownerSelect.textContent).toContain("Only Me");
   });
 
+  it("lets the owner change directory on edit", () => {
+    const onConfirm = vi.fn();
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "roadmap",
+          name: "Roadmap",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+          scope: "personal",
+          canChangeOwner: true,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        labels={defaultCalendarLabels}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const ownerSelect = screen.getByRole("combobox", {
+      name: defaultCalendarLabels.calendarDirectoryLabel,
+    });
+    expect(ownerSelect).toHaveProperty("disabled", false);
+    fireEvent.click(ownerSelect);
+    fireEvent.click(
+      screen.getByRole("option", {
+        name: defaultCalendarLabels.calendarDirectoryGroup("Team"),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.save }));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: "Roadmap",
+      color: DEFAULT_CALENDAR_COLOR,
+      groupSlug: "team",
+    });
+  });
+
   it("shows the same Owner dropdown disabled on edit", () => {
     renderDialog(
       <CalendarCalendarDialog

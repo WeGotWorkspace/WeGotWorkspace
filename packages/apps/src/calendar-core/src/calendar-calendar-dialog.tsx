@@ -70,6 +70,8 @@ export type CalendarCalendarDialogState =
       nameReadOnly?: boolean;
       /** ACL sharee leave — does not delete the owner's collection. */
       removeShared?: boolean;
+      /** Enable Owner (personal ↔ group), same options as create. */
+      canChangeOwner?: boolean;
     };
 
 export type CalendarCalendarDialogConfirmInput = {
@@ -135,6 +137,8 @@ export function CalendarCalendarDialog({
   const isSharedRemove = dialog?.mode === "edit" && Boolean(dialog.removeShared);
   const showPublish = dialog?.mode === "edit" && dialog.canPublish && Boolean(publish);
   const showShare = dialog?.mode === "edit" && Boolean(share);
+  const canChangeOwner =
+    isCreate || isSubscribe || (dialog?.mode === "edit" && Boolean(dialog.canChangeOwner));
 
   useEffect(() => {
     if (!dialog) {
@@ -166,10 +170,14 @@ export function CalendarCalendarDialog({
   const trimmedName = name.trim();
   const trimmedUrl = url.trim();
   const selectedColor = color.trim() || DEFAULT_CALENDAR_COLOR;
+  const ownerUnchanged =
+    dialog?.mode === "edit" &&
+    ownerScopeValueFromDirectory(dialog.scope, dialog.groupSlug) === scopeValue;
   const unchangedEdit =
     dialog?.mode === "edit" &&
     trimmedName === dialog.name.trim() &&
-    selectedColor.toLowerCase() === dialog.color.trim().toLowerCase();
+    selectedColor.toLowerCase() === dialog.color.trim().toLowerCase() &&
+    ownerUnchanged;
   const subscribeUrlValid = isLikelyCalendarFeedUrl(trimmedUrl);
   const canSubmit = isSubscribe
     ? subscribeUrlValid && !busy
@@ -221,7 +229,7 @@ export function CalendarCalendarDialog({
               onConfirm({
                 name: trimmedName,
                 color: selectedColor,
-                ...(isCreate || isSubscribe
+                ...(isCreate || isSubscribe || canChangeOwner
                   ? { groupSlug: groupSlugFromOwnerScopeValue(scopeValue) }
                   : {}),
                 ...(isSubscribe ? { url: trimmedUrl, nameTouched } : {}),
@@ -285,7 +293,7 @@ export function CalendarCalendarDialog({
               groups={groups}
               personalOwnerLabel={personalOwnerLabel}
               labels={ownerLabels}
-              disabled={(!isCreate && !isSubscribe) || busy}
+              disabled={!canChangeOwner || busy}
             />
 
             {showPublish && publish ? (

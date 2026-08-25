@@ -156,6 +156,28 @@ export const EditOwnedOffline: Story = {
   render: () => <EditOwnedShareHarness online={false} />,
 };
 
+export const EditChangeOwner: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    dialog: {
+      mode: "edit",
+      calendarId: "roadmap",
+      name: "Roadmap",
+      color: "#22c55e",
+      mayDelete: true,
+      scope: "personal",
+      canChangeOwner: true,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const ownerSelect = await canvas.findByRole("combobox", {
+      name: defaultCalendarLabels.calendarDirectoryLabel,
+    });
+    await expect(ownerSelect).not.toBeDisabled();
+  },
+};
+
 export const EditTeam: Story = {
   tags: ["vitest-ci"],
   render: () => (

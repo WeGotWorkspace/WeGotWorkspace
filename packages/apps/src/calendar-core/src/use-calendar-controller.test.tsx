@@ -1600,9 +1600,64 @@ describe("useCalendarController create calendar directory", () => {
       name: "Desk",
       color: "#ec4899",
     });
+    expect(patchCalendar).not.toHaveBeenCalledWith(
+      "group-editorial",
+      expect.objectContaining({ groupSlug: expect.anything() }),
+    );
     expect(result.current.calendars.find((entry) => entry.id === "group-editorial")).toMatchObject({
       name: "Desk",
       color: "#ec4899",
+    });
+  });
+
+  it("forwards groupSlug when changing owner on edit", async () => {
+    const patchCalendar = vi.fn().mockResolvedValue({
+      id: "work",
+      name: "Work",
+      color: "#0ea5e9",
+      scope: "group",
+      groupSlug: "editorial",
+      mayWrite: true,
+      mayShare: true,
+      mayDelete: true,
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          patchCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("work");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      calendarId: "work",
+      canChangeOwner: true,
+    });
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Work",
+        color: "#0ea5e9",
+        groupSlug: "editorial",
+      });
+    });
+
+    expect(patchCalendar).toHaveBeenCalledWith("work", {
+      name: "Work",
+      color: "#0ea5e9",
+      groupSlug: "editorial",
+    });
+    expect(result.current.calendars.find((entry) => entry.id === "work")).toMatchObject({
+      scope: "group",
+      groupSlug: "editorial",
     });
   });
 

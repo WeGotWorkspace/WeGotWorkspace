@@ -130,6 +130,7 @@ export type CalendarDraft = {
 export type CalendarPatch = {
   name?: string;
   color?: string;
+  groupSlug?: string | null;
   shareWith?: CalendarShareWith | null;
 };
 
