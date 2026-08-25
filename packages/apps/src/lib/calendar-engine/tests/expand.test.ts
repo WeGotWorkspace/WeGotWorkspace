@@ -27,6 +27,44 @@ describe("expandEvents", () => {
     expect(rendered.has("daily::20250115T090000")).toBe(true);
   });
 
+  it("suppresses the original slot when exception eventId is a uid and the map key is the persist id", () => {
+    const events: CalendarEventsMap = new Map([
+      [
+        "ev-1",
+        {
+          eventId: "urn:uuid:ev-1",
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-13T09:00:00"),
+            end: Temporal.PlainDateTime.from("2025-01-13T09:15:00"),
+            summary: "Daily",
+            recurrenceRule: { freq: "DAILY", interval: 1, count: 2 },
+          },
+        },
+      ],
+      [
+        "ev-1::20250114T090000",
+        {
+          eventId: "ev-1",
+          recurrenceId: "20250114T090000",
+          isException: true,
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-14T11:00:00"),
+            end: Temporal.PlainDateTime.from("2025-01-14T11:15:00"),
+            summary: "Daily (moved)",
+          },
+        },
+      ],
+    ]);
+
+    const rendered = expandEvents(events, {
+      start: Temporal.PlainDateTime.from("2025-01-13T00:00:00"),
+      end: Temporal.PlainDateTime.from("2025-01-20T00:00:00"),
+    });
+
+    const starts = [...rendered.values()].map((event) => event.data.start.toString()).sort();
+    expect(starts).toEqual(["2025-01-13T09:00:00", "2025-01-14T11:00:00"]);
+  });
+
   it("suppresses generated occurrence when detached exception exists", () => {
     const events: CalendarEventsMap = new Map([
       [

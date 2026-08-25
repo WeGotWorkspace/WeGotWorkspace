@@ -94,6 +94,39 @@ describe("resolveEventMapKey", () => {
     ).toBe("ev-1::20330111T100000");
   });
 
+  it("resolves a detached exception when the envelope recurrenceId is the moved start", () => {
+    const events = new Map<string, CalendarEvent>([
+      ["ev-1", dailyMaster()],
+      [
+        "ev-1::20330111T100000",
+        {
+          eventId: "ev-1",
+          recurrenceId: "20330111T100000",
+          isException: true,
+          data: {
+            summary: "Daily",
+            start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
+            duration: Temporal.Duration.from("PT30M"),
+          },
+        },
+      ],
+    ]);
+
+    expect(
+      resolveEventMapKey(events, {
+        eventId: "ev-1",
+        recurrenceId: "20330111T110000",
+      }),
+    ).toBe("ev-1::20330111T100000");
+    expect(
+      shouldAskSeriesScope({
+        isRecurring: true,
+        events,
+        eventKey: "ev-1::20330111T100000",
+      }),
+    ).toBe(false);
+  });
+
   it("does not ask series scope when the resolved key is already an exception", () => {
     const master = dailyMaster();
     const exception: CalendarEvent = {

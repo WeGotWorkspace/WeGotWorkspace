@@ -291,7 +291,9 @@ export abstract class CalendarViewBase extends BaseElement {
     const data = current.data;
     const currentEnd = resolvedDataEnd(data);
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
-    const recurrenceId = detail.envelope.recurrenceId ?? current.recurrenceId;
+    const recurrenceId = isCalendarEventException(current)
+      ? (current.recurrenceId ?? detail.envelope.recurrenceId)
+      : (detail.envelope.recurrenceId ?? current.recurrenceId);
     const shouldPromptForSeries = shouldAskSeriesScope({
       isRecurring,
       events,
@@ -450,7 +452,9 @@ export abstract class CalendarViewBase extends BaseElement {
     const current = events.get(eventKey);
     if (!current) return false;
 
-    const recurrenceId = detail.envelope.recurrenceId ?? current.recurrenceId;
+    const recurrenceId = isCalendarEventException(current)
+      ? (current.recurrenceId ?? detail.envelope.recurrenceId)
+      : (detail.envelope.recurrenceId ?? current.recurrenceId);
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
     const shouldPromptForSeries = shouldAskSeriesScope({
       isRecurring,

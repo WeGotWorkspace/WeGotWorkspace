@@ -1,6 +1,8 @@
 import {
+  isDetachedException,
   isThisInstanceOverride,
   occurrenceMapKey,
+  toRecurrenceId,
   type CalendarEventsMap,
 } from "@/lib/calendar-engine";
 
@@ -40,6 +42,13 @@ export function resolveEventMapKey(
       if (event.eventId !== envelope.eventId) continue;
       if (!matchesCalendarAndAccount(event, envelope)) continue;
       if (event.recurrenceId === envelope.recurrenceId) return key;
+      // Lit may send the moved wall clock as recurrenceId after the first drag.
+      if (
+        isDetachedException(event) &&
+        toRecurrenceId(event.data.start, event.data.allDay ?? false) === envelope.recurrenceId
+      ) {
+        return key;
+      }
     }
   }
 
