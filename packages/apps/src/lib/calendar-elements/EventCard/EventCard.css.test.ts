@@ -74,6 +74,12 @@ describe("EventCard / EventBase interaction CSS", () => {
       /@container\s*\(max-height:\s*31px\)[\s\S]*padding-block:\s*var\(\s*--_lc-event-card-heading-padding-block,\s*0\.375rem\s*\)/,
     );
     expect(css).toMatch(
+      /@container\s*\(max-height:\s*47px\)[\s\S]*\.event-card-recurring-icon-wrap[\s\S]*--_lc-event-recurring-icon-size:\s*12px/,
+    );
+    expect(css).toMatch(
+      /@container\s*\(max-height:\s*31px\)[\s\S]*\.event-card-recurring-icon-wrap[\s\S]*--_lc-event-recurring-icon-size:\s*11px/,
+    );
+    expect(css).toMatch(
       /\.event-card-recurring-icon-wrap\s*\{[\s\S]*display:\s*var\(\s*--_lc-event-card-recurring-icon-display,\s*inline-flex\s*\)/,
     );
     expect(css).toMatch(

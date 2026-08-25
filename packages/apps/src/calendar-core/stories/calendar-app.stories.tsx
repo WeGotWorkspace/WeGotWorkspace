@@ -139,8 +139,8 @@ const COMPACT_MONTH_VIEWPORT = {
 export const Default: Story = {
   tags: ["vitest-ci"],
   args: {
-    ...bootstrap,
-    surface: staticSurface,
+    ...seeded,
+    surface: seededSurface,
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "month",
   },
@@ -210,6 +210,24 @@ export const Default: Story = {
     await expect(
       canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }),
     ).toBeTruthy();
+  },
+};
+
+/** Official `DevCalendarEventCatalog` full profile (~360 events) at desktop month width. */
+export const SeededWide: Story = {
+  args: {
+    ...seeded,
+    surface: seededSurface,
+    initialAnchor: MOCK_CALENDAR_ANCHOR,
+    initialView: "month",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Mock-tier port of `DevCalendarEventCatalog` PROFILE_FULL at desktop width so wide month cells show slimmer interactive cards (more than three titles) before +N.",
+      },
+    },
   },
 };
 

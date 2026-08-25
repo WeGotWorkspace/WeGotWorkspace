@@ -237,15 +237,13 @@
 }
 
 :host .event-card-recurring-icon {
-  @apply h-full w-full;
+  @apply block h-full w-full;
+  width: var(--_lc-event-recurring-icon-size);
+  height: var(--_lc-event-recurring-icon-size);
 }
 
 /* Short cards: single-line heading + compact label; hide expanded title/time stack. */
 @container (max-height: 47px) {
-  :host {
-    --_lc-event-recurring-icon-size: 12px;
-  }
-
   :host .event-card-shell {
     @apply flex gap-1 whitespace-nowrap;
   }
@@ -294,8 +292,10 @@
     @apply hidden;
   }
 
+  /* Size the wrap (a descendant) so this query sees the card host, not an ancestor. */
   :host .event-card-recurring-icon-wrap {
-    @apply mt-0 self-start;
+    @apply mt-0 self-center;
+    --_lc-event-recurring-icon-size: 12px;
   }
 }
 
@@ -309,7 +309,7 @@
 
 /* Smaller compact cards: tighten spacing to avoid vertical clipping. */
 @container (max-height: 31px) {
-  :host {
+  :host .event-card-recurring-icon-wrap {
     --_lc-event-recurring-icon-size: 11px;
   }
 
@@ -331,7 +331,7 @@
 
 /* Very small cards: hide compact time, keep summary visible. */
 @container event-card-content (max-width: 120px) {
-  :host {
+  :host .event-card-recurring-icon-wrap {
     --_lc-event-recurring-icon-size: 10px;
   }
 
