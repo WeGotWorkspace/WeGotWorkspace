@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEventsMap } from "../types/event.js";
 import { expandEvents } from "../core/expandEvents.js";
+import { UTC_TIMEZONE } from "../types/event/timezone.js";
 import { createDailySeriesState } from "./support/mockEvents.js";
 
 describe("expandEvents", () => {
@@ -24,6 +25,44 @@ describe("expandEvents", () => {
     expect(rendered.has("daily::20250113T090000")).toBe(true);
     expect(rendered.has("daily::20250114T090000")).toBe(false);
     expect(rendered.has("daily::20250115T090000")).toBe(true);
+  });
+
+  it("suppresses the original slot when exception eventId is a uid and the map key is the persist id", () => {
+    const events: CalendarEventsMap = new Map([
+      [
+        "ev-1",
+        {
+          eventId: "urn:uuid:ev-1",
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-13T09:00:00"),
+            end: Temporal.PlainDateTime.from("2025-01-13T09:15:00"),
+            summary: "Daily",
+            recurrenceRule: { freq: "DAILY", interval: 1, count: 2 },
+          },
+        },
+      ],
+      [
+        "ev-1::20250114T090000",
+        {
+          eventId: "ev-1",
+          recurrenceId: "20250114T090000",
+          isException: true,
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-14T11:00:00"),
+            end: Temporal.PlainDateTime.from("2025-01-14T11:15:00"),
+            summary: "Daily (moved)",
+          },
+        },
+      ],
+    ]);
+
+    const rendered = expandEvents(events, {
+      start: Temporal.PlainDateTime.from("2025-01-13T00:00:00"),
+      end: Temporal.PlainDateTime.from("2025-01-20T00:00:00"),
+    });
+
+    const starts = [...rendered.values()].map((event) => event.data.start.toString()).sort();
+    expect(starts).toEqual(["2025-01-13T09:00:00", "2025-01-14T11:00:00"]);
   });
 
   it("suppresses generated occurrence when detached exception exists", () => {
@@ -66,6 +105,54 @@ describe("expandEvents", () => {
     expect(rendered.has("daily::20250114T090000")).toBe(true);
     const exception = rendered.get("daily::20250114T090000");
     expect(exception?.data.start.toString()).toBe("2025-01-14T11:00:00");
+  });
+
+  it("suppresses the zoned series instance when a this-instance override exists (#609)", () => {
+    const events: CalendarEventsMap = new Map([
+      [
+        "daily",
+        {
+          eventId: "daily@example.test",
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-13T09:00:00"),
+            end: Temporal.PlainDateTime.from("2025-01-13T09:15:00"),
+            summary: "Daily",
+            color: "#10B981",
+            timeZone: UTC_TIMEZONE,
+            recurrenceRule: { freq: "DAILY", interval: 1, count: 2 },
+          },
+        },
+      ],
+      [
+        "daily::20250114T090000",
+        {
+          eventId: "daily@example.test",
+          recurrenceId: "20250114T090000",
+          isException: true,
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-14T11:00:00"),
+            end: Temporal.PlainDateTime.from("2025-01-14T11:15:00"),
+            summary: "Daily (moved)",
+            color: "#10B981",
+          },
+        },
+      ],
+    ]);
+
+    const rendered = expandEvents(
+      events,
+      {
+        start: Temporal.PlainDateTime.from("2025-01-13T00:00:00"),
+        end: Temporal.PlainDateTime.from("2025-01-20T00:00:00"),
+      },
+      { timezone: "Europe/Amsterdam" },
+    );
+
+    expect([...rendered.keys()]).toEqual(["daily::20250113T090000", "daily::20250114T090000"]);
+    expect(rendered.get("daily::20250114T090000")?.data.summary).toBe("Daily (moved)");
+    expect(rendered.get("daily::20250114T090000")?.data.start.toString()).toBe(
+      "2025-01-14T11:00:00",
+    );
   });
 
   it("expands monthly last Friday recurrences using byDay + bySetPos", () => {

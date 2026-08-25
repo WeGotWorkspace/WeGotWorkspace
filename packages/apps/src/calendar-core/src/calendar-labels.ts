@@ -14,8 +14,17 @@ export type CalendarUILabels = {
   previousPeriod: string;
   nextPeriod: string;
   newEvent: string;
-  /** Accessible name for the New event split-button chevron. */
+  /** Accessible name for the New event menu chevron. */
   newEventMenu: string;
+  importIcs: string;
+  importDialogTitle: string;
+  importFileInvalid: string;
+  importDestinationLegend: string;
+  importSubmit: string;
+  toastImportSuccess: string;
+  toastImportPartial: string;
+  toastImportFailed: string;
+  toastImportOffline: string;
   calendarsSection: string;
   myCalendarsSection: string;
   teamCalendarsSection: string;
@@ -190,6 +199,15 @@ export const defaultCalendarLabels: CalendarUILabels = {
   nextPeriod: "Next",
   newEvent: "New event",
   newEventMenu: "More calendar actions",
+  importIcs: "Import ICS",
+  importDialogTitle: "Import events",
+  importFileInvalid: "Choose an .ics file",
+  importDestinationLegend: "Destination calendar",
+  importSubmit: "Import",
+  toastImportSuccess: "Events imported",
+  toastImportPartial: "Some events could not be imported",
+  toastImportFailed: "Could not import events",
+  toastImportOffline: "ICS import requires an internet connection",
   calendarsSection: "Calendars",
   myCalendarsSection: "My calendars",
   teamCalendarsSection: "Team calendars",

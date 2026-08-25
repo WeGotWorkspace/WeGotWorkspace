@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Services\Calendars\Conversion\TimeZoneSupport;
 use App\Services\VObject\VObjectPayloadGuard;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
@@ -58,6 +59,8 @@ final class CalendarFeedIcsBuilder
                 }
             }
         }
+
+        TimeZoneSupport::ensureReferencedTimeZones($out);
 
         return $out->serialize();
     }

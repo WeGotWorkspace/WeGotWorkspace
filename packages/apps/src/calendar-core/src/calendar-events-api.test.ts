@@ -1,6 +1,11 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it, vi } from "vitest";
-import { resolveEventEnd, type CalendarEvent } from "@/lib/calendar-engine";
+import {
+  expandEvents,
+  isThisInstanceOverride,
+  resolveEventEnd,
+  type CalendarEvent,
+} from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import {
@@ -9,7 +14,11 @@ import {
   createCalendarEventsApi,
   liveHasRemappedOptimisticEvent,
   mergeOfflineCacheEvents,
+  persistCalendarEventChanges,
 } from "@/calendar-core/src/calendar-events-api";
+import { applyCalendarEventPatch } from "@/lib/offline/calendars/calendars-patch-merge";
+import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
+import { resolveEventMapKey } from "@/lib/calendar-elements/domain/events-api/resolveEventMapKey.js";
 
 function engineEvent(
   id: string,
@@ -296,6 +305,295 @@ describe("createCalendarEventsApi", () => {
         expect.objectContaining({ start: "2033-01-10T11:00:00" }),
       );
     });
+  });
+
+  it("addException patches recurrenceOverrides on the master instead of creating (#609)", async () => {
+    const operations = operationsStub();
+    const events = new Map<string, CalendarEvent>([
+      [
+        "ev-1",
+        {
+          eventId: "ev-1",
+          calendarId: "work",
+          isRecurring: true,
+          data: {
+            summary: "Daily",
+            start: Temporal.PlainDateTime.from("2033-01-10T10:00:00"),
+            duration: Temporal.Duration.from("PT30M"),
+            recurrenceRule: { freq: "DAILY", interval: 1, count: 3 },
+          },
+        },
+      ],
+    ]);
+    const context = createCalendarEventsApi({
+      getEvents: () => events,
+      calendars,
+      operations,
+    });
+
+    context.addException({
+      target: { key: "ev-1" },
+      recurrenceId: "20330111T100000",
+      event: {
+        start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-11T11:30:00"),
+        summary: "Daily",
+        calendarId: "work",
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(operations.patchEvent).toHaveBeenCalled();
+    });
+    expect(operations.createEvent).not.toHaveBeenCalled();
+    expect(operations.patchEvent).toHaveBeenCalledWith(
+      "ev-1",
+      expect.objectContaining({
+        recurrenceOverrides: expect.objectContaining({
+          "2033-01-11T10:00:00": expect.objectContaining({
+            start: "2033-01-11T11:00:00",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("moving a detached exception patches only that override, not the series start (#609)", async () => {
+    const operations = operationsStub();
+    const events = new Map<string, CalendarEvent>([
+      [
+        "ev-1",
+        {
+          eventId: "ev-1",
+          calendarId: "work",
+          isRecurring: true,
+          data: {
+            summary: "Daily",
+            start: Temporal.PlainDateTime.from("2033-01-10T10:00:00"),
+            duration: Temporal.Duration.from("PT30M"),
+            recurrenceRule: { freq: "DAILY", interval: 1, count: 3 },
+          },
+        },
+      ],
+    ]);
+    const context = createCalendarEventsApi({
+      getEvents: () => events,
+      calendars,
+      operations,
+    });
+
+    context.addException({
+      target: { key: "ev-1" },
+      recurrenceId: "20330111T100000",
+      event: {
+        start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-11T11:30:00"),
+        summary: "Daily",
+        calendarId: "work",
+      },
+    });
+    await vi.waitFor(() => {
+      expect(operations.patchEvent).toHaveBeenCalled();
+    });
+    vi.mocked(operations.patchEvent).mockClear();
+
+    context.move({
+      target: { key: "ev-1::20330111T100000" },
+      scope: "single",
+      delta: Temporal.Duration.from("PT2H"),
+    });
+
+    await vi.waitFor(() => {
+      expect(operations.patchEvent).toHaveBeenCalled();
+    });
+    expect(operations.createEvent).not.toHaveBeenCalled();
+    expect(operations.patchEvent).toHaveBeenCalledWith(
+      "ev-1",
+      expect.objectContaining({
+        recurrenceOverrides: expect.objectContaining({
+          "2033-01-11T10:00:00": expect.objectContaining({
+            start: "2033-01-11T13:00:00",
+          }),
+        }),
+      }),
+    );
+    const lastPatch = vi.mocked(operations.patchEvent).mock.calls.at(-1)?.[1];
+    expect(lastPatch?.start).toBeUndefined();
+  });
+
+  it("second exception move still excludes the original rid after persist+reload", async () => {
+    const range = {
+      start: Temporal.PlainDateTime.from("2033-01-10T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-13T00:00:00"),
+    };
+    const masterWire = {
+      "@type": "Event",
+      id: "ev-1",
+      uid: "urn:uuid:ev-1",
+      title: "Daily",
+      start: "2033-01-10T10:00:00",
+      duration: "PT30M",
+      calendarIds: { work: true },
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+    } as JmapCalendarEvent;
+
+    let wire = masterWire;
+    const operations = operationsStub();
+    vi.mocked(operations.patchEvent).mockImplementation(async (_id, patch) => {
+      wire = applyCalendarEventPatch(wire, patch);
+      return wire;
+    });
+
+    const overlay: { current?: Map<string, CalendarEvent> } = {};
+    const context = createCalendarEventsApi({
+      getEvents: () => overlay.current ?? calendarEventsToEngineMap([wire]),
+      calendars,
+      operations,
+      onEventsChanged: (events) => {
+        overlay.current = events;
+      },
+    });
+
+    context.addException({
+      target: { key: "ev-1" },
+      recurrenceId: "20330111T100000",
+      event: {
+        start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-11T11:30:00"),
+        summary: "Daily",
+        calendarId: "work",
+      },
+    });
+    await vi.waitFor(() => expect(operations.patchEvent).toHaveBeenCalled());
+    context.replaceEvents(calendarEventsToEngineMap([wire]));
+
+    const afterFirst = expandEvents(context.getEvents(), range);
+    expect([...afterFirst.values()].map((event) => event.data.start.toString()).sort()).toEqual([
+      "2033-01-10T10:00:00",
+      "2033-01-11T11:00:00",
+      "2033-01-12T10:00:00",
+    ]);
+
+    const eventKey = resolveEventMapKey(context.getEvents(), {
+      eventId: "ev-1",
+      recurrenceId: "20330111T110000",
+    });
+    vi.mocked(operations.patchEvent).mockClear();
+    context.move({
+      target: { key: eventKey ?? "ev-1" },
+      scope: "single",
+      delta: Temporal.Duration.from("PT2H"),
+    });
+    await vi.waitFor(() => expect(operations.patchEvent).toHaveBeenCalled());
+    context.replaceEvents(calendarEventsToEngineMap([wire]));
+
+    const afterSecond = expandEvents(context.getEvents(), range);
+    expect([...afterSecond.values()].map((event) => event.data.start.toString()).sort()).toEqual([
+      "2033-01-10T10:00:00",
+      "2033-01-11T13:00:00",
+      "2033-01-12T10:00:00",
+    ]);
+    expect(wire.start).toBe("2033-01-10T10:00:00");
+    expect(wire.recurrenceOverrides?.["2033-01-11T10:00:00"]).toEqual(
+      expect.objectContaining({ start: "2033-01-11T13:00:00" }),
+    );
+  });
+
+  it("persists a :: occurrence row as overrides when isThisInstanceOverride is false", async () => {
+    const operations = operationsStub();
+    const master: CalendarEvent = {
+      eventId: "ev-1",
+      calendarId: "work",
+      isRecurring: true,
+      data: {
+        summary: "Daily",
+        start: Temporal.PlainDateTime.from("2033-01-10T10:00:00"),
+        duration: Temporal.Duration.from("PT30M"),
+        recurrenceRule: { freq: "DAILY", interval: 1, count: 3 },
+        exclusionDates: new Set(["20330111T100000"]),
+      },
+    };
+    const exception: CalendarEvent = {
+      eventId: "ev-1",
+      calendarId: "work",
+      recurrenceId: "20330111T100000",
+      data: {
+        summary: "Daily",
+        start: Temporal.PlainDateTime.from("2033-01-11T13:00:00"),
+        duration: Temporal.Duration.from("PT30M"),
+        recurrenceRule: { freq: "DAILY", interval: 1, count: 3 },
+        exclusionDates: new Set(["20330111T100000"]),
+      },
+    };
+    const nextState = new Map<string, CalendarEvent>([
+      ["ev-1", master],
+      ["ev-1::20330111T100000", exception],
+    ]);
+    expect(isThisInstanceOverride(nextState, "ev-1::20330111T100000")).toBe(false);
+
+    await persistCalendarEventChanges(operations, {
+      nextState,
+      changes: [
+        { type: "updated", key: "ev-1::20330111T100000", before: exception, after: exception },
+      ],
+      effects: [],
+    });
+
+    expect(operations.createEvent).not.toHaveBeenCalled();
+    expect(operations.patchEvent).toHaveBeenCalledWith(
+      "ev-1",
+      expect.objectContaining({
+        recurrenceOverrides: expect.objectContaining({
+          "2033-01-11T10:00:00": expect.objectContaining({
+            start: "2033-01-11T13:00:00",
+          }),
+        }),
+      }),
+    );
+    expect(vi.mocked(operations.patchEvent).mock.calls.at(-1)?.[1]?.start).toBeUndefined();
+  });
+
+  it("addExclusion patches excluded recurrenceOverrides on the master (#609)", async () => {
+    const operations = operationsStub();
+    const events = new Map<string, CalendarEvent>([
+      [
+        "ev-1",
+        {
+          eventId: "ev-1",
+          calendarId: "work",
+          isRecurring: true,
+          data: {
+            summary: "Daily",
+            start: Temporal.PlainDateTime.from("2033-01-10T10:00:00"),
+            duration: Temporal.Duration.from("PT30M"),
+            recurrenceRule: { freq: "DAILY", interval: 1, count: 3 },
+          },
+        },
+      ],
+    ]);
+    const context = createCalendarEventsApi({
+      getEvents: () => events,
+      calendars,
+      operations,
+    });
+
+    context.addExclusion({
+      target: { key: "ev-1" },
+      recurrenceId: "20330111T100000",
+    });
+
+    await vi.waitFor(() => {
+      expect(operations.patchEvent).toHaveBeenCalled();
+    });
+    expect(operations.createEvent).not.toHaveBeenCalled();
+    expect(operations.patchEvent).toHaveBeenCalledWith(
+      "ev-1",
+      expect.objectContaining({
+        recurrenceOverrides: {
+          "2033-01-11T10:00:00": { excluded: true },
+        },
+      }),
+    );
   });
 
   it("routes patch and delete through hybrid operations", async () => {

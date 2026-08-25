@@ -867,6 +867,61 @@ describe("useCalendarController recurring scopes", () => {
     expect(createEvent).not.toHaveBeenCalled();
   });
 
+  it("saveEditor skips the scope dialog when the occurrence is already an exception", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn();
+    const standup = bootstrap.data.events.find((event) => event.id === "standup");
+    expect(standup).toBeDefined();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: {
+          ...bootstrap.data,
+          events: bootstrap.data.events.map((event) =>
+            event.id === "standup"
+              ? {
+                  ...event,
+                  recurrenceOverrides: {
+                    "2033-01-12T09:30:00": { title: "Standup (moved)" },
+                  },
+                }
+              : event,
+          ),
+        },
+        operations: { createEvent, patchEvent, deleteEvent: vi.fn() },
+      }),
+    );
+
+    await openRecurringEditor(result);
+    act(() => {
+      result.current.setEditorForm({
+        ...result.current.editor!.form,
+        title: "Standup (moved again)",
+      });
+    });
+
+    vi.useFakeTimers();
+    act(() => {
+      result.current.saveEditor();
+    });
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    vi.useRealTimers();
+
+    expect(result.current.recurrenceScopeDialog).toBeNull();
+    await vi.waitFor(() => {
+      expect(patchEvent).toHaveBeenCalledWith(
+        "standup",
+        expect.objectContaining({
+          recurrenceOverrides: expect.objectContaining({
+            "2033-01-12T09:30:00": expect.objectContaining({ title: "Standup (moved again)" }),
+          }),
+        }),
+      );
+    });
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
   it("openEditEventKey prefills occurrence wall times from recurrenceId without surface rows", async () => {
     const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
 
@@ -1744,5 +1799,43 @@ describe("useCalendarController create calendar directory", () => {
     });
     expect(unpublishCalendarFeed).toHaveBeenCalledWith("default");
     expect(result.current.publishFeed).toBeNull();
+  });
+});
+
+describe("useCalendarController ICS import", () => {
+  it("adds a created import destination to the sidebar calendars", async () => {
+    const createCalendar = vi.fn().mockResolvedValue({
+      id: "travel",
+      name: "Travel",
+      color: "#22c55e",
+      mayWrite: true,
+    });
+    const importEvents = vi.fn().mockResolvedValue({ list: [{ id: "imported-1" }], errors: [] });
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          createCalendar,
+          importEvents,
+        },
+      }),
+    );
+
+    const file = new File(["BEGIN:VCALENDAR"], "events.ics");
+    act(() => {
+      result.current.beginImport(file);
+    });
+    await act(async () => {
+      result.current.submitImportDialog(file, {
+        mode: "create",
+        name: "Travel",
+        color: "#22c55e",
+      });
+    });
+
+    expect(result.current.calendars.some((calendar) => calendar.id === "travel")).toBe(true);
   });
 });

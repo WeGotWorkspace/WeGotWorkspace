@@ -54,7 +54,7 @@ CalDAV stores one `.ics` blob per `calendarobjects` row. The REST API maps each 
 | GEO | `locations.coordinates` |
 | URL | `links` |
 | ATTACH | `attachments` (href) + `icsProps` fallback |
-| VTIMEZONE | `timeZones` map (`icsDefinition` for round-trip) |
+| VTIMEZONE | `timeZones` map (`icsDefinition` for round-trip). Bare IANA `timeZone` without `icsDefinition` synthesizes a VTIMEZONE so every TZID stays RFC 5545 valid. |
 | ATTENDEE ROLE/CUTYPE/RSVP/DELEGATED | `participants` scheduling fields |
 
 Clients expand recurrence locally for display unless `expandRecurrences=true` on list (#159).

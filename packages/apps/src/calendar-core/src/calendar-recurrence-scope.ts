@@ -1,12 +1,15 @@
 import { Temporal } from "@js-temporal/polyfill";
 import {
+  expandRecurringStarts,
   parseRecurrenceId,
+  splitOccurrenceKey,
   type CalendarEvent as EngineCalendarEvent,
   type CalendarEventsMap,
 } from "@/lib/calendar-engine";
 import {
   collectInternalGroup,
   internalGroupToJmapEvent,
+  jsRecurrenceRuleToInternal,
   type JmapCalendarEvent,
   type JSCalendarPatchObject,
   type JSCalendarRecurrenceRule,
@@ -19,6 +22,8 @@ import {
   freeBusyStatusFromWire,
 } from "@/calendar-core/src/calendar-alerts";
 import { formRecurrenceRules, formToDraft } from "@/calendar-core/src/calendar-editor-model";
+
+export { splitOccurrenceKey };
 
 /** User choice for editing/moving/resizing a recurring occurrence. */
 export type RecurrenceEditScope = "thisInstance" | "thisAndFuture";
@@ -42,13 +47,6 @@ export type RecurrenceScopeRequest = {
   description?: string;
 };
 
-/** Engine keys detached exceptions / expanded occurrences as `${masterId}::${recurrenceId}`. */
-export function splitOccurrenceKey(key: string): { masterId: string; recurrenceId?: string } {
-  const separator = key.indexOf("::");
-  if (separator === -1) return { masterId: key };
-  return { masterId: key.slice(0, separator), recurrenceId: key.slice(separator + 2) };
-}
-
 /**
  * Resolve a recurring series master whether `masterId` is the engine/JMAP map
  * key or the JSCalendar `uid` (Lit update envelopes historically used `eventId` = uid).
@@ -70,7 +68,7 @@ export function resolveRecurrenceMasterRef(
 
   if (!masterEngine && surfaceEvents) {
     for (const [key, event] of surfaceEvents) {
-      if (key.includes("::")) continue;
+      if (splitOccurrenceKey(key).recurrenceId) continue;
       if (event.eventId === masterId) {
         masterEngine = event;
         masterKey = key;
@@ -88,6 +86,34 @@ export function resolveRecurrenceMasterRef(
 
 export function eventIsRecurringSeries(event: Pick<JmapCalendarEvent, "recurrenceRules">): boolean {
   return Boolean(event.recurrenceRules && event.recurrenceRules.length > 0);
+}
+
+function overridePatchForOccurrence(
+  original: Pick<JmapCalendarEvent, "recurrenceOverrides" | "showWithoutTime" | "start">,
+  recurrenceId: string,
+): JSCalendarPatchObject | undefined {
+  const allDay = Boolean(original.showWithoutTime);
+  const local = toLocalRecurrenceId(recurrenceId, allDay, original.start);
+  const overrides = original.recurrenceOverrides;
+  if (!overrides) return undefined;
+  const patch = overrides[local] ?? overrides[recurrenceId];
+  return patch && typeof patch === "object" ? patch : undefined;
+}
+
+/**
+ * True when this occurrence is already a detached this-instance exception
+ * (a non-exclusion recurrenceOverrides patch). Later edits skip the scope dialog.
+ */
+export function occurrenceHasThisInstanceOverride(
+  original:
+    | Pick<JmapCalendarEvent, "recurrenceOverrides" | "showWithoutTime" | "start">
+    | undefined,
+  recurrenceId: string,
+): boolean {
+  if (!original) return false;
+  const patch = overridePatchForOccurrence(original, recurrenceId);
+  if (!patch) return false;
+  return patch.excluded !== true;
 }
 
 /**
@@ -125,7 +151,25 @@ export function untilBeforeRecurrenceId(
   const local = toLocalRecurrenceId(recurrenceId, allDay, templateStart);
   const normalized = local.includes("T") ? local : `${local}T00:00:00`;
   try {
-    const instant = Temporal.PlainDateTime.from(normalized.replace(/Z$/, ""));
+    let instant = Temporal.PlainDateTime.from(normalized.replace(/Z$/, ""));
+    // A moved wall clock (second drag / this-and-future destination) is not a
+    // series slot. Truncate before the original DTSTART time on that date so
+    // the master does not keep emitting the cut occurrence (or the next day).
+    if (!allDay && templateStart) {
+      const template = recurrenceIdAsPlainDateTime(templateStart, false, templateStart);
+      if (
+        template &&
+        (instant.hour !== template.hour ||
+          instant.minute !== template.minute ||
+          instant.second !== template.second)
+      ) {
+        instant = instant.with({
+          hour: template.hour,
+          minute: template.minute,
+          second: template.second,
+        });
+      }
+    }
     if (allDay) {
       return instant.toPlainDate().subtract({ days: 1 }).toString();
     }
@@ -440,11 +484,80 @@ export function forkSeriesDraftFromForm(
   if (!baseRule) {
     return withOverrides(draft);
   }
-  const { until: _until, count: _count, ...rest } = baseRule;
   return withOverrides({
     ...draft,
-    recurrenceRules: [rest],
+    recurrenceRules: [forkRecurrenceRule(baseRule, draft.start, form.allDay, options)],
   });
+}
+
+/**
+ * Occurrences still owed on the fork, including the split instance. `count`
+ * counted from the previous DTSTART — keeping it verbatim would add extra
+ * days after the cut; dropping it makes a finite series infinite.
+ */
+function remainingForkCount(
+  baseRule: JSCalendarRecurrenceRule,
+  forkStart: string,
+  allDay: boolean,
+  options?: ForkSeriesDraftOptions,
+): number | undefined {
+  if (baseRule.count === undefined) return undefined;
+  const templateStart = options?.templateStart ?? forkStart;
+  const splitId = options?.splitRecurrenceId ?? forkStart;
+  const seriesStart = recurrenceIdAsPlainDateTime(templateStart, allDay, templateStart);
+  const splitAt = recurrenceIdAsPlainDateTime(splitId, allDay, templateStart);
+  if (!seriesStart || !splitAt) return Math.max(1, baseRule.count);
+  const { count: _count, until: _until, ...ruleRest } = baseRule;
+  const internal = jsRecurrenceRuleToInternal(ruleRest);
+  if (!internal) return Math.max(1, baseRule.count);
+  const used = expandRecurringStarts(
+    {
+      data: {
+        start: seriesStart,
+        duration: Temporal.Duration.from(allDay ? "P1D" : "PT1H"),
+        recurrenceRule: internal,
+      },
+    } as EngineCalendarEvent,
+    seriesStart,
+    splitAt,
+  ).filter((start) => Temporal.PlainDateTime.compare(start, splitAt) < 0).length;
+  return Math.max(1, baseRule.count - used);
+}
+
+/**
+ * Continue the object being split (RFC 8984 this-and-future). Keep `until` when
+ * it still ends after the fork DTSTART so a later sibling series is not
+ * overlapped. Shift that until by the same wall-clock delta as DTSTART (a 10:00
+ * cutoff must stay a cutoff after the series moves to 09:00). Replace `count`
+ * with the remaining occurrences (including the split).
+ */
+function forkRecurrenceRule(
+  baseRule: JSCalendarRecurrenceRule,
+  forkStart: string,
+  allDay: boolean,
+  options?: ForkSeriesDraftOptions,
+): JSCalendarRecurrenceRule {
+  const remaining = remainingForkCount(baseRule, forkStart, allDay, options);
+  const withRemainingCount = (rule: JSCalendarRecurrenceRule): JSCalendarRecurrenceRule =>
+    remaining !== undefined ? { ...rule, count: remaining } : rule;
+  const { count: _count, until, ...rest } = baseRule;
+  if (!until) return withRemainingCount(rest);
+  const templateStart = options?.templateStart ?? forkStart;
+  let nextUntil = until;
+  if (options?.splitRecurrenceId) {
+    const from = recurrenceIdAsPlainDateTime(options.splitRecurrenceId, allDay, templateStart);
+    const to = recurrenceIdAsPlainDateTime(forkStart, allDay, templateStart);
+    const untilAt = recurrenceIdAsPlainDateTime(until, allDay, templateStart);
+    if (from && to && untilAt) {
+      nextUntil = formatLocalRecurrenceKey(untilAt.add(from.until(to)), allDay);
+    }
+  }
+  const untilAt = recurrenceIdAsPlainDateTime(nextUntil, allDay, forkStart);
+  const startAt = recurrenceIdAsPlainDateTime(forkStart, allDay, forkStart);
+  if (untilAt && startAt && Temporal.PlainDateTime.compare(untilAt, startAt) < 0) {
+    return withRemainingCount(rest);
+  }
+  return withRemainingCount({ ...rest, until: nextUntil });
 }
 
 /**

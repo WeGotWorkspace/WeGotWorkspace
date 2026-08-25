@@ -186,6 +186,8 @@ final class IcsJmapTaskConverterTest extends TestCase
 
         $roundTripIcs = $this->converter->icsFromTask($tasks[0]);
         $this->assertStringContainsString('TZID=Europe/Amsterdam', $roundTripIcs);
+        $this->assertStringContainsString('BEGIN:VTIMEZONE', $roundTripIcs);
+        $this->assertStringContainsString('TZID:Europe/Amsterdam', $roundTripIcs);
 
         $roundTrip = $this->reader->tasksFromIcs($roundTripIcs);
         $this->assertSame('Europe/Amsterdam', $roundTrip[0]['timeZone']);

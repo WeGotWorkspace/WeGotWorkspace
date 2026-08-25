@@ -61,6 +61,21 @@ describe("calendar workspace sidebar overlay", () => {
   });
 });
 
+describe("calendar workspace ICS import", () => {
+  it("opens the native file picker before the import dialog", () => {
+    expect(tsx).toMatch(/type="file"/);
+    expect(tsx).toMatch(/accept=\{ICS_FILE_ACCEPT\}/);
+    expect(tsx).toMatch(/icsFileInputRef\.current\?\.click\(\)/);
+    const importHandler = tsx.match(
+      /onImportEvents=\{\s*canImportEvents\s*\?([\s\S]*?):\s*undefined/,
+    )?.[1];
+    expect(importHandler).toBeDefined();
+    expect(importHandler).toMatch(/icsFileInputRef/);
+    expect(importHandler).not.toMatch(/openImportDialog\(\)/);
+    expect(tsx).toMatch(/file=\{importFile\}/);
+  });
+});
+
 describe("calendar workspace sidebar heading", () => {
   it("does not render Plus or subscribe icon buttons on the My calendars heading", () => {
     expect(tsx).toMatch(/<SidebarSection title=\{L\.myCalendarsSection\}>/);
