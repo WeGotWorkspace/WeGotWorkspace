@@ -25,6 +25,7 @@ import {
   fromUpdateRequest,
   moveFromUpdateRequest,
 } from "../domain/events-api/adapters.js";
+import { resolveEventMapKey } from "../domain/events-api/resolveEventMapKey.js";
 import type {
   CalendarEventPendingByCalendarId,
   CalendarEventPendingByOperation,
@@ -281,7 +282,7 @@ export abstract class CalendarViewBase extends BaseElement {
   }> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return { handled: false, accepted: true };
     const events = this.#viewMapFromContext(this.#eventsAPI);
-    const eventKey = this.#resolveEventMapKey(events, detail.envelope);
+    const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return { handled: false, accepted: true };
     const current = events.get(eventKey);
     if (!current) return { handled: false, accepted: true };
@@ -415,7 +416,7 @@ export abstract class CalendarViewBase extends BaseElement {
   ): Promise<boolean> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return false;
     const events = this.#viewMapFromContext(this.#eventsAPI);
-    const eventKey = this.#resolveEventMapKey(events, detail.envelope);
+    const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return false;
     const current = events.get(eventKey);
     if (!current) return false;
@@ -693,25 +694,6 @@ export abstract class CalendarViewBase extends BaseElement {
     const result = this.#eventsAPI.apply(operation);
     this.events = result.nextState;
     return result;
-  }
-
-  #resolveEventMapKey(
-    events: EventsMap,
-    envelope: { eventId?: string; accountId?: string; calendarId?: string; recurrenceId?: string },
-  ): string | undefined {
-    if (!envelope.eventId) return undefined;
-    if (events.has(envelope.eventId)) return envelope.eventId;
-    let fallbackSeriesKey: string | undefined;
-    for (const [key, event] of events.entries()) {
-      if (event.eventId !== envelope.eventId) continue;
-      if (envelope.calendarId !== undefined && event.calendarId !== envelope.calendarId) continue;
-      if (envelope.accountId !== undefined && event.accountId !== envelope.accountId) continue;
-      if (envelope.recurrenceId === undefined || event.recurrenceId === envelope.recurrenceId)
-        return key;
-      if (event.recurrenceId === undefined && fallbackSeriesKey === undefined)
-        fallbackSeriesKey = key;
-    }
-    return fallbackSeriesKey;
   }
 
   #toPlainDateTime(value: Temporal.PlainDateTime): Temporal.PlainDateTime {
