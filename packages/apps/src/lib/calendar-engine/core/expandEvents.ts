@@ -48,7 +48,9 @@ export function expandEvents(
       for (const occurrenceStart of occurrenceStarts) {
         const recurrenceId = toRecurrenceId(occurrenceStart, event.data.allDay ?? false);
         const hasDetachedException =
-          Boolean(event.eventId) && detachedExceptionKeys.has(`${event.eventId}::${recurrenceId}`);
+          detachedExceptionKeys.has(`${id}::${recurrenceId}`) ||
+          (Boolean(event.eventId) &&
+            detachedExceptionKeys.has(`${event.eventId}::${recurrenceId}`));
         if (hasDetachedException) continue;
         const occurrenceStartMs = plainDateTimeToUtcMs(occurrenceStart);
         const occurrenceEndMs = occurrenceStartMs + durationMs;

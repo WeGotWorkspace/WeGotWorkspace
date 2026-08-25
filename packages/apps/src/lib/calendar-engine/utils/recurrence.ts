@@ -93,10 +93,13 @@ export function isExcludedOccurrence(master: CalendarEvent, recurrenceId: string
 
 export function collectDetachedExceptionKeys(events: CalendarEventsMap): Set<string> {
   const detachedExceptionKeys = new Set<string>();
-  for (const [, event] of events) {
+  for (const [key, event] of events) {
     if (event.pendingOp === "deleted") continue;
-    if (!event.eventId || !event.recurrenceId) continue;
-    detachedExceptionKeys.add(occurrenceMapKey(event.eventId, event.recurrenceId));
+    const { masterId, recurrenceId: keyRid } = splitOccurrenceKey(key);
+    const recurrenceId = event.recurrenceId ?? keyRid;
+    if (!recurrenceId) continue;
+    detachedExceptionKeys.add(occurrenceMapKey(masterId, recurrenceId));
+    if (event.eventId) detachedExceptionKeys.add(occurrenceMapKey(event.eventId, recurrenceId));
   }
   return detachedExceptionKeys;
 }
