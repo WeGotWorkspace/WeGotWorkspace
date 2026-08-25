@@ -14,7 +14,12 @@ import {
   formToDraft,
   formToFullPatch,
 } from "@/calendar-core/src/calendar-editor-model";
-import type { CalendarAPIOperations, CalendarInfo } from "@/calendar-core/src/calendar-types";
+import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
+import type {
+  CalendarAPIOperations,
+  CalendarEventPatch,
+  CalendarInfo,
+} from "@/calendar-core/src/calendar-types";
 
 const OFFLINE_ACCOUNT_ID = "offline";
 
@@ -227,12 +232,41 @@ function remapOverlayKeys(
   return next;
 }
 
+function isOccurrenceKey(key: string): boolean {
+  return key.includes("::");
+}
+
+function patchFromEngineEvent(
+  events: CalendarEventsMap,
+  masterKey: string,
+  event: CalendarEvent,
+): CalendarEventPatch {
+  const patch = formToFullPatch(engineEventToForm(event));
+  const overrides = recurrenceOverridesFromEngineMap(events, masterKey);
+  if (overrides) patch.recurrenceOverrides = overrides;
+  return patch;
+}
+
 export async function persistCalendarEventChanges(
   operations: CalendarAPIOperations,
   result: ApplyResult,
 ): Promise<Map<string, string>> {
   const remaps = new Map<string, string>();
   for (const change of result.changes) {
+    // Detached exceptions persist as JSCalendar recurrenceOverrides on the master
+    // — never as a second CalendarEvent (that paints the original + the override).
+    if (isOccurrenceKey(change.key)) {
+      const masterKey = persistEventId(change.key);
+      const masterAlsoWritten = result.changes.some(
+        (entry) => entry.key === masterKey && entry.type !== "removed",
+      );
+      if (masterAlsoWritten || change.type === "removed") continue;
+      const overrides = recurrenceOverridesFromEngineMap(result.nextState, masterKey);
+      if (overrides) {
+        await operations.patchEvent(masterKey, { recurrenceOverrides: overrides });
+      }
+      continue;
+    }
     if (change.type === "created") {
       const draft = formToDraft(engineEventToForm(change.event));
       if (!draft.calendarId) continue;
@@ -252,7 +286,10 @@ export async function persistCalendarEventChanges(
         await operations.deleteEvent(eventId);
         continue;
       }
-      await operations.patchEvent(eventId, formToFullPatch(engineEventToForm(change.after)));
+      await operations.patchEvent(
+        eventId,
+        patchFromEngineEvent(result.nextState, change.key, change.after),
+      );
       continue;
     }
     await operations.deleteEvent(persistEventId(change.key));
