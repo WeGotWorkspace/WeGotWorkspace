@@ -39,11 +39,13 @@ describe("calendar subscription helpers", () => {
     expect(isSubscribedCalendar(subscribed)).toBe(true);
   });
 
-  it("allows publish only on owned personal writable calendars", () => {
+  it("allows publish for personal owners and group members with mayShare", () => {
     expect(canPublishCalendar(personal)).toBe(true);
+    expect(canPublishCalendar({ ...personal, mayShare: true })).toBe(true);
     expect(canPublishCalendar(subscribed)).toBe(false);
     expect(canPublishCalendar(group)).toBe(false);
-    expect(canPublishCalendar({ ...personal, mayWrite: false })).toBe(false);
+    expect(canPublishCalendar({ ...group, mayShare: true })).toBe(true);
+    expect(canPublishCalendar({ ...personal, mayShare: false })).toBe(false);
   });
 
   it("never picks a subscribed calendar for create", () => {

@@ -130,6 +130,30 @@ export async function removeCalendarEventFromCache(
   await calendarsEventsTable(db).delete(eventId);
 }
 
+export async function upsertCalendarInCache(
+  username: string,
+  calendar: CalendarInfo,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await calendarsCalendarsTable(db).put({
+    id: calendar.id,
+    data: JSON.stringify(calendar),
+  });
+}
+
+export async function removeCalendarFromCache(username: string, calendarId: string): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await calendarsCalendarsTable(db).delete(calendarId);
+}
+
+export async function listCachedEventsForCalendar(
+  username: string,
+  calendarId: string,
+): Promise<OfflineCalendarEventRow[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return calendarsEventsTable(db).where("calendarId").equals(calendarId).toArray();
+}
+
 export async function readCalendarSyncToken(
   username: string,
   scope: string,

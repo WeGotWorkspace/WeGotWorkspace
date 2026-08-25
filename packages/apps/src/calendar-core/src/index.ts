@@ -4,6 +4,16 @@ export { CalendarConflictDialog } from "./calendar-conflict-dialog";
 export type { CalendarConflictDialogProps } from "./calendar-conflict-dialog";
 export { CalendarWorkspace } from "./calendar-workspace";
 export type { CalendarWorkspaceProps } from "./calendar-workspace-props";
+export {
+  calendarInfoFromJmap,
+  calendarRightsAllowWrite,
+  isSharedWithMeCalendar,
+} from "./calendar-share";
+export type {
+  CalendarSharePrincipal,
+  CalendarShareRights,
+  CalendarShareWith,
+} from "./calendar-types";
 export { useCalendarAPI } from "./use-calendar-api";
 export { createDefaultCalendarApiSource } from "./calendar-api-source";
 export type { CalendarApiSource } from "./calendar-api-source";
@@ -16,6 +26,12 @@ export type {
   CalendarUIData,
   CalendarViewId,
 } from "./calendar-types";
+export {
+  canManageCalendarSharing,
+  canWriteCalendarCollection,
+  isCalendarCollectionOwner,
+  isCalendarEventFormReadOnly,
+} from "./calendar-collection-write";
 export {
   defaultCalendarLabels,
   mergeCalendarLabels,

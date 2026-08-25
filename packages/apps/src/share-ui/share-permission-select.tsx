@@ -40,6 +40,7 @@ export function SharePermissionSelect({
       icon: PERMISSION_ICONS[permission],
     })),
   ];
+  const selectedLabel = options.find((option) => option.value === value)?.label;
 
   return (
     <ShareRowSelect
@@ -48,6 +49,7 @@ export function SharePermissionSelect({
       disabled={disabled}
       title={title}
       className={className}
+      aria-label={selectedLabel ?? title}
       onChange={onChange}
     />
   );

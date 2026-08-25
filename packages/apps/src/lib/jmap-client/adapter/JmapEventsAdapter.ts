@@ -1,6 +1,6 @@
 import { type CalendarAccounts, type CalendarsMap } from "@/lib/calendar-engine";
 import { type DateRange, JmapCalendarsClient } from "../calendars/JmapCalendarsClient.js";
-import type { JmapCalendarEvent } from "../calendars/types.js";
+import type { JmapCalendar, JmapCalendarEvent } from "../calendars/types.js";
 import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import type { JmapId } from "../core/types.js";
@@ -20,6 +20,8 @@ export type JmapEventsAdapterOptions = {
   /** Inbound `/changes` ingest: write Dexie, skip pending outbox rows. */
   onRemoteEvent?: (event: JmapCalendarEvent) => void;
   onRemoteEventDestroyed?: (eventId: JmapId) => void;
+  onRemoteCalendar?: (calendar: JmapCalendar) => void;
+  onRemoteCalendarDestroyed?: (calendarId: JmapId) => void;
 };
 
 /**
@@ -101,9 +103,13 @@ export class JmapEventsAdapter {
               calendar.id,
               jmapCalendarToInternal(calendar, { accountId: this.accountId }),
             );
+            this.#options.onRemoteCalendar?.(calendar);
           }
         }
-        for (const id of changes.destroyed) this.#calendarsMap.delete(id);
+        for (const id of changes.destroyed) {
+          this.#calendarsMap.delete(id);
+          this.#options.onRemoteCalendarDestroyed?.(id);
+        }
       }
 
       const eventState = client.getState(this.accountId, CALENDAR_EVENT_TYPE);

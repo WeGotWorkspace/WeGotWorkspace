@@ -948,4 +948,75 @@ describe("CalendarEventDialog", () => {
     expect(screen.getByRole("combobox", { name: defaultCalendarLabels.rsvpLabel })).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
   });
+
+  it("lets a group member save and delete another member's event", () => {
+    const form = {
+      ...emptyCalendarEventForm("group-editorial", "2033-01-12"),
+      title: "Standup",
+      location: "Room A",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const { onChange } = renderDialog({
+      form,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onDelete: vi.fn(),
+    });
+
+    const title = screen.getByDisplayValue("Standup");
+    expect(title).toHaveProperty("disabled", false);
+    fireEvent.change(title, { target: { value: "Weekly standup" } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Weekly standup" }));
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: defaultCalendarLabels.rsvpLabel })).toBeNull();
+  });
+
+  it("lets a write-share recipient save and delete an event they did not organize", () => {
+    const calendars = bootstrap.data.calendars.map((calendar) =>
+      calendar.id === "default" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,
+    );
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted" as const,
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({
+      form,
+      calendars,
+      mode: "edit",
+      sessionEmail: "carol@example.test",
+      onDelete: vi.fn(),
+    });
+
+    expect(screen.getByDisplayValue("Standup")).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
+  });
 });

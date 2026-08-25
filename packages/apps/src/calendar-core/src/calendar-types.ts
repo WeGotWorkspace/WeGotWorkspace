@@ -1,4 +1,23 @@
 import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { SharePrincipalKind } from "@/share-ui/share-principal-mark";
+
+/** OpenAPI CalendarRights, plus draft `mayWriteAll` when a client sends RFC-shaped grants. */
+export type CalendarShareRights = {
+  mayRead?: boolean;
+  mayWrite?: boolean;
+  mayWriteAll?: boolean;
+  mayShare?: boolean;
+  mayDelete?: boolean;
+};
+
+export type CalendarShareWith = Record<string, CalendarShareRights | null>;
+
+export type CalendarSharePrincipal = {
+  id: string;
+  displayName: string;
+  principalType: SharePrincipalKind;
+  memberCount?: number;
+};
 import type {
   CalendarSchedulingNotification,
   CalendarSchedulingRespondOptions,
@@ -31,6 +50,8 @@ export type CalendarInfo = {
   isDefault?: boolean;
   mayWrite?: boolean;
   mayDelete?: boolean;
+  /** Personal owners are true; group/sharee collections are false. Omitted = owner on personal. */
+  mayShare?: boolean;
   scope?: "personal" | "group";
   groupSlug?: string | null;
   /**
@@ -40,6 +61,8 @@ export type CalendarInfo = {
   subscriptionId?: string | null;
   /** Normalized source URL from GET /calendars/subscriptions/{id}; UI-only cache. */
   subscriptionUrl?: string;
+  /** Owner map of username / `groups/{slug}` → rights. Recipients see null. */
+  shareWith?: CalendarShareWith | null;
 };
 
 export type CalendarUIData = {
@@ -107,6 +130,7 @@ export type CalendarDraft = {
 export type CalendarPatch = {
   name?: string;
   color?: string;
+  shareWith?: CalendarShareWith | null;
 };
 
 export type CalendarSubscriptionDraft = {
@@ -156,4 +180,5 @@ export type CalendarAPIOperations = {
   ) => Promise<void>;
   dismissSchedulingNotification?: (notificationId: string) => Promise<void>;
   listInvitees?: () => Promise<{ list: CalendarInvitee[]; canSubmitEmail: boolean }>;
+  searchSharePrincipals?: (query: string) => Promise<CalendarSharePrincipal[]>;
 };

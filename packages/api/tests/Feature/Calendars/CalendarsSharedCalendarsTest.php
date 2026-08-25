@@ -146,6 +146,41 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
         $this->assertTrue($event['calendarIds'][$calendarId]);
     }
 
+    public function test_group_member_can_update_and_delete_another_members_event(): void
+    {
+        $carol = Principal::forUsername('carol');
+        $this->assertNotNull($carol);
+        $team = Principal::query()->where('uri', 'principals/groups/'.self::TEAM)->first();
+        $this->assertNotNull($team);
+        $this->addPrincipalToGroup($team, $carol);
+
+        $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);
+        $eventId = (string) $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['e' => array_merge(
+                $this->sampleCalendarEventPayload($calendarId),
+                ['title' => 'Bob wrote this'],
+            )]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.e.id');
+
+        $updated = $this->jmapAs('carol', [
+            ['CalendarEvent/set', ['accountId' => 'carol', 'update' => [$eventId => [
+                'title' => 'Carol edited Bob\'s event',
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertArrayHasKey($eventId, $updated['updated']);
+        $this->assertArrayNotHasKey($eventId, $updated['notUpdated']);
+
+        $event = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('Carol edited Bob\'s event', $event['title']);
+
+        $destroyed = $this->jmapAs('carol', [
+            ['CalendarEvent/set', ['accountId' => 'carol', 'destroy' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame([$eventId], $destroyed['destroyed']);
+    }
+
     public function test_jmap_calendar_set_updates_group_calendar_name_and_color(): void
     {
         $calendarId = CalendarCollectionUris::groupCalendarApiId(self::TEAM);

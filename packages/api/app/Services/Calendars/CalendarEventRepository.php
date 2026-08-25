@@ -581,6 +581,7 @@ final class CalendarEventRepository
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);
         $this->assertAcceptsEventWrites($username, $instance);
+        $this->calendars->assertEventWritable($instance);
 
         return DB::connection('wgw')->transaction(function () use ($username, $payload, $instance): array {
             CalendarInstance::query()->whereKey($instance->getKey())->lockForUpdate()->first();
@@ -812,6 +813,7 @@ final class CalendarEventRepository
     private function finishDelete(string $username, array $located): array
     {
         $instance = $located['instance'];
+        $this->calendars->assertEventWritable($instance);
         $object = $located['object'];
         $eventUri = (string) $object->uri;
         $veventUid = $located['veventUid'];
@@ -887,6 +889,7 @@ final class CalendarEventRepository
 
             $instance = $located['instance'];
             $this->assertAcceptsEventWrites($username, $instance);
+            $this->calendars->assertEventWritable($instance);
             $object = $located['object'];
             $eventUri = (string) $object->uri;
             $existingEvent = $this->mapper->toCalendarEvent(
@@ -912,6 +915,7 @@ final class CalendarEventRepository
                 $eventPayload['uid'] = $existingEvent['uid'] ?? $eventPayload['uid'] ?? null;
             }
             $targetInstance = $this->resolvePatchTargetCalendar($username, $payload, $instance);
+            $this->calendars->assertEventWritable($targetInstance);
             $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($targetInstance) => true];
 
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;

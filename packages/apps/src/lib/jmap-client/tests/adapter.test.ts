@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { JmapEventsAdapter } from "../adapter/JmapEventsAdapter.js";
-import type { JmapCalendarEvent } from "../calendars/types.js";
+import type { JmapCalendar, JmapCalendarEvent } from "../calendars/types.js";
 import { JmapClient } from "../core/JmapClient.js";
 import { personalCalendar, recurringEvent, timedEvent, workCalendar } from "../mock/fixtures.js";
 import { MockJmapServer } from "../mock/MockJmapServer.js";
@@ -15,6 +15,8 @@ async function makeAdapter(
   hooks: {
     onRemoteEvent?: (event: JmapCalendarEvent) => void;
     onRemoteEventDestroyed?: (eventId: string) => void;
+    onRemoteCalendar?: (calendar: JmapCalendar) => void;
+    onRemoteCalendarDestroyed?: (calendarId: string) => void;
   } = {},
 ) {
   const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch });
@@ -22,6 +24,8 @@ async function makeAdapter(
     client,
     onRemoteEvent: hooks.onRemoteEvent,
     onRemoteEventDestroyed: hooks.onRemoteEventDestroyed,
+    onRemoteCalendar: hooks.onRemoteCalendar,
+    onRemoteCalendarDestroyed: hooks.onRemoteCalendarDestroyed,
   });
   await adapter.initialize(MARCH);
   return adapter;
@@ -97,5 +101,34 @@ describe("JmapEventsAdapter sync", () => {
     expect(titlesById.get(remoteId)).toBe("Remote event");
     expect(destroyed).toContain("ev-recurring");
     expect(titlesById.has("ev-recurring")).toBe(false);
+  });
+
+  it("forwards remote calendar creates and destroys via Calendar/changes", async () => {
+    const server = new MockJmapServer();
+    seedServer(server);
+    const created: string[] = [];
+    const destroyed: string[] = [];
+    const adapter = await makeAdapter(server, {
+      onRemoteCalendar: (calendar) => {
+        created.push(calendar.id);
+      },
+      onRemoteCalendarDestroyed: (calendarId) => {
+        destroyed.push(calendarId);
+      },
+    });
+
+    const sharedId = server.remoteCreateCalendar({
+      id: "cal-shared",
+      name: "Shared",
+      color: "#f59e0b",
+    });
+    server.remoteDestroyCalendar("cal-personal");
+
+    await adapter.sync();
+
+    expect(created).toContain(sharedId);
+    expect(destroyed).toContain("cal-personal");
+    expect(adapter.getCalendars().has("cal-personal")).toBe(false);
+    expect(adapter.getCalendars().has(sharedId)).toBe(true);
   });
 });

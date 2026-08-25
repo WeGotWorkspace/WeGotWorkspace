@@ -12,6 +12,10 @@
   @apply min-w-0 flex-[1_1_85%];
 }
 
+.calendar-calendar-dialog__share {
+  @apply mt-4;
+}
+
 .calendar-calendar-dialog__footer {
   @apply mt-4 gap-2 sm:gap-0;
 }

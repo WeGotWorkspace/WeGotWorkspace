@@ -104,6 +104,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'calendar_rsvp_tokens',
             'calendar_subscriptions',
             'calendar_feed_tokens',
+            'calendar_share_dismissals',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),

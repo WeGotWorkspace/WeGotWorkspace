@@ -111,6 +111,18 @@ export class MockJmapServer {
     this.#bumpState("CalendarEvent", "destroyed", id);
   }
 
+  remoteCreateCalendar(calendar: Omit<JmapCalendar, "id"> & { id?: string }): string {
+    const id = calendar.id ?? this.nextId("cal");
+    this.calendars.set(id, { ...(calendar as JmapCalendar), id });
+    this.#bumpState("Calendar", "created", id);
+    return id;
+  }
+
+  remoteDestroyCalendar(id: string): void {
+    this.calendars.delete(id);
+    this.#bumpState("Calendar", "destroyed", id);
+  }
+
   nextId(prefix: string): string {
     this.#idCounter += 1;
     return `${prefix}-${this.#idCounter}`;
@@ -298,7 +310,8 @@ export class MockJmapServer {
         notUpdated[id] = { type: "notFound" };
         continue;
       }
-      store.set(id, { ...existing, ...patch, id });
+      const nextPatch = type === "Calendar" ? mergeCalendarShareWithPatch(existing, patch) : patch;
+      store.set(id, { ...existing, ...nextPatch, id });
       this.#bumpState(type, "updated", id);
       updated[id] = null;
     }
@@ -342,6 +355,29 @@ export class MockJmapServer {
       ids,
     };
   }
+}
+
+/** Calendar/set shareWith is a per-principal merge; `null` revokes that grant. */
+function mergeCalendarShareWithPatch(
+  existing: { id: string },
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!("shareWith" in patch)) return patch;
+  const incoming = patch.shareWith;
+  if (incoming === null) return { ...patch, shareWith: null };
+  if (typeof incoming !== "object") return patch;
+  const currentShare =
+    "shareWith" in existing && existing.shareWith !== null && typeof existing.shareWith === "object"
+      ? { ...(existing.shareWith as Record<string, unknown>) }
+      : {};
+  for (const [principal, grant] of Object.entries(incoming as Record<string, unknown>)) {
+    if (grant === null) delete currentShare[principal];
+    else currentShare[principal] = grant;
+  }
+  return {
+    ...patch,
+    shareWith: Object.keys(currentShare).length > 0 ? currentShare : null,
+  };
 }
 
 class MethodError extends Error {

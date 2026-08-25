@@ -88,7 +88,7 @@ describe("calendar workspace sidebar heading", () => {
 describe("calendar workspace subscribed sidebar row", () => {
   it("places an Rss mark immediately after the title, not in a trailing action slot", () => {
     expect(tsx).toMatch(
-      /calendar-sidebar-row__title[\s\S]*calendar-sidebar-row__name[\s\S]*SubscribedCalendarMark/,
+      /calendar-sidebar-row__title[\s\S]*calendar-sidebar-row__name[\s\S]*CalendarSidebarMark/,
     );
     expect(tsx).toMatch(/<Rss className="size-3\.5"/);
     expect(tsx).not.toMatch(/Link2/);

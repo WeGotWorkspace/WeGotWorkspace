@@ -42,19 +42,14 @@
 
 **Constraints:** `default` list protected; non-empty lists return `409 taskListHasContents` without `onDestroyRemoveContents`.
 
-## Sharing (RFC 9670) — stub
+## Sharing (RFC 9670)
 
-| Field | v1 behavior | Plan |
-|-------|-------------|------|
-| `shareWith` | Always `null` on responses; **rejected** on PATCH (`400`) | Persist in `calendarinstances` share tables / CardDAV sharing plugin when RFC 9670 lands |
-| `myRights` | Derived from ownership: owned books/lists/calendars get read/write; `mayDelete` true for non-default owned collections; calendars use CalDAV `access` (1=owner, 2=read, 3=read-write) |
+| Collection | `shareWith` | `myRights.mayShare` |
+|------------|-------------|---------------------|
+| **Calendars** | Persisted for personal owners **and group-collection managers** via Sabre `CalPDO::updateInvites` / `getInvites`. JMAP ids are `username` or `groups/{slug}`. `share_href` is `mailto:` (profile email, else `mailto:{username}` / `mailto:groups/{slug}`). `mayWriteAll` (or REST `mayWrite`) → access 3; otherwise access 2. Null grant revokes. Recipients see the shared instance on their principal with `shareWith: null`. Event create/update/delete is `403 forbidden` when instance `access === 2`. CalDAV `CS:share` / `DAV:share-resource` and `{CS:}invite` / `{DAV:}invite` use the same rows (href ↔ JMAP id via `mailto:`). | `true` for personal owners and group members (`access === 1`) |
+| Address books / task lists | Always `null` on responses; **rejected** on PATCH (`400`) | Owned books/lists get read/write; `mayDelete` true for non-default owned collections |
 
-**RFC 9670 implementation plan (outline):**
-
-1. Add shared-collection tables / Sabre plugins already used by CardDAV/CalDAV sharing.
-2. Extend list/show to populate `shareWith` for owners with `mayShare`.
-3. Accept `shareWith` on PATCH with `forbidden` when granting rights the owner lacks.
-4. ACL tests in [#163](https://github.com/WeGotWorkspace/wegotworkspace/issues/163).
+Apple Calendar caveats (this instance only): the account must be a CalDAV account on this server, not iCloud “Share Calendar”. The sharee’s `principals.email` must match the `mailto:` Apple sends. Sabre auto-accepts invites (`INVITE_ACCEPTED`) — no separate accept UI. Group share is JMAP/browser only (Apple’s picker is email-only). `calendar-proxy-read/write` is delegation (#492), not collection sharing. Public/webcal publish (`setPublishStatus`) is unimplemented.
 
 ## Related docs
 

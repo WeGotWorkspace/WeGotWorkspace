@@ -20,8 +20,13 @@ import {
   loadCalendarBootstrapHybrid,
 } from "@/lib/offline/calendars-hybrid-operations";
 import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
+import {
+  calendarSharePrincipalsFromDirectory,
+  filterCalendarSharePrincipals,
+} from "@/calendar-core/src/calendar-share";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
+import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 
 export type CalendarApiSource = {
   loadBootstrap: () => Promise<CalendarAppBootstrap>;
@@ -29,6 +34,12 @@ export type CalendarApiSource = {
   /** Inbound JMAP client (undefined = no live `/changes` poll). */
   createJmapClient?: () => JmapClient;
 };
+
+const MOCK_SHARE_INVITEES: CalendarInvitee[] = [
+  { username: "alice", email: "alice@example.test", name: "Alice" },
+  { username: "bob", email: "bob@example.test", name: "Bob" },
+  { username: "carol", email: "carol@example.test", name: "Carol" },
+];
 
 const FULL_RIGHTS = {
   mayReadFreeBusy: true,
@@ -60,12 +71,16 @@ function createMockJmapServer(): MockJmapServer {
         ...FULL_RIGHTS,
         mayWriteAll: calendar.mayWrite !== false,
         mayWriteOwn: calendar.mayWrite !== false,
+        mayShare: calendar.mayShare === true,
         mayDelete: calendar.mayDelete !== false,
       },
       ...(typeof calendar.sortOrder === "number" ? { sortOrder: calendar.sortOrder } : {}),
       ...(calendar.scope ? { scope: calendar.scope } : {}),
       ...(calendar.groupSlug ? { groupSlug: calendar.groupSlug } : {}),
       ...(calendar.subscriptionId ? { subscriptionId: calendar.subscriptionId } : {}),
+      ...(calendar.shareWith !== undefined
+        ? { shareWith: calendar.shareWith as JmapCalendar["shareWith"] }
+        : {}),
     } as JmapCalendar);
   }
   for (const event of bootstrap.data.events) {
@@ -106,13 +121,17 @@ export function createMockCalendarApiSource(): CalendarApiSource {
       ...createMockCalendarIcsOperations(),
       listSchedulingNotifications: async () => [],
       listInvitees: async () => ({
-        list: [
-          { username: "alice", email: "alice@example.test", name: "Alice" },
-          { username: "bob", email: "bob@example.test", name: "Bob" },
-          { username: "carol", email: "carol@example.test", name: "Carol" },
-        ],
+        list: MOCK_SHARE_INVITEES,
         canSubmitEmail: true,
       }),
+      searchSharePrincipals: async (query) =>
+        filterCalendarSharePrincipals(
+          query,
+          calendarSharePrincipalsFromDirectory({
+            invitees: MOCK_SHARE_INVITEES,
+            groups: createCalendarAppBootstrap().data.groups,
+          }),
+        ),
       respondSchedulingNotification: async () => {},
       dismissSchedulingNotification: async () => {},
     }),

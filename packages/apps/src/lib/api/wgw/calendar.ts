@@ -15,6 +15,13 @@ import type {
   CalendarInfo,
   CalendarPatch,
 } from "@/calendar-core/src/calendar-types";
+import {
+  calendarInfoFromJmap,
+  calendarSharePrincipalsFromDirectory,
+  filterCalendarSharePrincipals,
+  type CalendarSharePrincipal,
+} from "@/calendar-core/src/calendar-share";
+import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
 import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
 import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
 
@@ -81,25 +88,7 @@ async function connectedCalendars(client: JmapClient = calendarJmapClient()): Pr
 }
 
 function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
-  const groupSlug =
-    typeof calendar.groupSlug === "string" && calendar.groupSlug.trim()
-      ? calendar.groupSlug.trim()
-      : null;
-  return {
-    id: calendar.id,
-    name: calendar.name,
-    color: calendar.color ?? "#6366F1",
-    sortOrder: typeof calendar.sortOrder === "number" ? calendar.sortOrder : 0,
-    ...(calendar.isVisible === false ? { isVisible: false } : {}),
-    ...(calendar.isDefault ? { isDefault: true } : {}),
-    mayWrite: calendar.myRights ? calendar.myRights.mayWriteAll === true : true,
-    mayDelete: calendar.myRights ? calendar.myRights.mayDelete === true : true,
-    scope: calendar.scope === "group" || groupSlug ? "group" : "personal",
-    groupSlug,
-    ...(typeof calendar.subscriptionId === "string" && calendar.subscriptionId
-      ? { subscriptionId: calendar.subscriptionId }
-      : {}),
-  };
+  return calendarInfoFromJmap(calendar);
 }
 
 export function calendarBootstrapWindow(today = Temporal.Now.plainDateISO()): {
@@ -220,7 +209,7 @@ export async function patchCalendarLive(
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendars({
     accountId,
-    update: { [calendarId]: patch },
+    update: { [calendarId]: patch as Partial<JmapCalendar> },
   });
   const get = await calendars.getCalendars(accountId, [calendarId]);
   const calendar = get.list[0];
@@ -277,4 +266,22 @@ export async function importEventsLive(
     list: JmapCalendarEvent[];
     errors: Array<{ index: number; message: string }>;
   };
+}
+
+export async function searchCalendarSharePrincipalsLive(
+  query: string,
+  excludeUsername?: string | null,
+): Promise<CalendarSharePrincipal[]> {
+  const [invitees, groups] = await Promise.all([
+    fetchCalendarSchedulingInvitees(),
+    loadCalendarDirectoryGroups(),
+  ]);
+  return filterCalendarSharePrincipals(
+    query,
+    calendarSharePrincipalsFromDirectory({
+      invitees: invitees.list,
+      groups,
+      excludeUsername,
+    }),
+  );
 }

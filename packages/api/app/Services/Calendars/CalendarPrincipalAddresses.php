@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Models\Principal;
+use App\Services\Admin\AdminConstants;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -75,8 +76,71 @@ final class CalendarPrincipalAddresses
             }
         }
 
+        if (str_starts_with($raw, 'groups/')) {
+            return Principal::query()->where('uri', AdminConstants::GROUP_PREFIX.substr($raw, strlen('groups/')))->first();
+        }
+
         if ($this->isUsername($raw)) {
             return Principal::forUsername($raw);
+        }
+
+        return null;
+    }
+
+    /**
+     * CalDAV share_href: profile email, else mailto:{username}, else mailto:groups/{slug}.
+     */
+    public function shareHrefForPrincipal(Principal $principal): string
+    {
+        $canonical = $this->canonicalCalendarUserAddress($principal);
+        if ($canonical !== null) {
+            return 'mailto:'.$canonical;
+        }
+        $jmapId = $this->jmapIdForPrincipalUri((string) $principal->uri);
+        if ($jmapId !== null) {
+            return 'mailto:'.$jmapId;
+        }
+
+        throw new \InvalidArgumentException('Cannot build a mailto: share href for '.$principal->uri);
+    }
+
+    public function jmapIdForPrincipalUri(string $uri): ?string
+    {
+        $username = $this->usernameFromUri($uri);
+        if ($username !== null) {
+            return $username;
+        }
+        $slug = $this->groupSlugFromUri($uri);
+
+        return $slug !== null ? 'groups/'.$slug : null;
+    }
+
+    public function principalForJmapId(string $id): ?Principal
+    {
+        $id = strtolower(trim($id));
+        if ($id === '') {
+            return null;
+        }
+        if (str_starts_with($id, 'groups/')) {
+            $slug = substr($id, strlen('groups/'));
+
+            return $slug !== ''
+                ? Principal::query()->where('uri', AdminConstants::GROUP_PREFIX.$slug)->first()
+                : null;
+        }
+
+        return Principal::forUsername($id);
+    }
+
+    public function jmapIdForShareHref(string $href): ?string
+    {
+        $principal = $this->principalForMailto($href);
+        if ($principal !== null) {
+            return $this->jmapIdForPrincipalUri((string) $principal->uri);
+        }
+        $raw = $this->stripMailto($href);
+        if ($raw !== null && str_starts_with($raw, 'groups/')) {
+            return $raw;
         }
 
         return null;
@@ -156,7 +220,7 @@ final class CalendarPrincipalAddresses
 
     private function usernameFromUri(string $uri): ?string
     {
-        if (! str_starts_with($uri, 'principals/') || str_starts_with($uri, 'principals/groups/')) {
+        if (! str_starts_with($uri, 'principals/') || str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
             return null;
         }
         $username = substr($uri, strlen('principals/'));
@@ -165,6 +229,16 @@ final class CalendarPrincipalAddresses
         }
 
         return strtolower($username);
+    }
+
+    private function groupSlugFromUri(string $uri): ?string
+    {
+        if (! str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
+            return null;
+        }
+        $slug = substr($uri, strlen(AdminConstants::GROUP_PREFIX));
+
+        return $slug !== '' ? $slug : null;
     }
 
     /**

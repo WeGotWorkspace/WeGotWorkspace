@@ -9,7 +9,7 @@ namespace App\Services\Jmap\Methods;
  * access column) onto the JMAP calendars draft's 8-property CalendarRights
  * (spec §6). The REST flags fully determine the 8-property row:
  * read-only (access=2) has mayWrite=false; read-write (access=3) and owner
- * differ only in mayDelete; mayShare is always false today.
+ * differ in mayShare (personal owners and group members) and mayDelete.
  */
 final class CalendarRightsMapper
 {
@@ -20,9 +20,29 @@ final class CalendarRightsMapper
     public static function remap(array $calendar): array
     {
         $rest = is_array($calendar['myRights'] ?? null) ? $calendar['myRights'] : [];
-        $mayWrite = (bool) ($rest['mayWrite'] ?? false);
+        $calendar['myRights'] = self::jmapRights($rest);
 
-        $calendar['myRights'] = [
+        $shareWith = $calendar['shareWith'] ?? null;
+        if (is_array($shareWith)) {
+            $mapped = [];
+            foreach ($shareWith as $id => $rights) {
+                $mapped[$id] = is_array($rights) ? self::jmapRights($rights) : $rights;
+            }
+            $calendar['shareWith'] = $mapped;
+        }
+
+        return $calendar;
+    }
+
+    /**
+     * @param  array<string, mixed>  $rest
+     * @return array<string, bool>
+     */
+    private static function jmapRights(array $rest): array
+    {
+        $mayWrite = (bool) ($rest['mayWrite'] ?? $rest['mayWriteAll'] ?? false);
+
+        return [
             'mayReadFreeBusy' => true,
             'mayReadItems' => true,
             'mayWriteAll' => $mayWrite,
@@ -32,7 +52,5 @@ final class CalendarRightsMapper
             'mayShare' => (bool) ($rest['mayShare'] ?? false),
             'mayDelete' => (bool) ($rest['mayDelete'] ?? false),
         ];
-
-        return $calendar;
     }
 }

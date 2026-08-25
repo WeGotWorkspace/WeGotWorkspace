@@ -67,6 +67,52 @@ describe("CalendarEventDetailsPopover", () => {
     ).toBeNull();
   });
 
+  it(
+    "hides Edit on a read-only share even when canEdit is globally true",
+    { timeout: 10_000 },
+    () => {
+      const preview = {
+        eventId: "school-play",
+        form: { ...emptyCalendarEventForm("family", "2033-01-14"), title: "School play" },
+      };
+      renderPopover({ preview, canEdit: true });
+      expect(screen.getByRole("heading", { name: /School play/i })).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
+      ).toBeNull();
+    },
+  );
+
+  it("shows Edit for a group member who is not the organizer", { timeout: 10_000 }, () => {
+    const preview = {
+      eventId: "desk-review",
+      form: {
+        ...emptyCalendarEventForm("group-editorial", "2033-01-12"),
+        title: "Desk review",
+        attendees: [
+          {
+            email: "ada@example.test",
+            name: "Ada",
+            participationStatus: "accepted" as const,
+            isOrganizer: true,
+          },
+          {
+            email: "me@example.test",
+            name: "Me",
+            participationStatus: "accepted" as const,
+          },
+        ],
+      },
+    };
+    const { onEdit } = renderPopover({
+      preview,
+      sessionEmail: "me@example.test",
+      canEdit: true,
+    });
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }));
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps RSVP reachable for an invitee without opening the editor", { timeout: 10_000 }, () => {
     const preview = {
       eventId: "awaiting-reply",
@@ -97,6 +143,44 @@ describe("CalendarEventDetailsPopover", () => {
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
     expect(onRsvp).toHaveBeenCalledWith("accepted");
     expect(screen.queryByRole("dialog", { name: defaultCalendarLabels.editEventTitle })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
+    ).toBeNull();
+  });
+
+  it("shows Edit for a write-share recipient who is not the organizer", { timeout: 10_000 }, () => {
+    const calendars = bootstrap.data.calendars.map((calendar) =>
+      calendar.id === "default" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,
+    );
+    const preview = {
+      eventId: "shared-slot",
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        title: "Shared slot",
+        attendees: [
+          {
+            email: "ada@example.test",
+            name: "Ada",
+            participationStatus: "accepted" as const,
+            isOrganizer: true,
+          },
+          {
+            email: "me@example.test",
+            name: "Me",
+            participationStatus: "accepted" as const,
+          },
+        ],
+      },
+    };
+    renderPopover({
+      preview,
+      calendars,
+      sessionEmail: "me@example.test",
+      canEdit: true,
+    });
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
+    ).toBeTruthy();
   });
 
   it("shifts away from viewport edges with collision padding", () => {

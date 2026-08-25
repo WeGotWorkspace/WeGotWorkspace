@@ -12,7 +12,10 @@ import {
   persistEventId,
   type CalendarEventsApi,
 } from "@/calendar-core/src/calendar-events-api";
+import { calendarInfoFromJmap } from "@/calendar-core/src/calendar-share";
 import {
+  ingestRemoteCalendar,
+  ingestRemoteCalendarDestroyed,
   ingestRemoteCalendarEvent,
   ingestRemoteCalendarEventDestroyed,
 } from "@/lib/offline/calendars-jmap-inbound";
@@ -81,6 +84,20 @@ export function useCalendarSurface(
         const username = usernameRef.current;
         if (!username) return;
         void ingestRemoteCalendarEventDestroyed(username, eventId).then(() => {
+          onInboundChangeRef.current?.();
+        });
+      },
+      onRemoteCalendar: (calendar) => {
+        const username = usernameRef.current;
+        if (!username) return;
+        void ingestRemoteCalendar(username, calendarInfoFromJmap(calendar)).then(() => {
+          onInboundChangeRef.current?.();
+        });
+      },
+      onRemoteCalendarDestroyed: (calendarId) => {
+        const username = usernameRef.current;
+        if (!username) return;
+        void ingestRemoteCalendarDestroyed(username, calendarId).then(() => {
           onInboundChangeRef.current?.();
         });
       },

@@ -25,9 +25,11 @@ export type CalendarUILabels = {
   toastImportPartial: string;
   toastImportFailed: string;
   toastImportOffline: string;
-  calendarsSection: string;
   myCalendarsSection: string;
-  teamCalendarsSection: string;
+  sharedWithMeSection: string;
+  subscribedCalendarsSection: string;
+  teamCalendarBadge: string;
+  viewOnlyCalendarBadge: string;
   calendarDirectoryLabel: string;
   calendarDirectoryPersonal: (ownerLabel: string) => string;
   calendarDirectoryGroup: (name: string) => string;
@@ -49,6 +51,9 @@ export type CalendarUILabels = {
   unsubscribeCalendar: string;
   unsubscribeCalendarConfirmTitle: string;
   unsubscribeCalendarConfirmDescription: string;
+  removeSharedCalendar: string;
+  removeSharedCalendarConfirmTitle: string;
+  removeSharedCalendarConfirmDescription: string;
   /** Tooltip / accessible name for the subscribed-calendar sidebar mark. */
   subscribedCalendarBadge: string;
   publishCalendarTitle: string;
@@ -66,6 +71,7 @@ export type CalendarUILabels = {
   toastCalendarDeleted: string;
   toastCalendarSubscribed: string;
   toastCalendarUnsubscribed: string;
+  toastCalendarShareRemoved: string;
   toastCalendarSubscribeFailed: string;
   toastFeedPublished: string;
   toastFeedUnpublished: string;
@@ -178,6 +184,15 @@ export type CalendarUILabels = {
   toastRsvpUndone: string;
   toastInvitationCancelled: string;
   pendingSync: string;
+  shareCalendarSectionTitle: string;
+  shareCalendarSectionHint: string;
+  shareCalendarAddPlaceholder: string;
+  shareCalendarSearchEmpty: string;
+  shareCalendarOffline: string;
+  shareCalendarFailed: string;
+  sharedCalendar: string;
+  removeCalendarShareTitle: string;
+  removeCalendarShareConfirm: string;
   conflictTitle: string;
   conflictDescription: (title: string) => string;
   conflictRemaining: (count: number) => string;
@@ -208,9 +223,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportPartial: "Some events could not be imported",
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
-  calendarsSection: "Calendars",
   myCalendarsSection: "My calendars",
-  teamCalendarsSection: "Team calendars",
+  sharedWithMeSection: "Shared with me",
+  subscribedCalendarsSection: "Subscriptions",
+  teamCalendarBadge: "Team calendar",
+  viewOnlyCalendarBadge: "View only",
   calendarDirectoryLabel: defaultOwnerScopeLabels.label,
   calendarDirectoryPersonal: defaultOwnerScopeLabels.personal,
   calendarDirectoryGroup: defaultOwnerScopeLabels.group,
@@ -234,6 +251,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   unsubscribeCalendarConfirmTitle: "Unsubscribe?",
   unsubscribeCalendarConfirmDescription:
     "This removes the subscribed calendar and its events. The remote feed is unchanged.",
+  removeSharedCalendar: "Remove calendar",
+  removeSharedCalendarConfirmTitle: "Remove this calendar?",
+  removeSharedCalendarConfirmDescription:
+    "It disappears from your list. The owner’s share is unchanged, so it can be added again later.",
   subscribedCalendarBadge: "Subscribed calendar",
   publishCalendarTitle: "Public feed",
   publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
@@ -250,6 +271,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastCalendarDeleted: "Calendar deleted",
   toastCalendarSubscribed: "Calendar subscribed",
   toastCalendarUnsubscribed: "Unsubscribed",
+  toastCalendarShareRemoved: "Calendar removed",
   toastCalendarSubscribeFailed: "Could not subscribe to calendar",
   toastFeedPublished: "Calendar published",
   toastFeedUnpublished: "Feed unpublished",
@@ -357,6 +379,15 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
   pendingSync: "Pending sync",
+  shareCalendarSectionTitle: "Team access",
+  shareCalendarSectionHint: "Grant read or read-and-write access to people or groups.",
+  shareCalendarAddPlaceholder: "Add people or groups…",
+  shareCalendarSearchEmpty: "No people or groups found",
+  shareCalendarOffline: "Sharing changes require a connection.",
+  shareCalendarFailed: "Could not update sharing.",
+  sharedCalendar: "Shared with you",
+  removeCalendarShareTitle: "Remove access?",
+  removeCalendarShareConfirm: "This person or group will lose access to this calendar. Continue?",
   conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,

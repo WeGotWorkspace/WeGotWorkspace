@@ -47,6 +47,7 @@ import {
   eventTimeZoneSelectValue,
 } from "@/calendar-core/src/calendar-timezones";
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
+import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 
 export type CalendarEventDialogProps = {
   open: boolean;
@@ -166,7 +167,8 @@ export function CalendarEventDialog({
   const isInvitee = isSessionEventInvitee(form.attendees, sessionEmail, invitees);
   const inviteeRsvp = sessionEventInviteeStatus(form.attendees, sessionEmail, invitees);
   const incomingRsvp = calendarRespondStatus(inviteeRsvp);
-  const readOnly = mode === "edit" && !isOrganizer;
+  const calendar = calendars.find((entry) => entry.id === form.calendarId);
+  const readOnly = isCalendarEventFormReadOnly({ mode, calendar, isOrganizer });
   const fieldsDisabled = busy || readOnly;
   const showInviteeRsvp = mode === "edit" && Boolean(onRsvp) && isInvitee;
   const showSaveCancel = !readOnly || showInviteeRsvp;

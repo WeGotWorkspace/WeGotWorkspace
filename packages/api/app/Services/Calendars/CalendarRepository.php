@@ -19,6 +19,7 @@ use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\PropPatch;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class CalendarRepository
 {
@@ -34,22 +35,20 @@ final class CalendarRepository
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly DriveGroupResolver $groups,
+        private readonly CalendarShareInvites $shareInvites,
+        private readonly CalendarShareVisibility $shareVisibility,
     ) {}
 
     public function list(string $username): array
     {
-        $instances = $this->personalVeventInstances($username);
+        $calendars = $this->accessibleVeventInstances($username)
+            ->map(function (CalendarInstance $instance): array {
+                $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        $calendars = $instances
-            ->map(fn (CalendarInstance $instance): array => $this->mapCalendar($instance))
+                return $this->mapCalendar($instance, $groupSlug);
+            })
             ->values()
             ->all();
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupVeventInstances($slug) as $instance) {
-                $calendars[] = $this->mapCalendar($instance, $slug);
-            }
-        }
 
         return ['list' => $calendars];
     }
@@ -132,6 +131,11 @@ final class CalendarRepository
             throw new ApiHttpException(500, 'Could not load created calendar.', 'server_error');
         }
 
+        if (array_key_exists('shareWith', $payload)) {
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+            $instance->refresh();
+        }
+
         return $this->mapCalendar($instance, $groupSlug);
     }
 
@@ -142,6 +146,16 @@ final class CalendarRepository
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
         [$instance, $groupSlug] = $resolved;
+
+        if ($this->shareInvites->isSharee($instance)) {
+            $disallowed = array_values(array_filter(
+                ['description', 'timeZone', 'shareWith'],
+                static fn (string $key): bool => array_key_exists($key, $payload),
+            ));
+            if ($disallowed !== []) {
+                throw new ApiHttpException(403, 'Sharees can only change their own calendar name and color.', 'forbidden');
+            }
+        }
 
         $mutations = [];
         if (array_key_exists('name', $payload)) {
@@ -170,6 +184,10 @@ final class CalendarRepository
             $propPatch->commit();
         }
 
+        if (array_key_exists('shareWith', $payload)) {
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+        }
+
         $instance->refresh();
 
         return $this->mapCalendar($instance, $groupSlug);
@@ -182,6 +200,12 @@ final class CalendarRepository
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
         [$instance, $groupSlug] = $resolved;
+
+        if ($this->shareInvites->isSharee($instance)) {
+            $this->shareVisibility->dismiss($username, (int) $instance->calendarid);
+
+            return ['ok' => true];
+        }
 
         if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
@@ -224,18 +248,15 @@ final class CalendarRepository
         return $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
     }
 
-    public function findOwnedPersonalCalendar(string $username, string $calendarId): CalendarInstance
+    public function findPublishableCalendar(string $username, string $calendarId): CalendarInstance
     {
-        if (CalendarCollectionUris::parseGroupCalendarApiId($calendarId) !== null) {
-            throw new ApiHttpException(403, 'Only owned personal calendars can be published.', 'forbidden');
-        }
-
-        $instance = $this->findCalendarInstance($this->principalUri($username), $calendarId);
-        if ($instance === null) {
+        $resolved = $this->resolveWritableCalendar($username, $calendarId);
+        if ($resolved === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
-        if ($this->groupSlugFromPrincipalUri((string) $instance->principaluri) !== null) {
-            throw new ApiHttpException(403, 'Only owned personal calendars can be published.', 'forbidden');
+        [$instance, $groupSlug] = $resolved;
+        if (! $this->shareInvites->canShare($instance, $groupSlug)) {
+            throw new ApiHttpException(403, 'Only calendar administrators can publish a feed.', 'forbidden');
         }
 
         return $instance;
@@ -243,13 +264,7 @@ final class CalendarRepository
 
     public function changes(string $username, ?string $since): array
     {
-        $instances = $this->personalVeventInstances($username);
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupVeventInstances($slug) as $groupInstance) {
-                $instances->push($groupInstance);
-            }
-        }
+        $instances = $this->accessibleVeventInstances($username);
 
         $currentState = $this->computeInstancesState($instances);
         $previous = $this->parseInstancesState($since);
@@ -300,7 +315,8 @@ final class CalendarRepository
 
     public function instanceMayWrite(CalendarInstance $instance): bool
     {
-        return (int) ($instance->access ?? 1) !== 2;
+        return (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)
+            !== SharingPlugin::ACCESS_READ;
     }
 
     public function findAccessibleCalendar(string $username, string $calendarId): ?CalendarInstance
@@ -355,6 +371,13 @@ final class CalendarRepository
         return $uris;
     }
 
+    public function assertEventWritable(CalendarInstance $instance): void
+    {
+        if ($this->shareInvites->isReadOnly($instance)) {
+            throw new ApiHttpException(403, 'This calendar is read-only.', 'forbidden');
+        }
+    }
+
     /**
      * @return Collection<int, CalendarInstance>
      */
@@ -367,7 +390,40 @@ final class CalendarRepository
             }
         }
 
-        return $instances;
+        return $this->shareVisibility->rejectDismissedSharees(
+            $username,
+            $this->preferHighestAccessPerCalendar($instances),
+        );
+    }
+
+    /**
+     * Sharing a personal calendar with a group you belong to creates a second
+     * instance (group sharee) of the same calendarid. Keep the owner copy.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    private function preferHighestAccessPerCalendar($instances)
+    {
+        $chosen = [];
+        foreach ($instances as $instance) {
+            $calendarId = (int) $instance->calendarid;
+            $rank = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
+                SharingPlugin::ACCESS_SHAREDOWNER => 3,
+                SharingPlugin::ACCESS_READWRITE => 2,
+                SharingPlugin::ACCESS_READ => 1,
+                default => 0,
+            };
+            if (! isset($chosen[$calendarId]) || $rank > $chosen[$calendarId]['rank']) {
+                $chosen[$calendarId] = ['rank' => $rank, 'instance' => $instance];
+            }
+        }
+
+        return $instances
+            ->filter(function (CalendarInstance $instance) use ($chosen): bool {
+                return $chosen[(int) $instance->calendarid]['instance']->is($instance);
+            })
+            ->values();
     }
 
     /**
@@ -493,14 +549,15 @@ final class CalendarRepository
         $isGroup = $groupSlug !== null;
         $isProvisionedGroup = $this->isProvisionedGroupCalendar($instance, $groupSlug);
         $subscriptionId = $this->subscriptionIdForInstance($instance, $groupSlug);
+        $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
 
-        $rights = match ((int) ($instance->access ?? 1)) {
-            2 => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => false],
-            3 => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => false],
+        $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
+            SharingPlugin::ACCESS_READ => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => true],
+            SharingPlugin::ACCESS_READWRITE => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => true],
             default => [
                 'mayRead' => true,
                 'mayWrite' => true,
-                'mayShare' => false,
+                'mayShare' => $mayShare,
                 'mayDelete' => ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
             ],
         };
@@ -525,7 +582,7 @@ final class CalendarRepository
             'subscriptionId' => $subscriptionId,
             'scope' => $isGroup ? 'group' : 'personal',
             'groupSlug' => $isGroup ? $groupSlug : null,
-            'shareWith' => null,
+            'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'myRights' => $rights,
         ];
     }

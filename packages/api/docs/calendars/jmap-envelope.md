@@ -84,13 +84,18 @@ Two coexisting concurrency models, deliberately not unified:
 
 ## `myRights` mapping
 
-Sabre's 3-level access maps onto the draft's 8-property `CalendarRights` (`CalendarRightsMapper`):
+Sabre's 3-level access maps onto the draft's 8-property `CalendarRights` (`CalendarRightsMapper`). **`myRights` on a sharee instance** is not the same object as an owner's `shareWith` grant:
 
-| Sabre `access` | mayReadFreeBusy | mayReadItems | mayWriteAll | mayWriteOwn | mayUpdatePrivate | mayRSVP | mayShare | mayDelete |
-|---|---|---|---|---|---|---|---|---|
-| `2` (read-only) | true | true | false | false | false | false | false | false |
-| `3` (read-write) | true | true | true | true | true | true | false | false |
-| owner (default) | true | true | true | true | true | true | false | `uri !== 'default'` |
+| Surface | Sabre `access` | mayReadFreeBusy | mayReadItems | mayWriteAll | mayWriteOwn | mayUpdatePrivate | mayRSVP | mayShare | mayDelete |
+|---|---|---|---|---|---|---|---|---|---|
+| Sharee instance (`Calendar/get` `myRights`) | `2` (read-only) | true | true | false | false | false | false | false | true (hide) |
+| Sharee instance (`Calendar/get` `myRights`) | `3` (read-write) | true | true | true | true | true | true | false | true (hide) |
+| Owner instance (`Calendar/get` `myRights`) | owner (personal) | true | true | true | true | true | true | true | `uri !== 'default'` |
+| Owner instance (`Calendar/get` `myRights`) | owner (group) | true | true | true | true | true | true | true | `uri !== 'default'` (provisioned group calendars cannot be deleted) |
+| Owner `shareWith` grant | `2` (read-only) | true | true | false | false | false | false | false | false |
+| Owner `shareWith` grant | `3` (read-write) | true | true | true | true | true | true | false | false |
+
+Sharee `mayDelete: true` means the sharee can hide the collection from their list (REST/JMAP destroy dismisses; the owner's grant is unchanged). Owner `shareWith` grants stay `mayDelete: false` — that flag is not a hide right.
 
 ## Documented deviations
 

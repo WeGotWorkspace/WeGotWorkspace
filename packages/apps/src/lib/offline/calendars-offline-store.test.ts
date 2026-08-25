@@ -31,7 +31,19 @@ const bootstrap = {
     user: { ...mockWorkspaceSession.user, username },
   },
   data: {
-    calendars: [{ id: "default", name: "Personal", color: "#6366f1", isDefault: true }],
+    calendars: [
+      {
+        id: "default",
+        name: "Personal",
+        color: "#6366f1",
+        isDefault: true,
+        mayWrite: true,
+        mayShare: true,
+        shareWith: {
+          bob: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: false },
+        },
+      },
+    ],
     events: [wireEvent("ev-1")],
     groups: [
       { slug: "engineering", displayName: "Engineering" },
@@ -48,6 +60,17 @@ describe("calendars offline store groups", () => {
   it("allocates the groups Dexie step at 51", () => {
     expect(CALENDARS_OFFLINE_VERSION.tables).toBe(50);
     expect(CALENDARS_OFFLINE_VERSION.groups).toBe(51);
+  });
+
+  it("restores mayWrite, mayShare, and shareWith on cached calendars", async () => {
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.calendars[0]).toMatchObject({
+      mayWrite: true,
+      mayShare: true,
+      shareWith: {
+        bob: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: false },
+      },
+    });
   });
 
   it("restores the last group directory after a cache write", async () => {

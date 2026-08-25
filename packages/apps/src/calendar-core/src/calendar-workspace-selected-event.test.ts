@@ -10,8 +10,9 @@ describe("CalendarWorkspace popover → resize selection", () => {
     const workspace = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
     expect(workspace).toContain("eventPreviewOccurrenceKey");
     expect(workspace).toContain("selectedEventKey=");
-    expect(workspace).toContain(
-      'eventPreview ? eventPreviewOccurrenceKey(eventPreview.model) : ""',
-    );
+    expect(workspace).toContain("previewCanResize");
+    expect(workspace).toContain("canWriteCalendarCollection");
+    expect(workspace).toContain("previewCanEdit");
+    expect(workspace).toContain("eventPreview && previewCanResize");
   });
 });
