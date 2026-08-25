@@ -1775,6 +1775,38 @@ describe("useCalendarController create calendar directory", () => {
     );
   });
 
+  it("deletes a writable calendar through operations", async () => {
+    const deleteCalendar = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          deleteCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("work");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      calendarId: "work",
+      mayDelete: true,
+    });
+
+    await act(async () => {
+      result.current.deleteCalendarFromDialog();
+    });
+
+    expect(deleteCalendar).toHaveBeenCalledWith("work");
+    expect(result.current.calendars.find((entry) => entry.id === "work")).toBeUndefined();
+  });
+
   it("unsubscribes instead of deleting a subscription calendar", async () => {
     const unsubscribeCalendar = vi.fn().mockResolvedValue(undefined);
 

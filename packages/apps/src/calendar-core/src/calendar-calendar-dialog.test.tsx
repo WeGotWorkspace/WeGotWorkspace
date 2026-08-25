@@ -278,6 +278,31 @@ describe("CalendarCalendarDialog", () => {
     });
   });
 
+  it("confirms delete on a writable calendar", () => {
+    const onDelete = vi.fn();
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "work",
+          name: "Work",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+        }}
+        labels={defaultCalendarLabels}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.deleteCalendar }));
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.delete }));
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the source URL read-only on a subscription and offers unsubscribe", () => {
     renderDialog(
       <CalendarCalendarDialog
