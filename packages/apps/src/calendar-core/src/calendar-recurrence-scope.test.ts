@@ -12,6 +12,7 @@ import {
   forkSeriesDraftFromForm,
   forkSeriesDraftWithSplitOverrides,
   formAnchoredToOccurrence,
+  occurrenceHasThisInstanceOverride,
   occurrenceRecurrenceOverrides,
   resolveRecurrenceMasterRef,
   resolveSeriesRecurrenceOverrides,
@@ -142,6 +143,45 @@ describe("calendar-recurrence-scope", () => {
         recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly" }],
       }),
     ).toBe(true);
+  });
+
+  it("treats a start/title override as an existing this-instance exception", () => {
+    expect(
+      occurrenceHasThisInstanceOverride(
+        {
+          start: "2033-01-10T10:00:00",
+          recurrenceOverrides: {
+            "2033-01-11T10:00:00": { start: "2033-01-11T11:00:00" },
+          },
+        },
+        "20330111T100000",
+      ),
+    ).toBe(true);
+    expect(
+      occurrenceHasThisInstanceOverride(
+        {
+          start: "2033-01-10T10:00:00",
+          recurrenceOverrides: {
+            "2033-01-11T10:00:00": { title: "Daily (moved)" },
+          },
+        },
+        "2033-01-11T10:00:00",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat a plain exclusion as a this-instance exception", () => {
+    expect(
+      occurrenceHasThisInstanceOverride(
+        {
+          start: "2033-01-10T10:00:00",
+          recurrenceOverrides: {
+            "2033-01-11T10:00:00": { excluded: true },
+          },
+        },
+        "20330111T100000",
+      ),
+    ).toBe(false);
   });
 
   it("normalizes compact engine recurrence ids to LocalDateTime", () => {

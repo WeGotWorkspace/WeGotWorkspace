@@ -90,6 +90,34 @@ export function eventIsRecurringSeries(event: Pick<JmapCalendarEvent, "recurrenc
   return Boolean(event.recurrenceRules && event.recurrenceRules.length > 0);
 }
 
+function overridePatchForOccurrence(
+  original: Pick<JmapCalendarEvent, "recurrenceOverrides" | "showWithoutTime" | "start">,
+  recurrenceId: string,
+): JSCalendarPatchObject | undefined {
+  const allDay = Boolean(original.showWithoutTime);
+  const local = toLocalRecurrenceId(recurrenceId, allDay, original.start);
+  const overrides = original.recurrenceOverrides;
+  if (!overrides) return undefined;
+  const patch = overrides[local] ?? overrides[recurrenceId];
+  return patch && typeof patch === "object" ? patch : undefined;
+}
+
+/**
+ * True when this occurrence is already a detached this-instance exception
+ * (a non-exclusion recurrenceOverrides patch). Later edits skip the scope dialog.
+ */
+export function occurrenceHasThisInstanceOverride(
+  original:
+    | Pick<JmapCalendarEvent, "recurrenceOverrides" | "showWithoutTime" | "start">
+    | undefined,
+  recurrenceId: string,
+): boolean {
+  if (!original) return false;
+  const patch = overridePatchForOccurrence(original, recurrenceId);
+  if (!patch) return false;
+  return patch.excluded !== true;
+}
+
 /**
  * Normalize engine compact ids (`20260311T090000`) or LocalDateTime strings to
  * JSCalendar `recurrenceOverrides` keys.

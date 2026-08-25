@@ -25,7 +25,10 @@ import {
   fromUpdateRequest,
   moveFromUpdateRequest,
 } from "../domain/events-api/adapters.js";
-import { resolveEventMapKey } from "../domain/events-api/resolveEventMapKey.js";
+import {
+  resolveEventMapKey,
+  shouldAskSeriesScope,
+} from "../domain/events-api/resolveEventMapKey.js";
 import type {
   CalendarEventPendingByCalendarId,
   CalendarEventPendingByOperation,
@@ -196,10 +199,7 @@ export abstract class CalendarViewBase extends BaseElement {
 
   /** Prefer the bound map; context `getEvents()` is already `@lit-calendar/events-api` state. */
   #viewMapFromContext(api: EventsAPIContextValue): EventsMap {
-    if (this.events !== undefined) {
-      return this.events;
-    }
-    return api.getEvents() ?? new Map();
+    return api.getEvents() ?? this.events ?? new Map();
   }
 
   /**
@@ -290,8 +290,13 @@ export abstract class CalendarViewBase extends BaseElement {
     const data = current.data;
     const currentEnd = resolvedDataEnd(data);
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
-    const shouldPromptForSeries = isRecurring && !isCalendarEventException(current);
     const recurrenceId = detail.envelope.recurrenceId ?? current.recurrenceId;
+    const shouldPromptForSeries = shouldAskSeriesScope({
+      isRecurring,
+      events,
+      current,
+      envelope: detail.envelope,
+    });
     const occurrenceStart =
       data.recurrenceRule && !current.recurrenceId && recurrenceId
         ? (parseRecurrenceId(recurrenceId, data.allDay ?? false, data.start) ?? data.start)
@@ -363,6 +368,32 @@ export abstract class CalendarViewBase extends BaseElement {
         }),
       );
       return { handled: true, accepted: true };
+    }
+
+    // Already a this-instance exception, but the working set still has the master
+    // at this key — upsert the override instead of shifting the series.
+    if (
+      recurrenceId &&
+      !isCalendarEventException(current) &&
+      !current.recurrenceId &&
+      (detail.envelope.isException || current.data.exclusionDates?.has(recurrenceId))
+    ) {
+      return this.#applyUpdateAndNotify(eventKey, {
+        type: "add-exception",
+        input: {
+          target: { key: eventKey },
+          recurrenceId,
+          event: {
+            start: detail.content.start,
+            end: detail.content.end,
+            summary: detail.content.summary,
+            color: detail.content.color,
+            location: detail.content.location,
+            calendarId: detail.envelope.calendarId,
+            accountId: detail.envelope.accountId,
+          },
+        },
+      });
     }
 
     if (updateKind === "move") {

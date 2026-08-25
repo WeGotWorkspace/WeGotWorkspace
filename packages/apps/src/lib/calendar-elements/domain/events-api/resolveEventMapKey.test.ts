@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { EventsAPI, expandEvents, type CalendarEvent } from "@/lib/calendar-engine";
-import { resolveEventMapKey } from "./resolveEventMapKey.js";
+import { resolveEventMapKey, shouldAskSeriesScope } from "./resolveEventMapKey.js";
 
 const RANGE = {
   start: Temporal.PlainDateTime.from("2033-01-10T00:00:00"),
@@ -92,6 +92,50 @@ describe("resolveEventMapKey", () => {
         recurrenceId: "20330111T100000",
       }),
     ).toBe("ev-1::20330111T100000");
+  });
+
+  it("does not ask series scope when the envelope or row is already an exception", () => {
+    const master = dailyMaster();
+    const exception: CalendarEvent = {
+      eventId: "ev-1",
+      calendarId: "work",
+      recurrenceId: "20330111T100000",
+      isException: true,
+      data: {
+        summary: "Daily",
+        start: Temporal.PlainDateTime.from("2033-01-11T11:00:00"),
+        duration: Temporal.Duration.from("PT30M"),
+      },
+    };
+    const events = new Map<string, CalendarEvent>([
+      ["ev-1", master],
+      ["ev-1::20330111T100000", exception],
+    ]);
+
+    expect(
+      shouldAskSeriesScope({
+        isRecurring: true,
+        events,
+        current: master,
+        envelope: { eventId: "ev-1", recurrenceId: "20330111T100000", isException: true },
+      }),
+    ).toBe(false);
+    expect(
+      shouldAskSeriesScope({
+        isRecurring: true,
+        events,
+        current: exception,
+        envelope: { eventId: "ev-1", recurrenceId: "20330111T100000" },
+      }),
+    ).toBe(false);
+    expect(
+      shouldAskSeriesScope({
+        isRecurring: true,
+        events,
+        current: master,
+        envelope: { eventId: "ev-1", recurrenceId: "20330112T100000" },
+      }),
+    ).toBe(true);
   });
 });
 
