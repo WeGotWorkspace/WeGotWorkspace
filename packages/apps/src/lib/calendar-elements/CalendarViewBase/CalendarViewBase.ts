@@ -4,6 +4,7 @@ import {
   parseRecurrenceId,
   resolveCalendarEventColor,
   shiftDateValue,
+  splitOccurrenceKey,
   type ApplyResult,
   type CalendarEvent as ApiCalendarEvent,
   type CalendarEventPendingOperation,
@@ -294,8 +295,7 @@ export abstract class CalendarViewBase extends BaseElement {
     const shouldPromptForSeries = shouldAskSeriesScope({
       isRecurring,
       events,
-      current,
-      envelope: detail.envelope,
+      eventKey,
     });
     const occurrenceStart =
       data.recurrenceRule && !current.recurrenceId && recurrenceId
@@ -313,9 +313,7 @@ export abstract class CalendarViewBase extends BaseElement {
     if (shouldPromptForSeries && recurrenceId) {
       // Engine/JMAP map key — not JSCalendar uid (`envelope.eventId`). React
       // truncate/fork looks up bootstrap + surface by this key.
-      const seriesMasterKey = eventKey.includes("::")
-        ? eventKey.slice(0, eventKey.indexOf("::"))
-        : eventKey;
+      const seriesMasterKey = splitOccurrenceKey(eventKey).masterId;
       const moveTarget = this.#formatScopeMoveTarget(detail.content.start, Boolean(data.allDay));
       const scope = await this.#askRecurrenceScope({
         action: "update",
@@ -454,12 +452,14 @@ export abstract class CalendarViewBase extends BaseElement {
 
     const recurrenceId = detail.envelope.recurrenceId ?? current.recurrenceId;
     const isRecurring = detail.envelope.isRecurring ?? isCalendarEventRecurring(current);
-    const shouldPromptForSeries = isRecurring && !isCalendarEventException(current);
+    const shouldPromptForSeries = shouldAskSeriesScope({
+      isRecurring,
+      events,
+      eventKey,
+    });
 
     if (shouldPromptForSeries) {
-      const seriesMasterKey = eventKey.includes("::")
-        ? eventKey.slice(0, eventKey.indexOf("::"))
-        : eventKey;
+      const seriesMasterKey = splitOccurrenceKey(eventKey).masterId;
       const scope = await this.#askRecurrenceScope({
         action: "delete",
         masterId: seriesMasterKey,

@@ -1,6 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import {
   parseRecurrenceId,
+  splitOccurrenceKey,
   type CalendarEvent as EngineCalendarEvent,
   type CalendarEventsMap,
 } from "@/lib/calendar-engine";
@@ -19,6 +20,8 @@ import {
   freeBusyStatusFromWire,
 } from "@/calendar-core/src/calendar-alerts";
 import { formRecurrenceRules, formToDraft } from "@/calendar-core/src/calendar-editor-model";
+
+export { splitOccurrenceKey };
 
 /** User choice for editing/moving/resizing a recurring occurrence. */
 export type RecurrenceEditScope = "thisInstance" | "thisAndFuture";
@@ -42,13 +45,6 @@ export type RecurrenceScopeRequest = {
   description?: string;
 };
 
-/** Engine keys detached exceptions / expanded occurrences as `${masterId}::${recurrenceId}`. */
-export function splitOccurrenceKey(key: string): { masterId: string; recurrenceId?: string } {
-  const separator = key.indexOf("::");
-  if (separator === -1) return { masterId: key };
-  return { masterId: key.slice(0, separator), recurrenceId: key.slice(separator + 2) };
-}
-
 /**
  * Resolve a recurring series master whether `masterId` is the engine/JMAP map
  * key or the JSCalendar `uid` (Lit update envelopes historically used `eventId` = uid).
@@ -70,7 +66,7 @@ export function resolveRecurrenceMasterRef(
 
   if (!masterEngine && surfaceEvents) {
     for (const [key, event] of surfaceEvents) {
-      if (key.includes("::")) continue;
+      if (splitOccurrenceKey(key).recurrenceId) continue;
       if (event.eventId === masterId) {
         masterEngine = event;
         masterKey = key;

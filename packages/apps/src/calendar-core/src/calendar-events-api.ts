@@ -1,6 +1,8 @@
 import {
   EventsAPI,
+  isThisInstanceOverride,
   resolveEventEnd,
+  splitOccurrenceKey,
   type ApplyResult,
   type CalendarEvent,
   type CalendarEventsMap,
@@ -41,7 +43,7 @@ export function calendarInfosToEngineMap(calendars: readonly CalendarInfo[]): Ca
 
 /** Engine map key / offline persist id. Occurrence keys are `${id}::${recurrenceId}`. */
 export function persistEventId(key: string): string {
-  return key.includes("::") ? key.slice(0, key.indexOf("::")) : key;
+  return splitOccurrenceKey(key).masterId;
 }
 
 /**
@@ -129,11 +131,11 @@ function remappedOptimisticCacheKey(
 ): string | undefined {
   if (!isOptimisticOverlay(sourceKey, source)) return undefined;
   const sourceId = persistEventId(sourceKey);
-  const sourceIsOccurrence = sourceKey.includes("::");
+  const sourceIsOccurrence = Boolean(splitOccurrenceKey(sourceKey).recurrenceId);
   for (const [cacheKey, cached] of cache) {
     if (cacheKey === sourceKey || persistEventId(cacheKey) === sourceId) continue;
     if (isTempPersistId(persistEventId(cacheKey))) continue;
-    if (cacheKey.includes("::") !== sourceIsOccurrence) continue;
+    if (Boolean(splitOccurrenceKey(cacheKey).recurrenceId) !== sourceIsOccurrence) continue;
     if (sameLogicalEvent(source, cached)) return cacheKey;
   }
   return undefined;
@@ -232,10 +234,6 @@ function remapOverlayKeys(
   return next;
 }
 
-function isOccurrenceKey(key: string): boolean {
-  return key.includes("::");
-}
-
 function patchFromEngineEvent(
   events: CalendarEventsMap,
   masterKey: string,
@@ -255,7 +253,7 @@ export async function persistCalendarEventChanges(
   for (const change of result.changes) {
     // Detached exceptions persist as JSCalendar recurrenceOverrides on the master
     // — never as a second CalendarEvent (that paints the original + the override).
-    if (isOccurrenceKey(change.key)) {
+    if (isThisInstanceOverride(result.nextState, change.key)) {
       const masterKey = persistEventId(change.key);
       const masterAlsoWritten = result.changes.some(
         (entry) => entry.key === masterKey && entry.type !== "removed",

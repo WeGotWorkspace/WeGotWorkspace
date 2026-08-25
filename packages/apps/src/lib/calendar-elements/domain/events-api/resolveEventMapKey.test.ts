@@ -94,7 +94,7 @@ describe("resolveEventMapKey", () => {
     ).toBe("ev-1::20330111T100000");
   });
 
-  it("does not ask series scope when the envelope or row is already an exception", () => {
+  it("does not ask series scope when the resolved key is already an exception", () => {
     const master = dailyMaster();
     const exception: CalendarEvent = {
       eventId: "ev-1",
@@ -116,24 +116,14 @@ describe("resolveEventMapKey", () => {
       shouldAskSeriesScope({
         isRecurring: true,
         events,
-        current: master,
-        envelope: { eventId: "ev-1", recurrenceId: "20330111T100000", isException: true },
+        eventKey: "ev-1::20330111T100000",
       }),
     ).toBe(false);
     expect(
       shouldAskSeriesScope({
         isRecurring: true,
         events,
-        current: exception,
-        envelope: { eventId: "ev-1", recurrenceId: "20330111T100000" },
-      }),
-    ).toBe(false);
-    expect(
-      shouldAskSeriesScope({
-        isRecurring: true,
-        events,
-        current: master,
-        envelope: { eventId: "ev-1", recurrenceId: "20330112T100000" },
+        eventKey: "ev-1",
       }),
     ).toBe(true);
   });

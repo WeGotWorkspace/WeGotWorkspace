@@ -1,6 +1,6 @@
 import {
-  isDetachedException,
-  type CalendarEvent,
+  isThisInstanceOverride,
+  occurrenceMapKey,
   type CalendarEventsMap,
 } from "@/lib/calendar-engine";
 
@@ -34,7 +34,7 @@ export function resolveEventMapKey(
   if (!envelope.eventId) return undefined;
 
   if (envelope.recurrenceId) {
-    const occurrenceKey = `${envelope.eventId}::${envelope.recurrenceId}`;
+    const occurrenceKey = occurrenceMapKey(envelope.eventId, envelope.recurrenceId);
     if (events.has(occurrenceKey)) return occurrenceKey;
     for (const [key, event] of events.entries()) {
       if (event.eventId !== envelope.eventId) continue;
@@ -59,24 +59,12 @@ export function resolveEventMapKey(
 
 /**
  * Series-scope dialog is only for generated occurrences that are still part of
- * the series. An already-detached exception is a single event.
+ * the series. Uses the already-resolved map key — no second lookup.
  */
 export function shouldAskSeriesScope(args: {
   isRecurring: boolean;
   events: CalendarEventsMap;
-  current: CalendarEvent;
-  envelope: EventMapKeyEnvelope;
+  eventKey: string;
 }): boolean {
-  if (!args.isRecurring) return false;
-  if (args.envelope.isException === true) return false;
-  if (isDetachedException(args.current)) return false;
-  const recurrenceId = args.envelope.recurrenceId ?? args.current.recurrenceId;
-  if (!recurrenceId) return false;
-  const resolved = resolveEventMapKey(args.events, {
-    ...args.envelope,
-    recurrenceId,
-  });
-  if (resolved?.includes("::")) return false;
-  if (args.current.data.exclusionDates?.has(recurrenceId)) return false;
-  return true;
+  return args.isRecurring && !isThisInstanceOverride(args.events, args.eventKey);
 }
