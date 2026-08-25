@@ -1,5 +1,10 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { expandEvents, type CalendarEvent, type CalendarEventsMap } from "@/lib/calendar-engine";
+import {
+  expandEvents,
+  splitOccurrenceKey,
+  type CalendarEvent,
+  type CalendarEventsMap,
+} from "@/lib/calendar-engine";
 import { jmapEventToInternalRows, type JmapCalendarEvent } from "@/lib/jmap-client";
 import { localToInternalRecurrenceId } from "@/lib/jmap-client/mapping/datetime";
 import type { JmapParticipant } from "@/calendar-core/src/calendar-attendees";
@@ -102,8 +107,8 @@ export function applyOwnRsvpToEngineEvents(
 
   const next: CalendarEventsMap = new Map();
   for (const [key, event] of events) {
-    const masterKey = key.includes("::") ? key.slice(0, key.indexOf("::")) : key;
-    const occurrenceId = key.includes("::") ? key.slice(key.indexOf("::") + 2) : event.recurrenceId;
+    const { masterId: masterKey, recurrenceId: keyOccurrenceId } = splitOccurrenceKey(key);
+    const occurrenceId = keyOccurrenceId ?? event.recurrenceId;
     const overrides =
       overridesById.get(masterKey) ??
       (event.eventId ? overridesByUid.get(event.eventId) : undefined);

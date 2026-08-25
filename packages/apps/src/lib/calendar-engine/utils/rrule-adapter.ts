@@ -5,6 +5,7 @@ import type { CalendarEvent } from "../types/event.js";
 import { parseRecurrenceId, toPlainDateTime } from "./recurrence.js";
 
 type ExpandRecurringOptions = {
+  /** Accepted for callers; expansion stays on JSCalendar local wall clocks. */
   timezone?: string;
 };
 
@@ -65,13 +66,15 @@ function toByWeekday(byDay: CalendarRecurrenceRule["byDay"]): Options["byweekday
 function toRRuleOptions(
   recurrenceRule: CalendarRecurrenceRule,
   dtstart: Temporal.PlainDateTime,
-  tzid: string | null,
 ): Options {
   const options: Options = {
     freq: FREQ_BY_CODE[recurrenceRule.freq],
     dtstart: toUtcFloatingDate(dtstart),
     interval: recurrenceRule.interval ?? 1,
-    tzid,
+    // JSCalendar `start` / recurrence-ids are LocalDateTime wall clocks.
+    // Passing tzid through rrule shifts those clocks by the host offset
+    // (10:00 → 11:00 in CET) so overrides and EXDATE keys no longer match.
+    tzid: null,
     wkst: recurrenceRule.wkst ? WEEKDAY_BY_CODE[recurrenceRule.wkst] : null,
     bysecond: recurrenceRule.bySecond ?? null,
     byminute: recurrenceRule.byMinute ?? null,
@@ -101,33 +104,21 @@ type MemoizedRule = {
 
 type PreparedRule = MemoizedRule & { rangeKey: string };
 
-const ruleMemo = new WeakMap<CalendarEvent, Map<string, MemoizedRule>>();
-
-function tzMemoKey(tzid: string | null): string {
-  return tzid ?? "";
-}
+const ruleMemo = new WeakMap<CalendarEvent, MemoizedRule>();
 
 function ruleSetFor(
   event: CalendarEvent,
   rangeStart: Temporal.PlainDateTime,
   rangeEnd: Temporal.PlainDateTime,
-  options: ExpandRecurringOptions,
 ): PreparedRule | null {
   if (!event.data.recurrenceRule) return null;
   const dtstart = toPlainDateTime(event.data.start);
-  const tzid = event.data.timeZone ?? options.timezone ?? null;
-  const tzKey = tzMemoKey(tzid);
-  const rangeKey = `${rangeStart.toString()}|${rangeEnd.toString()}|${tzKey}`;
-  let byTz = ruleMemo.get(event);
-  if (!byTz) {
-    byTz = new Map();
-    ruleMemo.set(event, byTz);
-  }
-  const cached = byTz.get(tzKey);
+  const rangeKey = `${rangeStart.toString()}|${rangeEnd.toString()}`;
+  const cached = ruleMemo.get(event);
   if (cached) return { ruleSet: cached.ruleSet, rangeKey, betweenByRange: cached.betweenByRange };
 
   const ruleSet = new RRuleSet();
-  ruleSet.rrule(new RRule(toRRuleOptions(event.data.recurrenceRule, dtstart, tzid)));
+  ruleSet.rrule(new RRule(toRRuleOptions(event.data.recurrenceRule, dtstart)));
   if (event.data.exclusionDates?.size) {
     for (const recurrenceId of event.data.exclusionDates) {
       const parsed = parseRecurrenceId(recurrenceId, event.data.allDay ?? false, event.data.start);
@@ -136,7 +127,7 @@ function ruleSetFor(
     }
   }
   const memo: MemoizedRule = { ruleSet, betweenByRange: new Map() };
-  byTz.set(tzKey, memo);
+  ruleMemo.set(event, memo);
   return { ruleSet, rangeKey, betweenByRange: memo.betweenByRange };
 }
 
@@ -144,9 +135,9 @@ export function expandRecurringStarts(
   event: CalendarEvent,
   rangeStart: Temporal.PlainDateTime,
   rangeEnd: Temporal.PlainDateTime,
-  options: ExpandRecurringOptions = {},
+  _options: ExpandRecurringOptions = {},
 ): Temporal.PlainDateTime[] {
-  const prepared = ruleSetFor(event, rangeStart, rangeEnd, options);
+  const prepared = ruleSetFor(event, rangeStart, rangeEnd);
   if (!prepared) return [];
   const cachedStarts = prepared.betweenByRange.get(prepared.rangeKey);
   if (cachedStarts) return cachedStarts;

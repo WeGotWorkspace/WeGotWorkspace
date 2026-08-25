@@ -24,6 +24,44 @@ function queryDeep(root: ParentNode, selector: string): Element | null {
   return null;
 }
 
+function collectEventCardSummaries(root: ParentNode): string[] {
+  const summaries: string[] = [];
+  const visit = (node: ParentNode) => {
+    for (const el of node.querySelectorAll("event-card")) {
+      const summary = (el as HTMLElement & { summary?: string }).summary;
+      if (typeof summary === "string") summaries.push(summary);
+    }
+    for (const el of node.querySelectorAll("*")) {
+      if (el.shadowRoot) visit(el.shadowRoot);
+    }
+  };
+  visit(root);
+  return summaries;
+}
+
+function bootstrapWithThisInstanceOverride() {
+  const base = createCalendarAppBootstrap();
+  return {
+    ...base,
+    data: {
+      ...base.data,
+      events: base.data.events.map((event) =>
+        event.id === "standup"
+          ? {
+              ...event,
+              recurrenceOverrides: {
+                "2033-01-10T09:30:00": {
+                  title: "Team standup (moved)",
+                  start: "2033-01-10T11:00:00",
+                },
+              },
+            }
+          : event,
+      ),
+    },
+  };
+}
+
 const storyEvent = {
   "@type": "Event",
   id: "story-event",
@@ -87,6 +125,8 @@ function staticSurfaceFor(data: typeof bootstrap): CalendarSurfaceStore {
 
 const staticSurface = staticSurfaceFor(bootstrap);
 const seededSurface = staticSurfaceFor(seeded);
+const overrideBootstrap = bootstrapWithThisInstanceOverride();
+const overrideSurface = staticSurfaceFor(overrideBootstrap);
 
 const COMPACT_MONTH_VIEWPORT = {
   name: "Compact month 390",
@@ -180,6 +220,27 @@ export const ListPresentation: Story = {
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "month",
     initialPresentation: "list",
+  },
+};
+
+export const ThisInstanceOverride: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...overrideBootstrap,
+    surface: overrideSurface,
+    initialAnchor: MOCK_CALENDAR_ANCHOR,
+    initialView: "week",
+  },
+  play: async ({ canvasElement }) => {
+    const summaries = await waitFor(() => {
+      const next = collectEventCardSummaries(canvasElement);
+      if (!next.includes("Team standup (moved)")) {
+        throw new Error("override event-card not ready");
+      }
+      return next;
+    });
+    await expect(summaries.filter((title) => title === "Team standup (moved)")).toHaveLength(1);
+    await expect(summaries.filter((title) => title === "Team standup")).toHaveLength(0);
   },
 };
 

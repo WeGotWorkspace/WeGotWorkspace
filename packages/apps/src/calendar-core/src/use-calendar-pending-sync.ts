@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { CalendarEventsMap } from "@/lib/calendar-engine";
+import { splitOccurrenceKey, type CalendarEventsMap } from "@/lib/calendar-engine";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { listPendingCalendarEventIds } from "@/lib/offline/calendars-offline-store";
 
@@ -43,7 +43,7 @@ function eventMatchesPendingId(
   eventId: string | undefined,
   pendingIds: ReadonlySet<string>,
 ) {
-  const masterKey = key.includes("::") ? key.slice(0, key.indexOf("::")) : key;
+  const masterKey = splitOccurrenceKey(key).masterId;
   return (
     pendingIds.has(key) || pendingIds.has(masterKey) || (eventId ? pendingIds.has(eventId) : false)
   );
