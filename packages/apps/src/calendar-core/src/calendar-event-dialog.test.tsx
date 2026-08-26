@@ -7,8 +7,11 @@ import {
   calendarEventToForm,
   emptyCalendarEventForm,
 } from "@/calendar-core/src/calendar-editor-model";
+import { inviteeSearchRowMeta } from "@/calendar-core/src/calendar-invitees-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { MOCK_CALENDAR_CONTACT_CARDS } from "@/calendar-core/src/calendar-api-source";
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
 
 const bootstrap = createCalendarAppBootstrap();
 
@@ -1105,5 +1108,238 @@ describe("CalendarEventDialog", () => {
     expect(screen.getByDisplayValue("Standup")).toHaveProperty("disabled", false);
     expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
+  });
+
+  it("pins default teammate and contact meta strings", () => {
+    expect(defaultCalendarLabels.eventAttendeesTeammate).toBe("Teammate");
+    expect(defaultCalendarLabels.eventAttendeesContactWork).toBe("Work");
+    expect(defaultCalendarLabels.eventAttendeesContactHome).toBe("Home");
+    expect(defaultCalendarLabels.eventAttendeesContactSchool).toBe("School");
+    expect(
+      inviteeSearchRowMeta(
+        {
+          id: "teammate:jane@host",
+          displayName: "Jane",
+          email: "jane@host",
+          rawEmail: "Jane@Host",
+          source: "teammate",
+        },
+        defaultCalendarLabels,
+      ),
+    ).toBe("Teammate");
+    expect(
+      inviteeSearchRowMeta(
+        {
+          id: "contact:card-jane:jane@host",
+          displayName: "Jane Host",
+          email: "jane@host",
+          rawEmail: "Jane@Host",
+          source: "contact",
+          contactContext: "work",
+        },
+        defaultCalendarLabels,
+      ),
+    ).toBe("Jane@Host · Work");
+    expect(
+      inviteeSearchRowMeta(
+        {
+          id: "contact:card-jane:private@host",
+          displayName: "Jane Host",
+          email: "private@host",
+          rawEmail: "Private@Host",
+          source: "contact",
+        },
+        defaultCalendarLabels,
+      ),
+    ).toBe("Private@Host");
+  });
+
+  it("adds a contact invitee using rawEmail Jane@Host, not the normalized key", () => {
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    const { onChange } = renderDialog({
+      form,
+      contactCards: MOCK_CALENDAR_CONTACT_CARDS,
+      canSubmitEmail: true,
+      sessionEmail: "admin@localhost",
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane" },
+    });
+    fireEvent.mouseDown(
+      screen.getByRole("option", {
+        name: /Jane Host.*Jane@Host · Work/i,
+      }),
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attendees: [
+          expect.objectContaining({
+            email: "Jane@Host",
+            name: "Jane Host",
+            participationStatus: "needs-action",
+            role: "required",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("offers work and home as separate contact rows and skips groups without email", () => {
+    const groupCard = {
+      "@type": "Card",
+      version: "1.0",
+      id: "card-friends",
+      uid: "urn:uuid:friends",
+      kind: "group",
+      name: { "@type": "Name", isOrdered: false, full: "Friends" },
+      emails: { e1: { "@type": "EmailAddress", address: "friends@host" } },
+    } as unknown as ContactCard;
+    const noEmail = {
+      "@type": "Card",
+      version: "1.0",
+      id: "card-no-email",
+      uid: "urn:uuid:no-email",
+      name: { "@type": "Name", isOrdered: false, full: "No Email Jane" },
+    } as unknown as ContactCard;
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    renderDialog({
+      form,
+      contactCards: [...MOCK_CALENDAR_CONTACT_CARDS, groupCard, noEmail],
+      canSubmitEmail: true,
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane" },
+    });
+    expect(screen.getByRole("option", { name: /Jane@Host · Work/i })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /jane\.home@host · Home/i })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Friends/i })).toBeNull();
+    expect(screen.queryByRole("option", { name: /No Email Jane/i })).toBeNull();
+  });
+
+  it("does not add a contact that is already an attendee", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      attendees: [
+        {
+          email: "Jane@Host",
+          name: "Jane Host",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const { onChange } = renderDialog({
+      form,
+      contactCards: MOCK_CALENDAR_CONTACT_CARDS,
+      canSubmitEmail: true,
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane" },
+    });
+    expect(screen.queryByRole("option", { name: /Jane@Host · Work/i })).toBeNull();
+    expect(screen.getByRole("option", { name: /jane\.home@host · Home/i })).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("adds a typed-email attendee from the new search row shape", () => {
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    const { onChange } = renderDialog({ form, canSubmitEmail: true });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane@Host" },
+    });
+    fireEvent.mouseDown(screen.getByRole("option", { name: /Jane@Host.*Add email/i }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attendees: [
+          expect.objectContaining({
+            email: "Jane@Host",
+            name: "Jane@Host",
+            participationStatus: "needs-action",
+            role: "required",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("keeps one teammate row when a contact shares the same email", () => {
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    renderDialog({
+      form,
+      invitees: [{ username: "jane", email: "Jane@Host", name: "Jane Teammate" }],
+      contactCards: MOCK_CALENDAR_CONTACT_CARDS,
+      sessionEmail: "admin@localhost",
+      canSubmitEmail: true,
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane" },
+    });
+    expect(screen.getByRole("option", { name: /Jane Teammate.*Teammate/i })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Jane@Host · Work/i })).toBeNull();
+    expect(screen.getByRole("option", { name: /jane\.home@host · Home/i })).toBeTruthy();
+  });
+
+  it("still lists teammates when contact cards are also present", () => {
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    renderDialog({
+      form,
+      invitees: [
+        { username: "alice", email: "alice@example.test", name: "Alice" },
+        { username: "jdoe", email: "jdoe@company.com", name: "J. Doe" },
+      ],
+      contactCards: MOCK_CALENDAR_CONTACT_CARDS,
+      sessionEmail: "admin@localhost",
+      canSubmitEmail: true,
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "ali" },
+    });
+    expect(screen.getByRole("option", { name: /Alice.*Teammate/i })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Jane Host/i })).toBeNull();
+  });
+
+  it("promotes a contact hit to the teammate row when emails match", () => {
+    const janeDoe = {
+      "@type": "Card",
+      version: "1.0",
+      id: "card-jane-doe",
+      uid: "urn:uuid:jane-doe",
+      name: { "@type": "Name", isOrdered: false, full: "Jane Doe" },
+      emails: {
+        e1: { "@type": "EmailAddress", address: "jdoe@company.com", contexts: { work: true } },
+      },
+    } as unknown as ContactCard;
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    renderDialog({
+      form,
+      invitees: [{ username: "jdoe", email: "jdoe@company.com", name: "J. Doe" }],
+      contactCards: [janeDoe],
+      sessionEmail: "admin@localhost",
+      canSubmitEmail: true,
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane" },
+    });
+    expect(screen.getByRole("option", { name: /J\. Doe.*Teammate/i })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /jdoe@company.com · Work/i })).toBeNull();
+  });
+
+  it("asks for a live contact refresh after invitee search", async () => {
+    const onRefreshContactCards = vi.fn();
+    const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
+    renderDialog({
+      form,
+      contactCards: MOCK_CALENDAR_CONTACT_CARDS,
+      canSubmitEmail: true,
+      onRefreshContactCards,
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "Jane" },
+    });
+    expect(onRefreshContactCards).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onRefreshContactCards).toHaveBeenCalled();
+    });
   });
 });

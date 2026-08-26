@@ -186,6 +186,10 @@ export type CalendarUILabels = {
   eventAttendeesEmailUnavailable: string;
   eventAttendeesRemove: string;
   eventAttendeesSearchEmpty: string;
+  eventAttendeesTeammate: string;
+  eventAttendeesContactWork: string;
+  eventAttendeesContactHome: string;
+  eventAttendeesContactSchool: string;
   eventAttendeesOrganizer: string;
   eventAttendeesRsvpAccepted: string;
   eventAttendeesRsvpTentative: string;
@@ -389,7 +393,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   invitationsToggleHide: "Hide invitations",
   invitationsOrganizerUnknown: "Organizer",
   eventAttendeesLabel: "Invitees",
-  eventAttendeesHint: "Add teammates or invite anyone with an email address.",
+  eventAttendeesHint: "Add teammates, contacts, or anyone with an email address.",
   eventAttendeesAdd: "Add people",
   eventAttendeesEmpty: "No invitees yet.",
   eventAttendeesEmailPlaceholder: "Add people…",
@@ -397,7 +401,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
   eventAttendeesRemove: "Remove invitee",
-  eventAttendeesSearchEmpty: "No teammates found",
+  eventAttendeesSearchEmpty: "No people found",
+  eventAttendeesTeammate: "Teammate",
+  eventAttendeesContactWork: "Work",
+  eventAttendeesContactHome: "Home",
+  eventAttendeesContactSchool: "School",
   eventAttendeesOrganizer: "Organizer",
   eventAttendeesRsvpAccepted: "Accepted",
   eventAttendeesRsvpTentative: "Maybe",

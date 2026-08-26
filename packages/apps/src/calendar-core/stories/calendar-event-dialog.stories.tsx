@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
+import { MOCK_CALENDAR_CONTACT_CARDS } from "@/calendar-core/src/calendar-api-source";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 
@@ -168,6 +169,21 @@ export const InviteeMeetJoin: Story = {
           role: "required",
         },
       ],
+    },
+  },
+};
+
+export const WithContactHits: Story = {
+  args: {
+    contactCards: MOCK_CALENDAR_CONTACT_CARDS,
+    invitees: [
+      { username: "alice", email: "alice@example.test", name: "Alice" },
+      { username: "jane", email: "jane.teammate@host", name: "Jane Teammate" },
+    ],
+    sessionEmail: "admin@localhost",
+    form: {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
     },
   },
 };
