@@ -26,6 +26,7 @@ Calendar remounts and later visits on the same browser restore the user's hidden
 - Persist on user change (hide/show, view, presentation) and when an explicit URL hydrates the controller
 - Hidden IDs are filtered to calendars that still exist; unknown IDs are dropped
 - Server `isVisible: false` still seeds hidden state when no stored override exists for that id
+- Persist the calendar ids this device has already seen so an explicit un-hide of a server-default-hidden calendar survives reload; only genuinely new calendars take the server default
 
 ## Edge cases
 

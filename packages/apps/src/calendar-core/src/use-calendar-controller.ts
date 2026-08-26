@@ -197,9 +197,7 @@ export function useCalendarController({
   const [calendars, setCalendars] = useState<CalendarInfo[]>(() =>
     sortCalendarsForSidebar(data.calendars),
   );
-  const { hiddenCalendarIds, setHiddenCalendarIds, pruneHiddenCalendarIds } = useCalendarHiddenIds(
-    data.calendars,
-  );
+  const { hiddenCalendarIds, setHiddenCalendarIds } = useCalendarHiddenIds(data.calendars);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | undefined>(() =>
     pickDefaultCalendarId(data.calendars),
   );
@@ -221,12 +219,11 @@ export function useCalendarController({
     const nextIds = new Set(next.map((calendar) => calendar.id));
     setCalendars(next);
     setSelectedCalendarId((current) => pickDefaultCalendarId(next, current));
-    pruneHiddenCalendarIds(nextIds);
     setCalendarDialog((current) => {
       if (current?.mode === "edit" && !nextIds.has(current.calendarId)) return null;
       return current;
     });
-  }, [data.calendars, pruneHiddenCalendarIds]);
+  }, [data.calendars]);
 
   const { queueMutation, undoLatest } = useQueuedMutation({
     onMutationError: () => showError(L.toastEventSaveFailed),

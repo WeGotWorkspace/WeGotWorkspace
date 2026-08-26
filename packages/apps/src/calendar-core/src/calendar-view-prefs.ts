@@ -9,6 +9,8 @@ export type CalendarViewPrefs = {
   view?: CalendarViewId;
   presentation?: CalendarPresentation;
   hiddenCalendarIds?: string[];
+  /** Calendar ids present the last time hidden prefs were written on this device. */
+  knownCalendarIds?: string[];
 };
 
 function hasWindowStorage(): boolean {
@@ -23,7 +25,7 @@ function isStoredView(value: unknown): value is CalendarViewId {
   return typeof value === "string" && CALENDAR_VIEWS.has(value as CalendarViewId);
 }
 
-function parseHiddenCalendarIds(value: unknown): string[] | undefined {
+function parseStoredIdList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.filter((id): id is string => typeof id === "string" && id.length > 0);
 }
@@ -38,8 +40,10 @@ export function parseCalendarViewPrefs(raw: string | null): CalendarViewPrefs | 
     const prefs: CalendarViewPrefs = {};
     if (isStoredView(record.view)) prefs.view = record.view;
     if (isCalendarPresentation(record.presentation)) prefs.presentation = record.presentation;
-    const hiddenCalendarIds = parseHiddenCalendarIds(record.hiddenCalendarIds);
+    const hiddenCalendarIds = parseStoredIdList(record.hiddenCalendarIds);
     if (hiddenCalendarIds !== undefined) prefs.hiddenCalendarIds = hiddenCalendarIds;
+    const knownCalendarIds = parseStoredIdList(record.knownCalendarIds);
+    if (knownCalendarIds !== undefined) prefs.knownCalendarIds = knownCalendarIds;
     return Object.keys(prefs).length > 0 ? prefs : null;
   } catch {
     return null;
@@ -72,6 +76,9 @@ export function patchCalendarViewPrefs(partial: CalendarViewPrefs): CalendarView
   if (partial.hiddenCalendarIds !== undefined) {
     next.hiddenCalendarIds = partial.hiddenCalendarIds;
   }
+  if (partial.knownCalendarIds !== undefined) {
+    next.knownCalendarIds = partial.knownCalendarIds;
+  }
   writeCalendarViewPrefs(next);
   return Object.keys(next).length > 0 ? next : null;
 }
@@ -83,19 +90,34 @@ export function persistCalendarRoutePrefs(
   patchCalendarViewPrefs({ view, presentation });
 }
 
-export function persistHiddenCalendarIds(ids: ReadonlySet<string>): void {
-  patchCalendarViewPrefs({ hiddenCalendarIds: [...ids] });
+export function persistHiddenCalendarIds(
+  ids: ReadonlySet<string>,
+  calendarIds: ReadonlyArray<string>,
+): void {
+  patchCalendarViewPrefs({
+    hiddenCalendarIds: [...ids],
+    knownCalendarIds: [...new Set(calendarIds.filter((id) => id.length > 0))],
+  });
 }
 
-/** Persist user hides, drop unknown ids, and still hide server-invisible calendars. */
+/**
+ * Hidden ids are the source of truth once this device has seen a calendar.
+ * Server `isVisible: false` only seeds calendars that have never appeared in a
+ * persisted snapshot (`knownCalendarIds`). Legacy payloads without that list
+ * treat the current calendar set as already seen so an explicit un-hide sticks.
+ */
 export function resolveHiddenCalendarIds(
   calendars: ReadonlyArray<{ id: string; isVisible?: boolean }>,
-  persisted: string[] | undefined,
+  persisted?: Pick<CalendarViewPrefs, "hiddenCalendarIds" | "knownCalendarIds"> | null,
 ): string[] {
-  const known = new Set(calendars.map((calendar) => calendar.id));
+  const currentIds = new Set(calendars.map((calendar) => calendar.id));
   const fromServer = calendars
     .filter((calendar) => calendar.isVisible === false)
     .map((calendar) => calendar.id);
-  if (!persisted) return fromServer;
-  return [...new Set([...persisted.filter((id) => known.has(id)), ...fromServer])];
+  if (!persisted || persisted.hiddenCalendarIds === undefined) return fromServer;
+
+  const seen = new Set(persisted.knownCalendarIds ?? currentIds);
+  const fromUser = persisted.hiddenCalendarIds.filter((id) => currentIds.has(id));
+  const fromNewServerHidden = fromServer.filter((id) => !seen.has(id));
+  return [...new Set([...fromUser, ...fromNewServerHidden])];
 }

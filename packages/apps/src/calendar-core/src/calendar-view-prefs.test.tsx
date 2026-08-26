@@ -21,6 +21,7 @@ const validPrefs: CalendarViewPrefs = {
   view: "week",
   presentation: "list",
   hiddenCalendarIds: ["work", "family"],
+  knownCalendarIds: ["default", "work", "family"],
 };
 
 describe("parseCalendarViewPrefs", () => {
@@ -32,9 +33,10 @@ describe("parseCalendarViewPrefs", () => {
           view: "agenda",
           presentation: "cards",
           hiddenCalendarIds: ["work", 2, "", "family"],
+          knownCalendarIds: ["default", "", 3, "work"],
         }),
       ),
-    ).toEqual({ hiddenCalendarIds: ["work", "family"] });
+    ).toEqual({ hiddenCalendarIds: ["work", "family"], knownCalendarIds: ["default", "work"] });
   });
 
   it("returns null for missing, corrupt, or empty payloads", () => {
@@ -85,10 +87,11 @@ describe("writeCalendarViewPrefs / patchCalendarViewPrefs", () => {
 
   it("merges a patch without dropping other stored fields", () => {
     writeCalendarViewPrefs(validPrefs);
-    patchCalendarViewPrefs({ hiddenCalendarIds: ["holidays"] });
+    patchCalendarViewPrefs({ hiddenCalendarIds: ["holidays"], knownCalendarIds: ["holidays"] });
     expect(readCalendarViewPrefs()).toEqual({
       ...validPrefs,
       hiddenCalendarIds: ["holidays"],
+      knownCalendarIds: ["holidays"],
     });
 
     patchCalendarViewPrefs({ view: "day", presentation: "grid" });
@@ -96,6 +99,7 @@ describe("writeCalendarViewPrefs / patchCalendarViewPrefs", () => {
       view: "day",
       presentation: "grid",
       hiddenCalendarIds: ["holidays"],
+      knownCalendarIds: ["holidays"],
     });
 
     patchCalendarViewPrefs({ hiddenCalendarIds: [] });
@@ -103,6 +107,7 @@ describe("writeCalendarViewPrefs / patchCalendarViewPrefs", () => {
       view: "day",
       presentation: "grid",
       hiddenCalendarIds: [],
+      knownCalendarIds: ["holidays"],
     });
   });
 
@@ -123,10 +128,39 @@ describe("resolveHiddenCalendarIds", () => {
 
   it("uses server visibility when nothing is persisted", () => {
     expect(resolveHiddenCalendarIds(calendars, undefined)).toEqual(["holidays"]);
+    expect(resolveHiddenCalendarIds(calendars, {})).toEqual(["holidays"]);
   });
 
   it("keeps persisted hides that still exist and drops unknown ids", () => {
-    expect(resolveHiddenCalendarIds(calendars, ["work", "gone"])).toEqual(["work", "holidays"]);
+    expect(
+      resolveHiddenCalendarIds(calendars, {
+        hiddenCalendarIds: ["work", "gone"],
+        knownCalendarIds: ["default", "work", "holidays"],
+      }),
+    ).toEqual(["work"]);
+  });
+
+  it("does not re-hide a server-default-hidden calendar the user already showed", () => {
+    expect(
+      resolveHiddenCalendarIds(calendars, {
+        hiddenCalendarIds: [],
+        knownCalendarIds: ["default", "work", "holidays"],
+      }),
+    ).toEqual([]);
+    expect(
+      resolveHiddenCalendarIds(calendars, {
+        hiddenCalendarIds: ["work"],
+      }),
+    ).toEqual(["work"]);
+  });
+
+  it("hides a new server-default-hidden calendar the device has never seen", () => {
+    expect(
+      resolveHiddenCalendarIds(calendars, {
+        hiddenCalendarIds: ["work"],
+        knownCalendarIds: ["default", "work"],
+      }),
+    ).toEqual(["work", "holidays"]);
   });
 });
 
@@ -137,11 +171,12 @@ describe("persist helpers", () => {
 
   it("writes route and hidden patches independently", () => {
     persistCalendarRoutePrefs("year", "list");
-    persistHiddenCalendarIds(new Set(["work"]));
+    persistHiddenCalendarIds(new Set(["work"]), ["default", "work", "holidays"]);
     expect(readCalendarViewPrefs()).toEqual({
       view: "year",
       presentation: "list",
       hiddenCalendarIds: ["work"],
+      knownCalendarIds: ["default", "work", "holidays"],
     });
   });
 });
