@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarShareInvites;
+use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Testing\TestResponse;
 
 /**
@@ -77,6 +82,34 @@ trait MeetTestFixtures
     protected function withoutBearer(): static
     {
         return $this->withoutHeader('Authorization');
+    }
+
+    protected function provisionGroupCalendar(string $groupSlug, string $displayName = ''): CalendarInstance
+    {
+        $groupUri = AdminConstants::GROUP_PREFIX.$groupSlug;
+        app(UserCalendarCollectionsProvisioner::class)
+            ->ensureForGroupPrincipal($groupUri, $displayName !== '' ? $displayName : $groupSlug);
+
+        $instance = CalendarInstance::query()
+            ->where('principaluri', $groupUri)
+            ->where('uri', CalendarCollectionUris::groupCalendarCalDavUri($groupSlug))
+            ->first();
+        $this->assertNotNull($instance);
+
+        return $instance;
+    }
+
+    protected function shareGroupCalendar(CalendarInstance $ownerInstance, string $sharee, bool $write): void
+    {
+        $principalUri = (string) $ownerInstance->principaluri;
+        $this->assertTrue(str_starts_with($principalUri, AdminConstants::GROUP_PREFIX));
+        $groupSlug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
+
+        app(CalendarShareInvites::class)->apply(
+            $ownerInstance,
+            $groupSlug,
+            [$sharee => $write ? ['mayWrite' => true] : ['mayRead' => true]],
+        );
     }
 
     /**

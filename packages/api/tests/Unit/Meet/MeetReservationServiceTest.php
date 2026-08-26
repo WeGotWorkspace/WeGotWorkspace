@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Meet;
 
 use App\Models\MeetReservation;
+use App\Models\Principal;
 use App\Services\Meet\MeetReservationService;
 use Illuminate\Support\Carbon;
 use Tests\Support\MeetTestFixtures;
@@ -68,6 +69,26 @@ final class MeetReservationServiceTest extends WgwDatabaseTestCase
 
         $this->assertTrue($this->reservations->canManage('bob', $row));
         $this->assertFalse($this->reservations->canManage('carol', $row));
+    }
+
+    public function test_can_claim_own_principal_or_group_calendar_write(): void
+    {
+        $group = $this->seedWgwGroup('principals/groups/design', 'Design');
+        $bob = Principal::forUsername('bob');
+        $this->assertNotNull($bob);
+        $this->addPrincipalToGroup($group, $bob);
+
+        $this->assertTrue($this->reservations->canClaimOwnerPrincipal('bob', 'u:bob'));
+        $this->assertTrue($this->reservations->canClaimOwnerPrincipal('bob', 'groups/design'));
+        $this->assertFalse($this->reservations->canClaimOwnerPrincipal('carol', 'u:bob'));
+        $this->assertFalse($this->reservations->canClaimOwnerPrincipal('carol', 'groups/design'));
+
+        $instance = $this->provisionGroupCalendar('design', 'Design');
+        $this->shareGroupCalendar($instance, 'carol', write: true);
+        $this->assertTrue($this->reservations->canClaimOwnerPrincipal('carol', 'groups/design'));
+
+        $this->shareGroupCalendar($instance, 'alice', write: false);
+        $this->assertFalse($this->reservations->canClaimOwnerPrincipal('alice', 'groups/design'));
     }
 
     public function test_ad_hoc_expires_at_is_start_plus_30_days(): void

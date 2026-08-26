@@ -3713,7 +3713,7 @@ export interface paths {
         put?: never;
         /**
          * Reserve a meeting room
-         * @description Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry.
+         * @description Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
          */
         post: {
             parameters: {
@@ -3739,6 +3739,13 @@ export interface paths {
                 };
                 /** @description Authentication required */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };

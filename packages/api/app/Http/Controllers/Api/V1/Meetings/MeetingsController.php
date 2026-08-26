@@ -33,6 +33,12 @@ final class MeetingsController
         $validated = $request->validated();
         $roomId = (string) $validated['room'];
         $ownerPrincipal = (string) $validated['ownerPrincipal'];
+        if (! $this->reservations->canClaimOwnerPrincipal($username, $ownerPrincipal)) {
+            throw new MeetResponseException(403, [
+                'error' => 'forbidden',
+                'message' => 'You can only reserve a room for your own principal or a group calendar you can write.',
+            ]);
+        }
         $existing = $this->reservations->find($roomId);
         $expiresAt = array_key_exists('expiresAt', $request->json()->all())
             ? $this->parseExpiresAt($validated['expiresAt'] ?? null)

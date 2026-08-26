@@ -6,6 +6,7 @@ namespace App\Services\Meet;
 
 use App\Models\MeetReservation;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalendarRepository;
 use App\Services\Settings\GroupMembershipResolver;
 use DateTimeInterface;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,7 @@ final class MeetReservationService
 
     public function __construct(
         private readonly GroupMembershipResolver $groups,
+        private readonly CalendarRepository $calendars,
     ) {}
 
     public function actorPrincipal(string $username): string
@@ -85,6 +87,28 @@ final class MeetReservationService
         $existing->save();
     }
 
+    public function canClaimOwnerPrincipal(string $username, string $ownerPrincipal): bool
+    {
+        if ($username === '') {
+            return false;
+        }
+        if ($ownerPrincipal === $this->actorPrincipal($username)) {
+            return true;
+        }
+        if (! str_starts_with($ownerPrincipal, 'groups/')) {
+            return false;
+        }
+        $groupSlug = substr($ownerPrincipal, strlen('groups/'));
+        if ($groupSlug === '') {
+            return false;
+        }
+
+        return $this->calendars->userMayWriteEventsOwnedBy(
+            $username,
+            AdminConstants::GROUP_PREFIX.$groupSlug,
+        );
+    }
+
     public function canManage(?string $username, MeetReservation $row): bool
     {
         if ($username === null || $username === '') {
@@ -94,10 +118,16 @@ final class MeetReservationService
         if ($row->created_by === $actor || $row->owner_principal === $actor) {
             return true;
         }
-        if (! str_starts_with((string) $row->owner_principal, 'groups/')) {
+
+        return $this->isOwnerPrincipalMember($username, (string) $row->owner_principal);
+    }
+
+    private function isOwnerPrincipalMember(string $username, string $ownerPrincipal): bool
+    {
+        if (! str_starts_with($ownerPrincipal, 'groups/')) {
             return false;
         }
-        $groupUri = AdminConstants::GROUP_PREFIX.substr((string) $row->owner_principal, strlen('groups/'));
+        $groupUri = AdminConstants::GROUP_PREFIX.substr($ownerPrincipal, strlen('groups/'));
 
         return in_array('principals/'.$username, $this->groups->memberPrincipalUris($groupUri), true);
     }

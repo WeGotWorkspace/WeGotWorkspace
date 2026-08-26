@@ -31,6 +31,94 @@ final class MeetReservationTest extends WgwDatabaseTestCase
         ])->assertUnauthorized();
     }
 
+    public function test_post_forbids_claiming_another_users_principal(): void
+    {
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'u:bob',
+            ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $this->assertNull(MeetReservation::query()->find(self::ROOM));
+    }
+
+    public function test_post_forbids_claiming_a_group_without_calendar_write_access(): void
+    {
+        $this->seedWgwGroup('principals/groups/design', 'Design');
+        $this->provisionGroupCalendar('design', 'Design');
+
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'groups/design',
+            ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $this->assertNull(MeetReservation::query()->find(self::ROOM));
+    }
+
+    public function test_post_forbids_claiming_a_group_with_read_only_calendar_share(): void
+    {
+        $this->seedDesignGroupWith('bob');
+        $this->shareGroupCalendar($this->provisionGroupCalendar('design', 'Design'), 'carol', write: false);
+
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'groups/design',
+            ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $this->assertNull(MeetReservation::query()->find(self::ROOM));
+    }
+
+    public function test_post_allows_claiming_own_principal(): void
+    {
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'u:carol',
+            ])
+            ->assertCreated()
+            ->assertJson([
+                'ownerPrincipal' => 'u:carol',
+                'createdBy' => 'u:carol',
+            ]);
+    }
+
+    public function test_post_allows_claiming_a_group_the_user_belongs_to(): void
+    {
+        $this->seedDesignGroupWith('bob');
+
+        $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design')
+            ->assertCreated()
+            ->assertJson([
+                'ownerPrincipal' => 'groups/design',
+                'createdBy' => 'u:bob',
+            ]);
+    }
+
+    public function test_post_allows_claiming_a_group_via_calendar_write_share(): void
+    {
+        $this->seedDesignGroupWith('bob');
+        $this->shareGroupCalendar($this->provisionGroupCalendar('design', 'Design'), 'carol', write: true);
+
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'groups/design',
+            ])
+            ->assertCreated()
+            ->assertJson([
+                'ownerPrincipal' => 'groups/design',
+                'createdBy' => 'u:carol',
+            ]);
+    }
+
     public function test_post_records_created_by_and_nullable_expires_at(): void
     {
         $this->reserveMeetRoom(self::ROOM)
@@ -122,7 +210,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 
     public function test_created_by_gets_full_get_body(): void
     {
-        $this->seedWgwGroup('principals/groups/design', 'Design');
+        $this->seedDesignGroupWith('bob');
         $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design')->assertCreated();
 
         $this->withBearer($this->userBearerToken())
@@ -139,11 +227,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 
     public function test_owner_principal_member_gets_full_get_body(): void
     {
-        $group = $this->seedWgwGroup('principals/groups/design', 'Design');
-        $carol = Principal::forUsername('carol');
-        $this->assertNotNull($carol);
-        $this->addPrincipalToGroup($group, $carol);
-
+        $this->seedDesignGroupWith('bob', 'carol');
         $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design')->assertCreated();
 
         $this->withBearer($this->carolBearerToken())
@@ -158,7 +242,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 
     public function test_signed_in_non_member_gets_guest_get_body(): void
     {
-        $this->seedWgwGroup('principals/groups/design', 'Design');
+        $this->seedDesignGroupWith('bob');
         $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design')->assertCreated();
 
         $this->withBearer($this->carolBearerToken())
@@ -185,10 +269,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 
     public function test_patch_expires_at_by_owner_principal_member(): void
     {
-        $group = $this->seedWgwGroup('principals/groups/design', 'Design');
-        $carol = Principal::forUsername('carol');
-        $this->assertNotNull($carol);
-        $this->addPrincipalToGroup($group, $carol);
+        $this->seedDesignGroupWith('bob', 'carol');
         $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design')->assertCreated();
 
         $this->withBearer($this->carolBearerToken())
@@ -283,5 +364,15 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 
         $this->assertSame(0, $deleted);
         $this->assertNotNull(MeetReservation::query()->find(self::ROOM));
+    }
+
+    private function seedDesignGroupWith(string ...$usernames): void
+    {
+        $group = $this->seedWgwGroup('principals/groups/design', 'Design');
+        foreach ($usernames as $username) {
+            $principal = Principal::forUsername($username);
+            $this->assertNotNull($principal);
+            $this->addPrincipalToGroup($group, $principal);
+        }
     }
 }

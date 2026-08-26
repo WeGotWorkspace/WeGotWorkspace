@@ -324,6 +324,39 @@ final class CalendarRepository
             !== SharingPlugin::ACCESS_READ;
     }
 
+    /**
+     * Whether $username may create/modify VEVENTs on a calendar owned by
+     * $ownerPrincipalUri. Same relation JMAP/CalDAV use: owner/member
+     * ACCESS_SHAREDOWNER, or a sharee instance that is not ACCESS_READ.
+     *
+     * Group members with no owner rows yet still pass — listing the group
+     * home provisions the default VEVENT collection.
+     */
+    public function userMayWriteEventsOwnedBy(string $username, string $ownerPrincipalUri): bool
+    {
+        if ($username === '' || $ownerPrincipalUri === '') {
+            return false;
+        }
+
+        $ownedCalendarIds = $this->ownedVeventCalendarIds($ownerPrincipalUri);
+        $groupSlug = $this->groupSlugFromPrincipalUri($ownerPrincipalUri);
+        $isGroupMember = $groupSlug !== null
+            && in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true);
+
+        if ($ownedCalendarIds === []) {
+            return $isGroupMember;
+        }
+        if ($isGroupMember) {
+            return true;
+        }
+
+        return CalendarInstance::query()
+            ->where('principaluri', $this->principalUri($username))
+            ->whereIn('calendarid', $ownedCalendarIds)
+            ->get()
+            ->contains(fn (CalendarInstance $instance): bool => $this->instanceMayWrite($instance));
+    }
+
     public function findAccessibleCalendar(string $username, string $calendarId): ?CalendarInstance
     {
         $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId);
@@ -824,6 +857,22 @@ final class CalendarRepository
         $slug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
 
         return $slug !== '' ? $slug : null;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function ownedVeventCalendarIds(string $ownerPrincipalUri): array
+    {
+        return CalendarInstance::query()
+            ->where('principaluri', $ownerPrincipalUri)
+            ->where(function ($query): void {
+                $query->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+                    ->orWhereNull('access');
+            })
+            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
+            ->pluck('calendarid')
+            ->all();
     }
 
     /**

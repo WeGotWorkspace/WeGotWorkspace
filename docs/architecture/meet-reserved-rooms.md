@@ -95,7 +95,7 @@ Path must be `/meet/guest` or `/meet/join`. Query `room` must match the full `xx
 
 ### `POST /meetings/rooms`
 
-Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry). Records `createdBy` from the authenticated actor. Idempotent on room id: already reserved → keep owner / `createdBy`, and when the calendar hook is the caller, overwrite `expiresAt` with the event/scope clock.
+Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry). Records `createdBy` from the authenticated actor. `ownerPrincipal` must be `u:{authenticated user}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share). Membership-only is not required. Otherwise **403**. Idempotent on room id: already reserved → keep owner / `createdBy`, and when the calendar hook is the caller, overwrite `expiresAt` with the event/scope clock.
 
 ### `GET /meetings/rooms/{id}`
 
