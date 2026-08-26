@@ -9,6 +9,7 @@ use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -17,6 +18,7 @@ use Tests\Support\WgwDatabaseTestCase;
  */
 final class TasksCalDavInteropTest extends WgwDatabaseTestCase
 {
+    use OptimisticConcurrencyTestHelpers;
     use TasksTestFixtures;
 
     protected function setUp(): void
@@ -89,6 +91,29 @@ final class TasksCalDavInteropTest extends WgwDatabaseTestCase
             $search->json('data.results') ?? [],
         );
         $this->assertContains('caldav', $sourceTypes);
+    }
+
+    public function test_patch_completes_apple_reminders_uppercase_uuid_object(): void
+    {
+        $objectId = 'D69FDC67-DE9B-4DD4-9D98-DF226D7E9144';
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Apple Inc.//macOS 15.0.1//EN\r\nBEGIN:VTODO\r\nUID:{$objectId}\r\nSUMMARY:From Reminders\r\nSTATUS:NEEDS-ACTION\r\nPERCENT-COMPLETE:0\r\nX-APPLE-SORT-ORDER:1\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
+        $taskId = $this->seedTaskViaPdo('bob', $objectId.'.ics', $ics);
+        $this->assertSame($objectId, $taskId);
+        $url = '/api/v1/tasks/items/'.$taskId;
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/tasks/items?taskListId='.InboxTaskListProvisioner::URI)
+            ->assertOk()
+            ->assertJsonPath('list.0.id', $taskId);
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->patchJson($url, [
+                'workflowStatus' => 'completed',
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)));
+
+        $response->assertOk()
+            ->assertJsonPath('id', $taskId)
+            ->assertJsonPath('workflowStatus', 'completed');
     }
 
     public function test_caldav_write_is_readable_via_rest_get(): void
