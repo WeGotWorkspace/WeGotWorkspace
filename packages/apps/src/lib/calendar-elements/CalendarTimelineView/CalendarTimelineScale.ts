@@ -312,7 +312,6 @@ export function monthDayHeaderPartNames(options: {
 }): string {
   return [
     "day-header",
-    "day-header-button",
     options.outsideMonth ? "day-header-outside-month" : "",
     options.isWeekend && !options.outsideMonth ? "day-header-weekend" : "",
   ]

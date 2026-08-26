@@ -31,6 +31,12 @@
   @apply inline-flex [container-type:inline-size] items-center justify-start text-start whitespace-nowrap [padding-inline:6px];
 }
 
+.weekday-date-cell {
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+}
+
 .weekday-label {
   @apply text-inherit;
 }
@@ -50,12 +56,62 @@
   cursor: pointer;
   font: inherit;
   color: inherit;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
+  padding-inline: 0;
   /* Shared with the day/week week-number corner so W## and "Monday 17" share a baseline. */
   min-height: var(--_lc-weekday-header-item-min-height, 24px);
   padding-block: var(--_lc-weekday-header-item-padding-block, 3px);
   border-radius: 4px;
   user-select: none;
+}
+
+.weekday-create-button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  margin-inline-start: auto;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  /* Stay in the a11y tree and tab order; reveal on header hover or keyboard focus. */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.weekday-date-cell:hover .weekday-create-button,
+.weekday-date-cell:focus-within .weekday-create-button,
+.weekday-create-button:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.weekday-create-button__icon {
+  width: 12px;
+  height: 12px;
+}
+
+.weekday-create-button:hover {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+.weekday-create-button:focus-visible {
+  outline: 2px solid light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  outline-offset: -2px;
 }
 
 .weekday-date-button:hover {

@@ -253,9 +253,9 @@ export abstract class CalendarViewBase extends BaseElement {
   }
 
   protected applyCreateRequestToEventsAPI(detail: EventCreateRequestDetail): boolean {
-    if (!this.#eventsAPI) return false;
-    // Cancelable intent: consumers (e.g. Storybook) may prompt/confirm and call preventDefault,
-    // or mutate `detail.content` (summary, etc.) before the create is applied.
+    // Cancelable intent: consumers (React dialog / Storybook) may preventDefault, or mutate
+    // `detail.content` before apply. Dispatch even without an Events API so click/drag create
+    // can still open the host dialog.
     const accepted = this.dispatchEvent(
       new CustomEvent("event-create-requested", {
         detail,
@@ -265,6 +265,7 @@ export abstract class CalendarViewBase extends BaseElement {
       }),
     );
     if (!accepted) return false;
+    if (!this.#eventsAPI) return false;
     const result = this.#applyEventsAPIOperation({
       type: "create",
       input: fromCreateRequest(detail),
