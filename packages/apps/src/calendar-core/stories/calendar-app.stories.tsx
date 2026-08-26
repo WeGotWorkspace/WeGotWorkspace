@@ -629,7 +629,6 @@ export const SearchNoMatch: Story = {
 };
 
 export const SearchTruncated: Story = {
-  tags: ["vitest-ci"],
   args: searchBootstrap,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

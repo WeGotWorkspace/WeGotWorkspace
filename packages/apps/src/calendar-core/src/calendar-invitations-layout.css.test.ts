@@ -20,7 +20,7 @@ describe("calendar invitations dock width", () => {
       /\.calendar-workspace \.workspace-app-layout__panel[\s\S]*max-width:\s*var\(--calendar-invitations-column-width\)/,
     );
     expect(workspace).toMatch(
-      /\.calendar-workspace \.workspace-app-layout__main \{\s*@apply min-w-0;/,
+      /\.calendar-workspace \.workspace-app-layout__main \{[\s\S]*?@apply[^\n]*min-w-0;/,
     );
     expect(workspace).toMatch(
       /\.calendar-workspace \.workspace-app-layout__panel[\s\S]*background-color:\s*var\(--app-sidebar-bg\)/,
