@@ -216,10 +216,27 @@ export function meetingUrlFromCalendarEvent(
   return meetingUrlFromLinks(event.links);
 }
 
-export function roomCodeFromMeetingUrl(
-  href: string,
-  workspaceOrigin: string,
-): string | undefined {
+export function roomCodeFromMeetingUrl(href: string, workspaceOrigin: string): string | undefined {
   const parsed = parseCalendarMeetHref(href, workspaceOrigin);
   return parsed?.kind === "wgw" ? parsed.room : undefined;
+}
+
+/**
+ * URL Calendar Join opens. Same-origin WGW rooms use the signed-in join route
+ * so owner / group / createdBy keep host rights. External https stays as-is.
+ */
+export function calendarMeetJoinHref(href: string, workspaceOrigin: string): string | null {
+  const parsed = parseCalendarMeetHref(href, workspaceOrigin);
+  if (!parsed) return null;
+  if (parsed.kind === "wgw") {
+    return `/meet/join?room=${encodeURIComponent(parsed.room)}`;
+  }
+  return parsed.href;
+}
+
+/** Open a calendar meeting in a new window (user-gesture safe). */
+export function openCalendarMeetHref(href: string, workspaceOrigin: string): Window | null {
+  const target = calendarMeetJoinHref(href, workspaceOrigin);
+  if (!target) return null;
+  return window.open(target, "_blank", "noopener,noreferrer");
 }

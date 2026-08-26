@@ -15,7 +15,7 @@ import {
 } from "@/calendar-core/src/use-calendar-pending-sync";
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
-import { parseCalendarMeetHref } from "@/calendar-core/src/calendar-meet-link";
+import { openCalendarMeetHref } from "@/calendar-core/src/calendar-meet-link";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 
 export type CalendarAppProps = {
@@ -38,12 +38,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
   }, []);
   const workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const handleJoinMeeting = useCallback((href: string) => {
-    const parsed = parseCalendarMeetHref(href, window.location.origin);
-    if (parsed?.kind === "wgw") {
-      window.location.assign(`/meet/guest?room=${encodeURIComponent(parsed.room)}`);
-      return;
-    }
-    window.open(href, "_blank", "noopener,noreferrer");
+    openCalendarMeetHref(href, window.location.origin);
   }, []);
 
   const handleSyncConflict = useCallback((eventIds: string[]) => {

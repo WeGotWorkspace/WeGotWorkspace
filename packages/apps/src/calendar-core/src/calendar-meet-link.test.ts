@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+/**
+ * @vitest-environment jsdom
+ */
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  calendarMeetJoinHref,
   calendarMeetOwnerPrincipal,
   isHttpUrl,
   isMeetRoomCode,
@@ -8,6 +12,7 @@ import {
   meetingUrlFromLinks,
   meetDraftExpiresAt,
   meetEventExpiresAt,
+  openCalendarMeetHref,
   parseCalendarMeetHref,
   parsedOrigin,
   resolveCalendarMeetReserveScope,
@@ -37,7 +42,12 @@ describe("parseCalendarMeetHref", () => {
   it("never treats a different origin as WGW even when the string includes the workspace origin", () => {
     const spoof = `https://evil.example/?next=${encodeURIComponent(GUEST)}`;
     expect(parseCalendarMeetHref(spoof, ORIGIN)).toEqual({ kind: "https", href: spoof });
-    expect(parseCalendarMeetHref(`https://workspace.example.com.evil.test/meet/guest?room=${ROOM}`, ORIGIN)).toEqual({
+    expect(
+      parseCalendarMeetHref(
+        `https://workspace.example.com.evil.test/meet/guest?room=${ROOM}`,
+        ORIGIN,
+      ),
+    ).toEqual({
       kind: "https",
       href: `https://workspace.example.com.evil.test/meet/guest?room=${ROOM}`,
     });
@@ -100,6 +110,47 @@ describe("meet room code and links map", () => {
         "2033-01-12T10:00:00",
       ),
     ).toBe("https://zoom.us/j/override");
+  });
+});
+
+describe("calendarMeetJoinHref", () => {
+  it("rewrites same-origin guest and join URLs to /meet/join", () => {
+    expect(calendarMeetJoinHref(GUEST, ORIGIN)).toBe(`/meet/join?room=${ROOM}`);
+    expect(calendarMeetJoinHref(JOIN, ORIGIN)).toBe(`/meet/join?room=${ROOM}`);
+  });
+
+  it("keeps external https URLs unchanged", () => {
+    const zoom = "https://zoom.us/j/123";
+    expect(calendarMeetJoinHref(zoom, ORIGIN)).toBe(zoom);
+  });
+
+  it("returns null for incomplete or non-http values", () => {
+    expect(calendarMeetJoinHref(`${ORIGIN}/meet/guest?room=abc`, ORIGIN)).toBeNull();
+    expect(calendarMeetJoinHref("javascript:alert(1)", ORIGIN)).toBeNull();
+  });
+});
+
+describe("openCalendarMeetHref", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("opens WGW Meet in a new window on /meet/join", () => {
+    const popup = { closed: false } as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(popup);
+
+    const result = openCalendarMeetHref(GUEST, ORIGIN);
+
+    expect(result).toBe(popup);
+    expect(open).toHaveBeenCalledWith(`/meet/join?room=${ROOM}`, "_blank", "noopener,noreferrer");
+  });
+
+  it("opens external https URLs in a new window", () => {
+    const zoom = "https://zoom.us/j/123";
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+
+    expect(openCalendarMeetHref(zoom, ORIGIN)).toBeNull();
+    expect(open).toHaveBeenCalledWith(zoom, "_blank", "noopener,noreferrer");
   });
 });
 

@@ -450,7 +450,8 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/meet/join",
     head: meetGuestPwaHead,
     validateSearch: validateMeetRouteSearch,
-    component: MeetGuestRoute,
+    // Signed-in calendar Join keeps host rights; unsigned invitees use /meet/guest.
+    component: isLive ? withWeGotWorkspaceAuth(MeetApp) : MockMeetRoute,
   });
 
   const adminRoute = createRoute({

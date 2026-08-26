@@ -35,6 +35,7 @@ describe("CalendarMeetJoin", () => {
     const join = await screen.findByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
     fireEvent.click(join);
     expect(onJoin).toHaveBeenCalledWith(HREF);
+    expect(onJoin).toHaveBeenCalledTimes(1);
   });
 
   it("shows dead-link copy when GET is 404 / not reserved", async () => {

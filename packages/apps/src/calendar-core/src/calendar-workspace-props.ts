@@ -31,7 +31,7 @@ export type CalendarWorkspaceProps = {
   meetOperations?: CalendarMeetOperations;
   /** Configured workspace origin for guest/join equality. */
   workspaceOrigin?: string;
-  /** App-owned Join navigation (in-app Meet or new-tab https). */
+  /** App-owned Join navigation (new-window Meet or new-tab https). */
   onJoinMeeting?: (href: string) => void;
 };
 
