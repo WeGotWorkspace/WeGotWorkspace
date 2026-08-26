@@ -6,6 +6,7 @@ import {
   normalizeMeetDeviceOptions,
   selectedMeetDeviceOptionId,
 } from "@/meet-core/src/meet-device-utils";
+import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
 import { playMeetKnockSound } from "@/meet-core/src/meet-chat-utils";
@@ -52,15 +53,19 @@ export function useMeetWorkspaceShell({
   const displayName = controller.displayName || session.user.displayName || "Guest";
   const inJoinFlow = Boolean(invitedRoom);
 
-  const [guestInviteState, setGuestInviteState] = useState<"checking" | "active" | "missing">(() =>
-    inJoinFlow && !hasSignedInIdentity ? "checking" : "active",
-  );
+  const { inviteState, canStartReservedRoom } = useMeetInviteProbe({
+    invitedRoom,
+    inJoinFlow,
+    hasSignedInIdentity,
+    operations,
+  });
   const showUserAccount = hasSignedInIdentity && !inJoinFlow;
   const waitingForAdmission = controller.waitingForAdmission && inJoinFlow;
   const disableAppSwitcher = !hasSignedInIdentity || isJoinRoute;
-  const isGuestInviteFlow = inJoinFlow && !hasSignedInIdentity;
-  const showMissingInviteScreen = isGuestInviteFlow && guestInviteState === "missing";
-  const showInviteCheckingScreen = isGuestInviteFlow && guestInviteState === "checking";
+  const showMissingInviteScreen = inJoinFlow && inviteState === "missing";
+  const showInviteCheckingScreen = inJoinFlow && inviteState === "checking";
+  const showWaitingForHostScreen = inJoinFlow && inviteState === "waiting-for-host";
+  const showInviteErrorScreen = inJoinFlow && inviteState === "error";
 
   const callExitMode = meetCallExitMode(isJoinRoute, hasSignedInIdentity);
   const callExitLabel = callExitMode === "leave" ? meetLabels.leaveCall : meetLabels.endCall;
@@ -88,44 +93,24 @@ export function useMeetWorkspaceShell({
   }, [controller.knockers.length, hasSignedInIdentity, toast]);
 
   useEffect(() => {
-    if (!isGuestInviteFlow || !invitedRoom) {
-      setGuestInviteState("active");
+    if (
+      showMissingInviteScreen ||
+      showInviteCheckingScreen ||
+      showWaitingForHostScreen ||
+      showInviteErrorScreen
+    ) {
       return;
     }
-    if (!operations) {
-      setGuestInviteState("checking");
-      return;
-    }
-    setGuestInviteState("checking");
-    void operations
-      .roomStatus({ room: invitedRoom })
-      .then((result) => {
-        setGuestInviteState(result.active ? "active" : "missing");
-      })
-      .catch(() => {
-        setGuestInviteState("missing");
-      });
-  }, [invitedRoom, isGuestInviteFlow, operations]);
-
-  /** Host may join after the guest tab opened; keep polling until the room becomes active. */
-  useEffect(() => {
-    if (!isGuestInviteFlow || !invitedRoom || !operations || guestInviteState !== "missing") {
-      return;
-    }
-    const id = window.setInterval(() => {
-      void operations.roomStatus({ room: invitedRoom }).then((result) => {
-        if (result.active) setGuestInviteState("active");
-      });
-    }, 2500);
-    return () => window.clearInterval(id);
-  }, [guestInviteState, invitedRoom, isGuestInviteFlow, operations]);
-
-  useEffect(() => {
-    if (showMissingInviteScreen || showInviteCheckingScreen) return;
     void controller.ensureLocalMedia().catch(() => {
       // Keep lobby usable if the user declines camera/mic permissions.
     });
-  }, [controller.ensureLocalMedia, showInviteCheckingScreen, showMissingInviteScreen]);
+  }, [
+    controller.ensureLocalMedia,
+    showInviteCheckingScreen,
+    showInviteErrorScreen,
+    showMissingInviteScreen,
+    showWaitingForHostScreen,
+  ]);
 
   const cameras = useMemo(
     () => normalizeMeetDeviceOptions("videoinput", controller.videoInputs),
@@ -183,6 +168,9 @@ export function useMeetWorkspaceShell({
       endedMessage: controller.endedMessage,
       showMissingInviteScreen,
       showInviteCheckingScreen,
+      showWaitingForHostScreen,
+      showInviteErrorScreen,
+      canStartReservedRoom,
     },
     room: {
       hasSignedInIdentity,

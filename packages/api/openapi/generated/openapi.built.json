@@ -5487,6 +5487,15 @@
                         "type": "integer",
                         "minimum": 0
                     },
+                    "links": {
+                        "type": "object",
+                        "propertyNames": {
+                            "$ref": "#/components/schemas/JmapId"
+                        },
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarEventLink"
+                        }
+                    },
                     "icsProps": {
                         "type": "object",
                         "additionalProperties": {
@@ -6140,6 +6149,15 @@
                         },
                         "additionalProperties": {
                             "$ref": "#/components/schemas/CalendarEventAlert"
+                        }
+                    },
+                    "links": {
+                        "type": "object",
+                        "propertyNames": {
+                            "$ref": "#/components/schemas/JmapId"
+                        },
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/CalendarEventLink"
                         }
                     },
                     "categories": {
@@ -9796,6 +9814,14 @@
                             "null"
                         ]
                     },
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri",
+                        "description": "First conference href from CONFERENCE, URL, X-GOOGLE-CONFERENCE, or X-MICROSOFT-SKYPETEAMSMEETINGURL."
+                    },
                     "recurring": {
                         "type": "boolean",
                         "description": "True when the VEVENT has RRULE or RECURRENCE-ID."
@@ -10087,6 +10113,127 @@
                 },
                 "additionalProperties": false,
                 "description": "REST response for POST /calendars/events/import."
+            },
+            "MeetRoomCode": {
+                "type": "string",
+                "minLength": 4,
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9_-]{4,64}$",
+                "description": "Meet room id. Calendar and ad-hoc Start use xxxx-xxxx-xxxx (createMeetRoomCode)."
+            },
+            "MeetOwnerPrincipal": {
+                "type": "string",
+                "pattern": "^(?:u:[A-Za-z0-9._-]+|groups/[a-z0-9_-]+)$",
+                "description": "Personal calendar or ad-hoc start: u:{username}. Group calendar: groups/{slug}."
+            },
+            "MeetReserveRoomRequest": {
+                "type": "object",
+                "required": [
+                    "room",
+                    "ownerPrincipal"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "room": {
+                        "$ref": "#/components/schemas/MeetRoomCode"
+                    },
+                    "ownerPrincipal": {
+                        "$ref": "#/components/schemas/MeetOwnerPrincipal"
+                    },
+                    "expiresAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Omit or null for no inactivity expiry (series master / this-and-future)."
+                    }
+                }
+            },
+            "MeetPatchRoomRequest": {
+                "type": "object",
+                "required": [
+                    "expiresAt"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "expiresAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "MeetRoomGuestStatus": {
+                "type": "object",
+                "required": [
+                    "reserved",
+                    "active"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "reserved": {
+                        "type": "boolean",
+                        "const": true
+                    },
+                    "active": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "Public/guest GET body. No ownerPrincipal, createdBy, or expiresAt."
+            },
+            "MeetRoomOwnerStatus": {
+                "type": "object",
+                "required": [
+                    "reserved",
+                    "active",
+                    "ownerPrincipal",
+                    "createdBy",
+                    "expiresAt"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "reserved": {
+                        "type": "boolean",
+                        "const": true
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "ownerPrincipal": {
+                        "$ref": "#/components/schemas/MeetOwnerPrincipal"
+                    },
+                    "createdBy": {
+                        "$ref": "#/components/schemas/MeetOwnerPrincipal"
+                    },
+                    "expiresAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "MeetReserveRoomResponse": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/MeetRoomOwnerStatus"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "roomId"
+                        ],
+                        "properties": {
+                            "roomId": {
+                                "$ref": "#/components/schemas/MeetRoomCode"
+                            }
+                        }
+                    }
+                ]
             }
         },
         "responses": {
@@ -12966,13 +13113,39 @@
                 "tags": [
                     "Meetings"
                 ],
-                "summary": "Create meeting room",
-                "responses": {
-                    "201": {
-                        "description": "Created"
+                "summary": "Reserve a meeting room",
+                "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MeetReserveRoomRequest"
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "guest"
+                "responses": {
+                    "201": {
+                        "description": "Reserved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeetReserveRoomResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    }
+                },
+                "x-wgw-access": "user"
             }
         },
         "/meetings/rooms/{roomId}": {
@@ -12980,23 +13153,102 @@
                 "tags": [
                     "Meetings"
                 ],
-                "summary": "Meeting room status",
+                "summary": "Meeting room reservation status",
+                "description": "Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.",
                 "parameters": [
                     {
                         "name": "roomId",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/MeetRoomCode"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Status"
+                        "description": "Reserved room status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MeetRoomGuestStatus"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/MeetRoomOwnerStatus"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not reserved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
+            },
+            "patch": {
+                "tags": [
+                    "Meetings"
+                ],
+                "summary": "Update reservation expiry",
+                "description": "Sets expiresAt. Callable by createdBy or an ownerPrincipal member.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "roomId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MeetRoomCode"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MeetPatchRoomRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeetRoomOwnerStatus"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Not createdBy or an ownerPrincipal member"
+                    },
+                    "404": {
+                        "description": "Not reserved"
+                    }
+                },
+                "x-wgw-access": "user"
             }
         },
         "/plugins/{id}/activation": {

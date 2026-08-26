@@ -85,8 +85,12 @@ Route::post('calendar/rsvp/{token}', [CalendarRsvpController::class, 'respond'])
 Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicShow'])
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
-Route::post('meetings/rooms', [MeetingsController::class, 'store']);
+Route::post('meetings/rooms', [MeetingsController::class, 'store'])
+    ->middleware('wgw.auth');
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
+    ->where('roomId', '[A-Za-z0-9_-]+');
+Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
+    ->middleware('wgw.auth')
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 Route::post('rooms/{roomId}/participants', [RoomSessionController::class, 'storeParticipant'])

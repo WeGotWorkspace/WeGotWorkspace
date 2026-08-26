@@ -30,6 +30,7 @@
             <exclude>tests/Feature/System</exclude>
             <exclude>tests/Feature/Ui</exclude>
             <directory>tests/Database</directory>
+            <file>tests/Unit/Meet/MeetReservationServiceTest.php</file>
             <file>tests/Unit/Rtc/RtcSettingsServiceTest.php</file>
             <file>tests/Unit/Settings/GroupMembershipResolverTest.php</file>
             <file>tests/Unit/Mail/MailCredentialServiceImapUsernameTest.php</file>

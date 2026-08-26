@@ -28,6 +28,9 @@ export type MeetLobbyPaneProps = {
   endedMessage: string | null;
   showMissingInviteScreen: boolean;
   showInviteCheckingScreen: boolean;
+  showWaitingForHostScreen: boolean;
+  showInviteErrorScreen: boolean;
+  canStartReservedRoom: boolean;
 };
 
 export function MeetLobbyPane({
@@ -48,6 +51,9 @@ export function MeetLobbyPane({
   endedMessage,
   showMissingInviteScreen,
   showInviteCheckingScreen,
+  showWaitingForHostScreen,
+  showInviteErrorScreen,
+  canStartReservedRoom,
 }: MeetLobbyPaneProps) {
   const [previewAspect, setPreviewAspect] = useState<number | null>(null);
 
@@ -92,6 +98,24 @@ export function MeetLobbyPane({
         title={meetLabels.checkingInviteTitle}
         body={meetLabels.checkingInviteBody}
         titleSize="md"
+      />
+    );
+  }
+
+  if (showWaitingForHostScreen) {
+    return (
+      <MeetLobbyStatusCard
+        title={meetLabels.waitingForHostTitle}
+        body={meetLabels.waitingForHostBody}
+      />
+    );
+  }
+
+  if (showInviteErrorScreen) {
+    return (
+      <MeetLobbyStatusCard
+        title={meetLabels.inviteErrorTitle}
+        body={meetLabels.inviteErrorBody}
       />
     );
   }
@@ -182,7 +206,7 @@ export function MeetLobbyPane({
             pill
             onClick={() => {
               if (invitedRoom) {
-                void (hasSignedInIdentity
+                void (canStartReservedRoom
                   ? controller.joinRoom(invitedRoom)
                   : controller.requestJoin(invitedRoom));
                 return;
@@ -194,7 +218,7 @@ export function MeetLobbyPane({
             disabled={!hasSignedInIdentity && !invitedRoom}
           >
             {invitedRoom
-              ? hasSignedInIdentity
+              ? canStartReservedRoom
                 ? meetLabels.joinMeeting
                 : meetLabels.askToJoin
               : hasSignedInIdentity

@@ -12,6 +12,7 @@ use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService;
+use App\Services\Meet\MeetReservationService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Foundation\Inspiring;
@@ -190,6 +191,13 @@ Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexServic
 
     return self::SUCCESS;
 })->purpose('Backfill/reconcile the JMAP FileNode index against the drive (existing node ids are kept)');
+
+Artisan::command('wgw:meet:sweep-reservations', function (MeetReservationService $reservations): int {
+    $deleted = $reservations->sweepExpiredNeverActivated();
+    $this->info(sprintf('Deleted %d never-activated expired Meet reservation(s).', $deleted));
+
+    return self::SUCCESS;
+})->purpose('Prune never-activated Meet reservations whose expiresAt is past (null expiry is skipped)');
 
 Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
     $result = $collector->collect();

@@ -26,6 +26,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'api_revoked_tokens',
             'meet_peers',
             'meet_messages',
+            'meet_reservations',
             'collab_peers',
             'collab_messages',
             'drive_starred_items',
@@ -44,6 +45,9 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         }
 
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'owner_user'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_reservations', 'created_by'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_reservations', 'expires_at'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_reservations', 'activated_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token_hash'));
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token_hash'));

@@ -4157,13 +4157,39 @@
         "tags": [
           "Meetings"
         ],
-        "summary": "Create meeting room",
-        "responses": {
-          "201": {
-            "description": "Created"
+        "summary": "Reserve a meeting room",
+        "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetReserveRoomRequest"
+              }
+            }
           }
         },
-        "x-wgw-access": "guest"
+        "responses": {
+          "201": {
+            "description": "Reserved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetReserveRoomResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        },
+        "x-wgw-access": "user"
       }
     },
     "/meetings/rooms/{roomId}": {
@@ -4171,23 +4197,102 @@
         "tags": [
           "Meetings"
         ],
-        "summary": "Meeting room status",
+        "summary": "Meeting room reservation status",
+        "description": "Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.",
         "parameters": [
           {
             "name": "roomId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/components/schemas/MeetRoomCode"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Status"
+            "description": "Reserved room status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/MeetRoomGuestStatus"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MeetRoomOwnerStatus"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not reserved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "guest"
+      },
+      "patch": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Update reservation expiry",
+        "description": "Sets expiresAt. Callable by createdBy or an ownerPrincipal member.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MeetRoomCode"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetPatchRoomRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetRoomOwnerStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Not createdBy or an ownerPrincipal member"
+          },
+          "404": {
+            "description": "Not reserved"
+          }
+        },
+        "x-wgw-access": "user"
       }
     },
     "/plugins": {
