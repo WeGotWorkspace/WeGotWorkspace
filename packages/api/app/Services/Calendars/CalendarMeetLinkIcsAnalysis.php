@@ -80,6 +80,22 @@ final class CalendarMeetLinkIcsAnalysis
         return $rooms;
     }
 
+    public function primaryUid(string $ics): ?string
+    {
+        try {
+            $document = Reader::read($ics);
+        } catch (\Throwable) {
+            return null;
+        }
+        $vevent = CalendarConversionSupport::primaryVEvent($document);
+        if (! $vevent instanceof VEvent || ! isset($vevent->UID)) {
+            return null;
+        }
+        $uid = trim((string) $vevent->UID->getValue());
+
+        return $uid !== '' ? $uid : null;
+    }
+
     private function endInstant(VEvent $vevent): ?string
     {
         if (isset($vevent->DTEND)) {

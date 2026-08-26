@@ -33,12 +33,12 @@ For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
 
 Calendar and ad-hoc `/meet` Start persist a row via `MeetReservationService` (`meet_reservations`). Architecture lock: [`docs/architecture/meet-reserved-rooms.md`](../../docs/architecture/meet-reserved-rooms.md).
 
-- **POST** is authenticated. `createdBy` is the acting user (`u:{username}`). Idempotent: an existing row keeps `ownerPrincipal` / `createdBy`. Omit or `null` `expiresAt` means no inactivity GC.
+- **POST** is authenticated. `createdBy` is the acting user (`u:{username}`). `ownerPrincipal` must be `u:{username}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — group membership **or** a write share / delegated ACL). Membership-only is not required. Otherwise **403**. Idempotent: an existing row keeps `ownerPrincipal` / `createdBy`. Omit or `null` `expiresAt` means no inactivity GC. GET/PATCH manage rights still use `createdBy` or `GroupMembershipResolver` membership.
 - **GET** is guest-reachable. Public body is only `{ reserved, active }`. Full body (`ownerPrincipal`, `createdBy`, `expiresAt`) only for an `ownerPrincipal` member or `createdBy`. **404** means not reserved (including sweeper-pruned never-activated rooms).
 - **PATCH** sets `expiresAt` (Remove / detach / discarded scope / reschedule). `createdBy` or owner-principal member only.
 - Ad-hoc Start writes `ownerPrincipal = createdBy = acting user` with `expiresAt = start + 30 days`.
 - Sweeper deletes **never-activated** rows only when `expiresAt` is non-null and past. `expiresAt = null` is skipped. First joinable peer sets `activated_at`.
-- Calendar ICS-write hook calls `MeetReservationService::reserve()` / `patchExpiresAt()` internally (not only the browser).
+- Calendar ICS-write hook calls `MeetReservationService::reserve()` internally (not only the browser). Fail-open: reserve errors log `calendar_meet_link_reserve_failed` and do not fail the calendar write.
 
 ## Tests
 
