@@ -9,6 +9,7 @@ import {
   daysPerWeekFromInput,
 } from "../utils/DaysPerWeek.js";
 import { getLocaleDirection, getLocaleWeekInfo, resolveLocale } from "../utils/Locale.js";
+import { renderPlusIcon } from "../icons/PlusIcon.js";
 import componentStyle from "./CalendarWeekdayHeader.css?inline";
 
 function isWeekdayNumber(value: number | undefined): value is WeekdayNumber {
@@ -155,6 +156,16 @@ export class CalendarWeekdayHeader extends BaseElement {
     );
   }
 
+  #emitDayCreate(day: Temporal.PlainDate, dayIndex: number) {
+    this.dispatchEvent(
+      new CustomEvent("day-create-requested", {
+        bubbles: true,
+        composed: true,
+        detail: { date: day.toString(), dayIndex },
+      }),
+    );
+  }
+
   /**
    * Interactive date-mode row: one day-selection button per date, with the same responsive
    * long/short/narrow weekday label spans as the label-only mode plus a day-number pill
@@ -178,23 +189,34 @@ export class CalendarWeekdayHeader extends BaseElement {
           const weekday = day.dayOfWeek as WeekdayNumber;
           const isToday = today !== null && Temporal.PlainDate.compare(day, today) === 0;
           const dayDate = new Date(Date.UTC(day.year, day.month - 1, day.day));
+          const fullDateLabel = fullDateFormatter.format(dayDate);
           return html`
-            <button
-              type="button"
-              class="weekday weekday-date-button ${weekendDays.has(weekday) ? "weekend" : ""}"
-              .ariaLabel=${fullDateFormatter.format(dayDate)}
-              .ariaCurrent=${isToday ? "date" : null}
-              @click=${(clickEvent: MouseEvent) => this.#emitDaySelection(day, index, clickEvent)}
-            >
-              <span class="weekday-label">
-                <span class="weekday-long">${this.#formatWeekday(weekday, "long")}</span>
-                <span class="weekday-short">${this.#formatWeekday(weekday, "short")}</span>
-                <span class="weekday-narrow">${this.#formatWeekday(weekday, "narrow")}</span>
-              </span>
-              <span class="weekday-day-number ${isToday ? "is-today" : ""}">
-                ${numberFormatter.format(day.day)}
-              </span>
-            </button>
+            <div class="weekday weekday-date-cell ${weekendDays.has(weekday) ? "weekend" : ""}">
+              <button
+                type="button"
+                class="weekday-date-button"
+                .ariaLabel=${fullDateLabel}
+                .ariaCurrent=${isToday ? "date" : null}
+                @click=${(clickEvent: MouseEvent) => this.#emitDaySelection(day, index, clickEvent)}
+              >
+                <span class="weekday-label">
+                  <span class="weekday-long">${this.#formatWeekday(weekday, "long")}</span>
+                  <span class="weekday-short">${this.#formatWeekday(weekday, "short")}</span>
+                  <span class="weekday-narrow">${this.#formatWeekday(weekday, "narrow")}</span>
+                </span>
+                <span class="weekday-day-number ${isToday ? "is-today" : ""}">
+                  ${numberFormatter.format(day.day)}
+                </span>
+              </button>
+              <button
+                type="button"
+                class="weekday-create-button"
+                .ariaLabel=${`Create event on ${fullDateLabel}`}
+                @click=${() => this.#emitDayCreate(day, index)}
+              >
+                ${renderPlusIcon({ className: "weekday-create-button__icon" })}
+              </button>
+            </div>
           `;
         })}
       </div>
