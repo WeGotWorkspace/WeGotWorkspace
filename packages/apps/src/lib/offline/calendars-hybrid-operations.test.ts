@@ -265,7 +265,12 @@ describe("flushCalendarsOutboxAndReport", () => {
     await expect(operations.patchCalendar!("work", { groupSlug: "editorial" })).rejects.toThrow(
       "Owner changes require a connection.",
     );
-    await expect(listOutboxMutations(username)).resolves.toEqual([]);
+    await expect(
+      operations.patchCalendar!("default", { name: "Desk", groupSlug: null }),
+    ).rejects.toThrow("Owner changes require a connection.");
+    const renamed = await operations.patchCalendar!("default", { name: "Desk" });
+    expect(renamed.name).toBe("Desk");
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(1);
   });
 
   it("flushes pending outbox rows when online", async () => {

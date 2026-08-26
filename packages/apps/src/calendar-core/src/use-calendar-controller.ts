@@ -993,12 +993,16 @@ export function useCalendarController({
             return;
           }
           if (!operations.patchCalendar) return;
+          const nextGroupSlug = input.groupSlug?.trim() || null;
+          const currentGroupSlug = calendarDialog.groupSlug?.trim() || null;
+          const ownerChanged =
+            calendarDialog.canChangeOwner &&
+            input.groupSlug !== undefined &&
+            nextGroupSlug !== currentGroupSlug;
           const updated = await operations.patchCalendar(calendarDialog.calendarId, {
             ...(calendarDialog.nameReadOnly ? {} : { name }),
             color,
-            ...(calendarDialog.canChangeOwner
-              ? { groupSlug: input.groupSlug?.trim() || null }
-              : {}),
+            ...(ownerChanged ? { groupSlug: nextGroupSlug } : {}),
           });
           setCalendars((prev) =>
             sortCalendarsForSidebar(

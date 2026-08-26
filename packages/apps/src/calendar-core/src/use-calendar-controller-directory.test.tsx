@@ -180,6 +180,52 @@ describe("useCalendarController create calendar directory", () => {
     });
   });
 
+  it("omits groupSlug when saving name and color with the owner unchanged", async () => {
+    const patchCalendar = vi.fn().mockResolvedValue({
+      id: "work",
+      name: "Desk",
+      color: "#ec4899",
+      mayWrite: true,
+      mayShare: true,
+      mayDelete: true,
+    });
+
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          patchCalendar,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.openEditCalendarDialog("work");
+    });
+    expect(result.current.calendarDialog).toMatchObject({
+      mode: "edit",
+      calendarId: "work",
+      canChangeOwner: true,
+      groupSlug: null,
+    });
+    await act(async () => {
+      result.current.saveCalendarDialog({
+        name: "Desk",
+        color: "#ec4899",
+        groupSlug: null,
+      });
+    });
+
+    expect(patchCalendar).toHaveBeenCalledWith("work", {
+      name: "Desk",
+      color: "#ec4899",
+    });
+    expect(patchCalendar.mock.calls[0]?.[1]).not.toHaveProperty("groupSlug");
+  });
+
   it("lets a sharee patch their instance name and color", async () => {
     const patchCalendar = vi.fn().mockResolvedValue({
       id: "family",
