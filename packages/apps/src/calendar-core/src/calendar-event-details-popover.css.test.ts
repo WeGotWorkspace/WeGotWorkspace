@@ -49,5 +49,7 @@ describe("calendar event details popover CSS", () => {
     expect(css).toMatch(
       /\.calendar-event-details-popover__icon\s*\{[\s\S]*?@apply inline-flex[\s\S]*?items-center justify-center/,
     );
+    expect(css).toContain("calendar-event-details-popover__meet");
+    expect(css).not.toContain("calendar-event-details-popover__join");
   });
 });

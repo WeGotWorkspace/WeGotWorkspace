@@ -33,6 +33,7 @@ describe("CalendarMeetJoin", () => {
     const roomStatus = vi.fn().mockResolvedValue({ reserved: true, active: false });
     const { onJoin } = renderJoin({ roomStatus });
     const join = await screen.findByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    expect(join.className).toContain("button--variant-primary");
     fireEvent.click(join);
     expect(onJoin).toHaveBeenCalledWith(HREF);
     expect(onJoin).toHaveBeenCalledTimes(1);

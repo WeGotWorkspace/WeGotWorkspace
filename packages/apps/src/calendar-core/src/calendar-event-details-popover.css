@@ -96,7 +96,11 @@
 }
 
 .calendar-event-details-popover__meet {
-  @apply flex min-w-0 items-start;
+  @apply flex min-w-0;
+}
+
+.calendar-event-details-popover__meet .calendar-meet-join {
+  @apply w-full;
 }
 
 .calendar-event-details-popover__footer {

@@ -91,6 +91,15 @@ export const MeetJoin: Story = {
       },
     },
   },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const join = canvas.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    await expect(join.className).toContain("button--variant-primary");
+    await expect(join.closest(".calendar-event-details-popover__meet")).toBeTruthy();
+    await expect(join.closest(".calendar-event-details-popover__row")).toBeNull();
+    await userEvent.click(join);
+    await expect(args.onJoinMeeting).toHaveBeenCalled();
+  },
 };
 
 export const MeetDeadLink: Story = {

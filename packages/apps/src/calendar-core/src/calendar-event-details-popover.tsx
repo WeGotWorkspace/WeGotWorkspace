@@ -187,17 +187,6 @@ export function CalendarEventDetailsPopover({
               value={form.location.trim()}
             />
           ) : null}
-          {form.meetingUrl.trim() ? (
-            <div className="calendar-event-details-popover__meet">
-              <CalendarMeetJoin
-                href={form.meetingUrl}
-                labels={labels}
-                workspaceOrigin={workspaceOrigin}
-                meetOperations={meetOperations}
-                onJoin={onJoinMeeting}
-              />
-            </div>
-          ) : null}
           {repeat ? (
             <DetailRow
               icon={<Repeat className="size-4" />}
@@ -220,6 +209,17 @@ export function CalendarEventDetailsPopover({
             />
           ) : null}
         </div>
+        {form.meetingUrl.trim() ? (
+          <div className="calendar-event-details-popover__meet">
+            <CalendarMeetJoin
+              href={form.meetingUrl}
+              labels={labels}
+              workspaceOrigin={workspaceOrigin}
+              meetOperations={meetOperations}
+              onJoin={onJoinMeeting}
+            />
+          </div>
+        ) : null}
         {showRsvp && onRsvp ? (
           <div className="calendar-event-details-popover__rsvp">
             {form.recurrencePreset !== "none" ? (

@@ -69,7 +69,7 @@ export function CalendarMeetJoin({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="primary"
       size={size}
       className="calendar-meet-join"
       icon={<Video className="size-3.5" aria-hidden />}
