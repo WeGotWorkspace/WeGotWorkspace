@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type MutableRefObject } from "react";
 import { Video } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Card } from "@/card/src/card";
@@ -39,6 +39,8 @@ export type CalendarMeetCardProps = {
   meetOperations?: CalendarMeetOperations;
   disabled?: boolean;
   readOnly?: boolean;
+  /** Parent calls this on dialog cancel/dismiss (not save) to expire a staged reserve. */
+  abandonStagedReserveRef?: MutableRefObject<(() => void) | null>;
   onChange: (next: CalendarEventFormValue) => void;
   onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
   onJoin?: (href: string) => void;
@@ -66,12 +68,15 @@ export function CalendarMeetCard({
   meetOperations,
   disabled = false,
   readOnly = false,
+  abandonStagedReserveRef,
   onChange,
   onRecurrenceSaveScopeChange,
   onJoin,
 }: CalendarMeetCardProps) {
   const [reserving, setReserving] = useState(false);
   const inflightRef = useRef(false);
+  const pendingAbandonRef = useRef(false);
+  const stagedRoomRef = useRef(form.meetRoomCode?.trim() ?? "");
   const reservedThisSessionRef = useRef(Boolean(form.meetRoomCode));
   const canChooseScope = Boolean(recurrenceId) && !thisInstanceLocked && !readOnly;
   const scope = resolveCalendarMeetReserveScope({
@@ -90,6 +95,23 @@ export function CalendarMeetCard({
     }
   };
 
+  const abandonStagedReserve = async (): Promise<void> => {
+    if (inflightRef.current) {
+      pendingAbandonRef.current = true;
+      return;
+    }
+    const room = stagedRoomRef.current.trim();
+    if (!room || !reservedThisSessionRef.current) return;
+    await expireStagedRoom(room);
+    reservedThisSessionRef.current = false;
+  };
+
+  if (abandonStagedReserveRef) {
+    abandonStagedReserveRef.current = () => {
+      void abandonStagedReserve();
+    };
+  }
+
   const addMeet = async (): Promise<void> => {
     const reserve = meetOperations?.reserveRoom;
     const ownerPrincipal = calendarMeetOwnerPrincipal(calendar, username);
@@ -97,6 +119,7 @@ export function CalendarMeetCard({
     inflightRef.current = true;
     setReserving(true);
     const room = form.meetRoomCode?.trim() || createMeetRoomCode();
+    stagedRoomRef.current = room;
     if (!form.meetRoomCode) {
       applyForm(form, { meetRoomCode: room }, onChange);
     }
@@ -109,17 +132,29 @@ export function CalendarMeetCard({
       });
       reservedThisSessionRef.current = true;
       const href = buildMeetGuestCallLink(room, workspaceOrigin);
-      applyForm({ ...form, meetRoomCode: room }, { meetingUrl: href, meetRoomCode: room }, onChange);
+      applyForm(
+        { ...form, meetRoomCode: room },
+        { meetingUrl: href, meetRoomCode: room },
+        onChange,
+      );
     } finally {
       inflightRef.current = false;
       setReserving(false);
+      if (pendingAbandonRef.current) {
+        pendingAbandonRef.current = false;
+        await expireStagedRoom(room);
+        reservedThisSessionRef.current = false;
+      }
     }
   };
 
   const removeMeet = async (): Promise<void> => {
     const room =
-      form.meetRoomCode?.trim() || roomCodeFromMeetingUrl(form.meetingUrl, workspaceOrigin);
+      stagedRoomRef.current.trim() ||
+      form.meetRoomCode?.trim() ||
+      roomCodeFromMeetingUrl(form.meetingUrl, workspaceOrigin);
     if (room) await expireStagedRoom(room);
+    stagedRoomRef.current = "";
     reservedThisSessionRef.current = false;
     applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
   };
@@ -151,6 +186,7 @@ export function CalendarMeetCard({
         ownerPrincipal,
         expiresAt: meetRemoveExpiresAt(),
       });
+      stagedRoomRef.current = parsed.room;
       reservedThisSessionRef.current = true;
       applyForm(form, { meetRoomCode: parsed.room, meetingUrl: raw }, onChange);
     } catch {

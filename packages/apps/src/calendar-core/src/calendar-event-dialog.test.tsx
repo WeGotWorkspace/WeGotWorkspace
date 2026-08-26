@@ -871,6 +871,40 @@ describe("CalendarEventDialog", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("cancel after Add Meet PATCHes the staged series reservation to now+30d", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
+    const meetOperations = {
+      roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      reserveRoom: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+    };
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Weekly standup",
+      recurrencePreset: "weekly" as const,
+    };
+    const { onClose, onSave } = renderDialog({
+      form,
+      sessionUsername: "bob",
+      meetOperations,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+    await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
+    const reserved = meetOperations.reserveRoom.mock.calls[0]?.[0] as { room: string };
+    expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith({
+      room: reserved.room,
+      expiresAt: "2033-01-31T00:00:00.000Z",
+    });
+    nowSpy.mockRestore();
+  });
+
   it("keeps the organizer edit dialog writable with save and delete", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),

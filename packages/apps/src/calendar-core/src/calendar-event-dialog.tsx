@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock, Repeat } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
@@ -197,9 +197,15 @@ export function CalendarEventDialog({
   );
   const [uncontrolledMeetScope, setUncontrolledMeetScope] =
     useState<RecurrenceEditScope>("thisAndFuture");
+  const abandonStagedReserveRef = useRef<(() => void) | null>(null);
   const meetSaveScope = thisInstanceLocked
     ? "thisInstance"
     : (recurrenceSaveScope ?? uncontrolledMeetScope);
+
+  const dismiss = () => {
+    abandonStagedReserveRef.current?.();
+    onClose();
+  };
 
   useEffect(() => {
     setDraftCalendarId(form.calendarId);
@@ -246,7 +252,7 @@ export function CalendarEventDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && !busy && dismiss()}>
       <DialogContent
         className="calendar-dialog-surface calendar-event-dialog"
         lang={locale}
@@ -271,9 +277,7 @@ export function CalendarEventDialog({
               return;
             }
             if (readOnly || !valid) return;
-            onSave(
-              form.meetingUrl.trim() || form.meetRoomCode ? meetSaveScope : undefined,
-            );
+            onSave(form.meetingUrl.trim() || form.meetRoomCode ? meetSaveScope : undefined);
           }}
         >
           <div className="calendar-event-dialog__fields">
@@ -324,6 +328,7 @@ export function CalendarEventDialog({
               disabled={fieldsDisabled}
               readOnly={readOnly}
               onChange={onChange}
+              abandonStagedReserveRef={abandonStagedReserveRef}
               onRecurrenceSaveScopeChange={onRecurrenceSaveScopeChange ?? setUncontrolledMeetScope}
               onJoin={onJoinMeeting}
             />
@@ -559,7 +564,7 @@ export function CalendarEventDialog({
               </Button>
             ) : null}
             {showSaveCancel ? (
-              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+              <Button type="button" variant="outline" onClick={dismiss} disabled={busy}>
                 {labels.cancel}
               </Button>
             ) : null}

@@ -77,7 +77,9 @@ describe("CalendarMeetCard", () => {
     fireEvent.click(add);
     expect(add.hasAttribute("disabled")).toBe(true);
     await waitFor(() => expect(reserveRoom).toHaveBeenCalledTimes(1));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ meetRoomCode: expect.any(String) }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ meetRoomCode: expect.any(String) }),
+    );
     const staged = (onChange.mock.calls[0]?.[0] as { meetRoomCode?: string } | undefined)
       ?.meetRoomCode;
     const reserved = (reserveRoom as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
@@ -158,6 +160,62 @@ describe("CalendarMeetCard", () => {
     );
   });
 
+  it("dismiss after Add Meet PATCHes a staged series reserve to now+30d", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
+    const abandonStagedReserveRef: { current: (() => void) | null } = { current: null };
+    const meetOperations = stubMeet();
+    renderCard({
+      meetOperations,
+      abandonStagedReserveRef,
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), recurrencePreset: "weekly" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
+    const reserved = (meetOperations.reserveRoom as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as {
+      room: string;
+      expiresAt: string | null;
+    };
+    expect(reserved.expiresAt).toBeNull();
+    abandonStagedReserveRef.current?.();
+    await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
+    expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith({
+      room: reserved.room,
+      expiresAt: "2033-01-31T00:00:00.000Z",
+    });
+  });
+
+  it("dismiss during in-flight Add Meet PATCHes after the reserve lands", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
+    let resolveReserve: ((value: { reserved: boolean; active: boolean }) => void) | undefined;
+    const reserveRoom = vi.fn(
+      () =>
+        new Promise<{ reserved: boolean; active: boolean }>((resolve) => {
+          resolveReserve = resolve;
+        }),
+    );
+    const abandonStagedReserveRef: { current: (() => void) | null } = { current: null };
+    const meetOperations = stubMeet({ reserveRoom });
+    renderCard({
+      meetOperations,
+      abandonStagedReserveRef,
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), recurrencePreset: "weekly" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    await waitFor(() => expect(reserveRoom).toHaveBeenCalledTimes(1));
+    abandonStagedReserveRef.current?.();
+    expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
+    const reserved = (reserveRoom as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+      room: string;
+    };
+    resolveReserve?.({ reserved: true, active: false });
+    await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
+    expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith({
+      room: reserved.room,
+      expiresAt: "2033-01-31T00:00:00.000Z",
+    });
+  });
+
   it("invalidates a staged reserve when save-scope changes", async () => {
     const meetOperations = stubMeet();
     const { onRecurrenceSaveScopeChange } = renderCard({
@@ -172,7 +230,9 @@ describe("CalendarMeetCard", () => {
       },
     });
     fireEvent.click(screen.getByRole("combobox", { name: defaultCalendarLabels.eventMeetApplyTo }));
-    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.recurrenceScopeThisInstance }));
+    fireEvent.click(
+      screen.getByRole("option", { name: defaultCalendarLabels.recurrenceScopeThisInstance }),
+    );
     await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
     expect(onRecurrenceSaveScopeChange).toHaveBeenCalledWith("thisInstance");
   });
