@@ -10,6 +10,7 @@ import {
 import { AdminApp } from "@/admin-core/src/admin-app";
 import { CalendarApp } from "@/calendar-core/src/calendar-app";
 import { CalendarRsvpPage } from "@/calendar-core/src/calendar-rsvp-page";
+import { validateCalendarRouteSearch } from "@/calendar-core/src/calendar-route-search";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
 import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
@@ -565,6 +566,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/calendar",
     head: calendarPwaHead,
     component: CalendarComponent,
+    validateSearch: validateCalendarRouteSearch,
   });
 
   const calendarViewDateRoute = createRoute({
@@ -572,6 +574,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/calendar/$view/$date",
     head: calendarPwaHead,
     component: CalendarComponent,
+    validateSearch: validateCalendarRouteSearch,
   });
 
   const calendarViewRoute = createRoute({
@@ -579,6 +582,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/calendar/$view",
     head: calendarPwaHead,
     component: CalendarComponent,
+    validateSearch: validateCalendarRouteSearch,
   });
 
   const calendarListIndexRoute = createRoute({
@@ -586,6 +590,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/calendar/list",
     head: calendarPwaHead,
     component: CalendarComponent,
+    validateSearch: validateCalendarRouteSearch,
   });
 
   const calendarListViewRoute = createRoute({
@@ -593,6 +598,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/calendar/list/$view",
     head: calendarPwaHead,
     component: CalendarComponent,
+    validateSearch: validateCalendarRouteSearch,
   });
 
   const calendarListViewDateRoute = createRoute({
@@ -600,6 +606,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/calendar/list/$view/$date",
     head: calendarPwaHead,
     component: CalendarComponent,
+    validateSearch: validateCalendarRouteSearch,
   });
 
   const installRoute = createRoute({

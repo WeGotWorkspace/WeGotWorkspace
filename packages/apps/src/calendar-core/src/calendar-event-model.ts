@@ -1,6 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import {
   expandEvents,
+  resolveEventEnd,
   splitOccurrenceKey,
   type CalendarEvent,
   type CalendarEventsMap,
@@ -177,14 +178,49 @@ export function calendarEventsToEngineMap(
 }
 
 function resolveEnd(event: CalendarEvent): Temporal.PlainDateTime {
-  const duration = event.data.duration ?? new Temporal.Duration();
-  return event.data.start.add(duration);
+  // expandEvents writes `end` and clears `duration` on recurring instances.
+  return resolveEventEnd(event.data);
 }
 
 /** The engine keys detached exceptions as `${masterKey}::${recurrenceId}`. */
 function masterKeyOf(rowKey: string): string {
   const separator = rowKey.indexOf("::");
   return separator === -1 ? rowKey : rowKey.slice(0, separator);
+}
+
+/**
+ * Same visibility predicate as `wgw-calendar-surface` `#visibleEvents`:
+ * unscoped events stay on the grid; a missing set means “show all”.
+ */
+function isVisibleOnCalendarGrid(
+  calendarId: string | undefined,
+  visibleCalendarIds?: ReadonlySet<string>,
+): boolean {
+  if (!visibleCalendarIds) return true;
+  if (visibleCalendarIds.size === 0) return false;
+  return !calendarId || visibleCalendarIds.has(calendarId);
+}
+
+/** Enabled JSCalendar `calendarIds` keys (the engine mapping keeps only the first). */
+function enabledWireCalendarIds(event: JmapCalendarEvent): string[] {
+  return Object.entries(event.calendarIds ?? {})
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([id]) => id);
+}
+
+/**
+ * Search/grid visibility for a wire event: any enabled calendar in the
+ * on-screen set, or unscoped (week view still paints those).
+ */
+function isWireEventVisibleOnCalendarGrid(
+  event: JmapCalendarEvent,
+  visibleCalendarIds?: ReadonlySet<string>,
+): boolean {
+  const ids = enabledWireCalendarIds(event);
+  if (ids.length === 0) {
+    return isVisibleOnCalendarGrid(undefined, visibleCalendarIds);
+  }
+  return ids.some((id) => isVisibleOnCalendarGrid(id, visibleCalendarIds));
 }
 
 export function occurrencesInRange(
@@ -202,20 +238,26 @@ export function occurrencesInRange(
   }
 
   const expanded = expandEvents(
-    calendarEventsToEngineMap(events, { sessionEmail: options.sessionEmail }),
+    calendarEventsToEngineMap(events, {
+      sessionEmail: options.sessionEmail,
+      calendars: options.calendars,
+    }),
     {
       start: Temporal.PlainDateTime.from(range.start),
       end: Temporal.PlainDateTime.from(range.end),
     },
   );
+  const wireById = new Map(events.map((event) => [event.id, event]));
 
   const occurrences: CalendarOccurrence[] = [];
   for (const [key, event] of expanded) {
     if (event.participationStatus === "declined") continue;
+    const wire = wireById.get(masterKeyOf(key));
+    const onGrid = wire
+      ? isWireEventVisibleOnCalendarGrid(wire, options.visibleCalendarIds)
+      : isVisibleOnCalendarGrid(event.calendarId, options.visibleCalendarIds);
+    if (!onGrid) continue;
     const calendarId = event.calendarId ?? "";
-    if (options.visibleCalendarIds && !options.visibleCalendarIds.has(calendarId)) {
-      continue;
-    }
     occurrences.push({
       key,
       eventId: masterKeyOf(key),

@@ -24,6 +24,10 @@ import {
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
+import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-search-query";
+import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
+import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -240,6 +244,7 @@ export function CalendarWorkspace({
   initialView,
   initialPresentation,
   initialAnchor,
+  initialSearchQuery,
   onViewChange,
   onRouteStateChange,
   onLogout,
@@ -253,6 +258,7 @@ export function CalendarWorkspace({
     initialView,
     initialPresentation,
     initialAnchor,
+    initialSearchQuery,
     onViewChange,
     onRouteStateChange, // App-owned URL sync — must reach the controller
     surfaceEvents: surface?.events,
@@ -327,6 +333,11 @@ export function CalendarWorkspace({
     truncateSeriesFromOccurrence,
     splitSeriesFromDrag,
     queueMutation,
+    searchQuery,
+    setSearchQuery,
+    searchActive,
+    searchResults,
+    undoLatest,
   } = controller;
   const { showError } = useAppToast();
   const handleInvitationResponded = useCallback(() => {
@@ -403,6 +414,19 @@ export function CalendarWorkspace({
   );
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
   const icsFileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const { query: searchFieldQuery, setQuery: setSearchFieldQuery } = useViewHeaderSearchQuery({
+    searchValue: searchQuery,
+    onSearchInput: setSearchQuery,
+  });
+
+  useWorkspaceListKeyboardShortcuts({
+    searchInputRef,
+    selectedCount: 0,
+    onRequestDeleteSelection: () => {},
+    onUndoQueuedAction: undoLatest,
+    listNavigationEnabled: false,
+  });
   const [eventPreview, setEventPreview] = useState<{
     model: CalendarEventPreviewModel;
     origin?: CalendarEventSelectionOrigin;
@@ -595,7 +619,11 @@ export function CalendarWorkspace({
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
-        className={cn("calendar-workspace", className)}
+        className={cn(
+          "calendar-workspace",
+          invitationsOpen && "calendar-workspace--panel-open",
+          className,
+        )}
         sidebar={
           <AppSidebar
             open={sidebarOpen}
@@ -699,8 +727,8 @@ export function CalendarWorkspace({
         }
         mainHeader={
           <ViewHeader
-            title={title}
-            compactTitle={compactTitle}
+            title={searchActive ? L.searchTitle : title}
+            compactTitle={searchActive ? undefined : compactTitle}
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -712,6 +740,7 @@ export function CalendarWorkspace({
                 size="sm"
                 active={showingToday}
                 aria-pressed={showingToday}
+                disabled={searchActive}
                 onClick={goToday}
               />
             }
@@ -721,12 +750,14 @@ export function CalendarWorkspace({
                   label={L.previousPeriod}
                   icon={<ChevronLeft className="size-4" />}
                   size="sm"
+                  disabled={searchActive}
                   onClick={goPrevious}
                 />
                 <IconButton
                   label={L.nextPeriod}
                   icon={<ChevronRight className="size-4" />}
                   size="sm"
+                  disabled={searchActive}
                   onClick={goNext}
                 />
               </div>
@@ -741,8 +772,16 @@ export function CalendarWorkspace({
             }
             actions={
               <div className="calendar-header-actions">
+                <CollectionSearchInput
+                  inputRef={searchInputRef}
+                  value={searchFieldQuery}
+                  onChange={setSearchFieldQuery}
+                  placeholder={L.searchPlaceholder}
+                  className="calendar-search-field"
+                />
                 <Select
                   value={view}
+                  disabled={searchActive}
                   onOpenChange={setViewSelectOpen}
                   onValueChange={(next) => selectView(next as CalendarViewId)}
                 >
@@ -750,6 +789,7 @@ export function CalendarWorkspace({
                     size="sm"
                     className="calendar-view-select"
                     aria-label={L.viewSelectLabel}
+                    disabled={searchActive}
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -766,6 +806,7 @@ export function CalendarWorkspace({
                   onChange={setPresentation}
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
+                  disabled={searchActive}
                 />
                 <Button
                   className={cn("calendar-header-today", showingToday && "icon-button--active")}
@@ -774,6 +815,7 @@ export function CalendarWorkspace({
                   onClick={goToday}
                   variant="subtle"
                   size="sm"
+                  disabled={searchActive}
                   aria-pressed={showingToday}
                 />
               </div>
@@ -782,44 +824,53 @@ export function CalendarWorkspace({
         }
         main={
           <div
-            className="calendar-main"
+            className={cn("calendar-main", searchActive && "calendar-main--search")}
             data-view={view}
             data-view-select-open={viewSelectOpen ? "true" : undefined}
           >
-            <div className="calendar-main__range">
-              <CalendarSurface
-                view={litSurface.view}
-                presentation={litSurface.presentation}
-                startDate={anchor}
-                events={surfaceEventsForView ?? surface?.events ?? new Map()}
-                visibleCalendarIds={[...visibleCalendarIds]}
-                selectedCalendarId={defaultCalendarId}
-                contextValue={surface?.contextValue}
-                requestRecurrenceScope={askRecurrenceScope}
-                onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
-                onRecurrenceFutureUpdate={splitSeriesFromDrag}
+            {searchActive ? (
+              <CalendarSearchResultsList
+                results={searchResults}
+                labels={L}
+                locale={locale}
                 onEventSelected={openEventPreview}
-                onViewChange={selectView}
-                onStartDateChange={setAnchor}
-                onCreateRequested={
-                  operations
-                    ? (intent) => {
-                        const calendarId = intent.calendarId || defaultCalendarId;
-                        const calendar = calendars.find((entry) => entry.id === calendarId);
-                        if (!canWriteCalendarCollection(calendar)) return;
-                        closeEventPreview();
-                        openCreateFromSurface(intent);
-                      }
-                    : undefined
-                }
-                pendingCreateIntent={pendingCreateIntent}
-                selectedEventKey={
-                  eventPreview && previewCanResize
-                    ? eventPreviewOccurrenceKey(eventPreview.model)
-                    : ""
-                }
               />
-            </div>
+            ) : (
+              <div className="calendar-main__range">
+                <CalendarSurface
+                  view={litSurface.view}
+                  presentation={litSurface.presentation}
+                  startDate={anchor}
+                  events={surfaceEventsForView ?? surface?.events ?? new Map()}
+                  visibleCalendarIds={[...visibleCalendarIds]}
+                  selectedCalendarId={defaultCalendarId}
+                  contextValue={surface?.contextValue}
+                  requestRecurrenceScope={askRecurrenceScope}
+                  onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
+                  onRecurrenceFutureUpdate={splitSeriesFromDrag}
+                  onEventSelected={openEventPreview}
+                  onViewChange={selectView}
+                  onStartDateChange={setAnchor}
+                  onCreateRequested={
+                    operations
+                      ? (intent) => {
+                          const calendarId = intent.calendarId || defaultCalendarId;
+                          const calendar = calendars.find((entry) => entry.id === calendarId);
+                          if (!canWriteCalendarCollection(calendar)) return;
+                          closeEventPreview();
+                          openCreateFromSurface(intent);
+                        }
+                      : undefined
+                  }
+                  pendingCreateIntent={pendingCreateIntent}
+                  selectedEventKey={
+                    eventPreview && previewCanResize
+                      ? eventPreviewOccurrenceKey(eventPreview.model)
+                      : ""
+                  }
+                />
+              </div>
+            )}
           </div>
         }
         panel={

@@ -14,6 +14,7 @@ import type {
 } from "@/calendar-core/src/calendar-types";
 import {
   isViewShowingToday,
+  rangeToPlainDateTimeStrings,
   shiftAnchor,
   todayISODate,
   viewDateRange,
@@ -26,6 +27,7 @@ import {
   calendarRouteKey,
   DEFAULT_CALENDAR_PRESENTATION,
   DEFAULT_CALENDAR_VIEW,
+  normalizeCalendarSearchQuery,
   type CalendarRouteState,
 } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
@@ -89,6 +91,7 @@ import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
+import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 
 export type CalendarEditorState =
   | { mode: "create"; form: CalendarEventFormValue }
@@ -108,6 +111,8 @@ export type UseCalendarControllerOptions = {
   /** Grid vs list for the selected time range (independent of `initialView`). */
   initialPresentation?: CalendarPresentation;
   initialAnchor?: string;
+  /** Hydrate from `?q=` — App-owned URL, not written here. */
+  initialSearchQuery?: string;
   onViewChange?: (view: CalendarViewId) => void;
   /** App-owned path sync — do not call router APIs from this hook. */
   onRouteStateChange?: (state: CalendarRouteState, options?: { replace?: boolean }) => void;
@@ -164,6 +169,7 @@ export function useCalendarController({
   initialView,
   initialPresentation = DEFAULT_CALENDAR_PRESENTATION,
   initialAnchor,
+  initialSearchQuery,
   onViewChange,
   onRouteStateChange,
   surfaceEvents,
@@ -186,11 +192,14 @@ export function useCalendarController({
   const anchorRef = useRef(anchor);
   anchorRef.current = anchor;
   const pendingRouteKeyRef = useRef<string | null>(null);
+  const searchQueryRef = useRef(normalizeCalendarSearchQuery(initialSearchQuery));
+  const applyQueryFromRouteRef = useRef<(query: string) => void>(() => {});
   const lastInitialRouteKeyRef = useRef(
     calendarRouteKey({
       view: initialView ?? DEFAULT_CALENDAR_VIEW,
       date: initialAnchor ?? todayISODate(),
       presentation: initialPresentation,
+      searchQuery: searchQueryRef.current,
     }),
   );
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
@@ -250,8 +259,13 @@ export function useCalendarController({
       view: viewRef.current,
       date: anchorRef.current,
       presentation: presentationRef.current,
+      searchQuery: searchQueryRef.current,
     };
   }, []);
+
+  const readBrowse = useCallback((): CalendarRouteState => {
+    return { ...currentRouteState(), searchQuery: "" };
+  }, [currentRouteState]);
 
   const onRouteStateChangeRef = useRef(onRouteStateChange);
   onRouteStateChangeRef.current = onRouteStateChange;
@@ -266,6 +280,7 @@ export function useCalendarController({
       view: initialView ?? DEFAULT_CALENDAR_VIEW,
       date: initialAnchor ?? todayISODate(),
       presentation: initialPresentation,
+      searchQuery: normalizeCalendarSearchQuery(initialSearchQuery),
     };
     const incomingKey = calendarRouteKey(incoming);
     const pending = pendingRouteKeyRef.current;
@@ -285,10 +300,12 @@ export function useCalendarController({
     viewRef.current = incoming.view;
     presentationRef.current = incoming.presentation;
     anchorRef.current = incoming.date;
+    searchQueryRef.current = incoming.searchQuery;
     setView(incoming.view);
     setPresentationState(incoming.presentation);
     setAnchorState(incoming.date);
-  }, [initialView, initialPresentation, initialAnchor]);
+    applyQueryFromRouteRef.current?.(incoming.searchQuery);
+  }, [initialView, initialPresentation, initialAnchor, initialSearchQuery]);
 
   const selectView = useCallback(
     (next: CalendarViewId) => {
@@ -378,6 +395,39 @@ export function useCalendarController({
   );
 
   const dateRange = useMemo(() => viewDateRange(view, anchor), [view, anchor]);
+  const visibleSearchRange = useMemo(() => rangeToPlainDateTimeStrings(dateRange), [dateRange]);
+
+  const restoreBrowse = useCallback(
+    (next: CalendarRouteState, options?: { replace?: boolean }) => {
+      viewRef.current = next.view;
+      presentationRef.current = next.presentation;
+      anchorRef.current = next.date;
+      searchQueryRef.current = normalizeCalendarSearchQuery(next.searchQuery);
+      persistCalendarRoutePrefs(next.view, next.presentation);
+      setView(next.view);
+      setPresentationState(next.presentation);
+      setAnchorState(next.date);
+      emitRouteState({ ...next, searchQuery: searchQueryRef.current }, options?.replace === true);
+    },
+    [emitRouteState],
+  );
+
+  const { searchQuery, setSearchQuery, applyQueryFromRoute, searchActive, searchResults } =
+    useCalendarSearch({
+      events: data.events,
+      calendars,
+      visibleCalendarIds,
+      visibleRange: visibleSearchRange,
+      readBrowse,
+      restoreBrowse,
+      initialQuery: searchQueryRef.current,
+      onQueryCommit: (query) => {
+        searchQueryRef.current = query;
+        emitRouteState(currentRouteState(), true);
+      },
+    });
+  applyQueryFromRouteRef.current = applyQueryFromRoute;
+
   const showingToday = useMemo(() => isViewShowingToday(view, anchor), [view, anchor]);
 
   /** Lit surface mirrors time-range `view` and independent grid/list `presentation`. */
@@ -1365,6 +1415,10 @@ export function useCalendarController({
     ensureCalendarVisible,
     selectDefaultCalendar,
     visibleCalendarIds,
+    searchQuery,
+    setSearchQuery,
+    searchActive,
+    searchResults,
     litSurface,
     defaultCalendarId,
     operations,

@@ -20,8 +20,10 @@ export type CalendarSurfaceCreateIntent = {
   title?: string;
 };
 
-import type { CalendarEventSelectionOrigin } from "@/calendar-core/src/calendar-event-preview";
-import { selectionOriginFromEvent } from "@/calendar-core/src/calendar-event-preview";
+import {
+  bindCalendarEventSelected,
+  type CalendarEventSelectionOrigin,
+} from "@/calendar-core/src/calendar-event-preview";
 import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
 
@@ -140,14 +142,7 @@ export function CalendarSurface({
   useEffect(() => {
     const host = hostRef.current;
     if (!host || !onEventSelected) return;
-    const handleSelected = (event: Event) => {
-      const key = (event as CustomEvent<{ key?: string }>).detail?.key;
-      if (typeof key === "string" && key !== "") {
-        onEventSelected(key, selectionOriginFromEvent(event));
-      }
-    };
-    host.addEventListener("event-selected", handleSelected);
-    return () => host.removeEventListener("event-selected", handleSelected);
+    return bindCalendarEventSelected(host, onEventSelected);
   }, [onEventSelected]);
 
   useEffect(() => {

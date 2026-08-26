@@ -1,11 +1,16 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
-import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import {
+  createCalendarAppBootstrap,
+  MOCK_CALENDAR_ANCHOR,
+} from "@/lib/api/mock/calendar-bootstrap";
+import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import * as calendarSearch from "@/calendar-core/src/calendar-search";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 const toastApi = {
@@ -154,7 +159,7 @@ describe("useCalendarController view + create intent", () => {
       result.current.selectView("day");
     });
     expect(onRouteStateChange).toHaveBeenLastCalledWith(
-      { view: "day", date: "2026-08-17", presentation: "grid" },
+      { view: "day", date: "2026-08-17", presentation: "grid", searchQuery: "" },
       { replace: false },
     );
 
@@ -162,7 +167,7 @@ describe("useCalendarController view + create intent", () => {
       result.current.setPresentation("list");
     });
     expect(onRouteStateChange).toHaveBeenLastCalledWith(
-      { view: "day", date: "2026-08-17", presentation: "list" },
+      { view: "day", date: "2026-08-17", presentation: "list", searchQuery: "" },
       { replace: false },
     );
 
@@ -170,7 +175,7 @@ describe("useCalendarController view + create intent", () => {
       result.current.goNext();
     });
     expect(onRouteStateChange).toHaveBeenLastCalledWith(
-      { view: "day", date: "2026-08-18", presentation: "list" },
+      { view: "day", date: "2026-08-18", presentation: "list", searchQuery: "" },
       { replace: false },
     );
 
@@ -178,7 +183,7 @@ describe("useCalendarController view + create intent", () => {
       result.current.setAnchor("2026-08-20");
     });
     expect(onRouteStateChange).toHaveBeenLastCalledWith(
-      { view: "day", date: "2026-08-20", presentation: "list" },
+      { view: "day", date: "2026-08-20", presentation: "list", searchQuery: "" },
       { replace: true },
     );
   });
@@ -200,7 +205,7 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.view).toBe("week");
     expect(onRouteStateChange).toHaveBeenCalledTimes(1);
     expect(onRouteStateChange).toHaveBeenCalledWith(
-      { view: "week", date: "2026-08-17", presentation: "grid" },
+      { view: "week", date: "2026-08-17", presentation: "grid", searchQuery: "" },
       { replace: false },
     );
 
@@ -799,5 +804,252 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.pendingDeletedEventIds.has("dentist")).toBe(false);
 
     vi.useRealTimers();
+  });
+});
+
+describe("useCalendarController search mode", () => {
+  beforeEach(() => {
+    mockMatchMedia();
+  });
+
+  it("activates search, locks chrome, and restores browse state on clear", () => {
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        initialView: "week",
+        initialAnchor: "2026-08-17",
+        initialPresentation: "list",
+      }),
+    );
+
+    expect(result.current.searchActive).toBe(false);
+
+    act(() => {
+      result.current.setSearchQuery("standup");
+    });
+    expect(result.current.searchActive).toBe(true);
+    expect(result.current.searchQuery).toBe("standup");
+
+    act(() => {
+      result.current.selectView("day");
+      result.current.setPresentation("grid");
+      result.current.setAnchor("2026-09-01");
+    });
+    expect(result.current.view).toBe("day");
+    expect(result.current.presentation).toBe("grid");
+    expect(result.current.anchor).toBe("2026-09-01");
+
+    act(() => {
+      result.current.setSearchQuery("");
+    });
+    expect(result.current.searchActive).toBe(false);
+    expect(result.current.view).toBe("week");
+    expect(result.current.presentation).toBe("list");
+    expect(result.current.anchor).toBe("2026-08-17");
+  });
+
+  it("does not expose a parallel restore-on-open search path", () => {
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        initialView: "week",
+        initialAnchor: "2026-08-17",
+        initialPresentation: "list",
+      }),
+    );
+
+    act(() => {
+      result.current.setSearchQuery("design");
+    });
+    expect(result.current.searchActive).toBe(true);
+    expect(result.current.searchQuery).toBe("design");
+    expect(result.current.anchor).toBe("2026-08-17");
+    expect(result.current).not.toHaveProperty("openSearchResult");
+  });
+
+  it("hydrates a query from the URL and emits ?q= on type / clear", () => {
+    const onRouteStateChange = vi.fn();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: bootstrap.data,
+        initialView: "week",
+        initialAnchor: "2026-08-17",
+        initialPresentation: "list",
+        initialSearchQuery: "standup",
+        onRouteStateChange,
+      }),
+    );
+
+    expect(result.current.searchActive).toBe(true);
+    expect(result.current.searchQuery).toBe("standup");
+    expect(onRouteStateChange).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.setSearchQuery("client call");
+    });
+    expect(onRouteStateChange).toHaveBeenLastCalledWith(
+      {
+        view: "week",
+        date: "2026-08-17",
+        presentation: "list",
+        searchQuery: "client call",
+      },
+      { replace: true },
+    );
+
+    act(() => {
+      result.current.setSearchQuery("");
+    });
+    expect(result.current.searchActive).toBe(false);
+    expect(onRouteStateChange).toHaveBeenLastCalledWith(
+      {
+        view: "week",
+        date: "2026-08-17",
+        presentation: "list",
+        searchQuery: "",
+      },
+      { replace: true },
+    );
+  });
+
+  it("finds Sprint retro on the non-default calendar when both calendars are visible", () => {
+    const today = Temporal.Now.plainDateISO();
+    const start = `${today.add({ days: 2 }).toString()}T15:00:00`;
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: {
+          ...bootstrap.data,
+          events: [
+            {
+              "@type": "Event",
+              id: "personal-hold",
+              uid: "personal-hold",
+              calendarIds: { default: true },
+              title: "Hold",
+              start,
+              duration: "PT30M",
+              timeZone: "Etc/UTC",
+            },
+            {
+              "@type": "Event",
+              id: "work-retro",
+              uid: "work-retro",
+              calendarIds: { work: true },
+              title: "Sprint retro",
+              start,
+              duration: "PT1H",
+              timeZone: "Etc/UTC",
+            },
+          ],
+        },
+        initialView: "week",
+        initialAnchor: today.toString(),
+      }),
+    );
+
+    expect(result.current.defaultCalendarId).toBe("default");
+    expect(result.current.visibleCalendarIds.has("default")).toBe(true);
+    expect(result.current.visibleCalendarIds.has("work")).toBe(true);
+
+    act(() => {
+      result.current.setSearchQuery("sprint");
+    });
+
+    const hits = [...result.current.searchResults.upcoming, ...result.current.searchResults.past];
+    expect(hits.map((row) => row.title)).toContain("Sprint retro");
+    const retro = hits.find((row) => row.title === "Sprint retro");
+    expect(retro?.calendarId).toBe("work");
+    expect(retro?.color).toBe(
+      bootstrap.data.calendars.find((calendar) => calendar.id === "work")?.color,
+    );
+    expect(retro?.color).not.toBe(
+      bootstrap.data.calendars.find((calendar) => calendar.id === "default")?.color,
+    );
+
+    act(() => {
+      result.current.toggleCalendarVisibility("work");
+    });
+    expect(
+      [...result.current.searchResults.upcoming, ...result.current.searchResults.past].map(
+        (row) => row.title,
+      ),
+    ).not.toContain("Sprint retro");
+  });
+
+  it("finds Sprint retro for query sprint on the today-dated seed week", () => {
+    const today = Temporal.Now.plainDateISO();
+    const seeded = createSeededCalendarAppBootstrap(today);
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: seeded.data,
+        initialView: "week",
+        initialAnchor: today.add({ days: 14 }).toString(),
+      }),
+    );
+
+    act(() => {
+      result.current.setSearchQuery("sprint");
+    });
+
+    const titles = [
+      ...result.current.searchResults.upcoming,
+      ...result.current.searchResults.past,
+    ].map((row) => row.title);
+    expect(titles).toContain("Sprint retro");
+  });
+
+  it("finds a visible Sprint retro for query sprint", () => {
+    const seeded = createSeededCalendarAppBootstrap();
+    const { result } = renderHook(() =>
+      useCalendarController({
+        data: seeded.data,
+        initialView: "month",
+        initialAnchor: MOCK_CALENDAR_ANCHOR,
+      }),
+    );
+
+    act(() => {
+      result.current.setSearchQuery("sprint");
+    });
+
+    const titles = [
+      ...result.current.searchResults.upcoming,
+      ...result.current.searchResults.past,
+    ].map((row) => row.title);
+    expect(titles).toContain("Sprint retro");
+  });
+
+  it("does not expand occurrences while browsing, including after events update", () => {
+    const expand = vi.spyOn(calendarSearch, "searchCalendarEvents");
+    const { result, rerender } = renderHook(
+      ({ data }) => useCalendarController({ data, initialView: "week" }),
+      { initialProps: { data: bootstrap.data } },
+    );
+
+    expect(result.current.searchActive).toBe(false);
+    expect(expand).not.toHaveBeenCalled();
+
+    rerender({
+      data: {
+        ...bootstrap.data,
+        events: [
+          ...bootstrap.data.events,
+          {
+            ...bootstrap.data.events[0]!,
+            id: "ingested",
+            uid: "ingested",
+            title: "Inbound sync",
+          },
+        ],
+      },
+    });
+    expect(result.current.searchActive).toBe(false);
+    expect(expand).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.setSearchQuery("standup");
+    });
+    expect(expand).toHaveBeenCalled();
+    expand.mockRestore();
   });
 });

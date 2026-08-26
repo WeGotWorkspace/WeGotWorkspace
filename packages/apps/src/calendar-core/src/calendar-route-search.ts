@@ -4,10 +4,11 @@
  * URL structure (matches notes/tasks path segments):
  *   /calendar/:view/:date
  *   /calendar/list/:view/:date
+ *   /calendar/:view/:date?q=standup
  *
  * `view` is the time-range (day | week | month | year). `date` is an ISO
  * anchor (`YYYY-MM-DD`) in the runtime calendar timezone. List vs grid is a
- * path prefix (`/list/`) so the URL stays bookmarkable without search params.
+ * path prefix (`/list/`). Free-text search is `?q=` so reload keeps results.
  */
 
 import { Temporal } from "@js-temporal/polyfill";
@@ -20,10 +21,18 @@ export const DEFAULT_CALENDAR_PRESENTATION: CalendarPresentation = "grid";
 const CALENDAR_VIEWS = new Set<CalendarViewId>(["day", "week", "month", "year"]);
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+export const CALENDAR_SEARCH_QUERY_PARAM = "q";
+
+export type CalendarRouteSearch = {
+  q?: string;
+};
+
 export type CalendarRouteState = {
   view: CalendarViewId;
   date: string;
   presentation: CalendarPresentation;
+  /** Trimmed ViewHeader query; empty when browse (no `?q=`). */
+  searchQuery: string;
 };
 
 export type CalendarRouteParams = {
@@ -34,6 +43,7 @@ export type CalendarRouteParams = {
 export type CalendarNavigateTarget = {
   to: "/calendar/$view/$date" | "/calendar/list/$view/$date";
   params: { view: CalendarViewId; date: string };
+  search: CalendarRouteSearch;
 };
 
 export function isCalendarViewId(value: string): value is CalendarViewId {
@@ -60,18 +70,51 @@ export type CalendarRouteFallbacks = {
   presentation?: CalendarPresentation;
 };
 
+export function normalizeCalendarSearchQuery(value: string | null | undefined): string {
+  return value?.trim() ?? "";
+}
+
+export function parseCalendarRouteSearch(search: Record<string, unknown>): CalendarRouteSearch {
+  const q = typeof search.q === "string" ? search.q.trim() : "";
+  return q ? { q } : {};
+}
+
+export function validateCalendarRouteSearch(search: Record<string, unknown>): CalendarRouteSearch {
+  return parseCalendarRouteSearch(search);
+}
+
+export function calendarSearchFromQuery(query: string | null | undefined): CalendarRouteSearch {
+  const q = normalizeCalendarSearchQuery(query);
+  return q ? { q } : {};
+}
+
+/** Accept TanStack `search`, `searchStr`, or a query string. */
+export function calendarSearchQueryFromSearch(
+  search: CalendarRouteSearch | Record<string, unknown> | string | null | undefined,
+): string {
+  if (typeof search === "string") {
+    const raw = search.startsWith("?") ? search.slice(1) : search;
+    return normalizeCalendarSearchQuery(new URLSearchParams(raw).get(CALENDAR_SEARCH_QUERY_PARAM));
+  }
+  if (!search || typeof search !== "object") return "";
+  const q = "q" in search ? search.q : undefined;
+  return typeof q === "string" ? normalizeCalendarSearchQuery(q) : "";
+}
+
 export function defaultCalendarRouteState(
   fallbacks?: CalendarRouteFallbacks | null,
+  searchQuery = "",
 ): CalendarRouteState {
   return {
     view: fallbacks?.view ?? DEFAULT_CALENDAR_VIEW,
     date: todayISODate(),
     presentation: fallbacks?.presentation ?? DEFAULT_CALENDAR_PRESENTATION,
+    searchQuery: normalizeCalendarSearchQuery(searchQuery),
   };
 }
 
 export function calendarRouteKey(state: CalendarRouteState): string {
-  return `${state.presentation}:${state.view}:${state.date}`;
+  return `${state.presentation}:${state.view}:${state.date}:${normalizeCalendarSearchQuery(state.searchQuery)}`;
 }
 
 export function calendarPathFromState(state: CalendarRouteState): string {
@@ -89,8 +132,9 @@ export function calendarStateFromLocation(
   pathname: string,
   params: CalendarRouteParams = {},
   fallbacks?: CalendarRouteFallbacks | null,
+  search?: CalendarRouteSearch | Record<string, unknown> | string | null,
 ): CalendarRouteState {
-  const defaults = defaultCalendarRouteState(fallbacks);
+  const defaults = defaultCalendarRouteState(fallbacks, calendarSearchQueryFromSearch(search));
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "calendar") return defaults;
 
@@ -109,15 +153,16 @@ export function calendarStateFromLocation(
       ? "grid"
       : defaults.presentation;
 
-  return { view, date, presentation };
+  return { view, date, presentation, searchQuery: defaults.searchQuery };
 }
 
 export function calendarNavigateTarget(state: CalendarRouteState): CalendarNavigateTarget {
   const view = isCalendarViewId(state.view) ? state.view : DEFAULT_CALENDAR_VIEW;
   const date = parseCalendarISODate(state.date) ?? todayISODate();
   const params = { view, date };
+  const search = calendarSearchFromQuery(state.searchQuery);
   if (state.presentation === "list") {
-    return { to: "/calendar/list/$view/$date", params };
+    return { to: "/calendar/list/$view/$date", params, search };
   }
-  return { to: "/calendar/$view/$date", params };
+  return { to: "/calendar/$view/$date", params, search };
 }

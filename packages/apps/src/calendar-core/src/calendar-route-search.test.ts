@@ -4,12 +4,17 @@ import {
   calendarNavigateTarget,
   calendarPathFromState,
   calendarRouteKey,
+  calendarSearchFromQuery,
+  calendarSearchQueryFromSearch,
   calendarStateFromLocation,
   DEFAULT_CALENDAR_VIEW,
   isCalendarPathname,
   isCalendarViewId,
   parseCalendarISODate,
+  validateCalendarRouteSearch,
 } from "@/calendar-core/src/calendar-route-search";
+
+const idle = { searchQuery: "" } as const;
 
 describe("calendar-route-search", () => {
   it("parses grid and list path segments into view, date, and presentation", () => {
@@ -17,21 +22,25 @@ describe("calendar-route-search", () => {
       view: "week",
       date: "2026-08-17",
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/list/week/2026-08-17")).toEqual({
       view: "week",
       date: "2026-08-17",
       presentation: "list",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/day/2026-08-17")).toEqual({
       view: "day",
       date: "2026-08-17",
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/list/year/2026-01-01")).toEqual({
       view: "year",
       date: "2026-01-01",
       presentation: "list",
+      ...idle,
     });
   });
 
@@ -41,36 +50,43 @@ describe("calendar-route-search", () => {
       view: DEFAULT_CALENDAR_VIEW,
       date: today,
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/list")).toEqual({
       view: DEFAULT_CALENDAR_VIEW,
       date: today,
       presentation: "list",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/week")).toEqual({
       view: "week",
       date: today,
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/not-a-view/2026-08-17")).toEqual({
       view: DEFAULT_CALENDAR_VIEW,
       date: "2026-08-17",
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/week/17-08-2026")).toEqual({
       view: "week",
       date: today,
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/week/2026-13-40")).toEqual({
       view: "week",
       date: today,
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/notes/all")).toEqual({
       view: DEFAULT_CALENDAR_VIEW,
       date: today,
       presentation: "grid",
+      ...idle,
     });
   });
 
@@ -81,16 +97,19 @@ describe("calendar-route-search", () => {
       view: "week",
       date: today,
       presentation: "list",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/list", {}, fallbacks)).toEqual({
       view: "week",
       date: today,
       presentation: "list",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/day/2026-08-17", {}, fallbacks)).toEqual({
       view: "day",
       date: "2026-08-17",
       presentation: "grid",
+      ...idle,
     });
   });
 
@@ -99,32 +118,64 @@ describe("calendar-route-search", () => {
       view: "month",
       date: "2026-08-17",
       presentation: "grid",
+      ...idle,
     });
     expect(calendarStateFromLocation("/calendar/list/day/2026-08-01", {})).toEqual({
       view: "day",
       date: "2026-08-01",
       presentation: "list",
+      ...idle,
     });
   });
 
   it("serializes controller state to the canonical path and navigate target", () => {
-    expect(calendarPathFromState({ view: "week", date: "2026-08-17", presentation: "grid" })).toBe(
-      "/calendar/week/2026-08-17",
-    );
-    expect(calendarPathFromState({ view: "week", date: "2026-08-17", presentation: "list" })).toBe(
-      "/calendar/list/week/2026-08-17",
-    );
     expect(
-      calendarNavigateTarget({ view: "week", date: "2026-08-17", presentation: "grid" }),
+      calendarPathFromState({ view: "week", date: "2026-08-17", presentation: "grid", ...idle }),
+    ).toBe("/calendar/week/2026-08-17");
+    expect(
+      calendarPathFromState({ view: "week", date: "2026-08-17", presentation: "list", ...idle }),
+    ).toBe("/calendar/list/week/2026-08-17");
+    expect(
+      calendarNavigateTarget({ view: "week", date: "2026-08-17", presentation: "grid", ...idle }),
     ).toEqual({
       to: "/calendar/$view/$date",
       params: { view: "week", date: "2026-08-17" },
+      search: {},
     });
     expect(
-      calendarNavigateTarget({ view: "day", date: "2026-08-17", presentation: "list" }),
+      calendarNavigateTarget({ view: "day", date: "2026-08-17", presentation: "list", ...idle }),
     ).toEqual({
       to: "/calendar/list/$view/$date",
       params: { view: "day", date: "2026-08-17" },
+      search: {},
+    });
+  });
+
+  it("reads and writes the free-text query as ?q=", () => {
+    expect(validateCalendarRouteSearch({ q: "  standup  " })).toEqual({ q: "standup" });
+    expect(validateCalendarRouteSearch({ q: "   " })).toEqual({});
+    expect(validateCalendarRouteSearch({ q: 12 })).toEqual({});
+    expect(calendarSearchFromQuery(" Client call ")).toEqual({ q: "Client call" });
+    expect(calendarSearchQueryFromSearch("?q=client%20call")).toBe("client call");
+    expect(
+      calendarStateFromLocation("/calendar/week/2026-08-17", {}, null, { q: "standup" }),
+    ).toEqual({
+      view: "week",
+      date: "2026-08-17",
+      presentation: "grid",
+      searchQuery: "standup",
+    });
+    expect(
+      calendarNavigateTarget({
+        view: "week",
+        date: "2026-08-17",
+        presentation: "grid",
+        searchQuery: "standup",
+      }),
+    ).toEqual({
+      to: "/calendar/$view/$date",
+      params: { view: "week", date: "2026-08-17" },
+      search: { q: "standup" },
     });
   });
 
@@ -156,8 +207,16 @@ describe("calendar-route-search", () => {
     expect(parseCalendarISODate("2026-08-17")).toBe("2026-08-17");
     expect(parseCalendarISODate("2026-08-17T10:00:00")).toBeNull();
     expect(parseCalendarISODate("August 17, 2026")).toBeNull();
-    expect(calendarRouteKey({ view: "week", date: "2026-08-17", presentation: "list" })).toBe(
-      "list:week:2026-08-17",
-    );
+    expect(
+      calendarRouteKey({ view: "week", date: "2026-08-17", presentation: "list", ...idle }),
+    ).toBe("list:week:2026-08-17:");
+    expect(
+      calendarRouteKey({
+        view: "week",
+        date: "2026-08-17",
+        presentation: "list",
+        searchQuery: "standup",
+      }),
+    ).toBe("list:week:2026-08-17:standup");
   });
 });

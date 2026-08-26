@@ -189,4 +189,36 @@ describe("expandEvents", () => {
       "monthly-last-friday::20250328T090000",
     ]);
   });
+
+  it("expands monthly last-Friday byDay ordinal over a multi-year search window", () => {
+    const events: CalendarEventsMap = new Map([
+      [
+        "sprint-retro",
+        {
+          eventId: "sprint-retro@example.test",
+          data: {
+            start: Temporal.PlainDateTime.from("2026-08-24T15:00:00"),
+            end: Temporal.PlainDateTime.from("2026-08-24T16:00:00"),
+            summary: "Sprint retro",
+            recurrenceRule: {
+              freq: "MONTHLY",
+              interval: 1,
+              byDay: [{ day: "FR", ordinal: -1 }],
+            },
+          },
+        },
+      ],
+    ]);
+
+    const rendered = expandEvents(events, {
+      start: Temporal.PlainDateTime.from("2025-08-01T00:00:00"),
+      end: Temporal.PlainDateTime.from("2028-08-01T00:00:00"),
+    });
+
+    expect(rendered.size).toBeGreaterThan(20);
+    expect([...rendered.values()].every((event) => event.data.summary === "Sprint retro")).toBe(
+      true,
+    );
+    expect(rendered.has("sprint-retro::20260828T150000")).toBe(true);
+  });
 });

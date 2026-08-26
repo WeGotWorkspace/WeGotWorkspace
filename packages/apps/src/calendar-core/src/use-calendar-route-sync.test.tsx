@@ -5,20 +5,26 @@ const navigate = vi.fn(async (_opts?: unknown) => undefined);
 const historyFlush = vi.fn();
 let mockPathname = "/calendar/month/2026-08-17";
 let mockParams: Record<string, string> = { view: "month", date: "2026-08-17" };
+let mockSearch: Record<string, unknown> = {};
 let livePathname = "/calendar/month/2026-08-17";
+let liveSearch: Record<string, unknown> = {};
 
 vi.mock("@tanstack/react-router", async () => {
   const actual =
     await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
   return {
     ...actual,
-    useLocation: () => ({ pathname: mockPathname }),
+    useLocation: () => ({ pathname: mockPathname, search: mockSearch }),
     useParams: () => ({ ...mockParams }),
     useRouter: () => ({
-      state: { location: { pathname: livePathname } },
+      state: { location: { pathname: livePathname, search: liveSearch } },
       navigate: (opts: unknown) => {
         navigate(opts);
-        const target = opts as { to?: string; params?: { view?: string; date?: string } };
+        const target = opts as {
+          to?: string;
+          params?: { view?: string; date?: string };
+          search?: Record<string, unknown>;
+        };
         if (
           target.to === "/calendar/list/$view/$date" &&
           target.params?.view &&
@@ -32,6 +38,7 @@ vi.mock("@tanstack/react-router", async () => {
         ) {
           livePathname = `/calendar/${target.params.view}/${target.params.date}`;
         }
+        if (target.search !== undefined) liveSearch = { ...target.search };
         return Promise.resolve();
       },
       history: { flush: historyFlush },
@@ -53,7 +60,9 @@ describe("useCalendarRouteSync", () => {
     window.localStorage.clear();
     mockPathname = "/calendar/month/2026-08-17";
     mockParams = { view: "month", date: "2026-08-17" };
+    mockSearch = {};
     livePathname = "/calendar/month/2026-08-17";
+    liveSearch = {};
   });
 
   it("hydrates view, date, and presentation from the path", () => {
@@ -75,12 +84,14 @@ describe("useCalendarRouteSync", () => {
         view: "week",
         date: "2026-08-17",
         presentation: "grid",
+        searchQuery: "",
       });
     });
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
       params: { view: "week", date: "2026-08-17" },
+      search: {},
       replace: false,
     });
 
@@ -89,12 +100,14 @@ describe("useCalendarRouteSync", () => {
         view: "week",
         date: "2026-08-17",
         presentation: "list",
+        searchQuery: "",
       });
     });
 
     expect(navigate).toHaveBeenLastCalledWith({
       to: "/calendar/list/$view/$date",
       params: { view: "week", date: "2026-08-17" },
+      search: {},
       replace: false,
     });
   });
@@ -104,7 +117,7 @@ describe("useCalendarRouteSync", () => {
 
     act(() => {
       result.current.handleRouteStateChange(
-        { view: "month", date: "2026-08-20", presentation: "grid" },
+        { view: "month", date: "2026-08-20", presentation: "grid", searchQuery: "" },
         { replace: true },
       );
     });
@@ -112,6 +125,7 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
       params: { view: "month", date: "2026-08-20" },
+      search: {},
       replace: true,
     });
   });
@@ -125,6 +139,7 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
       params: { view: "week", date: todayISODate() },
+      search: {},
       replace: true,
     });
     unmount();
@@ -139,6 +154,7 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/list/$view/$date",
       params: { view: "month", date: todayISODate() },
+      search: {},
       replace: true,
     });
   });
@@ -152,6 +168,7 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
       params: { view: "month", date: todayISODate() },
+      search: {},
       replace: true,
     });
   });
@@ -168,6 +185,7 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/list/$view/$date",
       params: { view: "week", date: todayISODate() },
+      search: {},
       replace: true,
     });
   });
@@ -210,6 +228,7 @@ describe("useCalendarRouteSync", () => {
         view: "week",
         date: "2026-08-17",
         presentation: "grid",
+        searchQuery: "",
       });
     });
 
@@ -217,6 +236,7 @@ describe("useCalendarRouteSync", () => {
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
       params: { view: "week", date: "2026-08-17" },
+      search: {},
       replace: false,
     });
     expect(livePathname).toBe("/calendar/week/2026-08-17");
@@ -230,9 +250,58 @@ describe("useCalendarRouteSync", () => {
         view: "month",
         date: "2026-08-17",
         presentation: "grid",
+        searchQuery: "",
       });
     });
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("hydrates ?q= and writes it without changing the path", () => {
+    mockPathname = "/calendar/week/2026-08-17";
+    livePathname = "/calendar/week/2026-08-17";
+    mockParams = { view: "week", date: "2026-08-17" };
+    mockSearch = { q: "standup" };
+    liveSearch = { q: "standup" };
+    const { result } = renderHook(() => useCalendarRouteSync());
+
+    expect(result.current.initialSearchQuery).toBe("standup");
+    expect(navigate).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.handleRouteStateChange(
+        {
+          view: "week",
+          date: "2026-08-17",
+          presentation: "grid",
+          searchQuery: "client call",
+        },
+        { replace: true },
+      );
+    });
+
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/calendar/$view/$date",
+      params: { view: "week", date: "2026-08-17" },
+      search: { q: "client call" },
+      replace: true,
+    });
+  });
+
+  it("keeps ?q= when completing a bare /calendar path", () => {
+    mockPathname = "/calendar";
+    livePathname = "/calendar";
+    mockParams = {};
+    mockSearch = { q: "standup" };
+    liveSearch = { q: "standup" };
+    const { result } = renderHook(() => useCalendarRouteSync());
+
+    expect(result.current.initialSearchQuery).toBe("standup");
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/calendar/$view/$date",
+      params: { view: "month", date: todayISODate() },
+      search: { q: "standup" },
+      replace: true,
+    });
   });
 });

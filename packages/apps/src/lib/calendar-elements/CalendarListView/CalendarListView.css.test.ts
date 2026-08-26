@@ -13,8 +13,16 @@ describe("CalendarListView heading CSS", () => {
     );
   });
 
+  it("lets the workspace reserve scroll-end room under a floating field", () => {
+    expect(css).toMatch(/\.agenda-shell \{[\s\S]*padding-bottom:\s*var\(--_lc-list-end-pad/);
+  });
+
   it("keeps the host as the agenda scrollport", () => {
     expect(css).toMatch(/:host \{[\s\S]*?@apply[^;]*overflow-y-auto/);
+  });
+
+  it("lets an embedded host defer the scrollport to its parent", () => {
+    expect(css).toMatch(/:host\(\[embedded\]\) \{[\s\S]*?overflow-visible/);
   });
 
   it("skips layout for off-screen event lists without changing scroll metrics", () => {
