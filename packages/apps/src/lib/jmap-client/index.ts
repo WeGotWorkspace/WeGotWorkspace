@@ -50,6 +50,7 @@ export type {
   JSCalendarAlert,
   JSCalendarAlertAction,
   JSCalendarEvent,
+  JSCalendarLink,
   JSCalendarLocalDateTime,
   JSCalendarPatchObject,
   JSCalendarRecurrenceRule,

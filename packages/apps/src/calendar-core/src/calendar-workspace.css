@@ -533,8 +533,22 @@
 
 .calendar-dialog-surface .calendar-event-dialog__repeat-trigger,
 .calendar-dialog-surface .calendar-event-dialog__timezone-trigger,
-.calendar-dialog-surface .calendar-event-dialog__show-as-trigger {
+.calendar-dialog-surface .calendar-event-dialog__show-as-trigger,
+.calendar-dialog-surface .calendar-event-dialog__meet-scope-trigger {
   @apply w-full min-w-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-row {
+  @apply flex min-w-0 w-full flex-col gap-2 sm:flex-row sm:items-center;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-row .input,
+.calendar-dialog-surface .calendar-event-dialog__meet-row input {
+  @apply min-w-0 flex-1;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-readonly {
+  @apply flex justify-start;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {

@@ -40,6 +40,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import { meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
 import {
   canChangeCalendarOwner,
   canOpenCalendarSettings,
@@ -528,7 +529,7 @@ export function useCalendarController({
     [operations, queueMutation, onMutated, L.toastEventSaveUndone],
   );
 
-  const saveEditor = useCallback(() => {
+  const saveEditor = useCallback((chosenScope?: RecurrenceEditScope) => {
     if (!editor || !operations) return;
     if (editor.mode === "create") {
       ensureCalendarVisible(editor.form.calendarId);
@@ -572,6 +573,8 @@ export function useCalendarController({
       if (isRecurring && editor.recurrenceId) {
         if (occurrenceHasThisInstanceOverride(original, editor.recurrenceId)) {
           recurrenceScope = "thisInstance";
+        } else if (chosenScope === "thisInstance" || chosenScope === "thisAndFuture") {
+          recurrenceScope = chosenScope;
         } else {
           const asked = await askRecurrenceScope({
             action: "edit",
@@ -1256,6 +1259,7 @@ export function useCalendarController({
         recurrenceEnds: engineForm?.recurrenceEnds ?? "never",
         recurrenceUntilDate: engineForm?.recurrenceUntilDate ?? startDate,
         recurrenceCount: engineForm?.recurrenceCount ?? 10,
+        meetingUrl: meetingUrlFromLinks(original?.links) || engineForm?.meetingUrl || "",
         ...(seriesRules?.length ? { customRecurrenceRules: seriesRules } : {}),
       };
       const seriesOverrides = resolveSeriesRecurrenceOverrides(original, masterKey, surfaceEvents);

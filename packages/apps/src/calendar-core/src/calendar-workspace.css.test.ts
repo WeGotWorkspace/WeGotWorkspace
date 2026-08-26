@@ -101,6 +101,15 @@ describe("calendar workspace subscribed sidebar row", () => {
   });
 });
 
+describe("calendar event dialog Meet field", () => {
+  it("lays out the Meet URL row with BEM + @apply", () => {
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \{[\s\S]*@apply/,
+    );
+    expect(css).toMatch(/\.calendar-event-dialog__meet-scope-trigger/);
+  });
+});
+
 describe("calendar workspace stacked header", () => {
   it("uses a viewport two-row grid so flattening main cannot drop the query", () => {
     expect(css).toMatch(

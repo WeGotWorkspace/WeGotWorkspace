@@ -36,6 +36,10 @@
   @apply mt-2.5 block w-full min-w-0 max-w-full overflow-hidden;
 }
 
+.calendar-invitation-card__meet {
+  @apply mt-3 min-w-0;
+}
+
 .calendar-invitation-card__rsvp {
   @apply mt-3 min-w-0;
 }

@@ -215,6 +215,7 @@ describe("CalendarEventDialog", () => {
       ".calendar-event-dialog__fields > .calendar-event-dialog__card",
     );
     expect([...cards].map((card) => card.querySelector(".card__title")?.textContent)).toEqual([
+      defaultCalendarLabels.eventMeetSectionTitle,
       defaultCalendarLabels.eventWhenSectionTitle,
       defaultCalendarLabels.eventRepeatLabel,
       defaultCalendarLabels.eventAttendeesLabel,

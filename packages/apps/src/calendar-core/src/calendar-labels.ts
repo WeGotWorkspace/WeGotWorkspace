@@ -113,6 +113,17 @@ export type CalendarUILabels = {
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
+  /** Card heading for Add Meet / paste / remove. */
+  eventMeetSectionTitle: string;
+  eventMeetAdd: string;
+  eventMeetRemove: string;
+  eventMeetJoin: string;
+  eventMeetUrlLabel: string;
+  eventMeetUrlPlaceholder: string;
+  /** Apply-to control when editing a recurring occurrence. */
+  eventMeetApplyTo: string;
+  /** GET 404 / swept room — same copy as Meet missing-invite. */
+  eventMeetDeadLink: string;
   eventNotesLabel: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
@@ -318,6 +329,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLabel: "Time zone",
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
+  eventMeetSectionTitle: "Meet",
+  eventMeetAdd: "Add Meet",
+  eventMeetRemove: "Remove",
+  eventMeetJoin: "Join",
+  eventMeetUrlLabel: "Meeting link",
+  eventMeetUrlPlaceholder: "https://…",
+  eventMeetApplyTo: "Apply Meet to",
+  eventMeetDeadLink: "This meeting is not active. Ask the host for a fresh invite link.",
   eventNotesLabel: "Notes",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),

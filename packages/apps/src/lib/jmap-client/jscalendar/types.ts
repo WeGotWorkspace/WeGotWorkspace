@@ -51,6 +51,15 @@ export type JSCalendarLocation = {
   [key: string]: unknown;
 };
 
+/** RFC 8984 Link (href + optional rel). */
+export type JSCalendarLink = {
+  "@type"?: "Link";
+  href: string;
+  rel?: string;
+  contentType?: string;
+  [key: string]: unknown;
+};
+
 /**
  * RFC 8984 `Alert.action` is `"display"` | `"email"`.
  * `"audio"` is leftover interop only; the editor maps it to display.
@@ -115,6 +124,8 @@ export type JSCalendarEvent = {
   /** RFC 8984 §4.5.2 / JMAP CalendarEventAlert (RelativeAlert | AbsoluteAlert). */
   alerts?: Record<string, JSCalendarAlert> | null;
   locations?: Record<string, JSCalendarLocation> | null;
+  /** RFC 8984 §4.2.7 / OpenAPI CalendarEventLink map. */
+  links?: Record<string, JSCalendarLink> | null;
   recurrenceRules?: JSCalendarRecurrenceRule[] | null;
   excludedRecurrenceRules?: JSCalendarRecurrenceRule[] | null;
   recurrenceOverrides?: Record<JSCalendarLocalDateTime, JSCalendarPatchObject> | null;

@@ -75,6 +75,41 @@ export const TallWeekSegment: Story = {
   },
 };
 
+export const MeetJoin: Story = {
+  args: {
+    workspaceOrigin: "https://workspace.example.com",
+    onJoinMeeting: fn(),
+    meetOperations: {
+      roomStatus: async () => ({ reserved: true, active: false }),
+    },
+    preview: {
+      eventId: "standup",
+      form: {
+        ...lunchForm,
+        title: "Standup",
+        meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+      },
+    },
+  },
+};
+
+export const MeetDeadLink: Story = {
+  args: {
+    workspaceOrigin: "https://workspace.example.com",
+    meetOperations: {
+      roomStatus: async () => ({ reserved: false, active: false }),
+    },
+    preview: {
+      eventId: "swept",
+      form: {
+        ...lunchForm,
+        title: "Swept room",
+        meetingUrl: "https://workspace.example.com/meet/guest?room=dead-link-aaaa",
+      },
+    },
+  },
+};
+
 export const InviteeRsvp: Story = {
   args: {
     sessionEmail: "carol@example.test",

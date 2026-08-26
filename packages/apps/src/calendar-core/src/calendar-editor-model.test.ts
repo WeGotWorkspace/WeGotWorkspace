@@ -724,6 +724,32 @@ describe("formToPatch", () => {
   });
 });
 
+describe("meetingUrl ↔ links", () => {
+  it("reads the first links href into meetingUrl and writes it back", () => {
+    const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";
+    const form = calendarEventToForm({
+      ...timedEvent,
+      links: { meet: { "@type": "Link", href, rel: "describedby" } },
+    });
+    expect(form.meetingUrl).toBe(href);
+    expect(formToDraft(form).links).toEqual({
+      meet: { "@type": "Link", href, rel: "describedby" },
+    });
+    expect(formToPatch({ ...form, meetingUrl: "" }, { ...timedEvent, links: { meet: { href } } })).toEqual({
+      links: null,
+    });
+  });
+
+  it("rejects a non-http meetingUrl", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "x",
+      meetingUrl: "javascript:alert(1)",
+    };
+    expect(calendarEventFormIsValid(form)).toBe(false);
+  });
+});
+
 describe("engineEventToForm", () => {
   it("derives duration from data.end after a resize (duration stripped)", () => {
     const form = engineEventToForm({

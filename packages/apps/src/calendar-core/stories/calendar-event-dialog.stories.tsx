@@ -63,6 +63,55 @@ export const InviteeViewOnly: Story = {
   },
 };
 
+export const WithMeetLink: Story = {
+  args: {
+    form: {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+    },
+    meetOperations: {
+      roomStatus: async () => ({ reserved: true, active: false }),
+      reserveRoom: async () => ({ reserved: true, active: false }),
+      patchRoomExpiresAt: async () => ({ reserved: true, active: false }),
+    },
+    workspaceOrigin: "https://workspace.example.com",
+    onJoinMeeting: fn(),
+  },
+};
+
+export const InviteeMeetJoin: Story = {
+  args: {
+    mode: "edit",
+    sessionEmail: "carol@example.test",
+    onRsvp: fn(),
+    workspaceOrigin: "https://workspace.example.com",
+    onJoinMeeting: fn(),
+    meetOperations: {
+      roomStatus: async () => ({ reserved: true, active: false }),
+    },
+    form: {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+      attendees: [
+        {
+          email: "bob@example.test",
+          name: "Bob",
+          participationStatus: "accepted",
+          isOrganizer: true,
+        },
+        {
+          email: "carol@example.test",
+          name: "Carol",
+          participationStatus: "accepted",
+          role: "required",
+        },
+      ],
+    },
+  },
+};
+
 export const WithInvitees: Story = {
   args: {
     invitees: [
