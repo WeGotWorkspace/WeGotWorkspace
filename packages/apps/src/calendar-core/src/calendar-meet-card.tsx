@@ -4,7 +4,7 @@ import { buttonVariants } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
-import { Switch } from "@/ui/switch";
+import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
 import "@/share-ui/share-ui.css";
@@ -73,21 +73,41 @@ function applyForm(
 function CalendarMeetUrlRow({
   href,
   labels,
+  readOnly = false,
+  disabled = false,
+  generateDisabled = false,
+  reserving = false,
+  onGenerate,
+  onChange,
   onBlur,
 }: {
   href: string;
   labels: CalendarUILabels;
+  readOnly?: boolean;
+  disabled?: boolean;
+  generateDisabled?: boolean;
+  reserving?: boolean;
+  onGenerate?: () => void;
+  onChange?: (value: string) => void;
   onBlur?: () => void;
 }) {
   const trimmed = href.trim();
   return (
     <div className="calendar-event-dialog__meet-row share-dialog__link-row">
       <ShareDialogInput
-        type="text"
+        type="url"
         value={href}
-        readOnly
-        mono
+        readOnly={readOnly}
+        disabled={disabled}
+        placeholder={labels.eventMeetUrlPlaceholder}
         aria-label={labels.eventMeetUrlLabel}
+        onChange={
+          onChange
+            ? (event) => {
+                onChange(event.target.value);
+              }
+            : undefined
+        }
         onBlur={onBlur}
       />
       <IconButton
@@ -100,6 +120,21 @@ function CalendarMeetUrlRow({
           void copyShareText(trimmed);
         }}
       />
+      {onGenerate ? (
+        <IconButton
+          className="calendar-event-dialog__meet-generate"
+          label={labels.eventMeetAdd}
+          icon={
+            reserving ? <LoadingSpinner size="sm" /> : <Video className="size-3.5" aria-hidden />
+          }
+          size="sm"
+          variant="outline"
+          disabled={generateDisabled}
+          onClick={() => {
+            onGenerate();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -122,11 +157,12 @@ export function CalendarMeetCard({
   onJoin,
 }: CalendarMeetCardProps) {
   const [reserving, setReserving] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(false);
   const inflightRef = useRef(false);
   const pendingAbandonRef = useRef(false);
   const stagedRoomRef = useRef(form.meetRoomCode?.trim() ?? "");
   const reservedThisSessionRef = useRef(Boolean(form.meetRoomCode));
+  const hrefDraftRef = useRef(form.meetingUrl);
   const canChooseScope = Boolean(recurrenceId) && !thisInstanceLocked && !readOnly;
   const scope = resolveCalendarMeetReserveScope({
     recurrencePreset: form.recurrencePreset,
@@ -161,17 +197,25 @@ export function CalendarMeetCard({
     };
   }
 
-  const addMeet = async (): Promise<void> => {
+  const addMeet = async (replaceExisting = false): Promise<void> => {
     const reserve = meetOperations?.reserveRoom;
     const ownerPrincipal = calendarMeetOwnerPrincipal(calendar, username);
     if (!reserve || !ownerPrincipal || inflightRef.current || reserving) return;
+    if (!replaceExisting && hrefDraftRef.current.trim()) return;
     inflightRef.current = true;
     setReserving(true);
-    const room = form.meetRoomCode?.trim() || createMeetRoomCode();
-    stagedRoomRef.current = room;
-    if (!form.meetRoomCode) {
-      applyForm(form, { meetRoomCode: room }, onChange);
+    const previousRoom =
+      stagedRoomRef.current.trim() ||
+      form.meetRoomCode?.trim() ||
+      roomCodeFromMeetingUrl(hrefDraftRef.current, workspaceOrigin) ||
+      roomCodeFromMeetingUrl(form.meetingUrl, workspaceOrigin);
+    if (replaceExisting && previousRoom) {
+      await expireStagedRoom(previousRoom);
     }
+    const room = createMeetRoomCode();
+    stagedRoomRef.current = room;
+    hrefDraftRef.current = "";
+    applyForm(form, { meetRoomCode: room, meetingUrl: "" }, onChange);
     try {
       const eventEndMs = formEventEndMs(form);
       await reserve({
@@ -181,6 +225,20 @@ export function CalendarMeetCard({
       });
       reservedThisSessionRef.current = true;
       const href = buildMeetGuestCallLink(room, workspaceOrigin);
+      const drafted = hrefDraftRef.current.trim();
+      const draftedParsed = parseCalendarMeetHref(drafted, workspaceOrigin);
+      if (draftedParsed?.kind === "https") {
+        await expireStagedRoom(room);
+        reservedThisSessionRef.current = false;
+        stagedRoomRef.current = "";
+        applyForm(
+          { ...form, meetRoomCode: room },
+          { meetingUrl: drafted, meetRoomCode: undefined },
+          onChange,
+        );
+        return;
+      }
+      hrefDraftRef.current = href;
       applyForm(
         { ...form, meetRoomCode: room },
         { meetingUrl: href, meetRoomCode: room },
@@ -197,6 +255,14 @@ export function CalendarMeetCard({
     }
   };
 
+  const requestGenerate = (): void => {
+    if (hrefDraftRef.current.trim()) {
+      setConfirmReplace(true);
+      return;
+    }
+    void addMeet(false);
+  };
+
   const removeMeet = async (): Promise<void> => {
     const room =
       stagedRoomRef.current.trim() ||
@@ -205,6 +271,7 @@ export function CalendarMeetCard({
     if (room) await expireStagedRoom(room);
     stagedRoomRef.current = "";
     reservedThisSessionRef.current = false;
+    hrefDraftRef.current = "";
     applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
   };
 
@@ -218,17 +285,37 @@ export function CalendarMeetCard({
     onRecurrenceSaveScopeChange?.(next);
   };
 
+  const expireLocalWgwRoom = async (): Promise<void> => {
+    const room = stagedRoomRef.current.trim() || form.meetRoomCode?.trim() || "";
+    if (room) await expireStagedRoom(room);
+    stagedRoomRef.current = "";
+    reservedThisSessionRef.current = false;
+  };
+
   const onUrlBlur = async (): Promise<void> => {
-    const raw = form.meetingUrl.trim();
-    if (!raw) return;
+    const raw = hrefDraftRef.current.trim();
+    if (!raw) {
+      await expireLocalWgwRoom();
+      applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
+      return;
+    }
     if (!isHttpUrl(raw)) {
       applyForm(form, { meetingUrl: "" }, onChange);
       return;
     }
     const parsed = parseCalendarMeetHref(raw, workspaceOrigin);
+    if (!parsed) {
+      applyForm(form, { meetingUrl: "" }, onChange);
+      return;
+    }
+    if (parsed.kind === "https") {
+      await expireLocalWgwRoom();
+      applyForm(form, { meetingUrl: raw, meetRoomCode: undefined }, onChange);
+      return;
+    }
     const reserve = meetOperations?.reserveRoom;
     const ownerPrincipal = calendarMeetOwnerPrincipal(calendar, username);
-    if (parsed?.kind !== "wgw" || !reserve || !ownerPrincipal) return;
+    if (!reserve || !ownerPrincipal) return;
     try {
       await reserve({
         room: parsed.room,
@@ -247,7 +334,7 @@ export function CalendarMeetCard({
     if (!form.meetingUrl.trim()) return null;
     return (
       <div className="calendar-event-dialog__meet-readonly">
-        <CalendarMeetUrlRow href={form.meetingUrl} labels={labels} />
+        <CalendarMeetUrlRow href={form.meetingUrl} labels={labels} readOnly />
         <CalendarMeetJoin
           href={form.meetingUrl}
           labels={labels}
@@ -259,34 +346,13 @@ export function CalendarMeetCard({
     );
   }
 
-  const hasMeetingUrl = Boolean(form.meetingUrl.trim());
-  const meetEnabled = reserving || hasMeetingUrl;
-  const switchDisabled = disabled || reserving || (!meetEnabled && !meetOperations?.reserveRoom);
+  const canGenerate = !disabled && !reserving && Boolean(meetOperations?.reserveRoom);
 
   return (
     <Card
       className="calendar-event-dialog__card calendar-event-dialog__meet"
       titleIcon={<Video className="size-4" />}
       title={labels.eventMeetSectionTitle}
-      action={
-        <span className="calendar-event-dialog__meet-switch">
-          <Switch
-            checked={meetEnabled}
-            disabled={switchDisabled}
-            onCheckedChange={(next) => {
-              if (next) {
-                if (meetEnabled) return;
-                void addMeet();
-                return;
-              }
-              if (meetEnabled) {
-                setConfirmRemove(true);
-              }
-            }}
-            aria-label={labels.eventMeetAdd}
-          />
-        </span>
-      }
     >
       {canChooseScope ? (
         <CardRow title={labels.eventMeetApplyTo}>
@@ -310,20 +376,26 @@ export function CalendarMeetCard({
           </Select>
         </CardRow>
       ) : null}
-      {hasMeetingUrl ? (
-        <CardRow fill>
-          <CalendarMeetUrlRow
-            href={form.meetingUrl}
-            labels={labels}
-            onBlur={() => {
-              void onUrlBlur();
-            }}
-          />
-        </CardRow>
-      ) : null}
+      <CardRow fill>
+        <CalendarMeetUrlRow
+          href={form.meetingUrl}
+          labels={labels}
+          disabled={disabled}
+          generateDisabled={!canGenerate}
+          reserving={reserving}
+          onGenerate={requestGenerate}
+          onChange={(value) => {
+            hrefDraftRef.current = value;
+            applyForm(form, { meetingUrl: value }, onChange);
+          }}
+          onBlur={() => {
+            void onUrlBlur();
+          }}
+        />
+      </CardRow>
       <AlertDialog
-        open={confirmRemove}
-        onOpenChange={(open) => !reserving && setConfirmRemove(open)}
+        open={confirmReplace}
+        onOpenChange={(open) => !reserving && setConfirmReplace(open)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -337,8 +409,8 @@ export function CalendarMeetCard({
               disabled={reserving}
               onClick={(event) => {
                 event.preventDefault();
-                setConfirmRemove(false);
-                void removeMeet();
+                setConfirmReplace(false);
+                void addMeet(true);
               }}
             >
               {labels.eventMeetDisableConfirm}

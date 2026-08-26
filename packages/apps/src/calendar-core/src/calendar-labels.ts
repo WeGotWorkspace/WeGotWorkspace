@@ -113,10 +113,11 @@ export type CalendarUILabels = {
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
-  /** Card heading for the Meet switch / paste URL. */
+  /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
-  /** Accessible name for the Meet switch (same role as public-link / publish). */
+  /** Accessible name for the generate-Meet icon button. */
   eventMeetAdd: string;
+  /** Confirm title when generating over a non-empty meeting URL. */
   eventMeetDisableTitle: string;
   eventMeetDisableDescription: string;
   eventMeetDisableConfirm: string;
@@ -333,11 +334,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
   eventMeetSectionTitle: "Meet",
-  eventMeetAdd: "Meet",
-  eventMeetDisableTitle: "Remove Meet?",
+  eventMeetAdd: "Create Meet Room URL",
+  eventMeetDisableTitle: "Replace Meet link?",
   eventMeetDisableDescription:
-    "The meeting link will be detached and the room will expire. Anyone with the current join URL will lose access. Continue?",
-  eventMeetDisableConfirm: "Continue",
+    "A new meeting link will replace the current one. The previous room will expire, and anyone with the current join URL will lose access.",
+  eventMeetDisableConfirm: "Replace",
   eventMeetJoin: "Join",
   eventMeetUrlLabel: "Meeting link",
   eventMeetUrlPlaceholder: "https://…",

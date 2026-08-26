@@ -113,13 +113,11 @@ describe("CalendarEventDialog", () => {
     });
 
     expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
-    expect(
-      screen
-        .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
-        .getAttribute("data-state"),
-    ).toBe("off");
-    expect(screen.queryByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeNull();
-    expect(screen.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeNull();
+    expect(screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toHaveProperty(
+      "disabled",
+      false,
+    );
   });
 
   it("keeps location independent when Meet is on", () => {
@@ -140,14 +138,13 @@ describe("CalendarEventDialog", () => {
     });
 
     expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
-    expect(
-      screen
-        .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
-        .getAttribute("data-state"),
-    ).toBe("on");
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toHaveProperty(
+      "disabled",
+      false,
+    );
     const url = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
     expect(url.value).toBe(form.meetingUrl);
-    expect(url.readOnly).toBe(true);
+    expect(url.readOnly).toBe(false);
     expect(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeTruthy();
   });
 
@@ -945,11 +942,7 @@ describe("CalendarEventDialog", () => {
       workspaceOrigin: "https://workspace.example.com",
     });
 
-    fireEvent.click(
-      screen
-        .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
-        .querySelector('button[aria-label="On"]')!,
-    );
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
 
