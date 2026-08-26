@@ -1,10 +1,20 @@
-import { Search, X } from "lucide-react";
+import type { RefObject } from "react";
+
+import { Input } from "@/ui/input";
+import { cn } from "@/lib/utils";
+
+import "./collection-search-input.css";
 
 type CollectionSearchInputProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  className?: string;
+  /** When false, Escape is left for a parent dialog/popover to dismiss. Default true. */
+  clearOnEscape?: boolean;
+  /** Visible label when compact idle chrome hides the input. */
+  "data-idle-label"?: string;
 };
 
 export function CollectionSearchInput({
@@ -12,39 +22,27 @@ export function CollectionSearchInput({
   onChange,
   placeholder,
   inputRef,
+  className,
+  clearOnEscape = true,
+  "data-idle-label": dataIdleLabel,
 }: CollectionSearchInputProps) {
   return (
-    <div
-      className="mt-3 flex items-center gap-2 px-3 h-9 rounded-[6px]"
-      style={{
-        backgroundColor: "color-mix(in oklab, var(--color-ink) 6%, transparent)",
-        color: "var(--color-ink)",
+    <Input
+      ref={inputRef}
+      variant="search"
+      size="sm"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      aria-label={placeholder}
+      className={cn("collection-search-input", className)}
+      data-idle-label={dataIdleLabel}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !clearOnEscape) return;
+        event.preventDefault();
+        onChange("");
+        event.currentTarget.blur();
       }}
-    >
-      <Search className="size-4 opacity-60 shrink-0" />
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="flex-1 bg-transparent outline-none text-sm placeholder:opacity-50"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onChange("");
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-      />
-      {value && (
-        <button
-          aria-label="Clear search"
-          onClick={() => onChange("")}
-          className="size-6 rounded-[6px] flex items-center justify-center hover:bg-[color-mix(in_oklab,var(--color-ink)_10%,transparent)]"
-        >
-          <X className="size-3.5" />
-        </button>
-      )}
-    </div>
+    />
   );
 }

@@ -1,8 +1,8 @@
 import type { ReactNode, RefObject } from "react";
-import { useEffect, useState } from "react";
 import { WorkspaceSidebarToggle } from "@/workspace-shell/src/workspace-app-layout";
 import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
 import { cn } from "@/lib/utils";
+import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-search-query";
 
 import "./view-header.css";
 
@@ -70,17 +70,11 @@ export function ViewHeader({
   searchInputRef,
   searchContent,
 }: ViewHeaderProps) {
-  const [query, setQuery] = useState(searchValue);
-
-  useEffect(() => {
-    setQuery(searchValue);
-  }, [searchValue]);
-
-  useEffect(() => {
-    if (!onSearchInput) return;
-    const timeout = window.setTimeout(() => onSearchInput(query), searchDebounceMs);
-    return () => window.clearTimeout(timeout);
-  }, [query, onSearchInput, searchDebounceMs]);
+  const { query, setQuery } = useViewHeaderSearchQuery({
+    searchValue,
+    onSearchInput,
+    searchDebounceMs,
+  });
 
   return (
     <>

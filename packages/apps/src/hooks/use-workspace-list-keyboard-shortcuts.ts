@@ -11,6 +11,11 @@ export type UseWorkspaceListKeyboardShortcutsOptions = {
   onUndoQueuedAction?: () => boolean;
   /** When false, arrow/space/delete list shortcuts are suppressed. */
   listNavigationEnabled?: boolean;
+  /**
+   * Called before focusing `searchInputRef` (⌘/Ctrl+K or `/`).
+   * Use to open a closed search popover; do not toggle closed.
+   */
+  onFocusSearch?: () => void;
 };
 
 /**
@@ -26,6 +31,7 @@ export function useWorkspaceListKeyboardShortcuts({
   onNavigateList,
   onUndoQueuedAction,
   listNavigationEnabled = true,
+  onFocusSearch,
 }: UseWorkspaceListKeyboardShortcutsOptions) {
   useEffect(() => {
     const isMac =
@@ -44,6 +50,7 @@ export function useWorkspaceListKeyboardShortcuts({
 
       if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (listShortcutsAllowed && e.key === "/")) {
         e.preventDefault();
+        onFocusSearch?.();
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
         return;
@@ -97,5 +104,6 @@ export function useWorkspaceListKeyboardShortcuts({
     onNavigateList,
     onUndoQueuedAction,
     listNavigationEnabled,
+    onFocusSearch,
   ]);
 }

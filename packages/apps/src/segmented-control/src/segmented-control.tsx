@@ -16,6 +16,7 @@ export type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void;
   options: SegmentedControlOption<T>[];
   size?: "sm" | "md";
+  disabled?: boolean;
   className?: string;
   "aria-label"?: string;
 };
@@ -25,6 +26,7 @@ export function SegmentedControl<T extends string>({
   onChange,
   options,
   size = "sm",
+  disabled = false,
   className,
   "aria-label": ariaLabel,
 }: SegmentedControlProps<T>) {
@@ -33,6 +35,8 @@ export function SegmentedControl<T extends string>({
       className={cn("segmented-control", size === "md" && "segmented-control--size-md", className)}
       role="group"
       aria-label={ariaLabel}
+      aria-disabled={disabled || undefined}
+      data-disabled={disabled ? "" : undefined}
     >
       {options.map((option) => {
         const active = value === option.value;
@@ -44,6 +48,7 @@ export function SegmentedControl<T extends string>({
             aria-label={option.label}
             aria-pressed={active}
             title={option.label}
+            disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
               "segmented-control__button",

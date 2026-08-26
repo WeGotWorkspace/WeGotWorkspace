@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ViewHeader } from "@/view-header/src/view-header";
 
@@ -226,5 +226,79 @@ describe("ViewHeader layout", () => {
     expect(container.querySelector(".view-header__title-compact")?.textContent).toBe(
       "Aug 20, 2026",
     );
+  });
+});
+
+describe("ViewHeader search debounce", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function renderSearch(onSearchInput: (query: string) => void, searchDebounceMs?: number) {
+    return render(
+      <ViewHeader
+        {...baseProps}
+        searchPlaceholder="Search"
+        onSearchInput={onSearchInput}
+        {...(searchDebounceMs !== undefined ? { searchDebounceMs } : {})}
+      />,
+    );
+  }
+
+  it("does not call onSearchInput on mount when searchValue is empty", () => {
+    vi.useFakeTimers();
+    const onSearchInput = vi.fn();
+    renderSearch(onSearchInput);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onSearchInput).not.toHaveBeenCalled();
+  });
+
+  it("debounces non-empty typing at 180ms", () => {
+    vi.useFakeTimers();
+    const onSearchInput = vi.fn();
+    renderSearch(onSearchInput);
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "ab" } });
+    expect(onSearchInput).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(179);
+    });
+    expect(onSearchInput).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(onSearchInput).toHaveBeenCalledTimes(1);
+    expect(onSearchInput).toHaveBeenCalledWith("ab");
+  });
+
+  it("flushes empty immediately on X and does not resurrect a pending query", () => {
+    vi.useFakeTimers();
+    const onSearchInput = vi.fn();
+    renderSearch(onSearchInput);
+    const input = screen.getByPlaceholderText("Search");
+    fireEvent.change(input, { target: { value: "verg" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(onSearchInput).toHaveBeenCalledTimes(1);
+    expect(onSearchInput).toHaveBeenCalledWith("");
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onSearchInput).toHaveBeenCalledTimes(1);
+    expect(onSearchInput).not.toHaveBeenCalledWith("verg");
+  });
+
+  it("flushes empty immediately even when searchDebounceMs is longer", () => {
+    vi.useFakeTimers();
+    const onSearchInput = vi.fn();
+    renderSearch(onSearchInput, 5000);
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(onSearchInput).toHaveBeenCalledWith("");
+    expect(onSearchInput).toHaveBeenCalledTimes(1);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onSearchInput).not.toHaveBeenCalledWith("x");
   });
 });

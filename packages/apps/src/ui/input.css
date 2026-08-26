@@ -4,7 +4,8 @@
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
  * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
- * Compact toolbar selects: `.select-trigger--size-sm` uses `--control-height-sm` + `--control-radius-button-pill`.
+ * Compact toolbar selects / search: `--size-sm` uses `--control-height-sm` + `--control-radius-button-pill`.
+ * Search variant: leading icon + trailing clear when the field has a value.
  */
 .control-surface,
 .input,
@@ -52,12 +53,59 @@
   @apply [&>span]:line-clamp-1;
 }
 
-.select-trigger--size-sm {
+.select-trigger--size-sm,
+.input--size-sm {
   @apply px-3;
   min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   border-radius: var(--control-radius-button-pill);
   font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+}
+
+.input--search {
+  @apply gap-2;
+}
+
+.input--search:focus-within:not(:has(.input__field:read-only)) {
+  background-color: var(--input-background-focus, #ffffff);
+  border-color: var(--input-border-focus, var(--ring));
+}
+
+.input__field {
+  @apply min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 outline-none;
+  color: inherit;
+  font-size: inherit;
+  height: auto;
+  min-height: 0;
+}
+
+.input__field[type="search"]::-webkit-search-cancel-button,
+.input__field[type="search"]::-webkit-search-decoration {
+  appearance: none;
+}
+
+.input__search-icon {
+  @apply size-4 shrink-0 opacity-60;
+}
+
+.input__clear {
+  @apply flex size-6 shrink-0 items-center justify-center rounded-[6px];
+}
+
+.input__clear:hover {
+  background-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+
+.input__clear-icon {
+  @apply size-3.5;
+}
+
+.input__field::placeholder {
+  opacity: 1;
+  color: var(
+    --input-placeholder-color,
+    color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
+  );
 }
 
 .control-surface:disabled,

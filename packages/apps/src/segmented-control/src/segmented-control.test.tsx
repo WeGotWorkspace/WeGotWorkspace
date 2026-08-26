@@ -25,4 +25,17 @@ describe("SegmentedControl", () => {
     expect(root).not.toBeNull();
     expect(root!.classList.contains("segmented-control--size-md")).toBe(true);
   });
+
+  it("disables segment buttons when disabled", () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <SegmentedControl value="grid" onChange={onChange} options={[...options]} disabled />,
+    );
+    const root = container.querySelector(".segmented-control");
+    const buttons = container.querySelectorAll("button");
+    expect(root?.getAttribute("aria-disabled")).toBe("true");
+    expect(root?.hasAttribute("data-disabled")).toBe(true);
+    expect(buttons).toHaveLength(2);
+    buttons.forEach((button) => expect(button.disabled).toBe(true));
+  });
 });
