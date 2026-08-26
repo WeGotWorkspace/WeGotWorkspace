@@ -923,7 +923,7 @@ describe("CalendarEventDialog", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("cancel after Add Meet PATCHes the staged series reservation to now+30d", async () => {
+  it("cancel after generate PATCHes the staged series reservation to now+30d", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
     const meetOperations = {
       roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),

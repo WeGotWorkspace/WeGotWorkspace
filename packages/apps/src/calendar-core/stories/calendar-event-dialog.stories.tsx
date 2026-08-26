@@ -104,7 +104,7 @@ export const WithMeetLink: Story = {
     await expect(generateMeet(canvas)).toBeEnabled();
     await userEvent.click(generateMeet(canvas));
     const confirm = canvas.getByRole("alertdialog");
-    await expect(confirm).toHaveTextContent(defaultCalendarLabels.eventMeetDisableTitle);
+    await expect(confirm).toHaveTextContent(defaultCalendarLabels.eventMeetReplaceTitle);
     await userEvent.click(
       within(confirm).getByRole("button", { name: defaultCalendarLabels.cancel }),
     );

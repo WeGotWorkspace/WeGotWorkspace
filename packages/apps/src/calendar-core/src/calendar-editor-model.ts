@@ -94,8 +94,8 @@ export type CalendarEventFormValue = {
   /** First http(s) href from JSCalendar `links`. Empty when none. */
   meetingUrl: string;
   /**
-   * Session-only staged Meet room code for Add Meet retries. Not written to
-   * the wire — persist goes through `meetingUrl` → `links`.
+   * Session-only staged Meet room code for generate-URL retries. Not written
+   * to the wire — persist goes through `meetingUrl` → `links`.
    */
   meetRoomCode?: string;
 };

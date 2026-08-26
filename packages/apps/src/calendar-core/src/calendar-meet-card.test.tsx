@@ -173,7 +173,7 @@ describe("CalendarMeetCard", () => {
     );
   });
 
-  it("dismiss after Add Meet PATCHes a staged series reserve to now+30d", async () => {
+  it("dismiss after generate PATCHes a staged series reserve to now+30d", async () => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
     const abandonStagedReserveRef: { current: (() => void) | null } = { current: null };
     const meetOperations = stubMeet();
@@ -198,7 +198,7 @@ describe("CalendarMeetCard", () => {
     });
   });
 
-  it("dismiss during in-flight Add Meet PATCHes after the reserve lands", async () => {
+  it("dismiss during in-flight generate PATCHes after the reserve lands", async () => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
     let resolveReserve: ((value: { reserved: boolean; active: boolean }) => void) | undefined;
     const reserveRoom = vi.fn(
@@ -259,7 +259,7 @@ describe("CalendarMeetCard", () => {
       true,
     );
     clickGenerateMeet();
-    expect(screen.queryByText(defaultCalendarLabels.eventMeetDisableTitle)).toBeNull();
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetReplaceTitle)).toBeNull();
   });
 
   it("shows an editable URL and copies the displayed href when Meet is on", async () => {
@@ -380,7 +380,7 @@ describe("CalendarMeetCard", () => {
     expect(generateMeetButton()).toHaveProperty("disabled", false);
     clickGenerateMeet();
     expect(meetOperations.reserveRoom).not.toHaveBeenCalled();
-    expect(screen.getByText(defaultCalendarLabels.eventMeetDisableTitle)).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventMeetReplaceTitle)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
     expect(meetOperations.reserveRoom).not.toHaveBeenCalled();
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
@@ -409,7 +409,7 @@ describe("CalendarMeetCard", () => {
     });
     clickGenerateMeet();
     fireEvent.click(
-      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetDisableConfirm }),
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetReplaceConfirm }),
     );
     await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
     expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith({
@@ -437,7 +437,7 @@ describe("CalendarMeetCard", () => {
     clickGenerateMeet();
     expect(meetOperations.reserveRoom).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetDisableConfirm }),
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetReplaceConfirm }),
     );
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();

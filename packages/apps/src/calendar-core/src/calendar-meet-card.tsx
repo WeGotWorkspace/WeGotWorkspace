@@ -197,7 +197,7 @@ export function CalendarMeetCard({
     };
   }
 
-  const addMeet = async (replaceExisting = false): Promise<void> => {
+  const generateMeet = async (replaceExisting = false): Promise<void> => {
     const reserve = meetOperations?.reserveRoom;
     const ownerPrincipal = calendarMeetOwnerPrincipal(calendar, username);
     if (!reserve || !ownerPrincipal || inflightRef.current || reserving) return;
@@ -260,7 +260,7 @@ export function CalendarMeetCard({
       setConfirmReplace(true);
       return;
     }
-    void addMeet(false);
+    void generateMeet(false);
   };
 
   const removeMeet = async (): Promise<void> => {
@@ -399,8 +399,8 @@ export function CalendarMeetCard({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{labels.eventMeetDisableTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{labels.eventMeetDisableDescription}</AlertDialogDescription>
+            <AlertDialogTitle>{labels.eventMeetReplaceTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{labels.eventMeetReplaceDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={reserving}>{labels.cancel}</AlertDialogCancel>
@@ -410,10 +410,10 @@ export function CalendarMeetCard({
               onClick={(event) => {
                 event.preventDefault();
                 setConfirmReplace(false);
-                void addMeet(true);
+                void generateMeet(true);
               }}
             >
-              {labels.eventMeetDisableConfirm}
+              {labels.eventMeetReplaceConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

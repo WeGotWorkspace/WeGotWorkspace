@@ -118,9 +118,9 @@ export type CalendarUILabels = {
   /** Accessible name for the generate-Meet icon button. */
   eventMeetAdd: string;
   /** Confirm title when generating over a non-empty meeting URL. */
-  eventMeetDisableTitle: string;
-  eventMeetDisableDescription: string;
-  eventMeetDisableConfirm: string;
+  eventMeetReplaceTitle: string;
+  eventMeetReplaceDescription: string;
+  eventMeetReplaceConfirm: string;
   eventMeetJoin: string;
   eventMeetUrlLabel: string;
   eventMeetUrlPlaceholder: string;
@@ -335,10 +335,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
-  eventMeetDisableTitle: "Replace Meet link?",
-  eventMeetDisableDescription:
+  eventMeetReplaceTitle: "Replace Meet link?",
+  eventMeetReplaceDescription:
     "A new meeting link will replace the current one. The previous room will expire, and anyone with the current join URL will lose access.",
-  eventMeetDisableConfirm: "Replace",
+  eventMeetReplaceConfirm: "Replace",
   eventMeetJoin: "Join",
   eventMeetUrlLabel: "Meeting link",
   eventMeetUrlPlaceholder: "https://…",
