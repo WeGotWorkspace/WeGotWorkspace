@@ -41,6 +41,7 @@ export function stripMailtoKeepCasing(value: string): string {
   return /^mailto:/i.test(trimmed) ? trimmed.slice(trimmed.indexOf(":") + 1).trim() : trimmed;
 }
 
+/** First-match priority: work wins over home over school. */
 function contactContextFromMap(
   contexts?: Record<string, boolean | undefined>,
 ): CalendarInviteeContactContext | undefined {

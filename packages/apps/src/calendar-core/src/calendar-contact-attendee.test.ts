@@ -101,6 +101,27 @@ describe("calendar-contact-attendee", () => {
     });
   });
 
+  it("picks work over home when one email has both contexts and still explodes to one row", () => {
+    const rows = explodeContactInviteeSearchRows(
+      card({
+        emails: {
+          e1: {
+            "@type": "EmailAddress",
+            address: "jane@host",
+            contexts: { work: true, home: true },
+          },
+        },
+      }),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      source: "contact",
+      email: "jane@host",
+      rawEmail: "jane@host",
+      contactContext: "work",
+    });
+  });
+
   it("maps unknown JSContact context such as private to undefined", () => {
     const [row] = explodeContactInviteeSearchRows(
       card({

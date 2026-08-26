@@ -65,7 +65,6 @@ export function inviteeSearchRowMeta(
 ): string {
   if (row.source === "teammate") return labels.eventAttendeesTeammate;
   if (row.source === "typed-email") return labels.eventAttendeesEmailAdd;
-  if (row.source !== "contact") return row.rawEmail;
   const context = contactContextLabel(row.contactContext, labels);
   return context ? `${row.rawEmail} · ${context}` : row.rawEmail;
 }
