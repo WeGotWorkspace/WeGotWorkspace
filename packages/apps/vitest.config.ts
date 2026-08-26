@@ -46,6 +46,9 @@ export default defineConfig({
           name: "jsdom",
           environment: "jsdom",
           include: ["src/**/*.test.tsx"],
+          pool: "forks",
+          maxWorkers: 1,
+          setupFiles: [path.resolve(__dirname, "src/jsdom-setup.ts")],
         },
       },
       {

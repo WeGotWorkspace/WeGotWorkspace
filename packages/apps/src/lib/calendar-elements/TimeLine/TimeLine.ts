@@ -72,7 +72,7 @@ type TimelineCreateSession = {
   originT: number;
   horiz: boolean;
   gridMax: number;
-  /** Becomes true once the pointer travels past the drag threshold; plain clicks never commit. */
+  /** True once travel passes the drag threshold (or touch long-press). A click without drag does not create. */
   dragging: boolean;
   gestureId: number;
 };
@@ -95,6 +95,9 @@ type PendingTouchGesture = {
 
 /** Pointer travel (px) before a move/create gesture leaves click-to-select / empty-click. */
 const POINTER_DRAG_THRESHOLD_PX = 4;
+
+/** Keyboard create on a 24h timed cell lands at this hour (snapped to `step`). */
+const DEFAULT_TIMED_CREATE_HOUR = 9;
 
 /** Touch hold (ms) before a move/create gesture activates (grid-view parity). */
 const TOUCH_GESTURE_ACTIVATION_MS = 160;
@@ -159,6 +162,10 @@ export class TimeLine extends LitElement {
 
   @property({ attribute: false })
   accessor headerTemplate: ((i: number) => TemplateResult) | undefined;
+
+  /** Accessible name for a focusable empty cell (Enter/Space creates). */
+  @property({ attribute: false })
+  accessor cellAriaLabel: ((cellIndex: number) => string) | undefined;
 
   /**
    * Renders event content. While a move/resize gesture is in progress, the dragged event is
@@ -1019,7 +1026,7 @@ export class TimeLine extends LitElement {
    * duration of one `step`, clamped to the grid.
    */
   #createRangeForPointer(
-    session: TimelineCreateSession,
+    session: Pick<TimelineCreateSession, "originT" | "gridMax">,
     pointerT: number,
   ): { start: number; end: number } {
     const step = this.#minGridStep();
@@ -1040,6 +1047,7 @@ export class TimeLine extends LitElement {
       const dy = clientY - session.originClientY;
       if (dx * dx + dy * dy < POINTER_DRAG_THRESHOLD_PX * POINTER_DRAG_THRESHOLD_PX) return;
       session.dragging = true;
+      this.#trySetPointerCapture(session.captureTarget, session.pointerId);
       this.#emitGestureSignal("start", "create", session.gestureId);
     }
     const span = this.max > 0 ? this.max : 1;
@@ -1077,16 +1085,12 @@ export class TimeLine extends LitElement {
     this.#createSession = null;
     this.#releasePointerCaptureSafe(session.captureTarget, session.pointerId);
 
-    if (!cancelled) {
+    if (!cancelled && session.dragging) {
       this.#applyCreatePointer(clientX, clientY, session);
     }
     if (session.dragging) this.#emitGestureSignal("end", "create", session.gestureId);
 
     const range = cancelled || !session.dragging ? null : this.createPreview;
-    if (cancelled || !session.dragging) {
-      this.createPreview = null;
-      return;
-    }
     if (!range) {
       this.createPreview = null;
       return;
@@ -1271,11 +1275,37 @@ export class TimeLine extends LitElement {
     this.#emitGestureSignal("start", "resize", gestureId);
   };
 
+  #defaultCreateOriginT(cellIndex: number, layout: TimeLineGridLayout): number {
+    const cellStart = cellIndex * layout.span;
+    if (layout.horiz) return cellStart;
+    return cellStart + (layout.span / 24) * DEFAULT_TIMED_CREATE_HOUR;
+  }
+
+  #commitOneStepCreate(originT: number) {
+    const layout = this.#readGridLayout();
+    const range = this.#createRangeForPointer({ originT, gridMax: layout.gridMax }, originT);
+    this.createPreview = range;
+    this.#emitTimelineCreateCommit({ start: range.start, end: range.end });
+  }
+
+  readonly #onCellKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return;
+    if (event.target !== event.currentTarget) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (!(event.currentTarget instanceof HTMLElement)) return;
+    const cell = Number(event.currentTarget.dataset.cell);
+    if (!Number.isFinite(cell)) return;
+    event.preventDefault();
+    this.#commitOneStepCreate(this.#defaultCreateOriginT(cell, this.#readGridLayout()));
+  };
+
   /**
    * Drag on empty cell background creates a snapped range preview and commits it as
-   * `timeline-event-create` on pointerup. Events and resize handles stop propagation of their own
-   * pointerdown, so this only fires for the cell background; the composed-path checks are a
-   * safety net.
+   * `timeline-event-create` on pointerup. A click with no drag does not create — double-click
+   * commits a one-step range at the pointer. Events and resize handles stop propagation of
+   * their own pointerdown, so this only fires for the cell background; the composed-path
+   * checks are a safety net.
    */
   #onCellMainPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
@@ -1292,8 +1322,20 @@ export class TimeLine extends LitElement {
       return;
     }
 
-    if (e.cancelable) e.preventDefault();
+    // Do not preventDefault on mouse pointerdown: that suppresses the trailing dblclick
+    // used for one-step create. Capture starts only after the drag threshold.
     this.#startCreateSession(e.pointerId, e.clientX, e.clientY, false);
+  };
+
+  #emptyCellPath(path: EventTarget[]): boolean {
+    if (this.#composedPathContainsResizeHandle(path)) return false;
+    return !path.some((n) => n instanceof Element && n.classList.contains("event"));
+  }
+
+  readonly #onCellMainDblClick = (e: MouseEvent) => {
+    if (this.#interactiveControlUnderPointer(e.target)) return;
+    if (!this.#emptyCellPath(e.composedPath())) return;
+    this.#commitOneStepCreate(this.#pointerGridTime(e.clientX, e.clientY));
   };
 
   #startCreateSession(
@@ -1302,7 +1344,7 @@ export class TimeLine extends LitElement {
     clientY: number,
     touchActivated: boolean,
   ) {
-    this.#trySetPointerCapture(this, pointerId);
+    if (touchActivated) this.#trySetPointerCapture(this, pointerId);
 
     const layout = this.#readGridLayout();
     const originT = this.#pointerGridTime(clientX, clientY, layout);
@@ -1972,13 +2014,18 @@ export class TimeLine extends LitElement {
     const gridClass = this.#effectiveGridInterval() > 0 && w1 > w0 ? " cell-main--grid" : "";
     const isLastRow = Math.floor(cell / cols) === Math.floor((cellCount - 1) / cols);
     const lastRowPart = isLastRow ? " cell-last-row" : "";
+    const createOnEmptyCell = !this.headerTemplate && visibleCellEvents.length === 0;
 
     return html`
       <div
         class="cell${lastRowPart}"
         part="cell${lastRowPart}"
         data-cell=${cell}
+        tabindex=${createOnEmptyCell ? 0 : nothing}
+        role=${createOnEmptyCell ? "button" : nothing}
+        .ariaLabel=${createOnEmptyCell ? (this.cellAriaLabel?.(cell) ?? "Create event") : undefined}
         style="${laneVars}"
+        @keydown=${this.#onCellKeyDown}
       >
         ${this.headerTemplate
           ? html`<div class="cell-header" part="cell-header">
@@ -1989,6 +2036,7 @@ export class TimeLine extends LitElement {
           class="cell-main${windowed ? " cell-main--windowed" : ""}${gridClass}"
           part="cell-main"
           @pointerdown=${this.#onCellMainPointerDown}
+          @dblclick=${this.#onCellMainDblClick}
         >
           ${visibleCellEvents.map((seg) =>
             this.#eventSegmentFragment(seg, laneMode, horiz, rl, vl),
