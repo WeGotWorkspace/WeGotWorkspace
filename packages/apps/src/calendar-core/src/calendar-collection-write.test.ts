@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canChangeCalendarOwner,
   canManageCalendarSharing,
   canOpenCalendarSettings,
   canRenameCalendar,
@@ -47,6 +48,45 @@ describe("calendar settings rights", () => {
     expect(canRenameCalendar(sharee)).toBe(true);
     expect(canRenameCalendar({ mayShare: true, mayWrite: true })).toBe(true);
     expect(canRenameCalendar({ subscriptionId: "sub-1", mayWrite: false })).toBe(true);
+  });
+});
+
+describe("canChangeCalendarOwner", () => {
+  it("allows personal owners and user-created group calendars", () => {
+    expect(canChangeCalendarOwner({ id: "roadmap", mayShare: true, mayWrite: true })).toBe(true);
+    expect(
+      canChangeCalendarOwner({
+        id: "roadmap",
+        scope: "group",
+        groupSlug: "team",
+        mayShare: true,
+        mayWrite: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("locks default, provisioned group, subscriptions, and sharees", () => {
+    expect(
+      canChangeCalendarOwner({ id: "default", isDefault: true, mayShare: true, mayWrite: true }),
+    ).toBe(false);
+    expect(
+      canChangeCalendarOwner({
+        id: "group-team",
+        scope: "group",
+        groupSlug: "team",
+        mayShare: true,
+        mayWrite: true,
+      }),
+    ).toBe(false);
+    expect(
+      canChangeCalendarOwner({
+        id: "holidays",
+        subscriptionId: "sub-1",
+        mayShare: true,
+        mayWrite: false,
+      }),
+    ).toBe(false);
+    expect(canChangeCalendarOwner({ id: "family", mayShare: false, mayWrite: false })).toBe(false);
   });
 });
 

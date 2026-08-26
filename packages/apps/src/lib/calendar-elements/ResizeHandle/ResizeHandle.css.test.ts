@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isTouchResizeHandleActive } from "./ResizeHandle.js";
+import { isTouchResizeHandleActive, shouldMountResizeHandles } from "./ResizeHandle.js";
 
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "ResizeHandle.css"), "utf8");
 
@@ -12,6 +12,45 @@ describe("isTouchResizeHandleActive", () => {
     expect(isTouchResizeHandleActive("evt-1", "evt-2")).toBe(false);
     expect(isTouchResizeHandleActive("evt-1", "")).toBe(false);
     expect(isTouchResizeHandleActive(undefined, "evt-1")).toBe(false);
+  });
+});
+
+describe("shouldMountResizeHandles", () => {
+  const base = {
+    resizeHandlesEnabled: true,
+    eventKey: "dentist",
+    selectedEventKey: "",
+    eventIndex: 3,
+    hoveredEventIndex: -1,
+    resizingEventIndex: -1,
+  };
+
+  it("stays off for idle unselected cards", () => {
+    expect(shouldMountResizeHandles(base)).toBe(false);
+  });
+
+  it("mounts for the selected event", () => {
+    expect(shouldMountResizeHandles({ ...base, selectedEventKey: "dentist" })).toBe(true);
+  });
+
+  it("mounts for the hovered event", () => {
+    expect(shouldMountResizeHandles({ ...base, hoveredEventIndex: 3 })).toBe(true);
+  });
+
+  it("mounts for the event currently being resized", () => {
+    expect(shouldMountResizeHandles({ ...base, resizingEventIndex: 3 })).toBe(true);
+  });
+
+  it("stays off when the timeline disables handles", () => {
+    expect(
+      shouldMountResizeHandles({
+        ...base,
+        resizeHandlesEnabled: false,
+        selectedEventKey: "dentist",
+        hoveredEventIndex: 3,
+        resizingEventIndex: 3,
+      }),
+    ).toBe(false);
   });
 });
 

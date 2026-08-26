@@ -8938,6 +8938,8 @@ export interface components {
             timeZone?: string | null;
             color?: string | null;
             isSubscribed?: boolean;
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. */
+            groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;

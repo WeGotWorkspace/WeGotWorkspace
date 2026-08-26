@@ -125,7 +125,7 @@ describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
     expect(markerBlock).toContain("z-index: 700");
     expect(markerBlock).toContain("translateZ(0)");
     expect(eventBlock).not.toContain("will-change");
-    expect(draggingBlock).toContain("will-change: transform");
+    expect(draggingBlock).not.toContain("will-change");
     expect(draggingBlock).not.toContain("drop-shadow");
     expect(draggingBlock).not.toContain("filter:");
   });
@@ -543,17 +543,15 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
 
   it("applies day-header-outside-month (and never weekend) on outside cells", () => {
     expect(monthDayHeaderPartNames({ outsideMonth: true, isWeekend: true })).toBe(
-      "day-header day-header-button day-header-outside-month",
+      "day-header day-header-outside-month",
     );
     expect(monthDayHeaderPartNames({ outsideMonth: true, isWeekend: false })).toBe(
-      "day-header day-header-button day-header-outside-month",
+      "day-header day-header-outside-month",
     );
     expect(monthDayHeaderPartNames({ outsideMonth: false, isWeekend: true })).toBe(
-      "day-header day-header-button day-header-weekend",
+      "day-header day-header-weekend",
     );
-    expect(monthDayHeaderPartNames({ outsideMonth: false, isWeekend: false })).toBe(
-      "day-header day-header-button",
-    );
+    expect(monthDayHeaderPartNames({ outsideMonth: false, isWeekend: false })).toBe("day-header");
   });
 
   it("marks outside cells with is-outside-month for TimeLine shadow CSS", () => {

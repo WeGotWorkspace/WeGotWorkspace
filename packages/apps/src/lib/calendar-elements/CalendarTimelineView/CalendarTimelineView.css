@@ -509,11 +509,31 @@ time-line::part(day-header-button) {
   appearance: none;
   border: 0;
   margin: 0;
+  padding: 0;
   background: transparent;
   cursor: pointer;
   font: inherit;
-  width: 100%;
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
   text-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Chrome (size, reveal, pointer-events) lives in TimeLine.css on `.day-create-button`.
+   These parts only add the calendar ghost hover / focus ring. */
+time-line::part(day-create-button):hover {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+time-line::part(day-create-button):focus-visible {
+  outline: 2px solid light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  outline-offset: -2px;
 }
 
 time-line::part(day-header-button):hover {
@@ -534,9 +554,13 @@ time-line::part(day-header-button):focus-visible {
 time-line::part(day-header) {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
   min-height: 24px;
-  padding: 3px 6px;
+  padding-block: 3px;
+  padding-inline: 6px;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
@@ -674,6 +698,25 @@ time-line::part(overflow-dot) {
 /* Selection deliberately has no persistent ring (grid-view parity): the selected card is
    exposed via aria-pressed/part=event-card-selected, and keyboard users see the
    :focus-visible ring. */
+
+/* ---- Wide month: slimmer interactive cards ----------------------------------------------
+   Timed/all-day lanes default to 32px, so a large month cell only fits ~3 titles before
+   TimeLine clips to “+N”. Prefer a tighter lane over growing the cell. Compact (≤504px /
+   force-compact) still overrides to 20px view-only bars below. Cards stay clickable and
+   keep the accent bar / recurring icon. Heading tokens fit a 12px title at this height
+   (EventCard’s compact heading tier is max-height 31px). 24px is the lane floor
+   (WCAG 2.5.8 target size) on every pointer. */
+/* Tokens live on the host so compact `time-line.timeline-main` rules can
+   override them (a host+descendant selector would win that specificity fight). */
+:host([mode="month"]) {
+  --event-height: 24px;
+  --_lc-event-height: 24px;
+  --time-line-event-min-size: 24px;
+  --_lc-event-card-heading-padding-block: 1px;
+  --_lc-event-card-heading-align-items: center;
+  --_lc-event-card-heading-line-height: 1;
+  --_lc-time-label-font-size: 0.625rem;
+}
 
 /* ---- Compact month: slim view-only event bars -------------------------------------------
    Applied behind the lc-timeline-month size container query for standalone month views that

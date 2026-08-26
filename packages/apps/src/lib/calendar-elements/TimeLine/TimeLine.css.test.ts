@@ -45,6 +45,24 @@ describe("TimeLine overlay stacking vs app dialogs", () => {
     expect(dragging).not.toMatch(/filter:/);
   });
 
+  it("paints the dragged card in a top-layer popover overlay", () => {
+    const cells = ruleBlock(timeLineCss, ".cells");
+    expect(cells).not.toMatch(/isolation:\s*isolate/);
+    expect(timeLineCss).not.toContain(".cell:has(.event--dragging)");
+    expect(timeLineCss).toMatch(/\.drag-layer[\s\S]*?position:\s*fixed/);
+    expect(timeLineCss).toMatch(/\.drag-layer[\s\S]*?pointer-events:\s*none/);
+    expect(timeLineCss).toContain(".event.event--drag-overlay");
+    expect(timeLineCss).toMatch(/\.event\.event--drag-overlay[\s\S]*?--__overlay-top/);
+    expect(timeLineCss).toMatch(/inset:\s*auto;[\s\S]*?left:\s*var\(--__overlay-left/);
+    const hidden = ruleBlock(timeLineCss, ".event.event--dragging:not(.event--drag-overlay)");
+    expect(hidden).toMatch(/visibility:\s*hidden/);
+    const timeLineTs = readCss("TimeLine.ts");
+    expect(timeLineTs).toContain('popover="manual"');
+    expect(timeLineTs).toContain("#syncDragOverlayPopover");
+    expect(timeLineTs).toContain("#liftEventToDragOverlay");
+    expect(timeLineTs).toContain("#syncResizeOverlayBoxes");
+  });
+
   it("raises a selected event above stagger and uses the hover fill", () => {
     expect(timeLineCss).toMatch(/--time-line-event-selected-z:\s*400/);
     const selected =
@@ -140,6 +158,9 @@ describe("TimeLine touch resize selection wiring", () => {
     expect(timelineViewTs).toContain('attribute: "selected-event-key"');
     expect(timeLineTs).toContain("z-index:400");
     expect(timeLineTs).toContain("?data-selected=${selected}");
+    expect(timeLineTs).toContain("shouldMountResizeHandles");
+    expect(timeLineTs).toContain("#hoveredResizeEventIndex");
+    expect(timelineViewTs).not.toContain('.resizeHandles=${this.mode !== "month"}');
   });
 });
 
@@ -149,5 +170,19 @@ describe("TimeLine last-row cell export", () => {
   it("exports cell-last-row on the final grid row so consumers can drop the trailing hairline", () => {
     expect(timeLineTs).toContain("cell-last-row");
     expect(timeLineTs).toContain('part="cell${lastRowPart}"');
+  });
+});
+
+describe("TimeLine month header create + hover reveal", () => {
+  const timeLineCss = readCss("TimeLine.css");
+
+  it("does not rely on .cell:hover (viewport inherits pointer-events: none onto .cell)", () => {
+    expect(timeLineCss).not.toMatch(/\.cell:hover\s+\.day-create-button/);
+    expect(timeLineCss).toMatch(/\.cell:has\(:hover\)\s+\.day-create-button/);
+    expect(timeLineCss).toMatch(/\.cell:focus-within\s+\.day-create-button/);
+  });
+
+  it("lets the cell header receive hover so empty header space can reveal the +", () => {
+    expect(timeLineCss).toMatch(/\.cell-header,\s*\.cell-footer\s*\{[^}]*pointer-events:\s*auto/);
   });
 });

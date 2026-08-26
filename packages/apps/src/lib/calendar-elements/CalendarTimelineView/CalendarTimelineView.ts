@@ -70,10 +70,14 @@ import {
   type PendingCreateGeometry,
   type PendingOccurrenceGeometry,
 } from "./pendingOccurrenceGeometry.js";
+import { renderPlusIcon } from "../icons/PlusIcon.js";
 import componentStyle from "./CalendarTimelineView.css?inline";
 
 /** Placeholder title on the drag-to-create event-card (matches calendar-labels `newEvent`). */
 const CREATE_PREVIEW_SUMMARY = "New event";
+
+/** Delay empty-month day-number navigation so a following double-click can create instead. */
+const EMPTY_MONTH_DAY_SELECTION_DELAY_MS = 350;
 
 /** Unique per year-grid cell so overlapping ISO dates on neighbor month cards do not collide. */
 function yearDayAnchorName(monthKey: string, dayIso: string): string {
@@ -213,6 +217,13 @@ export class CalendarTimelineView extends CalendarViewBase {
   #activeOverflowCellIndex: number | null = null;
   /** Cell whose compact-month day-header popover is (being) opened (month compact mode). */
   #activeHeaderPopoverCellIndex: number | null = null;
+  /** Pending day-selection from an empty month day-number click, cancelled by dblclick. */
+  #emptyMonthDaySelectionTimer: ReturnType<typeof setTimeout> | null = null;
+  #emptyMonthDaySelection: {
+    cellIndex: number;
+    day: Temporal.PlainDate;
+    event: MouseEvent;
+  } | null = null;
   /** Year-grid cell whose day popover is open (month card + ISO date). */
   #activeYearPopover: { monthKey: string; dayIso: string } | null = null;
   /**
@@ -311,6 +322,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     this.#pendingOccurrenceGeometry = null;
     this.#pendingCreateGeometry = null;
     this.#sawSurfaceCreateIntent = false;
+    this.#clearEmptyMonthDaySelection();
     super.disconnectedCallback();
   }
 
@@ -1069,21 +1081,24 @@ export class CalendarTimelineView extends CalendarViewBase {
       dayDate,
     );
     // State variants travel as extra part names, mirroring the CSS the parts map to.
-    const headerParts = ["day-header", "day-header-button", isWeekend ? "day-header-weekend" : ""]
+    const headerParts = ["day-header", isWeekend ? "day-header-weekend" : ""]
       .filter(Boolean)
       .join(" ");
     return html`
-      <button
-        type="button"
-        class="timeline-day-header"
-        part=${headerParts}
-        .ariaLabel=${fullDateLabel}
-        .ariaCurrent=${isToday ? "date" : null}
-        @click=${(clickEvent: MouseEvent) => this.#emitDaySelection(day, cellIndex, clickEvent)}
-      >
-        <span>${weekdayLabel}</span>
-        <span part="day-number${isToday ? " day-number-today" : ""}">${dayNumber}</span>
-      </button>
+      <div class="timeline-day-header" part=${headerParts}>
+        <button
+          type="button"
+          class="timeline-day-header-button"
+          part="day-header-button"
+          .ariaLabel=${fullDateLabel}
+          .ariaCurrent=${isToday ? "date" : null}
+          @click=${(clickEvent: MouseEvent) => this.#emitDaySelection(day, cellIndex, clickEvent)}
+        >
+          <span>${weekdayLabel}</span>
+          <span part="day-number${isToday ? " day-number-today" : ""}">${dayNumber}</span>
+        </button>
+        ${this.#renderDayCreateButton(day)}
+      </div>
     `;
   };
 
@@ -1109,30 +1124,113 @@ export class CalendarTimelineView extends CalendarViewBase {
   }
 
   /**
-   * Month/year day-number click: in the compact treatment a day with events opens its events
-   * popover; otherwise (empty compact day, or any regular-size day) it emits the grid views'
-   * `day-selection` event so the host can e.g. navigate to that day.
+   * Month day-number click: day-selection / compact popover. Empty-day pointer clicks are
+   * delayed so a following double-click can create without also navigating. Keyboard
+   * (synthesized `detail === 0`) navigates immediately. Year days keep `#handleYearDayClick`.
    */
   #handleMonthDayHeaderClick(cellIndex: number, day: Temporal.PlainDate, event: MouseEvent) {
     const button = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    if (
-      button &&
-      this.#monthEventsForCell(cellIndex).length > 0 &&
-      this.#isCompactMonthPresentation(button)
-    ) {
+    const dayEvents = this.#monthEventsForCell(cellIndex);
+    if (button && dayEvents.length > 0 && this.#isCompactMonthPresentation(button)) {
+      this.#clearEmptyMonthDaySelection();
       this.#openHeaderPopover(cellIndex, button);
       return;
     }
+    if (dayEvents.length === 0 && event.detail >= 1) {
+      if (event.detail >= 2) {
+        this.#clearEmptyMonthDaySelection();
+        return;
+      }
+      this.#scheduleEmptyMonthDaySelection(cellIndex, day, event);
+      return;
+    }
+    this.#clearEmptyMonthDaySelection();
     this.#emitDaySelection(day, cellIndex, event);
   }
+
+  #handleMonthDayHeaderDblClick(cellIndex: number, day: Temporal.PlainDate, event: MouseEvent) {
+    if (this.#monthEventsForCell(cellIndex).length > 0) return;
+    event.preventDefault();
+    this.#clearEmptyMonthDaySelection();
+    this.#createAllDayOnDay(day);
+  }
+
+  #clearEmptyMonthDaySelection() {
+    if (this.#emptyMonthDaySelectionTimer != null) {
+      clearTimeout(this.#emptyMonthDaySelectionTimer);
+      this.#emptyMonthDaySelectionTimer = null;
+    }
+    this.#emptyMonthDaySelection = null;
+  }
+
+  #scheduleEmptyMonthDaySelection(cellIndex: number, day: Temporal.PlainDate, event: MouseEvent) {
+    this.#clearEmptyMonthDaySelection();
+    this.#emptyMonthDaySelection = { cellIndex, day, event };
+    this.#emptyMonthDaySelectionTimer = setTimeout(() => {
+      const pending = this.#emptyMonthDaySelection;
+      this.#emptyMonthDaySelectionTimer = null;
+      this.#emptyMonthDaySelection = null;
+      if (pending) this.#emitDaySelection(pending.day, pending.cellIndex, pending.event);
+    }, EMPTY_MONTH_DAY_SELECTION_DELAY_MS);
+  }
+
+  #createAllDayOnDay(day: Temporal.PlainDate) {
+    this.#holdCreatePreview({
+      start: day.toPlainDateTime(Temporal.PlainTime.from("00:00")),
+      end: day.add({ days: 1 }).toPlainDateTime(Temporal.PlainTime.from("00:00")),
+      allDay: true,
+    });
+  }
+
+  #createAriaLabelForDay(day: Temporal.PlainDate): string {
+    const dayDate = new Date(Date.UTC(day.year, day.month - 1, day.day));
+    const fullDateLabel = new Intl.DateTimeFormat(this.#locale, { dateStyle: "full" }).format(
+      dayDate,
+    );
+    return `Create event on ${fullDateLabel}`;
+  }
+
+  #cellCreateAriaLabel = (cellIndex: number): string => {
+    return this.#createAriaLabelForDay(this.#gridStartDate.add({ days: cellIndex }));
+  };
+
+  #renderDayCreateButton(day: Temporal.PlainDate): TemplateResult {
+    return html`
+      <button
+        type="button"
+        class="day-create-button"
+        part="day-create-button"
+        .ariaLabel=${this.#createAriaLabelForDay(day)}
+        @click=${(clickEvent: MouseEvent) => {
+          clickEvent.stopPropagation();
+          this.#createAllDayOnDay(day);
+        }}
+      >
+        ${renderPlusIcon({ className: "day-create-button__icon" })}
+      </button>
+    `;
+  }
+
+  #handleWeekdayHeaderCreate = (event: Event) => {
+    const date = (event as CustomEvent<{ date?: string }>).detail?.date;
+    if (!date) return;
+    try {
+      this.#createAllDayOnDay(Temporal.PlainDate.from(date));
+    } catch {
+      return;
+    }
+  };
 
   #openHeaderPopover(cellIndex: number, button: HTMLElement) {
     if (this.#activeHeaderPopoverCellIndex !== cellIndex) {
       this.#activeHeaderPopoverCellIndex = cellIndex;
       this.requestUpdate();
     }
-    // The popover renders as the button's next sibling (see #monthDayHeaderTemplate).
-    const popover = button.nextElementSibling;
+    const root = button.getRootNode();
+    const popover =
+      root instanceof ShadowRoot || root instanceof Document
+        ? root.getElementById(`timeline-day-header-popover-${cellIndex}`)
+        : null;
     if (
       popover instanceof HTMLElement &&
       typeof popover.showPopover === "function" &&
@@ -1285,30 +1383,38 @@ export class CalendarTimelineView extends CalendarViewBase {
       ? ""
       : `;color:var(--_lc-${outsideMonth ? "outside" : "in"}-month-day-color)`;
     return html`
-      <button
-        type="button"
+      <div
         class=${headerClass}
         part=${headerParts}
         style=${`anchor-name:${anchorName}${headerInk}`}
-        .ariaLabel=${fullDateLabel}
-        .ariaCurrent=${isToday ? "date" : null}
-        @click=${(clickEvent: MouseEvent) =>
-          this.#handleMonthDayHeaderClick(cellIndex, day, clickEvent)}
       >
-        <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
-          ${dayNumberContent}
-          ${dotColors.length
-            ? html`
-                <span part="day-dots" aria-hidden="true">
-                  ${dotColors.map(
-                    (color) =>
-                      html`<span part="day-dot" style=${`background-color:${color}`}></span>`,
-                  )}
-                </span>
-              `
-            : nothing}
-        </span>
-      </button>
+        <button
+          type="button"
+          class="timeline-day-header-button"
+          part="day-header-button"
+          .ariaLabel=${fullDateLabel}
+          .ariaCurrent=${isToday ? "date" : null}
+          @click=${(clickEvent: MouseEvent) =>
+            this.#handleMonthDayHeaderClick(cellIndex, day, clickEvent)}
+          @dblclick=${(dblClickEvent: MouseEvent) =>
+            this.#handleMonthDayHeaderDblClick(cellIndex, day, dblClickEvent)}
+        >
+          <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
+            ${dayNumberContent}
+            ${dotColors.length
+              ? html`
+                  <span part="day-dots" aria-hidden="true">
+                    ${dotColors.map(
+                      (color) =>
+                        html`<span part="day-dot" style=${`background-color:${color}`}></span>`,
+                    )}
+                  </span>
+                `
+              : nothing}
+          </span>
+        </button>
+        ${this.#renderDayCreateButton(day)}
+      </div>
       ${dayEvents.length
         ? html`
             <day-overflow-popover
@@ -1590,7 +1696,8 @@ export class CalendarTimelineView extends CalendarViewBase {
           ? this.#renderAllDayCreatePreview
           : this.#renderTimedCreatePreview}
         .heldCreatePreview=${this.#heldCreatePreviewFor(variant)}
-        .resizeHandles=${this.mode !== "month"}
+        .cellAriaLabel=${this.#cellCreateAriaLabel}
+        .resizeHandles=${!(this.mode === "month" && this.forceCompact)}
         .headerTemplate=${this.mode === "month"
           ? this.#monthDayHeaderTemplate
           : this.#dayHeaderTemplate}
@@ -1647,6 +1754,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         .startDate=${this.#gridStartDate.toString()}
         .currentDate=${this.#currentDateTime.toPlainDate().toString()}
         ?rtl=${this.rtl}
+        @day-create-requested=${this.#handleWeekdayHeaderCreate}
       ></calendar-weekday-header>
     `;
 
@@ -1666,6 +1774,7 @@ export class CalendarTimelineView extends CalendarViewBase {
             .eventTemplate=${this.#renderAllDayTimelineEvent}
             .createPreviewTemplate=${this.#renderAllDayCreatePreview}
             .heldCreatePreview=${this.#heldCreatePreviewFor("all-day")}
+            .cellAriaLabel=${this.#cellCreateAriaLabel}
             .footerTemplate=${this.#overflowFooterTemplate}
             @timeline-event-move=${(event: Event) =>
               this.#handleTimelineMoveCommit(event, "all-day")}
@@ -1724,6 +1833,7 @@ export class CalendarTimelineView extends CalendarViewBase {
             .eventTemplate=${this.#renderTimedTimelineEvent}
             .createPreviewTemplate=${this.#renderTimedCreatePreview}
             .heldCreatePreview=${this.#heldCreatePreviewFor("timed")}
+            .cellAriaLabel=${this.#cellCreateAriaLabel}
             @timeline-event-move=${(event: Event) => this.#handleTimelineMoveCommit(event, "timed")}
             @timeline-event-resize=${(event: Event) =>
               this.#handleTimelineResizeCommit(event, "timed")}

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useParams, useRouter } from "@tanstack/react-router";
 import {
+  persistCalendarRoutePrefs,
+  readCalendarViewPrefs,
+} from "@/calendar-core/src/calendar-view-prefs";
+import {
   calendarNavigateTarget,
   calendarPathFromState,
   calendarStateFromLocation,
@@ -16,7 +20,7 @@ export function useCalendarRouteSync() {
   const params = useParams({ strict: false }) as CalendarRouteParams;
 
   const routeState = useMemo(
-    () => calendarStateFromLocation(location.pathname, params),
+    () => calendarStateFromLocation(location.pathname, params, readCalendarViewPrefs()),
     [location.pathname, params],
   );
 
@@ -43,10 +47,12 @@ export function useCalendarRouteSync() {
   useEffect(() => {
     const livePath = router.state.location.pathname;
     if (!isCalendarPathname(livePath)) return;
-    const canonical = calendarPathFromState(calendarStateFromLocation(livePath));
-    if (livePath === canonical) return;
-    writeState(calendarStateFromLocation(livePath), true);
-  }, [location.pathname, router, writeState]);
+    persistCalendarRoutePrefs(routeState.view, routeState.presentation);
+    const prefs = readCalendarViewPrefs();
+    const next = calendarStateFromLocation(livePath, {}, prefs);
+    if (livePath === calendarPathFromState(next)) return;
+    writeState(next, true);
+  }, [location.pathname, routeState.presentation, routeState.view, router, writeState]);
 
   const handleRef = useRef(writeState);
   handleRef.current = writeState;

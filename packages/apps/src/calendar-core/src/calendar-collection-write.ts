@@ -5,7 +5,8 @@ export type CalendarCollectionWriteInfo = Pick<CalendarInfo, "scope" | "mayShare
 export type CalendarSettingsInfo = Pick<
   CalendarInfo,
   "scope" | "groupSlug" | "mayShare" | "mayWrite" | "subscriptionId"
->;
+> &
+  Partial<Pick<CalendarInfo, "id" | "isDefault">>;
 
 /**
  * Personal owners (`mayShare === true` or omitted). Group calendars stay
@@ -45,6 +46,23 @@ export function canOpenCalendarSettings(calendar?: CalendarSettingsInfo): boolea
 /** Personal displayname on this instance — owners, sharees, and subscriptions. */
 export function canRenameCalendar(calendar?: CalendarSettingsInfo): boolean {
   return canOpenCalendarSettings(calendar);
+}
+
+/**
+ * Move Owner between personal and group (same options as create).
+ * Default, provisioned group, subscriptions, and sharees stay locked.
+ */
+export function canChangeCalendarOwner(calendar?: CalendarSettingsInfo): boolean {
+  if (!calendar) return false;
+  if (calendar.subscriptionId) return false;
+  if (calendar.isDefault) return false;
+  if (isSharedWithMeCalendar(calendar)) return false;
+  if (!canManageCalendarSharing(calendar)) return false;
+  const slug = calendar.groupSlug?.trim();
+  if (calendar.scope === "group" && slug && calendar.id === `group-${slug}`) {
+    return false;
+  }
+  return true;
 }
 
 /**

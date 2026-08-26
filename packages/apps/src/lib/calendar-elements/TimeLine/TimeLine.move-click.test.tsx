@@ -102,4 +102,61 @@ describe("TimeLine move click-to-select", () => {
 
     expect(moved).toHaveBeenCalled();
   });
+
+  it("lifts the moved card into the top-layer overlay", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 7;
+    el.columns = 7;
+    el.max = 1440;
+    el.step = 15;
+    el.flow = "horizontal";
+    el.layout = "masonry";
+    el.height = "auto";
+    el.events = [
+      { start: 0, end: 1440, key: "early", color: "#6366f1" },
+      { start: 6 * 1440, end: 7 * 1440, key: "late", color: "#0f766e" },
+    ];
+    document.body.append(el);
+    await el.updateComplete;
+
+    const early = el.shadowRoot?.querySelector('.event[data-index="0"]');
+    const late = el.shadowRoot?.querySelector('.event[data-index="1"]');
+    expect(early).toBeInstanceOf(HTMLElement);
+    expect(late).toBeInstanceOf(HTMLElement);
+    if (!(early instanceof HTMLElement) || !(late instanceof HTMLElement)) return;
+
+    const originCell = early.closest(".cell");
+    const laterCell = late.closest(".cell");
+    expect(originCell).toBeInstanceOf(HTMLElement);
+    expect(laterCell).toBeInstanceOf(HTMLElement);
+    if (!(originCell instanceof HTMLElement) || !(laterCell instanceof HTMLElement)) return;
+
+    Object.defineProperty(el, "getBoundingClientRect", {
+      value: () => ({ left: 0, top: 0, width: 700, height: 200, right: 700, bottom: 200 }),
+    });
+    for (const main of el.shadowRoot?.querySelectorAll(".cell-main") ?? []) {
+      if (!(main instanceof HTMLElement)) continue;
+      Object.defineProperty(main, "getBoundingClientRect", {
+        value: () => ({ left: 0, top: 0, width: 100, height: 200, right: 100, bottom: 200 }),
+      });
+    }
+
+    pointerOn(early, "pointerdown", 20, 20);
+    pointerOn(window, "pointermove", 80, 20);
+    await el.updateComplete;
+
+    expect(early.classList.contains("event--dragging")).toBe(true);
+    expect(originCell.querySelector(".event--dragging")).toBe(early);
+    expect(laterCell.querySelector(".event--dragging")).toBeNull();
+
+    const overlay = el.shadowRoot?.querySelector(".event--drag-overlay");
+    const layer = el.shadowRoot?.querySelector(".drag-layer");
+    expect(overlay).toBeInstanceOf(HTMLElement);
+    expect(layer).toBeInstanceOf(HTMLElement);
+    expect(layer?.parentElement?.classList.contains("viewport")).toBe(true);
+    expect(layer?.getAttribute("popover")).toBe("manual");
+    expect(overlay?.closest(".cell")).toBeNull();
+    expect(early.classList.contains("event--drag-overlay")).toBe(false);
+    expect(early.style.transform).not.toMatch(/translate/);
+  });
 });
