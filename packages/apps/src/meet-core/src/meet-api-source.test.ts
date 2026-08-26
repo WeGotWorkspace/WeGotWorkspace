@@ -22,6 +22,10 @@ import {
   meetGuestLinkAllowsHostUpgrade,
 } from "@/meet-core/src/meet-api-source";
 
+const fetchPrincipal = vi.mocked(wgwFetchPrincipal);
+const fetchJson = vi.mocked(wgwFetch);
+const rtcSettings = vi.mocked(fetchRtcSettings);
+
 const ROOM = "h8y8-ewp6-al8n";
 const HOST_SESSION: WorkspaceSession = {
   user: {
@@ -40,23 +44,23 @@ const RTC = {
   forceRelay: false,
 };
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
     json: async () => body,
-  };
+  } as Response;
 }
 
 describe("createWgwMeetApiSource", () => {
   beforeEach(() => {
-    wgwFetchPrincipal.mockReset();
-    wgwFetch.mockReset();
-    fetchRtcSettings.mockReset().mockResolvedValue(RTC);
+    fetchPrincipal.mockReset();
+    fetchJson.mockReset();
+    rtcSettings.mockReset().mockResolvedValue(RTC);
   });
 
   it("loads the signed-in principal and uses authenticated operations", async () => {
-    wgwFetchPrincipal.mockResolvedValue(HOST_SESSION);
+    fetchPrincipal.mockResolvedValue(HOST_SESSION);
     const source = createWgwMeetApiSource();
     const bootstrap = await source.loadBootstrap();
     const operations = source.createOperations(bootstrap);
@@ -68,14 +72,14 @@ describe("createWgwMeetApiSource", () => {
 
 describe("meetGuestLinkAllowsHostUpgrade", () => {
   beforeEach(() => {
-    wgwFetchPrincipal.mockReset();
-    wgwFetch.mockReset();
-    fetchRtcSettings.mockReset().mockResolvedValue(RTC);
+    fetchPrincipal.mockReset();
+    fetchJson.mockReset();
+    rtcSettings.mockReset().mockResolvedValue(RTC);
   });
 
   it("is true for a signed-in createdBy / ownerPrincipal member", async () => {
-    wgwFetchPrincipal.mockResolvedValue(HOST_SESSION);
-    wgwFetch.mockResolvedValue(
+    fetchPrincipal.mockResolvedValue(HOST_SESSION);
+    fetchJson.mockResolvedValue(
       jsonResponse({
         reserved: true,
         active: false,
@@ -85,12 +89,12 @@ describe("meetGuestLinkAllowsHostUpgrade", () => {
     );
 
     await expect(meetGuestLinkAllowsHostUpgrade(ROOM)).resolves.toBe(true);
-    expect(wgwFetch).toHaveBeenCalledWith(`/meetings/rooms/${ROOM}`, expect.anything());
+    expect(fetchJson).toHaveBeenCalledWith(`/meetings/rooms/${ROOM}`, expect.anything());
   });
 
   it("is true when the manager body only includes createdBy", async () => {
-    wgwFetchPrincipal.mockResolvedValue(HOST_SESSION);
-    wgwFetch.mockResolvedValue(
+    fetchPrincipal.mockResolvedValue(HOST_SESSION);
+    fetchJson.mockResolvedValue(
       jsonResponse({
         reserved: true,
         active: false,
@@ -102,15 +106,15 @@ describe("meetGuestLinkAllowsHostUpgrade", () => {
   });
 
   it("is false when there is no session", async () => {
-    wgwFetchPrincipal.mockRejectedValue(new Error("GET /me failed (401)"));
+    fetchPrincipal.mockRejectedValue(new Error("GET /me failed (401)"));
 
     await expect(meetGuestLinkAllowsHostUpgrade(ROOM)).resolves.toBe(false);
-    expect(wgwFetch).not.toHaveBeenCalled();
+    expect(fetchJson).not.toHaveBeenCalled();
   });
 
   it("is false for a signed-in non-manager (guest GET body)", async () => {
-    wgwFetchPrincipal.mockResolvedValue(HOST_SESSION);
-    wgwFetch.mockResolvedValue(jsonResponse({ reserved: true, active: false }));
+    fetchPrincipal.mockResolvedValue(HOST_SESSION);
+    fetchJson.mockResolvedValue(jsonResponse({ reserved: true, active: false }));
 
     await expect(meetGuestLinkAllowsHostUpgrade(ROOM)).resolves.toBe(false);
   });
@@ -118,14 +122,14 @@ describe("meetGuestLinkAllowsHostUpgrade", () => {
 
 describe("createWgwMeetGuestOrHostApiSource", () => {
   beforeEach(() => {
-    wgwFetchPrincipal.mockReset();
-    wgwFetch.mockReset();
-    fetchRtcSettings.mockReset().mockResolvedValue(RTC);
+    fetchPrincipal.mockReset();
+    fetchJson.mockReset();
+    rtcSettings.mockReset().mockResolvedValue(RTC);
   });
 
   it("upgrades a signed-in manager on the guest URL to authenticated bootstrap and ops", async () => {
-    wgwFetchPrincipal.mockResolvedValue(HOST_SESSION);
-    wgwFetch.mockResolvedValue(
+    fetchPrincipal.mockResolvedValue(HOST_SESSION);
+    fetchJson.mockResolvedValue(
       jsonResponse({
         reserved: true,
         active: false,
@@ -142,7 +146,7 @@ describe("createWgwMeetGuestOrHostApiSource", () => {
   });
 
   it("keeps an anonymous visitor on guest bootstrap and signaling", async () => {
-    wgwFetchPrincipal.mockRejectedValue(new Error("GET /me failed (401)"));
+    fetchPrincipal.mockRejectedValue(new Error("GET /me failed (401)"));
     const source = createWgwMeetGuestOrHostApiSource(ROOM);
     const bootstrap = await source.loadBootstrap();
     const operations = source.createOperations(bootstrap);
@@ -153,8 +157,8 @@ describe("createWgwMeetGuestOrHostApiSource", () => {
   });
 
   it("keeps a signed-in non-manager on guest bootstrap", async () => {
-    wgwFetchPrincipal.mockResolvedValue(HOST_SESSION);
-    wgwFetch.mockResolvedValue(jsonResponse({ reserved: true, active: false }));
+    fetchPrincipal.mockResolvedValue(HOST_SESSION);
+    fetchJson.mockResolvedValue(jsonResponse({ reserved: true, active: false }));
     const source = createWgwMeetGuestOrHostApiSource(ROOM);
     const bootstrap = await source.loadBootstrap();
     const operations = source.createOperations(bootstrap);
