@@ -56,6 +56,21 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(summaryMain).not.toContain("--_lc-time-label-font-size");
   });
 
+  it("keeps heading and summary at the compact text-xs size at every card size", () => {
+    const css = readCss("EventCard.css");
+    expect(css).toMatch(/\.event-card-heading\s*\{[\s\S]*?\btext-xs\b/);
+    expect(css).not.toMatch(
+      /@container[^{]*\(min-(?:width|height):[^)]+\)[\s\S]*?(?:event-card-heading|event-card-summary-main)[\s\S]*?(?:\btext-sm\b|\btext-base\b|font-size\s*:)/,
+    );
+    const summaryRules = [...css.matchAll(/\.event-card-summary-main[^{]*\{[^}]*\}/g)].map(
+      (match) => match[0],
+    );
+    expect(summaryRules.length).toBeGreaterThan(0);
+    for (const rule of summaryRules) {
+      expect(rule).not.toMatch(/\btext-sm\b|\btext-base\b|font-size\s*:/);
+    }
+  });
+
   it("lets compact month override heading padding and shell pointer-events", () => {
     const css = readCss("EventCard.css");
     expect(css).toMatch(

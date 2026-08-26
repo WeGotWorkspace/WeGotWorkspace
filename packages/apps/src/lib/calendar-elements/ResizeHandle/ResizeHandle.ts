@@ -12,6 +12,25 @@ export function isTouchResizeHandleActive(
   return String(eventKey) === selectedEventKey;
 }
 
+/**
+ * Mount `<resize-handle>` only for the selected event, the hovered event (fine pointer),
+ * or the event currently being resized. Idle cards stay handle-free so dense month
+ * grids do not pay two Lit custom elements per occurrence.
+ */
+export function shouldMountResizeHandles(input: {
+  resizeHandlesEnabled: boolean;
+  eventKey: unknown;
+  selectedEventKey: string;
+  eventIndex: number;
+  hoveredEventIndex: number;
+  resizingEventIndex: number;
+}): boolean {
+  if (!input.resizeHandlesEnabled) return false;
+  if (input.eventIndex === input.resizingEventIndex) return true;
+  if (input.eventIndex === input.hoveredEventIndex) return true;
+  return isTouchResizeHandleActive(input.eventKey, input.selectedEventKey);
+}
+
 @customElement("resize-handle")
 export class ResizeHandle extends BaseElement {
   @property({ type: String, reflect: true })

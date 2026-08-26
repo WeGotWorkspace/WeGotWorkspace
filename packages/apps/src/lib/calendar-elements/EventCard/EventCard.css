@@ -123,12 +123,6 @@
   @apply px-2.5 pt-2.5 pb-[9px];
 }
 
-@container (min-width: 420px) {
-  :host([layout="flow"]) .event-card-summary-main {
-    @apply text-sm leading-[1.35];
-  }
-}
-
 :host .event-card-compact-time {
   font-size: var(--_lc-time-label-font-size, 0.75rem);
   font-weight: 300;
