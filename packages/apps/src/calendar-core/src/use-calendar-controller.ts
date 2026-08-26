@@ -87,6 +87,8 @@ import {
 import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
+import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 
 export type CalendarEditorState =
   | { mode: "create"; form: CalendarEventFormValue }
@@ -195,9 +197,7 @@ export function useCalendarController({
   const [calendars, setCalendars] = useState<CalendarInfo[]>(() =>
     sortCalendarsForSidebar(data.calendars),
   );
-  const [hiddenCalendarIds, setHiddenCalendarIds] = useState<ReadonlySet<string>>(
-    () => new Set(data.calendars.filter((c) => c.isVisible === false).map((c) => c.id)),
-  );
+  const { hiddenCalendarIds, setHiddenCalendarIds } = useCalendarHiddenIds(data.calendars);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | undefined>(() =>
     pickDefaultCalendarId(data.calendars),
   );
@@ -219,11 +219,6 @@ export function useCalendarController({
     const nextIds = new Set(next.map((calendar) => calendar.id));
     setCalendars(next);
     setSelectedCalendarId((current) => pickDefaultCalendarId(next, current));
-    setHiddenCalendarIds((current) => {
-      const kept = [...current].filter((id) => nextIds.has(id));
-      if (kept.length === current.size && kept.every((id) => current.has(id))) return current;
-      return new Set(kept);
-    });
     setCalendarDialog((current) => {
       if (current?.mode === "edit" && !nextIds.has(current.calendarId)) return null;
       return current;
@@ -299,6 +294,7 @@ export function useCalendarController({
     (next: CalendarViewId) => {
       if (viewRef.current === next) return;
       viewRef.current = next;
+      persistCalendarRoutePrefs(next, presentationRef.current);
       setView(next);
       // Match tasks/drive: only dismiss the overlay drawer on small viewports.
       if (isSidebarOverlayViewport()) {
@@ -314,6 +310,7 @@ export function useCalendarController({
     (next: CalendarPresentation) => {
       if (presentationRef.current === next) return;
       presentationRef.current = next;
+      persistCalendarRoutePrefs(viewRef.current, next);
       setPresentationState(next);
       emitRouteState(currentRouteState());
     },

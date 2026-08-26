@@ -74,6 +74,26 @@ describe("calendar-route-search", () => {
     });
   });
 
+  it("uses injected fallbacks only when the path omits view or presentation", () => {
+    const today = todayISODate();
+    const fallbacks = { view: "week" as const, presentation: "list" as const };
+    expect(calendarStateFromLocation("/calendar", {}, fallbacks)).toEqual({
+      view: "week",
+      date: today,
+      presentation: "list",
+    });
+    expect(calendarStateFromLocation("/calendar/list", {}, fallbacks)).toEqual({
+      view: "week",
+      date: today,
+      presentation: "list",
+    });
+    expect(calendarStateFromLocation("/calendar/day/2026-08-17", {}, fallbacks)).toEqual({
+      view: "day",
+      date: "2026-08-17",
+      presentation: "grid",
+    });
+  });
+
   it("prefers pathname slugs when route params are not yet available", () => {
     expect(calendarStateFromLocation("/calendar/month/2026-08-17", {})).toEqual({
       view: "month",

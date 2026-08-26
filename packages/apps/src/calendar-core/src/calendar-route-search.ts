@@ -55,11 +55,18 @@ export function parseCalendarISODate(value: string): string | null {
   }
 }
 
-export function defaultCalendarRouteState(): CalendarRouteState {
+export type CalendarRouteFallbacks = {
+  view?: CalendarViewId;
+  presentation?: CalendarPresentation;
+};
+
+export function defaultCalendarRouteState(
+  fallbacks?: CalendarRouteFallbacks | null,
+): CalendarRouteState {
   return {
-    view: DEFAULT_CALENDAR_VIEW,
+    view: fallbacks?.view ?? DEFAULT_CALENDAR_VIEW,
     date: todayISODate(),
-    presentation: DEFAULT_CALENDAR_PRESENTATION,
+    presentation: fallbacks?.presentation ?? DEFAULT_CALENDAR_PRESENTATION,
   };
 }
 
@@ -81,20 +88,26 @@ export function calendarPathFromState(state: CalendarRouteState): string {
 export function calendarStateFromLocation(
   pathname: string,
   params: CalendarRouteParams = {},
+  fallbacks?: CalendarRouteFallbacks | null,
 ): CalendarRouteState {
-  const defaults = defaultCalendarRouteState();
+  const defaults = defaultCalendarRouteState(fallbacks);
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "calendar") return defaults;
 
   const rest = parts.slice(1);
-  const presentation: CalendarPresentation = rest[0] === "list" ? "list" : "grid";
-  const segs = presentation === "list" ? rest.slice(1) : rest;
+  const hasListPrefix = rest[0] === "list";
+  const segs = hasListPrefix ? rest.slice(1) : rest;
 
   const viewSeg = segs[0] ? decodeURIComponent(segs[0]) : (params.view ?? "");
   const dateSeg = segs[1] ? decodeURIComponent(segs[1]) : (params.date ?? "");
 
   const view = isCalendarViewId(viewSeg) ? viewSeg : defaults.view;
   const date = parseCalendarISODate(dateSeg) ?? defaults.date;
+  const presentation: CalendarPresentation = hasListPrefix
+    ? "list"
+    : isCalendarViewId(viewSeg)
+      ? "grid"
+      : defaults.presentation;
 
   return { view, date, presentation };
 }

@@ -46,6 +46,10 @@ function mockMatchMedia() {
   });
 }
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 afterEach(() => {
   vi.useRealTimers();
 });
