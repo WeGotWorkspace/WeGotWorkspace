@@ -3,8 +3,8 @@
 ## Layout
 
 - Co-locate tests: `*.test.ts` / `*.test.tsx` next to source (see `meet-core`, `lib/rtc`, `lib/api/wgw`).
-- Run: `pnpm test` or `pnpm test:watch` in `packages/apps` (unit + jsdom projects).
-- Config: `packages/apps/vitest.config.ts` — **`unit`** (Node, `*.test.ts`) and **`jsdom`** (RTL, `*.test.tsx`).
+- Run: `pnpm test` or `pnpm test:watch` in `packages/apps` (unit + jsdom projects). `pnpm test` runs unit and sharded jsdom independently (jsdom still runs if unit fails); `test:watch` stays unsharded (interactive subset).
+- Config: `packages/apps/vitest.config.ts` — **`unit`** (Node, `*.test.ts`) and **`jsdom`** (RTL, `*.test.tsx`, `pool: "forks"` + `maxWorkers: 1`). jsdom is launched by `scripts/run-jsdom.mjs`: rotate-per-package shards (package `p` starts at shard `p % N`), default `JSDOM_SHARDS=16`, plus a solo process per heap-heavy RTL file (`use-calendar-controller*`, `workspace-live-app-shell`). `isolate: true` does not reclaim jsdom heap — do not raise `--max-old-space-size` for the next OOM. A single huge RTL file can still OOM a shard — split that file or keep the heavy path in Storybook `vitest-ci`.
 - Done gate: [apps-done-gate.md](apps-done-gate.md).
 
 ## What to test with Vitest

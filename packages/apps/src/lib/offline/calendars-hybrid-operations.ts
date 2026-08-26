@@ -270,9 +270,13 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
     },
     patchCalendar: async (calendarId: string, patch: CalendarPatch) => {
       const isShareMutation = patch.shareWith !== undefined;
+      const isOwnerTransfer = patch.groupSlug !== undefined;
       const queueOffline = async () => {
         if (isShareMutation) {
           throw new Error("Sharing changes require a connection.");
+        }
+        if (isOwnerTransfer) {
+          throw new Error("Owner changes require a connection.");
         }
         const cached = await readCalendarBootstrapFromCache(username);
         const existing = cached?.data.calendars.find((calendar) => calendar.id === calendarId);
@@ -302,7 +306,7 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
         await runner.flush();
         return updated;
       } catch (error) {
-        if (isShareMutation) throw error;
+        if (isShareMutation || isOwnerTransfer) throw error;
         rethrowUnlessOfflineQueue(error);
         return queueOffline();
       }

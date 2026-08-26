@@ -41,6 +41,7 @@ import {
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import {
+  canChangeCalendarOwner,
   canOpenCalendarSettings,
   canRenameCalendar,
   canWriteCalendarCollection,
@@ -901,6 +902,7 @@ export function useCalendarController({
         canPublish,
         nameReadOnly: !canRenameCalendar(calendar),
         removeShared: sharedWithMe,
+        canChangeOwner: canChangeCalendarOwner(calendar),
       });
       if (subscribed && calendar.subscriptionId && !calendar.subscriptionUrl) {
         void operations
@@ -991,9 +993,16 @@ export function useCalendarController({
             return;
           }
           if (!operations.patchCalendar) return;
+          const nextGroupSlug = input.groupSlug?.trim() || null;
+          const currentGroupSlug = calendarDialog.groupSlug?.trim() || null;
+          const ownerChanged =
+            calendarDialog.canChangeOwner &&
+            input.groupSlug !== undefined &&
+            nextGroupSlug !== currentGroupSlug;
           const updated = await operations.patchCalendar(calendarDialog.calendarId, {
             ...(calendarDialog.nameReadOnly ? {} : { name }),
             color,
+            ...(ownerChanged ? { groupSlug: nextGroupSlug } : {}),
           });
           setCalendars((prev) =>
             sortCalendarsForSidebar(
