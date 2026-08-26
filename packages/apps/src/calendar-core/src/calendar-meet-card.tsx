@@ -1,9 +1,20 @@
 import { useRef, useState, type MutableRefObject } from "react";
 import { Video } from "lucide-react";
-import { Button } from "@/button/src/button";
+import { buttonVariants } from "@/button/src/button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
 import { Input } from "@/ui/input";
+import { Switch } from "@/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   patchCalendarEventForm,
@@ -74,6 +85,7 @@ export function CalendarMeetCard({
   onJoin,
 }: CalendarMeetCardProps) {
   const [reserving, setReserving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const inflightRef = useRef(false);
   const pendingAbandonRef = useRef(false);
   const stagedRoomRef = useRef(form.meetRoomCode?.trim() ?? "");
@@ -209,11 +221,34 @@ export function CalendarMeetCard({
     );
   }
 
+  const hasMeetingUrl = Boolean(form.meetingUrl.trim());
+  const meetEnabled = reserving || hasMeetingUrl;
+  const switchDisabled = disabled || reserving || (!meetEnabled && !meetOperations?.reserveRoom);
+
   return (
     <Card
       className="calendar-event-dialog__card calendar-event-dialog__meet"
       titleIcon={<Video className="size-4" />}
       title={labels.eventMeetSectionTitle}
+      action={
+        <span className="calendar-event-dialog__meet-switch">
+          <Switch
+            checked={meetEnabled}
+            disabled={switchDisabled}
+            onCheckedChange={(next) => {
+              if (next) {
+                if (meetEnabled) return;
+                void addMeet();
+                return;
+              }
+              if (meetEnabled) {
+                setConfirmRemove(true);
+              }
+            }}
+            aria-label={labels.eventMeetAdd}
+          />
+        </span>
+      }
     >
       {canChooseScope ? (
         <CardRow title={labels.eventMeetApplyTo}>
@@ -251,31 +286,33 @@ export function CalendarMeetCard({
             inputMode="url"
             autoComplete="off"
           />
-          {form.meetingUrl.trim() ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                void removeMeet();
-              }}
-              disabled={disabled || reserving}
-            >
-              {labels.eventMeetRemove}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                void addMeet();
-              }}
-              disabled={disabled || reserving || !meetOperations?.reserveRoom}
-            >
-              {labels.eventMeetAdd}
-            </Button>
-          )}
         </div>
       </CardRow>
+      <AlertDialog
+        open={confirmRemove}
+        onOpenChange={(open) => !reserving && setConfirmRemove(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.eventMeetDisableTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{labels.eventMeetDisableDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reserving}>{labels.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              disabled={reserving}
+              onClick={(event) => {
+                event.preventDefault();
+                setConfirmRemove(false);
+                void removeMeet();
+              }}
+            >
+              {labels.eventMeetDisableConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

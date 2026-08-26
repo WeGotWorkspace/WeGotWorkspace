@@ -1,9 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+
+const stubMeetOperations = {
+  roomStatus: async () => ({ reserved: true, active: false }),
+  reserveRoom: async () => ({ reserved: true, active: false }),
+  patchRoomExpiresAt: async () => ({ reserved: true, active: false }),
+};
+
+function meetSwitch(canvas: ReturnType<typeof within>) {
+  return canvas.getByRole("group", { name: defaultCalendarLabels.eventMeetAdd });
+}
 
 const bootstrap = createCalendarAppBootstrap();
 
@@ -18,6 +28,7 @@ const meta: Meta<typeof CalendarEventDialog> = {
     labels: defaultCalendarLabels,
     locale: "en-US",
     canSubmitEmail: true,
+    sessionUsername: "bob",
     onChange: fn(),
     onClose: fn(),
     onSave: fn(),
@@ -29,6 +40,19 @@ type Story = StoryObj<typeof CalendarEventDialog>;
 
 export const Default: Story = {
   tags: ["vitest-ci"],
+  args: {
+    meetOperations: stubMeetOperations,
+    workspaceOrigin: "https://workspace.example.com",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const toggle = meetSwitch(canvas);
+    await expect(toggle).toHaveAttribute("data-state", "off");
+    await expect(canvas.queryByRole("button", { name: "Add Meet" })).toBeNull();
+    await expect(
+      canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationLabel),
+    ).toBeTruthy();
+  },
 };
 
 export const EmailUnavailable: Story = {
@@ -64,19 +88,50 @@ export const InviteeViewOnly: Story = {
 };
 
 export const WithMeetLink: Story = {
+  tags: ["vitest-ci"],
   args: {
     form: {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Standup",
+      location: "Room A",
       meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
     },
-    meetOperations: {
-      roomStatus: async () => ({ reserved: true, active: false }),
-      reserveRoom: async () => ({ reserved: true, active: false }),
-      patchRoomExpiresAt: async () => ({ reserved: true, active: false }),
-    },
+    meetOperations: stubMeetOperations,
     workspaceOrigin: "https://workspace.example.com",
     onJoinMeeting: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const toggle = meetSwitch(canvas);
+    await expect(toggle).toHaveAttribute("data-state", "on");
+    await expect(canvas.getByDisplayValue("Room A")).toBeTruthy();
+    await userEvent.click(toggle.querySelector('button[aria-label="Off"]')!);
+    const confirm = canvas.getByRole("alertdialog");
+    await expect(confirm).toHaveTextContent(defaultCalendarLabels.eventMeetDisableTitle);
+    await expect(toggle).toHaveAttribute("data-state", "on");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: defaultCalendarLabels.cancel }),
+    );
+    await expect(canvas.queryByRole("alertdialog")).toBeNull();
+  },
+};
+
+export const MeetReserving: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    meetOperations: {
+      ...stubMeetOperations,
+      reserveRoom: () => new Promise(() => {}),
+    },
+    workspaceOrigin: "https://workspace.example.com",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const toggle = meetSwitch(canvas);
+    await userEvent.click(toggle.querySelector('button[aria-label="On"]')!);
+    await expect(toggle).toHaveAttribute("aria-disabled", "true");
+    await expect(toggle.querySelector('button[aria-label="On"]')).toBeDisabled();
+    await expect(toggle.querySelector('button[aria-label="Off"]')).toBeDisabled();
   },
 };
 

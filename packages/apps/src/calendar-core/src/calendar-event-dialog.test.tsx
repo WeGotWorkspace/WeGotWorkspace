@@ -96,6 +96,34 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ description: "Bring slides" }));
   });
 
+  it("keeps location independent when Meet is on", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      location: "Cafe",
+      meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+    };
+    renderDialog({
+      form,
+      workspaceOrigin: "https://workspace.example.com",
+      meetOperations: {
+        roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        reserveRoom: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      },
+    });
+
+    expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
+        .getAttribute("data-state"),
+    ).toBe("on");
+    expect(
+      (screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement).value,
+    ).toBe(form.meetingUrl);
+  });
+
   it("hides time inputs for all-day events and shows locale date triggers", () => {
     const form = {
       ...calendarEventToForm({
@@ -890,7 +918,11 @@ describe("CalendarEventDialog", () => {
       workspaceOrigin: "https://workspace.example.com",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    fireEvent.click(
+      screen
+        .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
+        .querySelector('button[aria-label="On"]')!,
+    );
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
 

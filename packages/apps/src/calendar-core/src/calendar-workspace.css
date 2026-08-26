@@ -538,8 +538,37 @@
   @apply w-full min-w-0;
 }
 
+.calendar-dialog-surface .calendar-event-dialog__meet {
+  --meet-switch-track-height: calc(1rem + 0.25rem);
+  --meet-switch-touch-pad: calc(
+    (var(--input-height, 2.25rem) - var(--meet-switch-track-height)) / 2
+  );
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-switch {
+  @apply inline-flex shrink-0 items-center;
+  min-height: var(--input-height, 2.25rem);
+  padding-block: var(--meet-switch-touch-pad);
+}
+
+.calendar-dialog-surface
+  .calendar-event-dialog__meet-switch
+  .segmented-control--boolean
+  .segmented-control__button--boolean::before,
+.calendar-dialog-surface
+  .calendar-event-dialog__meet-switch
+  .segmented-control--boolean
+  .segmented-control__thumb::before {
+  content: "";
+  position: absolute;
+  left: -0.125rem;
+  right: -0.125rem;
+  top: calc(-1 * var(--meet-switch-touch-pad));
+  bottom: calc(-1 * var(--meet-switch-touch-pad));
+}
+
 .calendar-dialog-surface .calendar-event-dialog__meet-row {
-  @apply flex min-w-0 w-full flex-col gap-2 sm:flex-row sm:items-center;
+  @apply flex min-w-0 w-full;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-row .input,

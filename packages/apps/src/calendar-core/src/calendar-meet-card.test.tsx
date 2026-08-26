@@ -46,6 +46,24 @@ function renderCard(
   return { onChange, onRecurrenceSaveScopeChange, meetOperations };
 }
 
+function meetSwitch(): HTMLElement {
+  return screen.getByRole("group", { name: defaultCalendarLabels.eventMeetAdd });
+}
+
+function clickMeetOn(): void {
+  fireEvent.click(meetSwitch().querySelector('button[aria-label="On"]')!);
+}
+
+function clickMeetOff(): void {
+  fireEvent.click(meetSwitch().querySelector('button[aria-label="Off"]')!);
+}
+
+function confirmRemoveMeet(): void {
+  fireEvent.click(
+    screen.getByRole("button", { name: defaultCalendarLabels.eventMeetDisableConfirm }),
+  );
+}
+
 describe("CalendarMeetCard", () => {
   beforeEach(() => {
     cleanup();
@@ -56,7 +74,7 @@ describe("CalendarMeetCard", () => {
     vi.restoreAllMocks();
   });
 
-  it("stages one room code and disables Add Meet while POST is in-flight", async () => {
+  it("stages one room code and disables the Meet switch while POST is in-flight", async () => {
     let resolveReserve: ((value: { reserved: boolean; active: boolean }) => void) | undefined;
     const reserveRoom = vi.fn(
       () =>
@@ -72,10 +90,12 @@ describe("CalendarMeetCard", () => {
     });
 
     const { onChange } = renderCard({ meetOperations });
-    const add = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd });
-    fireEvent.click(add);
-    fireEvent.click(add);
-    expect(add.hasAttribute("disabled")).toBe(true);
+    clickMeetOn();
+    clickMeetOn();
+    expect(meetSwitch().getAttribute("aria-disabled")).toBe("true");
+    expect(meetSwitch().querySelector('button[aria-label="On"]')?.hasAttribute("disabled")).toBe(
+      true,
+    );
     await waitFor(() => expect(reserveRoom).toHaveBeenCalledTimes(1));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ meetRoomCode: expect.any(String) }),
@@ -110,7 +130,7 @@ describe("CalendarMeetCard", () => {
       meetOperations,
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), recurrencePreset: "weekly" },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    clickMeetOn();
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     expect(meetOperations.reserveRoom).toHaveBeenCalledWith(
       expect.objectContaining({ expiresAt: null, ownerPrincipal: "u:bob" }),
@@ -130,7 +150,7 @@ describe("CalendarMeetCard", () => {
         timeZone: "UTC",
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    clickMeetOn();
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     const body = (meetOperations.reserveRoom as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
       expiresAt: string;
@@ -138,7 +158,7 @@ describe("CalendarMeetCard", () => {
     expect(body.expiresAt).toBe("2033-01-19T11:00:00.000Z");
   });
 
-  it("Remove PATCHes expiresAt now+30d and clears the staged code", async () => {
+  it("turning Meet off confirms first, then PATCHes expiresAt now+30d and clears the staged code", async () => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
     const meetOperations = stubMeet();
     const { onChange } = renderCard({
@@ -149,7 +169,14 @@ describe("CalendarMeetCard", () => {
         meetRoomCode: ROOM,
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetRemove }));
+    expect(meetSwitch().getAttribute("data-state")).toBe("on");
+    clickMeetOff();
+    expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
+    expect(screen.getByText(defaultCalendarLabels.eventMeetDisableTitle)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
+    expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
+    clickMeetOff();
+    confirmRemoveMeet();
     await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
     expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith({
       room: ROOM,
@@ -169,7 +196,7 @@ describe("CalendarMeetCard", () => {
       abandonStagedReserveRef,
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), recurrencePreset: "weekly" },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    clickMeetOn();
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     const reserved = (meetOperations.reserveRoom as ReturnType<typeof vi.fn>).mock
       .calls[0]?.[0] as {
@@ -201,7 +228,7 @@ describe("CalendarMeetCard", () => {
       abandonStagedReserveRef,
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), recurrencePreset: "weekly" },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    clickMeetOn();
     await waitFor(() => expect(reserveRoom).toHaveBeenCalledTimes(1));
     abandonStagedReserveRef.current?.();
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
@@ -281,5 +308,44 @@ describe("CalendarMeetCard", () => {
     });
     fireEvent.blur(screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel));
     await waitFor(() => expect(meetOperations.reserveRoom).not.toHaveBeenCalled());
+  });
+
+  it("reads the switch as on for a pasted WGW or generic https URL", () => {
+    renderCard({
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        meetingUrl: `${ORIGIN}/meet/guest?room=${ROOM}`,
+      },
+    });
+    expect(meetSwitch().getAttribute("data-state")).toBe("on");
+
+    cleanup();
+    renderCard({
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        meetingUrl: "https://zoom.us/j/123",
+      },
+    });
+    expect(meetSwitch().getAttribute("data-state")).toBe("on");
+  });
+
+  it("confirms before clearing a pasted generic https URL", async () => {
+    const meetOperations = stubMeet();
+    const { onChange } = renderCard({
+      meetOperations,
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        meetingUrl: "https://zoom.us/j/123",
+      },
+    });
+    clickMeetOff();
+    expect(onChange).not.toHaveBeenCalled();
+    confirmRemoveMeet();
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ meetingUrl: "", meetRoomCode: undefined }),
+      ),
+    );
+    expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
   });
 });
