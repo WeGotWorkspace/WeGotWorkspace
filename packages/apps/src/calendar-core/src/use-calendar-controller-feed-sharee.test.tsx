@@ -15,6 +15,20 @@ vi.mock("@/hooks/use-app-toast", () => ({
 }));
 
 const bootstrap = createCalendarAppBootstrap();
+const shareeData = {
+  ...bootstrap.data,
+  calendars: [
+    ...bootstrap.data.calendars,
+    {
+      id: "shared-write",
+      name: "Shared write",
+      color: "#14b8a6",
+      mayWrite: true,
+      mayShare: false,
+      mayDelete: false,
+    },
+  ],
+};
 
 function mockMatchMedia() {
   Object.defineProperty(window, "matchMedia", {
@@ -45,20 +59,7 @@ describe("useCalendarController publish sharee", () => {
     const getCalendarFeed = vi.fn();
     const { result } = renderHook(() =>
       useCalendarController({
-        data: {
-          ...bootstrap.data,
-          calendars: [
-            ...bootstrap.data.calendars,
-            {
-              id: "shared-write",
-              name: "Shared write",
-              color: "#14b8a6",
-              mayWrite: true,
-              mayShare: false,
-              mayDelete: false,
-            },
-          ],
-        },
+        data: shareeData,
         operations: {
           createEvent: vi.fn(),
           patchEvent: vi.fn(),
