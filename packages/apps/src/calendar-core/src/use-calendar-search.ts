@@ -3,17 +3,10 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import {
+  EMPTY_SEARCH_RESULTS,
   searchCalendarEvents,
   type CalendarSearchDateRange,
-  type CalendarSearchResults,
 } from "@/calendar-core/src/calendar-search";
-
-export const EMPTY_CALENDAR_SEARCH_RESULTS: CalendarSearchResults = {
-  upcoming: [],
-  past: [],
-  truncatedUpcoming: false,
-  truncatedPast: false,
-};
 
 export type UseCalendarSearchOptions = {
   events: readonly JmapCalendarEvent[];
@@ -87,7 +80,7 @@ export function useCalendarSearch({
   );
 
   const searchResults = useMemo(() => {
-    if (!searchActive) return EMPTY_CALENDAR_SEARCH_RESULTS;
+    if (!searchActive) return EMPTY_SEARCH_RESULTS;
     return searchCalendarEvents(events, searchQuery, {
       calendars,
       visibleCalendarIds,

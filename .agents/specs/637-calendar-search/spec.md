@@ -32,7 +32,7 @@ Add Calendar ViewHeader search that filters the Dexie/bootstrap corpus (title, l
 - Query language is plain free-text only. Trim, then case-insensitive exact substring on title, location, and master description. No tokenized / AND matching.
 - Sidebar visibility is a scope filter, not a searchable field.
 - Offline by default: same Dexie working set (12 months back + 24 months ahead, snapped to month start). No extra download; no JMAP title query; no online-only hide (unlike Drive `searchEnabled={online}`).
-- Results list is dedicated (upcoming + past, cap 100+100, truncation captions). Render with `calendar-list-view` `use-event-set` (same list SST). Do not use the period agenda window (max 366 days).
+- Results list is dedicated (upcoming + past, cap 100+100, no truncation captions). Render with `calendar-list-view` `use-event-set` (same list SST). Do not use the period agenda window (max 366 days).
 - Controller: `setSearchQuery` is a plain setter. Snapshot/restore `{ view, presentation, anchor }` on first non-empty trimmed debounced query. `searchActive`. Lazy expand: always call `useMemo`; factory returns a stable empty list when `!searchActive`. Do not write `window.location` / router search from the hook — App `useCalendarRouteSync` owns the URL.
 - Chrome: reuse suite `ViewHeader` + `CollectionSearchInput` full-width under the title/actions row (`layout="responsive"`). Wire `useWorkspaceListKeyboardShortcuts` for ⌘/Ctrl+K and `/`.
 - Shared `ViewHeader` change: flush `onSearchInput` immediately only on **non-empty → empty**; keep 180ms for typing; no `onSearchInput('')` on mount; pending timer cancelled on clear. Suite-wide for Mail, Notes, Drive, Docs, Contacts (Calendar is the sixth).

@@ -11,7 +11,6 @@ export type InputVariant = "default" | "search";
 export type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
   size?: InputSize;
   variant?: InputVariant;
-  "data-idle-label"?: string;
 };
 
 function assignRef<T>(ref: React.ForwardedRef<T>, node: T | null): void {
@@ -39,12 +38,10 @@ function SearchInput({
   value,
   defaultValue,
   onChange,
-  dataIdleLabel,
   forwardedRef,
   ...props
 }: Omit<InputProps, "variant" | "size" | "ref"> & {
   size: InputSize;
-  dataIdleLabel?: string;
   forwardedRef: React.ForwardedRef<HTMLInputElement>;
 }): React.JSX.Element {
   const fieldRef = React.useRef<HTMLInputElement | null>(null);
@@ -72,10 +69,7 @@ function SearchInput({
   };
 
   return (
-    <div
-      className={cn("input input--search", size === "sm" && "input--size-sm", className)}
-      data-idle-label={dataIdleLabel}
-    >
+    <div className={cn("input input--search", size === "sm" && "input--size-sm", className)}>
       <Search className="input__search-icon" aria-hidden />
       <input
         {...props}
@@ -101,19 +95,7 @@ function SearchInput({
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      className,
-      type,
-      size = "md",
-      variant = "default",
-      value,
-      onChange,
-      "data-idle-label": dataIdleLabel,
-      ...props
-    },
-    ref,
-  ) => {
+  ({ className, type, size = "md", variant = "default", value, onChange, ...props }, ref) => {
     if (variant === "search") {
       return (
         <SearchInput
@@ -122,7 +104,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           size={size}
           value={value}
           onChange={onChange}
-          dataIdleLabel={dataIdleLabel}
           forwardedRef={ref}
           {...props}
         />

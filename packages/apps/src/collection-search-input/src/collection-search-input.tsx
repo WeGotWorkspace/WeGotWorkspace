@@ -13,8 +13,6 @@ type CollectionSearchInputProps = {
   className?: string;
   /** When false, Escape is left for a parent dialog/popover to dismiss. Default true. */
   clearOnEscape?: boolean;
-  /** Visible label when compact idle chrome hides the input. */
-  "data-idle-label"?: string;
 };
 
 export function CollectionSearchInput({
@@ -24,7 +22,6 @@ export function CollectionSearchInput({
   inputRef,
   className,
   clearOnEscape = true,
-  "data-idle-label": dataIdleLabel,
 }: CollectionSearchInputProps) {
   return (
     <Input
@@ -36,7 +33,6 @@ export function CollectionSearchInput({
       placeholder={placeholder}
       aria-label={placeholder}
       className={cn("collection-search-input", className)}
-      data-idle-label={dataIdleLabel}
       onKeyDown={(event) => {
         if (event.key !== "Escape" || !clearOnEscape) return;
         event.preventDefault();

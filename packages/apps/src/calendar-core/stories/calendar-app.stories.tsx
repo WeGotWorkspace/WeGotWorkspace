@@ -595,12 +595,8 @@ export const SearchMatches: Story = {
           canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
         ).toBeTruthy();
         expect(canvasElement.querySelectorAll("calendar-list-view")).toHaveLength(1);
-        expect(
-          canvas.queryByRole("heading", { name: defaultCalendarLabels.searchUpcoming }),
-        ).toBeNull();
-        expect(
-          canvas.queryByRole("heading", { name: defaultCalendarLabels.searchPast }),
-        ).toBeNull();
+        expect(canvas.queryByRole("heading", { name: "Upcoming" })).toBeNull();
+        expect(canvas.queryByRole("heading", { name: "Past" })).toBeNull();
       },
       { timeout: 3000 },
     );

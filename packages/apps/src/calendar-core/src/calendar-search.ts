@@ -18,15 +18,13 @@ export type CalendarSearchResults = {
   truncatedPast: boolean;
 };
 
-const EMPTY_SEARCH_RESULTS: CalendarSearchResults = {
+/** Stable empty result for idle browse — callers may reuse this identity. */
+export const EMPTY_SEARCH_RESULTS: CalendarSearchResults = {
   upcoming: [],
   past: [],
   truncatedUpcoming: false,
   truncatedPast: false,
 };
-
-/** Stable empty list for idle browse — callers may reuse this identity. */
-export const EMPTY_SEARCH_OCCURRENCES: CalendarOccurrence[] = [];
 
 export type CalendarSearchDateRange = { start: string; end: string };
 
