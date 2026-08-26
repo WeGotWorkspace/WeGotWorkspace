@@ -6,14 +6,22 @@
  * Files are grouped by `src/<pkg>/` (sorted keys, sorted files). Package `p`
  * starts at shard `p % N`; its files go to `(p + idx) % N`. That spreads
  * one-file packages instead of pinning every singleton on shard 1.
+ * Heap-heavy RTL files (`use-calendar-controller*`, `workspace-live-app-shell`)
+ * each get a dedicated process after the packed shards.
  * `JSDOM_SHARDS` (default 16) is the growth lever — do not raise the heap.
- * Empty shards are skipped when the file count is smaller than N.
+ * Empty packed shards are skipped when the file count is smaller than N.
  *
  * Child argv is `run --project jsdom --maxWorkers=1 <files…>` with no
  * standalone `--`. That token is for npm/pnpm script forwarding; Vitest may
- * treat it as a filter and run the whole suite (or nothing).
+ * treat it as a filter and run the whole suite (or nothing). Vitest 4.1.5
+ * honors `--maxWorkers` (see `vitest --help`).
+ *
+ * Every shard runs even if an earlier one failed; the process prints a
+ * done-gate-style ✓/✗ summary and exits non-zero if any shard failed.
+ * `--with-unit` (used by `pnpm test`) runs unit first the same way.
  *
  *   node scripts/run-jsdom.mjs
+ *   node scripts/run-jsdom.mjs --with-unit
  *   JSDOM_SHARDS=24 node scripts/run-jsdom.mjs
  *   node scripts/run-jsdom.mjs --list
  *   JSDOM_LIST=1 node scripts/run-jsdom.mjs
@@ -68,14 +76,28 @@ function packageKey(relFile) {
 }
 
 /**
+ * Known heap monsters: each gets its own process so they never share a shard.
+ * @param {string} relFile
+ * @returns {boolean}
+ */
+function isSoloFile(relFile) {
+  return /(?:^|\/)(?:use-calendar-controller[^/]*|workspace-live-app-shell)\.test\.tsx$/.test(
+    relFile,
+  );
+}
+
+/**
  * @param {string[]} files
  * @param {number} shardCount
  * @returns {string[][]}
  */
 function assignShards(files, shardCount) {
+  const solo = files.filter(isSoloFile).sort((a, b) => a.localeCompare(b));
+  const rest = files.filter((file) => !isSoloFile(file));
+
   /** @type {Map<string, string[]>} */
   const byPkg = new Map();
-  for (const file of files) {
+  for (const file of rest) {
     const pkg = packageKey(file);
     const list = byPkg.get(pkg);
     if (list) {
@@ -86,16 +108,17 @@ function assignShards(files, shardCount) {
   }
 
   /** @type {string[][]} */
-  const shards = Array.from({ length: shardCount }, () => []);
+  const packed = Array.from({ length: shardCount }, () => []);
   const packages = [...byPkg.keys()].sort((a, b) => a.localeCompare(b));
   packages.forEach((pkg, packageIndex) => {
     const group = byPkg.get(pkg) ?? [];
     group.sort((a, b) => a.localeCompare(b));
     group.forEach((file, idx) => {
-      shards[(packageIndex + idx) % shardCount].push(file);
+      packed[(packageIndex + idx) % shardCount].push(file);
     });
   });
-  return shards;
+
+  return [...packed.filter((shard) => shard.length > 0), ...solo.map((file) => [file])];
 }
 
 /**
@@ -115,24 +138,45 @@ function domainMix(files) {
     .join(" ");
 }
 
+/**
+ * @param {string} label
+ * @param {string[]} args
+ * @returns {{ label: string, ok: boolean, detail?: string }}
+ */
+function runVitest(label, args) {
+  process.stdout.write(`\n${"─".repeat(72)}\n${label}\n${"─".repeat(72)}\n\n`);
+  const result = spawnSync(vitestBin, args, {
+    cwd: appsRoot,
+    stdio: "inherit",
+    env: process.env,
+  });
+  const ok = result.status === 0 && !result.signal;
+  const detail = ok
+    ? undefined
+    : `exit ${result.status ?? "unknown"}${result.signal ? `, signal ${result.signal}` : ""}`;
+  if (!ok) {
+    process.stderr.write(`\n${label} failed (${detail})\n`);
+  }
+  return { label, ok, detail };
+}
+
 function main() {
   const listOnly =
     process.argv.includes("--list") ||
     process.argv.includes("--print") ||
     process.env.JSDOM_LIST === "1";
   const verboseList = process.argv.includes("--print");
+  const withUnit = process.argv.includes("--with-unit");
   const shardCount = parseShardCount(process.env.JSDOM_SHARDS);
   const files = walkTestFiles(srcRoot);
   const shards = assignShards(files, shardCount);
+  const totalShards = shards.length;
 
   if (listOnly) {
     for (let i = 0; i < shards.length; i += 1) {
       const shardFiles = shards[i];
-      if (shardFiles.length === 0) {
-        continue;
-      }
       process.stdout.write(
-        `jsdom shard ${i + 1}/${shardCount} (${shardFiles.length} files) ${domainMix(shardFiles)}\n`,
+        `jsdom shard ${i + 1}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}\n`,
       );
       if (verboseList) {
         for (const file of shardFiles) {
@@ -143,32 +187,30 @@ function main() {
     return;
   }
 
+  /** @type {Array<{ label: string, ok: boolean, detail?: string }>} */
+  const results = [];
+
+  if (withUnit) {
+    results.push(runVitest("Vitest (unit)", ["run", "--project", "unit"]));
+  }
+
   for (let i = 0; i < shards.length; i += 1) {
     const shardFiles = shards[i];
-    if (shardFiles.length === 0) {
-      continue;
-    }
-
-    const label = `jsdom shard ${i + 1}/${shardCount} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
-    process.stdout.write(`\n${"─".repeat(72)}\n${label}\n${"─".repeat(72)}\n\n`);
-
-    const result = spawnSync(
-      vitestBin,
-      ["run", "--project", "jsdom", "--maxWorkers=1", ...shardFiles],
-      {
-        cwd: appsRoot,
-        stdio: "inherit",
-        env: process.env,
-      },
-    );
-
-    if (result.status !== 0) {
-      process.stderr.write(
-        `\n${label} failed (exit ${result.status ?? "unknown"}${result.signal ? `, signal ${result.signal}` : ""})\n`,
-      );
-      process.exit(result.status ?? 1);
-    }
+    const label = `jsdom shard ${i + 1}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
+    results.push(runVitest(label, ["run", "--project", "jsdom", "--maxWorkers=1", ...shardFiles]));
   }
+
+  const passed = results.every((row) => row.ok);
+  process.stdout.write(`\n${"═".repeat(72)}\n`);
+  process.stdout.write(passed ? "JSDOM SHARDS: PASSED\n" : "JSDOM SHARDS: FAILED\n");
+  process.stdout.write(`${"═".repeat(72)}\n`);
+  for (const row of results) {
+    const mark = row.ok ? "✓" : "✗";
+    const detail = row.detail ? ` — ${row.detail}` : "";
+    process.stdout.write(`  ${mark} ${row.label}${detail}\n`);
+  }
+  process.stdout.write("\n");
+  process.exit(passed ? 0 : 1);
 }
 
 main();

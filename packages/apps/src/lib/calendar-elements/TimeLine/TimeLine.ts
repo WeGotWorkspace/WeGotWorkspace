@@ -2014,15 +2014,16 @@ export class TimeLine extends LitElement {
     const gridClass = this.#effectiveGridInterval() > 0 && w1 > w0 ? " cell-main--grid" : "";
     const isLastRow = Math.floor(cell / cols) === Math.floor((cellCount - 1) / cols);
     const lastRowPart = isLastRow ? " cell-last-row" : "";
+    const createOnEmptyCell = !this.headerTemplate && visibleCellEvents.length === 0;
 
     return html`
       <div
         class="cell${lastRowPart}"
         part="cell${lastRowPart}"
         data-cell=${cell}
-        tabindex=${this.headerTemplate ? nothing : 0}
-        role=${this.headerTemplate ? nothing : "button"}
-        .ariaLabel=${this.cellAriaLabel?.(cell) ?? "Create event"}
+        tabindex=${createOnEmptyCell ? 0 : nothing}
+        role=${createOnEmptyCell ? "button" : nothing}
+        .ariaLabel=${createOnEmptyCell ? (this.cellAriaLabel?.(cell) ?? "Create event") : undefined}
         style="${laneVars}"
         @keydown=${this.#onCellKeyDown}
       >
