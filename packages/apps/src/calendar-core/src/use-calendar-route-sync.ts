@@ -32,7 +32,6 @@ export function useCalendarRouteSync() {
       if (!isCalendarPathname(livePath)) return;
       const path = calendarPathFromState(state);
       if (livePath === path) return;
-      persistCalendarRoutePrefs(state.view, state.presentation);
       // Must go through navigate() so TanStack builds a new location (same
       // `/calendar/$view/$date` route, new params). Raw history.push updates
       // the in-memory history object but createBrowserHistory coalesces a
@@ -50,9 +49,9 @@ export function useCalendarRouteSync() {
     if (!isCalendarPathname(livePath)) return;
     persistCalendarRoutePrefs(routeState.view, routeState.presentation);
     const prefs = readCalendarViewPrefs();
-    const canonical = calendarPathFromState(calendarStateFromLocation(livePath, {}, prefs));
-    if (livePath === canonical) return;
-    writeState(calendarStateFromLocation(livePath, {}, prefs), true);
+    const next = calendarStateFromLocation(livePath, {}, prefs);
+    if (livePath === calendarPathFromState(next)) return;
+    writeState(next, true);
   }, [location.pathname, routeState.presentation, routeState.view, router, writeState]);
 
   const handleRef = useRef(writeState);

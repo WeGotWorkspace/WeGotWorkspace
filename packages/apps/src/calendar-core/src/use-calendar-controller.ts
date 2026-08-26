@@ -86,12 +86,8 @@ import {
 import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
-import {
-  persistCalendarRoutePrefs,
-  persistHiddenCalendarIds,
-  readCalendarViewPrefs,
-  resolveHiddenCalendarIds,
-} from "@/calendar-core/src/calendar-view-prefs";
+import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
+import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 
 export type CalendarEditorState =
   | { mode: "create"; form: CalendarEventFormValue }
@@ -153,15 +149,6 @@ function draftFromForm(
   return organizer ? { ...draft, organizer } : draft;
 }
 
-function applyHiddenCalendarIds(
-  current: ReadonlySet<string>,
-  next: ReadonlySet<string>,
-): ReadonlySet<string> {
-  if (next.size === current.size && [...next].every((id) => current.has(id))) return current;
-  persistHiddenCalendarIds(next);
-  return next;
-}
-
 function pickDefaultCalendarId(calendars: CalendarInfo[], preferred?: string): string | undefined {
   const writable = calendars.filter((c) => canWriteCalendarCollection(c));
   if (preferred && writable.some((c) => c.id === preferred)) return preferred;
@@ -209,9 +196,8 @@ export function useCalendarController({
   const [calendars, setCalendars] = useState<CalendarInfo[]>(() =>
     sortCalendarsForSidebar(data.calendars),
   );
-  const [hiddenCalendarIds, setHiddenCalendarIds] = useState<ReadonlySet<string>>(
-    () =>
-      new Set(resolveHiddenCalendarIds(data.calendars, readCalendarViewPrefs()?.hiddenCalendarIds)),
+  const { hiddenCalendarIds, setHiddenCalendarIds, pruneHiddenCalendarIds } = useCalendarHiddenIds(
+    data.calendars,
   );
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | undefined>(() =>
     pickDefaultCalendarId(data.calendars),
@@ -234,14 +220,12 @@ export function useCalendarController({
     const nextIds = new Set(next.map((calendar) => calendar.id));
     setCalendars(next);
     setSelectedCalendarId((current) => pickDefaultCalendarId(next, current));
-    setHiddenCalendarIds((current) =>
-      applyHiddenCalendarIds(current, new Set([...current].filter((id) => nextIds.has(id)))),
-    );
+    pruneHiddenCalendarIds(nextIds);
     setCalendarDialog((current) => {
       if (current?.mode === "edit" && !nextIds.has(current.calendarId)) return null;
       return current;
     });
-  }, [data.calendars]);
+  }, [data.calendars, pruneHiddenCalendarIds]);
 
   const { queueMutation, undoLatest } = useQueuedMutation({
     onMutationError: () => showError(L.toastEventSaveFailed),
@@ -303,7 +287,6 @@ export function useCalendarController({
     viewRef.current = incoming.view;
     presentationRef.current = incoming.presentation;
     anchorRef.current = incoming.date;
-    persistCalendarRoutePrefs(incoming.view, incoming.presentation);
     setView(incoming.view);
     setPresentationState(incoming.presentation);
     setAnchorState(incoming.date);
@@ -375,7 +358,7 @@ export function useCalendarController({
       if (!current.has(calendarId)) return current;
       const next = new Set(current);
       next.delete(calendarId);
-      return applyHiddenCalendarIds(current, next);
+      return next;
     });
   }, []);
 
@@ -387,7 +370,7 @@ export function useCalendarController({
       } else {
         next.add(calendarId);
       }
-      return applyHiddenCalendarIds(current, next);
+      return next;
     });
   }, []);
 
@@ -1081,7 +1064,7 @@ export function useCalendarController({
           if (!current.has(calendarId)) return current;
           const next = new Set(current);
           next.delete(calendarId);
-          return applyHiddenCalendarIds(current, next);
+          return next;
         });
         show(
           subscriptionId
