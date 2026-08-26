@@ -2021,6 +2021,7 @@ export class TimeLine extends LitElement {
         part="cell${lastRowPart}"
         data-cell=${cell}
         tabindex=${this.headerTemplate ? nothing : 0}
+        role=${this.headerTemplate ? nothing : "button"}
         .ariaLabel=${this.cellAriaLabel?.(cell) ?? "Create event"}
         style="${laneVars}"
         @keydown=${this.#onCellKeyDown}

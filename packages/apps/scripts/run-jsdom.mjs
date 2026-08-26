@@ -5,7 +5,7 @@
  *
  * Files are grouped by `src/<pkg>/`, sorted inside each group, then assigned
  * round-robin (`idx % N`) so consecutive files in one domain split across
- * shards. `JSDOM_SHARDS` (default 8) is the growth lever — do not raise the
+ * shards. `JSDOM_SHARDS` (default 16) is the growth lever — do not raise the
  * heap. Empty shards are skipped when the file count is smaller than N.
  *
  * Child argv is `run --project jsdom --maxWorkers=1 <files…>` with no
@@ -13,7 +13,7 @@
  * treat it as a filter and run the whole suite (or nothing).
  *
  *   node scripts/run-jsdom.mjs
- *   JSDOM_SHARDS=16 node scripts/run-jsdom.mjs
+ *   JSDOM_SHARDS=24 node scripts/run-jsdom.mjs
  *   node scripts/run-jsdom.mjs --list
  *   JSDOM_LIST=1 node scripts/run-jsdom.mjs
  */
@@ -31,7 +31,7 @@ const vitestBin = path.join(appsRoot, "node_modules", ".bin", "vitest");
  * @returns {number}
  */
 function parseShardCount(raw) {
-  const n = Number.parseInt(raw ?? "8", 10);
+  const n = Number.parseInt(raw ?? "16", 10);
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`JSDOM_SHARDS must be a positive integer (got ${JSON.stringify(raw)})`);
   }

@@ -27,7 +27,7 @@ This runs, in order:
 1. **`typecheck`** — `tsc -p tsconfig.typecheck.json`
 2. **`test:contract`** — UI ↔ OpenAPI adapter + type parity (`src/lib/api/contract/`)
 3. **Vitest unit** — pure logic (`*.test.ts`, Node)
-4. **Vitest jsdom** — hooks and RTL (`*.test.tsx`), sequential per-package round-robin shards (`scripts/run-jsdom.mjs`; `JSDOM_SHARDS`, default 8) so each worker process exits before the heap accumulates
+4. **Vitest jsdom** — hooks and RTL (`*.test.tsx`), sequential per-package round-robin shards (`scripts/run-jsdom.mjs`; `JSDOM_SHARDS`, default 16) so each worker process exits before the heap accumulates
 5. **Storybook Vitest smoke** — stories tagged `vitest-ci` (browser + `play` + a11y `error`)
 6. **Storybook coverage** — `check:storybook-coverage` (no new export gaps)
 

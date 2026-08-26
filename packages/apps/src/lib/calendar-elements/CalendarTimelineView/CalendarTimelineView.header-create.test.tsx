@@ -36,7 +36,7 @@ function stubEventsApi(): EventsAPIContextValue {
     removeExclusion: noop,
     addException: noop,
     removeException: noop,
-  } as EventsAPIContextValue;
+  } as unknown as EventsAPIContextValue;
 }
 
 class TestEventsApiHost extends LitElement {
