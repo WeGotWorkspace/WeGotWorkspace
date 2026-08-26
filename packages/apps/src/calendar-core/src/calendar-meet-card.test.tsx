@@ -264,16 +264,48 @@ describe("CalendarMeetCard", () => {
     expect(onRecurrenceSaveScopeChange).toHaveBeenCalledWith("thisInstance");
   });
 
-  it("reserves a complete same-origin guest URL on blur as a draft, never per keystroke", async () => {
+  it("hides the meeting URL and copy control while Meet is off", () => {
+    renderCard();
+    expect(meetSwitch().getAttribute("data-state")).toBe("off");
+    expect(screen.queryByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeNull();
+    expect(screen.queryByDisplayValue(/https?:\/\//)).toBeNull();
+  });
+
+  it("shows a read-only URL and copies the displayed href when Meet is on", async () => {
+    const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderCard({
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
+    });
+    const input = screen.getByLabelText(
+      defaultCalendarLabels.eventMeetUrlLabel,
+    ) as HTMLInputElement;
+    expect(input.value).toBe(href);
+    expect(input.readOnly).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
+  });
+
+  it("shows the stored href for invitees and copies it", async () => {
+    const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderCard({
+      readOnly: true,
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
+    });
+    expect(
+      (screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement).value,
+    ).toBe(href);
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
+  });
+
+  it("reserves a complete same-origin guest URL on blur as a draft", async () => {
     const meetOperations = stubMeet();
     const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
-    const { onChange } = renderCard({ meetOperations });
-    const input = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel);
-    fireEvent.change(input, { target: { value: href } });
-    expect(meetOperations.reserveRoom).not.toHaveBeenCalled();
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ meetingUrl: href }));
-
-    cleanup();
     renderCard({
       meetOperations,
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },

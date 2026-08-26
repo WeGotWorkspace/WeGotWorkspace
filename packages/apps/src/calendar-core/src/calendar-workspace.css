@@ -568,7 +568,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-row {
-  @apply flex min-w-0 w-full;
+  @apply flex min-w-0 w-full items-center gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-row .input,
@@ -576,8 +576,12 @@
   @apply min-w-0 flex-1;
 }
 
+.calendar-dialog-surface .calendar-event-dialog__meet-row .icon-button--size-sm {
+  @apply size-9 shrink-0;
+}
+
 .calendar-dialog-surface .calendar-event-dialog__meet-readonly {
-  @apply flex justify-start;
+  @apply flex flex-col items-stretch gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {

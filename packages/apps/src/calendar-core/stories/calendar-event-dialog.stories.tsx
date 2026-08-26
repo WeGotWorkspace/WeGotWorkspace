@@ -49,6 +49,10 @@ export const Default: Story = {
     const toggle = meetSwitch(canvas);
     await expect(toggle).toHaveAttribute("data-state", "off");
     await expect(canvas.queryByRole("button", { name: "Add Meet" })).toBeNull();
+    await expect(canvas.queryByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }),
+    ).toBeNull();
     await expect(
       canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationLabel),
     ).toBeTruthy();
@@ -105,6 +109,12 @@ export const WithMeetLink: Story = {
     const toggle = meetSwitch(canvas);
     await expect(toggle).toHaveAttribute("data-state", "on");
     await expect(canvas.getByDisplayValue("Room A")).toBeTruthy();
+    const url = canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
+    await expect(url.value).toBe("https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n");
+    await expect(url.readOnly).toBe(true);
+    await expect(
+      canvas.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }),
+    ).toBeTruthy();
     await userEvent.click(toggle.querySelector('button[aria-label="Off"]')!);
     const confirm = canvas.getByRole("alertdialog");
     await expect(confirm).toHaveTextContent(defaultCalendarLabels.eventMeetDisableTitle);
@@ -132,6 +142,7 @@ export const MeetReserving: Story = {
     await expect(toggle).toHaveAttribute("aria-disabled", "true");
     await expect(toggle.querySelector('button[aria-label="On"]')).toBeDisabled();
     await expect(toggle.querySelector('button[aria-label="Off"]')).toBeDisabled();
+    await expect(canvas.queryByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeNull();
   },
 };
 

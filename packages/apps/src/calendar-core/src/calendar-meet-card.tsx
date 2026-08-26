@@ -1,10 +1,13 @@
 import { useRef, useState, type MutableRefObject } from "react";
-import { Video } from "lucide-react";
+import { Copy, Video } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
-import { Input } from "@/ui/input";
 import { Switch } from "@/ui/switch";
+import { ShareDialogInput } from "@/share-ui/share-dialog-input";
+import { copyShareText } from "@/share-ui/share-path-utils";
+import "@/share-ui/share-ui.css";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +68,40 @@ function applyForm(
   const next = patchCalendarEventForm(form, patch);
   onChange(next);
   return next;
+}
+
+function CalendarMeetUrlRow({
+  href,
+  labels,
+  onBlur,
+}: {
+  href: string;
+  labels: CalendarUILabels;
+  onBlur?: () => void;
+}) {
+  const trimmed = href.trim();
+  return (
+    <div className="calendar-event-dialog__meet-row share-dialog__link-row">
+      <ShareDialogInput
+        type="text"
+        value={href}
+        readOnly
+        mono
+        aria-label={labels.eventMeetUrlLabel}
+        onBlur={onBlur}
+      />
+      <IconButton
+        label={labels.copyHttpsUrl}
+        icon={<Copy className="size-3.5" aria-hidden />}
+        size="sm"
+        variant="outline"
+        disabled={!trimmed}
+        onClick={() => {
+          void copyShareText(trimmed);
+        }}
+      />
+    </div>
+  );
 }
 
 export function CalendarMeetCard({
@@ -210,6 +247,7 @@ export function CalendarMeetCard({
     if (!form.meetingUrl.trim()) return null;
     return (
       <div className="calendar-event-dialog__meet-readonly">
+        <CalendarMeetUrlRow href={form.meetingUrl} labels={labels} />
         <CalendarMeetJoin
           href={form.meetingUrl}
           labels={labels}
@@ -272,22 +310,17 @@ export function CalendarMeetCard({
           </Select>
         </CardRow>
       ) : null}
-      <CardRow fill>
-        <div className="calendar-event-dialog__meet-row">
-          <Input
-            value={form.meetingUrl}
-            onChange={(event) => applyForm(form, { meetingUrl: event.target.value }, onChange)}
+      {hasMeetingUrl ? (
+        <CardRow fill>
+          <CalendarMeetUrlRow
+            href={form.meetingUrl}
+            labels={labels}
             onBlur={() => {
               void onUrlBlur();
             }}
-            placeholder={labels.eventMeetUrlPlaceholder}
-            aria-label={labels.eventMeetUrlLabel}
-            disabled={disabled}
-            inputMode="url"
-            autoComplete="off"
           />
-        </div>
-      </CardRow>
+        </CardRow>
+      ) : null}
       <AlertDialog
         open={confirmRemove}
         onOpenChange={(open) => !reserving && setConfirmRemove(open)}

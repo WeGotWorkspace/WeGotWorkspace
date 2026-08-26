@@ -96,6 +96,32 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ description: "Bring slides" }));
   });
 
+  it("hides the meeting URL when Meet is off and keeps location visible", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      location: "Cafe",
+    };
+    renderDialog({
+      form,
+      workspaceOrigin: "https://workspace.example.com",
+      meetOperations: {
+        roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        reserveRoom: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      },
+    });
+
+    expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
+        .getAttribute("data-state"),
+    ).toBe("off");
+    expect(screen.queryByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeNull();
+  });
+
   it("keeps location independent when Meet is on", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
@@ -119,9 +145,10 @@ describe("CalendarEventDialog", () => {
         .getByRole("group", { name: defaultCalendarLabels.eventMeetAdd })
         .getAttribute("data-state"),
     ).toBe("on");
-    expect(
-      (screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement).value,
-    ).toBe(form.meetingUrl);
+    const url = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
+    expect(url.value).toBe(form.meetingUrl);
+    expect(url.readOnly).toBe(true);
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeTruthy();
   });
 
   it("hides time inputs for all-day events and shows locale date triggers", () => {

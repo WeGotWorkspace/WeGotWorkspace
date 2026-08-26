@@ -106,6 +106,9 @@ describe("calendar event dialog Meet field", () => {
     expect(css).toMatch(
       /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \{[\s\S]*@apply/,
     );
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*@apply/,
+    );
     expect(css).toMatch(/\.calendar-event-dialog__meet-switch/);
     expect(css).toMatch(/\.calendar-event-dialog__meet-scope-trigger/);
   });
