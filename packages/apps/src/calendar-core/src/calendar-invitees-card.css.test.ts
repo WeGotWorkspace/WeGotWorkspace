@@ -17,6 +17,7 @@ describe("calendar invitees card CSS", () => {
     expect(css).not.toMatch(/items-start/);
     expect(css).not.toMatch(/calendar-invitees-status-tag/);
     expect(css).not.toMatch(/tag--icon-only/);
+    expect(css).not.toMatch(/calendar-invitees-rsvp-chip/);
   });
 
   it("keeps a container-query fallback that recenters the name with the avatar", () => {
