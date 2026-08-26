@@ -31,8 +31,9 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 
 | Route | Access |
 |-------|--------|
-| `POST /api/v1/meetings/rooms` | guest |
+| `POST /api/v1/meetings/rooms` | user |
 | `GET /api/v1/meetings/rooms/{roomId}` | guest |
+| `PATCH /api/v1/meetings/rooms/{roomId}` | user |
 | `POST /api/v1/rooms/{roomId}/participants` | guest |
 | `GET /api/v1/rooms/{roomId}/events` | guest |
 | `POST /api/v1/rooms/{roomId}/events` | guest |

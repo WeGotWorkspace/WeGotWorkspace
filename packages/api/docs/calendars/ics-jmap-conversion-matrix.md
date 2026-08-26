@@ -52,7 +52,10 @@ CalDAV stores one `.ics` blob per `calendarobjects` row. The REST API maps each 
 | RDATE | `recurrenceOverrides` empty patch (key = RDATE datetime) |
 | EXRULE | `excludedRecurrenceRules` |
 | GEO | `locations.coordinates` |
-| URL | `links` |
+| URL | `links` (write-set with CONFERENCE + X-GOOGLE-CONFERENCE) |
+| CONFERENCE (RFC 7986) | `links` — **written** with `VALUE=URI;FEATURE=VIDEO;LABEL="WeGotWorkspace Meet"` |
+| X-GOOGLE-CONFERENCE | `links` — **written** (same href as URL / CONFERENCE) |
+| X-MICROSOFT-SKYPETEAMSMEETINGURL | `links` — **read-only**; never written (Outlook treats it as a Teams meeting) |
 | ATTACH | `attachments` (href) + `icsProps` fallback |
 | VTIMEZONE | `timeZones` map (`icsDefinition` for round-trip). Bare IANA `timeZone` without `icsDefinition` synthesizes a VTIMEZONE so every TZID stays RFC 5545 valid. |
 | ATTENDEE ROLE/CUTYPE/RSVP/DELEGATED | `participants` scheduling fields |

@@ -1,19 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock, Crown, Users, type LucideIcon } from "lucide-react";
 import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
-  attendeesIncludeInvitee,
   attendeesReferToSamePerson,
-  inviteeAddress,
-  isLikelyEmail,
-  isSessionInvitee,
   listedInviteeAttendees,
   organizerAttendeeForList,
   type CalendarAttendee,
   type CalendarInvitee,
   type CalendarParticipationStatus,
 } from "@/calendar-core/src/calendar-attendees";
+import {
+  calendarInviteeSearchRows,
+  searchRowToAttendee,
+  typedEmailSearchRow,
+  type CalendarInviteeContactContext,
+  type CalendarInviteeSearchRow,
+} from "@/calendar-core/src/calendar-contact-attendee";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
@@ -27,7 +31,8 @@ import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
 import "@/calendar-core/src/calendar-invitees-card.css";
 
-const EMAIL_OPTION_PREFIX = "email:";
+/** Same delay as calendar share principal search. */
+export const CALENDAR_CONTACT_INVITEE_REFRESH_MS = 250;
 
 export type CalendarInviteesCardProps = {
   attendees: CalendarAttendee[];
@@ -36,10 +41,33 @@ export type CalendarInviteesCardProps = {
   busy?: boolean;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
+  contactCards?: ContactCard[];
   /** Invitee view: hide add/remove. */
   readOnly?: boolean;
   onChange: (attendees: CalendarAttendee[]) => void;
+  /** Live JMAP refresh; cache remains the first paint. */
+  onRefreshContactCards?: () => void;
 };
+
+function contactContextLabel(
+  context: CalendarInviteeContactContext | undefined,
+  labels: CalendarUILabels,
+): string | undefined {
+  if (context === "work") return labels.eventAttendeesContactWork;
+  if (context === "home") return labels.eventAttendeesContactHome;
+  if (context === "school") return labels.eventAttendeesContactSchool;
+  return undefined;
+}
+
+export function inviteeSearchRowMeta(
+  row: CalendarInviteeSearchRow,
+  labels: CalendarUILabels,
+): string {
+  if (row.source === "teammate") return labels.eventAttendeesTeammate;
+  if (row.source === "typed-email") return labels.eventAttendeesEmailAdd;
+  const context = contactContextLabel(row.contactContext, labels);
+  return context ? `${row.rawEmail} · ${context}` : row.rawEmail;
+}
 
 function rsvpLabel(
   status: CalendarParticipationStatus,
@@ -111,57 +139,46 @@ export function CalendarInviteesCard({
   busy = false,
   canSubmitEmail = true,
   sessionEmail,
+  contactCards = [],
   readOnly = false,
   onChange,
+  onRefreshContactCards,
 }: CalendarInviteesCardProps) {
   const locked = busy || readOnly;
   const [query, setQuery] = useState("");
   const organizer = organizerAttendeeForList(attendees, invitees, sessionEmail);
   const listed = listedInviteeAttendees(attendees, invitees);
 
-  const selectableInvitees = useMemo(
+  useEffect(() => {
+    if (readOnly || !onRefreshContactCards || !query.trim()) return;
+    const timer = window.setTimeout(() => {
+      onRefreshContactCards();
+    }, CALENDAR_CONTACT_INVITEE_REFRESH_MS);
+    return () => window.clearTimeout(timer);
+  }, [onRefreshContactCards, query, readOnly]);
+
+  const searchRows = useMemo(
     () =>
-      invitees.filter(
-        (invitee) =>
-          !isSessionInvitee(invitee, sessionEmail) && !attendeesIncludeInvitee(attendees, invitee),
-      ),
-    [attendees, invitees, sessionEmail],
+      calendarInviteeSearchRows({
+        query,
+        invitees,
+        attendees,
+        cards: contactCards,
+        sessionEmail,
+      }),
+    [attendees, contactCards, invitees, query, sessionEmail],
   );
 
-  const searchResults = useMemo(() => {
-    const trimmed = query.trim();
-    const needle = trimmed.toLowerCase();
-    const teammates: ShareSearchOption[] = selectableInvitees
-      .filter((invitee) => {
-        if (!needle) return false;
-        return (
-          invitee.name.toLowerCase().includes(needle) ||
-          invitee.username.toLowerCase().includes(needle) ||
-          invitee.email.toLowerCase().includes(needle)
-        );
-      })
-      .map((invitee) => ({
-        id: inviteeAddress(invitee),
-        displayName: invitee.name,
-        principalType: "user" as const,
-        meta: invitee.username || invitee.email,
-      }));
-
-    if (
-      isLikelyEmail(trimmed) &&
-      !attendees.some((row) =>
-        attendeesReferToSamePerson(row, { email: trimmed.toLowerCase() }, invitees),
-      )
-    ) {
-      teammates.push({
-        id: `${EMAIL_OPTION_PREFIX}${trimmed.toLowerCase()}`,
-        displayName: trimmed.toLowerCase(),
+  const searchResults = useMemo<ShareSearchOption[]>(
+    () =>
+      searchRows.map((row) => ({
+        id: row.id,
+        displayName: row.displayName,
         principalType: "user",
-        meta: labels.eventAttendeesEmailAdd,
-      });
-    }
-    return teammates;
-  }, [attendees, invitees, labels.eventAttendeesEmailAdd, query, selectableInvitees]);
+        meta: inviteeSearchRowMeta(row, labels),
+      })),
+    [labels, searchRows],
+  );
 
   const addAttendee = (next: CalendarAttendee) => {
     if (attendees.some((row) => attendeesReferToSamePerson(row, next, invitees))) return;
@@ -169,33 +186,18 @@ export function CalendarInviteesCard({
     setQuery("");
   };
 
-  const addTeammate = (invitee: CalendarInvitee) => {
-    addAttendee({
-      email: inviteeAddress(invitee),
-      name: invitee.name,
-      participationStatus: "needs-action",
-      role: "required",
-    });
-  };
-
-  const addExternalEmail = (rawEmail: string) => {
-    const email = rawEmail.trim().toLowerCase();
-    if (!isLikelyEmail(email)) return;
-    addAttendee({
-      email,
-      name: email,
-      participationStatus: "needs-action",
-      role: "required",
-    });
+  const selectSearchRow = (row: CalendarInviteeSearchRow) => {
+    addAttendee(searchRowToAttendee(row, invitees));
   };
 
   const selectSearchOption = (option: ShareSearchOption) => {
-    if (option.id.startsWith(EMAIL_OPTION_PREFIX)) {
-      addExternalEmail(option.id.slice(EMAIL_OPTION_PREFIX.length));
-      return;
-    }
-    const invitee = selectableInvitees.find((row) => inviteeAddress(row) === option.id);
-    if (invitee) addTeammate(invitee);
+    const row = searchRows.find((entry) => entry.id === option.id);
+    if (row) selectSearchRow(row);
+  };
+
+  const addTypedEmail = (value: string) => {
+    const row = typedEmailSearchRow(value);
+    if (row) selectSearchRow(row);
   };
 
   return (
@@ -229,7 +231,7 @@ export function CalendarInviteesCard({
               onKeyDown={(event) => {
                 if (event.key !== "Enter") return;
                 event.preventDefault();
-                if (isLikelyEmail(query)) addExternalEmail(query);
+                addTypedEmail(query);
               }}
             />
           </SharePrincipalSearchDropdown>

@@ -35,6 +35,7 @@ import {
 import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
 import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
+import { useCalendarContactInvitees } from "@/calendar-core/src/use-calendar-contact-invitees";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarImportDialog } from "@/calendar-core/src/calendar-import-dialog";
 import { ICS_FILE_ACCEPT, icsFileFromList } from "@/calendar-core/src/calendar-ics-import";
@@ -58,6 +59,7 @@ import {
   sessionEventInviteeStatus,
   type CalendarAttendee,
 } from "@/calendar-core/src/calendar-attendees";
+import { occurrenceHasThisInstanceOverride } from "@/calendar-core/src/calendar-recurrence-scope";
 import {
   eventIsRecurringForRsvp,
   persistInviteeRsvp,
@@ -245,6 +247,9 @@ export function CalendarWorkspace({
   onLogout,
   className,
   pendingEventIds,
+  meetOperations,
+  workspaceOrigin,
+  onJoinMeeting,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -351,6 +356,7 @@ export function CalendarWorkspace({
     onError: handleInvitationError,
     onSchedulingConflict: handleSchedulingConflict,
   });
+  const { cards: contactCards, refreshCards } = useCalendarContactInvitees(session.user.username);
   const inviteeNotifications = useMemo(
     () =>
       filterInviteeNotifications(invitations.notifications, [
@@ -575,6 +581,9 @@ export function CalendarWorkspace({
               }
             : undefined
         }
+        meetOperations={meetOperations}
+        workspaceOrigin={workspaceOrigin}
+        onJoinMeeting={onJoinMeeting}
       />
     ),
     [
@@ -589,6 +598,9 @@ export function CalendarWorkspace({
       openEditEventKey,
       persistRsvp,
       useInvitationsDrawer,
+      meetOperations,
+      workspaceOrigin,
+      onJoinMeeting,
     ],
   );
 
@@ -858,6 +870,9 @@ export function CalendarWorkspace({
           canEdit={previewCanEdit}
           busy={invitations.busy}
           sessionEmail={sessionEmail}
+          meetOperations={meetOperations}
+          workspaceOrigin={workspaceOrigin}
+          onJoinMeeting={onJoinMeeting}
           onClose={closeEventPreview}
           onEdit={previewCanEdit ? openEditFromPreview : undefined}
           onRsvp={(status) => {
@@ -885,8 +900,23 @@ export function CalendarWorkspace({
           onSave={saveEditor}
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
           invitees={invitations.invitees}
+          contactCards={contactCards}
+          onRefreshContactCards={refreshCards}
           canSubmitEmail={invitations.canSubmitEmail}
           sessionEmail={sessionEmail}
+          sessionUsername={session.user.username}
+          recurrenceId={editor.mode === "edit" ? editor.recurrenceId : undefined}
+          thisInstanceLocked={
+            editor.mode === "edit" &&
+            Boolean(editor.recurrenceId) &&
+            occurrenceHasThisInstanceOverride(
+              data.events.find((entry) => entry.id === editor.eventId),
+              editor.recurrenceId ?? "",
+            )
+          }
+          meetOperations={meetOperations}
+          workspaceOrigin={workspaceOrigin}
+          onJoinMeeting={onJoinMeeting}
           onRsvp={
             editor.mode === "edit"
               ? (status, calendarId) => {

@@ -370,6 +370,9 @@ final class JmapEventToVEventConverter
             if (! is_string($name) || ! is_string($value) || trim($value) === '') {
                 continue;
             }
+            if (LocationConversionSupport::isConferenceIcsProp($name)) {
+                continue;
+            }
             $vevent->add(strtoupper($name), $value);
         }
     }

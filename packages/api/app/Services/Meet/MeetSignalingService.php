@@ -21,6 +21,7 @@ final class MeetSignalingService
     public function __construct(
         private MeetActorResolver $actors,
         private RtcSettingsService $rtcSettingsService,
+        private MeetReservationService $reservations,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::meet());
     }
@@ -72,6 +73,9 @@ final class MeetSignalingService
             }
 
             $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time());
+            if ($this->roomHasJoinablePeer($room)) {
+                $this->reservations->markActivated($room);
+            }
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
                 $this->store->deletePeer($room, $peerId);

@@ -6,6 +6,8 @@ import {
 } from "@/calendar-core/src/calendar-event-calendar-picker";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { normalizeParticipationStatus } from "@/calendar-core/src/calendar-attendees";
+import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
+import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   canRespondInvitation,
@@ -36,6 +38,9 @@ export type CalendarInvitationCardProps = {
   busy?: boolean;
   onSelect: () => void;
   onRespond: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
+  meetOperations?: CalendarMeetOperations;
+  workspaceOrigin?: string;
+  onJoinMeeting?: (href: string) => void;
 };
 
 export function CalendarInvitationCard({
@@ -48,6 +53,9 @@ export function CalendarInvitationCard({
   busy = false,
   onSelect,
   onRespond,
+  meetOperations,
+  workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
+  onJoinMeeting,
 }: CalendarInvitationCardProps) {
   const { cardRef, isExiting, handleExitAnimationEnd } = useDocsCollabCardExit({
     exitAnimationName: INVITATION_EXIT_ANIMATION,
@@ -119,6 +127,21 @@ export function CalendarInvitationCard({
         past: eventCard.cancelled,
         recurring: eventCard.recurring,
       })}
+
+      {notification.url?.trim() ? (
+        <div
+          className="calendar-invitation-card__meet"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <CalendarMeetJoin
+            href={notification.url}
+            labels={labels}
+            workspaceOrigin={workspaceOrigin}
+            meetOperations={meetOperations}
+            onJoin={onJoinMeeting}
+          />
+        </div>
+      ) : null}
 
       {canRespond ? (
         <div className="calendar-invitation-card__rsvp">

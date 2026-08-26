@@ -26,6 +26,7 @@ export function draftToJmapEvent(draft: CalendarEventDraft): Omit<JmapCalendarEv
       ? { recurrenceOverrides: draft.recurrenceOverrides }
       : {}),
     ...(participants ? { participants } : {}),
+    ...(draft.links && Object.keys(draft.links).length ? { links: draft.links } : {}),
   } as Omit<JmapCalendarEvent, "id">;
 }
 
@@ -52,5 +53,6 @@ export function patchToJmapPartial(patch: CalendarEventPatch): Partial<JmapCalen
     ...(patch.attendees !== undefined
       ? { participants: participantsFromAttendees(patch.attendees, patch.organizer) }
       : {}),
+    ...(patch.links !== undefined ? { links: patch.links } : {}),
   } as Partial<JmapCalendarEvent>;
 }

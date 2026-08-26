@@ -113,6 +113,21 @@ export type CalendarUILabels = {
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
+  /** Card heading for the meeting URL field. */
+  eventMeetSectionTitle: string;
+  /** Accessible name for the generate-Meet icon button. */
+  eventMeetAdd: string;
+  /** Confirm title when generating over a non-empty meeting URL. */
+  eventMeetReplaceTitle: string;
+  eventMeetReplaceDescription: string;
+  eventMeetReplaceConfirm: string;
+  eventMeetJoin: string;
+  eventMeetUrlLabel: string;
+  eventMeetUrlPlaceholder: string;
+  /** Apply-to control when editing a recurring occurrence. */
+  eventMeetApplyTo: string;
+  /** GET 404 / swept room — same copy as Meet missing-invite. */
+  eventMeetDeadLink: string;
   eventNotesLabel: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
@@ -171,6 +186,10 @@ export type CalendarUILabels = {
   eventAttendeesEmailUnavailable: string;
   eventAttendeesRemove: string;
   eventAttendeesSearchEmpty: string;
+  eventAttendeesTeammate: string;
+  eventAttendeesContactWork: string;
+  eventAttendeesContactHome: string;
+  eventAttendeesContactSchool: string;
   eventAttendeesOrganizer: string;
   eventAttendeesRsvpAccepted: string;
   eventAttendeesRsvpTentative: string;
@@ -318,6 +337,17 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLabel: "Time zone",
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
+  eventMeetSectionTitle: "Meet",
+  eventMeetAdd: "Create Meet Room URL",
+  eventMeetReplaceTitle: "Replace Meet link?",
+  eventMeetReplaceDescription:
+    "A new meeting link will replace the current one. The previous room will expire, and anyone with the current join URL will lose access.",
+  eventMeetReplaceConfirm: "Replace",
+  eventMeetJoin: "Join",
+  eventMeetUrlLabel: "Meeting link",
+  eventMeetUrlPlaceholder: "https://…",
+  eventMeetApplyTo: "Apply Meet to",
+  eventMeetDeadLink: "This meeting is not active. Ask the host for a fresh invite link.",
   eventNotesLabel: "Notes",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
@@ -363,7 +393,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   invitationsToggleHide: "Hide invitations",
   invitationsOrganizerUnknown: "Organizer",
   eventAttendeesLabel: "Invitees",
-  eventAttendeesHint: "Add teammates or invite anyone with an email address.",
+  eventAttendeesHint: "Add teammates, contacts, or anyone with an email address.",
   eventAttendeesAdd: "Add people",
   eventAttendeesEmpty: "No invitees yet.",
   eventAttendeesEmailPlaceholder: "Add people…",
@@ -371,7 +401,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
   eventAttendeesRemove: "Remove invitee",
-  eventAttendeesSearchEmpty: "No teammates found",
+  eventAttendeesSearchEmpty: "No people found",
+  eventAttendeesTeammate: "Teammate",
+  eventAttendeesContactWork: "Work",
+  eventAttendeesContactHome: "Home",
+  eventAttendeesContactSchool: "School",
   eventAttendeesOrganizer: "Organizer",
   eventAttendeesRsvpAccepted: "Accepted",
   eventAttendeesRsvpTentative: "Maybe",

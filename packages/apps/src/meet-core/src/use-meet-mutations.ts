@@ -6,6 +6,10 @@ import {
   encodeMeetKnockerName,
 } from "@/meet-core/src/meet-control-messages";
 import { buildLocalMeetChatLine } from "@/meet-core/src/meet-chat-line";
+import {
+  MEET_AD_HOC_RESERVATION_TTL_MS,
+  meetActorPrincipal,
+} from "@/meet-core/src/meet-invite-status";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
@@ -14,6 +18,7 @@ export type UseMeetMutationsArgs = {
   room: MeetRoomState;
   session: MeetCallSessionState;
   canModerateKnocks: boolean;
+  actingUsername?: string | null;
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
 };
 
@@ -21,6 +26,7 @@ export function useMeetMutations({
   room,
   session,
   canModerateKnocks,
+  actingUsername,
   leaveRef,
 }: UseMeetMutationsArgs) {
   const { meetRtc, operationsRef, debugRtc, ensureLocalMedia, stopLocalMedia } = session;
@@ -241,8 +247,18 @@ export function useMeetMutations({
   );
 
   const startMeeting = useCallback(async () => {
-    await joinRoom();
-  }, [joinRoom]);
+    const target = createMeetRoomCode();
+    const reserve = operationsRef.current?.reserveRoom;
+    const username = actingUsername?.trim();
+    if (reserve && username) {
+      await reserve({
+        room: target,
+        ownerPrincipal: meetActorPrincipal(username),
+        expiresAt: new Date(Date.now() + MEET_AD_HOC_RESERVATION_TTL_MS).toISOString(),
+      });
+    }
+    await joinRoom(target);
+  }, [actingUsername, joinRoom, operationsRef]);
 
   useEffect(() => {
     return () => {

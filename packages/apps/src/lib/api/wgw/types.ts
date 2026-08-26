@@ -270,7 +270,20 @@ export type WgwMeetRoomStatusRequest = {
   room: string;
 };
 export type WgwMeetRoomStatusResponse = {
+  reserved: boolean;
   active: boolean;
+  ownerPrincipal?: string;
+  createdBy?: string;
+  expiresAt?: string | null;
+};
+export type WgwMeetReserveRoomRequest = {
+  room: string;
+  ownerPrincipal: string;
+  expiresAt?: string | null;
+};
+export type WgwMeetPatchRoomRequest = {
+  room: string;
+  expiresAt: string | null;
 };
 export type WgwMeetJoinRequest = MeetJoinRequest;
 export type WgwMeetJoinResponse = MeetJoinResponse;

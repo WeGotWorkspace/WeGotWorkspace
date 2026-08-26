@@ -40,6 +40,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
+import { meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
 import {
   canChangeCalendarOwner,
   canOpenCalendarSettings,
@@ -528,200 +529,214 @@ export function useCalendarController({
     [operations, queueMutation, onMutated, L.toastEventSaveUndone],
   );
 
-  const saveEditor = useCallback(() => {
-    if (!editor || !operations) return;
-    if (editor.mode === "create") {
-      ensureCalendarVisible(editor.form.calendarId);
-      let createdId: string | undefined;
-      setHeldCreateIntent(formToCreateIntent(editor.form));
-      runEditorMutation({
-        key: `calendar:create-event:${editor.form.calendarId}`,
-        successToast: L.toastEventCreated,
-        mutation: async () => {
-          const created = await operations.createEvent(
-            draftFromForm(
-              editor.form,
-              sessionEmail ? { email: sessionEmail, name: sessionName || sessionEmail } : undefined,
-            ),
-          );
-          createdId = created.id;
-        },
-        undo: () => {
-          // queueMutation also runs undo on execute failure.
-          setHeldCreateIntent(null);
-          if (createdId) void operations.deleteEvent(createdId);
-        },
-      });
-      return;
-    }
-
-    void (async () => {
-      const original = data.events.find((entry) => entry.id === editor.eventId);
-      const patch = original ? formToPatch(editor.form, original) : formToFullPatch(editor.form);
-      const organizer = sessionEmail
-        ? { email: sessionEmail, name: sessionName || sessionEmail }
-        : undefined;
-      if (patch.attendees && organizer) {
-        patch.organizer = organizer;
+  const saveEditor = useCallback(
+    (chosenScope?: RecurrenceEditScope) => {
+      if (!editor || !operations) return;
+      if (editor.mode === "create") {
+        ensureCalendarVisible(editor.form.calendarId);
+        let createdId: string | undefined;
+        setHeldCreateIntent(formToCreateIntent(editor.form));
+        runEditorMutation({
+          key: `calendar:create-event:${editor.form.calendarId}`,
+          successToast: L.toastEventCreated,
+          mutation: async () => {
+            const created = await operations.createEvent(
+              draftFromForm(
+                editor.form,
+                sessionEmail
+                  ? { email: sessionEmail, name: sessionName || sessionEmail }
+                  : undefined,
+              ),
+            );
+            createdId = created.id;
+          },
+          undo: () => {
+            // queueMutation also runs undo on execute failure.
+            setHeldCreateIntent(null);
+            if (createdId) void operations.deleteEvent(createdId);
+          },
+        });
+        return;
       }
-      const isRecurring = original
-        ? eventIsRecurringSeries(original)
-        : Boolean(editor.recurrenceId);
 
-      let recurrenceScope: RecurrenceEditScope | undefined;
-      if (isRecurring && editor.recurrenceId) {
-        if (occurrenceHasThisInstanceOverride(original, editor.recurrenceId)) {
-          recurrenceScope = "thisInstance";
-        } else {
-          const asked = await askRecurrenceScope({
-            action: "edit",
-            masterId: editor.eventId,
-            recurrenceId: editor.recurrenceId,
-          });
-          if (asked !== "thisInstance" && asked !== "thisAndFuture") return;
-          recurrenceScope = asked;
+      void (async () => {
+        const original = data.events.find((entry) => entry.id === editor.eventId);
+        const patch = original ? formToPatch(editor.form, original) : formToFullPatch(editor.form);
+        const organizer = sessionEmail
+          ? { email: sessionEmail, name: sessionName || sessionEmail }
+          : undefined;
+        if (patch.attendees && organizer) {
+          patch.organizer = organizer;
         }
-      }
+        const isRecurring = original
+          ? eventIsRecurringSeries(original)
+          : Boolean(editor.recurrenceId);
 
-      // Only-this-instance: persist a JSCalendar recurrenceOverrides patch on the master.
-      if (recurrenceScope === "thisInstance" && editor.recurrenceId) {
-        if (!original) {
-          showError(L.toastEventSaveFailed);
+        let recurrenceScope: RecurrenceEditScope | undefined;
+        if (isRecurring && editor.recurrenceId) {
+          if (occurrenceHasThisInstanceOverride(original, editor.recurrenceId)) {
+            recurrenceScope = "thisInstance";
+          } else if (chosenScope === "thisInstance" || chosenScope === "thisAndFuture") {
+            recurrenceScope = chosenScope;
+          } else {
+            const asked = await askRecurrenceScope({
+              action: "edit",
+              masterId: editor.eventId,
+              recurrenceId: editor.recurrenceId,
+            });
+            if (asked !== "thisInstance" && asked !== "thisAndFuture") return;
+            recurrenceScope = asked;
+          }
+        }
+
+        // Only-this-instance: persist a JSCalendar recurrenceOverrides patch on the master.
+        if (recurrenceScope === "thisInstance" && editor.recurrenceId) {
+          if (!original) {
+            showError(L.toastEventSaveFailed);
+            return;
+          }
+          const overrides = occurrenceRecurrenceOverrides(
+            editor.form,
+            original,
+            editor.recurrenceId,
+          );
+          if (!overrides) {
+            setEditor(null);
+            return;
+          }
+          ensureCalendarVisible(editor.form.calendarId);
+          let targetId = editor.eventId;
+          runEditorMutation({
+            key: `calendar:update-occurrence:${editor.eventId}:${editor.recurrenceId}`,
+            successToast: L.toastEventUpdated,
+            mutation: async () => {
+              targetId = (await resolveEventId?.(editor.eventId)) ?? editor.eventId;
+              await operations.patchEvent(targetId, { recurrenceOverrides: overrides });
+            },
+            undo: () => {
+              void operations.patchEvent(targetId, {
+                recurrenceOverrides: original.recurrenceOverrides ?? {},
+              });
+            },
+          });
           return;
         }
-        const overrides = occurrenceRecurrenceOverrides(editor.form, original, editor.recurrenceId);
-        if (!overrides) {
+
+        // This-and-future: truncate the master series, then create a forked series.
+        if (recurrenceScope === "thisAndFuture" && editor.recurrenceId) {
+          ensureCalendarVisible(editor.form.calendarId);
+          const masterEngine = surfaceEvents?.get(editor.eventId);
+          // Prefer wire → surface master (true series rule) → occurrence form preset.
+          const seriesRules = original?.recurrenceRules?.length
+            ? original.recurrenceRules
+            : masterEngine
+              ? seriesRecurrenceRulesForSplit(undefined, engineEventToForm(masterEngine))
+              : seriesRecurrenceRulesForSplit(undefined, editor.form);
+          let targetId = editor.eventId;
+          let forkedId: string | undefined;
+          runEditorMutation({
+            key: `calendar:split-series:${editor.eventId}:${editor.recurrenceId}`,
+            successToast: L.toastEventUpdated,
+            mutation: async () => {
+              targetId = original
+                ? editor.eventId
+                : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
+              const allDay = Boolean(original?.showWithoutTime ?? editor.form.allDay);
+              // Adapter rows are fresher than bootstrap after only-this — partition from those.
+              const seriesOverrides = resolveSeriesRecurrenceOverrides(
+                original,
+                editor.eventId,
+                surfaceEvents,
+              );
+              await operations.patchEvent(
+                targetId,
+                truncateMasterSeriesPatch(
+                  seriesRules,
+                  editor.recurrenceId!,
+                  allDay,
+                  original?.start,
+                  seriesOverrides,
+                ),
+              );
+              const forked = await operations.createEvent(
+                forkSeriesDraftWithSplitOverrides(
+                  editor.form,
+                  seriesRules,
+                  original,
+                  editor.recurrenceId!,
+                  seriesOverrides,
+                ),
+              );
+              forkedId = forked.id;
+            },
+            undo: () => {
+              if (forkedId) void operations.deleteEvent(forkedId);
+              if (original) {
+                void operations.patchEvent(
+                  targetId,
+                  formToFullPatch(calendarEventToForm(original)),
+                );
+              }
+            },
+          });
+          return;
+        }
+
+        if (Object.keys(patch).length === 0) {
           setEditor(null);
           return;
         }
         ensureCalendarVisible(editor.form.calendarId);
         let targetId = editor.eventId;
+        let movedToId: string | undefined;
         runEditorMutation({
-          key: `calendar:update-occurrence:${editor.eventId}:${editor.recurrenceId}`,
-          successToast: L.toastEventUpdated,
-          mutation: async () => {
-            targetId = (await resolveEventId?.(editor.eventId)) ?? editor.eventId;
-            await operations.patchEvent(targetId, { recurrenceOverrides: overrides });
-          },
-          undo: () => {
-            void operations.patchEvent(targetId, {
-              recurrenceOverrides: original.recurrenceOverrides ?? {},
-            });
-          },
-        });
-        return;
-      }
-
-      // This-and-future: truncate the master series, then create a forked series.
-      if (recurrenceScope === "thisAndFuture" && editor.recurrenceId) {
-        ensureCalendarVisible(editor.form.calendarId);
-        const masterEngine = surfaceEvents?.get(editor.eventId);
-        // Prefer wire → surface master (true series rule) → occurrence form preset.
-        const seriesRules = original?.recurrenceRules?.length
-          ? original.recurrenceRules
-          : masterEngine
-            ? seriesRecurrenceRulesForSplit(undefined, engineEventToForm(masterEngine))
-            : seriesRecurrenceRulesForSplit(undefined, editor.form);
-        let targetId = editor.eventId;
-        let forkedId: string | undefined;
-        runEditorMutation({
-          key: `calendar:split-series:${editor.eventId}:${editor.recurrenceId}`,
+          key: `calendar:update-event:${editor.eventId}`,
           successToast: L.toastEventUpdated,
           mutation: async () => {
             targetId = original
               ? editor.eventId
               : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
-            const allDay = Boolean(original?.showWithoutTime ?? editor.form.allDay);
-            // Adapter rows are fresher than bootstrap after only-this — partition from those.
-            const seriesOverrides = resolveSeriesRecurrenceOverrides(
-              original,
-              editor.eventId,
-              surfaceEvents,
-            );
-            await operations.patchEvent(
-              targetId,
-              truncateMasterSeriesPatch(
-                seriesRules,
-                editor.recurrenceId!,
-                allDay,
-                original?.start,
-                seriesOverrides,
-              ),
-            );
-            const forked = await operations.createEvent(
-              forkSeriesDraftWithSplitOverrides(
-                editor.form,
-                seriesRules,
-                original,
-                editor.recurrenceId!,
-                seriesOverrides,
-              ),
-            );
-            forkedId = forked.id;
+            if (patch.calendarId) {
+              const created = await operations.createEvent(draftFromForm(editor.form, organizer));
+              movedToId = created.id;
+              await operations.deleteEvent(targetId);
+              return;
+            }
+            await operations.patchEvent(targetId, patch);
           },
           undo: () => {
-            if (forkedId) void operations.deleteEvent(forkedId);
+            if (movedToId) {
+              void operations.deleteEvent(movedToId).then(() => {
+                if (original) {
+                  void operations.createEvent(
+                    draftFromForm(calendarEventToForm(original), organizer),
+                  );
+                }
+              });
+              return;
+            }
             if (original) {
               void operations.patchEvent(targetId, formToFullPatch(calendarEventToForm(original)));
             }
           },
         });
-        return;
-      }
-
-      if (Object.keys(patch).length === 0) {
-        setEditor(null);
-        return;
-      }
-      ensureCalendarVisible(editor.form.calendarId);
-      let targetId = editor.eventId;
-      let movedToId: string | undefined;
-      runEditorMutation({
-        key: `calendar:update-event:${editor.eventId}`,
-        successToast: L.toastEventUpdated,
-        mutation: async () => {
-          targetId = original
-            ? editor.eventId
-            : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
-          if (patch.calendarId) {
-            const created = await operations.createEvent(draftFromForm(editor.form, organizer));
-            movedToId = created.id;
-            await operations.deleteEvent(targetId);
-            return;
-          }
-          await operations.patchEvent(targetId, patch);
-        },
-        undo: () => {
-          if (movedToId) {
-            void operations.deleteEvent(movedToId).then(() => {
-              if (original) {
-                void operations.createEvent(
-                  draftFromForm(calendarEventToForm(original), organizer),
-                );
-              }
-            });
-            return;
-          }
-          if (original) {
-            void operations.patchEvent(targetId, formToFullPatch(calendarEventToForm(original)));
-          }
-        },
-      });
-    })();
-  }, [
-    editor,
-    operations,
-    data.events,
-    surfaceEvents,
-    runEditorMutation,
-    resolveEventId,
-    ensureCalendarVisible,
-    askRecurrenceScope,
-    showError,
-    L,
-    sessionEmail,
-    sessionName,
-  ]);
+      })();
+    },
+    [
+      editor,
+      operations,
+      data.events,
+      surfaceEvents,
+      runEditorMutation,
+      resolveEventId,
+      ensureCalendarVisible,
+      askRecurrenceScope,
+      showError,
+      L,
+      sessionEmail,
+      sessionName,
+    ],
+  );
 
   const deleteEditorEvent = useCallback(() => {
     if (!editor || editor.mode !== "edit" || !operations) return;
@@ -1256,6 +1271,7 @@ export function useCalendarController({
         recurrenceEnds: engineForm?.recurrenceEnds ?? "never",
         recurrenceUntilDate: engineForm?.recurrenceUntilDate ?? startDate,
         recurrenceCount: engineForm?.recurrenceCount ?? 10,
+        meetingUrl: meetingUrlFromLinks(original?.links) || engineForm?.meetingUrl || "",
         ...(seriesRules?.length ? { customRecurrenceRules: seriesRules } : {}),
       };
       const seriesOverrides = resolveSeriesRecurrenceOverrides(original, masterKey, surfaceEvents);

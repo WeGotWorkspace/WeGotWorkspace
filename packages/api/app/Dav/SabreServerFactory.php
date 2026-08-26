@@ -10,11 +10,13 @@ use App\Dav\Server\AppCalDAVPrincipalCollection;
 use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
+use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
 use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
+use App\Services\Calendars\CalendarMeetLinkWriteHook;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
@@ -35,6 +37,7 @@ final class SabreServerFactory
         private WgwInstallConfig $install,
         private SearchIndexerService $searchIndexer,
         private FileNodeIndexService $fileNodeIndex,
+        private CalendarMeetLinkWriteHook $meetLinkHook,
     ) {}
 
     public function create(): DAV\Server
@@ -110,6 +113,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalDAV\Schedule\Plugin);
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
+            $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
         }
 
         if ($card) {

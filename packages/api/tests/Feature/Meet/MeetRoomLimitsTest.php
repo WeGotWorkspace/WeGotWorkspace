@@ -58,6 +58,8 @@ final class MeetRoomLimitsTest extends WgwDatabaseTestCase
 
     public function test_knock_alone_does_not_make_room_active(): void
     {
+        $this->reserveMeetRoom()->assertCreated();
+        $this->withoutBearer();
         $host = $this->guestJoin('host-peer', 'Host');
 
         $this->postJson($this->meetRoomPath('/participants'), [
