@@ -172,3 +172,17 @@ describe("TimeLine last-row cell export", () => {
     expect(timeLineTs).toContain('part="cell${lastRowPart}"');
   });
 });
+
+describe("TimeLine month header create + hover reveal", () => {
+  const timeLineCss = readCss("TimeLine.css");
+
+  it("does not rely on .cell:hover (viewport inherits pointer-events: none onto .cell)", () => {
+    expect(timeLineCss).not.toMatch(/\.cell:hover\s+\.day-create-button/);
+    expect(timeLineCss).toMatch(/\.cell:has\(:hover\)\s+\.day-create-button/);
+    expect(timeLineCss).toMatch(/\.cell:focus-within\s+\.day-create-button/);
+  });
+
+  it("lets the cell header receive hover so empty header space can reveal the +", () => {
+    expect(timeLineCss).toMatch(/\.cell-header,\s*\.cell-footer\s*\{[^}]*pointer-events:\s*auto/);
+  });
+});

@@ -48,9 +48,20 @@
   min-height: 0;
 }
 
+.cell:focus {
+  outline: var(--border);
+}
+
+.cell:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--time-line-focus-color, Highlight);
+}
+
 .cell-header,
 .cell-footer {
   flex-shrink: 0;
+  /* Viewport sets pointer-events: none (inherited). Headers must receive hover so the
+     create + can reveal; otherwise .cell:hover never matches in month view. */
+  pointer-events: auto;
 }
 
 /* Events anchor to this region (absolute; vertical uses top/bottom % of height). */
@@ -427,7 +438,58 @@
    numbers in year mini-months, so the mute must live here (same tree as the
    buttons). Tokens inherit from calendar-timeline-view's host. */
 .timeline-day-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
   color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
+}
+
+.timeline-day-header-button {
+  padding: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.day-create-button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  margin-inline-start: auto;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  /* Stay in the a11y tree and tab order; reveal on cell hover or keyboard focus. */
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* `.cell` inherits pointer-events: none from `.viewport`, so `.cell:hover` does not
+   fire. Reveal when a hit-target descendant is hovered (header, body, footer have
+   pointer-events: auto) or when keyboard focus is inside the cell. */
+.cell:has(:hover) .day-create-button,
+.cell:focus-within .day-create-button,
+.day-create-button:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.day-create-button:focus-visible {
+  outline: 2px solid var(--time-line-focus-color, Highlight);
+  outline-offset: -2px;
+}
+
+.day-create-button__icon {
+  width: 12px;
+  height: 12px;
 }
 
 .timeline-day-header.is-outside-month {

@@ -374,6 +374,13 @@
           "isSubscribed": {
             "type": "boolean"
           },
+          "groupSlug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create."
+          },
           "shareWith": {
             "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers.",
             "oneOf": [

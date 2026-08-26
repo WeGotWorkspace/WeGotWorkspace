@@ -149,7 +149,7 @@ final class CalendarRepository
 
         if ($this->shareInvites->isSharee($instance)) {
             $disallowed = array_values(array_filter(
-                ['description', 'timeZone', 'shareWith'],
+                ['description', 'timeZone', 'shareWith', 'groupSlug'],
                 static fn (string $key): bool => array_key_exists($key, $payload),
             ));
             if ($disallowed !== []) {
@@ -188,7 +188,12 @@ final class CalendarRepository
             $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
         }
 
+        if (array_key_exists('groupSlug', $payload)) {
+            $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
+        }
+
         $instance->refresh();
+        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         return $this->mapCalendar($instance, $groupSlug);
     }
@@ -463,6 +468,91 @@ final class CalendarRepository
     {
         return $groupSlug !== null
             && (string) $instance->uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug);
+    }
+
+    /**
+     * Move the owner instance between personal and group principals.
+     * Events stay on calendarid; sharee rows and shareWith grants are untouched.
+     */
+    private function transferOwner(
+        string $username,
+        CalendarInstance $instance,
+        ?string $currentGroupSlug,
+        mixed $requested,
+    ): void {
+        $this->assertOwnerTransferAllowed($instance, $currentGroupSlug);
+        $newGroupSlug = $this->normalizePatchGroupSlug($requested);
+        if ($newGroupSlug === $currentGroupSlug) {
+            return;
+        }
+
+        $principalUri = $this->principalUriForOwnerScope($username, $instance, $newGroupSlug);
+        $existing = $this->findCalendarInstance($principalUri, (string) $instance->uri);
+        if ($existing !== null && (int) $existing->id !== (int) $instance->id) {
+            throw new ApiHttpException(409, 'Calendar id already exists.', 'alreadyExists');
+        }
+
+        $instance->principaluri = $principalUri;
+        $instance->save();
+    }
+
+    private function assertOwnerTransferAllowed(CalendarInstance $instance, ?string $currentGroupSlug): void
+    {
+        if ($this->shareInvites->isSharee($instance)) {
+            throw new ApiHttpException(403, 'Sharees cannot change calendar owner.', 'forbidden');
+        }
+        if (! $this->shareInvites->canShare($instance, $currentGroupSlug)) {
+            throw new ApiHttpException(403, 'Only calendar administrators can change owner.', 'forbidden');
+        }
+        $this->subscriptionIdsByUser = [];
+        $this->subscriptionRowsByUri = null;
+        if ($this->subscriptionIdForInstance($instance, $currentGroupSlug) !== null) {
+            throw new ApiHttpException(403, 'Subscribed calendars cannot change owner.', 'forbidden');
+        }
+        if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
+            throw new ApiHttpException(403, 'The default calendar cannot change owner.', 'forbidden');
+        }
+        if ($this->isProvisionedGroupCalendar($instance, $currentGroupSlug)) {
+            throw new ApiHttpException(403, 'The group calendar cannot change owner.', 'forbidden');
+        }
+    }
+
+    private function normalizePatchGroupSlug(mixed $requested): ?string
+    {
+        if ($requested !== null && ! is_string($requested)) {
+            throw new ApiHttpException(400, 'groupSlug must be a string or null.', 'invalidProperties');
+        }
+
+        $groupSlug = is_string($requested) ? trim($requested) : null;
+
+        return $groupSlug === '' ? null : $groupSlug;
+    }
+
+    private function principalUriForOwnerScope(
+        string $username,
+        CalendarInstance $instance,
+        ?string $groupSlug,
+    ): string {
+        if ($groupSlug === null) {
+            return $this->principalUri($username);
+        }
+        if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
+            throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+        }
+        $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
+        $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
+        if ($group === null) {
+            throw new ApiHttpException(404, 'Group not found.', 'not_found');
+        }
+        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
+            (string) $group->uri,
+            (string) ($group->displayname ?? $groupSlug),
+        );
+        if ((string) $instance->uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
+            throw new ApiHttpException(409, 'Calendar id already exists.', 'alreadyExists');
+        }
+
+        return $principalUri;
     }
 
     private function allocateCalendarUri(string $principalUri, ?string $requestedId, string $name, ?string $groupSlug): string

@@ -44,6 +44,10 @@ export type CalendarUILabels = {
   deleteCalendar: string;
   deleteCalendarConfirmTitle: string;
   deleteCalendarConfirmDescription: string;
+  changeCalendarOwnerConfirmTitle: string;
+  changeCalendarOwnerConfirmToGroup: (groupName: string) => string;
+  changeCalendarOwnerConfirmToPersonal: string;
+  changeCalendarOwnerConfirm: string;
   subscribeCalendar: string;
   subscribeCalendarTitle: string;
   subscribeUrlLabel: string;
@@ -243,6 +247,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   deleteCalendarConfirmTitle: "Delete calendar?",
   deleteCalendarConfirmDescription:
     "Events on this calendar will be permanently deleted. This cannot be undone.",
+  changeCalendarOwnerConfirmTitle: "Change owner?",
+  changeCalendarOwnerConfirmToGroup: (groupName) =>
+    `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that group lose access unless they have a share.`,
+  changeCalendarOwnerConfirmToPersonal:
+    "This calendar will move to your personal calendars. Events and existing shares stay. Other group members lose access unless they have a share.",
+  changeCalendarOwnerConfirm: "Change owner",
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
   subscribeUrlLabel: "Calendar URL",
