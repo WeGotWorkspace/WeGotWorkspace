@@ -19,6 +19,7 @@ import {
   sessionEventInviteeStatus,
   type CalendarInvitee,
 } from "@/calendar-core/src/calendar-attendees";
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { CalendarAlarmsCard } from "@/calendar-core/src/calendar-alarms-card";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import {
@@ -63,6 +64,8 @@ export type CalendarEventDialogProps = {
   onSave: () => void;
   onDelete?: () => void;
   invitees?: CalendarInvitee[];
+  contactCards?: ContactCard[];
+  onRefreshContactCards?: () => void;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
   onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
@@ -158,6 +161,8 @@ export function CalendarEventDialog({
   onSave,
   onDelete,
   invitees = [],
+  contactCards = [],
+  onRefreshContactCards,
   canSubmitEmail = true,
   sessionEmail,
   onRsvp,
@@ -443,6 +448,8 @@ export function CalendarEventDialog({
             <CalendarInviteesCard
               attendees={form.attendees}
               invitees={invitees}
+              contactCards={contactCards}
+              onRefreshContactCards={onRefreshContactCards}
               labels={labels}
               busy={busy}
               readOnly={readOnly}

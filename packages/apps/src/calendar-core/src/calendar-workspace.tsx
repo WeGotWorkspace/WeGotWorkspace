@@ -35,6 +35,7 @@ import {
 import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
 import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
+import { useCalendarContactInvitees } from "@/calendar-core/src/use-calendar-contact-invitees";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
 import { CalendarImportDialog } from "@/calendar-core/src/calendar-import-dialog";
 import { ICS_FILE_ACCEPT, icsFileFromList } from "@/calendar-core/src/calendar-ics-import";
@@ -351,6 +352,7 @@ export function CalendarWorkspace({
     onError: handleInvitationError,
     onSchedulingConflict: handleSchedulingConflict,
   });
+  const { cards: contactCards, refreshCards } = useCalendarContactInvitees(session.user.username);
   const inviteeNotifications = useMemo(
     () =>
       filterInviteeNotifications(invitations.notifications, [
@@ -885,6 +887,8 @@ export function CalendarWorkspace({
           onSave={saveEditor}
           onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
           invitees={invitations.invitees}
+          contactCards={contactCards}
+          onRefreshContactCards={refreshCards}
           canSubmitEmail={invitations.canSubmitEmail}
           sessionEmail={sessionEmail}
           onRsvp={

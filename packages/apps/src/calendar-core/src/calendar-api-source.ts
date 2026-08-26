@@ -27,6 +27,7 @@ import {
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
 
 export type CalendarApiSource = {
   loadBootstrap: () => Promise<CalendarAppBootstrap>;
@@ -40,6 +41,29 @@ const MOCK_SHARE_INVITEES: CalendarInvitee[] = [
   { username: "bob", email: "bob@example.test", name: "Bob" },
   { username: "carol", email: "carol@example.test", name: "Carol" },
 ];
+
+export const MOCK_CALENDAR_CONTACT_CARDS: ContactCard[] = [
+  {
+    "@type": "Card",
+    version: "1.0",
+    id: "card-jane-host",
+    uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440210",
+    addressBookIds: { default: true },
+    name: { "@type": "Name", isOrdered: false, full: "Jane Host" },
+    emails: {
+      "550e8400-e29b-41d4-a716-446655440211": {
+        "@type": "EmailAddress",
+        address: "Jane@Host",
+        contexts: { work: true },
+      },
+      "550e8400-e29b-41d4-a716-446655440212": {
+        "@type": "EmailAddress",
+        address: "jane.home@host",
+        contexts: { home: true },
+      },
+    },
+  },
+] as unknown as ContactCard[];
 
 const FULL_RIGHTS = {
   mayReadFreeBusy: true,
