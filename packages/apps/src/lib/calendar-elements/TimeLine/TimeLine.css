@@ -292,7 +292,29 @@
 .event.event--dragging {
   cursor: grabbing;
   z-index: 600;
-  will-change: transform;
+}
+
+/* In-cell copy stays put for geometry; the visible card is the top-layer overlay. */
+.event.event--dragging:not(.event--drag-overlay) {
+  visibility: hidden;
+}
+
+/* Popover top layer so event-card `transform: scale()` compositor layers in later
+   month cells cannot paint over the proxy. UA popover styles (inset/margin/border)
+   must be reset or the layer shrink-wraps at the viewport center. */
+.drag-layer,
+.drag-layer:popover-open {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  pointer-events: none;
+  color: inherit;
 }
 
 /* Time axis in vertical flow: % on top/bottom resolve against .cell-main height (not margin-% which uses width). */
@@ -385,6 +407,26 @@
   max-height: var(--__event-height);
   height: var(--__event-height);
   bottom: auto;
+}
+
+/* After every flow/layout `.event` inset rule. Reset those insets first — a later
+   `inset-inline: auto` would wipe `left`. Client rects + translate live on the
+   top-layer popover so later month cells cannot cover the proxy. */
+.event.event--drag-overlay,
+:host([flow="vertical"]) .event.event--drag-overlay,
+:host([flow="horizontal"]) .event.event--drag-overlay,
+:host([flow="vertical"][layout="stagger"]) .event.event--drag-overlay,
+:host([flow="horizontal"][layout="timeline"]) .event.event--drag-overlay,
+:host([flow="horizontal"][layout="masonry"]) .event.event--drag-overlay,
+:host([flow="horizontal"][layout="stagger"]) .event.event--drag-overlay {
+  inset: auto;
+  top: var(--__overlay-top, 0);
+  left: var(--__overlay-left, 0);
+  width: var(--__overlay-width, auto);
+  height: var(--__overlay-height, auto);
+  min-height: 0;
+  max-height: none;
+  will-change: transform;
 }
 
 .event > * {
