@@ -158,7 +158,6 @@ describe("TimeLine month header create + hover reveal", () => {
   it("does not rely on .cell:hover (viewport inherits pointer-events: none onto .cell)", () => {
     expect(timeLineCss).not.toMatch(/\.cell:hover\s+\.day-create-button/);
     expect(timeLineCss).toMatch(/\.cell:has\(:hover\)\s+\.day-create-button/);
-    expect(timeLineCss).toMatch(/\.cell-header:hover\s+\.day-create-button/);
     expect(timeLineCss).toMatch(/\.cell:focus-within\s+\.day-create-button/);
   });
 

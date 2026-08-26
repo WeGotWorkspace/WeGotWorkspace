@@ -431,11 +431,9 @@
 }
 
 /* `.cell` inherits pointer-events: none from `.viewport`, so `.cell:hover` does not
-   fire. Reveal when a hit-target descendant is hovered (header, day-number, body, footer)
-   or when keyboard focus is inside the cell. */
+   fire. Reveal when a hit-target descendant is hovered (header, body, footer have
+   pointer-events: auto) or when keyboard focus is inside the cell. */
 .cell:has(:hover) .day-create-button,
-.cell-header:hover .day-create-button,
-.timeline-day-header:hover .day-create-button,
 .cell:focus-within .day-create-button,
 .day-create-button:focus-visible {
   opacity: 1;
