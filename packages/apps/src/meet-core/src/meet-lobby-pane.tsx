@@ -113,10 +113,7 @@ export function MeetLobbyPane({
 
   if (showInviteErrorScreen) {
     return (
-      <MeetLobbyStatusCard
-        title={meetLabels.inviteErrorTitle}
-        body={meetLabels.inviteErrorBody}
-      />
+      <MeetLobbyStatusCard title={meetLabels.inviteErrorTitle} body={meetLabels.inviteErrorBody} />
     );
   }
 

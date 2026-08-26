@@ -735,7 +735,9 @@ describe("meetingUrl ↔ links", () => {
     expect(formToDraft(form).links).toEqual({
       meet: { "@type": "Link", href, rel: "describedby" },
     });
-    expect(formToPatch({ ...form, meetingUrl: "" }, { ...timedEvent, links: { meet: { href } } })).toEqual({
+    expect(
+      formToPatch({ ...form, meetingUrl: "" }, { ...timedEvent, links: { meet: { href } } }),
+    ).toEqual({
       links: null,
     });
   });
