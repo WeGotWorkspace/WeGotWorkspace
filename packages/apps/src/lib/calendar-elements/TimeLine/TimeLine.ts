@@ -8,7 +8,7 @@ import {
 } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import componentStyle from "./TimeLine.css?inline";
-import { isTouchResizeHandleActive } from "../ResizeHandle/ResizeHandle";
+import { isTouchResizeHandleActive, shouldMountResizeHandles } from "../ResizeHandle/ResizeHandle";
 import { getEventColorStyles } from "../utils/EventColor";
 import type {
   TimeLineLayout,
@@ -22,6 +22,8 @@ import type {
   TimelineResizeEdge,
 } from "../types/TimeLine";
 import { computeStaggerLayout } from "./StaggerLayout";
+
+type DragOverlayBox = { left: number; top: number; width: number; height: number };
 
 type TimelineResizeSession = {
   pointerId: number;
@@ -236,8 +238,9 @@ export class TimeLine extends LitElement {
   accessor selectedEventKey = "";
 
   /**
-   * When false, event segments render without resize grabbers (month / compact
-   * surfaces). Day and week keep the default `true`.
+   * When false, event segments render without resize grabbers (compact month).
+   * Wide month, day, and week keep the default `true`; idle cards still omit the
+   * custom elements until the event is selected or hovered.
    */
   @property({ type: Boolean, attribute: "resize-handles" })
   accessor resizeHandles = true;
@@ -314,6 +317,10 @@ export class TimeLine extends LitElement {
   @state()
   private accessor moveDragOffset: { x: number; y: number } | null = null;
 
+  /** Client (viewport) boxes for the top-layer move/resize overlay (`position: fixed`). */
+  @state()
+  private accessor dragOverlayBoxes: DragOverlayBox[] = [];
+
   /** Snapped range shown while a drag-to-create gesture is in progress. */
   @state()
   private accessor createPreview: { start: number; end: number } | null = null;
@@ -324,6 +331,9 @@ export class TimeLine extends LitElement {
   private cellsResizeObserver: ResizeObserver | null = null;
 
   #resizeSession: TimelineResizeSession | null = null;
+
+  /** Fine-pointer hover: mount grabbers for this event only. `-1` = none. */
+  #hoveredResizeEventIndex = -1;
 
   #moveSession: TimelineMoveSession | null = null;
 
@@ -568,6 +578,7 @@ export class TimeLine extends LitElement {
     this.resizePreviewByIndex = null;
     this.draggingEventIndex = null;
     this.moveDragOffset = null;
+    this.dragOverlayBoxes = [];
     this.createPreview = null;
     this.cellsResizeObserver?.disconnect();
     this.cellsResizeObserver = null;
@@ -887,6 +898,8 @@ export class TimeLine extends LitElement {
     this.#detachResizeWindowListeners();
     this.#detachGestureTouchMoveBlocker();
     this.#resizeSession = null;
+    this.draggingEventIndex = null;
+    this.dragOverlayBoxes = [];
     this.#releasePointerCaptureSafe(session.handle, session.pointerId);
     this.#emitGestureSignal("end", "resize", session.gestureId);
 
@@ -988,6 +1001,7 @@ export class TimeLine extends LitElement {
     this.#moveSession = null;
     this.#releasePointerCaptureSafe(session.captureTarget, session.pointerId);
     this.draggingEventIndex = null;
+    this.dragOverlayBoxes = [];
     if (session.dragging) this.#emitGestureSignal("end", "move", session.gestureId);
 
     if (!cancelled && session.dragging) {
@@ -1141,6 +1155,33 @@ export class TimeLine extends LitElement {
     return position === "start" || position === "end" ? position : null;
   }
 
+  #setHoveredResizeEventIndex(index: number) {
+    if (this.#hoveredResizeEventIndex === index) return;
+    this.#hoveredResizeEventIndex = index;
+    this.requestUpdate();
+  }
+
+  #onEventPointerEnter = (e: PointerEvent) => {
+    if (!this.resizeHandles) return;
+    if (e.pointerType === "touch") return;
+    const eventEl = e.currentTarget;
+    if (!(eventEl instanceof HTMLElement)) return;
+    const index = Number(eventEl.dataset.index);
+    if (!Number.isFinite(index) || index < 0 || index >= this.events.length) return;
+    this.#setHoveredResizeEventIndex(index);
+  };
+
+  #onEventPointerLeave = (e: PointerEvent) => {
+    if (this.#resizeSession) return;
+    const eventEl = e.currentTarget;
+    if (!(eventEl instanceof HTMLElement)) return;
+    const related = e.relatedTarget;
+    if (related instanceof Node && (related === eventEl || eventEl.contains(related))) return;
+    const index = Number(eventEl.dataset.index);
+    if (this.#hoveredResizeEventIndex !== index) return;
+    this.#setHoveredResizeEventIndex(-1);
+  };
+
   #onEventBodyPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     if (this.#resizeSession || this.#moveSession || this.#pendingTouchGesture) return;
@@ -1216,9 +1257,88 @@ export class TimeLine extends LitElement {
   #beginMoveDragVisual(index: number) {
     const ev = this.events[index];
     if (!ev) return;
-    this.draggingEventIndex = index;
+    this.#liftEventToDragOverlay(index);
     this.moveDragOffset = { x: 0, y: 0 };
     this.#beginSingleEventResizePreview(index, ev.start, ev.end);
+  }
+
+  /** Hide the in-cell copy and paint a top-layer proxy so later month cells cannot cover it. */
+  #liftEventToDragOverlay(index: number) {
+    this.dragOverlayBoxes = this.#measureDragOverlayBoxes(index);
+    this.draggingEventIndex = index;
+  }
+
+  #overlayBoxesEqual(a: DragOverlayBox[], b: DragOverlayBox[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((box, i) => {
+      const other = b[i];
+      return (
+        !!other &&
+        box.left === other.left &&
+        box.top === other.top &&
+        box.width === other.width &&
+        box.height === other.height
+      );
+    });
+  }
+
+  /** Keep the resize proxy sized to the live preview (hidden in-cell copies still layout). */
+  #syncResizeOverlayBoxes() {
+    const index = this.#resizeSession?.eventIndex;
+    if (index == null) return;
+    const boxes = this.#measureDragOverlayBoxes(index);
+    if (this.#overlayBoxesEqual(this.dragOverlayBoxes, boxes)) return;
+    this.dragOverlayBoxes = boxes;
+  }
+
+  #measureDragOverlayBoxes(index: number) {
+    return [...this.renderRoot.querySelectorAll(`.event[data-index="${index}"]`)].flatMap(
+      (node) => {
+        if (!(node instanceof HTMLElement) || node.classList.contains("event--drag-overlay")) {
+          return [];
+        }
+        const rect = node.getBoundingClientRect();
+        return [
+          {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+          },
+        ];
+      },
+    );
+  }
+
+  #dragOverlayFragment() {
+    const index = this.draggingEventIndex;
+    const boxes = this.dragOverlayBoxes;
+    if (index == null || boxes.length === 0) return nothing;
+    const templateEv = this.events[index];
+    if (!templateEv) return nothing;
+    const preview = this.resizePreviewByIndex?.get(index);
+    const offset = this.moveDragOffset;
+    const transform = offset ? `transform:translate(${offset.x}px, ${offset.y}px);` : "";
+    return html`
+      <div class="drag-layer" part="drag-layer" popover="manual">
+        ${boxes.map(
+          (box) => html`
+            <div
+              class="event event--dragging event--drag-overlay"
+              style="
+                --__overlay-left:${box.left}px;
+                --__overlay-top:${box.top}px;
+                --__overlay-width:${box.width}px;
+                --__overlay-height:${box.height}px;
+                ${transform}
+              "
+            >
+              ${this.renderEventTemplate(templateEv, preview)}
+            </div>
+          `,
+        )}
+      </div>
+    `;
   }
 
   #activateMoveDrag(session: TimelineMoveSession) {
@@ -1267,6 +1387,7 @@ export class TimeLine extends LitElement {
       gestureId,
     };
 
+    this.#liftEventToDragOverlay(index);
     this.#beginSingleEventResizePreview(index, ev.start, ev.end);
     this.#attachResizeWindowListeners();
     // Resize handles are explicit affordances, so touch activates immediately — but native
@@ -1394,8 +1515,23 @@ export class TimeLine extends LitElement {
     }
   }
 
+  #syncDragOverlayPopover() {
+    const layer = this.renderRoot?.querySelector(".drag-layer");
+    if (!(layer instanceof HTMLElement) || typeof layer.showPopover !== "function") return;
+    if (layer.matches(":popover-open")) return;
+    try {
+      layer.showPopover();
+    } catch {
+      // Disconnected or already closing — the next render retries.
+    }
+  }
+
   protected updated(changed: PropertyValues) {
     super.updated(changed);
+    this.#syncDragOverlayPopover();
+    if (this.#resizeSession && changed.has("resizePreviewByIndex")) {
+      this.#syncResizeOverlayBoxes();
+    }
     if (!this.laneClip()) {
       this.cellsResizeObserver?.disconnect();
       this.cellsResizeObserver = null;
@@ -1794,16 +1930,21 @@ export class TimeLine extends LitElement {
     const { ev, index, segIndex, segStart, segEnd, rowSpan, showResizeStart, showResizeEnd } = seg;
     const dragging = this.draggingEventIndex === index;
     const selected = this.selectedEventKey !== "" && String(ev.key ?? "") === this.selectedEventKey;
+    const mountHandles = shouldMountResizeHandles({
+      resizeHandlesEnabled: this.resizeHandles,
+      eventKey: ev.key,
+      selectedEventKey: this.selectedEventKey,
+      eventIndex: index,
+      hoveredEventIndex: this.#hoveredResizeEventIndex,
+      resizingEventIndex: this.#resizeSession?.eventIndex ?? -1,
+    });
     const draggingClass = dragging ? " event--dragging" : "";
     const selectedClass = selected ? " event--selected" : "";
     /* Numeric inline z-index on the positioned wrapper beats stylesheet stagger
        `calc(2 + indent)` (that :host+layout rule is more specific than `.event--selected`).
-       400 stays below create-preview 500 / dragging 600 / markers 700. */
-    const stackStyle = dragging
-      ? "z-index:600;"
-      : selected
-        ? "z-index:400;--time-line-event-selected-boost:400;"
-        : "";
+       400 stays below create-preview 500 / dragging 600 / markers 700.
+       Dragging does not need an in-cell z-index: the visible proxy is the top-layer overlay. */
+    const stackStyle = selected ? "z-index:400;--time-line-event-selected-boost:400;" : "";
     // Template contract: `templateEv` carries the committed range; the live gesture range (if
     // any) travels separately so templates can render live-updating labels.
     const preview = this.resizePreviewByIndex?.get(index);
@@ -1822,13 +1963,8 @@ export class TimeLine extends LitElement {
             vl?.indentByEventIndex?.[index] ?? 0
           };`
         : "";
-    // Free-follow: the moving card keeps its pre-drag geometry and translates 1:1 with the raw
-    // pointer delta (grid-view drag feel); the snapped position renders as `.move-ghost`.
-    const dragOffset = this.draggingEventIndex === index ? this.moveDragOffset : null;
-    const dragTransform = dragOffset
-      ? `transform:translate(${dragOffset.x}px, ${dragOffset.y}px);`
-      : "";
-
+    // Free-follow lives on the top-layer overlay. The in-cell copy stays put (hidden) so a
+    // translated compositor layer cannot slip under later month grid items.
     return html`
       <div
         class="event${draggingClass}${selectedClass}"
@@ -1837,17 +1973,23 @@ export class TimeLine extends LitElement {
         data-segment=${segIndex}
         ?data-selected=${selected}
         @pointerdown=${this.#onEventBodyPointerDown}
+        @pointerenter=${this.#onEventPointerEnter}
+        @pointerleave=${this.#onEventPointerLeave}
         style="
         --__lane:${lane};
-        ${staggerVars}${stackStyle}${dragTransform}
+        ${staggerVars}${stackStyle}
         --__start:${this.#axisPct(segStart, w0, w1)}%;
         --__end:${endInset};
         ${this.#eventAccentVars(templateEv)}
       "
       >
-        ${showResizeStart ? this.#resizeHandleFragment("start", "Resize start", ev.key) : nothing}
+        ${showResizeStart && mountHandles
+          ? this.#resizeHandleFragment("start", "Resize start", ev.key)
+          : nothing}
         ${this.renderEventTemplate(templateEv, preview)}
-        ${showResizeEnd ? this.#resizeHandleFragment("end", "Resize end", ev.key) : nothing}
+        ${showResizeEnd && mountHandles
+          ? this.#resizeHandleFragment("end", "Resize end", ev.key)
+          : nothing}
       </div>
     `;
   }
@@ -2130,6 +2272,7 @@ export class TimeLine extends LitElement {
             );
           })}
         </div>
+        ${this.#dragOverlayFragment()}
       </div>
     `;
   }

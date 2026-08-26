@@ -1697,7 +1697,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           : this.#renderTimedCreatePreview}
         .heldCreatePreview=${this.#heldCreatePreviewFor(variant)}
         .cellAriaLabel=${this.#cellCreateAriaLabel}
-        .resizeHandles=${this.mode !== "month"}
+        .resizeHandles=${!(this.mode === "month" && this.forceCompact)}
         .headerTemplate=${this.mode === "month"
           ? this.#monthDayHeaderTemplate
           : this.#dayHeaderTemplate}

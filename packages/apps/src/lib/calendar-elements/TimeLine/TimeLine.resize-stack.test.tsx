@@ -34,7 +34,7 @@ function pointerOn(
   );
 }
 
-describe("TimeLine move click-to-select", () => {
+describe("TimeLine resize overlay stacking", () => {
   beforeEach(() => {
     mockDomApis();
   });
@@ -44,71 +44,12 @@ describe("TimeLine move click-to-select", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not commit a move for a click with sub-threshold travel", async () => {
-    const el = document.createElement("time-line") as TimeLine;
-    el.cells = 1;
-    el.max = 1440;
-    el.step = 15;
-    el.flow = "vertical";
-    el.events = [{ start: 570, end: 600, key: "standup", color: "#6366f1" }];
-    document.body.append(el);
-    await el.updateComplete;
-
-    const moved = vi.fn();
-    el.addEventListener("timeline-event-move", moved);
-
-    const eventEl = el.shadowRoot?.querySelector(".event");
-    expect(eventEl).toBeInstanceOf(HTMLElement);
-    if (!(eventEl instanceof HTMLElement)) return;
-
-    pointerOn(eventEl, "pointerdown", 40, 80);
-    pointerOn(window, "pointermove", 41, 81);
-    pointerOn(window, "pointerup", 41, 81);
-
-    expect(moved).not.toHaveBeenCalled();
-    expect(el.shadowRoot?.querySelector(".event--dragging")).toBeNull();
-  });
-
-  it("commits a move once travel passes the drag threshold", async () => {
-    const el = document.createElement("time-line") as TimeLine;
-    el.cells = 1;
-    el.max = 1440;
-    el.step = 15;
-    el.flow = "vertical";
-    el.events = [{ start: 570, end: 600, key: "standup", color: "#6366f1" }];
-    document.body.append(el);
-    await el.updateComplete;
-
-    const moved = vi.fn();
-    el.addEventListener("timeline-event-move", moved);
-
-    const eventEl = el.shadowRoot?.querySelector(".event");
-    expect(eventEl).toBeInstanceOf(HTMLElement);
-    if (!(eventEl instanceof HTMLElement)) return;
-
-    Object.defineProperty(el, "getBoundingClientRect", {
-      value: () => ({ left: 0, top: 0, width: 200, height: 1440, right: 200, bottom: 1440 }),
-    });
-    const main = el.shadowRoot?.querySelector(".cell-main");
-    if (main instanceof HTMLElement) {
-      Object.defineProperty(main, "getBoundingClientRect", {
-        value: () => ({ left: 0, top: 0, width: 200, height: 1440, right: 200, bottom: 1440 }),
-      });
-    }
-
-    pointerOn(eventEl, "pointerdown", 40, 570);
-    pointerOn(window, "pointermove", 40, 650);
-    pointerOn(window, "pointerup", 40, 650);
-
-    expect(moved).toHaveBeenCalled();
-  });
-
-  it("lifts the moved card into the top-layer overlay", async () => {
+  it("lifts the resized card into the top-layer overlay", async () => {
     const el = document.createElement("time-line") as TimeLine;
     el.cells = 7;
     el.columns = 7;
     el.max = 1440;
-    el.step = 15;
+    el.step = 1440;
     el.flow = "horizontal";
     el.layout = "masonry";
     el.height = "auto";
@@ -134,15 +75,29 @@ describe("TimeLine move click-to-select", () => {
     Object.defineProperty(el, "getBoundingClientRect", {
       value: () => ({ left: 0, top: 0, width: 700, height: 200, right: 700, bottom: 200 }),
     });
-    for (const main of el.shadowRoot?.querySelectorAll(".cell-main") ?? []) {
+    for (const [i, main] of [...(el.shadowRoot?.querySelectorAll(".cell-main") ?? [])].entries()) {
       if (!(main instanceof HTMLElement)) continue;
       Object.defineProperty(main, "getBoundingClientRect", {
-        value: () => ({ left: 0, top: 0, width: 100, height: 200, right: 100, bottom: 200 }),
+        value: () => ({
+          left: i * 100,
+          top: 0,
+          width: 100,
+          height: 200,
+          right: i * 100 + 100,
+          bottom: 200,
+        }),
       });
     }
 
-    pointerOn(early, "pointerdown", 20, 20);
-    pointerOn(window, "pointermove", 80, 20);
+    pointerOn(early, "pointerenter", 80, 20);
+    await el.updateComplete;
+
+    const handle = early.querySelector('resize-handle[position="end"]');
+    expect(handle).toBeInstanceOf(HTMLElement);
+    if (!(handle instanceof HTMLElement)) return;
+
+    pointerOn(handle, "pointerdown", 90, 20);
+    pointerOn(window, "pointermove", 150, 20);
     await el.updateComplete;
 
     expect(early.classList.contains("event--dragging")).toBe(true);
