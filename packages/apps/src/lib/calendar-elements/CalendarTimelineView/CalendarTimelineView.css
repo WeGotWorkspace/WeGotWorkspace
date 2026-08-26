@@ -509,11 +509,31 @@ time-line::part(day-header-button) {
   appearance: none;
   border: 0;
   margin: 0;
+  padding: 0;
   background: transparent;
   cursor: pointer;
   font: inherit;
-  width: 100%;
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
   text-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Chrome (size, reveal, pointer-events) lives in TimeLine.css on `.day-create-button`.
+   These parts only add the calendar ghost hover / focus ring. */
+time-line::part(day-create-button):hover {
+  background-color: var(
+    --_lc-grid-ghost-color,
+    light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%))
+  );
+}
+
+time-line::part(day-create-button):focus-visible {
+  outline: 2px solid light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
+  outline-offset: -2px;
 }
 
 time-line::part(day-header-button):hover {
@@ -534,9 +554,13 @@ time-line::part(day-header-button):focus-visible {
 time-line::part(day-header) {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
   min-height: 24px;
-  padding: 3px 6px;
+  padding-block: 3px;
+  padding-inline: 6px;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
