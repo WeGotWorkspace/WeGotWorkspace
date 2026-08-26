@@ -31,6 +31,7 @@ final class CalendarEventRepository
         private readonly JmapCalendarEventStateService $eventStates,
         private readonly CalendarRepository $calendars,
         private readonly CalendarSchedulingService $scheduling,
+        private readonly CalendarMeetLinkWriteHook $meetLinkHook,
     ) {}
 
     /**
@@ -590,6 +591,12 @@ final class CalendarEventRepository
             $ics = $this->mapper->toIcs($eventPayload);
 
             $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+            $this->meetLinkHook->afterPersist(
+                $ics,
+                null,
+                CalendarMeetOwnerPrincipal::fromInstance($instance),
+                CalendarMeetOwnerPrincipal::actorMarker($username),
+            );
             $this->scheduling->scheduleAfterWrite($username, null, $ics);
             $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
             $this->searchIndexSync->sync(
@@ -940,6 +947,12 @@ final class CalendarEventRepository
                 $this->calBackend()->updateCalendarObject($targetBackendId, $eventUri, $ics);
             }
             $this->scheduling->scheduleAfterWrite($username, $raw, $ics);
+            $this->meetLinkHook->afterPersist(
+                $ics,
+                $raw,
+                CalendarMeetOwnerPrincipal::fromInstance($targetInstance),
+                CalendarMeetOwnerPrincipal::actorMarker($username),
+            );
             $davPath = $this->calDavPath($username, (string) $targetInstance->uri, $eventUri);
             $this->searchIndexSync->sync(
                 'calendars',

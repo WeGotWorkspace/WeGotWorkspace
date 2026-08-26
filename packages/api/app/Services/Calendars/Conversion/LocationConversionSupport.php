@@ -8,10 +8,36 @@ use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
 
 /**
- * LOCATION, GEO, URL, ATTACH ↔ JMAP locations, links, attachments.
+ * LOCATION, GEO, URL / CONFERENCE / X-GOOGLE-CONFERENCE, ATTACH ↔ JMAP locations, links, attachments.
+ *
+ * Write-set from `links`: URL + RFC 7986 CONFERENCE + X-GOOGLE-CONFERENCE.
+ * Read also maps X-MICROSOFT-SKYPETEAMSMEETINGURL. That Microsoft property is never written.
  */
 final class LocationConversionSupport
 {
+    public const CONFERENCE = 'CONFERENCE';
+
+    public const X_GOOGLE_CONFERENCE = 'X-GOOGLE-CONFERENCE';
+
+    public const X_MICROSOFT_SKYPE_TEAMS_MEETING_URL = 'X-MICROSOFT-SKYPETEAMSMEETINGURL';
+
+    /** Read priority: CONFERENCE, URL, X-GOOGLE-CONFERENCE, X-MICROSOFT-SKYPETEAMSMEETINGURL. */
+    private const CONFERENCE_READ_PROPERTIES = [
+        self::CONFERENCE,
+        'URL',
+        self::X_GOOGLE_CONFERENCE,
+        self::X_MICROSOFT_SKYPE_TEAMS_MEETING_URL,
+    ];
+
+    /** @var list<string> */
+    public const CONFERENCE_WRITE_SKIP_ICS_PROPS = [
+        self::CONFERENCE,
+        self::X_GOOGLE_CONFERENCE,
+        self::X_MICROSOFT_SKYPE_TEAMS_MEETING_URL,
+    ];
+
+    public const CONFERENCE_LABEL = 'WeGotWorkspace Meet';
+
     /**
      * @param  array<string, mixed>  $event
      */
@@ -44,18 +70,16 @@ final class LocationConversionSupport
             }
         }
 
-        if (isset($vevent->URL)) {
-            $href = trim((string) $vevent->URL->getValue());
-            if ($href !== '') {
-                $link = [
-                    '@type' => 'Link',
-                    'href' => $href,
-                ];
-                if (isset($vevent->URL['VALUE']) && strtoupper((string) $vevent->URL['VALUE']) === 'URI') {
-                    $link['contentType'] = 'text/uri-list';
-                }
-                $event['links'] = ['link1' => $link];
+        $href = self::conferenceHrefFromVEvent($vevent);
+        if ($href !== null) {
+            $link = [
+                '@type' => 'Link',
+                'href' => $href,
+            ];
+            if (isset($vevent->URL['VALUE']) && strtoupper((string) $vevent->URL['VALUE']) === 'URI') {
+                $link['contentType'] = 'text/uri-list';
             }
+            $event['links'] = ['link1' => $link];
         }
 
         $attachments = [];
@@ -128,19 +152,17 @@ final class LocationConversionSupport
             }
         }
 
-        $links = $event['links'] ?? null;
-        if (is_array($links) && ! isset($vevent->URL)) {
-            foreach ($links as $link) {
-                if (! is_array($link)) {
-                    continue;
-                }
-                $href = isset($link['href']) && is_string($link['href']) ? trim($link['href']) : '';
-                if ($href !== '') {
-                    $vevent->add('URL', $href);
-
-                    break;
-                }
+        $href = self::firstLinkHref($event);
+        if ($href !== '') {
+            if (! isset($vevent->URL)) {
+                $vevent->add('URL', $href);
             }
+            $vevent->add(self::CONFERENCE, $href, [
+                'VALUE' => 'URI',
+                'FEATURE' => 'VIDEO',
+                'LABEL' => self::CONFERENCE_LABEL,
+            ]);
+            $vevent->add(self::X_GOOGLE_CONFERENCE, $href);
         }
 
         $attachments = $event['attachments'] ?? null;
@@ -162,6 +184,50 @@ final class LocationConversionSupport
                 $vevent->add('ATTACH', $href, $params);
             }
         }
+    }
+
+    public static function conferenceHrefFromVEvent(VEvent $vevent): ?string
+    {
+        foreach (self::CONFERENCE_READ_PROPERTIES as $name) {
+            foreach ($vevent->select($name) as $property) {
+                if (! $property instanceof Property) {
+                    continue;
+                }
+                $href = trim((string) $property->getValue());
+                if ($href !== '') {
+                    return $href;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    public static function firstLinkHref(array $event): string
+    {
+        $links = $event['links'] ?? null;
+        if (! is_array($links)) {
+            return '';
+        }
+        foreach ($links as $link) {
+            if (! is_array($link)) {
+                continue;
+            }
+            $href = isset($link['href']) && is_string($link['href']) ? trim($link['href']) : '';
+            if ($href !== '') {
+                return $href;
+            }
+        }
+
+        return '';
+    }
+
+    public static function isConferenceIcsProp(string $name): bool
+    {
+        return in_array(strtoupper($name), self::CONFERENCE_WRITE_SKIP_ICS_PROPS, true);
     }
 
     private static function coordinatesFromGeoProperty(Property $geo): ?string

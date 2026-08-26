@@ -153,7 +153,7 @@ final class CalendarConversionSupport
             $event['uid'] = 'urn:uuid:'.Str::uuid()->toString();
         }
 
-        foreach (['locations', 'participants', 'alerts'] as $mapKey) {
+        foreach (['locations', 'participants', 'alerts', 'links'] as $mapKey) {
             if (! isset($event[$mapKey]) || ! is_array($event[$mapKey])) {
                 continue;
             }
@@ -167,6 +167,7 @@ final class CalendarConversionSupport
                         'locations' => 'Location',
                         'participants' => 'Participant',
                         'alerts' => 'Alert',
+                        'links' => 'Link',
                         default => null,
                     };
                 }
