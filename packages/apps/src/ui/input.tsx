@@ -8,7 +8,7 @@ import "./input.css";
 export type InputSize = "sm" | "md";
 export type InputVariant = "default" | "search";
 
-export type InputProps = React.ComponentProps<"input"> & {
+export type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
   size?: InputSize;
   variant?: InputVariant;
   "data-idle-label"?: string;
