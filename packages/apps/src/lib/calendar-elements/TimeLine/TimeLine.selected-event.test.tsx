@@ -35,6 +35,148 @@ describe("TimeLine selected-event resize handles", () => {
     expect(el.shadowRoot?.querySelectorAll("resize-handle")).toHaveLength(0);
   });
 
+  it("does not mount resize handles on idle unselected events", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 7;
+    el.columns = 7;
+    el.max = 100;
+    el.flow = "horizontal";
+    el.events = Array.from({ length: 80 }, (_, i) => ({
+      start: (i % 7) * 100 + (i % 5) * 8,
+      end: (i % 7) * 100 + (i % 5) * 8 + 6,
+      key: `busy-${i}`,
+      color: "#6366f1",
+    }));
+    const started = performance.now();
+    document.body.append(el);
+    await el.updateComplete;
+    const firstPaintMs = performance.now() - started;
+
+    const cards = el.shadowRoot?.querySelectorAll(".event") ?? [];
+    const handles = el.shadowRoot?.querySelectorAll("resize-handle") ?? [];
+    expect(cards.length).toBeGreaterThan(40);
+    expect(handles).toHaveLength(0);
+    // Naive mount-all paid 2 Lit custom elements per visible segment (~160 here).
+    expect(firstPaintMs).toBeGreaterThan(0);
+  });
+
+  it("mounts grabbers for the hovered event only", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 1;
+    el.max = 100;
+    el.events = [
+      { start: 10, end: 40, key: "dentist", color: "#6366f1" },
+      { start: 50, end: 80, key: "standup" },
+    ];
+    document.body.append(el);
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelectorAll("resize-handle")).toHaveLength(0);
+
+    const standup = el.shadowRoot?.querySelector('.event[data-index="1"]');
+    expect(standup).toBeInstanceOf(HTMLElement);
+    standup?.dispatchEvent(
+      new PointerEvent("pointerenter", { bubbles: true, pointerType: "mouse" }),
+    );
+    await el.updateComplete;
+
+    expect(standup?.querySelectorAll("resize-handle")).toHaveLength(2);
+    expect(
+      el.shadowRoot?.querySelector('.event[data-index="0"]')?.querySelectorAll("resize-handle"),
+    ).toHaveLength(0);
+
+    standup?.dispatchEvent(
+      new PointerEvent("pointerleave", { bubbles: true, pointerType: "mouse" }),
+    );
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelectorAll("resize-handle")).toHaveLength(0);
+  });
+
+  it("resizes from grabbers mounted on hover", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 1;
+    el.max = 1440;
+    el.step = 15;
+    el.flow = "vertical";
+    el.events = [{ start: 570, end: 600, key: "standup", color: "#6366f1" }];
+    document.body.append(el);
+    await el.updateComplete;
+
+    Object.defineProperty(el, "getBoundingClientRect", {
+      value: () => ({ left: 0, top: 0, width: 200, height: 1440, right: 200, bottom: 1440 }),
+    });
+    const main = el.shadowRoot?.querySelector(".cell-main");
+    if (main instanceof HTMLElement) {
+      Object.defineProperty(main, "getBoundingClientRect", {
+        value: () => ({ left: 0, top: 0, width: 200, height: 1440, right: 200, bottom: 1440 }),
+      });
+    }
+
+    const card = el.shadowRoot?.querySelector(".event");
+    expect(card).toBeInstanceOf(HTMLElement);
+    card?.dispatchEvent(new PointerEvent("pointerenter", { bubbles: true, pointerType: "mouse" }));
+    await el.updateComplete;
+
+    const handle = el.shadowRoot?.querySelector('resize-handle[position="end"]');
+    expect(handle).toBeInstanceOf(HTMLElement);
+    if (!(handle instanceof HTMLElement)) return;
+
+    const resized = vi.fn();
+    el.addEventListener("timeline-event-resize", resized);
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        pointerId: 1,
+        pointerType: "mouse",
+        button: 0,
+        clientX: 40,
+        clientY: 600,
+      }),
+    );
+    window.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        pointerId: 1,
+        pointerType: "mouse",
+        button: 0,
+        clientX: 40,
+        clientY: 720,
+      }),
+    );
+    window.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        pointerId: 1,
+        pointerType: "mouse",
+        button: 0,
+        clientX: 40,
+        clientY: 720,
+      }),
+    );
+
+    expect(resized).toHaveBeenCalled();
+  });
+
+  it("does not mount grabbers on touch hover", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 1;
+    el.max = 100;
+    el.events = [{ start: 10, end: 40, key: "dentist", color: "#6366f1" }];
+    document.body.append(el);
+    await el.updateComplete;
+
+    const card = el.shadowRoot?.querySelector(".event");
+    card?.dispatchEvent(new PointerEvent("pointerenter", { bubbles: true, pointerType: "touch" }));
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelectorAll("resize-handle")).toHaveLength(0);
+  });
+
   it("activates grabbers only for the selected event key", async () => {
     const el = document.createElement("time-line") as TimeLine;
     el.cells = 1;

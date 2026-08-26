@@ -9,6 +9,7 @@ const css = readFileSync(
 );
 
 const COMPACT_QUERY = "@container lc-timeline-month (max-width: 504px)";
+const WIDE_MONTH_HOST = ':host([mode="month"])';
 
 function extractBalancedBlock(source: string, prelude: string): string {
   const start = source.indexOf(prelude);
@@ -130,5 +131,33 @@ describe("CalendarTimelineView compact-month CSS", () => {
     const forceCompactBlock = extractForceCompactCss(css);
     expectCompactMonthLayout(queryBlock);
     expectCompactMonthLayout(forceCompactBlock);
+  });
+});
+
+describe("CalendarTimelineView wide-month density CSS", () => {
+  it("uses slimmer interactive cards than the 32px timed/all-day lane", () => {
+    const block = extractBalancedBlock(css, WIDE_MONTH_HOST);
+    for (const name of ["--event-height", "--_lc-event-height", "--time-line-event-min-size"]) {
+      const value = tokenPx(block, name);
+      expect(value, name).toBe(24);
+    }
+    expect(block).toMatch(/--_lc-event-card-heading-padding-block:\s*1px/);
+    expect(block).toMatch(/--_lc-event-card-heading-align-items:\s*center/);
+    expect(block).toMatch(/--_lc-event-card-heading-line-height:\s*1/);
+    expect(block).not.toMatch(/--_lc-event-card-pointer-events:\s*none/);
+    expect(block).not.toMatch(/--_lc-event-card-accent-bar-display:\s*none/);
+    expect(block).not.toMatch(/--_lc-event-card-recurring-icon-display:\s*none/);
+    expect(css).toMatch(/:host\(\[mode="month"\]\)\s*\{/);
+    expect(css).not.toMatch(
+      /@media\s*\(pointer:\s*fine\)\s*\{[\s\S]*?:host\(\[mode="month"\]\)\s*\{[\s\S]*?--event-height:\s*22px/,
+    );
+  });
+
+  it("does not change week/day timed lane floors", () => {
+    const timedBlock = extractBalancedBlock(css, "time-line.timeline-timed");
+    expect(timedBlock).toMatch(/--time-line-event-min-size:\s*var\(\s*--event-height,\s*32px\s*\)/);
+    expect(css).toMatch(
+      /@media\s*\(pointer:\s*fine\)\s*\{[\s\S]*?time-line\.timeline-timed\s*\{[\s\S]*?--time-line-event-min-size:\s*var\(\s*--event-height,\s*28px\s*\)/,
+    );
   });
 });

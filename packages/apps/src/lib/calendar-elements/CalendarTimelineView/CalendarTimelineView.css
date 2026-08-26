@@ -699,6 +699,25 @@ time-line::part(overflow-dot) {
    exposed via aria-pressed/part=event-card-selected, and keyboard users see the
    :focus-visible ring. */
 
+/* ---- Wide month: slimmer interactive cards ----------------------------------------------
+   Timed/all-day lanes default to 32px, so a large month cell only fits ~3 titles before
+   TimeLine clips to “+N”. Prefer a tighter lane over growing the cell. Compact (≤504px /
+   force-compact) still overrides to 20px view-only bars below. Cards stay clickable and
+   keep the accent bar / recurring icon. Heading tokens fit a 12px title at this height
+   (EventCard’s compact heading tier is max-height 31px). 24px is the lane floor
+   (WCAG 2.5.8 target size) on every pointer. */
+/* Tokens live on the host so compact `time-line.timeline-main` rules can
+   override them (a host+descendant selector would win that specificity fight). */
+:host([mode="month"]) {
+  --event-height: 24px;
+  --_lc-event-height: 24px;
+  --time-line-event-min-size: 24px;
+  --_lc-event-card-heading-padding-block: 1px;
+  --_lc-event-card-heading-align-items: center;
+  --_lc-event-card-heading-line-height: 1;
+  --_lc-time-label-font-size: 0.625rem;
+}
+
 /* ---- Compact month: slim view-only event bars -------------------------------------------
    Applied behind the lc-timeline-month size container query for standalone month views that
    shrink (504px = 7 x 72px minimum cells; the container is .timeline-layout--month above —
