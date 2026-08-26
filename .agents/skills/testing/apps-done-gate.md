@@ -27,7 +27,7 @@ This runs, in order:
 1. **`typecheck`** — `tsc -p tsconfig.typecheck.json`
 2. **`test:contract`** — UI ↔ OpenAPI adapter + type parity (`src/lib/api/contract/`)
 3. **Vitest unit** — pure logic (`*.test.ts`, Node)
-4. **Vitest jsdom** — hooks and RTL (`*.test.tsx`), sequential per-package round-robin shards (`scripts/run-jsdom.mjs`; `JSDOM_SHARDS`, default 16) so each worker process exits before the heap accumulates
+4. **Vitest jsdom** — hooks and RTL (`*.test.tsx`), sequential rotate-per-package shards (`scripts/run-jsdom.mjs`; `JSDOM_SHARDS`, default 16) so each worker process exits before the heap accumulates
 5. **Storybook Vitest smoke** — stories tagged `vitest-ci` (browser + `play` + a11y `error`)
 6. **Storybook coverage** — `check:storybook-coverage` (no new export gaps)
 
@@ -50,7 +50,7 @@ pnpm run ci:quality
 | **Typecheck** | TS contracts compile; OpenAPI-generated types (`@wgw-api-generated`) match consumers. |
 | **Contract (`test:contract`)** | Settings + list-app mappers preserve required OpenAPI fields; `expectTypeOf` documents UI-only vs API-derived shapes. |
 | **Vitest unit** | Pure parsers, mappers, RTC/session helpers — co-located `*.test.ts`. Non-meet domains with unit coverage: `lib/api/wgw/*-utils`, `route-guard`, `mail-core/*-utils`, `drive-core/*-utils`, `notes-core/*-utils`, `admin-core/*-utils`, `hooks/collection-controller-utils`. Offline multi-domain registry/migration tests use the neutral app-#2 template at [`lib/offline/__tests__/fixtures/notes-offline-fixture.ts`](../../../packages/apps/src/lib/offline/__tests__/fixtures/notes-offline-fixture.ts) (see [`offline-db-multi-domain.test.ts`](../../../packages/apps/src/lib/offline/core/__tests__/offline-db-multi-domain.test.ts)). |
-| **Vitest jsdom** | Hook and pane RTL with **mock `operations`** — co-located `*.test.tsx`. Sequential per-package round-robin shards recycle the Node process (`JSDOM_SHARDS` is the lever). `isolate: true` does not reclaim jsdom/Lit/TipTap/Yjs heap — do not “fix” the next OOM with a bigger heap. A single huge RTL file can still OOM a shard — split that file or keep the heavy path in Storybook `vitest-ci`. |
+| **Vitest jsdom** | Hook and pane RTL with **mock `operations`** — co-located `*.test.tsx`. Sequential rotate-per-package shards recycle the Node process (`JSDOM_SHARDS` is the lever). Package `p` starts at shard `p % N` so one-file packages do not pile onto shard 1. `isolate: true` does not reclaim jsdom/Lit/TipTap/Yjs heap — do not “fix” the next OOM with a bigger heap. A single huge RTL file can still OOM a shard — split that file or keep the heavy path in Storybook `vitest-ci`. |
 | **Storybook `vitest-ci`** | Offline mock-tier stories render; `play` asserts critical interactions; a11y `error` via `STORYBOOK_A11Y_GATE=1` (set by gate and CI). |
 | **Storybook coverage** | Every exported pane/component has a mock-tier story ([storybook/offline-first.md](../storybook/offline-first.md)). |
 

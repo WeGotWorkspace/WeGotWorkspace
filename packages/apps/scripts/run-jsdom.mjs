@@ -3,10 +3,11 @@
  * Sequential jsdom Vitest shards. Each child is a fresh Node process so the
  * jsdom/Lit/TipTap/Yjs heap is reclaimed between batches.
  *
- * Files are grouped by `src/<pkg>/`, sorted inside each group, then assigned
- * round-robin (`idx % N`) so consecutive files in one domain split across
- * shards. `JSDOM_SHARDS` (default 16) is the growth lever — do not raise the
- * heap. Empty shards are skipped when the file count is smaller than N.
+ * Files are grouped by `src/<pkg>/` (sorted keys, sorted files). Package `p`
+ * starts at shard `p % N`; its files go to `(p + idx) % N`. That spreads
+ * one-file packages instead of pinning every singleton on shard 1.
+ * `JSDOM_SHARDS` (default 16) is the growth lever — do not raise the heap.
+ * Empty shards are skipped when the file count is smaller than N.
  *
  * Child argv is `run --project jsdom --maxWorkers=1 <files…>` with no
  * standalone `--`. That token is for npm/pnpm script forwarding; Vitest may
@@ -86,12 +87,14 @@ function assignShards(files, shardCount) {
 
   /** @type {string[][]} */
   const shards = Array.from({ length: shardCount }, () => []);
-  for (const group of byPkg.values()) {
+  const packages = [...byPkg.keys()].sort((a, b) => a.localeCompare(b));
+  packages.forEach((pkg, packageIndex) => {
+    const group = byPkg.get(pkg) ?? [];
     group.sort((a, b) => a.localeCompare(b));
     group.forEach((file, idx) => {
-      shards[idx % shardCount].push(file);
+      shards[(packageIndex + idx) % shardCount].push(file);
     });
-  }
+  });
   return shards;
 }
 
