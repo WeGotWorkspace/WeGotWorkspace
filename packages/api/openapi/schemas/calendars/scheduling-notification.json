@@ -36,6 +36,11 @@
       "location": {
         "type": ["string", "null"]
       },
+      "url": {
+        "type": ["string", "null"],
+        "format": "uri",
+        "description": "First conference href from CONFERENCE, URL, X-GOOGLE-CONFERENCE, or X-MICROSOFT-SKYPETEAMSMEETINGURL."
+      },
       "recurring": {
         "type": "boolean",
         "description": "True when the VEVENT has RRULE or RECURRENCE-ID."

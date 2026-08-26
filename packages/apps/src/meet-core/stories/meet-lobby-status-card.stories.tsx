@@ -48,3 +48,13 @@ export const CheckingInvite: Story = {
     titleSize: "md",
   },
 };
+
+export const WaitingForHost: Story = {
+  name: "Waiting for host",
+  tags: ["vitest-ci"],
+  args: {
+    title: meetLabels.waitingForHostTitle,
+    body: meetLabels.waitingForHostBody,
+    titleSize: "lg",
+  },
+};

@@ -9,6 +9,7 @@ import type {
 } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
+import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 
 export type CalendarWorkspaceProps = {
   data: CalendarUIData;
@@ -26,6 +27,12 @@ export type CalendarWorkspaceProps = {
   className?: string;
   /** Event ids with unsynced local writes; drives the pending-sync mark. */
   pendingEventIds?: ReadonlySet<string>;
+  /** Meet reserve / room-status — injected by CalendarApp, not the calendar controller. */
+  meetOperations?: CalendarMeetOperations;
+  /** Configured workspace origin for guest/join equality. */
+  workspaceOrigin?: string;
+  /** App-owned Join navigation (new-window Meet or new-tab https). */
+  onJoinMeeting?: (href: string) => void;
 };
 
 export function calendarDirectoryGroupsFromBootstrap(

@@ -3711,7 +3711,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create meeting room */
+        /**
+         * Reserve a meeting room
+         * @description Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3719,10 +3722,30 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MeetReserveRoomRequest"];
+                };
+            };
             responses: {
-                /** @description Created */
+                /** @description Reserved */
                 201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MeetReserveRoomResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3743,24 +3766,38 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Meeting room status */
+        /**
+         * Meeting room reservation status
+         * @description Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.
+         */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    roomId: string;
+                    roomId: components["schemas"]["MeetRoomCode"];
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Status */
+                /** @description Reserved room status */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["MeetRoomGuestStatus"] | components["schemas"]["MeetRoomOwnerStatus"];
+                    };
+                };
+                /** @description Not reserved */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3769,7 +3806,57 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update reservation expiry
+         * @description Sets expiresAt. Callable by createdBy or an ownerPrincipal member.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    roomId: components["schemas"]["MeetRoomCode"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MeetPatchRoomRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MeetRoomOwnerStatus"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not createdBy or an ownerPrincipal member */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not reserved */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/plugins/{id}/activation": {
@@ -8440,6 +8527,9 @@ export interface components {
             categories?: string[];
             priority?: number;
             sequence?: number;
+            links?: {
+                [key: string]: components["schemas"]["CalendarEventLink"];
+            };
             icsProps?: {
                 [key: string]: string;
             };
@@ -8641,6 +8731,9 @@ export interface components {
             /** @description Reminder alarms mapped from iCalendar VALARM components. */
             alerts?: {
                 [key: string]: components["schemas"]["CalendarEventAlert"];
+            };
+            links?: {
+                [key: string]: components["schemas"]["CalendarEventLink"];
             };
             categories?: string[];
             priority?: number;
@@ -9667,6 +9760,11 @@ export interface components {
             start?: string | null;
             end?: string | null;
             location?: string | null;
+            /**
+             * Format: uri
+             * @description First conference href from CONFERENCE, URL, X-GOOGLE-CONFERENCE, or X-MICROSOFT-SKYPETEAMSMEETINGURL.
+             */
+            url?: string | null;
             /** @description True when the VEVENT has RRULE or RECURRENCE-ID. */
             recurring?: boolean;
             /** @enum {string} */
@@ -9750,6 +9848,41 @@ export interface components {
         CalendarEventImportResponse: {
             list: components["schemas"]["CalendarEvent"][];
             errors: components["schemas"]["CalendarEventImportError"][];
+        };
+        /** @description Meet room id. Calendar and ad-hoc Start use xxxx-xxxx-xxxx (createMeetRoomCode). */
+        MeetRoomCode: string;
+        /** @description Personal calendar or ad-hoc start: u:{username}. Group calendar: groups/{slug}. */
+        MeetOwnerPrincipal: string;
+        MeetReserveRoomRequest: {
+            room: components["schemas"]["MeetRoomCode"];
+            ownerPrincipal: components["schemas"]["MeetOwnerPrincipal"];
+            /**
+             * Format: date-time
+             * @description Omit or null for no inactivity expiry (series master / this-and-future).
+             */
+            expiresAt?: string | null;
+        };
+        MeetPatchRoomRequest: {
+            /** Format: date-time */
+            expiresAt: string | null;
+        };
+        /** @description Public/guest GET body. No ownerPrincipal, createdBy, or expiresAt. */
+        MeetRoomGuestStatus: {
+            /** @constant */
+            reserved: true;
+            active: boolean;
+        };
+        MeetRoomOwnerStatus: {
+            /** @constant */
+            reserved: true;
+            active: boolean;
+            ownerPrincipal: components["schemas"]["MeetOwnerPrincipal"];
+            createdBy: components["schemas"]["MeetOwnerPrincipal"];
+            /** Format: date-time */
+            expiresAt: string | null;
+        };
+        MeetReserveRoomResponse: components["schemas"]["MeetRoomOwnerStatus"] & {
+            roomId: components["schemas"]["MeetRoomCode"];
         };
     };
     responses: {

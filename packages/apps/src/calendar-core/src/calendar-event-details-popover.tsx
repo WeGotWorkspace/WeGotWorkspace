@@ -19,6 +19,8 @@ import {
 } from "@/calendar-core/src/calendar-event-preview";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
+import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
@@ -39,6 +41,9 @@ export type CalendarEventDetailsPopoverProps = {
   onClose: () => void;
   onEdit?: () => void;
   onRsvp?: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
+  meetOperations?: CalendarMeetOperations;
+  workspaceOrigin?: string;
+  onJoinMeeting?: (href: string) => void;
 };
 
 function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
@@ -70,6 +75,9 @@ export function CalendarEventDetailsPopover({
   onClose,
   onEdit,
   onRsvp,
+  meetOperations,
+  workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
+  onJoinMeeting,
 }: CalendarEventDetailsPopoverProps) {
   if (!preview) return null;
 
@@ -201,6 +209,17 @@ export function CalendarEventDetailsPopover({
             />
           ) : null}
         </div>
+        {form.meetingUrl.trim() ? (
+          <div className="calendar-event-details-popover__meet">
+            <CalendarMeetJoin
+              href={form.meetingUrl}
+              labels={labels}
+              workspaceOrigin={workspaceOrigin}
+              meetOperations={meetOperations}
+              onJoin={onJoinMeeting}
+            />
+          </div>
+        ) : null}
         {showRsvp && onRsvp ? (
           <div className="calendar-event-details-popover__rsvp">
             {form.recurrencePreset !== "none" ? (

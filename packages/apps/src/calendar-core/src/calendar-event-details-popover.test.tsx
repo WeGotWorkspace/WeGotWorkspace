@@ -220,4 +220,27 @@ describe("CalendarEventDetailsPopover", () => {
       expect((anchor as HTMLElement).style.height).toBe("40px");
     },
   );
+
+  it("shows a primary Join button below the details rows", { timeout: 10_000 }, () => {
+    const onJoinMeeting = vi.fn();
+    const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";
+    renderPopover({
+      workspaceOrigin: "https://workspace.example.com",
+      onJoinMeeting,
+      preview: {
+        eventId: "standup",
+        form: {
+          ...emptyCalendarEventForm("default", "2033-01-12"),
+          title: "Standup",
+          meetingUrl: href,
+        },
+      },
+    });
+    const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    expect(join.className).toContain("button--variant-primary");
+    expect(join.closest(".calendar-event-details-popover__meet")).toBeTruthy();
+    expect(join.closest(".calendar-event-details-popover__row")).toBeNull();
+    fireEvent.click(join);
+    expect(onJoinMeeting).toHaveBeenCalledWith(href);
+  });
 });

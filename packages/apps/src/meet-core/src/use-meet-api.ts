@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useWorkspaceApi } from "@/hooks/use-workspace-api";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { createDefaultMeetApiSource, type MeetApiSource } from "@/meet-core/src/meet-api-source";
-import type { MeetUIData } from "@/meet-core/src/meet-types";
+import type { MeetAppBootstrap, MeetUIData } from "@/meet-core/src/meet-types";
 
 export function useMeetAPI(source?: MeetApiSource) {
   const resolvedSource = useMemo(() => source ?? createDefaultMeetApiSource(), [source]);
@@ -24,7 +24,8 @@ export function useMeetAPI(source?: MeetApiSource) {
     [],
   );
   const createOperationsFromSource = useCallback(
-    (apiSource: MeetApiSource) => apiSource.createOperations(),
+    (apiSource: MeetApiSource, bootstrap?: MeetAppBootstrap) =>
+      apiSource.createOperations(bootstrap),
     [],
   );
   const { phase, error, retry, successVersion, listLoading, session, data, operations } =

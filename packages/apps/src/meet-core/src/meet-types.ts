@@ -9,6 +9,8 @@ import type {
   WgwMeetLeaveResponse,
   WgwMeetPollRequest,
   WgwMeetPollResponse,
+  WgwMeetPatchRoomRequest,
+  WgwMeetReserveRoomRequest,
   WgwMeetRoomStatusRequest,
   WgwMeetRoomStatusResponse,
   WgwMeetSendRequest,
@@ -35,6 +37,14 @@ export type MeetRequestOptions = {
 export type MeetAPIOperations = {
   roomStatus: (
     input: WgwMeetRoomStatusRequest,
+    opts?: MeetRequestOptions,
+  ) => Promise<WgwMeetRoomStatusResponse>;
+  reserveRoom?: (
+    input: WgwMeetReserveRoomRequest,
+    opts?: MeetRequestOptions,
+  ) => Promise<WgwMeetRoomStatusResponse>;
+  patchRoomExpiresAt?: (
+    input: WgwMeetPatchRoomRequest,
     opts?: MeetRequestOptions,
   ) => Promise<WgwMeetRoomStatusResponse>;
   join: (input: WgwMeetJoinRequest, opts?: MeetRequestOptions) => Promise<WgwMeetJoinResponse>;

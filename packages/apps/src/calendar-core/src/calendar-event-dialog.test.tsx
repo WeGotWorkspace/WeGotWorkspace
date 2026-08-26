@@ -99,6 +99,58 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ description: "Bring slides" }));
   });
 
+  it("hides the meeting URL when Meet is off and keeps location visible", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      location: "Cafe",
+    };
+    renderDialog({
+      form,
+      workspaceOrigin: "https://workspace.example.com",
+      meetOperations: {
+        roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        reserveRoom: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      },
+    });
+
+    expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
+    expect(screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toHaveProperty(
+      "disabled",
+      false,
+    );
+  });
+
+  it("keeps location independent when Meet is on", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Lunch",
+      location: "Cafe",
+      meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+    };
+    renderDialog({
+      form,
+      workspaceOrigin: "https://workspace.example.com",
+      meetOperations: {
+        roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        reserveRoom: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      },
+    });
+
+    expect(screen.getByDisplayValue("Cafe")).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toHaveProperty(
+      "disabled",
+      false,
+    );
+    const url = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
+    expect(url.value).toBe(form.meetingUrl);
+    expect(url.readOnly).toBe(false);
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeTruthy();
+  });
+
   it("hides time inputs for all-day events and shows locale date triggers", () => {
     const form = {
       ...calendarEventToForm({
@@ -218,6 +270,7 @@ describe("CalendarEventDialog", () => {
       ".calendar-event-dialog__fields > .calendar-event-dialog__card",
     );
     expect([...cards].map((card) => card.querySelector(".card__title")?.textContent)).toEqual([
+      defaultCalendarLabels.eventMeetSectionTitle,
       defaultCalendarLabels.eventWhenSectionTitle,
       defaultCalendarLabels.eventRepeatLabel,
       defaultCalendarLabels.eventAttendeesLabel,
@@ -871,6 +924,40 @@ describe("CalendarEventDialog", () => {
     expect(onRsvp).not.toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("cancel after generate PATCHes the staged series reservation to now+30d", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2033-01-01T00:00:00.000Z"));
+    const meetOperations = {
+      roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      reserveRoom: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+    };
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Weekly standup",
+      recurrencePreset: "weekly" as const,
+    };
+    const { onClose, onSave } = renderDialog({
+      form,
+      sessionUsername: "bob",
+      meetOperations,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+    await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
+    const reserved = meetOperations.reserveRoom.mock.calls[0]?.[0] as { room: string };
+    expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith({
+      room: reserved.room,
+      expiresAt: "2033-01-31T00:00:00.000Z",
+    });
+    nowSpy.mockRestore();
   });
 
   it("keeps the organizer edit dialog writable with save and delete", () => {

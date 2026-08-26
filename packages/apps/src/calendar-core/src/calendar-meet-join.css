@@ -1,0 +1,10 @@
+@import "../../styles.css" reference;
+
+.calendar-meet-join {
+  @apply shrink-0;
+}
+
+.calendar-meet-join__dead {
+  @apply m-0 text-xs;
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 62%, transparent));
+}

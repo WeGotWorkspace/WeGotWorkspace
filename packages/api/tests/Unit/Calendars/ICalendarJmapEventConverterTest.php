@@ -212,6 +212,74 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertStringContainsString('https://meet.example.com/room', $roundTrip);
     }
 
+    public function test_links_write_url_conference_and_x_google_but_never_microsoft(): void
+    {
+        $ics = $this->converter->icsFromEvent([
+            '@type' => 'Event',
+            'uid' => 'meet-write-1',
+            'title' => 'Standup',
+            'start' => '2026-06-15T10:00:00Z',
+            'end' => '2026-06-15T11:00:00Z',
+            'calendarIds' => ['default' => true],
+            'links' => [
+                'link1' => [
+                    '@type' => 'Link',
+                    'href' => 'https://workspace.test/meet/guest?room=abcd-efgh-ijkl',
+                ],
+            ],
+        ]);
+        $defolded = str_replace("\r\n ", '', $ics);
+
+        $this->assertMatchesRegularExpression(
+            '/URL(?:;[^:\\r\\n]*)?:https:\\/\\/workspace\\.test\\/meet\\/guest\\?room=abcd-efgh-ijkl/',
+            $defolded,
+        );
+        $this->assertStringContainsString('CONFERENCE;', $defolded);
+        $this->assertStringContainsString('VALUE=URI', $defolded);
+        $this->assertStringContainsString('FEATURE=VIDEO', $defolded);
+        $this->assertStringContainsString('WeGotWorkspace Meet', $defolded);
+        $this->assertStringContainsString('https://workspace.test/meet/guest?room=abcd-efgh-ijkl', $defolded);
+        $this->assertStringContainsString('X-GOOGLE-CONFERENCE:https://workspace.test/meet/guest?room=abcd-efgh-ijkl', $defolded);
+        $this->assertStringNotContainsString('X-MICROSOFT-SKYPETEAMSMEETINGURL', $defolded);
+    }
+
+    public function test_reads_conference_google_and_microsoft_x_props_into_links(): void
+    {
+        $conference = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:conf-1\r\nSUMMARY:Call\r\n"
+            ."DTSTART:20260615T100000Z\r\nDTEND:20260615T110000Z\r\n"
+            ."CONFERENCE;VALUE=URI;FEATURE=VIDEO;LABEL=\"Meet\":https://workspace.test/meet/guest?room=abcd-efgh-ijkl\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
+        $this->assertSame(
+            'https://workspace.test/meet/guest?room=abcd-efgh-ijkl',
+            $this->converter->eventFromIcs($conference)['links']['link1']['href'],
+        );
+        $this->assertArrayNotHasKey('CONFERENCE', $this->converter->eventFromIcs($conference)['icsProps'] ?? []);
+
+        $google = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:g-1\r\nSUMMARY:Call\r\n"
+            ."DTSTART:20260615T100000Z\r\nDTEND:20260615T110000Z\r\n"
+            ."X-GOOGLE-CONFERENCE:https://meet.google.com/abc-defg-hij\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
+        $this->assertSame(
+            'https://meet.google.com/abc-defg-hij',
+            $this->converter->eventFromIcs($google)['links']['link1']['href'],
+        );
+
+        $microsoft = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:ms-1\r\nSUMMARY:Call\r\n"
+            ."DTSTART:20260615T100000Z\r\nDTEND:20260615T110000Z\r\n"
+            ."X-MICROSOFT-SKYPETEAMSMEETINGURL:https://teams.microsoft.com/l/meetup-join/1\r\n"
+            ."END:VEVENT\r\nEND:VCALENDAR\r\n";
+        $event = $this->converter->eventFromIcs($microsoft);
+        $this->assertSame(
+            'https://teams.microsoft.com/l/meetup-join/1',
+            $event['links']['link1']['href'],
+        );
+        $this->assertArrayNotHasKey('X-MICROSOFT-SKYPETEAMSMEETINGURL', $event['icsProps'] ?? []);
+
+        $rewritten = str_replace("\r\n ", '', $this->converter->icsFromEvent($event));
+        $this->assertStringNotContainsString('X-MICROSOFT-SKYPETEAMSMEETINGURL', $rewritten);
+        $this->assertStringContainsString('X-GOOGLE-CONFERENCE:https://teams.microsoft.com/l/meetup-join/1', $rewritten);
+    }
+
     public function test_instance_partstat_override_round_trips(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:rsvp-series\r\nSUMMARY:Standup\r\n"

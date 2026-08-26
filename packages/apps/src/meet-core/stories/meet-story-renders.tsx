@@ -26,6 +26,9 @@ export type MeetLobbyPaneStoryArgs = {
   endedMessage: string;
   showMissingInviteScreen: boolean;
   showInviteCheckingScreen: boolean;
+  showWaitingForHostScreen: boolean;
+  showInviteErrorScreen: boolean;
+  canStartReservedRoom: boolean;
   videoOn: boolean;
   error: string;
 };
@@ -42,6 +45,9 @@ export function MeetLobbyPaneStory(args: MeetLobbyPaneStoryArgs) {
       endedMessage={args.endedMessage || null}
       showMissingInviteScreen={args.showMissingInviteScreen}
       showInviteCheckingScreen={args.showInviteCheckingScreen}
+      showWaitingForHostScreen={args.showWaitingForHostScreen}
+      showInviteErrorScreen={args.showInviteErrorScreen}
+      canStartReservedRoom={args.canStartReservedRoom}
       controllerOverrides={{
         displayName: args.displayName,
         videoOn: args.videoOn,

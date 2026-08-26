@@ -49,6 +49,7 @@ export function useMeetController({
     room,
     session: callSession,
     canModerateKnocks: meetCanModerateKnocks(session),
+    actingUsername: session.user.username,
     leaveRef,
   });
 

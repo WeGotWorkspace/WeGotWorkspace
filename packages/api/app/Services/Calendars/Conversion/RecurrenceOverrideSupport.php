@@ -184,6 +184,17 @@ final class RecurrenceOverrideSupport
             }
         }
 
+        $overrideHref = LocationConversionSupport::conferenceHrefFromVEvent($override);
+        $masterHref = LocationConversionSupport::conferenceHrefFromVEvent($master);
+        if ($overrideHref !== null && $overrideHref !== $masterHref) {
+            $patch['links'] = [
+                'link1' => [
+                    '@type' => 'Link',
+                    'href' => $overrideHref,
+                ],
+            ];
+        }
+
         if (isset($override->STATUS)) {
             $status = strtolower(trim((string) $override->STATUS->getValue()));
             if (in_array($status, ['confirmed', 'cancelled', 'tentative'], true)) {

@@ -36,6 +36,11 @@
       "categories": { "type": "array", "items": { "type": "string" } },
       "priority": { "type": "integer", "minimum": 0, "maximum": 9 },
       "sequence": { "type": "integer", "minimum": 0 },
+      "links": {
+        "type": "object",
+        "propertyNames": { "$ref": "#/components/schemas/JmapId" },
+        "additionalProperties": { "$ref": "#/components/schemas/CalendarEventLink" }
+      },
       "icsProps": {
         "type": "object",
         "additionalProperties": { "type": "string" }
@@ -358,6 +363,11 @@
         "description": "Reminder alarms mapped from iCalendar VALARM components.",
         "propertyNames": { "$ref": "#/components/schemas/JmapId" },
         "additionalProperties": { "$ref": "#/components/schemas/CalendarEventAlert" }
+      },
+      "links": {
+        "type": "object",
+        "propertyNames": { "$ref": "#/components/schemas/JmapId" },
+        "additionalProperties": { "$ref": "#/components/schemas/CalendarEventLink" }
       },
       "categories": { "type": "array", "items": { "type": "string" } },
       "priority": { "type": "integer", "minimum": 0, "maximum": 9 },

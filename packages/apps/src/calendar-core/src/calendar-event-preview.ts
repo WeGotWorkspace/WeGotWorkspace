@@ -14,8 +14,10 @@ import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
   formAnchoredToOccurrence,
   splitOccurrenceKey,
+  toLocalRecurrenceId,
 } from "@/calendar-core/src/calendar-recurrence-scope";
 import { recurrencePresetOptionLabel } from "@/calendar-core/src/calendar-recurrence-presets";
+import { meetingUrlFromCalendarEvent } from "@/calendar-core/src/calendar-meet-link";
 
 export type CalendarEventPreviewModel = {
   eventId: string;
@@ -69,6 +71,20 @@ export function resolveCalendarEventPreview(
       };
     } else {
       form = formAnchoredToOccurrence(form, recurrenceId);
+    }
+    if (wireEvent) {
+      const localRid = toLocalRecurrenceId(
+        recurrenceId,
+        wireEvent.showWithoutTime === true,
+        wireEvent.start,
+      );
+      form = {
+        ...form,
+        meetingUrl:
+          meetingUrlFromCalendarEvent(wireEvent, localRid) ||
+          meetingUrlFromCalendarEvent(wireEvent, recurrenceId) ||
+          form.meetingUrl,
+      };
     }
   }
 

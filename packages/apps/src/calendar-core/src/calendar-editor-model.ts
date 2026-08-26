@@ -32,6 +32,11 @@ import {
   defaultTimedEventTimeZone,
   normalizeEventTimeZone,
 } from "@/calendar-core/src/calendar-timezones";
+import {
+  isHttpUrl,
+  linksFromMeetingUrl,
+  meetingUrlFromLinks,
+} from "@/calendar-core/src/calendar-meet-link";
 
 export type {
   CalendarEventAlertFormValue,
@@ -86,6 +91,13 @@ export type CalendarEventFormValue = {
    */
   customRecurrenceRules?: JSCalendarRecurrenceRule[];
   attendees: CalendarAttendee[];
+  /** First http(s) href from JSCalendar `links`. Empty when none. */
+  meetingUrl: string;
+  /**
+   * Session-only staged Meet room code for generate-URL retries. Not written
+   * to the wire — persist goes through `meetingUrl` → `links`.
+   */
+  meetRoomCode?: string;
 };
 
 const DEFAULT_START_TIME = "10:00";
@@ -126,6 +138,7 @@ export function emptyCalendarEventForm(
     alerts: [],
     recurrencePreset: "none",
     attendees: [],
+    meetingUrl: "",
     ...defaultRecurrenceEndsFields(dateISO),
   };
 }
@@ -189,6 +202,7 @@ export function createIntentToForm(
     alerts: [],
     recurrencePreset: "none",
     attendees: [],
+    meetingUrl: "",
     ...defaultRecurrenceEndsFields(startDate),
   };
 }
@@ -322,6 +336,7 @@ export function calendarEventToForm(event: JmapCalendarEvent): CalendarEventForm
     attendees: attendeesFromParticipants(
       event.participants as Record<string, JmapParticipant> | undefined,
     ),
+    meetingUrl: meetingUrlFromLinks(event.links),
     ...recurrenceFieldsFromRules(event.recurrenceRules, startDate),
   };
 }
@@ -468,6 +483,7 @@ export function patchCalendarEventForm(
 export function calendarEventFormIsValid(form: CalendarEventFormValue): boolean {
   if (!form.title.trim() || !form.calendarId || !form.startDate || !form.endDate) return false;
   if (!form.allDay && (!form.startTime || !form.endTime)) return false;
+  if (form.meetingUrl?.trim() && !isHttpUrl(form.meetingUrl.trim())) return false;
   const repeating = form.recurrencePreset !== "none" && form.recurrencePreset !== "custom";
   if (repeating) {
     if (form.recurrenceEnds === "until" && !form.recurrenceUntilDate) return false;
@@ -507,6 +523,7 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
   const recurrenceRules = formRecurrenceRules(form);
   const timeZone = formWireTimeZone(form);
   const alerts = alertsToWire(form.alerts);
+  const links = linksFromMeetingUrl(form.meetingUrl);
   return {
     calendarId: form.calendarId,
     title: form.title.trim(),
@@ -520,6 +537,7 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
     ...(alerts ? { alerts } : {}),
     ...(recurrenceRules?.length ? { recurrenceRules } : {}),
     ...(form.attendees.length ? { attendees: form.attendees } : {}),
+    ...(links ? { links } : {}),
   };
 }
 
@@ -572,6 +590,9 @@ export function formToPatch(
   if (!attendeesEqual(form.attendees, originalForm.attendees)) {
     patch.attendees = form.attendees;
   }
+  if (form.meetingUrl.trim() !== originalForm.meetingUrl.trim()) {
+    patch.links = linksFromMeetingUrl(form.meetingUrl) ?? null;
+  }
   return patch;
 }
 
@@ -602,6 +623,7 @@ export function engineEventToForm(event: EngineCalendarEvent): CalendarEventForm
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
     alerts: [],
     attendees: [],
+    meetingUrl: "",
     ...recurrenceFieldsFromRules(wireRules, startDate),
   };
 }
@@ -622,5 +644,6 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     alerts: alertsToWire(form.alerts),
     recurrenceRules: formRecurrenceRules(form),
     ...(form.attendees.length ? { attendees: form.attendees } : {}),
+    links: linksFromMeetingUrl(form.meetingUrl) ?? null,
   };
 }

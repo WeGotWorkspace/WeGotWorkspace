@@ -9,6 +9,7 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Models\SchedulingObject;
+use App\Services\Calendars\Conversion\LocationConversionSupport;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
 use DateTimeInterface;
@@ -314,6 +315,7 @@ final class CalendarSchedulingNotificationService
                 ? CalendarEventMapper::eventIdFromUri((string) $copy->uri)
                 : null,
             'location' => $vevent instanceof VEvent ? $this->location($vevent) : null,
+            'url' => $vevent instanceof VEvent ? LocationConversionSupport::conferenceHrefFromVEvent($vevent) : null,
             'recurring' => $vevent instanceof VEvent && $this->isRecurring($vevent),
             'etag' => (string) $row->etag,
         ];
