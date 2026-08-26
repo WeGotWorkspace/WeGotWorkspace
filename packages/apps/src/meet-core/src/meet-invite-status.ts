@@ -2,15 +2,14 @@ import type { WgwMeetRoomStatusResponse } from "@/lib/api/wgw/types";
 
 export const MEET_AD_HOC_RESERVATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type MeetInviteProbeState =
-  | "checking"
-  | "active"
-  | "missing"
-  | "waiting-for-host"
-  | "error";
+export type MeetInviteProbeState = "checking" | "active" | "missing" | "waiting-for-host" | "error";
 
+/** Manager GET body includes ownerPrincipal and/or createdBy; guests get neither. */
 export function meetRoomStatusAllowsHost(status: WgwMeetRoomStatusResponse): boolean {
-  return typeof status.ownerPrincipal === "string" && status.ownerPrincipal.length > 0;
+  return (
+    (typeof status.ownerPrincipal === "string" && status.ownerPrincipal.length > 0) ||
+    (typeof status.createdBy === "string" && status.createdBy.length > 0)
+  );
 }
 
 export function meetInviteStateFromRoomStatus(

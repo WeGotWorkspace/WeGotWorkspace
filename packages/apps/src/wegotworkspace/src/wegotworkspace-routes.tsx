@@ -4,6 +4,7 @@ import {
   createRouter,
   Outlet,
   redirect,
+  useSearch,
   type AnyRouter,
   type RouterHistory,
 } from "@tanstack/react-router";
@@ -15,11 +16,15 @@ import { DocsApp } from "@/docs-core/src/docs-app";
 import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
 import { DriveApp } from "@/drive-core/src/drive-app";
 import { validateDriveRouteSearch } from "@/drive-core/src/drive-route-search";
-import { validateMeetRouteSearch } from "@/meet-core/src/meet-route-search";
+import {
+  meetRoomFromSearch,
+  parseMeetRouteSearch,
+  validateMeetRouteSearch,
+} from "@/meet-core/src/meet-route-search";
 import { InstallApp } from "@/install-core/src/install-app";
 import { MailApp } from "@/mail-core/src/mail-app";
 import { MeetApp } from "@/meet-core/src/meet-app";
-import { createWgwMeetGuestApiSource } from "@/meet-core/src/meet-api-source";
+import { createWgwMeetGuestOrHostApiSource } from "@/meet-core/src/meet-api-source";
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
@@ -106,8 +111,6 @@ const STORY_SYSTEM_MAILBOXES = [
   "Archive",
   "Trash",
 ] as const;
-
-const guestMeetSource = createWgwMeetGuestApiSource();
 
 function MockMailRoute() {
   const onLogout = useWeGotWorkspaceLogout();
@@ -236,7 +239,13 @@ function MockInstallRoute() {
 }
 
 function MeetGuestRoute() {
-  return <MeetApp source={guestMeetSource} />;
+  const search = useSearch({ strict: false });
+  const room = useMemo(
+    () => meetRoomFromSearch(parseMeetRouteSearch(search as Record<string, unknown>)),
+    [search],
+  );
+  const source = useMemo(() => createWgwMeetGuestOrHostApiSource(room), [room]);
+  return <MeetApp source={source} />;
 }
 
 function buildRouteTree(mode: WeGotWorkspaceRouteMode) {

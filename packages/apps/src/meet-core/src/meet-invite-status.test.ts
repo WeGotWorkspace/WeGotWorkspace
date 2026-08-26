@@ -35,13 +35,20 @@ describe("meetInviteStateFromRoomStatus", () => {
 });
 
 describe("meetRoomStatusAllowsHost", () => {
-  it("is true only when the GET body includes ownerPrincipal", () => {
+  it("is true when the GET body includes ownerPrincipal or createdBy", () => {
     expect(meetRoomStatusAllowsHost({ reserved: true, active: false })).toBe(false);
     expect(
       meetRoomStatusAllowsHost({
         reserved: true,
         active: false,
         ownerPrincipal: "groups/design",
+      }),
+    ).toBe(true);
+    expect(
+      meetRoomStatusAllowsHost({
+        reserved: true,
+        active: false,
+        createdBy: "u:bob",
       }),
     ).toBe(true);
   });
