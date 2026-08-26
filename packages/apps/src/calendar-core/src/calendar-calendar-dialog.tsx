@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, buttonVariants } from "@/button/src/button";
+import { Button } from "@/button/src/button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import {
@@ -129,6 +129,7 @@ export function CalendarCalendarDialog({
   const [url, setUrl] = useState("");
   const [scopeValue, setScopeValue] = useState(PERSONAL_SCOPE_VALUE);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [confirmOwnerOpen, setConfirmOwnerOpen] = useState(false);
   const open = dialog !== null;
   const isCreate = dialog?.mode === "create";
   const isSubscribe = dialog?.mode === "subscribe";
@@ -143,6 +144,7 @@ export function CalendarCalendarDialog({
   useEffect(() => {
     if (!dialog) {
       setConfirmDeleteOpen(false);
+      setConfirmOwnerOpen(false);
       return;
     }
     if (dialog.mode === "create") {
@@ -214,6 +216,23 @@ export function CalendarCalendarDialog({
     : isSharedRemove
       ? labels.removeSharedCalendar
       : labels.delete;
+  const ownerTransferPending = dialog?.mode === "edit" && canChangeOwner && !ownerUnchanged;
+  const nextOwnerGroupSlug = groupSlugFromOwnerScopeValue(scopeValue);
+  const ownerConfirmDescription = nextOwnerGroupSlug
+    ? labels.changeCalendarOwnerConfirmToGroup(
+        groups.find((group) => group.slug === nextOwnerGroupSlug)?.displayName ??
+          nextOwnerGroupSlug,
+      )
+    : labels.changeCalendarOwnerConfirmToPersonal;
+
+  const confirmInput = (): CalendarCalendarDialogConfirmInput => ({
+    name: trimmedName,
+    color: selectedColor,
+    ...(isCreate || isSubscribe || canChangeOwner
+      ? { groupSlug: groupSlugFromOwnerScopeValue(scopeValue) }
+      : {}),
+    ...(isSubscribe ? { url: trimmedUrl, nameTouched } : {}),
+  });
 
   return (
     <>
@@ -226,14 +245,11 @@ export function CalendarCalendarDialog({
             onSubmit={(event) => {
               event.preventDefault();
               if (!canSubmit) return;
-              onConfirm({
-                name: trimmedName,
-                color: selectedColor,
-                ...(isCreate || isSubscribe || canChangeOwner
-                  ? { groupSlug: groupSlugFromOwnerScopeValue(scopeValue) }
-                  : {}),
-                ...(isSubscribe ? { url: trimmedUrl, nameTouched } : {}),
-              });
+              if (ownerTransferPending) {
+                setConfirmOwnerOpen(true);
+                return;
+              }
+              onConfirm(confirmInput());
             }}
           >
             {isSubscribe || isSubscriptionEdit ? (
@@ -345,26 +361,64 @@ export function CalendarCalendarDialog({
       </Dialog>
 
       <AlertDialog
+        open={confirmOwnerOpen}
+        onOpenChange={(next) => !busy && setConfirmOwnerOpen(next)}
+      >
+        <AlertDialogContent className="calendar-dialog-surface">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.changeCalendarOwnerConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{ownerConfirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline" disabled={busy}>
+                {labels.cancel}
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                disabled={busy}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onConfirm(confirmInput());
+                  setConfirmOwnerOpen(false);
+                }}
+              >
+                {labels.changeCalendarOwnerConfirm}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
         open={confirmDeleteOpen}
         onOpenChange={(next) => !busy && setConfirmDeleteOpen(next)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="calendar-dialog-surface">
           <AlertDialogHeader>
             <AlertDialogTitle>{removeTitle}</AlertDialogTitle>
             <AlertDialogDescription>{removeDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>{labels.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              className={buttonVariants({ variant: "destructive" })}
-              disabled={busy}
-              onClick={(event) => {
-                event.preventDefault();
-                onDelete?.();
-                setConfirmDeleteOpen(false);
-              }}
-            >
-              {removeActionLabel}
+            <AlertDialogCancel asChild>
+              <Button variant="outline" disabled={busy}>
+                {labels.cancel}
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                disabled={busy}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onDelete?.();
+                  setConfirmDeleteOpen(false);
+                }}
+              >
+                {removeActionLabel}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CalendarCalendarDialog,
@@ -150,11 +150,71 @@ describe("CalendarCalendarDialog", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.save }));
 
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", {
+        name: defaultCalendarLabels.changeCalendarOwnerConfirmTitle,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(defaultCalendarLabels.changeCalendarOwnerConfirmToGroup("Team")),
+    ).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.changeCalendarOwnerConfirm }),
+    );
+
     expect(onConfirm).toHaveBeenCalledWith({
       name: "Roadmap",
       color: DEFAULT_CALENDAR_COLOR,
       groupSlug: "team",
     });
+  });
+
+  it("does not submit an owner change when the confirm is cancelled", () => {
+    const onConfirm = vi.fn();
+
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "roadmap",
+          name: "Roadmap",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+          scope: "group",
+          groupSlug: "team",
+          canChangeOwner: true,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        labels={defaultCalendarLabels}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const ownerSelect = screen.getByRole("combobox", {
+      name: defaultCalendarLabels.calendarDirectoryLabel,
+    });
+    fireEvent.click(ownerSelect);
+    fireEvent.click(
+      screen.getByRole("option", {
+        name: defaultCalendarLabels.calendarDirectoryPersonal("Demo User"),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.save }));
+
+    expect(
+      screen.getByText(defaultCalendarLabels.changeCalendarOwnerConfirmToPersonal),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: defaultCalendarLabels.cancel,
+      }),
+    );
+
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it("shows the same Owner dropdown disabled on edit", () => {

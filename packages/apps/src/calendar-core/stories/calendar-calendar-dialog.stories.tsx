@@ -175,6 +175,18 @@ export const EditChangeOwner: Story = {
       name: defaultCalendarLabels.calendarDirectoryLabel,
     });
     await expect(ownerSelect).not.toBeDisabled();
+    await userEvent.click(ownerSelect);
+    await userEvent.click(
+      await canvas.findByRole("option", {
+        name: defaultCalendarLabels.calendarDirectoryGroup("Editorial Team"),
+      }),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.save }));
+    await expect(
+      canvas.findByRole("heading", {
+        name: defaultCalendarLabels.changeCalendarOwnerConfirmTitle,
+      }),
+    ).resolves.toBeTruthy();
   },
 };
 

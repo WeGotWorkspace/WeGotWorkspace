@@ -26,7 +26,7 @@ Owners (and group members with `mayShare`) can transfer an existing calendar bet
 - OpenAPI `CalendarPatch` gains `groupSlug` (`string | null`); omit = no change, `null` = personal of the caller
 - Transfer updates `calendarinstances.principaluri` on the owner row only — do not copy events or recreate the calendar
 - Reject: sharees, subscriptions, personal `default`, provisioned group calendar (`group-{slug}`), target group the caller is not a member of, URI collision on the target principal
-- UI: enable `OwnerScopeField` on edit only when `canChangeCalendarOwner`; forward `groupSlug` on `patchCalendar`
+- UI: enable `OwnerScopeField` on edit only when `canChangeCalendarOwner`; confirm before applying an owner change; forward `groupSlug` on `patchCalendar`
 - Owner transfer requires online (same as `shareWith`)
 
 ## Edge cases
