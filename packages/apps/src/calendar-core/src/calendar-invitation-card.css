@@ -27,6 +27,7 @@
 
 .calendar-invitation-card__calendar-trigger {
   @apply shrink-0;
+  width: auto;
 }
 
 .calendar-invitation-card__event {

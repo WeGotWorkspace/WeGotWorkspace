@@ -51,12 +51,13 @@ export type TaskMetaField = (typeof TASK_META_FIELD_ORDER)[number];
 export function orderedTaskMetaNodes(
   nodes: Partial<Record<TaskMetaField, ReactNode>>,
 ): ReactNode[] {
-  return TASK_META_FIELD_ORDER.flatMap((field) => {
+  const ordered: ReactNode[] = [];
+  for (const field of TASK_META_FIELD_ORDER) {
     const node = nodes[field];
-    if (node == null) return [];
-    if (isValidElement(node)) return [cloneElement(node, { key: field })];
-    return [node];
-  });
+    if (node == null) continue;
+    ordered.push(isValidElement(node) ? cloneElement(node, { key: field }) : node);
+  }
+  return ordered;
 }
 
 export function emptyTaskForm(listId: string): TasksTaskFormValue {

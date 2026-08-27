@@ -327,7 +327,8 @@
 }
 
 .tasks-main-view__remind-button--active {
-  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  border-color: color-mix(in oklab, var(--color-ink) 28%, transparent);
+  background-color: color-mix(in oklab, var(--tasks-accent, #ea8c72) 14%, transparent);
 }
 
 .tasks-main-view__remind-badge {
