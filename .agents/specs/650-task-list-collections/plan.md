@@ -102,7 +102,7 @@ Align Tasks list UX with Calendar. Technically a task list is the same CalDAV co
   - My lists vs Shared with me uses `isSharee`; group member (not manager) stays in My lists
   - Shared Inbox at the recipient is under Shared with me and is **not** `defaultTaskListId`; new tasks from All Tasks / time filters still go to the recipient’s own Inbox
   - List rows use `CollectionSidebarRow` visibility checkboxes (`onToggleVisibility` independent of `onSelect`); hidden list IDs persist (`tasks-view-prefs` / same pattern as calendar hidden IDs)
-  - All Tasks and other aggregate filters (Today, Upcoming, Overdue, Status, Priority) exclude tasks from hidden lists; row click still navigates to that list; opening/selecting a list may unhide it if that matches Calendar create-target behavior
+  - All Tasks and other aggregate filters (Today, Upcoming, Overdue, Status, Priority) exclude tasks from hidden lists; row click still navigates to that list without changing visibility; only the checkbox toggles hide/show; creating a task unhides the destination list (including Inbox when New task from All Tasks / time filters writes there)
   - Edit dialog hosts share section for `mayShare` with **list** copy (not calendar strings); sharees can rename/recolor; view-only cannot create/edit/complete/delete tasks
   - Sharee Remove dismisses the list without deleting the owner collection (distinct from visibility checkboxes)
   - Inbox identified by owned `role`/uri, not name

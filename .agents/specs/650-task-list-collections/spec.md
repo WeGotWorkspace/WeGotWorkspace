@@ -1,4 +1,4 @@
-Source: #650 (body-hash: 0c3c549b)
+Source: #650 (body-hash: 1a339013)
 Goal: #559
 
 # Task lists match Calendar collection UX
@@ -53,4 +53,4 @@ A task list is the same CalDAV collection as a calendar (`calendars` + `calendar
 - Group member, not manager → listed as group scope (My lists), not inbound share.
 - Sabre auto-accepts invites — no accept/reject UI; dismiss is visibility only.
 - Offline outbox: queued task write that later `403`s after revoke/demote surfaces as failed sync (Chunk D).
-- Hidden list IDs persist in `tasks-view-prefs` (same pattern as calendar hidden IDs). All Tasks and other aggregate filters exclude tasks from hidden lists. Row click still navigates; create into a list may unhide it (Calendar create-target parity).
+- Hidden list IDs persist in `tasks-view-prefs` (same pattern as calendar hidden IDs). All Tasks and other aggregate filters exclude tasks from hidden lists. Row click still navigates without changing visibility; only the checkbox toggles hide/show. Creating a task unhides the destination list (including Inbox when New task from All Tasks / time filters writes there).
