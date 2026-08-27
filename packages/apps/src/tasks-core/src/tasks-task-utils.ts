@@ -254,8 +254,18 @@ export function canChangeTaskListOwner(list?: {
   role?: string | null;
   myRights?: { mayShare?: boolean } | null;
 }): boolean {
-  if (!list?.id) return false;
-  if (isInboxTaskList(list)) return false;
+  const listId = list?.id;
+  if (!listId) return false;
+  if (
+    isInboxTaskList({
+      id: listId,
+      role: list.role,
+      isSharee: list.isSharee,
+      isDefault: list.isDefault,
+    })
+  ) {
+    return false;
+  }
   if (list.isDefault) return false;
   if (list.isSharee) return false;
   if (!canShareTaskList(list)) return false;
