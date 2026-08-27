@@ -1,6 +1,6 @@
-@import "../../styles.css" reference;
+@import "../styles.css" reference;
 
-.calendar-color-swatch-trigger {
+.color-swatch-trigger {
   @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 px-2 shadow-none;
   @apply focus-visible:ring-2 focus-visible:ring-offset-1;
   min-width: 3.25rem;
@@ -8,28 +8,28 @@
 }
 
 /* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with
-   higher specificity so unlabeled swatches stay intrinsic in the event-dialog title row. */
-.control-surface.calendar-color-swatch-trigger:not(.calendar-color-swatch-trigger--labeled) {
+   higher specificity so unlabeled swatches stay intrinsic next to a flexing title. */
+.control-surface.color-swatch-trigger:not(.color-swatch-trigger--labeled) {
   width: auto;
 }
 
-.calendar-color-swatch-trigger--labeled {
+.color-swatch-trigger--labeled {
   @apply w-full justify-between;
 }
 
-.control-surface.calendar-color-swatch-trigger--labeled {
+.control-surface.color-swatch-trigger--labeled {
   width: 100%;
 }
 
-.calendar-color-swatch-trigger__dot {
+.color-swatch-trigger__dot {
   @apply size-3 shrink-0 rounded-full;
 }
 
-.calendar-color-swatch-trigger__caption {
+.color-swatch-trigger__caption {
   @apply min-w-0 flex-1 truncate text-left;
 }
 
-.calendar-color-swatch-trigger__chevron {
+.color-swatch-trigger__chevron {
   @apply size-3.5 shrink-0 opacity-70;
   color: color-mix(in oklab, var(--color-ink) 70%, transparent);
 }

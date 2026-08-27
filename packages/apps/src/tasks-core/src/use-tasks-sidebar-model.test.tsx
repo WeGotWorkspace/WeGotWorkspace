@@ -6,6 +6,7 @@ import { defaultTaskListId } from "@/tasks-core/src/tasks-task-utils";
 import {
   isOwnedInboxSidebarList,
   isViewOnlyTaskList,
+  sortSidebarTaskLists,
   useTasksSidebarModel,
 } from "@/tasks-core/src/use-tasks-sidebar-model";
 
@@ -114,6 +115,61 @@ describe("useTasksSidebarModel", () => {
       true,
     );
     expect(isViewOnlyTaskList({ id: "owned", name: "Owned", myRights: writeRights })).toBe(false);
+  });
+
+  it("puts Inbox first in My lists, then sorts the rest alphabetically", () => {
+    const { result } = renderHook(() =>
+      useTasksSidebarModel({
+        labels: defaultTasksLabels,
+        view: "state:all",
+        taskLists: [
+          {
+            id: "work",
+            name: "Work",
+            isSharee: false,
+            myRights: writeRights,
+          },
+          {
+            id: "alpha",
+            name: "alpha chores",
+            isSharee: false,
+            myRights: writeRights,
+          },
+          {
+            id: "inbox",
+            name: "Inbox",
+            role: "inbox",
+            isDefault: true,
+            isSharee: false,
+            myRights: writeRights,
+          },
+          {
+            id: "zeta",
+            name: "Zeta",
+            isSharee: false,
+            myRights: writeRights,
+          },
+        ],
+        selectView: () => undefined,
+      }),
+    );
+
+    expect(result.current.ownedLists.map((list) => list.id)).toEqual([
+      "inbox",
+      "alpha",
+      "work",
+      "zeta",
+    ]);
+  });
+
+  it("sortSidebarTaskLists pins inbox ahead of names that sort before Inbox", () => {
+    expect(
+      sortSidebarTaskLists([
+        { id: "alpha", name: "Alpha" },
+        { id: "inbox", name: "Inbox", role: "inbox", isDefault: true },
+        { id: "beta", name: "beta" },
+      ]).map((list) => list.id),
+    ).toEqual(["inbox", "alpha", "beta"]);
   });
 
   it("partitions the shared mock fixture the same way", () => {

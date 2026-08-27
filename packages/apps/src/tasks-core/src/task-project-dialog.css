@@ -1,13 +1,5 @@
 @import "../../styles.css" reference;
 
-.task-project-dialog__name-color-row {
-  @apply flex items-center gap-2;
-}
-
-.task-project-dialog__name-input {
-  @apply min-w-0 flex-[1_1_85%];
-}
-
 .tasks-dialog-surface .field-label-row + .field-label-row {
   @apply mt-3;
 }

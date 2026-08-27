@@ -734,24 +734,6 @@
   @apply min-w-36;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__title-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__calendar-trigger {
-  /* Shared CalendarColorSwatchTrigger sizing; keep title-row alignment.
-     Raw width: control-surface is w-full and wins @apply w-auto in production. */
-  flex-shrink: 0;
-  width: auto;
-}
-
 /* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
 .calendar-event-dialog__calendar-menu {
   min-width: 12rem;

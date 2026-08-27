@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Bell } from "lucide-react";
-import { IconButton } from "@/button/src/icon-button";
+import { Button } from "@/button/src/button";
+import { BUTTON_ICON_SLOT_CLASSNAME } from "@/button/src/button.shared";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
 import { CardPanel } from "@/card/src/card-panel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -83,18 +84,21 @@ export function TasksRemindPicker({
   return (
     <>
       <TasksRemindVisual count={count} className="tasks-main-view__remind--composer">
-        <IconButton
-          label={buttonLabel}
-          icon={<Bell aria-hidden />}
-          size="md"
+        <Button
+          type="button"
+          size="sm"
           variant="outline"
-          active={count > 0}
           disabled={disabled}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="tasks-main-view__remind-button"
+          className={`tasks-main-view__remind-button${count > 0 ? " tasks-main-view__remind-button--active" : ""}`}
           onClick={() => setOpen(true)}
-        />
+        >
+          <span className={BUTTON_ICON_SLOT_CLASSNAME} aria-hidden>
+            <Bell />
+          </span>
+          {buttonLabel}
+        </Button>
       </TasksRemindVisual>
       <Dialog open={disabled ? false : open} onOpenChange={setOpen}>
         <DialogContent

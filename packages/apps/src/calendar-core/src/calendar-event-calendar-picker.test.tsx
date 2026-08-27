@@ -32,8 +32,8 @@ describe("CalendarEventCalendarPicker", () => {
 
     const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
-    expect(trigger.querySelector(".calendar-color-swatch-trigger__dot")).toBeTruthy();
-    expect(trigger.querySelector(".calendar-color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
 
     fireEvent.pointerDown(trigger);
     fireEvent.click(trigger);

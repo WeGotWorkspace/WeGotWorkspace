@@ -47,10 +47,13 @@ export function useTasksSidebarModel({
 }: UseTasksSidebarModelArgs) {
   const ownInboxId = useMemo(() => defaultTaskListId(taskLists), [taskLists]);
 
-  const { owned: ownedLists, shared: sharedLists } = useMemo(
-    () => partitionOwnedAndShared(taskLists),
-    [taskLists],
-  );
+  const { owned: ownedLists, shared: sharedLists } = useMemo(() => {
+    const partitioned = partitionOwnedAndShared(taskLists);
+    return {
+      owned: sortSidebarTaskLists(partitioned.owned),
+      shared: sortSidebarTaskLists(partitioned.shared),
+    };
+  }, [taskLists]);
 
   const topSidebarItems = useMemo(
     () => [
@@ -139,4 +142,21 @@ export function isViewOnlyTaskList(list: TaskListSidebarEntry): boolean {
 
 export function isOwnedInboxSidebarList(list: TaskListSidebarEntry): boolean {
   return isInboxTaskList(list);
+}
+
+function isPinnedSidebarInbox(list: TaskListSidebarEntry): boolean {
+  if (list.role === "inbox") return true;
+  if (isInboxTaskList(list)) return true;
+  if (list.isSharee) return false;
+  return list.isDefault === true;
+}
+
+/** Inbox first, then locale-aware A–Z. Shared and owned sections both use this. */
+export function sortSidebarTaskLists<T extends TaskListSidebarEntry>(lists: readonly T[]): T[] {
+  return [...lists].sort((left, right) => {
+    const leftInbox = isPinnedSidebarInbox(left);
+    const rightInbox = isPinnedSidebarInbox(right);
+    if (leftInbox !== rightInbox) return leftInbox ? -1 : 1;
+    return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
+  });
 }

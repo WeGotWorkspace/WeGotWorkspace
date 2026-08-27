@@ -252,13 +252,12 @@ describe("calendar workspace search results", () => {
 });
 
 describe("calendar event dialog title row", () => {
-  it("keeps the calendar swatch intrinsic so the summary field can flex", () => {
-    expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__title-input \{[\s\S]*flex:\s*1/,
-    );
-    expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/,
-    );
+  it("uses the shared name-color row so the summary field can flex", () => {
+    const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
+    expect(dialogTsx).toMatch(/NameColorRow/);
+    expect(dialogTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
+    expect(css).not.toMatch(/calendar-event-dialog__title-input/);
+    expect(css).not.toMatch(/calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/);
   });
 });
 

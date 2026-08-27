@@ -20,6 +20,8 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
+import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
+import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import type {
   CalendarDirectoryGroup,
@@ -27,7 +29,6 @@ import type {
   CalendarInfo,
 } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 import { CalendarPublishSection } from "@/calendar-core/src/calendar-publish-section";
 import { CalendarShareSection } from "@/calendar-core/src/calendar-share-section";
 import type { CalendarSharePrincipal, CalendarShareWith } from "@/calendar-core/src/calendar-share";
@@ -274,10 +275,10 @@ export function CalendarCalendarDialog({
             ) : null}
 
             <FieldLabelRow label={labels.calendarNameLabel} htmlFor="calendar-calendar-name">
-              <div className="calendar-calendar-dialog__name-color-row">
+              <NameColorRow>
                 <Input
                   id="calendar-calendar-name"
-                  className="calendar-calendar-dialog__name-input"
+                  className={NAME_COLOR_ROW_INPUT_CLASS}
                   autoFocus={!isSubscribe && !nameReadOnly}
                   value={name}
                   disabled={busy || nameReadOnly}
@@ -293,13 +294,13 @@ export function CalendarCalendarDialog({
                   colorLabel={labels.calendarColorLabel}
                   swatches={CALENDAR_COLOR_SWATCHES}
                 >
-                  <CalendarColorSwatchTrigger
+                  <ColorSwatchTrigger
                     color={selectedColor}
                     label={labels.calendarColorLabel}
                     aria-haspopup="dialog"
                   />
                 </SwatchColorPicker>
-              </div>
+              </NameColorRow>
             </FieldLabelRow>
 
             <OwnerScopeField

@@ -87,7 +87,7 @@ describe("TasksEditDialog", () => {
     const { onSave } = renderEditDialog({ task: reminded });
 
     const remind = screen.getByRole("button", { name: "Reminding 30 mins before" });
-    expect(remind.classList.contains("icon-button--active")).toBe(true);
+    expect(remind.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
 
     fireEvent.click(remind);
     fireEvent.click(
