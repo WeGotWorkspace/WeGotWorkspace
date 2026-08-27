@@ -522,6 +522,12 @@ export const SearchIdleCompact: Story = {
     expect(input.closest(".calendar-header-actions")).toBeTruthy();
     await userEvent.keyboard("/");
     await expect(input).toHaveFocus();
+    const dismiss = canvasElement.querySelector(".calendar-search-dismiss");
+    expect(dismiss).toBeTruthy();
+    await userEvent.click(dismiss as HTMLElement);
+    await expect(input).not.toHaveFocus();
+    expect(input.closest(".calendar-search-field--expanded")).toBeNull();
+    expect(canvasElement.querySelector(".calendar-search-dismiss")).toBeNull();
   },
 };
 

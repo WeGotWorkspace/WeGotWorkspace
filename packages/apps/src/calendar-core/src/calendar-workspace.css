@@ -522,14 +522,27 @@
  * shared Input search size-sm (`--control-height-sm`), matching the view
  * dropdown — no calendar-only height hack.
  */
+.calendar-workspace .calendar-search-host {
+  @apply contents;
+}
+
+.calendar-workspace .calendar-search-dismiss {
+  @apply pointer-events-none invisible;
+}
+
 .calendar-workspace .calendar-search-field {
   @apply mt-0 w-44 shrink-0;
 }
 
 @media (max-width: 1159px) {
   .calendar-workspace .calendar-search-field {
+    /* Gutter tokens match `.calendar-main` (`px-4` / `md:px-6` / `px-3` < 40rem).
+       Keep `left: auto` and animate `width` — `width: auto` / `left: auto → length`
+       cannot interpolate, which dropped the expand motion. */
+    --calendar-search-fab-inline-start: max(1rem, env(safe-area-inset-left, 0px));
+    --calendar-search-fab-inline-end: max(1rem, env(safe-area-inset-right, 0px));
     @apply pointer-events-auto absolute mt-0 size-9 w-9 overflow-hidden rounded-full border shadow-xl backdrop-blur-md;
-    right: max(1rem, env(safe-area-inset-right, 0px));
+    right: var(--calendar-search-fab-inline-end);
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     left: auto;
     z-index: calc(var(--_lc-z-sticky, 30) + 10);
@@ -541,20 +554,24 @@
     --collection-search-input-color: var(--color-ink);
   }
 
-  .calendar-workspace
-    .calendar-search-field:is(:focus-within, :has(input:not(:placeholder-shown))) {
-    @apply h-9 w-[min(22rem,calc(100%-2rem))];
+  .calendar-workspace .calendar-search-field--expanded {
+    @apply h-9;
+    width: calc(
+      100% - var(--calendar-search-fab-inline-start) - var(--calendar-search-fab-inline-end)
+    );
   }
 
-  .calendar-workspace
-    .calendar-search-field:not(:focus-within):not(:has(input:not(:placeholder-shown))) {
+  .calendar-workspace .calendar-search-field:not(.calendar-search-field--expanded) {
     @apply min-w-0 justify-center gap-0 px-0;
   }
 
-  .calendar-workspace
-    .calendar-search-field:not(:focus-within):not(:has(input:not(:placeholder-shown)))
-    input {
+  .calendar-workspace .calendar-search-field:not(.calendar-search-field--expanded) input {
     @apply absolute inset-0 size-full cursor-pointer opacity-0;
+  }
+
+  .calendar-workspace:has(.calendar-search-field--expanded) .calendar-search-dismiss {
+    @apply pointer-events-auto visible fixed inset-0;
+    z-index: calc(var(--_lc-z-sticky, 30) + 9);
   }
 
   .calendar-workspace .calendar-search-field:focus-within {
@@ -572,9 +589,23 @@
   }
 }
 
+@media (min-width: 768px) and (max-width: 1159px) {
+  .calendar-workspace .calendar-search-field {
+    --calendar-search-fab-inline-start: max(1.5rem, env(safe-area-inset-left, 0px));
+    --calendar-search-fab-inline-end: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (max-width: 40rem) {
+  .calendar-workspace .calendar-search-field {
+    --calendar-search-fab-inline-start: max(0.75rem, env(safe-area-inset-left, 0px));
+    --calendar-search-fab-inline-end: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}
+
 @media (max-width: 1159px) and (prefers-reduced-motion: no-preference) {
   .calendar-workspace .calendar-search-field {
-    @apply duration-300 ease-out transition-[width,box-shadow,background-color];
+    @apply duration-300 ease-out transition-[width,padding,box-shadow,background-color];
   }
 }
 
@@ -587,7 +618,9 @@
  */
 @media (max-width: 1159px) {
   .calendar-workspace:has(.app-sidebar[data-open="true"]) .calendar-search-field,
-  .calendar-workspace--panel-open .calendar-search-field {
+  .calendar-workspace:has(.app-sidebar[data-open="true"]) .calendar-search-dismiss,
+  .calendar-workspace--panel-open .calendar-search-field,
+  .calendar-workspace--panel-open .calendar-search-dismiss {
     @apply pointer-events-none invisible;
   }
 }

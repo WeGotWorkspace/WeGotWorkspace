@@ -2,6 +2,8 @@ import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Pencil, Rss } fro
 import {
   type ChangeEvent,
   type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
   type ReactNode,
   useCallback,
   useMemo,
@@ -417,11 +419,25 @@ export function CalendarWorkspace({
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
   const icsFileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchFabExpanded, setSearchFabExpanded] = useState(false);
   const { query: searchFieldQuery, setQuery: setSearchFieldQuery } = useViewHeaderSearchQuery({
     searchValue: searchQuery,
     onSearchInput: setSearchQuery,
     searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
   });
+  const collapseSearchFab = useCallback(() => {
+    setSearchFabExpanded(false);
+  }, []);
+  const onSearchDismissPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    searchInputRef.current?.blur();
+  };
+  const onSearchDismissClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    collapseSearchFab();
+  };
 
   useWorkspaceListKeyboardShortcuts({
     searchInputRef,
@@ -775,13 +791,33 @@ export function CalendarWorkspace({
             }
             actions={
               <div className="calendar-header-actions">
-                <CollectionSearchInput
-                  inputRef={searchInputRef}
-                  value={searchFieldQuery}
-                  onChange={setSearchFieldQuery}
-                  placeholder={L.searchPlaceholder}
-                  className="calendar-search-field"
-                />
+                <div
+                  className="calendar-search-host"
+                  onFocusCapture={() => setSearchFabExpanded(true)}
+                  onKeyDownCapture={(event) => {
+                    if (event.key === "Escape") collapseSearchFab();
+                  }}
+                >
+                  {searchFabExpanded ? (
+                    <div
+                      className="calendar-search-dismiss"
+                      aria-hidden
+                      onPointerDown={onSearchDismissPointerDown}
+                      onClick={onSearchDismissClick}
+                    />
+                  ) : null}
+                  <CollectionSearchInput
+                    inputRef={searchInputRef}
+                    value={searchFieldQuery}
+                    onChange={setSearchFieldQuery}
+                    placeholder={L.searchPlaceholder}
+                    className={
+                      searchFabExpanded
+                        ? "calendar-search-field calendar-search-field--expanded"
+                        : "calendar-search-field"
+                    }
+                  />
+                </div>
                 <Select
                   value={view}
                   disabled={searchActive}

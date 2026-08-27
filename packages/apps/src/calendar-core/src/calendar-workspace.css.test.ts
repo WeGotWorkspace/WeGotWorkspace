@@ -142,7 +142,7 @@ describe("calendar workspace search results", () => {
       /\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*\bpx-1\.5\b/,
     );
     expect(css).not.toMatch(
-      /\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*\bpx-4\b/,
+      /\.calendar-workspace \.calendar-search-results__scope \{[^}]*\bpx-4\b/,
     );
     expect(searchTsx).toMatch(/calendar-search-results__scope/);
     expect(searchTsx).toMatch(/<Tag/);
@@ -151,7 +151,7 @@ describe("calendar workspace search results", () => {
     expect(searchTsx).not.toMatch(/searchTruncated/);
     expect(searchTsx).not.toMatch(/truncationCaption/);
     expect(css).toMatch(/\.calendar-workspace \.calendar-main--search \{[\s\S]*@apply/);
-    expect(tsx).toMatch(/className="calendar-search-field"/);
+    expect(tsx).toMatch(/calendar-search-field/);
     expect(tsx).toMatch(/searchInputRef/);
     expect(tsx).not.toMatch(/data-idle-label/);
     expect(css).not.toMatch(/content:\s*attr\(data-idle-label\)/);
@@ -209,15 +209,28 @@ describe("calendar workspace search results", () => {
     expect(compact).toMatch(/@apply[^;]*\bshadow-xl\b/);
     expect(compact).toMatch(/box-shadow:/);
     expect(compact).toMatch(/@apply[^;]*\bw-9\b/);
-    expect(compact).toMatch(/right:\s*max\(1rem/);
+    expect(compact).toMatch(/right:\s*var\(--calendar-search-fab-inline-end\)/);
     expect(compact).toMatch(/left:\s*auto/);
     expect(compact).toMatch(/z-index:\s*calc\(\s*var\(--_lc-z-sticky/);
     expect(compact).toMatch(/--collection-search-input-bg/);
     expect(css).toMatch(/@media\s*\(max-width:\s*1159px\)[\s\S]*--_lc-list-end-pad:\s*4\.5rem/);
-    expect(css).not.toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{[^{}]*\.calendar-search-field/);
-    expect(css).toMatch(
-      /\.calendar-search-field:is\(:focus-within,\s*:has\(input:not\(:placeholder-shown\)\)\) \{[\s\S]*w-\[min\(22rem/,
+    expect(css).toMatch(/\.calendar-search-field--expanded \{[\s\S]*width:\s*calc\(\s*100%/);
+    expect(css).toMatch(/--calendar-search-fab-inline-start:\s*max\(1rem/);
+    expect(css).toMatch(/--calendar-search-fab-inline-end:\s*max\(1rem/);
+    expect(css).not.toMatch(/w-\[min\(22rem/);
+    expect(css).not.toMatch(
+      /\.calendar-search-field:is\(:focus-within[\s\S]*?\b(w-auto|left:\s*max)/,
     );
+    expect(css).toMatch(/\.calendar-workspace \.calendar-search-host \{[\s\S]*\bcontents\b/);
+    expect(css).toMatch(
+      /:has\(\.calendar-search-field--expanded\) \.calendar-search-dismiss \{[\s\S]*\bfixed\b/,
+    );
+    expect(tsx).toMatch(/calendar-search-dismiss/);
+    expect(tsx).toMatch(/onPointerDown=\{onSearchDismissPointerDown\}/);
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)[\s\S]*--calendar-search-fab-inline-start:\s*max\(0\.75rem/,
+    );
+    expect(css).toMatch(/transition-\[width,padding,box-shadow,background-color\]/);
     expect(css).toMatch(/prefers-reduced-motion:\s*no-preference/);
     expect(css).toMatch(
       /\.calendar-workspace \.calendar-search-field \{[\s\S]*@apply[^;]*\bduration-300\b/,
