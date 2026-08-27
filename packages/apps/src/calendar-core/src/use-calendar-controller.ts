@@ -412,20 +412,26 @@ export function useCalendarController({
     [emitRouteState],
   );
 
-  const { searchQuery, setSearchQuery, applyQueryFromRoute, searchActive, searchResults } =
-    useCalendarSearch({
-      events: data.events,
-      calendars,
-      visibleCalendarIds,
-      visibleRange: visibleSearchRange,
-      readBrowse,
-      restoreBrowse,
-      initialQuery: searchQueryRef.current,
-      onQueryCommit: (query) => {
-        searchQueryRef.current = query;
-        emitRouteState(currentRouteState(), true);
-      },
-    });
+  const {
+    searchQuery,
+    setSearchQuery,
+    applyQueryFromRoute,
+    searchActive,
+    searchResults,
+    searchRange,
+  } = useCalendarSearch({
+    events: data.events,
+    calendars,
+    visibleCalendarIds,
+    visibleRange: visibleSearchRange,
+    readBrowse,
+    restoreBrowse,
+    initialQuery: searchQueryRef.current,
+    onQueryCommit: (query) => {
+      searchQueryRef.current = query;
+      emitRouteState(currentRouteState(), true);
+    },
+  });
   applyQueryFromRouteRef.current = applyQueryFromRoute;
 
   const showingToday = useMemo(() => isViewShowingToday(view, anchor), [view, anchor]);
@@ -1419,6 +1425,7 @@ export function useCalendarController({
     setSearchQuery,
     searchActive,
     searchResults,
+    searchRange,
     litSurface,
     defaultCalendarId,
     operations,

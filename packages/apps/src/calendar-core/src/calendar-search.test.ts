@@ -11,8 +11,8 @@ import {
 import { MOCK_CALENDAR_ANCHOR } from "@/lib/api/mock/calendar-bootstrap";
 import { createDevCalendarSeedEvents } from "@/lib/api/mock/calendar-seed";
 import {
-  CALENDAR_SEARCH_SECTION_CAP,
   calendarSearchRange,
+  formatCalendarSearchScopeLabel,
   expandSearchOccurrences,
   matchCalendarOccurrences,
   searchCalendarEvents,
@@ -75,14 +75,18 @@ describe("matchCalendarOccurrences", () => {
     expect(matchCalendarOccurrences(rows, events, "", NOW)).toEqual({
       upcoming: [],
       past: [],
-      truncatedUpcoming: false,
-      truncatedPast: false,
     });
     expect(matchCalendarOccurrences(rows, events, "   \t  ", NOW)).toEqual({
       upcoming: [],
       past: [],
-      truncatedUpcoming: false,
-      truncatedPast: false,
+    });
+    expect(matchCalendarOccurrences(rows, events, "st", NOW)).toEqual({
+      upcoming: [],
+      past: [],
+    });
+    expect(searchCalendarEvents(events, "st", { today: TODAY, now: NOW })).toEqual({
+      upcoming: [],
+      past: [],
     });
   });
 
@@ -239,37 +243,37 @@ describe("matchCalendarOccurrences", () => {
   it("splits upcoming and past by end vs now and sorts each section", () => {
     const later = occurrence({
       eventId: "later",
-      title: "Later",
+      title: "Later slot",
       start: Temporal.PlainDateTime.from("2026-08-27T10:00:00"),
       end: Temporal.PlainDateTime.from("2026-08-27T11:00:00"),
     });
     const sooner = occurrence({
       eventId: "sooner",
-      title: "Sooner",
+      title: "Sooner slot",
       start: Temporal.PlainDateTime.from("2026-08-26T13:00:00"),
       end: Temporal.PlainDateTime.from("2026-08-26T13:30:00"),
     });
     const inProgress = occurrence({
       eventId: "now",
-      title: "In progress",
+      title: "In progress slot",
       start: Temporal.PlainDateTime.from("2026-08-26T11:00:00"),
       end: Temporal.PlainDateTime.from("2026-08-26T13:00:00"),
     });
     const yesterday = occurrence({
       eventId: "yest",
-      title: "Yesterday",
+      title: "Yesterday slot",
       start: Temporal.PlainDateTime.from("2026-08-25T10:00:00"),
       end: Temporal.PlainDateTime.from("2026-08-25T11:00:00"),
     });
     const lastWeek = occurrence({
       eventId: "old",
-      title: "Last week",
+      title: "Last week slot",
       start: Temporal.PlainDateTime.from("2026-08-19T10:00:00"),
       end: Temporal.PlainDateTime.from("2026-08-19T11:00:00"),
     });
     const endingNow = occurrence({
       eventId: "end-now",
-      title: "Ending now",
+      title: "Ending now slot",
       start: Temporal.PlainDateTime.from("2026-08-26T11:00:00"),
       end: NOW,
     });
@@ -277,14 +281,14 @@ describe("matchCalendarOccurrences", () => {
     const results = matchCalendarOccurrences(
       [later, lastWeek, sooner, yesterday, inProgress, endingNow],
       [
-        wireEvent({ id: "later", uid: "later", title: "Later" }),
-        wireEvent({ id: "sooner", uid: "sooner", title: "Sooner" }),
-        wireEvent({ id: "now", uid: "now", title: "In progress" }),
-        wireEvent({ id: "yest", uid: "yest", title: "Yesterday" }),
-        wireEvent({ id: "old", uid: "old", title: "Last week" }),
-        wireEvent({ id: "end-now", uid: "end-now", title: "Ending now" }),
+        wireEvent({ id: "later", uid: "later", title: "Later slot" }),
+        wireEvent({ id: "sooner", uid: "sooner", title: "Sooner slot" }),
+        wireEvent({ id: "now", uid: "now", title: "In progress slot" }),
+        wireEvent({ id: "yest", uid: "yest", title: "Yesterday slot" }),
+        wireEvent({ id: "old", uid: "old", title: "Last week slot" }),
+        wireEvent({ id: "end-now", uid: "end-now", title: "Ending now slot" }),
       ],
-      "e",
+      "slot",
       NOW,
     );
 
@@ -292,8 +296,8 @@ describe("matchCalendarOccurrences", () => {
     expect(results.past.map((row) => row.eventId)).toEqual(["end-now", "yest", "old"]);
   });
 
-  it("caps each section at 100 and sets truncation flags independently", () => {
-    const upcoming = Array.from({ length: CALENDAR_SEARCH_SECTION_CAP + 2 }, (_, index) =>
+  it("does not cap upcoming or past sections", () => {
+    const upcoming = Array.from({ length: 5 }, (_, index) =>
       occurrence({
         eventId: `up-${index}`,
         key: `up-${index}`,
@@ -302,7 +306,7 @@ describe("matchCalendarOccurrences", () => {
         end: Temporal.PlainDateTime.from("2026-08-26T13:30:00").add({ minutes: index }),
       }),
     );
-    const past = Array.from({ length: CALENDAR_SEARCH_SECTION_CAP + 1 }, (_, index) =>
+    const past = Array.from({ length: 4 }, (_, index) =>
       occurrence({
         eventId: `past-${index}`,
         key: `past-${index}`,
@@ -316,24 +320,12 @@ describe("matchCalendarOccurrences", () => {
     );
 
     const results = matchCalendarOccurrences([...upcoming, ...past], events, "overflow", NOW);
-    expect(results.upcoming).toHaveLength(CALENDAR_SEARCH_SECTION_CAP);
-    expect(results.past).toHaveLength(CALENDAR_SEARCH_SECTION_CAP);
-    expect(results.truncatedUpcoming).toBe(true);
-    expect(results.truncatedPast).toBe(true);
+    expect(results.upcoming).toHaveLength(5);
+    expect(results.past).toHaveLength(4);
     expect(results.upcoming[0]?.eventId).toBe("up-0");
     expect(results.past[0]?.eventId).toBe("past-0");
-  });
-
-  it("omits truncation flags when a section has 100 or fewer matches", () => {
-    const row = occurrence({
-      eventId: "ev-1",
-      title: "Solo",
-      start: Temporal.PlainDateTime.from("2026-08-26T13:00:00"),
-      end: Temporal.PlainDateTime.from("2026-08-26T13:30:00"),
-    });
-    const results = matchCalendarOccurrences([row], [wireEvent({ title: "Solo" })], "solo", NOW);
-    expect(results.truncatedUpcoming).toBe(false);
-    expect(results.truncatedPast).toBe(false);
+    expect(results).not.toHaveProperty("truncatedUpcoming");
+    expect(results).not.toHaveProperty("truncatedPast");
   });
 });
 
@@ -640,8 +632,6 @@ describe("unifiedSearchOccurrences", () => {
       unifiedSearchOccurrences({
         past: [pastNewer, pastOlder],
         upcoming: [upcomingSoon, upcomingLater],
-        truncatedUpcoming: false,
-        truncatedPast: false,
       }).map((row) => row.eventId),
     ).toEqual(["old", "yest", "soon", "later"]);
   });
@@ -661,5 +651,17 @@ describe("searchOccurrencesToEngineMap", () => {
     expect(map.get("design-review::2026-08-26")?.data.summary).toBe("Design review");
     expect(map.get("design-review::2026-08-26")?.data.location).toBe("Room 4");
     expect(map.get("design-review::2026-08-26")?.data.end?.toString()).toBe("2026-08-26T11:00:00");
+  });
+});
+
+describe("formatCalendarSearchScopeLabel", () => {
+  it("formats the searched window as month+year bounds", () => {
+    expect(
+      formatCalendarSearchScopeLabel(
+        "Visible calendars · {start} – {end}",
+        { start: "2025-08-01T00:00:00", end: "2028-08-01T00:00:00" },
+        "en-US",
+      ),
+    ).toBe("Visible calendars · Aug 2025 – Aug 2028");
   });
 });

@@ -234,13 +234,18 @@ describe("ViewHeader search debounce", () => {
     vi.useRealTimers();
   });
 
-  function renderSearch(onSearchInput: (query: string) => void, searchDebounceMs?: number) {
+  function renderSearch(
+    onSearchInput: (query: string) => void,
+    searchDebounceMs?: number,
+    searchMinLength?: number,
+  ) {
     return render(
       <ViewHeader
         {...baseProps}
         searchPlaceholder="Search"
         onSearchInput={onSearchInput}
         {...(searchDebounceMs !== undefined ? { searchDebounceMs } : {})}
+        {...(searchMinLength !== undefined ? { searchMinLength } : {})}
       />,
     );
   }
@@ -300,5 +305,25 @@ describe("ViewHeader search debounce", () => {
       vi.advanceTimersByTime(200);
     });
     expect(onSearchInput).not.toHaveBeenCalledWith("x");
+  });
+
+  it("does not emit 1–2 character queries when searchMinLength is 3", () => {
+    vi.useFakeTimers();
+    const onSearchInput = vi.fn();
+    renderSearch(onSearchInput, undefined, 3);
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "ab" } });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onSearchInput).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "abc" } });
+    act(() => {
+      vi.advanceTimersByTime(180);
+    });
+    expect(onSearchInput).toHaveBeenCalledTimes(1);
+    expect(onSearchInput).toHaveBeenCalledWith("abc");
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "ab" } });
+    expect(onSearchInput).toHaveBeenCalledTimes(2);
+    expect(onSearchInput).toHaveBeenLastCalledWith("");
   });
 });

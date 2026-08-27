@@ -38,7 +38,7 @@ Implement Task #637: Calendar ViewHeader search over the bootstrap cache, locked
 - **id:** `matcher`
 - **Skill:** workspace, testing
 - **Inputs:** `occurrencesInRange`, `calendarBootstrapWindow`
-- **Done when:** `calendar-search.ts` expands via `occurrencesInRange(..., calendarBootstrapWindow(), { visibleCalendarIds })`, then trim + exact substring on title/location/master description; split/sort/cap 100+100; `truncatedUpcoming` / `truncatedPast` flags only (no caption chrome). Vitest covers empty/whitespace, trim, case, exact-substring vs token order, field isolation, bootstrap-window expansion, recurrence multiples, upcoming-vs-past split/sort, per-section cap flags.
+- **Done when:** `calendar-search.ts` expands via `occurrencesInRange(..., calendarBootstrapWindow(), { visibleCalendarIds })`, then trim + exact substring on title/location/master description; split/sort with **no result cap**; 1–2 char queries are empty. Vitest covers empty/whitespace/short query, trim, case, exact-substring vs token order, field isolation, bootstrap-window expansion, recurrence multiples, upcoming-vs-past split/sort.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core/src/calendar-search.test.ts`
 - **Parallel with:** none
 
@@ -56,7 +56,7 @@ Implement Task #637: Calendar ViewHeader search over the bootstrap cache, locked
 - **id:** `workspace-ui`
 - **Skill:** workspace, apps-ui, storybook, accessibility
 - **Inputs:** `calendar-workspace.tsx`, `calendar-labels.ts`, `calendar-workspace.css`, `calendar-app.stories.tsx`, `view-header.tsx`
-- **Done when:** ViewHeader flush-on-empty (non-empty → empty only); 180ms typing; no mount empty callback; pending timer cancelled; empty flush independent of `searchDebounceMs`. Calendar search chrome, keyboard shortcuts, locked period chrome, dedicated results list, CollectionState no-match, no truncation captions, BEM+`@apply`. Stories + fake-timer play. Mail/Notes/Drive/Docs/Contacts search tests still green. Header-layout CSS tests kept.
+- **Done when:** ViewHeader flush-on-empty (non-empty → empty only); 180ms typing; no mount empty callback; pending timer cancelled; empty flush independent of `searchDebounceMs`. Calendar-only `searchMinLength=3`. Calendar search chrome, keyboard shortcuts, locked period chrome, dedicated results list, CollectionState no-match, scope label on results, no truncation captions, BEM+`@apply`. Stories + fake-timer play. Mail/Notes/Drive/Docs/Contacts search tests still green. Header-layout CSS tests kept.
 - **Verify with:** ViewHeader + consumer search Vitest, story `play`, then apps done-gate in Chunk V
 - **Parallel with:** none
 

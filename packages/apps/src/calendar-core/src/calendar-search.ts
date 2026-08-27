@@ -7,23 +7,17 @@ import {
   type CalendarOccurrence,
 } from "@/calendar-core/src/calendar-event-model";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
-
-/** Independent per-section cap. Recurring series can produce many rows. */
-export const CALENDAR_SEARCH_SECTION_CAP = 100;
+import { isCalendarSearchQueryActive } from "@/calendar-core/src/calendar-route-search";
 
 export type CalendarSearchResults = {
   upcoming: CalendarOccurrence[];
   past: CalendarOccurrence[];
-  truncatedUpcoming: boolean;
-  truncatedPast: boolean;
 };
 
 /** Stable empty result for idle browse — callers may reuse this identity. */
 export const EMPTY_SEARCH_RESULTS: CalendarSearchResults = {
   upcoming: [],
   past: [],
-  truncatedUpcoming: false,
-  truncatedPast: false,
 };
 
 export type CalendarSearchDateRange = { start: string; end: string };
@@ -92,7 +86,7 @@ export function matchCalendarOccurrences(
   now: Temporal.PlainDateTime = Temporal.Now.plainDateTimeISO(),
 ): CalendarSearchResults {
   const needle = query.trim().toLowerCase();
-  if (!needle) {
+  if (!isCalendarSearchQueryActive(needle)) {
     return EMPTY_SEARCH_RESULTS;
   }
 
@@ -124,14 +118,7 @@ export function matchCalendarOccurrences(
   upcoming.sort((a, b) => Temporal.PlainDateTime.compare(a.start, b.start));
   past.sort((a, b) => Temporal.PlainDateTime.compare(b.start, a.start));
 
-  const truncatedUpcoming = upcoming.length > CALENDAR_SEARCH_SECTION_CAP;
-  const truncatedPast = past.length > CALENDAR_SEARCH_SECTION_CAP;
-  return {
-    upcoming: upcoming.slice(0, CALENDAR_SEARCH_SECTION_CAP),
-    past: past.slice(0, CALENDAR_SEARCH_SECTION_CAP),
-    truncatedUpcoming,
-    truncatedPast,
-  };
+  return { upcoming, past };
 }
 
 export function searchCalendarEvents(
@@ -146,7 +133,7 @@ export function searchCalendarEvents(
   } = {},
 ): CalendarSearchResults {
   const needle = query.trim().toLowerCase();
-  if (!needle) {
+  if (!isCalendarSearchQueryActive(needle)) {
     return EMPTY_SEARCH_RESULTS;
   }
   const candidates = events.filter((event) => masterMightMatch(event, needle));
@@ -212,10 +199,34 @@ function maxDateTimeString(left: string, right: string): string {
   return left >= right ? left : right;
 }
 
-/**
- * One chronological agenda: the capped past window oldest→newest, then upcoming.
- * Matcher still keeps past newest-first so the 100-cap is “most recent”.
- */
+/** Month+year bounds of the searched window (snapped bootstrap / union range). */
+export function formatCalendarSearchScopeRange(
+  range: CalendarSearchDateRange,
+  locale: string,
+): { start: string; end: string } {
+  const start = Temporal.PlainDateTime.from(range.start);
+  const end = Temporal.PlainDateTime.from(range.end);
+  const formatter = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return {
+    start: formatter.format(new Date(Date.UTC(start.year, start.month - 1, 1))),
+    end: formatter.format(new Date(Date.UTC(end.year, end.month - 1, 1))),
+  };
+}
+
+export function formatCalendarSearchScopeLabel(
+  template: string,
+  range: CalendarSearchDateRange,
+  locale: string,
+): string {
+  const { start, end } = formatCalendarSearchScopeRange(range, locale);
+  return template.replaceAll("{start}", start).replaceAll("{end}", end);
+}
+
+/** One chronological agenda: past oldest→newest, then upcoming. */
 export function unifiedSearchOccurrences(results: CalendarSearchResults): CalendarOccurrence[] {
   return [...results.past].reverse().concat(results.upcoming);
 }

@@ -497,6 +497,10 @@
   @apply h-full min-h-0;
 }
 
+.calendar-workspace .calendar-search-results__scope {
+  @apply shrink-0 px-4 pb-1 pt-3 text-xs text-muted-foreground;
+}
+
 .calendar-workspace .calendar-search-results__agenda {
   @apply block min-h-0 w-full flex-1;
 }

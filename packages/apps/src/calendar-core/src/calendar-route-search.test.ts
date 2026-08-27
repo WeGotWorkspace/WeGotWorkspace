@@ -156,6 +156,9 @@ describe("calendar-route-search", () => {
     expect(validateCalendarRouteSearch({ q: "   " })).toEqual({});
     expect(validateCalendarRouteSearch({ q: 12 })).toEqual({});
     expect(calendarSearchFromQuery(" Client call ")).toEqual({ q: "Client call" });
+    expect(calendarSearchFromQuery("ab")).toEqual({});
+    expect(validateCalendarRouteSearch({ q: "ab" })).toEqual({});
+    expect(calendarSearchQueryFromSearch("?q=ab")).toBe("");
     expect(calendarSearchQueryFromSearch("?q=client%20call")).toBe("client call");
     expect(
       calendarStateFromLocation("/calendar/week/2026-08-17", {}, null, { q: "standup" }),

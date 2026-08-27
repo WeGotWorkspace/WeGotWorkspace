@@ -28,6 +28,7 @@ import { CollectionSearchInput } from "@/collection-search-input/src/collection-
 import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-search-query";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
+import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -337,6 +338,7 @@ export function CalendarWorkspace({
     setSearchQuery,
     searchActive,
     searchResults,
+    searchRange,
     undoLatest,
   } = controller;
   const { showError } = useAppToast();
@@ -418,6 +420,7 @@ export function CalendarWorkspace({
   const { query: searchFieldQuery, setQuery: setSearchFieldQuery } = useViewHeaderSearchQuery({
     searchValue: searchQuery,
     onSearchInput: setSearchQuery,
+    searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
   });
 
   useWorkspaceListKeyboardShortcuts({
@@ -831,6 +834,7 @@ export function CalendarWorkspace({
             {searchActive ? (
               <CalendarSearchResultsList
                 results={searchResults}
+                searchRange={searchRange}
                 labels={L}
                 locale={locale}
                 onEventSelected={openEventPreview}

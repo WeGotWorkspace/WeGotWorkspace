@@ -1,10 +1,15 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
+import {
+  isCalendarSearchQueryActive,
+  normalizeCalendarSearchQuery,
+  type CalendarRouteState,
+} from "@/calendar-core/src/calendar-route-search";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import {
   EMPTY_SEARCH_RESULTS,
   searchCalendarEvents,
+  unionCalendarSearchRange,
   type CalendarSearchDateRange,
 } from "@/calendar-core/src/calendar-search";
 
@@ -39,16 +44,22 @@ export function useCalendarSearch({
   const [searchQuery, setSearchQueryState] = useState(initialQuery);
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
-  const snapshotRef = useRef<CalendarRouteState | null>(initialQuery.trim() ? readBrowse() : null);
+  const snapshotRef = useRef<CalendarRouteState | null>(
+    isCalendarSearchQueryActive(initialQuery) ? readBrowse() : null,
+  );
   const onQueryCommitRef = useRef(onQueryCommit);
   onQueryCommitRef.current = onQueryCommit;
 
-  const searchActive = searchQuery.trim().length > 0;
+  const searchActive = isCalendarSearchQueryActive(searchQuery);
+  const searchRange = useMemo(
+    () => unionCalendarSearchRange(undefined, visibleRange),
+    [visibleRange],
+  );
 
   const setSearchQuery = useCallback(
     (next: string) => {
-      const wasActive = searchQueryRef.current.trim().length > 0;
-      const nextActive = next.trim().length > 0;
+      const wasActive = isCalendarSearchQueryActive(searchQueryRef.current);
+      const nextActive = isCalendarSearchQueryActive(next);
       if (nextActive && !wasActive && snapshotRef.current === null) {
         snapshotRef.current = readBrowse();
       }
@@ -60,15 +71,15 @@ export function useCalendarSearch({
         if (snapshot) restoreBrowse({ ...snapshot, searchQuery: "" }, { replace: true });
         return;
       }
-      onQueryCommitRef.current?.(next.trim());
+      onQueryCommitRef.current?.(nextActive ? normalizeCalendarSearchQuery(next) : "");
     },
     [readBrowse, restoreBrowse],
   );
 
   const applyQueryFromRoute = useCallback(
     (next: string) => {
-      const wasActive = searchQueryRef.current.trim().length > 0;
-      const nextActive = next.trim().length > 0;
+      const wasActive = isCalendarSearchQueryActive(searchQueryRef.current);
+      const nextActive = isCalendarSearchQueryActive(next);
       if (nextActive && !wasActive && snapshotRef.current === null) {
         snapshotRef.current = readBrowse();
       }
@@ -94,5 +105,6 @@ export function useCalendarSearch({
     applyQueryFromRoute,
     searchActive,
     searchResults,
+    searchRange,
   };
 }

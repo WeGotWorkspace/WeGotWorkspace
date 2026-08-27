@@ -46,6 +46,7 @@ type ViewHeaderProps = {
   searchValue?: string;
   onSearchInput?: (query: string) => void;
   searchDebounceMs?: number;
+  searchMinLength?: number;
   searchInputRef?: RefObject<HTMLInputElement | null>;
   searchContent?: ReactNode;
 };
@@ -67,6 +68,7 @@ export function ViewHeader({
   searchValue = "",
   onSearchInput,
   searchDebounceMs = 180,
+  searchMinLength,
   searchInputRef,
   searchContent,
 }: ViewHeaderProps) {
@@ -74,6 +76,7 @@ export function ViewHeader({
     searchValue,
     onSearchInput,
     searchDebounceMs,
+    searchMinLength,
   });
 
   return (

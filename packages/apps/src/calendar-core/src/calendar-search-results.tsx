@@ -5,8 +5,10 @@ import {
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
 import {
+  formatCalendarSearchScopeLabel,
   searchOccurrencesToEngineMap,
   unifiedSearchOccurrences,
+  type CalendarSearchDateRange,
   type CalendarSearchResults,
 } from "@/calendar-core/src/calendar-search";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
@@ -17,6 +19,7 @@ const EMPTY_SEARCH_EVENTS: CalendarEventsMap = new Map();
 
 export type CalendarSearchResultsListProps = {
   results: CalendarSearchResults;
+  searchRange: CalendarSearchDateRange;
   labels: CalendarUILabels;
   locale: string;
   onEventSelected: (key: string, origin?: CalendarEventSelectionOrigin) => void;
@@ -59,6 +62,7 @@ function SearchAgendaList({
 
 export function CalendarSearchResultsList({
   results,
+  searchRange,
   labels,
   locale,
   onEventSelected,
@@ -69,26 +73,20 @@ export function CalendarSearchResultsList({
   );
   const firstUpcomingKey = results.upcoming[0]?.key;
   const empty = results.upcoming.length === 0 && results.past.length === 0;
-
-  if (empty) {
-    return (
-      <div className="calendar-search-results calendar-search-results--empty">
-        <SearchAgendaList
-          events={EMPTY_SEARCH_EVENTS}
-          locale={locale}
-          emptyLabel={labels.searchNoMatch}
-          onEventSelected={onEventSelected}
-        />
-      </div>
-    );
-  }
+  const scopeLabel = formatCalendarSearchScopeLabel(labels.searchScope, searchRange, locale);
 
   return (
-    <div className="calendar-search-results">
+    <div
+      className={
+        empty ? "calendar-search-results calendar-search-results--empty" : "calendar-search-results"
+      }
+    >
+      <p className="calendar-search-results__scope">{scopeLabel}</p>
       <SearchAgendaList
-        events={events}
+        events={empty ? EMPTY_SEARCH_EVENTS : events}
         locale={locale}
-        scrollToKey={firstUpcomingKey}
+        emptyLabel={empty ? labels.searchNoMatch : undefined}
+        scrollToKey={empty ? undefined : firstUpcomingKey}
         onEventSelected={onEventSelected}
       />
     </div>

@@ -23,6 +23,9 @@ const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export const CALENDAR_SEARCH_QUERY_PARAM = "q";
 
+/** Calendar-only floor. Mail/Notes/Drive/Docs/Contacts stay 1-character. */
+export const CALENDAR_SEARCH_MIN_QUERY_LENGTH = 3;
+
 export type CalendarRouteSearch = {
   q?: string;
 };
@@ -70,12 +73,17 @@ export type CalendarRouteFallbacks = {
   presentation?: CalendarPresentation;
 };
 
+export function isCalendarSearchQueryActive(value: string | null | undefined): boolean {
+  return (value?.trim().length ?? 0) >= CALENDAR_SEARCH_MIN_QUERY_LENGTH;
+}
+
 export function normalizeCalendarSearchQuery(value: string | null | undefined): string {
-  return value?.trim() ?? "";
+  const trimmed = value?.trim() ?? "";
+  return isCalendarSearchQueryActive(trimmed) ? trimmed : "";
 }
 
 export function parseCalendarRouteSearch(search: Record<string, unknown>): CalendarRouteSearch {
-  const q = typeof search.q === "string" ? search.q.trim() : "";
+  const q = typeof search.q === "string" ? normalizeCalendarSearchQuery(search.q) : "";
   return q ? { q } : {};
 }
 

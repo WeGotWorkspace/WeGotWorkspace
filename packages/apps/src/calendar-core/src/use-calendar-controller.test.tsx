@@ -825,6 +825,12 @@ describe("useCalendarController search mode", () => {
     expect(result.current.searchActive).toBe(false);
 
     act(() => {
+      result.current.setSearchQuery("st");
+    });
+    expect(result.current.searchActive).toBe(false);
+    expect(result.current.searchQuery).toBe("st");
+
+    act(() => {
       result.current.setSearchQuery("standup");
     });
     expect(result.current.searchActive).toBe(true);

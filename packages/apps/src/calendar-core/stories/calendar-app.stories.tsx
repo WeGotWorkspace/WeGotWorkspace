@@ -9,7 +9,6 @@ import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-ope
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import { CALENDAR_SEARCH_SECTION_CAP } from "@/calendar-core/src/calendar-search";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
@@ -619,6 +618,7 @@ export const SearchNoMatch: Story = {
       },
       { timeout: 3000 },
     );
+    await expect(canvas.getByText(/Visible calendars/)).toBeTruthy();
     await expect(canvas.queryByText(/Downloaded /)).toBeNull();
     await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();
   },
@@ -634,13 +634,13 @@ export const SearchTruncated: Story = {
         expect(
           canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
         ).toBeTruthy();
+        expect(canvas.getByText(/Visible calendars/)).toBeTruthy();
         expect(canvasElement.querySelector(".calendar-search-results__caption")).toBeNull();
         expect(canvas.queryByText("Showing the next 100")).toBeNull();
         expect(canvas.queryByText("Showing the most recent 100")).toBeNull();
         const list = canvasElement.querySelector("calendar-list-view");
         const items = list?.shadowRoot?.querySelectorAll(".agenda-event-item");
         expect(items?.length).toBeGreaterThan(0);
-        expect(items?.length).toBeLessThanOrEqual(CALENDAR_SEARCH_SECTION_CAP * 2);
       },
       { timeout: 4000 },
     );

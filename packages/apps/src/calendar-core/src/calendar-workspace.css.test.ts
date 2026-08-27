@@ -113,6 +113,7 @@ describe("calendar workspace search results", () => {
   it("scopes search list chrome under .calendar-workspace with BEM + @apply", () => {
     expect(tsx.match(/<CollectionSearchInput/g)).toHaveLength(1);
     expect(tsx).toMatch(/useViewHeaderSearchQuery/);
+    expect(tsx).toMatch(/searchMinLength:\s*CALENDAR_SEARCH_MIN_QUERY_LENGTH/);
     expect(tsx).toMatch(/onSearchInput:\s*setSearchQuery/);
     expect(tsx).toMatch(/onChange=\{setSearchFieldQuery\}/);
     expect(tsx).not.toMatch(/onChange=\{setSearchQuery\}/);
@@ -130,6 +131,8 @@ describe("calendar workspace search results", () => {
     expect(css).toMatch(/\.calendar-workspace \.calendar-search-results__agenda \{[\s\S]*@apply/);
     expect(css).not.toMatch(/calendar-search-results__caption/);
     expect(searchTsx).not.toMatch(/calendar-search-results__caption/);
+    expect(css).toMatch(/\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*@apply/);
+    expect(searchTsx).toMatch(/calendar-search-results__scope/);
     expect(searchTsx).not.toMatch(/searchTruncated/);
     expect(searchTsx).not.toMatch(/truncationCaption/);
     expect(css).toMatch(/\.calendar-workspace \.calendar-main--search \{[\s\S]*@apply/);
