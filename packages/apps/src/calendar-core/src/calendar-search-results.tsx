@@ -17,7 +17,6 @@ import {
   type CalendarSearchResults,
 } from "@/calendar-core/src/calendar-search";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
-import type { TagProps } from "@/tag/src/tag";
 import { Tag } from "@/tag/src/tag";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { CalendarListView } from "@/lib/calendar-elements/CalendarListView/CalendarListView";
@@ -33,14 +32,6 @@ export type CalendarSearchResultsListProps = {
   locale: string;
   onEventSelected: (key: string, origin?: CalendarEventSelectionOrigin) => void;
 };
-
-function calendarTagColors(color: string | undefined): TagProps["colors"] | undefined {
-  if (!color) return undefined;
-  return {
-    backgroundColor: `color-mix(in oklab, ${color} 16%, transparent)`,
-    color,
-  };
-}
 
 function searchResultsSessionKey(results: CalendarSearchResults): string {
   return [
@@ -146,8 +137,7 @@ export function CalendarSearchResultsList({
           <Tag
             key={calendar.id}
             label={calendar.name}
-            icon={<Circle fill="currentColor" strokeWidth={0} />}
-            colors={calendarTagColors(calendar.color)}
+            icon={<Circle fill={calendar.color ?? "currentColor"} strokeWidth={0} />}
           />
         ))}
       </div>
