@@ -4,6 +4,8 @@ import {
   formatAlertOffsetQuantity,
   type CalendarEventAlertFormValue,
 } from "@/calendar-core/src/calendar-alerts";
+import type { CalendarAlarmsCardLabels } from "@/calendar-core/src/calendar-alarms-card";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { Task, TaskAlert } from "@/tasks-core/src/tasks-types";
 
@@ -128,5 +130,25 @@ export function remindButtonLabel(
   if (before.length === 0 && after.length === 0) return labels.remindMe;
   if (after.length === 0) return labels.remindingBefore(joinReminderDurations(before));
   if (before.length === 0) return labels.remindingAfter(joinReminderDurations(after));
-  return `${labels.remindingBefore(joinReminderDurations(before))} and ${joinReminderDurations(after)} after`;
+  return `${labels.remindingBefore(joinReminderDurations(before))} and ${labels.remindingAfter(joinReminderDurations(after))}`;
+}
+
+/** Tasks dialog copy + shared calendar offset presets (intentional DRY). */
+export function tasksAlarmRowLabels(
+  labels: Pick<TasksUILabels, "remindMe" | "remindAtTimeOfTask">,
+): CalendarAlarmsCardLabels {
+  return {
+    eventAlarmsLabel: labels.remindMe,
+    eventAlarmRow: defaultCalendarLabels.eventAlarmRow,
+    eventAlarmRemove: defaultCalendarLabels.eventAlarmRemove,
+    eventAlarmOffset: defaultCalendarLabels.eventAlarmOffset,
+    eventAlarmNone: defaultCalendarLabels.eventAlarmNone,
+    eventAlarmAtStart: labels.remindAtTimeOfTask,
+    eventAlarm5Min: defaultCalendarLabels.eventAlarm5Min,
+    eventAlarm10Min: defaultCalendarLabels.eventAlarm10Min,
+    eventAlarm15Min: defaultCalendarLabels.eventAlarm15Min,
+    eventAlarm30Min: defaultCalendarLabels.eventAlarm30Min,
+    eventAlarm1Hour: defaultCalendarLabels.eventAlarm1Hour,
+    eventAlarm1Day: defaultCalendarLabels.eventAlarm1Day,
+  };
 }

@@ -1,8 +1,7 @@
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import { remindButtonLabel } from "@/tasks-core/src/tasks-alert-mapping";
+import { remindButtonLabel, tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TasksRemindIndicator, TasksRemindPicker } from "@/tasks-core/src/tasks-remind-picker";
 import { offsetReminderAlert, taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
@@ -26,14 +25,14 @@ function renderPicker(overrides: Partial<ComponentProps<typeof TasksRemindPicker
   return { onChange };
 }
 
+const alarmLabels = tasksAlarmRowLabels(defaultTasksLabels);
+
 function remindButton(alerts?: Task["alerts"]) {
   return screen.getByRole("button", { name: remindButtonLabel(defaultTasksLabels, alerts) });
 }
 
 function chooseOffset(optionLabel: string, index = 0) {
-  fireEvent.click(
-    screen.getAllByRole("combobox", { name: defaultCalendarLabels.eventAlarmOffset })[index]!,
-  );
+  fireEvent.click(screen.getAllByRole("combobox", { name: alarmLabels.eventAlarmOffset })[index]!);
   fireEvent.click(screen.getByRole("option", { name: optionLabel }));
 }
 
@@ -66,16 +65,21 @@ describe("TasksRemindPicker", () => {
 
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole("dialog", { name: defaultCalendarLabels.eventAlarmsLabel });
+    const dialog = screen.getByRole("dialog", { name: defaultTasksLabels.remindMe });
     expect(dialog.classList.contains("tasks-dialog-surface")).toBe(true);
-    expect(
-      screen.getAllByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel }),
-    ).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { name: defaultTasksLabels.remindMe })).toHaveLength(1);
+    expect(screen.queryByRole("dialog", { name: "Alarms" })).toBeNull();
     expect(dialog.querySelector(".ui-modal-header")).toBeTruthy();
     const close = screen.getByRole("button", { name: "Close" });
     expect(close.closest(".tasks-remind-dialog")).toBeTruthy();
     expect(close.closest(".calendar-alarms-card")).toBeNull();
     expect(document.querySelector(".tasks-remind-dialog__alarms")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole("combobox", { name: alarmLabels.eventAlarmOffset })[0]!);
+    expect(
+      screen.getByRole("option", { name: defaultTasksLabels.remindAtTimeOfTask }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "At time of event" })).toBeNull();
     expect(screen.queryByRole("option", { name: /^Custom$/i })).toBeNull();
   });
 
@@ -83,7 +87,7 @@ describe("TasksRemindPicker", () => {
     const { onChange } = renderPicker();
 
     fireEvent.click(remindButton());
-    chooseOffset(defaultCalendarLabels.eventAlarm30Min);
+    chooseOffset(alarmLabels.eventAlarm30Min);
 
     expect(onChange).toHaveBeenCalledWith(taskAlertsFromList([offsetReminderAlert("-PT30M")]));
   });
@@ -111,7 +115,7 @@ describe("TasksRemindPicker", () => {
     expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
 
     fireEvent.click(trigger);
-    chooseOffset(defaultCalendarLabels.eventAlarmNone);
+    chooseOffset(alarmLabels.eventAlarmNone);
 
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
@@ -121,9 +125,7 @@ describe("TasksRemindPicker", () => {
     renderPicker({ alerts });
 
     fireEvent.click(remindButton(alerts));
-    fireEvent.click(
-      screen.getAllByRole("combobox", { name: defaultCalendarLabels.eventAlarmOffset })[0]!,
-    );
+    fireEvent.click(screen.getAllByRole("combobox", { name: alarmLabels.eventAlarmOffset })[0]!);
 
     const foreign = screen.getByRole("option", { name: /45 minutes before/i });
     expect(foreign.hasAttribute("disabled") || foreign.getAttribute("data-disabled") !== null).toBe(

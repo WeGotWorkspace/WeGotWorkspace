@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
   formValuesToTaskAlerts,
   remindButtonLabel,
   taskAlertCount,
   taskAlertsToFormValues,
+  tasksAlarmRowLabels,
 } from "@/tasks-core/src/tasks-alert-mapping";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { absoluteReminderAlert, offsetReminderAlert } from "@/tasks-core/src/tasks-task-utils";
@@ -133,5 +135,19 @@ describe("task alert mapping", () => {
         custom: absoluteReminderAlert("2026-07-08T17:00:00"),
       }),
     ).toBe(defaultTasksLabels.remindMe);
+    expect(
+      remindButtonLabel(defaultTasksLabels, {
+        alert1: offsetReminderAlert("-PT30M"),
+        alert2: offsetReminderAlert("PT5M"),
+      }),
+    ).toBe("Reminding 30 mins before and Reminding 5 mins after");
+  });
+
+  it("adapts Tasks dialog copy and keeps shared calendar offset presets", () => {
+    const alarmLabels = tasksAlarmRowLabels(defaultTasksLabels);
+    expect(alarmLabels.eventAlarmsLabel).toBe(defaultTasksLabels.remindMe);
+    expect(alarmLabels.eventAlarmAtStart).toBe(defaultTasksLabels.remindAtTimeOfTask);
+    expect(alarmLabels.eventAlarm30Min).toBe(defaultCalendarLabels.eventAlarm30Min);
+    expect(alarmLabels.eventAlarmAtStart).not.toBe(defaultCalendarLabels.eventAlarmAtStart);
   });
 });

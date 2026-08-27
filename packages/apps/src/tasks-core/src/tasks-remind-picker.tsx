@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Bell } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
-import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { CardPanel } from "@/card/src/card-panel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import type { Task } from "@/tasks-core/src/tasks-types";
@@ -12,6 +11,7 @@ import {
   remindButtonLabel,
   taskAlertCount,
   taskAlertsToFormValues,
+  tasksAlarmRowLabels,
 } from "@/tasks-core/src/tasks-alert-mapping";
 
 type TasksRemindVisualProps = {
@@ -78,6 +78,7 @@ export function TasksRemindPicker({
   const formAlerts = taskAlertsToFormValues(alerts);
   const count = taskAlertCount(alerts);
   const buttonLabel = remindButtonLabel(labels, alerts);
+  const alarmLabels = tasksAlarmRowLabels(labels);
 
   return (
     <>
@@ -101,13 +102,13 @@ export function TasksRemindPicker({
           aria-describedby={undefined}
         >
           <DialogHeader>
-            <DialogTitle>{defaultCalendarLabels.eventAlarmsLabel}</DialogTitle>
+            <DialogTitle>{labels.remindMe}</DialogTitle>
           </DialogHeader>
           <div className="share-access-card calendar-alarms-card tasks-remind-dialog__alarms">
             <CardPanel>
               <CalendarAlarmsRows
                 alerts={formAlerts}
-                labels={defaultCalendarLabels}
+                labels={alarmLabels}
                 disabled={disabled}
                 defaultRelatedTo="end"
                 onChange={(next) => onChange(formValuesToTaskAlerts(next))}

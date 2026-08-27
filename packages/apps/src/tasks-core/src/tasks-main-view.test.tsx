@@ -1,7 +1,7 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksMainView } from "@/tasks-core/src/tasks-main-view";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
@@ -604,9 +604,13 @@ describe("TasksMainView composer", () => {
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noReminders }));
     fireEvent.click(
-      screen.getAllByRole("combobox", { name: defaultCalendarLabels.eventAlarmOffset })[0]!,
+      screen.getAllByRole("combobox", {
+        name: tasksAlarmRowLabels(defaultTasksLabels).eventAlarmOffset,
+      })[0]!,
     );
-    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm30Min }));
+    fireEvent.click(
+      screen.getByRole("option", { name: tasksAlarmRowLabels(defaultTasksLabels).eventAlarm30Min }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));

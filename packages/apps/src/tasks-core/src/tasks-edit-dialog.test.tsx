@@ -1,8 +1,8 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -91,9 +91,13 @@ describe("TasksEditDialog", () => {
 
     fireEvent.click(remind);
     fireEvent.click(
-      screen.getAllByRole("combobox", { name: defaultCalendarLabels.eventAlarmOffset })[0]!,
+      screen.getAllByRole("combobox", {
+        name: tasksAlarmRowLabels(defaultTasksLabels).eventAlarmOffset,
+      })[0]!,
     );
-    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarmNone }));
+    fireEvent.click(
+      screen.getByRole("option", { name: tasksAlarmRowLabels(defaultTasksLabels).eventAlarmNone }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.saveTaskButton }));
 
