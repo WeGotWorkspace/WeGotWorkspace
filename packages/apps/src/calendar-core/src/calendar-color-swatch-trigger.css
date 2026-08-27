@@ -7,8 +7,18 @@
   height: var(--input-height, 2.25rem);
 }
 
+/* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with
+   higher specificity so unlabeled swatches stay intrinsic in the event-dialog title row. */
+.control-surface.calendar-color-swatch-trigger:not(.calendar-color-swatch-trigger--labeled) {
+  width: auto;
+}
+
 .calendar-color-swatch-trigger--labeled {
   @apply w-full justify-between;
+}
+
+.control-surface.calendar-color-swatch-trigger--labeled {
+  width: 100%;
 }
 
 .calendar-color-swatch-trigger__dot {
