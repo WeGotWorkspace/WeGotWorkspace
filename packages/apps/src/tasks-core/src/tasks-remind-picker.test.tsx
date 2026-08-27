@@ -55,12 +55,12 @@ describe("TasksRemindPicker", () => {
     });
   });
 
-  it("opens the shared alarms dialog from an icon button", () => {
+  it("opens the shared alarms dialog from a labeled button", () => {
     renderPicker();
 
     const trigger = remindButton();
-    expect(trigger.getAttribute("aria-label")).toBe("No reminders");
-    expect(trigger.classList.contains("icon-button--active")).toBe(false);
+    expect(trigger.textContent).toContain("No reminders");
+    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(false);
     expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
 
     fireEvent.click(trigger);
@@ -100,8 +100,8 @@ describe("TasksRemindPicker", () => {
     renderPicker({ alerts });
 
     const trigger = remindButton(alerts);
-    expect(trigger.classList.contains("icon-button--active")).toBe(true);
-    expect(trigger.getAttribute("aria-label")).toBe("Reminding 1 hour and 30 mins before");
+    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
+    expect(trigger.textContent).toContain("Reminding 1 hour and 30 mins before");
     expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
   });
 
@@ -110,8 +110,8 @@ describe("TasksRemindPicker", () => {
     const { onChange } = renderPicker({ alerts });
 
     const trigger = remindButton(alerts);
-    expect(trigger.classList.contains("icon-button--active")).toBe(true);
-    expect(trigger.getAttribute("aria-label")).toBe("Reminding 30 mins before");
+    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
+    expect(trigger.textContent).toContain("Reminding 30 mins before");
     expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
 
     fireEvent.click(trigger);

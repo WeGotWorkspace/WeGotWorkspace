@@ -1,4 +1,10 @@
-import type { KeyboardEvent, ReactNode, RefObject } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
@@ -37,6 +43,21 @@ export const CREATE_WORKFLOW_STATUSES: TaskWorkflowStatus[] = ["needs-action", "
 export const COMPOSER_SELECT_TRIGGER_CLASS = "tasks-main-view__composer-select";
 export const COMPOSER_SELECT_CONTENT_CLASS = "tasks-main-view__composer-select-content";
 export const COMPOSER_SELECT_ITEM_CLASS = "tasks-main-view__composer-select-item";
+
+/** Shared composer + row chip order. Alerts/remind stays last. */
+export const TASK_META_FIELD_ORDER = ["due", "list", "status", "priority", "remind"] as const;
+export type TaskMetaField = (typeof TASK_META_FIELD_ORDER)[number];
+
+export function orderedTaskMetaNodes(
+  nodes: Partial<Record<TaskMetaField, ReactNode>>,
+): ReactNode[] {
+  return TASK_META_FIELD_ORDER.flatMap((field) => {
+    const node = nodes[field];
+    if (node == null) return [];
+    if (isValidElement(node)) return [cloneElement(node, { key: field })];
+    return [node];
+  });
+}
 
 export function emptyTaskForm(listId: string): TasksTaskFormValue {
   return {
@@ -133,83 +154,96 @@ export function TasksTaskFormFields({
       ) : null}
 
       <div className="tasks-main-view__composer-meta">
-        <TasksComposerDuePicker
-          labels={L}
-          value={value.due}
-          onChange={(due) => setField("due", due)}
-          disabled={disabled}
-          triggerClassName={COMPOSER_SELECT_TRIGGER_CLASS}
-        />
-
-        <TasksRemindPicker
-          labels={L}
-          alerts={value.alerts}
-          onChange={(alerts) => setField("alerts", alerts)}
-          disabled={disabled}
-        />
-
-        <Select
-          value={value.listId}
-          onValueChange={(listId) => setField("listId", listId)}
-          disabled={disabled}
-        >
-          <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskList}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
-            {taskLists.map((list) => (
-              <SelectItem key={list.id} value={list.id} className={COMPOSER_SELECT_ITEM_CLASS}>
-                <ComposerSelectOption icon={<TaskListDot list={list} />} label={list.name} />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={value.workflowStatus}
-          onValueChange={(workflowStatus) =>
-            setField("workflowStatus", workflowStatus as TaskWorkflowStatus)
-          }
-          disabled={disabled}
-        >
-          <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskStatus}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
-            {workflowStatuses.map((status) => (
-              <SelectItem key={status} value={status} className={COMPOSER_SELECT_ITEM_CLASS}>
-                <ComposerSelectOption
-                  icon={workflowStatusIcon(status)}
-                  label={workflowStatusLabel(status, L)}
-                />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={String(value.priority)}
-          onValueChange={(priority) => setField("priority", Number(priority) as TaskPriorityValue)}
-          disabled={disabled}
-        >
-          <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskPriority}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
-            {COMPOSER_PRIORITY_VALUES.map((priority) => (
-              <SelectItem
-                key={priority}
-                value={String(priority)}
-                className={COMPOSER_SELECT_ITEM_CLASS}
+        {orderedTaskMetaNodes({
+          due: (
+            <TasksComposerDuePicker
+              labels={L}
+              value={value.due}
+              onChange={(due) => setField("due", due)}
+              disabled={disabled}
+              triggerClassName={COMPOSER_SELECT_TRIGGER_CLASS}
+            />
+          ),
+          list: (
+            <Select
+              value={value.listId}
+              onValueChange={(listId) => setField("listId", listId)}
+              disabled={disabled}
+            >
+              <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskList}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
+                {taskLists.map((list) => (
+                  <SelectItem key={list.id} value={list.id} className={COMPOSER_SELECT_ITEM_CLASS}>
+                    <ComposerSelectOption icon={<TaskListDot list={list} />} label={list.name} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ),
+          status: (
+            <Select
+              value={value.workflowStatus}
+              onValueChange={(workflowStatus) =>
+                setField("workflowStatus", workflowStatus as TaskWorkflowStatus)
+              }
+              disabled={disabled}
+            >
+              <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskStatus}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
+                {workflowStatuses.map((status) => (
+                  <SelectItem key={status} value={status} className={COMPOSER_SELECT_ITEM_CLASS}>
+                    <ComposerSelectOption
+                      icon={workflowStatusIcon(status)}
+                      label={workflowStatusLabel(status, L)}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ),
+          priority: (
+            <Select
+              value={String(value.priority)}
+              onValueChange={(priority) =>
+                setField("priority", Number(priority) as TaskPriorityValue)
+              }
+              disabled={disabled}
+            >
+              <SelectTrigger
+                className={COMPOSER_SELECT_TRIGGER_CLASS}
+                aria-label={L.addTaskPriority}
               >
-                <ComposerSelectOption
-                  icon={priorityIcon(priority)}
-                  label={priorityLabel(priority, L)}
-                />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
+                {COMPOSER_PRIORITY_VALUES.map((priority) => (
+                  <SelectItem
+                    key={priority}
+                    value={String(priority)}
+                    className={COMPOSER_SELECT_ITEM_CLASS}
+                  >
+                    <ComposerSelectOption
+                      icon={priorityIcon(priority)}
+                      label={priorityLabel(priority, L)}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ),
+          remind: (
+            <TasksRemindPicker
+              labels={L}
+              alerts={value.alerts}
+              onChange={(alerts) => setField("alerts", alerts)}
+              disabled={disabled}
+            />
+          ),
+        })}
       </div>
     </>
   );

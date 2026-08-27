@@ -39,6 +39,7 @@ import { isTaskPriorityNone, priorityIcon, priorityLabel } from "@/tasks-core/sr
 import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";
 import {
   emptyTaskForm,
+  orderedTaskMetaNodes,
   TasksTaskFormFields,
   type TasksCreateInput,
   type TasksTaskFormValue,
@@ -134,7 +135,12 @@ function TaskRow({
       type="button"
       className={`tasks-main-view__complete${completed ? " tasks-main-view__complete--done" : ""}`}
       aria-label={completed ? L.markIncomplete : L.markComplete}
-      onClick={() => onToggleComplete(task.id)}
+      draggable={false}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggleComplete(task.id);
+      }}
       disabled={completeDisabled}
     >
       {completed ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
@@ -169,29 +175,35 @@ function TaskRow({
           <p className="tasks-main-view__description">{task.description}</p>
         ) : null}
         <div className="tasks-main-view__meta">
-          {dueLabel ? (
-            <span className="tasks-main-view__meta-item">
-              <CalendarDays className="size-3.5" aria-hidden />
-              <span>{dueLabel}</span>
-            </span>
-          ) : null}
-          <span className="tasks-main-view__meta-item">
-            <TaskListDot list={taskList ?? task.taskListId} />
-            <span>{listName}</span>
-          </span>
-          <span className="tasks-main-view__meta-item">
-            {workflowStatusIcon(workflowStatus)}
-            <span>{workflowStatusLabel(workflowStatus, L)}</span>
-          </span>
-          {!isTaskPriorityNone(task.priority) ? (
-            <span
-              className="tasks-main-view__meta-item tasks-main-view__meta-item--priority"
-              aria-label={priorityLabel(task.priority, L)}
-            >
-              {priorityIcon(task.priority)}
-            </span>
-          ) : null}
-          <TasksRemindIndicator labels={L} alerts={task.alerts} />
+          {orderedTaskMetaNodes({
+            due: dueLabel ? (
+              <span className="tasks-main-view__meta-item">
+                <CalendarDays className="size-3.5" aria-hidden />
+                <span>{dueLabel}</span>
+              </span>
+            ) : null,
+            list: (
+              <span className="tasks-main-view__meta-item">
+                <TaskListDot list={taskList ?? task.taskListId} />
+                <span>{listName}</span>
+              </span>
+            ),
+            status: (
+              <span className="tasks-main-view__meta-item">
+                {workflowStatusIcon(workflowStatus)}
+                <span>{workflowStatusLabel(workflowStatus, L)}</span>
+              </span>
+            ),
+            priority: !isTaskPriorityNone(task.priority) ? (
+              <span
+                className="tasks-main-view__meta-item tasks-main-view__meta-item--priority"
+                aria-label={priorityLabel(task.priority, L)}
+              >
+                {priorityIcon(task.priority)}
+              </span>
+            ) : null,
+            remind: <TasksRemindIndicator labels={L} alerts={task.alerts} />,
+          })}
         </div>
       </div>
 

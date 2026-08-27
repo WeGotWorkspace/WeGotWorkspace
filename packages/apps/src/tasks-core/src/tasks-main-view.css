@@ -53,11 +53,13 @@
 .tasks-main-view__complete-wrap,
 .tasks-main-view__complete,
 .tasks-main-view__composer-marker {
-  @apply absolute flex shrink-0 items-center justify-center;
+  @apply absolute z-[1] flex shrink-0 items-center justify-center;
   top: 0.875rem;
   inset-inline-start: calc(var(--tasks-content-inset, 1rem) - var(--tasks-marker-gutter, 2.25rem));
   block-size: var(--tasks-title-line-height);
   inline-size: var(--tasks-marker-size, 1.5rem);
+  pointer-events: auto;
+  touch-action: manipulation;
 
   & svg {
     @apply size-6;
@@ -125,12 +127,20 @@
 
 .tasks-main-view__actions {
   @apply shrink-0 opacity-0 transition-opacity;
+  pointer-events: none;
 }
 
-.tasks-main-view__row:hover .tasks-main-view__actions,
+@media (hover: hover) and (pointer: fine) {
+  .tasks-main-view__row:hover .tasks-main-view__actions {
+    @apply opacity-100;
+    pointer-events: auto;
+  }
+}
+
 .tasks-main-view__row:focus-within .tasks-main-view__actions,
 .tasks-main-view__actions:has([data-state="open"]) {
   @apply opacity-100;
+  pointer-events: auto;
 }
 
 .tasks-main-view__composer {
@@ -289,12 +299,35 @@
   --input-height: 2rem;
   --control-height-md: 2rem;
   --button-outline-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  @apply max-w-full min-w-0;
   margin-block-start: calc(-1 * var(--tasks-remind-pad));
   margin-inline-end: calc(-1 * var(--tasks-remind-pad));
 }
 
 .tasks-main-view__remind-button {
-  @apply shrink-0;
+  @apply inline-flex h-8 max-w-full min-w-0 shrink items-center gap-1.5 overflow-hidden px-2 text-xs font-normal shadow-none;
+  --input-height: 2rem;
+  --control-height-md: 2rem;
+  min-height: 2rem;
+  height: 2rem;
+  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  background-color: transparent;
+}
+
+.tasks-main-view__remind-button .button__icon {
+  @apply size-3.5 shrink-0;
+}
+
+.tasks-main-view__remind-button .button__icon svg {
+  @apply size-3.5;
+}
+
+.tasks-main-view__remind-button > span:last-child {
+  @apply min-w-0 truncate;
+}
+
+.tasks-main-view__remind-button--active {
+  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
 }
 
 .tasks-main-view__remind-badge {

@@ -15,6 +15,24 @@ describe("tasks main view complete control", () => {
   });
 });
 
+describe("tasks complete control touch target", () => {
+  it("keeps the checkbox above the row and does not capture the first tap with hover chrome", () => {
+    expect(css).toMatch(/\.tasks-main-view__complete-wrap[\s\S]*z-\[1\]/);
+    expect(css).toMatch(/\.tasks-main-view__complete-wrap[\s\S]*pointer-events:\s*auto/);
+    expect(css).toMatch(/\.tasks-main-view__actions \{[\s\S]*pointer-events:\s*none/);
+    expect(css).toMatch(
+      /@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)[\s\S]*\.tasks-main-view__row:hover \.tasks-main-view__actions/,
+    );
+  });
+});
+
+describe("tasks remind button label", () => {
+  it("keeps the labeled alert button from overflowing the composer", () => {
+    expect(css).toMatch(/\.tasks-main-view__remind-button \{[\s\S]*max-w-full/);
+    expect(css).toMatch(/\.tasks-main-view__remind--composer \{[\s\S]*max-w-full/);
+  });
+});
+
 describe("tasks composer select chips", () => {
   it("pins compact metrics with higher specificity than select-trigger defaults", () => {
     const block = css.match(/\.select-trigger\.tasks-main-view__composer-select \{[^}]+\}/)?.[0];

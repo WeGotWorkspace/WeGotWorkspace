@@ -5,6 +5,7 @@ import { createSharedTasksLists, createTasksAppBootstrap } from "@/lib/api/mock/
 import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { TasksMainView } from "@/tasks-core/src/tasks-main-view";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
+import { TASK_META_FIELD_ORDER } from "@/tasks-core/src/tasks-task-form";
 import { TASK_PRIORITY_FLAG_COLORS } from "@/tasks-core/src/tasks-priority";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
@@ -149,6 +150,26 @@ describe("TasksMainView composer", () => {
     renderMainView({ displayTasks: [task], onToggleComplete, onEditTask });
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.markComplete }));
+
+    expect(onToggleComplete).toHaveBeenCalledTimes(1);
+    expect(onToggleComplete).toHaveBeenCalledWith(task.id);
+    expect(onEditTask).not.toHaveBeenCalled();
+  });
+
+  it("checks a task on the first pointer hit without a capturing overlay", () => {
+    const onToggleComplete = vi.fn();
+    const onEditTask = vi.fn();
+    const task = bootstrap.data.tasks[0];
+    renderMainView({ displayTasks: [task], onToggleComplete, onEditTask });
+
+    const checkbox = screen.getByRole("button", { name: defaultTasksLabels.markComplete });
+    const wrap = checkbox.closest(".tasks-main-view__complete-wrap");
+    expect(wrap).toBeTruthy();
+    expect(wrap?.querySelector("[class*='overlay']")).toBeNull();
+    expect(checkbox.getAttribute("draggable")).toBe("false");
+
+    fireEvent.pointerDown(checkbox);
+    fireEvent.click(checkbox);
 
     expect(onToggleComplete).toHaveBeenCalledTimes(1);
     expect(onToggleComplete).toHaveBeenCalledWith(task.id);
@@ -537,23 +558,25 @@ describe("TasksMainView composer", () => {
     });
   });
 
-  it("renders due date before list, status, and priority in the composer", () => {
+  it("renders composer fields in the shared meta order with remind last", () => {
     renderComposer();
 
     const meta = document.querySelector(".tasks-main-view__composer-meta");
     expect(meta).toBeTruthy();
 
     const controls = meta!.querySelectorAll(
-      "button[aria-label], button.select-trigger[aria-label]",
+      "button.tasks-main-view__composer-select, button.tasks-main-view__remind-button",
     );
-    const labels = Array.from(controls).map((control) => control.getAttribute("aria-label"));
+    const names = Array.from(controls).map(
+      (control) => control.getAttribute("aria-label") ?? control.textContent?.trim(),
+    );
 
-    expect(labels).toEqual([
+    expect(names).toEqual([
       defaultTasksLabels.addTaskDue,
-      defaultTasksLabels.noReminders,
       defaultTasksLabels.addTaskList,
       defaultTasksLabels.addTaskStatus,
       defaultTasksLabels.addTaskPriority,
+      defaultTasksLabels.noReminders,
     ]);
   });
 
@@ -773,15 +796,19 @@ describe("TasksMainView task rows", () => {
     const task = {
       ...bootstrap.data.tasks.find((item) => item.id === "task-two-reminders")!,
       priority: 1,
+      due: "2026-07-08T00:00:00",
     };
     renderMainView({ displayTasks: [task] });
 
     const row = screen.getByText(taskTitleForTest(task.title)).closest(".tasks-main-view__row");
     const meta = row?.querySelector(".tasks-main-view__meta");
     const items = Array.from(meta?.children ?? []);
+    expect(TASK_META_FIELD_ORDER.at(-1)).toBe("remind");
     expect(items.length).toBeGreaterThan(1);
     expect(items[0]?.querySelector(".tasks-main-view__remind--row")).toBeNull();
     expect(items.at(-1)?.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
+    expect(items[0]?.textContent).toBeTruthy();
+    expect(items[1]?.querySelector(".tasks-list-dot")).toBeTruthy();
   });
 
   it("shows due date label on task rows when due is set", () => {

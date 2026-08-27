@@ -6,6 +6,8 @@ import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import {
   CREATE_WORKFLOW_STATUSES,
   emptyTaskForm,
+  orderedTaskMetaNodes,
+  TASK_META_FIELD_ORDER,
   taskToFormValue,
   TasksTaskFormFields,
 } from "@/tasks-core/src/tasks-task-form";
@@ -84,10 +86,22 @@ describe("TasksTaskFormFields", () => {
 
   it("renders the remind picker in create and edit modes", () => {
     renderFormFields({ mode: "create" });
-    expect(screen.getByLabelText(defaultTasksLabels.noReminders)).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
     cleanup();
     renderFormFields({ mode: "edit" });
-    expect(screen.getByLabelText(defaultTasksLabels.noReminders)).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
+  });
+});
+
+describe("orderedTaskMetaNodes", () => {
+  it("keeps remind last and matches the shared field order", () => {
+    expect(TASK_META_FIELD_ORDER).toEqual(["due", "list", "status", "priority", "remind"]);
+    expect(TASK_META_FIELD_ORDER.at(-1)).toBe("remind");
+    expect(orderedTaskMetaNodes({ remind: "alerts", due: "due", list: "list" })).toEqual([
+      "due",
+      "list",
+      "alerts",
+    ]);
   });
 });
 

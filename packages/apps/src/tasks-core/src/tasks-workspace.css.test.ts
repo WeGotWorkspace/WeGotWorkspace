@@ -27,7 +27,7 @@ describe("tasks workspace header and sidebar", () => {
     expect(tsx).toMatch(/visible=\{!hiddenTaskListIds\.has\(list\.id\)\}/);
   });
 
-  it("does not close the sidebar when Add list is clicked", () => {
+  it("does not close the sidebar when Create list is clicked", () => {
     expect(tsx).toMatch(
       /onCreateList=\{canManageProjects \? openCreateProjectDialog : undefined\}/,
     );
