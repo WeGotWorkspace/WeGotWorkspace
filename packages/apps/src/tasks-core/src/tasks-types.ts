@@ -7,6 +7,7 @@ import type {
   TaskListPatch,
   TaskPatch,
 } from "@wgw-api-generated/tasks-types";
+import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 
 export type { Task, TaskAlert, TaskCreate, TaskList, TaskListCreate, TaskListPatch, TaskPatch };
 
@@ -44,4 +45,5 @@ export type TasksAPIOperations = {
     taskListId: string,
     opts?: TasksMutationOpts & { onDestroyRemoveContents?: boolean },
   ) => Promise<void>;
+  searchSharePrincipals?: (query: string) => Promise<CollectionSharePrincipal[]>;
 };

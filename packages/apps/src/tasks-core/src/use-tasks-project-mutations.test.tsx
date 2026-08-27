@@ -70,69 +70,6 @@ describe("useTasksProjectMutations", () => {
     expect(result.current.canManageProjects).toBe(true);
   });
 
-  it("canRenameProject is false for protected inbox list", () => {
-    const { result } = renderProjectMutations(
-      {
-        createTask: vi.fn(),
-        patchTask: vi.fn(),
-        deleteTask: vi.fn(),
-        moveTaskToList: vi.fn(),
-        createTaskList: vi.fn(),
-        patchTaskList: vi.fn(),
-      },
-      "list:inbox",
-    );
-
-    expect(result.current.canRenameProject).toBe(false);
-  });
-
-  it("canRenameProject is true for home, work, and group lists", () => {
-    const operations = {
-      createTask: vi.fn(),
-      patchTask: vi.fn(),
-      deleteTask: vi.fn(),
-      moveTaskToList: vi.fn(),
-      createTaskList: vi.fn(),
-      patchTaskList: vi.fn(),
-    };
-    const data = {
-      ...bootstrap.data,
-      taskLists: [
-        ...bootstrap.data.taskLists,
-        {
-          ...bootstrap.data.taskLists[1],
-          id: "tasks-home",
-          role: "home",
-          name: "Home",
-          isDefault: false,
-        },
-        {
-          ...bootstrap.data.taskLists[1],
-          id: "group-team",
-          role: "group",
-          name: "Team",
-          scope: "group" as const,
-          groupSlug: "team",
-          isDefault: false,
-        },
-      ],
-    };
-
-    for (const listId of ["tasks-home", "work", "group-team"] as const) {
-      const { result: shellResult } = renderHook(() =>
-        useTasksShell({
-          data,
-          operations,
-          initialView: `list:${listId}`,
-        }),
-      );
-      const { result } = renderHook(({ shell }) => useTasksProjectMutations({ shell }), {
-        initialProps: { shell: shellResult.current },
-      });
-      expect(result.current.canRenameProject).toBe(true);
-    }
-  });
-
   it("createProject appends list and navigates to it", async () => {
     const created = {
       "@type": "TaskList" as const,
@@ -202,6 +139,85 @@ describe("useTasksProjectMutations", () => {
     });
   });
 
+  it("updateProject forwards groupSlug when changing owner", async () => {
+    const patchTaskList = vi.fn().mockResolvedValue({
+      "@type": "TaskList" as const,
+      id: "work",
+      name: "Work",
+      color: "#f59e0b",
+      scope: "group",
+      groupSlug: "team",
+      isDefault: false,
+    });
+    const { result } = renderProjectMutations(
+      {
+        createTask: vi.fn(),
+        patchTask: vi.fn(),
+        deleteTask: vi.fn(),
+        moveTaskToList: vi.fn(),
+        createTaskList: vi.fn(),
+        patchTaskList,
+      },
+      "list:work",
+    );
+
+    act(() => {
+      result.current.openEditProjectDialog("work");
+    });
+    expect(result.current.projectDialog).toMatchObject({
+      mode: "edit",
+      listId: "work",
+      canChangeOwner: true,
+    });
+
+    await act(async () => {
+      await result.current.updateProject("work", {
+        name: "Work",
+        color: "#f59e0b",
+        groupSlug: "team",
+      });
+    });
+
+    expect(patchTaskList).toHaveBeenCalledWith("work", {
+      groupSlug: "team",
+    });
+  });
+
+  it("updateProject omits groupSlug when the owner is unchanged", async () => {
+    const patchTaskList = vi.fn().mockResolvedValue({
+      "@type": "TaskList" as const,
+      id: "work",
+      name: "Client work",
+      color: "#22c55e",
+      isDefault: false,
+    });
+    const { result } = renderProjectMutations(
+      {
+        createTask: vi.fn(),
+        patchTask: vi.fn(),
+        deleteTask: vi.fn(),
+        moveTaskToList: vi.fn(),
+        createTaskList: vi.fn(),
+        patchTaskList,
+      },
+      "list:work",
+    );
+
+    await act(async () => {
+      await result.current.updateProject("work", {
+        name: "Client work",
+        color: "#22c55e",
+        groupSlug: null,
+      });
+    });
+
+    expect(patchTaskList).toHaveBeenCalledWith("work", {
+      name: "Client work",
+      color: "#22c55e",
+    });
+    expect(patchTaskList.mock.calls[0]?.[1]).not.toHaveProperty("groupSlug");
+  });
+
   it("updateProject patches name and color", async () => {
     const patchTaskList = vi.fn().mockResolvedValue({
       "@type": "TaskList" as const,
@@ -236,7 +252,41 @@ describe("useTasksProjectMutations", () => {
     expect(result.current.projectDialog).toBe(null);
   });
 
-  it("updateProject skips protected lists and unchanged payloads", async () => {
+  it("updateProject patches inbox name and color", async () => {
+    const patchTaskList = vi.fn().mockResolvedValue({
+      "@type": "TaskList" as const,
+      id: "inbox",
+      name: "Capture",
+      color: "#22c55e",
+      role: "inbox",
+      isDefault: true,
+    });
+    const { result } = renderProjectMutations(
+      {
+        createTask: vi.fn(),
+        patchTask: vi.fn(),
+        deleteTask: vi.fn(),
+        moveTaskToList: vi.fn(),
+        createTaskList: vi.fn(),
+        patchTaskList,
+      },
+      "list:inbox",
+    );
+
+    await act(async () => {
+      await result.current.updateProject("inbox", {
+        name: "Capture",
+        color: "#ec4899",
+      });
+    });
+
+    expect(patchTaskList).toHaveBeenCalledWith("inbox", {
+      name: "Capture",
+      color: "#ec4899",
+    });
+  });
+
+  it("updateProject skips unchanged payloads", async () => {
     const patchTaskList = vi.fn();
     const { result } = renderProjectMutations(
       {
@@ -258,6 +308,73 @@ describe("useTasksProjectMutations", () => {
     });
 
     expect(patchTaskList).not.toHaveBeenCalled();
+  });
+
+  it("removeSharedList dismisses a sharee list without touching owned inbox", async () => {
+    const deleteTaskList = vi.fn().mockResolvedValue(undefined);
+    const data = {
+      ...bootstrap.data,
+      taskLists: [
+        ...bootstrap.data.taskLists,
+        {
+          ...bootstrap.data.taskLists[0],
+          id: "shared-inbox",
+          name: "Inbox",
+          role: null,
+          isDefault: false,
+          isSharee: true,
+        },
+      ],
+    };
+    const operations = {
+      createTask: vi.fn(),
+      patchTask: vi.fn(),
+      deleteTask: vi.fn(),
+      moveTaskToList: vi.fn(),
+      createTaskList: vi.fn(),
+      patchTaskList: vi.fn(),
+      deleteTaskList,
+    };
+    const { result: shellResult } = renderHook(() =>
+      useTasksShell({
+        data,
+        operations,
+        initialView: "list:shared-inbox",
+      }),
+    );
+    const { result } = renderHook(({ shell }) => useTasksProjectMutations({ shell }), {
+      initialProps: { shell: shellResult.current },
+    });
+
+    await act(async () => {
+      await result.current.removeSharedList("shared-inbox");
+    });
+
+    expect(deleteTaskList).toHaveBeenCalledWith("shared-inbox");
+    expect(shellResult.current.taskLists.some((list) => list.id === "shared-inbox")).toBe(false);
+    expect(shellResult.current.view).toBe("state:all");
+  });
+
+  it("removeSharedList does not delete the owned inbox", async () => {
+    const deleteTaskList = vi.fn();
+    const { result } = renderProjectMutations(
+      {
+        createTask: vi.fn(),
+        patchTask: vi.fn(),
+        deleteTask: vi.fn(),
+        moveTaskToList: vi.fn(),
+        createTaskList: vi.fn(),
+        patchTaskList: vi.fn(),
+        deleteTaskList,
+      },
+      "list:inbox",
+    );
+
+    await act(async () => {
+      await result.current.removeSharedList("inbox");
+    });
+
+    expect(deleteTaskList).not.toHaveBeenCalled();
   });
 
   it("updateProject skips patch when implicit hash color is unchanged", async () => {

@@ -68,7 +68,7 @@ final class CalendarShareInvites
     public function apply(CalendarInstance $instance, ?string $groupSlug, mixed $shareWith): void
     {
         if (! $this->canShare($instance, $groupSlug)) {
-            throw new ApiHttpException(403, 'Only calendar administrators can change sharing.', 'forbidden');
+            throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
         }
 
         $currentInvites = $this->calBackend()->getInvites($this->backendId($instance));

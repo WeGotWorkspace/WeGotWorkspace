@@ -285,3 +285,6 @@ export async function searchCalendarSharePrincipalsLive(
     }),
   );
 }
+
+/** Rename-neutral alias — Tasks and Calendar use the same live principal search. */
+export const searchCollectionSharePrincipals = searchCalendarSharePrincipalsLive;

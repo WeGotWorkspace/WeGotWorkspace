@@ -18,6 +18,21 @@ const fullRights: TaskList["myRights"] = {
   mayRSVP: true,
   mayAdmin: true,
   mayDelete: true,
+  mayShare: true,
+};
+
+const groupMemberRights: TaskList["myRights"] = {
+  ...fullRights,
+  mayShare: false,
+};
+
+const viewOnlyRights: TaskList["myRights"] = {
+  ...fullRights,
+  mayWriteAll: false,
+  mayWriteOwn: false,
+  mayAdmin: false,
+  mayDelete: false,
+  mayShare: false,
 };
 
 const mockTaskLists: TaskList[] = [
@@ -30,6 +45,7 @@ const mockTaskLists: TaskList[] = [
     isDefault: true,
     isSubscribed: true,
     shareWith: null,
+    isSharee: false,
     myRights: fullRights,
     scope: "personal",
     groupSlug: null,
@@ -43,6 +59,7 @@ const mockTaskLists: TaskList[] = [
     isDefault: false,
     isSubscribed: true,
     shareWith: null,
+    isSharee: false,
     myRights: fullRights,
     scope: "personal",
     groupSlug: null,
@@ -56,11 +73,46 @@ const mockTaskLists: TaskList[] = [
     isDefault: false,
     isSubscribed: true,
     shareWith: null,
+    isSharee: false,
     myRights: fullRights,
     scope: "personal",
     groupSlug: null,
   },
 ];
+
+export function createSharedTasksLists(base: TaskList[] = mockTaskLists): TaskList[] {
+  return [
+    ...base,
+    {
+      id: "group-team",
+      name: "Team standup",
+      description: null,
+      color: "#22c55e",
+      sortOrder: 3,
+      isDefault: false,
+      isSubscribed: true,
+      shareWith: null,
+      isSharee: false,
+      myRights: groupMemberRights,
+      scope: "group",
+      groupSlug: "team",
+    },
+    {
+      id: "shared-inbox",
+      name: "Inbox",
+      description: null,
+      color: "#3b82f6",
+      sortOrder: 4,
+      isDefault: false,
+      isSubscribed: true,
+      shareWith: null,
+      isSharee: true,
+      myRights: viewOnlyRights,
+      scope: "personal",
+      groupSlug: null,
+    },
+  ];
+}
 
 const mockTasks: Task[] = [
   {
@@ -176,4 +228,18 @@ export function createTasksAppBootstrap(overrides?: Partial<TasksAppBootstrap>):
     session: mockWorkspaceSession,
     ...overrides,
   };
+}
+
+export function createSharedTasksAppBootstrap(
+  overrides?: Partial<TasksAppBootstrap>,
+): TasksAppBootstrap {
+  const base = createTasksAppBootstrap();
+  return createTasksAppBootstrap({
+    ...base,
+    data: {
+      ...base.data,
+      taskLists: createSharedTasksLists(base.data.taskLists),
+    },
+    ...overrides,
+  });
 }

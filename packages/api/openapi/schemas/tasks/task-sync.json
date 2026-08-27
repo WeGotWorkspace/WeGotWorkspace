@@ -20,7 +20,27 @@
       "name": { "type": "string", "minLength": 1, "maxLength": 255 },
       "description": { "type": ["string", "null"] },
       "color": { "type": ["string", "null"] },
-      "isSubscribed": { "type": "boolean" }
+      "isSubscribed": { "type": "boolean" },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create."
+      },
+      "shareWith": {
+        "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": { "$ref": "#/components/schemas/JmapId" },
+            "additionalProperties": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/CalendarRights" },
+                { "type": "null" }
+              ]
+            }
+          },
+          { "type": "null" }
+        ]
+      }
     },
     "additionalProperties": false
   },

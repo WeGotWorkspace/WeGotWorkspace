@@ -8833,6 +8833,8 @@ export interface components {
             mayRSVP: boolean;
             mayAdmin: boolean;
             mayDelete: boolean;
+            /** @description May modify shareWith. True for personal list owners and group-collection members. */
+            mayShare: boolean;
         };
         TaskList: {
             id: string;
@@ -8850,7 +8852,12 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group; null for personal task lists. */
             groupSlug: string | null;
-            shareWith?: Record<string, never> | null;
+            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"];
+            } | null;
+            /** @description True when this instance is an inbound ACL share (access 2 or 3), not the owner or group-collection member. */
+            isSharee?: boolean;
             myRights: components["schemas"]["TaskListRights"];
         };
         TaskTaskListListResponse: {
@@ -9064,6 +9071,12 @@ export interface components {
             description?: string | null;
             color?: string | null;
             isSubscribed?: boolean;
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. */
+            groupSlug?: string | null;
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
         };
         TaskListDeleteOptions: {
             /** @default false */

@@ -1,8 +1,8 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createSharedTasksLists, createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
-import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksMainView } from "@/tasks-core/src/tasks-main-view";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TASK_PRIORITY_FLAG_COLORS } from "@/tasks-core/src/tasks-priority";
@@ -55,7 +55,7 @@ function renderMainView(
   onCreateTask = vi.fn(),
 ) {
   return render(
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <TasksMainView
         L={defaultTasksLabels}
         displayTasks={[]}
@@ -111,13 +111,18 @@ describe("TasksMainView composer", () => {
     });
   });
 
+  it("shows description without focusing the title", () => {
+    renderComposer();
+
+    expect(screen.getByLabelText(defaultTasksLabels.descriptionLabel)).toBeTruthy();
+  });
+
   it("keeps description editable after title blur", () => {
     renderComposer();
 
     const title = screen.getByLabelText(defaultTasksLabels.addTaskName);
-    fireEvent.focus(title);
-
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
+    fireEvent.focus(title);
     fireEvent.blur(title);
     fireEvent.change(description, { target: { value: "Follow up tomorrow" } });
 
@@ -150,6 +155,30 @@ describe("TasksMainView composer", () => {
     expect(onEditTask).not.toHaveBeenCalled();
   });
 
+  it("shows a disabled view-only complete control with a tooltip", async () => {
+    const onToggleComplete = vi.fn();
+    const lists = createSharedTasksLists();
+    const task = { ...bootstrap.data.tasks[0], id: "shared-task", taskListId: "shared-inbox" };
+    renderMainView({
+      displayTasks: [task],
+      taskLists: lists,
+      allTaskLists: lists,
+      onToggleComplete,
+    });
+
+    const checkbox = screen.getByRole("button", { name: defaultTasksLabels.markComplete });
+    expect(checkbox).toHaveProperty("disabled", true);
+    expect(checkbox.closest(".tasks-main-view__complete-wrap")).toBeTruthy();
+
+    fireEvent.click(checkbox);
+    expect(onToggleComplete).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(checkbox.closest(".tasks-main-view__complete-wrap")!);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      defaultTasksLabels.viewOnlyListBadge,
+    );
+  });
+
   it("does not open edit when clicking task actions", () => {
     const onEditTask = vi.fn();
     const onToggleComplete = vi.fn();
@@ -169,7 +198,6 @@ describe("TasksMainView composer", () => {
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
       target: { value: "New task" },
     });
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.descriptionLabel), {
       target: { value: "Details here" },
@@ -194,7 +222,6 @@ describe("TasksMainView composer", () => {
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
       target: { value: "New task" },
     });
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.focus(description);
@@ -211,17 +238,17 @@ describe("TasksMainView composer", () => {
       due: null,
       alerts: undefined,
     });
-    const title = screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement;
-    expect(title.value).toBe("");
-    expect(document.activeElement).toBe(title);
-    expect(screen.queryByLabelText(defaultTasksLabels.descriptionLabel)).toBeNull();
+    expect((screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect(
+      (screen.getByLabelText(defaultTasksLabels.descriptionLabel) as HTMLTextAreaElement).value,
+    ).toBe("");
   });
 
   it("does not submit when pressing Enter in description with empty title", () => {
     const onCreateTask = vi.fn();
     renderComposer(onCreateTask);
-
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Details only" } });
@@ -233,8 +260,6 @@ describe("TasksMainView composer", () => {
 
   it("allows newline when pressing Shift+Enter in description", () => {
     renderComposer();
-
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Line one" } });
@@ -409,6 +434,13 @@ describe("TasksMainView composer", () => {
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueTomorrow);
     });
 
+    it("prefills due date to yesterday on overdue view", () => {
+      renderMainView({ view: "state:overdue", canCreate: true });
+
+      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueYesterday);
+    });
+
     it("clears view-prefilled due when switching away from today view", () => {
       const { rerender } = renderMainView({ view: "state:today" });
 
@@ -442,19 +474,15 @@ describe("TasksMainView composer", () => {
     });
   });
 
-  it("disables composer fields on overdue view", () => {
-    renderMainView({ view: "state:overdue", canCreate: false });
+  it("keeps composer fields enabled on overdue view", () => {
+    renderMainView({ view: "state:overdue", canCreate: true });
 
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskDue) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(
-      (screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    ).toBe(false);
 
     const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
     const listTrigger = screen.getByLabelText(defaultTasksLabels.addTaskList);

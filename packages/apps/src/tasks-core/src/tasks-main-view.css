@@ -50,6 +50,7 @@
   }
 }
 
+.tasks-main-view__complete-wrap,
 .tasks-main-view__complete,
 .tasks-main-view__composer-marker {
   @apply absolute flex shrink-0 items-center justify-center;
@@ -63,13 +64,25 @@
   }
 }
 
+.tasks-main-view__complete-wrap .tasks-main-view__complete {
+  position: static;
+  inset-inline-start: auto;
+  top: auto;
+  block-size: 100%;
+  inline-size: 100%;
+}
+
 .tasks-main-view__complete {
   @apply rounded-full transition-colors;
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
 }
 
-.tasks-main-view__complete:hover {
+.tasks-main-view__complete:hover:not(:disabled) {
   color: var(--tasks-accent);
+}
+
+.tasks-main-view__complete:disabled {
+  @apply cursor-not-allowed opacity-50;
 }
 
 .tasks-main-view__complete--done {

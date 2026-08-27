@@ -63,6 +63,11 @@ export function composerDefaultDueForView(view: string, now: Date = new Date()):
     tomorrow.setDate(tomorrow.getDate() + 1);
     return dueDateToApiValue(tomorrow);
   }
+  if (view === "state:overdue") {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return dueDateToApiValue(yesterday);
+  }
   return null;
 }
 
@@ -100,6 +105,16 @@ function isCompleted(task: Task): boolean {
   return task.workflowStatus === "completed" || task.workflowStatus === "cancelled";
 }
 
+/** Aggregate views hide tasks from lists the user unchecked. A list view stays unfiltered. */
+export function filterTasksByHiddenLists(
+  tasks: Task[],
+  view: string,
+  hiddenListIds: ReadonlySet<string>,
+): Task[] {
+  if (hiddenListIds.size === 0 || view.startsWith("list:")) return tasks;
+  return tasks.filter((task) => !hiddenListIds.has(task.taskListId));
+}
+
 export function filterTasksByView(tasks: Task[], view: string): Task[] {
   if (view.startsWith("tag:")) {
     const tag = normalizeTag(view.slice(4));
@@ -112,7 +127,11 @@ export function filterTasksByView(tasks: Task[], view: string): Task[] {
   }
 
   if (view.startsWith("priority:")) {
-    const priority = priorityFromFilterSlug(view.slice(9));
+    const slug = view.slice(9);
+    if (slug === "none") {
+      return tasks.filter((task) => isTaskPriorityNone(task.priority));
+    }
+    const priority = priorityFromFilterSlug(slug);
     if (priority === null) return tasks;
     return tasks.filter((task) => normalizeTaskPriority(task.priority) === priority);
   }
@@ -195,29 +214,74 @@ export function collectTaskTags(tasks: Task[]): string[] {
 }
 
 export const INBOX_TASK_LIST_ID = "inbox";
+export const INBOX_TASK_LIST_URI = "tasks-inbox";
 
-export function isInboxTaskList(list: {
+type TaskListIdentity = {
   id: string;
-  name?: string | null;
   role?: string | null;
-}): boolean {
-  return list.id === INBOX_TASK_LIST_ID || list.role === "inbox" || list.name === "Inbox";
+  isSharee?: boolean;
+  isDefault?: boolean;
+};
+
+/** Owned personal Inbox only — never display name, never an inbound shared Inbox. */
+export function isInboxTaskList(list: TaskListIdentity): boolean {
+  if (list.isSharee) return false;
+  if (list.role === "inbox") return true;
+  return list.id === INBOX_TASK_LIST_ID || list.id === INBOX_TASK_LIST_URI;
 }
 
-export function isProtectedTaskList(list: {
-  id: string;
-  name?: string | null;
-  role?: string | null;
-}): boolean {
+export function isProtectedTaskList(list: TaskListIdentity): boolean {
   return isInboxTaskList(list);
 }
 
-export function defaultTaskListId(
-  taskLists: { id: string; isDefault?: boolean; role?: string | null; name?: string | null }[],
-): string {
+export function canWriteTaskList(list?: { myRights?: { mayWriteAll?: boolean } | null }): boolean {
+  return list?.myRights?.mayWriteAll !== false;
+}
+
+export function canShareTaskList(list?: { myRights?: { mayShare?: boolean } | null }): boolean {
+  return list?.myRights?.mayShare === true;
+}
+
+/**
+ * Move Owner between personal and group (same options as create).
+ * Inbox, default, provisioned group, and sharees stay locked.
+ */
+export function canChangeTaskListOwner(list?: {
+  id?: string;
+  scope?: "personal" | "group" | null;
+  groupSlug?: string | null;
+  isDefault?: boolean;
+  isSharee?: boolean;
+  role?: string | null;
+  myRights?: { mayShare?: boolean } | null;
+}): boolean {
+  const listId = list?.id;
+  if (!listId) return false;
+  if (
+    isInboxTaskList({
+      id: listId,
+      role: list.role,
+      isSharee: list.isSharee,
+      isDefault: list.isDefault,
+    })
+  ) {
+    return false;
+  }
+  if (list.isDefault) return false;
+  if (list.isSharee) return false;
+  if (!canShareTaskList(list)) return false;
+  const slug = list.groupSlug?.trim();
+  if (list.scope === "group" && slug && list.id === `group-${slug}`) {
+    return false;
+  }
+  return true;
+}
+
+export function defaultTaskListId(taskLists: TaskListIdentity[]): string {
   const inbox = taskLists.find(isInboxTaskList);
   if (inbox) return inbox.id;
-  const preferred = taskLists.find((list) => list.isDefault) ?? taskLists[0];
+  const owned = taskLists.filter((list) => !list.isSharee);
+  const preferred = owned.find((list) => list.isDefault) ?? owned[0] ?? taskLists[0];
   return preferred?.id ?? INBOX_TASK_LIST_ID;
 }
 

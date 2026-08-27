@@ -1,4 +1,5 @@
 import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import { resolveHiddenCollectionIds } from "@/collection-sidebar/src/collection-hidden-ids";
 
 export const CALENDAR_VIEW_PREFS_STORAGE_KEY = "wgw.ui.calendar.viewPrefs";
 
@@ -102,22 +103,14 @@ export function persistHiddenCalendarIds(
 
 /**
  * Hidden ids are the source of truth once this device has seen a calendar.
- * Server `isVisible: false` only seeds calendars that have never appeared in a
- * persisted snapshot (`knownCalendarIds`). Legacy payloads without that list
- * treat the current calendar set as already seen so an explicit un-hide sticks.
+ * Same algorithm as Tasks (`resolveHiddenCollectionIds`).
  */
 export function resolveHiddenCalendarIds(
   calendars: ReadonlyArray<{ id: string; isVisible?: boolean }>,
   persisted?: Pick<CalendarViewPrefs, "hiddenCalendarIds" | "knownCalendarIds"> | null,
 ): string[] {
-  const currentIds = new Set(calendars.map((calendar) => calendar.id));
-  const fromServer = calendars
-    .filter((calendar) => calendar.isVisible === false)
-    .map((calendar) => calendar.id);
-  if (!persisted || persisted.hiddenCalendarIds === undefined) return fromServer;
-
-  const seen = new Set(persisted.knownCalendarIds ?? currentIds);
-  const fromUser = persisted.hiddenCalendarIds.filter((id) => currentIds.has(id));
-  const fromNewServerHidden = fromServer.filter((id) => !seen.has(id));
-  return [...new Set([...fromUser, ...fromNewServerHidden])];
+  return resolveHiddenCollectionIds(calendars, {
+    hiddenIds: persisted?.hiddenCalendarIds,
+    knownIds: persisted?.knownCalendarIds,
+  });
 }

@@ -6,6 +6,7 @@ import type { TaskEditDialogState } from "@/tasks-core/src/tasks-edit-dialog";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
+  canWriteTaskList,
   isTaskCompleted,
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
@@ -28,7 +29,16 @@ type UseTasksMutationsArgs = {
 };
 
 export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutationsArgs) {
-  const { L, tasks, setTasks, taskLists, operations, showMutationError, view } = shell;
+  const {
+    L,
+    tasks,
+    setTasks,
+    taskLists,
+    operations,
+    showMutationError,
+    view,
+    ensureTaskListVisible,
+  } = shell;
   const { queueMutation } = list;
   const { beginTaskExit, cancelTaskExit } = exitAnimation;
 
@@ -63,6 +73,9 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       alerts,
     }: TasksCreateInput) => {
       if (!operations || !title.trim()) return;
+      const targetList = taskLists.find((list) => list.id === listId);
+      if (!canWriteTaskList(targetList)) return;
+      ensureTaskListVisible(listId);
       const trimmedTitle = title.trim();
       const trimmedDescription = description.trim() || null;
       const status = workflowStatus ?? "needs-action";
@@ -107,13 +120,14 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         showMutationError();
       }
     },
-    [L.toastTaskAdded, operations, setTasks, shell, showMutationError],
+    [L.toastTaskAdded, operations, setTasks, shell, showMutationError, taskLists],
   );
 
   const toggleTaskComplete = useCallback(
     (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
       if (!task || !operations) return;
+      if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
 
       const beforeStatus = task.workflowStatus ?? "needs-action";
       const completing = !isTaskCompleted(task);
@@ -152,7 +166,17 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         executeImmediately: true,
       });
     },
-    [L, beginTaskExit, cancelTaskExit, operations, patchTask, queueMutation, setTasks, tasks],
+    [
+      L,
+      beginTaskExit,
+      cancelTaskExit,
+      operations,
+      patchTask,
+      queueMutation,
+      setTasks,
+      taskLists,
+      tasks,
+    ],
   );
 
   const editTask = useCallback((taskId: string) => {
@@ -174,6 +198,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       const taskId = editDialog.taskId;
       const task = tasks.find((item) => item.id === taskId);
       if (!task || !input.title.trim()) return;
+      if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
 
       const trimmedTitle = input.title.trim();
       const trimmedDescription = input.description.trim() || null;
@@ -238,6 +263,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       setTasks,
       shell,
       showMutationError,
+      taskLists,
       tasks,
     ],
   );
@@ -245,7 +271,10 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   const deleteTasks = useCallback(
     (ids: string[]) => {
       if (!operations || ids.length === 0) return;
-      const removed = tasks.filter((task) => ids.includes(task.id));
+      const removed = tasks.filter((task) => {
+        if (!ids.includes(task.id)) return false;
+        return canWriteTaskList(taskLists.find((list) => list.id === task.taskListId));
+      });
       if (removed.length === 0) return;
 
       setTasks((prev) => prev.filter((task) => !ids.includes(task.id)));
@@ -282,6 +311,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       operations,
       queueMutation,
       setTasks,
+      taskLists,
       tasks,
     ],
   );
@@ -302,8 +332,12 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   const moveToList = useCallback(
     (ids: string[], listId: string) => {
       if (!operations) return;
+      if (!canWriteTaskList(taskLists.find((list) => list.id === listId))) return;
       const listName = taskListName(listId, taskLists);
-      const before = tasks.filter((task) => ids.includes(task.id));
+      const before = tasks.filter((task) => {
+        if (!ids.includes(task.id)) return false;
+        return canWriteTaskList(taskLists.find((list) => list.id === task.taskListId));
+      });
       if (before.length === 0) return;
 
       for (const taskId of ids) {

@@ -7,3 +7,26 @@
 .task-project-dialog__name-input {
   @apply min-w-0 flex-[1_1_85%];
 }
+
+.tasks-dialog-surface .field-label-row + .field-label-row {
+  @apply mt-3;
+}
+
+.task-project-dialog__share {
+  @apply mt-4;
+}
+
+.task-project-dialog__footer {
+  @apply mt-4 gap-2 sm:gap-0;
+}
+
+.task-project-dialog__footer .task-project-dialog__remove {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
+  color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .task-project-dialog__footer .task-project-dialog__remove {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
+}
