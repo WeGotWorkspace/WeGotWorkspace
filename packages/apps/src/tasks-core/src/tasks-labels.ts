@@ -6,7 +6,24 @@ export type TasksUILabels = {
   sidebarPriority: string;
   sidebarInbox: string;
   sidebarProjects: string;
+  sidebarSharedWithMe: string;
   stateAll: string;
+  newTaskMenu: string;
+  addList: string;
+  editList: string;
+  viewOnlyListBadge: string;
+  shareListSectionTitle: string;
+  shareListSectionHint: string;
+  shareListAddPlaceholder: string;
+  shareListSearchEmpty: string;
+  shareListOffline: string;
+  shareListFailed: string;
+  removeListShareTitle: string;
+  removeListShareConfirm: string;
+  removeSharedList: string;
+  removeSharedListConfirmTitle: string;
+  removeSharedListConfirmDescription: string;
+  toastListShareRemoved: string;
   stateToday: string;
   stateUpcoming: string;
   stateOverdue: string;
@@ -38,12 +55,11 @@ export type TasksUILabels = {
   noDue: string;
   descriptionLabel: string;
   remindMe: string;
-  remindNone: string;
-  remindAtDue: string;
-  remind30Min: string;
-  remind1Hour: string;
-  remind1Day: string;
-  remindCustom: string;
+  noReminders: string;
+  remindingBefore: (durations: string) => string;
+  remindingAfter: (durations: string) => string;
+  remindingAfterClause: (durations: string) => string;
+  remindAtTimeOfTask: string;
   kanbanToggle: string;
   listView: string;
   showCompletedTasks: string;
@@ -53,13 +69,16 @@ export type TasksUILabels = {
   addTaskDescriptionPlaceholder: string;
   addTaskList: string;
   newProject: string;
-  renameProject: string;
   projectNameLabel: string;
   projectColorLabel: string;
   projectScopeLabel: string;
   projectScopePersonal: (ownerLabel: string) => string;
   projectScopeGroup: (name: string) => string;
   projectScopeReadOnlyLabel: string;
+  changeListOwnerConfirmTitle: string;
+  changeListOwnerConfirmToGroup: (groupName: string) => string;
+  changeListOwnerConfirmToPersonal: string;
+  changeListOwnerConfirm: string;
   createProjectButton: string;
   saveProjectButton: string;
   toastProjectCreated: string;
@@ -112,8 +131,26 @@ export const defaultTasksLabels: TasksUILabels = {
   sidebarStatus: "Status",
   sidebarPriority: "Priority",
   sidebarInbox: "Inbox",
-  sidebarProjects: "Lists",
-  stateAll: "All",
+  sidebarProjects: "My lists",
+  sidebarSharedWithMe: "Shared with me",
+  stateAll: "All Tasks",
+  newTaskMenu: "More create options",
+  addList: "Add list",
+  editList: "Edit list",
+  viewOnlyListBadge: "View only",
+  shareListSectionTitle: "Team access",
+  shareListSectionHint: "Grant read or read-and-write access to people or groups.",
+  shareListAddPlaceholder: "Add people or groups…",
+  shareListSearchEmpty: "No people or groups found",
+  shareListOffline: "Sharing changes require a connection.",
+  shareListFailed: "Could not update sharing.",
+  removeListShareTitle: "Remove access?",
+  removeListShareConfirm: "This person or group will lose access to this list. Continue?",
+  removeSharedList: "Remove list",
+  removeSharedListConfirmTitle: "Remove this list?",
+  removeSharedListConfirmDescription:
+    "It disappears from your sidebar. The owner’s list is unchanged, so it can be added again later.",
+  toastListShareRemoved: "List removed",
   stateToday: "Today",
   stateUpcoming: "Upcoming",
   stateOverdue: "Overdue",
@@ -145,12 +182,11 @@ export const defaultTasksLabels: TasksUILabels = {
   noDue: "No due date",
   descriptionLabel: "Notes",
   remindMe: "Remind me",
-  remindNone: "None",
-  remindAtDue: "At time of task",
-  remind30Min: "30 minutes before",
-  remind1Hour: "1 hour before",
-  remind1Day: "1 day before",
-  remindCustom: "Custom date & time",
+  noReminders: "No reminders",
+  remindingBefore: (durations) => `Reminding ${durations} before`,
+  remindingAfter: (durations) => `Reminding ${durations} after`,
+  remindingAfterClause: (durations) => `${durations} after`,
+  remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
   listView: "List",
   showCompletedTasks: "Show completed",
@@ -160,13 +196,18 @@ export const defaultTasksLabels: TasksUILabels = {
   addTaskDescriptionPlaceholder: "Description",
   addTaskList: "List",
   newProject: "New list",
-  renameProject: "Rename list",
   projectNameLabel: "List name",
   projectColorLabel: "Color",
   projectScopeLabel: defaultOwnerScopeLabels.label,
   projectScopePersonal: defaultOwnerScopeLabels.personal,
   projectScopeGroup: defaultOwnerScopeLabels.group,
   projectScopeReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
+  changeListOwnerConfirmTitle: "Change owner?",
+  changeListOwnerConfirmToGroup: (groupName) =>
+    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that group lose access unless they have a share.`,
+  changeListOwnerConfirmToPersonal:
+    "This list will move to your personal lists. Tasks and existing shares stay. Other group members lose access unless they have a share.",
+  changeListOwnerConfirm: "Change owner",
   createProjectButton: "Create",
   saveProjectButton: "Save",
   toastProjectCreated: "List created",

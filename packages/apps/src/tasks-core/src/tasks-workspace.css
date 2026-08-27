@@ -166,3 +166,39 @@
 .tasks-workspace .sidebar-section .menu-item .menu-item__icon-slot:has(.tasks-list-dot) {
   opacity: 1;
 }
+
+.tasks-workspace .collection-sidebar-row__mark {
+  @apply inline-flex size-3.5 shrink-0 items-center justify-center;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
+.tasks-workspace .collection-sidebar-row__select:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
+  outline-offset: 1px;
+  border-radius: 0.125rem;
+}
+
+.tasks-workspace .collection-sidebar-row__action.button {
+  @apply size-6 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
+.tasks-workspace .collection-sidebar-row__action:hover,
+.tasks-workspace .collection-sidebar-row__action:focus-visible {
+  color: var(--color-ink);
+}
+
+.tasks-workspace .collection-sidebar-row--drop-target {
+  background-color: color-mix(in oklab, var(--tasks-accent) 18%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tasks-workspace .collection-sidebar-row__action.button {
+    opacity: 0;
+  }
+
+  .tasks-workspace .collection-sidebar-row:hover .collection-sidebar-row__action.button,
+  .tasks-workspace .collection-sidebar-row:focus-within .collection-sidebar-row__action.button {
+    opacity: 1;
+  }
+}

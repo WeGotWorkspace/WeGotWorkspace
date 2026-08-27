@@ -12,6 +12,7 @@ import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareAccessRow } from "@/share-ui/share-access-row";
 import "@/share-ui/share-ui.css";
+import "@/calendar-core/src/calendar-alarms-card.css";
 
 const EMPTY_SLOT_ID = null;
 
@@ -44,7 +45,7 @@ function AlarmOffsetControls({
   onSelect,
 }: {
   alert: CalendarEventAlertFormValue | null;
-  labels: CalendarUILabels;
+  labels: CalendarAlarmsCardLabels;
   disabled: boolean;
   onSelect: (value: CalendarAlertOffsetSelectValue) => void;
 }) {
@@ -86,32 +87,47 @@ function AlarmOffsetControls({
   );
 }
 
+export type CalendarAlarmsCardLabels = Pick<
+  CalendarUILabels,
+  | "eventAlarmsLabel"
+  | "eventAlarmRow"
+  | "eventAlarmRemove"
+  | "eventAlarmOffset"
+  | "eventAlarmNone"
+  | "eventAlarmAtStart"
+  | "eventAlarm5Min"
+  | "eventAlarm10Min"
+  | "eventAlarm15Min"
+  | "eventAlarm30Min"
+  | "eventAlarm1Hour"
+  | "eventAlarm1Day"
+>;
+
 export type CalendarAlarmsCardProps = {
   alerts: CalendarEventAlertFormValue[];
-  labels: CalendarUILabels;
+  labels: CalendarAlarmsCardLabels;
   disabled?: boolean;
   readOnly?: boolean;
+  /** Tasks persist due-relative offsets; calendar leaves this unset (event start). */
+  defaultRelatedTo?: "start" | "end";
   onChange: (alerts: CalendarEventAlertFormValue[]) => void;
 };
 
-export function CalendarAlarmsCard({
+export function CalendarAlarmsRows({
   alerts,
   labels,
   disabled = false,
   readOnly = false,
+  defaultRelatedTo,
   onChange,
 }: CalendarAlarmsCardProps) {
   const showTrailingNone = !readOnly;
   const commitOffset = (rowId: string | null, value: CalendarAlertOffsetSelectValue) => {
-    onChange(alertsAfterOffsetChange({ alerts, rowId, value }));
+    onChange(alertsAfterOffsetChange({ alerts, rowId, value, defaultRelatedTo }));
   };
 
   return (
-    <ShareAccessCard
-      className="calendar-event-dialog__card"
-      titleIcon={<Bell className="size-4" />}
-      title={labels.eventAlarmsLabel}
-    >
+    <>
       {alerts.map((alert, index) => (
         <ShareAccessRow
           key={alert.id}
@@ -144,6 +160,18 @@ export function CalendarAlarmsCard({
           }
         />
       ) : null}
+    </>
+  );
+}
+
+export function CalendarAlarmsCard(props: CalendarAlarmsCardProps) {
+  return (
+    <ShareAccessCard
+      className="calendar-event-dialog__card calendar-alarms-card"
+      titleIcon={<Bell />}
+      title={props.labels.eventAlarmsLabel}
+    >
+      <CalendarAlarmsRows {...props} />
     </ShareAccessCard>
   );
 }

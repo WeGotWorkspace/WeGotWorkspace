@@ -1,0 +1,18 @@
+@import "../../styles.css" reference;
+
+/* Self-contained so Tasks can host the same card outside `.calendar-dialog-surface`. */
+.calendar-alarms-card {
+  @apply mb-0 p-4;
+}
+
+.calendar-alarms-card .card__header {
+  @apply mb-3;
+}
+
+.calendar-alarms-card .calendar-event-dialog__alarm-row {
+  @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
+}
+
+.calendar-alarms-card .calendar-event-dialog__alarm-offset {
+  @apply min-w-36;
+}

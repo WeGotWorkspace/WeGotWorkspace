@@ -39,6 +39,7 @@ const mockOperations = {
 
 describe("useTasksController URL routing", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     vi.clearAllMocks();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -184,7 +185,7 @@ describe("useTasksController URL routing", () => {
     expect(result.current.displayTasks.some((task) => task.id === "task-done")).toBe(true);
   });
 
-  it("disables task creation on overdue view when operations are available", () => {
+  it("allows task creation on overdue view when operations are available", () => {
     const { result } = renderHook(() =>
       useTasksController({
         data: bootstrap.data,
@@ -193,7 +194,53 @@ describe("useTasksController URL routing", () => {
       }),
     );
 
+    expect(result.current.canCreateTask).toBe(true);
+  });
+
+  it("defaults to All Tasks when no initial view is provided", () => {
+    const { result } = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: mockOperations,
+      }),
+    );
+
+    expect(result.current.view).toBe("state:all");
+    expect(result.current.createListId).toBe(INBOX_TASK_LIST_ID);
+  });
+
+  it("disables creation on a view-only shared list", () => {
+    const data = {
+      ...bootstrap.data,
+      taskLists: [
+        ...bootstrap.data.taskLists,
+        {
+          ...bootstrap.data.taskLists[0],
+          id: "shared-inbox",
+          name: "Inbox",
+          role: null,
+          isDefault: false,
+          isSharee: true,
+          myRights: {
+            ...bootstrap.data.taskLists[0]!.myRights,
+            mayWriteAll: false,
+            mayWriteOwn: false,
+            mayShare: false,
+          },
+        },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useTasksController({
+        data,
+        operations: mockOperations,
+        initialView: "list:shared-inbox",
+      }),
+    );
+
     expect(result.current.canCreateTask).toBe(false);
+    expect(result.current.createListId).toBe("shared-inbox");
   });
 
   it("allows task creation on today view when operations are available", () => {
@@ -206,5 +253,68 @@ describe("useTasksController URL routing", () => {
     );
 
     expect(result.current.canCreateTask).toBe(true);
+  });
+
+  it("hides tasks from All Tasks when a list is unchecked and still shows a list view", () => {
+    const { result } = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: mockOperations,
+        initialView: "state:all",
+      }),
+    );
+
+    const workTasks = bootstrap.data.tasks.filter((task) => task.taskListId === "work");
+    expect(workTasks.length).toBeGreaterThan(0);
+    expect(result.current.displayTasks.some((task) => task.taskListId === "work")).toBe(true);
+
+    act(() => {
+      result.current.toggleTaskListVisibility("work");
+    });
+
+    expect(result.current.hiddenTaskListIds.has("work")).toBe(true);
+    expect(result.current.displayTasks.some((task) => task.taskListId === "work")).toBe(false);
+
+    act(() => {
+      result.current.selectView("list:work");
+    });
+
+    expect(result.current.displayTasks.some((task) => task.taskListId === "work")).toBe(true);
+  });
+
+  it("unhides Inbox when creating a task into it from All Tasks", async () => {
+    const created = {
+      ...bootstrap.data.tasks[0],
+      id: "created-1",
+      taskListId: "inbox",
+      title: "From all tasks",
+    };
+    const createTask = vi.fn().mockResolvedValue(created);
+    const { result } = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: { ...mockOperations, createTask },
+        initialView: "state:all",
+      }),
+    );
+
+    act(() => {
+      result.current.toggleTaskListVisibility("inbox");
+    });
+    expect(result.current.hiddenTaskListIds.has("inbox")).toBe(true);
+
+    await act(async () => {
+      await result.current.createTaskFromForm({
+        title: "From all tasks",
+        description: "",
+        listId: "inbox",
+        workflowStatus: "needs-action",
+        priority: 0,
+        due: null,
+      });
+    });
+
+    expect(result.current.hiddenTaskListIds.has("inbox")).toBe(false);
+    expect(createTask).toHaveBeenCalled();
   });
 });

@@ -7,9 +7,13 @@ import {
   TASK_PRIORITY_MEDIUM,
   isTaskPriorityNone,
   normalizeTaskPriority,
+  PRIORITY_FILTER_SLUGS,
+  priorityFilterIcon,
+  priorityFilterLabel,
   priorityFlagColor,
   priorityIcon,
 } from "@/tasks-core/src/tasks-priority";
+import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 
 describe("normalizeTaskPriority", () => {
   it("maps canonical iCal tiers", () => {
@@ -82,6 +86,15 @@ describe("priorityIcon", () => {
     expect(wrapper.style.getPropertyValue("--tasks-priority-flag-fill")).toBe(
       TASK_PRIORITY_FLAG_COLORS.none,
     );
+  });
+});
+
+describe("priority filter slugs", () => {
+  it("includes none alongside high, medium, and low", () => {
+    expect(PRIORITY_FILTER_SLUGS).toEqual(["high", "medium", "low", "none"]);
+    expect(priorityFilterLabel("none", defaultTasksLabels)).toBe(defaultTasksLabels.priorityNone);
+    const { container } = render(priorityFilterIcon("none"));
+    expect(container.querySelector(".tasks-priority-flag")).toBeTruthy();
   });
 });
 

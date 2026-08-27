@@ -36,7 +36,7 @@ final class CalendarRepository
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly DriveGroupResolver $groups,
         private readonly CalendarShareInvites $shareInvites,
-        private readonly CalendarShareVisibility $shareVisibility,
+        private readonly CalendarCollectionAccess $collectionAccess,
     ) {}
 
     public function list(string $username): array
@@ -147,15 +147,12 @@ final class CalendarRepository
         }
         [$instance, $groupSlug] = $resolved;
 
-        if ($this->shareInvites->isSharee($instance)) {
-            $disallowed = array_values(array_filter(
-                ['description', 'timeZone', 'shareWith', 'groupSlug'],
-                static fn (string $key): bool => array_key_exists($key, $payload),
-            ));
-            if ($disallowed !== []) {
-                throw new ApiHttpException(403, 'Sharees can only change their own calendar name and color.', 'forbidden');
-            }
-        }
+        $this->collectionAccess->assertShareePatchAllowed(
+            $instance,
+            $payload,
+            ['description', 'timeZone', 'shareWith', 'groupSlug'],
+            'Sharees can only change their own calendar name and color.',
+        );
 
         $mutations = [];
         if (array_key_exists('name', $payload)) {
@@ -206,9 +203,7 @@ final class CalendarRepository
         }
         [$instance, $groupSlug] = $resolved;
 
-        if ($this->shareInvites->isSharee($instance)) {
-            $this->shareVisibility->dismiss($username, (int) $instance->calendarid);
-
+        if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
 
@@ -411,9 +406,7 @@ final class CalendarRepository
 
     public function assertEventWritable(CalendarInstance $instance): void
     {
-        if ($this->shareInvites->isReadOnly($instance)) {
-            throw new ApiHttpException(403, 'This calendar is read-only.', 'forbidden');
-        }
+        $this->collectionAccess->assertCollectionWritable($instance, 'This calendar is read-only.');
     }
 
     /**
@@ -421,61 +414,10 @@ final class CalendarRepository
      */
     public function accessibleVeventInstances(string $username)
     {
-        $instances = $this->personalVeventInstances($username);
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupVeventInstances($slug) as $groupInstance) {
-                $instances->push($groupInstance);
-            }
-        }
-
-        return $this->shareVisibility->rejectDismissedSharees(
+        return $this->collectionAccess->accessibleInstances(
             $username,
-            $this->preferHighestAccessPerCalendar($instances),
+            fn ($query) => $query->supportsVevent(),
         );
-    }
-
-    /**
-     * Sharing a personal calendar with a group you belong to creates a second
-     * instance (group sharee) of the same calendarid. Keep the owner copy.
-     *
-     * @param  Collection<int, CalendarInstance>  $instances
-     * @return Collection<int, CalendarInstance>
-     */
-    private function preferHighestAccessPerCalendar($instances)
-    {
-        $chosen = [];
-        foreach ($instances as $instance) {
-            $calendarId = (int) $instance->calendarid;
-            $rank = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
-                SharingPlugin::ACCESS_SHAREDOWNER => 3,
-                SharingPlugin::ACCESS_READWRITE => 2,
-                SharingPlugin::ACCESS_READ => 1,
-                default => 0,
-            };
-            if (! isset($chosen[$calendarId]) || $rank > $chosen[$calendarId]['rank']) {
-                $chosen[$calendarId] = ['rank' => $rank, 'instance' => $instance];
-            }
-        }
-
-        return $instances
-            ->filter(function (CalendarInstance $instance) use ($chosen): bool {
-                return $chosen[(int) $instance->calendarid]['instance']->is($instance);
-            })
-            ->values();
-    }
-
-    /**
-     * @return Collection<int, CalendarInstance>
-     */
-    private function personalVeventInstances(string $username)
-    {
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->orderBy('calendarorder')
-            ->orderBy('id')
-            ->get();
     }
 
     /**

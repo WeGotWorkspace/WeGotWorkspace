@@ -635,7 +635,8 @@
           "mayUpdatePrivate",
           "mayRSVP",
           "mayAdmin",
-          "mayDelete"
+          "mayDelete",
+          "mayShare"
         ],
         "properties": {
           "mayReadItems": {
@@ -658,6 +659,10 @@
           },
           "mayDelete": {
             "type": "boolean"
+          },
+          "mayShare": {
+            "type": "boolean",
+            "description": "May modify shareWith. True for personal list owners and group-collection members."
           }
         },
         "additionalProperties": false
@@ -724,10 +729,25 @@
             "description": "Group slug when scope is group; null for personal task lists."
           },
           "shareWith": {
-            "type": [
-              "object",
-              "null"
+            "description": "Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null.",
+            "oneOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/components/schemas/JmapId"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/CalendarRights"
+                }
+              },
+              {
+                "type": "null"
+              }
             ]
+          },
+          "isSharee": {
+            "type": "boolean",
+            "description": "True when this instance is an inbound ACL share (access 2 or 3), not the owner or group-collection member."
           },
           "myRights": {
             "$ref": "#/components/schemas/TaskListRights"
@@ -808,6 +828,37 @@
           },
           "isSubscribed": {
             "type": "boolean"
+          },
+          "groupSlug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create."
+          },
+          "shareWith": {
+            "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers.",
+            "oneOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/components/schemas/JmapId"
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CalendarRights"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -1442,7 +1493,10 @@
             }
           },
           "alerts": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
             "additionalProperties": {
               "$ref": "#/components/schemas/TaskAlert"
             }

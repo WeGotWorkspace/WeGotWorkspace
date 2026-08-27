@@ -63,7 +63,7 @@ final class TaskPatchRequest extends FormRequest
             'recurrenceRules' => ['sometimes', 'array'],
             'excludedRecurrenceDates' => ['sometimes', 'array'],
             'recurrenceOverrides' => ['sometimes', 'array'],
-            'alerts' => ['sometimes', 'array'],
+            'alerts' => ['sometimes', 'nullable', 'array'],
             'showWithoutTime' => ['sometimes', 'boolean'],
             'timeZone' => ['sometimes', 'nullable', 'string', 'max:255'],
             'participants' => ['sometimes', 'array'],

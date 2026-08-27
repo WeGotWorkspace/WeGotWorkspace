@@ -18,6 +18,21 @@ const fullRights: TaskList["myRights"] = {
   mayRSVP: true,
   mayAdmin: true,
   mayDelete: true,
+  mayShare: true,
+};
+
+const groupMemberRights: TaskList["myRights"] = {
+  ...fullRights,
+  mayShare: false,
+};
+
+const viewOnlyRights: TaskList["myRights"] = {
+  ...fullRights,
+  mayWriteAll: false,
+  mayWriteOwn: false,
+  mayAdmin: false,
+  mayDelete: false,
+  mayShare: false,
 };
 
 const mockTaskLists: TaskList[] = [
@@ -30,6 +45,7 @@ const mockTaskLists: TaskList[] = [
     isDefault: true,
     isSubscribed: true,
     shareWith: null,
+    isSharee: false,
     myRights: fullRights,
     scope: "personal",
     groupSlug: null,
@@ -43,6 +59,7 @@ const mockTaskLists: TaskList[] = [
     isDefault: false,
     isSubscribed: true,
     shareWith: null,
+    isSharee: false,
     myRights: fullRights,
     scope: "personal",
     groupSlug: null,
@@ -56,11 +73,46 @@ const mockTaskLists: TaskList[] = [
     isDefault: false,
     isSubscribed: true,
     shareWith: null,
+    isSharee: false,
     myRights: fullRights,
     scope: "personal",
     groupSlug: null,
   },
 ];
+
+export function createSharedTasksLists(base: TaskList[] = mockTaskLists): TaskList[] {
+  return [
+    ...base,
+    {
+      id: "group-team",
+      name: "Team standup",
+      description: null,
+      color: "#22c55e",
+      sortOrder: 3,
+      isDefault: false,
+      isSubscribed: true,
+      shareWith: null,
+      isSharee: false,
+      myRights: groupMemberRights,
+      scope: "group",
+      groupSlug: "team",
+    },
+    {
+      id: "shared-inbox",
+      name: "Inbox",
+      description: null,
+      color: "#3b82f6",
+      sortOrder: 4,
+      isDefault: false,
+      isSubscribed: true,
+      shareWith: null,
+      isSharee: true,
+      myRights: viewOnlyRights,
+      scope: "personal",
+      groupSlug: null,
+    },
+  ];
+}
 
 const mockTasks: Task[] = [
   {
@@ -114,6 +166,31 @@ const mockTasks: Task[] = [
   },
   {
     "@type": "Task",
+    id: "task-two-reminders",
+    taskListId: "work",
+    uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440005",
+    title: "Prep launch notes",
+    description: null,
+    due: new Date(Date.now() + 259_200_000).toISOString().slice(0, 19),
+    workflowStatus: "needs-action",
+    isDraft: false,
+    sortOrder: 4,
+    categories: ["work"],
+    alerts: {
+      alert1: {
+        "@type": "Alert",
+        trigger: { "@type": "OffsetTrigger", offset: "-PT30M", relativeTo: "end" },
+        action: "display",
+      },
+      alert2: {
+        "@type": "Alert",
+        trigger: { "@type": "OffsetTrigger", offset: "-PT1H", relativeTo: "end" },
+        action: "display",
+      },
+    },
+  },
+  {
+    "@type": "Task",
     id: "task-overdue",
     taskListId: "default",
     uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440003",
@@ -151,4 +228,18 @@ export function createTasksAppBootstrap(overrides?: Partial<TasksAppBootstrap>):
     session: mockWorkspaceSession,
     ...overrides,
   };
+}
+
+export function createSharedTasksAppBootstrap(
+  overrides?: Partial<TasksAppBootstrap>,
+): TasksAppBootstrap {
+  const base = createTasksAppBootstrap();
+  return createTasksAppBootstrap({
+    ...base,
+    data: {
+      ...base.data,
+      taskLists: createSharedTasksLists(base.data.taskLists),
+    },
+    ...overrides,
+  });
 }

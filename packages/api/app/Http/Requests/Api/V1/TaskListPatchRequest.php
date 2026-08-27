@@ -20,7 +20,8 @@ final class TaskListPatchRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:4096'],
             'color' => ['sometimes', 'nullable', 'string', 'max:64'],
             'isSubscribed' => ['sometimes', 'boolean'],
-            'shareWith' => ['prohibited'],
+            'groupSlug' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Za-z0-9._-]{1,190}$/'],
+            'shareWith' => ['sometimes', 'nullable', 'array'],
         ];
     }
 }

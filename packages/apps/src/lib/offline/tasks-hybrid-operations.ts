@@ -8,6 +8,7 @@ import type {
   TasksAPIOperations,
   TasksMutationOpts,
 } from "@/tasks-core/src/tasks-types";
+import { mergeShareWith } from "@/share-ui/collection-share";
 import {
   createTask,
   createTaskList,
@@ -19,6 +20,7 @@ import {
   patchTaskList,
   putTask,
 } from "@/lib/api/wgw/tasks";
+import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   applyTaskPatch,
@@ -186,6 +188,7 @@ async function queueOfflineListCreate(username: string, body: TaskListCreate): P
       mayRSVP: true,
       mayAdmin: true,
       mayDelete: true,
+      mayShare: true,
     },
   };
   await upsertTaskListInCache(username, optimistic);
@@ -208,7 +211,14 @@ async function queueOfflineListPatch(
   patch: TaskListPatch,
   existing: TaskList,
 ): Promise<TaskList> {
-  const optimistic = { ...existing, ...patch };
+  const { shareWith, ...rest } = patch;
+  const optimistic: TaskList = {
+    ...existing,
+    ...rest,
+    ...(shareWith !== undefined
+      ? { shareWith: mergeShareWith(existing.shareWith, shareWith ?? {}) as TaskList["shareWith"] }
+      : {}),
+  };
   await upsertTaskListInCache(username, optimistic);
   await enqueueOutboxMutation(username, {
     id: crypto.randomUUID(),
@@ -336,6 +346,8 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
       }
     },
     patchTaskList: async (taskListId, patch, opts) => {
+      const isShareMutation = patch.shareWith !== undefined;
+      const isOwnerTransfer = patch.groupSlug !== undefined;
       const cached = await readTasksBootstrapFromCache(username);
       const existing = cached?.data.taskLists.find((list) => list.id === taskListId);
       if (!existing) {
@@ -345,8 +357,17 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
             : "Task list not found",
         );
       }
-      if (!readBrowserOnline()) {
+      const queueOffline = async () => {
+        if (isShareMutation) {
+          throw new Error("Sharing changes require a connection.");
+        }
+        if (isOwnerTransfer) {
+          throw new Error("Owner changes require a connection.");
+        }
         return queueOfflineListPatch(username, taskListId, patch, existing);
+      };
+      if (!readBrowserOnline()) {
+        return queueOffline();
       }
       try {
         const list = await patchTaskList(taskListId, patch, opts);
@@ -354,10 +375,12 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         await runner.flush();
         return list;
       } catch (error) {
+        if (isShareMutation || isOwnerTransfer) throw error;
         rethrowUnlessOfflineQueue(error, opts);
-        return queueOfflineListPatch(username, taskListId, patch, existing);
+        return queueOffline();
       }
     },
+    searchSharePrincipals: (query) => searchCollectionSharePrincipals(query, username),
     deleteTaskList: async (taskListId, opts) => {
       if (!readBrowserOnline()) {
         await queueOfflineListDelete(username, taskListId, opts?.onDestroyRemoveContents);

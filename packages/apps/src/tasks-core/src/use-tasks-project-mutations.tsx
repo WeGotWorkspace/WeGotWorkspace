@@ -1,8 +1,16 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Tag } from "lucide-react";
+import type { CollectionShareWith } from "@/share-ui/collection-share";
 import type { TaskProjectDialogConfirmInput } from "@/tasks-core/src/task-project-dialog";
 import type { TaskProjectDialogState } from "@/tasks-core/src/task-project-dialog";
-import { isProtectedTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { DEFAULT_TASKS_VIEW } from "@/tasks-core/src/tasks-route-search";
+import {
+  canChangeTaskListOwner,
+  canShareTaskList,
+  isProtectedTaskList,
+  taskListDotColor,
+} from "@/tasks-core/src/tasks-task-utils";
+import type { TaskListPatch } from "@/tasks-core/src/tasks-types";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 
 type UseTasksProjectMutationsArgs = {
@@ -10,30 +18,11 @@ type UseTasksProjectMutationsArgs = {
 };
 
 export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs) {
-  const {
-    L,
-    operations,
-    taskLists,
-    setTaskLists,
-    selectedListId,
-    selectView,
-    show,
-    showMutationError,
-  } = shell;
+  const { L, operations, taskLists, setTaskLists, selectView, view, show, showMutationError } =
+    shell;
   const [projectDialog, setProjectDialog] = useState<TaskProjectDialogState>(null);
 
   const canManageProjects = Boolean(operations?.createTaskList && operations?.patchTaskList);
-
-  const selectedList = useMemo(
-    () => (selectedListId ? taskLists.find((list) => list.id === selectedListId) : undefined),
-    [selectedListId, taskLists],
-  );
-
-  const canRenameProject = useMemo(() => {
-    if (!canManageProjects || !selectedList) return false;
-    if (isProtectedTaskList(selectedList)) return false;
-    return true;
-  }, [canManageProjects, selectedList]);
 
   const createProject = useCallback(
     async ({ name, color, groupSlug }: TaskProjectDialogConfirmInput) => {
@@ -59,18 +48,27 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
   );
 
   const updateProject = useCallback(
-    async (listId: string, { name, color }: TaskProjectDialogConfirmInput) => {
+    async (listId: string, { name, color, groupSlug }: TaskProjectDialogConfirmInput) => {
       if (!operations?.patchTaskList) return;
       const trimmed = name.trim();
       const list = taskLists.find((entry) => entry.id === listId);
-      if (!trimmed || !list || isProtectedTaskList(list)) return;
+      if (!trimmed || !list) return;
 
-      const patch: { name?: string; color?: string | null } = {};
+      const patch: TaskListPatch = {};
       if (trimmed !== list.name) patch.name = trimmed;
       const displayColor = taskListDotColor({ id: list.id, color: list.color }).toLowerCase();
       const selectedColor = (color?.trim() || displayColor).toLowerCase();
       if (selectedColor !== displayColor) {
         patch.color = color?.trim() || null;
+      }
+      const nextGroupSlug = groupSlug !== undefined ? groupSlug?.trim() || null : undefined;
+      const currentGroupSlug = list.groupSlug?.trim() || null;
+      if (
+        canChangeTaskListOwner(list) &&
+        nextGroupSlug !== undefined &&
+        nextGroupSlug !== currentGroupSlug
+      ) {
+        patch.groupSlug = nextGroupSlug;
       }
 
       if (Object.keys(patch).length === 0) {
@@ -90,6 +88,47 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
     [L, operations, setTaskLists, show, showMutationError, taskLists],
   );
 
+  const patchShareWith = useCallback(
+    async (listId: string, shareWith: CollectionShareWith) => {
+      if (!operations?.patchTaskList) {
+        throw new Error(L.shareListFailed);
+      }
+      try {
+        const updated = await operations.patchTaskList(listId, {
+          shareWith: shareWith as TaskListPatch["shareWith"],
+        });
+        setTaskLists((prev) => prev.map((entry) => (entry.id === listId ? updated : entry)));
+        setProjectDialog((current) =>
+          current?.mode === "edit" && current.listId === listId
+            ? { ...current, shareWith: updated.shareWith ?? null }
+            : current,
+        );
+      } catch (error) {
+        showMutationError(L.shareListFailed);
+        throw error;
+      }
+    },
+    [L.shareListFailed, operations, setTaskLists, showMutationError],
+  );
+
+  const removeSharedList = useCallback(
+    async (listId: string) => {
+      if (!operations?.deleteTaskList) return;
+      const list = taskLists.find((entry) => entry.id === listId);
+      if (!list || isProtectedTaskList(list) || !list.isSharee) return;
+      try {
+        await operations.deleteTaskList(listId);
+        setTaskLists((prev) => prev.filter((entry) => entry.id !== listId));
+        if (view === `list:${listId}`) selectView(DEFAULT_TASKS_VIEW);
+        show(L.toastListShareRemoved);
+        setProjectDialog(null);
+      } catch {
+        showMutationError(L.toastProjectSaveFailed);
+      }
+    },
+    [L, operations, selectView, setTaskLists, show, showMutationError, taskLists, view],
+  );
+
   const openCreateProjectDialog = useCallback(() => {
     setProjectDialog({ mode: "create" });
   }, []);
@@ -97,7 +136,7 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
   const openEditProjectDialog = useCallback(
     (listId: string) => {
       const list = taskLists.find((entry) => entry.id === listId);
-      if (!list || isProtectedTaskList(list)) return;
+      if (!list) return;
       setProjectDialog({
         mode: "edit",
         listId: list.id,
@@ -105,6 +144,10 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
         color: list.color ?? null,
         scope: list.scope === "group" ? "group" : "personal",
         groupSlug: list.groupSlug ?? null,
+        mayShare: canShareTaskList(list),
+        isSharee: list.isSharee === true,
+        shareWith: list.shareWith ?? null,
+        canChangeOwner: canChangeTaskListOwner(list),
       });
     },
     [taskLists],
@@ -112,13 +155,13 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
 
   return {
     canManageProjects,
-    canRenameProject,
-    selectedList,
     projectDialog,
     setProjectDialog,
     openCreateProjectDialog,
     openEditProjectDialog,
     createProject,
     updateProject,
+    patchShareWith,
+    removeSharedList,
   };
 }

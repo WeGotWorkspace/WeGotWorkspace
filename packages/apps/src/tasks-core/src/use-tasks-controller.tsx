@@ -86,6 +86,8 @@ export function useTasksController({
     sidebarOpen: shell.sidebarOpen,
     setSidebarOpen: shell.setSidebarOpen,
     createListId: shell.createListId,
+    hiddenTaskListIds: shell.hiddenTaskListIds,
+    toggleTaskListVisibility: shell.toggleTaskListVisibility,
     exitingTaskIds: exitAnimation.exitingTaskIds,
     isItemDragging: list.isItemDragging,
     itemDragHandlers: list.itemDragHandlers,
@@ -103,14 +105,14 @@ export function useTasksController({
     moveToList: mutations.moveToList,
     handleTaskExitAnimationEnd: mutations.handleTaskExitAnimationEnd,
     canManageProjects: projectMutations.canManageProjects,
-    canRenameProject: projectMutations.canRenameProject,
-    selectedList: projectMutations.selectedList,
     projectDialog: projectMutations.projectDialog,
     setProjectDialog: projectMutations.setProjectDialog,
     openCreateProjectDialog: projectMutations.openCreateProjectDialog,
     openEditProjectDialog: projectMutations.openEditProjectDialog,
     createProject: projectMutations.createProject,
     updateProject: projectMutations.updateProject,
+    patchShareWith: projectMutations.patchShareWith,
+    removeSharedList: projectMutations.removeSharedList,
   };
 }
 

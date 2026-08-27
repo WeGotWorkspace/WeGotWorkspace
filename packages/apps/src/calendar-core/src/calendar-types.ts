@@ -53,6 +53,8 @@ export type CalendarInfo = {
   mayDelete?: boolean;
   /** Personal owners are true; group/sharee collections are false. Omitted = owner on personal. */
   mayShare?: boolean;
+  /** Inbound ACL sharee. When omitted, sidebar partition falls back to `mayShare === false` minus group/subscription. */
+  isSharee?: boolean;
   scope?: "personal" | "group";
   groupSlug?: string | null;
   /**

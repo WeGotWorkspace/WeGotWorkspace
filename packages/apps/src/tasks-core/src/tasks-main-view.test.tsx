@@ -1,12 +1,14 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { createSharedTasksLists, createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { TasksMainView } from "@/tasks-core/src/tasks-main-view";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TASK_PRIORITY_FLAG_COLORS } from "@/tasks-core/src/tasks-priority";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
+import "@/tasks-core/src/tasks-workspace.css";
 
 function taskTitleForTest(title: string | null | undefined): string {
   if (!title) throw new Error("expected task title in fixture");
@@ -53,7 +55,7 @@ function renderMainView(
   onCreateTask = vi.fn(),
 ) {
   return render(
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <TasksMainView
         L={defaultTasksLabels}
         displayTasks={[]}
@@ -109,13 +111,18 @@ describe("TasksMainView composer", () => {
     });
   });
 
+  it("shows description without focusing the title", () => {
+    renderComposer();
+
+    expect(screen.getByLabelText(defaultTasksLabels.descriptionLabel)).toBeTruthy();
+  });
+
   it("keeps description editable after title blur", () => {
     renderComposer();
 
     const title = screen.getByLabelText(defaultTasksLabels.addTaskName);
-    fireEvent.focus(title);
-
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
+    fireEvent.focus(title);
     fireEvent.blur(title);
     fireEvent.change(description, { target: { value: "Follow up tomorrow" } });
 
@@ -148,6 +155,30 @@ describe("TasksMainView composer", () => {
     expect(onEditTask).not.toHaveBeenCalled();
   });
 
+  it("shows a disabled view-only complete control with a tooltip", async () => {
+    const onToggleComplete = vi.fn();
+    const lists = createSharedTasksLists();
+    const task = { ...bootstrap.data.tasks[0], id: "shared-task", taskListId: "shared-inbox" };
+    renderMainView({
+      displayTasks: [task],
+      taskLists: lists,
+      allTaskLists: lists,
+      onToggleComplete,
+    });
+
+    const checkbox = screen.getByRole("button", { name: defaultTasksLabels.markComplete });
+    expect(checkbox).toHaveProperty("disabled", true);
+    expect(checkbox.closest(".tasks-main-view__complete-wrap")).toBeTruthy();
+
+    fireEvent.click(checkbox);
+    expect(onToggleComplete).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(checkbox.closest(".tasks-main-view__complete-wrap")!);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      defaultTasksLabels.viewOnlyListBadge,
+    );
+  });
+
   it("does not open edit when clicking task actions", () => {
     const onEditTask = vi.fn();
     const onToggleComplete = vi.fn();
@@ -167,7 +198,6 @@ describe("TasksMainView composer", () => {
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
       target: { value: "New task" },
     });
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.descriptionLabel), {
       target: { value: "Details here" },
@@ -181,6 +211,7 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: null,
+      alerts: undefined,
     });
   });
 
@@ -191,9 +222,9 @@ describe("TasksMainView composer", () => {
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
       target: { value: "New task" },
     });
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
+    fireEvent.focus(description);
     fireEvent.change(description, { target: { value: "Details here" } });
     fireEvent.keyDown(description, { key: "Enter", shiftKey: false });
 
@@ -205,18 +236,19 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: null,
+      alerts: undefined,
     });
     expect((screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).value).toBe(
       "",
     );
-    expect(screen.queryByLabelText(defaultTasksLabels.descriptionLabel)).toBeNull();
+    expect(
+      (screen.getByLabelText(defaultTasksLabels.descriptionLabel) as HTMLTextAreaElement).value,
+    ).toBe("");
   });
 
   it("does not submit when pressing Enter in description with empty title", () => {
     const onCreateTask = vi.fn();
     renderComposer(onCreateTask);
-
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Details only" } });
@@ -228,8 +260,6 @@ describe("TasksMainView composer", () => {
 
   it("allows newline when pressing Shift+Enter in description", () => {
     renderComposer();
-
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Line one" } });
@@ -304,6 +334,7 @@ describe("TasksMainView composer", () => {
       workflowStatus: "in-process",
       priority: 0,
       due: null,
+      alerts: undefined,
     });
   });
 
@@ -365,6 +396,7 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 1,
       due: null,
+      alerts: undefined,
     });
   });
 
@@ -402,6 +434,13 @@ describe("TasksMainView composer", () => {
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueTomorrow);
     });
 
+    it("prefills due date to yesterday on overdue view", () => {
+      renderMainView({ view: "state:overdue", canCreate: true });
+
+      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueYesterday);
+    });
+
     it("clears view-prefilled due when switching away from today view", () => {
       const { rerender } = renderMainView({ view: "state:today" });
 
@@ -435,19 +474,15 @@ describe("TasksMainView composer", () => {
     });
   });
 
-  it("disables composer fields on overdue view", () => {
-    renderMainView({ view: "state:overdue", canCreate: false });
+  it("keeps composer fields enabled on overdue view", () => {
+    renderMainView({ view: "state:overdue", canCreate: true });
 
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskDue) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(
-      (screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    ).toBe(false);
 
     const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
     const listTrigger = screen.getByLabelText(defaultTasksLabels.addTaskList);
@@ -515,6 +550,7 @@ describe("TasksMainView composer", () => {
 
     expect(labels).toEqual([
       defaultTasksLabels.addTaskDue,
+      defaultTasksLabels.noReminders,
       defaultTasksLabels.addTaskList,
       defaultTasksLabels.addTaskStatus,
       defaultTasksLabels.addTaskPriority,
@@ -549,6 +585,7 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: expectedDue,
+      alerts: undefined,
     });
   });
 
@@ -581,7 +618,47 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: null,
+      alerts: undefined,
     });
+  });
+
+  it("submits selected reminder with createTask", () => {
+    const onCreateTask = vi.fn();
+    renderComposer(onCreateTask);
+
+    fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+      target: { value: "Reminded task" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noReminders }));
+    fireEvent.click(
+      screen.getAllByRole("combobox", {
+        name: tasksAlarmRowLabels(defaultTasksLabels).eventAlarmOffset,
+      })[0]!,
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: tasksAlarmRowLabels(defaultTasksLabels).eventAlarm30Min }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
+
+    expect(onCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Reminded task",
+        alerts: {
+          alert1: {
+            "@type": "Alert",
+            action: "display",
+            trigger: {
+              "@type": "OffsetTrigger",
+              offset: "-PT30M",
+              relativeTo: "end",
+            },
+          },
+        },
+      }),
+    );
   });
 });
 
@@ -659,6 +736,52 @@ describe("TasksMainView task rows", () => {
 
     expectPriorityFlagStroke(flag, TASK_PRIORITY_FLAG_COLORS.high);
     expect(meta?.querySelector(`[aria-label="${defaultTasksLabels.priorityHigh}"]`)).toBeTruthy();
+  });
+
+  it("hides the row alarm mark when the task has no alerts", () => {
+    const task = bootstrap.data.tasks.find(
+      (item) => !item.alerts || Object.keys(item.alerts).length === 0,
+    )!;
+    renderMainView({ displayTasks: [task] });
+
+    const row = screen.getByText(taskTitleForTest(task.title)).closest(".tasks-main-view__row");
+    expect(row?.querySelector(".tasks-main-view__remind--row")).toBeNull();
+    expect(row?.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(row?.querySelector('[role="img"]')).toBeNull();
+  });
+
+  it("shows a display-only alarm badge on rows with two alerts", () => {
+    const task = bootstrap.data.tasks.find((item) => item.id === "task-two-reminders")!;
+    const onEditTask = vi.fn();
+    renderMainView({ displayTasks: [task], onEditTask });
+
+    const row = screen
+      .getByText(taskTitleForTest(task.title))
+      .closest(".tasks-main-view__row") as HTMLElement;
+    expect(row).toBeTruthy();
+    expect(row.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
+    const mark = row.querySelector('[role="img"]') as HTMLElement | null;
+    expect(mark?.getAttribute("aria-label")).toBe("Reminding 1 hour and 30 mins before");
+    expect(row.querySelector("button.tasks-main-view__remind-button")).toBeNull();
+
+    fireEvent.click(mark!);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onEditTask).toHaveBeenCalledTimes(1);
+  });
+
+  it("places the alarm mark after other row meta", () => {
+    const task = {
+      ...bootstrap.data.tasks.find((item) => item.id === "task-two-reminders")!,
+      priority: 1,
+    };
+    renderMainView({ displayTasks: [task] });
+
+    const row = screen.getByText(taskTitleForTest(task.title)).closest(".tasks-main-view__row");
+    const meta = row?.querySelector(".tasks-main-view__meta");
+    const items = Array.from(meta?.children ?? []);
+    expect(items.length).toBeGreaterThan(1);
+    expect(items[0]?.querySelector(".tasks-main-view__remind--row")).toBeNull();
+    expect(items.at(-1)?.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
   });
 
   it("shows due date label on task rows when due is set", () => {

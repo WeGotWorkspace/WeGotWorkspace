@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_TASKS_VIEW,
   isTasksPathname,
   normalizeTasksView,
   tasksNavigateTarget,
@@ -27,9 +28,15 @@ describe("tasks-route-search", () => {
     ).toBe("list:work");
   });
 
-  it("redirects legacy tag paths to the inbox view", () => {
-    expect(tasksViewFromLocation("/tasks/tags/focus", {})).toBe("list:inbox");
-    expect(tasksViewFromLocation("/tasks/tags/My%20Tag", {})).toBe("list:inbox");
+  it("redirects legacy tag paths to All Tasks", () => {
+    expect(tasksViewFromLocation("/tasks/tags/focus", {})).toBe("state:all");
+    expect(tasksViewFromLocation("/tasks/tags/My%20Tag", {})).toBe("state:all");
+  });
+
+  it("defaults bare /tasks and unknown paths to All Tasks", () => {
+    expect(DEFAULT_TASKS_VIEW).toBe("state:all");
+    expect(tasksViewFromLocation("/tasks", {})).toBe("state:all");
+    expect(tasksViewFromLocation("/calendar", {})).toBe("state:all");
   });
 
   it("prefers pathname slugs when route params are not yet available", () => {
@@ -43,6 +50,7 @@ describe("tasks-route-search", () => {
     );
     expect(tasksViewFromLocation("/tasks/priority/medium", {})).toBe("priority:medium");
     expect(tasksViewFromLocation("/tasks/priority/low", {})).toBe("priority:low");
+    expect(tasksViewFromLocation("/tasks/priority/none", {})).toBe("priority:none");
   });
 
   it("builds navigation targets from controller view state", () => {
@@ -51,10 +59,8 @@ describe("tasks-route-search", () => {
       to: "/tasks/state/$stateSlug",
       params: { stateSlug: "today" },
     });
-    expect(tasksNavigateTarget("tag:work")).toEqual({
-      to: "/tasks/lists/$listId",
-      params: { listId: "inbox" },
-    });
+    expect(tasksNavigateTarget("tag:work")).toEqual({ to: "/tasks/state/all", params: {} });
+    expect(tasksNavigateTarget("unknown")).toEqual({ to: "/tasks/state/all", params: {} });
     expect(tasksNavigateTarget("list:personal")).toEqual({
       to: "/tasks/lists/$listId",
       params: { listId: "personal" },
@@ -62,6 +68,10 @@ describe("tasks-route-search", () => {
     expect(tasksNavigateTarget("priority:high")).toEqual({
       to: "/tasks/priority/$prioritySlug",
       params: { prioritySlug: "high" },
+    });
+    expect(tasksNavigateTarget("priority:none")).toEqual({
+      to: "/tasks/priority/$prioritySlug",
+      params: { prioritySlug: "none" },
     });
   });
 
@@ -75,6 +85,6 @@ describe("tasks-route-search", () => {
     expect(normalizeTasksView("list:tl-inbox-uuid", taskLists)).toBe("list:tl-inbox-uuid");
     expect(normalizeTasksView("list:work", taskLists)).toBe("list:work");
     expect(normalizeTasksView("state:today", taskLists)).toBe("state:today");
-    expect(normalizeTasksView("tag:work", taskLists)).toBe("list:tl-inbox-uuid");
+    expect(normalizeTasksView("tag:work", taskLists)).toBe("state:all");
   });
 });
