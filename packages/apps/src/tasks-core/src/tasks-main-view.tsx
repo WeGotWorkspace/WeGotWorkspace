@@ -20,6 +20,7 @@ import {
 import { IconButton } from "@/button/src/button";
 import { Button } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
@@ -126,6 +127,20 @@ function TaskRow({
     onEditTask(task.id);
   }, [canMutate, isExiting, onEditTask, task.id]);
 
+  const completeDisabled = isExiting || !canMutate;
+  const completeButton = (
+    <button
+      type="button"
+      className={`tasks-main-view__complete${completed ? " tasks-main-view__complete--done" : ""}`}
+      aria-label={completed ? L.markIncomplete : L.markComplete}
+      onClick={() => onToggleComplete(task.id)}
+      disabled={completeDisabled}
+    >
+      {completed ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
+    </button>
+  );
+  const completeControl = <span className="tasks-main-view__complete-wrap">{completeButton}</span>;
+
   return (
     <div
       role="listitem"
@@ -138,15 +153,14 @@ function TaskRow({
         onTaskExitAnimationEnd(task.id);
       }}
     >
-      <button
-        type="button"
-        className={`tasks-main-view__complete${completed ? " tasks-main-view__complete--done" : ""}`}
-        aria-label={completed ? L.markIncomplete : L.markComplete}
-        onClick={() => onToggleComplete(task.id)}
-        disabled={isExiting || !canMutate}
-      >
-        {completed ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
-      </button>
+      {canMutate ? (
+        completeControl
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>{completeControl}</TooltipTrigger>
+          <TooltipContent>{L.viewOnlyListBadge}</TooltipContent>
+        </Tooltip>
+      )}
 
       <div className="tasks-main-view__body" onClick={handleBodyClick}>
         <p className="tasks-main-view__title">{taskListTitle(task, L.untitledTask)}</p>

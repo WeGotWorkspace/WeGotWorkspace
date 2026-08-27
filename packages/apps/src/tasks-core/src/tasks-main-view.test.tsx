@@ -1,7 +1,7 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { createSharedTasksLists, createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksMainView } from "@/tasks-core/src/tasks-main-view";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TASK_PRIORITY_FLAG_COLORS } from "@/tasks-core/src/tasks-priority";
@@ -53,7 +53,7 @@ function renderMainView(
   onCreateTask = vi.fn(),
 ) {
   return render(
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <TasksMainView
         L={defaultTasksLabels}
         displayTasks={[]}
@@ -146,6 +146,30 @@ describe("TasksMainView composer", () => {
     expect(onToggleComplete).toHaveBeenCalledTimes(1);
     expect(onToggleComplete).toHaveBeenCalledWith(task.id);
     expect(onEditTask).not.toHaveBeenCalled();
+  });
+
+  it("shows a disabled view-only complete control with a tooltip", async () => {
+    const onToggleComplete = vi.fn();
+    const lists = createSharedTasksLists();
+    const task = { ...bootstrap.data.tasks[0], id: "shared-task", taskListId: "shared-inbox" };
+    renderMainView({
+      displayTasks: [task],
+      taskLists: lists,
+      allTaskLists: lists,
+      onToggleComplete,
+    });
+
+    const checkbox = screen.getByRole("button", { name: defaultTasksLabels.markComplete });
+    expect(checkbox).toHaveProperty("disabled", true);
+    expect(checkbox.closest(".tasks-main-view__complete-wrap")).toBeTruthy();
+
+    fireEvent.click(checkbox);
+    expect(onToggleComplete).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(checkbox.closest(".tasks-main-view__complete-wrap")!);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      defaultTasksLabels.viewOnlyListBadge,
+    );
   });
 
   it("does not open edit when clicking task actions", () => {
