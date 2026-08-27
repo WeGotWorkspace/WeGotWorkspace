@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { Archive, Circle, Star } from "lucide-react";
+import { CollectionListEnd } from "@/collection-layout/src/collection-list-end";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ListItem } from "@/list-item/src/list-item";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
@@ -142,7 +143,7 @@ export function MailListPanel({
             );
           })}
         </WorkspaceSwipeList>
-        <div ref={listEndRef} className="h-6" aria-hidden />
+        <CollectionListEnd listEndRef={listEndRef} />
         {isLoadingMore ? (
           <div className="mail-list-panel__load-more">
             <LoadingSpinner size="sm" label={L.listLoading} />

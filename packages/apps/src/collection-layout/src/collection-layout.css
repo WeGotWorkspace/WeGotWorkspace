@@ -12,3 +12,7 @@
 .collection-empty-state {
   color: color-mix(in oklab, var(--color-ink) 50%, transparent);
 }
+
+.collection-list-end {
+  @apply h-6 shrink-0;
+}
