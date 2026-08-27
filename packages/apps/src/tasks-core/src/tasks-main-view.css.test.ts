@@ -14,3 +14,19 @@ describe("tasks main view complete control", () => {
     expect(css).toMatch(/\.tasks-main-view__complete:hover:not\(:disabled\)/);
   });
 });
+
+describe("tasks composer select chips", () => {
+  it("pins compact metrics with higher specificity than select-trigger defaults", () => {
+    const block = css.match(/\.select-trigger\.tasks-main-view__composer-select \{[^}]+\}/)?.[0];
+    expect(block).toMatch(/width:\s*auto/);
+    expect(block).toMatch(/height:\s*2rem/);
+    expect(block).toMatch(/font-size:\s*0\.75rem/);
+    expect(block).toMatch(/padding-inline:\s*0\.5rem/);
+    expect(css).toMatch(
+      /\.select-trigger\.tasks-main-view__composer-select > span \{[\s\S]*-webkit-line-clamp:\s*unset/,
+    );
+    expect(css).toMatch(
+      /\.tasks-main-view__composer-select \.tasks-main-view__composer-select-option \{/,
+    );
+  });
+});

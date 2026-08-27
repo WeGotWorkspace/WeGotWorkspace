@@ -182,8 +182,38 @@
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   background-color: transparent;
   --input-height: 2rem;
+  --control-height-md: 2rem;
+  --input-font-size: 0.75rem;
+  --input-padding-x: 0.5rem;
   min-height: 2rem;
   height: 2rem;
+}
+
+/* `.select-trigger` tokens (w-full, 1rem type, 0.75rem padding) land in a later
+   production chunk. Pin the compact chip metrics with higher specificity. */
+.select-trigger.tasks-main-view__composer-select {
+  width: auto;
+  min-width: 0;
+  min-height: 2rem;
+  height: 2rem;
+  padding-inline: 0.5rem;
+  padding-block: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  justify-content: flex-start;
+  gap: 0.375rem;
+  background-color: transparent;
+}
+
+.select-trigger.tasks-main-view__composer-select > span {
+  @apply flex items-center overflow-visible;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.select-trigger.tasks-main-view__composer-select > svg {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .tasks-main-view__composer-select:focus,
@@ -208,8 +238,9 @@
   @apply flex items-center gap-2;
 }
 
-/* Defeat `.select-trigger > span { line-clamp }` which stacks icon above label. */
-.tasks-main-view__composer-select > .tasks-main-view__composer-select-option {
+/* Defeat `.select-trigger > span { line-clamp }` which stacks icon above label.
+   SelectValue wraps the option, so this must match descendants, not only children. */
+.tasks-main-view__composer-select .tasks-main-view__composer-select-option {
   @apply flex items-center gap-2 overflow-visible;
   -webkit-line-clamp: unset;
   -webkit-box-orient: unset;
@@ -307,8 +338,12 @@
     gap: 0.375rem;
   }
 
-  .tasks-main-view__composer-select {
+  .tasks-main-view__composer-select,
+  .select-trigger.tasks-main-view__composer-select {
     --input-height: 2rem;
+    --control-height-md: 2rem;
+    --input-font-size: 0.75rem;
+    --input-padding-x: 0.5rem;
     min-height: 2rem;
     height: 2rem;
     padding-inline: 0.5rem;
