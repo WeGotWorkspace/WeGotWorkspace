@@ -123,8 +123,13 @@ describe("calendar workspace search results", () => {
     expect(searchTsx).toMatch(/calendar-list-view/);
     expect(searchTsx).toMatch(/useEventSet/);
     expect(searchTsx).toMatch(/unifiedSearchOccurrences/);
+    expect(searchTsx).toMatch(/visibleSearchOccurrences/);
+    expect(searchTsx).toMatch(/useCollectionListEndReached/);
+    expect(searchTsx).toMatch(/CollectionListEnd/);
+    expect(searchTsx).toMatch(/showYearInHeadings/);
     expect(searchTsx).toMatch(/onEventSelected/);
     expect(searchTsx).toMatch(/scrollToEvent/);
+    expect(css).toMatch(/\.calendar-workspace \.calendar-search-results__scroller \{[\s\S]*@apply/);
     expect(searchTsx).not.toMatch(/searchUpcoming/);
     expect(searchTsx).not.toMatch(/SearchSection/);
     expect(css).toMatch(/\.calendar-workspace \.calendar-search-results \{[\s\S]*@apply/);
@@ -132,7 +137,17 @@ describe("calendar workspace search results", () => {
     expect(css).not.toMatch(/calendar-search-results__caption/);
     expect(searchTsx).not.toMatch(/calendar-search-results__caption/);
     expect(css).toMatch(/\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*@apply/);
+    expect(css).toMatch(/\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*flex-wrap/);
+    expect(css).toMatch(
+      /\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*\bpx-1\.5\b/,
+    );
+    expect(css).not.toMatch(
+      /\.calendar-workspace \.calendar-search-results__scope \{[\s\S]*\bpx-4\b/,
+    );
     expect(searchTsx).toMatch(/calendar-search-results__scope/);
+    expect(searchTsx).toMatch(/<Tag/);
+    expect(searchTsx).toMatch(/CalendarDays/);
+    expect(searchTsx).not.toMatch(/Visible calendars/);
     expect(searchTsx).not.toMatch(/searchTruncated/);
     expect(searchTsx).not.toMatch(/truncationCaption/);
     expect(css).toMatch(/\.calendar-workspace \.calendar-main--search \{[\s\S]*@apply/);

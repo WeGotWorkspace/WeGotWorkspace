@@ -32,23 +32,24 @@ Add Calendar ViewHeader search that filters the Dexie/bootstrap corpus (title, l
 - Query language is plain free-text only. Trim, then case-insensitive exact substring on title, location, and master description. No tokenized / AND matching.
 - Sidebar visibility is a scope filter, not a searchable field.
 - Offline by default: same Dexie working set (12 months back + 24 months ahead, snapped to month start). No extra download; no JMAP title query; no online-only hide (unlike Drive `searchEnabled={online}`).
-- Results list is dedicated (upcoming + past, **no result cap**). Render with `calendar-list-view` `use-event-set` (same list SST). Do not use the period agenda window (max 366 days).
+- Results list is dedicated (upcoming + past). Matcher/rank stay **uncapped**. First paint pages **100** of the unified chronological list (`visibleSearchOccurrences`); reaching the end auto-appends the next 100 via shared `useCollectionListEndReached` + `CollectionListEnd` (Mail’s list-end IO). No “Load more” button or truncation captions. Do not use the period agenda window (max 366 days). Search list headings set `showYearInHeadings`; period list/agenda headings do not.
 - Search activates only when the trimmed query is **≥ 3 characters**. 1–2 chars stay in browse (grid stays). Debounce remains 180ms; clear still flushes immediately. Calendar-only floor — other ViewHeader apps stay 1-character.
 - Controller: `setSearchQuery` is a plain setter. Snapshot/restore `{ view, presentation, anchor }` on first active (≥ 3) debounced query. `searchActive`. Lazy expand: always call `useMemo`; factory returns a stable empty list when `!searchActive`. Do not write `window.location` / router search from the hook — App `useCalendarRouteSync` owns the URL.
 - Chrome: reuse suite `ViewHeader` + `CollectionSearchInput` full-width under the title/actions row (`layout="responsive"`). Wire `useWorkspaceListKeyboardShortcuts` for ⌘/Ctrl+K and `/`.
 - Shared `ViewHeader` change: flush `onSearchInput` immediately only on **non-empty → empty**; keep 180ms for typing; no `onSearchInput('')` on mount; pending timer cancelled on clear. Suite-wide for Mail, Notes, Drive, Docs, Contacts (Calendar is the sixth).
 - CSS: BEM + `@apply` under `.calendar-workspace`. No long Tailwind in TSX.
 - URL: persist the trimmed query as `?q=` only when length ≥ 3. Empty / whitespace / 1–2 char `q` is omitted. Query-only updates `replace`; opening a result still pushes the browse path without `q`.
-- Scope chrome: results list shows a calm header for the searched window (union of `calendarBootstrapWindow()` and the on-screen period), e.g. `Visible calendars · Aug 2025 – Aug 2028`. Not a truncation caption; not a cream footer slab. Empty / no-hit still shows this scope.
+- Scope chrome: results list header is existing `Tag` chips — date-range first (`CalendarDays`, bootstrap/union window) then one tag per visible calendar (real names, calendar color). Same inline inset as `.agenda-day-heading` (`px-1.5`). Tags wrap; no “Visible calendars” sentence, truncation caption, or cream footer slab. Empty / no-hit still shows these tags.
 - `fixes` the Task (#637), not Goal #523.
 
 ## Product overrides vs original Task/plan
 
 Owner request during implementation (issue body-hash unchanged):
 
-- **No result cap.** Original Task asked for 100+100 plus truncation captions. Caps and `truncatedUpcoming` / `truncatedPast` are removed.
+- **First paint 100 + infinite scroll.** Original Task asked for 100+100 plus truncation captions. Matcher stays uncapped (`truncatedUpcoming` / `truncatedPast` stay gone). The rendered unified list pages 100 at a time; Mail’s collection list-end sentinel loads the next page. No “Showing the next 100” captions.
 - **Min query length 3** (trimmed) before search replaces the grid. Balances unconstrained results.
-- **Scope label yes, truncation captions no.** Show `Visible calendars · {start} – {end}` on the results list (header). Do not show “Showing the next 100” / “Showing the most recent 100”. Do not show a raw “Downloaded …” caption. Story `SearchNoMatch` still locks absence of `Downloaded `.
+- **Scope tags yes, truncation captions no.** Results header: date-range `Tag` first, then one `Tag` per visible calendar. Same inline inset as `.agenda-day-heading` (`px-1.5`). Do not show “Showing the next 100” / “Showing the most recent 100”. Do not show a raw “Downloaded …” or “Visible calendars · …” sentence. Story `SearchNoMatch` still locks absence of `Downloaded `.
+- **Search headings include the year.** Period list/agenda headings stay month+day.
 
 ## Edge cases
 
@@ -56,7 +57,7 @@ Owner request during implementation (issue body-hash unchanged):
 - `"  standup  "` matches the same as `"standup"`
 - `call client` does **not** match title `Client call`
 - Hit outside the visible week but inside the bootstrap window must appear
-- Recurring series: one row per in-window occurrence; no per-section cap
+- Recurring series: one row per in-window occurrence; first paint pages 100 of the unified list, then auto-appends
 - In-progress events (`end > now`) count as upcoming
 - Empty upcoming + some past is valid (scroll to Past)
 - Both empty → `CollectionState` no-match

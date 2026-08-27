@@ -11,6 +11,8 @@ import {
 import { MOCK_CALENDAR_ANCHOR } from "@/lib/api/mock/calendar-bootstrap";
 import { createDevCalendarSeedEvents } from "@/lib/api/mock/calendar-seed";
 import {
+  CALENDAR_SEARCH_PAGE_SIZE,
+  calendarSearchPageStart,
   calendarSearchRange,
   formatCalendarSearchScopeLabel,
   expandSearchOccurrences,
@@ -18,6 +20,7 @@ import {
   searchCalendarEvents,
   searchOccurrencesToEngineMap,
   unifiedSearchOccurrences,
+  visibleSearchOccurrences,
 } from "@/calendar-core/src/calendar-search";
 
 const TODAY = Temporal.PlainDate.from("2026-08-26");
@@ -606,6 +609,48 @@ describe("expandSearchOccurrences", () => {
   });
 });
 
+describe("visibleSearchOccurrences", () => {
+  function numbered(count: number, prefix: string, day: string): CalendarOccurrence[] {
+    return Array.from({ length: count }, (_, index) =>
+      occurrence({
+        eventId: `${prefix}-${index}`,
+        key: `${prefix}-${index}`,
+        title: "Overflow",
+        start: Temporal.PlainDateTime.from(`${day}T10:00:00`).add({ minutes: index }),
+        end: Temporal.PlainDateTime.from(`${day}T10:30:00`).add({ minutes: index }),
+      }),
+    );
+  }
+
+  it("paints at most one page and appends the next page of the unified list", () => {
+    const all = numbered(150, "hit", "2026-08-27");
+    const first = visibleSearchOccurrences(all, 0, all[0]?.key);
+    expect(first).toHaveLength(CALENDAR_SEARCH_PAGE_SIZE);
+    expect(first[0]?.eventId).toBe("hit-0");
+    expect(first.at(-1)?.eventId).toBe("hit-99");
+
+    const next = visibleSearchOccurrences(all, 1, all[0]?.key);
+    expect(next).toHaveLength(150);
+    expect(next[100]?.eventId).toBe("hit-100");
+    expect(next.at(-1)?.eventId).toBe("hit-149");
+  });
+
+  it("starts the first page so the first upcoming stays on screen", () => {
+    const past = numbered(130, "past", "2026-08-25");
+    const upcoming = numbered(20, "up", "2026-08-27");
+    const all = [...past, ...upcoming];
+    const start = calendarSearchPageStart(all, "up-0");
+    expect(start).toBe(31);
+    const first = visibleSearchOccurrences(all, 0, "up-0");
+    expect(first).toHaveLength(CALENDAR_SEARCH_PAGE_SIZE);
+    expect(first[0]?.eventId).toBe("past-31");
+    expect(first.at(-1)?.eventId).toBe("up-0");
+    const next = visibleSearchOccurrences(all, 1, "up-0");
+    expect(next.length).toBeGreaterThan(CALENDAR_SEARCH_PAGE_SIZE);
+    expect(next.at(-1)?.eventId).toBe("up-19");
+  });
+});
+
 describe("unifiedSearchOccurrences", () => {
   it("reverses capped past then appends upcoming for one chronological agenda", () => {
     const pastNewer = occurrence({
@@ -658,10 +703,10 @@ describe("formatCalendarSearchScopeLabel", () => {
   it("formats the searched window as month+year bounds", () => {
     expect(
       formatCalendarSearchScopeLabel(
-        "Visible calendars · {start} – {end}",
+        "{start} – {end}",
         { start: "2025-08-01T00:00:00", end: "2028-08-01T00:00:00" },
         "en-US",
       ),
-    ).toBe("Visible calendars · Aug 2025 – Aug 2028");
+    ).toBe("Aug 2025 – Aug 2028");
   });
 });

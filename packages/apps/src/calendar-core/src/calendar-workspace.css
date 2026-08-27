@@ -498,11 +498,19 @@
 }
 
 .calendar-workspace .calendar-search-results__scope {
-  @apply shrink-0 px-4 pb-1 pt-3 text-xs text-muted-foreground;
+  /* Same inline inset as `.agenda-day-heading` (`px-1.5`) so tags line up with
+     day headings / event cards. `.calendar-main` already supplies the pane gutter. */
+  @apply flex shrink-0 flex-wrap items-center gap-1.5 px-1.5 pb-1 pt-3;
+}
+
+.calendar-workspace .calendar-search-results__scroller {
+  /* Parent owns the scrollport (Mail collection-list pattern) so the shared
+     `CollectionListEnd` sentinel sits in the same overflow as the agenda. */
+  @apply min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto;
 }
 
 .calendar-workspace .calendar-search-results__agenda {
-  @apply block min-h-0 w-full flex-1;
+  @apply block w-full;
 }
 
 /*

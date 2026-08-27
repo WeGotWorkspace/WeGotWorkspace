@@ -618,7 +618,12 @@ export const SearchNoMatch: Story = {
       },
       { timeout: 3000 },
     );
-    await expect(canvas.getByText(/Visible calendars/)).toBeTruthy();
+    await expect(canvas.queryByText(/Visible calendars/)).toBeNull();
+    const noMatchScope = canvasElement.querySelector(".calendar-search-results__scope");
+    expect(noMatchScope?.textContent).toContain("Personal");
+    expect(noMatchScope?.textContent).toContain("Work");
+    expect(noMatchScope?.textContent).toMatch(/Aug 2025/);
+    expect(noMatchScope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
     await expect(canvas.queryByText(/Downloaded /)).toBeNull();
     await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();
   },
@@ -634,13 +639,22 @@ export const SearchTruncated: Story = {
         expect(
           canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
         ).toBeTruthy();
-        expect(canvas.getByText(/Visible calendars/)).toBeTruthy();
+        expect(canvas.queryByText(/Visible calendars/)).toBeNull();
+        const scope = canvasElement.querySelector(".calendar-search-results__scope");
+        expect(scope?.textContent).toContain("Personal");
+        expect(scope?.textContent).toMatch(/Aug 2025/);
+        expect(scope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
         expect(canvasElement.querySelector(".calendar-search-results__caption")).toBeNull();
         expect(canvas.queryByText("Showing the next 100")).toBeNull();
         expect(canvas.queryByText("Showing the most recent 100")).toBeNull();
         const list = canvasElement.querySelector("calendar-list-view");
         const items = list?.shadowRoot?.querySelectorAll(".agenda-event-item");
         expect(items?.length).toBeGreaterThan(0);
+        expect(items?.length).toBeLessThanOrEqual(100);
+        const headingDates = [
+          ...(list?.shadowRoot?.querySelectorAll(".agenda-day-date") ?? []),
+        ].map((node) => node.textContent ?? "");
+        expect(headingDates.some((label) => /\d{4}/.test(label))).toBe(true);
       },
       { timeout: 4000 },
     );

@@ -38,7 +38,7 @@ Implement Task #637: Calendar ViewHeader search over the bootstrap cache, locked
 - **id:** `matcher`
 - **Skill:** workspace, testing
 - **Inputs:** `occurrencesInRange`, `calendarBootstrapWindow`
-- **Done when:** `calendar-search.ts` expands via `occurrencesInRange(..., calendarBootstrapWindow(), { visibleCalendarIds })`, then trim + exact substring on title/location/master description; split/sort with **no result cap**; 1–2 char queries are empty. Vitest covers empty/whitespace/short query, trim, case, exact-substring vs token order, field isolation, bootstrap-window expansion, recurrence multiples, upcoming-vs-past split/sort.
+- **Done when:** `calendar-search.ts` expands via `occurrencesInRange(..., calendarBootstrapWindow(), { visibleCalendarIds })`, then trim + exact substring on title/location/master description; split/sort **uncapped** (render pages 100 via `visibleSearchOccurrences`); 1–2 char queries are empty. Vitest covers empty/whitespace/short query, trim, case, exact-substring vs token order, field isolation, bootstrap-window expansion, recurrence multiples, upcoming-vs-past split/sort, first-page ≤100 + append.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core/src/calendar-search.test.ts`
 - **Parallel with:** none
 

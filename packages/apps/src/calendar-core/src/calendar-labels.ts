@@ -300,7 +300,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   searchPlaceholder: "Search events…",
   searchTitle: "Search",
   searchNoMatch: "No matching events in downloaded calendars",
-  searchScope: "Visible calendars · {start} – {end}",
+  searchScope: "{start} – {end}",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventSaveUndone: "Event change undone.",

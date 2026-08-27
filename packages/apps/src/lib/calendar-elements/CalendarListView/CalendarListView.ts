@@ -65,6 +65,10 @@ export class CalendarListView extends CalendarViewBase {
   @property({ type: String, attribute: "sort-direction" })
   sortDirection: "asc" | "desc" = "asc";
 
+  /** Search results only — period list/agenda headings stay month+day. */
+  @property({ type: Boolean, attribute: "show-year-in-headings" })
+  showYearInHeadings = false;
+
   get startDate(): Temporal.PlainDate {
     if (this.#startDate) {
       return Temporal.PlainDate.from(this.#startDate);
@@ -300,6 +304,7 @@ export class CalendarListView extends CalendarViewBase {
     return new Intl.DateTimeFormat(this.#resolvedLocale, {
       month: "short",
       day: "numeric",
+      ...(this.showYearInHeadings ? { year: "numeric" as const } : {}),
       timeZone: "UTC",
     }).format(this.#toDate(date));
   }

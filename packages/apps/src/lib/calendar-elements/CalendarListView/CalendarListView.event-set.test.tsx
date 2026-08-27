@@ -98,6 +98,27 @@ describe("CalendarListView event set", () => {
     expect(el.shadowRoot?.querySelector("event-card")).toMatchObject({ summary: "Focus block" });
   });
 
+  it("omits the year from period headings by default", async () => {
+    const el = document.createElement("calendar-list-view") as CalendarListView;
+    el.useEventSet = true;
+    el.lang = "en-US";
+    el.events = new Map([["near", instance("near", "2026-08-26T10:00:00", "Near")]]);
+    document.body.append(el);
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector(".agenda-day-date")?.textContent).toBe("Aug 26");
+  });
+
+  it("includes the year in headings when showYearInHeadings is set", async () => {
+    const el = document.createElement("calendar-list-view") as CalendarListView;
+    el.useEventSet = true;
+    el.showYearInHeadings = true;
+    el.lang = "en-US";
+    el.events = new Map([["near", instance("near", "2026-08-26T10:00:00", "Near")]]);
+    document.body.append(el);
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector(".agenda-day-date")?.textContent).toBe("Aug 26, 2026");
+  });
+
   it("scrolls the matching occurrence to the start of the agenda", async () => {
     const el = document.createElement("calendar-list-view") as CalendarListView;
     el.useEventSet = true;

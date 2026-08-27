@@ -226,9 +226,39 @@ export function formatCalendarSearchScopeLabel(
   return template.replaceAll("{start}", start).replaceAll("{end}", end);
 }
 
+/** First paint and each auto-append for the unified search agenda. */
+export const CALENDAR_SEARCH_PAGE_SIZE = 100;
+
 /** One chronological agenda: past oldest→newest, then upcoming. */
 export function unifiedSearchOccurrences(results: CalendarSearchResults): CalendarOccurrence[] {
   return [...results.past].reverse().concat(results.upcoming);
+}
+
+/**
+ * Index of the first painted row. When the first upcoming sits past one page
+ * of older past hits, start just early enough that it is still on screen.
+ */
+export function calendarSearchPageStart(
+  occurrences: readonly CalendarOccurrence[],
+  firstUpcomingKey: string | undefined,
+  pageSize: number = CALENDAR_SEARCH_PAGE_SIZE,
+): number {
+  if (!firstUpcomingKey) return 0;
+  const anchor = occurrences.findIndex((row) => row.key === firstUpcomingKey);
+  if (anchor <= 0) return 0;
+  return Math.max(0, anchor + 1 - pageSize);
+}
+
+/** Unified hits currently on screen: first page, then extra appended pages. */
+export function visibleSearchOccurrences(
+  occurrences: readonly CalendarOccurrence[],
+  extraPages: number,
+  firstUpcomingKey?: string,
+  pageSize: number = CALENDAR_SEARCH_PAGE_SIZE,
+): CalendarOccurrence[] {
+  const start = calendarSearchPageStart(occurrences, firstUpcomingKey, pageSize);
+  const count = pageSize * (Math.max(0, extraPages) + 1);
+  return occurrences.slice(start, start + count);
 }
 
 /** Already-expanded instances for `calendar-list-view use-event-set`. */

@@ -835,6 +835,9 @@ export function CalendarWorkspace({
               <CalendarSearchResultsList
                 results={searchResults}
                 searchRange={searchRange}
+                visibleCalendars={calendars.filter((calendar) =>
+                  visibleCalendarIds.has(calendar.id),
+                )}
                 labels={L}
                 locale={locale}
                 onEventSelected={openEventPreview}
