@@ -250,6 +250,17 @@ describe("calendar workspace search results", () => {
   });
 });
 
+describe("calendar event dialog title row", () => {
+  it("keeps the calendar swatch intrinsic so the summary field can flex", () => {
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__title-input \{[\s\S]*flex:\s*1/,
+    );
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/,
+    );
+  });
+});
+
 describe("calendar event dialog Meet field", () => {
   it("lays out the Meet URL row with BEM + @apply", () => {
     expect(css).toMatch(
