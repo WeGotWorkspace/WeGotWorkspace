@@ -167,10 +167,21 @@ function masterMightMatch(event: JmapCalendarEvent, needle: string): boolean {
   if (!overrides) return false;
   for (const patch of Object.values(overrides)) {
     if (!patch || typeof patch !== "object") continue;
-    const title = (patch as { title?: unknown }).title;
-    if (typeof title === "string" && includesExactSubstring(title, needle)) return true;
+    if (overrideMightMatch(patch, needle)) return true;
   }
   return false;
+}
+
+/**
+ * Prefilter must keep masters whose only hit is a this-instance title or
+ * location patch. Description overrides stay a documented non-goal.
+ */
+function overrideMightMatch(patch: object, needle: string): boolean {
+  const record = patch as { title?: unknown };
+  if (typeof record.title === "string" && includesExactSubstring(record.title, needle)) {
+    return true;
+  }
+  return includesExactSubstring(joinOverrideLocationNames(patch), needle);
 }
 
 function occurrenceMatches(
@@ -233,9 +244,23 @@ export function searchOccurrencesToEngineMap(
 }
 
 function joinWireLocationNames(event: JmapCalendarEvent): string {
-  const locations = event.locations;
-  if (!locations) return "";
-  return Object.values(locations)
+  return joinLocationNames(event.locations);
+}
+
+function joinOverrideLocationNames(patch: object): string {
+  const record = patch as Record<string, unknown>;
+  const fromMap = joinLocationNames(record.locations);
+  if (fromMap) return fromMap;
+  return Object.entries(record)
+    .filter(([key, value]) => /^locations\/[^/]+\/name$/.test(key) && typeof value === "string")
+    .map(([, value]) => (value as string).trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function joinLocationNames(locations: JmapCalendarEvent["locations"] | unknown): string {
+  if (!locations || typeof locations !== "object" || Array.isArray(locations)) return "";
+  return Object.values(locations as Record<string, { name?: string } | null | undefined>)
     .map((location) => location?.name?.trim() ?? "")
     .filter(Boolean)
     .join(" ");

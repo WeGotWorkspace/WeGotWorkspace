@@ -562,6 +562,56 @@ describe("expandSearchOccurrences", () => {
     expect(results.past.length).toBeGreaterThan(0);
     expect(results.upcoming.length).toBeGreaterThan(0);
   });
+
+  it("finds a recurring instance whose title override matches when the master does not", () => {
+    const series = wireEvent({
+      title: "Daily standup",
+      start: "2026-08-26T13:00:00",
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+      recurrenceOverrides: {
+        "2026-08-27T13:00:00": { title: "Client overflow review" },
+      },
+    });
+    const results = searchCalendarEvents([series], "overflow", { today: TODAY, now: NOW });
+    const hits = [...results.upcoming, ...results.past];
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.title).toBe("Client overflow review");
+  });
+
+  it("finds a recurring instance whose location override matches when the master does not", () => {
+    const series = wireEvent({
+      title: "Daily standup",
+      start: "2026-08-26T13:00:00",
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+      recurrenceOverrides: {
+        "2026-08-27T13:00:00": {
+          locations: { "1": { "@type": "Location", name: "Room 4 overflow" } },
+        },
+      },
+    });
+    const results = searchCalendarEvents([series], "overflow", { today: TODAY, now: NOW });
+    const hits = [...results.upcoming, ...results.past];
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.location).toBe("Room 4 overflow");
+
+    const pointerSeries = wireEvent({
+      id: "ev-ptr",
+      uid: "uid-ptr",
+      title: "Daily standup",
+      start: "2026-08-26T14:00:00",
+      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],
+      recurrenceOverrides: {
+        "2026-08-27T14:00:00": { "locations/1/name": "Annex overflow" },
+      },
+    });
+    const pointerResults = searchCalendarEvents([pointerSeries], "overflow", {
+      today: TODAY,
+      now: NOW,
+    });
+    const pointerHits = [...pointerResults.upcoming, ...pointerResults.past];
+    expect(pointerHits).toHaveLength(1);
+    expect(pointerHits[0]?.location).toBe("Annex overflow");
+  });
 });
 
 describe("unifiedSearchOccurrences", () => {

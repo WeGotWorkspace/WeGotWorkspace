@@ -40,6 +40,13 @@ Add Calendar ViewHeader search that filters the Dexie/bootstrap corpus (title, l
 - URL: persist the trimmed query as `?q=` on the current `/calendar/...` path so reload restores results. Empty / whitespace `q` is omitted. Query-only updates `replace`; opening a result still pushes the browse path without `q`.
 - `fixes` the Task (#637), not Goal #523.
 
+## Product overrides vs original Task/plan
+
+Owner request during implementation (issue body-hash unchanged):
+
+- No truncation captions (“Showing the next 100” / “Showing the most recent 100”). Cap 100+100 and truncation flags remain.
+- No “Downloaded {start} – {end}” chrome on empty / no-hit, including outside the bootstrap window. Story `SearchNoMatch` locks absence of `Downloaded `.
+
 ## Edge cases
 
 - Empty / whitespace-only query is not search-active; restore browse state without opening an event
