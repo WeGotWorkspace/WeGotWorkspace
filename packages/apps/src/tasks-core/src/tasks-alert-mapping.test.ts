@@ -140,7 +140,7 @@ describe("task alert mapping", () => {
         alert1: offsetReminderAlert("-PT30M"),
         alert2: offsetReminderAlert("PT5M"),
       }),
-    ).toBe("Reminding 30 mins before and Reminding 5 mins after");
+    ).toBe("Reminding 30 mins before and 5 mins after");
   });
 
   it("adapts Tasks dialog copy and keeps shared calendar offset presets", () => {

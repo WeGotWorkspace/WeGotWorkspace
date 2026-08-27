@@ -119,7 +119,10 @@ function sortedQuantities(rows: CalendarEventAlertFormValue[], negated: boolean)
 }
 
 export function remindButtonLabel(
-  labels: Pick<TasksUILabels, "noReminders" | "remindingBefore" | "remindingAfter" | "remindMe">,
+  labels: Pick<
+    TasksUILabels,
+    "noReminders" | "remindingBefore" | "remindingAfter" | "remindingAfterClause" | "remindMe"
+  >,
   alerts: Task["alerts"] | null | undefined,
 ): string {
   const rows = taskAlertsToFormValues(alerts);
@@ -130,7 +133,7 @@ export function remindButtonLabel(
   if (before.length === 0 && after.length === 0) return labels.remindMe;
   if (after.length === 0) return labels.remindingBefore(joinReminderDurations(before));
   if (before.length === 0) return labels.remindingAfter(joinReminderDurations(after));
-  return `${labels.remindingBefore(joinReminderDurations(before))} and ${labels.remindingAfter(joinReminderDurations(after))}`;
+  return `${labels.remindingBefore(joinReminderDurations(before))} and ${labels.remindingAfterClause(joinReminderDurations(after))}`;
 }
 
 /** Tasks dialog copy + shared calendar offset presets (intentional DRY). */

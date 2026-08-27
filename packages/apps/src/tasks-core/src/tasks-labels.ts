@@ -41,6 +41,7 @@ export type TasksUILabels = {
   noReminders: string;
   remindingBefore: (durations: string) => string;
   remindingAfter: (durations: string) => string;
+  remindingAfterClause: (durations: string) => string;
   remindAtTimeOfTask: string;
   kanbanToggle: string;
   listView: string;
@@ -146,6 +147,7 @@ export const defaultTasksLabels: TasksUILabels = {
   noReminders: "No reminders",
   remindingBefore: (durations) => `Reminding ${durations} before`,
   remindingAfter: (durations) => `Reminding ${durations} after`,
+  remindingAfterClause: (durations) => `${durations} after`,
   remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
   listView: "List",
