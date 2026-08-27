@@ -11,6 +11,7 @@ export type ViewModeToggleProps = {
   listLabel: string;
   className?: string;
   size?: "sm" | "md";
+  disabled?: boolean;
 };
 
 export function ViewModeToggle({
@@ -20,6 +21,7 @@ export function ViewModeToggle({
   listLabel,
   className,
   size = "sm",
+  disabled = false,
 }: ViewModeToggleProps) {
   return (
     <SegmentedControl
@@ -27,6 +29,7 @@ export function ViewModeToggle({
       onChange={onChange}
       size={size}
       className={className}
+      disabled={disabled}
       aria-label="View mode"
       options={[
         { value: "grid", label: gridLabel, icon: <LayoutGrid className="size-4" /> },

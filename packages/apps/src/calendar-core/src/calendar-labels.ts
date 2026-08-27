@@ -86,6 +86,11 @@ export type CalendarUILabels = {
   untitledEvent: string;
   allDay: string;
   noEventsInRange: string;
+  searchPlaceholder: string;
+  searchTitle: string;
+  searchNoMatch: string;
+  /** `{start}` / `{end}` are locale month+year of the searched window. */
+  searchScope: string;
   toastEventCreated: string;
   toastEventUpdated: string;
   toastEventSaveUndone: string;
@@ -311,6 +316,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   untitledEvent: "Untitled event",
   allDay: "All day",
   noEventsInRange: CALENDAR_LIST_EMPTY_LABEL,
+  searchPlaceholder: "Search events…",
+  searchTitle: "Search",
+  searchNoMatch: "No matching events in downloaded calendars",
+  searchScope: "{start} – {end}",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventSaveUndone: "Event change undone.",

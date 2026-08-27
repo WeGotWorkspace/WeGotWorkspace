@@ -55,6 +55,17 @@ describe("wegotworkspace calendar routes", () => {
     expect(match?.params).toMatchObject({ token: "demo-token" });
   });
 
+  it("keeps ?q= on a view/date load", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/calendar/week/2026-08-17?q=standup"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/calendar/week/2026-08-17");
+    expect(router.state.location.search).toMatchObject({ q: "standup" });
+  });
+
   it("matches the /calendar index so missing view/date can hydrate defaults", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar"],

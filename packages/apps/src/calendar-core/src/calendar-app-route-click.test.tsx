@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
 
 const bootstrap = createCalendarAppBootstrap();
@@ -138,5 +139,25 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname.startsWith("/contacts")).toBe(true);
       expect(history.location.pathname.startsWith("/calendar")).toBe(false);
     });
+  });
+
+  it("writes ?q= after the ViewHeader debounce and hydrates it on load", async () => {
+    const { history } = await renderCalendarApp("/calendar/week/2026-08-17");
+    fireEvent.change(screen.getByPlaceholderText(defaultCalendarLabels.searchPlaceholder), {
+      target: { value: "standup" },
+    });
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/calendar/week/2026-08-17");
+      expect(history.location.search).toBe("?q=standup");
+    });
+
+    cleanup();
+    const reloaded = await renderCalendarApp("/calendar/week/2026-08-17?q=standup");
+    expect(reloaded.history.location.search).toBe("?q=standup");
+    expect(screen.getByRole("heading", { name: defaultCalendarLabels.searchTitle })).toBeTruthy();
+    expect(
+      (screen.getByPlaceholderText(defaultCalendarLabels.searchPlaceholder) as HTMLInputElement)
+        .value,
+    ).toBe("standup");
   });
 });

@@ -1,0 +1,14 @@
+@import "../../styles.css" reference;
+
+/**
+ * Collection / header search: compact Input search variant.
+ * Parents may tint via `--collection-search-input-bg` / `--collection-search-input-color`.
+ */
+.collection-search-input {
+  @apply mt-3;
+  --input-background: var(
+    --collection-search-input-bg,
+    color-mix(in oklab, var(--color-ink) 6%, transparent)
+  );
+  color: var(--collection-search-input-color, var(--color-ink));
+}

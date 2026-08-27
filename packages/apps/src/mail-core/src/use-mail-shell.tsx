@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCollectionListEndReached } from "@/collection-layout/src/use-collection-list-end-reached";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import type { Mail } from "@/types/mail";
@@ -254,30 +255,22 @@ export function useMailShell({
       loadingMailbox === activeMailbox &&
       (!activeMailboxState || activeMailboxState.offset === 0));
 
-  useEffect(() => {
-    if (!mailboxLoader || !activeMailbox || !listEndRef.current) return;
-    if (!activeMailboxState?.hasMore || activeMailboxState.loading) return;
-    if (effectiveListLoading) return;
+  const loadMoreMailbox = useCallback(() => {
+    if (!activeMailbox || activeMailboxState == null) return;
+    void loadMailboxPage(activeMailbox, activeMailboxState.offset);
+  }, [activeMailbox, activeMailboxState, loadMailboxPage]);
 
-    const el = listEndRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        void loadMailboxPage(activeMailbox, activeMailboxState.offset);
-      },
-      { root: null, rootMargin: "180px 0px", threshold: 0.01 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [
-    mailboxLoader,
-    activeMailbox,
-    activeMailboxState?.hasMore,
-    activeMailboxState?.loading,
-    activeMailboxState?.offset,
-    effectiveListLoading,
-    loadMailboxPage,
-  ]);
+  useCollectionListEndReached(
+    listEndRef,
+    Boolean(
+      mailboxLoader &&
+      activeMailbox &&
+      activeMailboxState?.hasMore &&
+      !activeMailboxState.loading &&
+      !effectiveListLoading,
+    ),
+    loadMoreMailbox,
+  );
 
   const unreadByMailbox = useMemo(() => {
     const byMailbox: Record<string, number> = {};

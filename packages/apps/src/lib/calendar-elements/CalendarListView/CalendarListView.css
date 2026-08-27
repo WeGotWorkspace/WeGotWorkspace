@@ -8,8 +8,14 @@
   @apply block w-full h-full min-h-0 overflow-x-hidden overflow-y-auto [container-type:inline-size];
 }
 
+:host([embedded]) {
+  @apply h-auto overflow-visible;
+}
+
 .agenda-shell {
   @apply box-border w-full min-h-full;
+  /* Workspace floating search overlays the bottom; inherit scroll-end room. */
+  padding-bottom: var(--_lc-list-end-pad, 0px);
 }
 
 .agenda-day {
@@ -65,6 +71,8 @@
 
 .agenda-event-item {
   @apply min-w-0;
+  /* Keep the card below the sticky day heading when scrollToEvent aligns it. */
+  scroll-margin-top: 2.5rem;
 }
 
 .agenda-event-item event-card {

@@ -106,8 +106,10 @@
  * Small viewports: two-row header matching the calendar mock.
  *   [☰] [Week] [grid|list]              [inbox]
  *   [today] [1–7 Feb 2027]              [<] [>]
- * Viewport media (not a container query): flattening `__main` with
- * `display: contents` would otherwise drop the query container and snap back.
+ * Search leaves the actions row (CSS FAB, bottom-right) at the sidebar
+ * overlay floor (1159px / `--breakpoint-sidebar`), not this stacked-header
+ * 40rem floor. Viewport media (not a container query): flattening `__main`
+ * with `display: contents` would otherwise drop the query container.
  */
 @media (max-width: 40rem) {
   .calendar-workspace .view-header {
@@ -197,7 +199,10 @@
 }
 
 .calendar-workspace .workspace-app-layout__main {
-  @apply min-w-0;
+  /* Isolate so the compact FAB's z-index stays above sticky list headings
+     but cannot paint over sibling panes (overlay sidebar z-40, scrim z-30,
+     invitations dock). */
+  @apply isolate min-w-0;
 }
 
 .calendar-workspace .workspace-app-layout__panel,
@@ -438,7 +443,10 @@
      `p-3` below 40rem) so grid edges line up with the sidebar toggle and actions.
      overflow-hidden clips the range-change zoom so scale does not spill into the header.
      min-w-0 keeps the invitations dock from overflowing the flex row. */
-  @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
+  @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
+  /* Same token the list shadow uses for sticky day headings so the
+     compact FAB can stack above them (`calc(var(--_lc-z-sticky) + 10)`). */
+  --_lc-z-sticky: 30;
 }
 
 @media (max-width: 40rem) {
@@ -447,7 +455,14 @@
   }
 
   .calendar-workspace .calendar-main {
-    @apply px-3 pb-3;
+    @apply px-3;
+  }
+}
+
+/* FAB clearance (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY). */
+@media (max-width: 1159px) {
+  .calendar-workspace .calendar-main {
+    --_lc-list-end-pad: 4.5rem;
   }
 }
 
@@ -468,6 +483,146 @@
 .calendar-workspace .calendar-main wgw-calendar-surface {
   flex: 1;
   min-height: 0;
+}
+
+.calendar-workspace .calendar-main--search {
+  @apply min-h-0;
+}
+
+.calendar-workspace .calendar-search-results {
+  @apply flex min-h-0 flex-1 flex-col;
+}
+
+.calendar-workspace .calendar-search-results--empty {
+  @apply h-full min-h-0;
+}
+
+.calendar-workspace .calendar-search-results__scope {
+  /* Same inline inset as `.agenda-day-heading` (`px-1.5`) so tags line up with
+     day headings / event cards. `.calendar-main` already supplies the pane gutter. */
+  @apply flex shrink-0 flex-wrap items-center gap-1.5 px-1.5 pb-1 pt-3;
+}
+
+.calendar-workspace .calendar-search-results__scroller {
+  /* Parent owns the scrollport (Mail collection-list pattern) so the shared
+     `CollectionListEnd` sentinel sits in the same overflow as the agenda. */
+  @apply min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto;
+}
+
+.calendar-workspace .calendar-search-results__agenda {
+  @apply block w-full;
+}
+
+/*
+ * One CollectionSearchInput, two placements (never two tabbable fields):
+ * desktop / wide (≥ sidebar dock) = in-flow header field immediately left
+ * of the view select; max-width 1159px (SIDEBAR_OVERLAY_MEDIA_QUERY /
+ * `--breakpoint-sidebar`) = CSS-repositioned as a bottom-right FAB over
+ * `.workspace-app-layout__main`. No footer slab. Height comes from the
+ * shared Input search size-sm (`--control-height-sm`), matching the view
+ * dropdown — no calendar-only height hack.
+ */
+.calendar-workspace .calendar-search-host {
+  @apply contents;
+}
+
+.calendar-workspace .calendar-search-dismiss {
+  @apply pointer-events-none invisible;
+}
+
+.calendar-workspace .calendar-search-field {
+  @apply mt-0 w-44 shrink-0;
+}
+
+@media (max-width: 1159px) {
+  .calendar-workspace .calendar-search-field {
+    /* Gutter tokens match `.calendar-main` (`px-4` / `md:px-6` / `px-3` < 40rem).
+       Keep `left: auto` and animate `width` — `width: auto` / `left: auto → length`
+       cannot interpolate, which dropped the expand motion. */
+    --calendar-search-fab-inline-start: max(1rem, env(safe-area-inset-left, 0px));
+    --calendar-search-fab-inline-end: max(1rem, env(safe-area-inset-right, 0px));
+    @apply pointer-events-auto absolute mt-0 size-9 w-9 overflow-hidden rounded-full border shadow-xl backdrop-blur-md;
+    right: var(--calendar-search-fab-inline-end);
+    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    left: auto;
+    z-index: calc(var(--_lc-z-sticky, 30) + 10);
+    border-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--color-ink) 10%, transparent),
+      0 10px 28px color-mix(in oklab, var(--color-ink) 22%, transparent);
+    --collection-search-input-bg: color-mix(in oklab, var(--color-cream, #ffffff) 78%, transparent);
+    --collection-search-input-color: var(--color-ink);
+  }
+
+  .calendar-workspace .calendar-search-field--expanded {
+    @apply h-9;
+    width: calc(
+      100% - var(--calendar-search-fab-inline-start) - var(--calendar-search-fab-inline-end)
+    );
+  }
+
+  .calendar-workspace .calendar-search-field:not(.calendar-search-field--expanded) {
+    @apply min-w-0 justify-center gap-0 px-0;
+  }
+
+  .calendar-workspace .calendar-search-field:not(.calendar-search-field--expanded) input {
+    @apply absolute inset-0 size-full cursor-pointer opacity-0;
+  }
+
+  .calendar-workspace:has(.calendar-search-field--expanded) .calendar-search-dismiss {
+    @apply pointer-events-auto visible fixed inset-0;
+    z-index: calc(var(--_lc-z-sticky, 30) + 9);
+  }
+
+  .calendar-workspace .calendar-search-field:focus-within {
+    --collection-search-input-bg: color-mix(
+      in oklab,
+      var(--color-ink) 6%,
+      var(--color-cream, #ffffff)
+    );
+    @apply shadow-xl;
+  }
+
+  .calendar-workspace .calendar-search-field:focus-within:has(:focus-visible) {
+    outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
+    outline-offset: 1px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1159px) {
+  .calendar-workspace .calendar-search-field {
+    --calendar-search-fab-inline-start: max(1.5rem, env(safe-area-inset-left, 0px));
+    --calendar-search-fab-inline-end: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (max-width: 40rem) {
+  .calendar-workspace .calendar-search-field {
+    --calendar-search-fab-inline-start: max(0.75rem, env(safe-area-inset-left, 0px));
+    --calendar-search-fab-inline-end: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (max-width: 1159px) and (prefers-reduced-motion: no-preference) {
+  .calendar-workspace .calendar-search-field {
+    @apply duration-300 ease-out transition-[width,padding,box-shadow,background-color];
+  }
+}
+
+/*
+ * Compact FAB only: hide while overlay chrome is open so it cannot sit on
+ * the sidebar, scrim, or invitations dock/drawer. Same 1159px floor as
+ * SIDEBAR_OVERLAY_MEDIA_QUERY; `--panel-open` covers the dock and the
+ * portaled SideDrawer (sibling of this root). Isolation keeps leftover
+ * z-index below sidebar z-40 / scrim z-30 / Sheet z-50.
+ */
+@media (max-width: 1159px) {
+  .calendar-workspace:has(.app-sidebar[data-open="true"]) .calendar-search-field,
+  .calendar-workspace:has(.app-sidebar[data-open="true"]) .calendar-search-dismiss,
+  .calendar-workspace--panel-open .calendar-search-field,
+  .calendar-workspace--panel-open .calendar-search-dismiss {
+    @apply pointer-events-none invisible;
+  }
 }
 
 /* Overlay sidebar only (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY).

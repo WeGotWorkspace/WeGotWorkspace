@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
   detailsPopoverAnchorOrigin,
@@ -7,6 +7,8 @@ import {
   eventPreviewNotesExcerpt,
   eventPreviewOccurrenceKey,
   formatEventPreviewWhen,
+  bindCalendarEventSelected,
+  eventSelectedFromEvent,
   resolveCalendarEventPreview,
   selectionOriginFromEvent,
 } from "@/calendar-core/src/calendar-event-preview";
@@ -86,6 +88,35 @@ describe("event preview formatters", () => {
         defaultCalendarLabels,
       ),
     ).toBe("Carol");
+  });
+});
+
+describe("eventSelectedFromEvent", () => {
+  it("reads key and origin from event-selected", () => {
+    const origin = { left: 40, top: 80, width: 160, height: 32 };
+    expect(
+      eventSelectedFromEvent(
+        new CustomEvent("event-selected", { detail: { key: "dentist", origin } }),
+      ),
+    ).toEqual({ key: "dentist", origin });
+  });
+
+  it("returns nothing without a key", () => {
+    expect(eventSelectedFromEvent(new CustomEvent("event-selected", { detail: {} }))).toBeNull();
+  });
+});
+
+describe("bindCalendarEventSelected", () => {
+  it("forwards key and origin from event-selected", () => {
+    const target = new EventTarget();
+    const onEventSelected = vi.fn();
+    const unbind = bindCalendarEventSelected(target, onEventSelected);
+    const origin = { left: 40, top: 80, width: 160, height: 32 };
+    target.dispatchEvent(new CustomEvent("event-selected", { detail: { key: "dentist", origin } }));
+    expect(onEventSelected).toHaveBeenCalledWith("dentist", origin);
+    unbind();
+    target.dispatchEvent(new CustomEvent("event-selected", { detail: { key: "dentist", origin } }));
+    expect(onEventSelected).toHaveBeenCalledTimes(1);
   });
 });
 

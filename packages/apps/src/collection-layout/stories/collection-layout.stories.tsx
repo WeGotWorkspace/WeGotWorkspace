@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { CollectionListEnd } from "@/collection-layout/src/collection-list-end";
 import { CollectionHeader, CollectionListPane } from "@/collection-layout/src/collection-layout";
 import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
 
@@ -37,4 +39,17 @@ export const Default: Story = {
       <main className="flex-1 p-6">Detail area</main>
     </div>
   ),
+};
+
+/** Invisible Mail-style list-end sentinel (observed by useCollectionListEndReached). */
+export const ListEnd: Story = {
+  render: function ListEndStory() {
+    const listEndRef = useRef<HTMLDivElement | null>(null);
+    return (
+      <div className="p-4">
+        <p className="text-sm">Last row</p>
+        <CollectionListEnd listEndRef={listEndRef} />
+      </div>
+    );
+  },
 };

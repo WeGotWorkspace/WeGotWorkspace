@@ -231,6 +231,29 @@ export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin):
   return viewportPrefersDockedPopover() || (origin != null && originLooksLikeMonthCell(origin));
 }
 
+/** Shared `event-selected` decode for CalendarSurface and search list hosts. */
+export function eventSelectedFromEvent(
+  event: Event,
+): { key: string; origin?: CalendarEventSelectionOrigin } | null {
+  const key =
+    event instanceof CustomEvent ? (event.detail as { key?: unknown } | undefined)?.key : undefined;
+  if (typeof key !== "string" || key === "") return null;
+  return { key, origin: selectionOriginFromEvent(event) };
+}
+
+/** Same `event-selected` → opener wiring for the grid surface and search list. */
+export function bindCalendarEventSelected(
+  target: EventTarget,
+  onEventSelected: (key: string, origin?: CalendarEventSelectionOrigin) => void,
+): () => void {
+  const handle = (event: Event) => {
+    const selected = eventSelectedFromEvent(event);
+    if (selected) onEventSelected(selected.key, selected.origin);
+  };
+  target.addEventListener("event-selected", handle);
+  return () => target.removeEventListener("event-selected", handle);
+}
+
 export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
   const detail = event instanceof CustomEvent ? event.detail : undefined;
   const fromDetail = originFromUnknown(

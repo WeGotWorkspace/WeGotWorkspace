@@ -23,8 +23,13 @@ export type CalendarAppProps = {
 };
 
 export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
-  const { initialView, initialPresentation, initialAnchor, handleRouteStateChange } =
-    useCalendarRouteSync();
+  const {
+    initialView,
+    initialPresentation,
+    initialAnchor,
+    initialSearchQuery,
+    handleRouteStateChange,
+  } = useCalendarRouteSync();
   const [conflictQueue, setConflictQueue] = useState<string[]>([]);
   const [resolvingConflict, setResolvingConflict] = useState(false);
 
@@ -152,6 +157,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
             initialView={initialView}
             initialPresentation={initialPresentation}
             initialAnchor={initialAnchor}
+            initialSearchQuery={initialSearchQuery}
             onRouteStateChange={handleRouteStateChange}
             onLogout={() => {
               window.location.assign("/logout");

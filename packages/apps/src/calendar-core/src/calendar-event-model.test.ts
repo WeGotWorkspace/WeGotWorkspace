@@ -218,6 +218,34 @@ describe("occurrencesInRange", () => {
     expect(occurrences[0].calendarId).toBe("home");
   });
 
+  it("keeps unscoped events when a visibility set is present (week-view parity)", () => {
+    const occurrences = occurrencesInRange(
+      [wireEvent({ id: "ev-open", uid: "uid-open", calendarIds: {} })],
+      range,
+      { visibleCalendarIds: new Set(["default", "work"]) },
+    );
+
+    expect(occurrences).toHaveLength(1);
+    expect(occurrences[0].title).toBe("Standup");
+  });
+
+  it("matches any enabled calendarIds key, not only the engine first key", () => {
+    const occurrences = occurrencesInRange(
+      [
+        wireEvent({
+          id: "ev-shared",
+          uid: "uid-shared",
+          calendarIds: { holidays: true, work: true },
+        }),
+      ],
+      range,
+      { visibleCalendarIds: new Set(["default", "work"]) },
+    );
+
+    expect(occurrences).toHaveLength(1);
+    expect(occurrences[0].eventId).toBe("ev-shared");
+  });
+
   it("hides every occurrence after a series decline, including stale needs-action exceptions", () => {
     const series = wireEvent({
       recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "daily", count: 3 }],

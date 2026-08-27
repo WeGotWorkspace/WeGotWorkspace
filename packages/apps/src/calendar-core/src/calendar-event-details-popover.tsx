@@ -150,7 +150,9 @@ export function CalendarEventDetailsPopover({
           const focusable = root.querySelector<HTMLElement>(
             "button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
           );
-          focusable?.focus();
+          // Search exits the list before this fires; without a fallback, focus
+          // stays on the ViewHeader query (then Radix hideOthers aria-hides it).
+          (focusable ?? root).focus();
         }}
       >
         <header>

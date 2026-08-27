@@ -67,6 +67,7 @@ function toRRuleOptions(
   recurrenceRule: CalendarRecurrenceRule,
   dtstart: Temporal.PlainDateTime,
 ): Options {
+  const monthlyNth = monthlyNthToBySetPos(recurrenceRule);
   const options: Options = {
     freq: FREQ_BY_CODE[recurrenceRule.freq],
     dtstart: toUtcFloatingDate(dtstart),
@@ -79,14 +80,14 @@ function toRRuleOptions(
     bysecond: recurrenceRule.bySecond ?? null,
     byminute: recurrenceRule.byMinute ?? null,
     byhour: recurrenceRule.byHour ?? null,
-    byweekday: toByWeekday(recurrenceRule.byDay),
+    byweekday: monthlyNth ? monthlyNth.byweekday : toByWeekday(recurrenceRule.byDay),
     bymonthday: recurrenceRule.byMonthDay ?? null,
     bynmonthday: [],
     byyearday: recurrenceRule.byYearDay ?? null,
     byweekno: recurrenceRule.byWeekNo ?? null,
     bymonth: recurrenceRule.byMonth ?? null,
     bynweekday: null,
-    bysetpos: recurrenceRule.bySetPos ?? null,
+    bysetpos: monthlyNth ? monthlyNth.bysetpos : (recurrenceRule.bySetPos ?? null),
     byeaster: null,
     count: "count" in recurrenceRule ? (recurrenceRule.count ?? null) : null,
     until:
@@ -95,6 +96,28 @@ function toRRuleOptions(
         : null,
   };
   return options;
+}
+
+/**
+ * `BYDAY=-1FR` (JSCalendar `nthOfPeriod`) and `BYDAY=FR;BYSETPOS=-1` are
+ * equivalent monthly/yearly forms. rrule's `weekday.nth(-1)` misses instances
+ * on multi-year `between` ranges; bysetpos does not.
+ */
+function monthlyNthToBySetPos(
+  recurrenceRule: CalendarRecurrenceRule,
+): { byweekday: Options["byweekday"]; bysetpos: number[] } | null {
+  if (recurrenceRule.freq !== "MONTHLY" && recurrenceRule.freq !== "YEARLY") {
+    return null;
+  }
+  if (recurrenceRule.bySetPos?.length) return null;
+  const days = recurrenceRule.byDay;
+  if (!days?.length) return null;
+  const ordinals = [...new Set(days.map((day) => day.ordinal))];
+  if (ordinals.length !== 1 || ordinals[0] === undefined) return null;
+  return {
+    byweekday: days.map((day) => WEEKDAY_BY_CODE[day.day]),
+    bysetpos: [ordinals[0]],
+  };
 }
 
 type MemoizedRule = {

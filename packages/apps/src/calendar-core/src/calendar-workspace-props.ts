@@ -21,6 +21,7 @@ export type CalendarWorkspaceProps = {
   initialView?: CalendarViewId;
   initialPresentation?: CalendarPresentation;
   initialAnchor?: string;
+  initialSearchQuery?: string;
   onViewChange?: (view: CalendarViewId) => void;
   onRouteStateChange?: (state: CalendarRouteState, options?: { replace?: boolean }) => void;
   onLogout?: () => void;

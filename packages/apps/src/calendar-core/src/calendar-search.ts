@@ -1,0 +1,308 @@
+import { Temporal } from "@js-temporal/polyfill";
+import { calendarBootstrapWindow } from "@/lib/api/wgw/calendar";
+import type { CalendarEventsMap } from "@/lib/calendar-engine";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import {
+  occurrencesInRange,
+  type CalendarOccurrence,
+} from "@/calendar-core/src/calendar-event-model";
+import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import { isCalendarSearchQueryActive } from "@/calendar-core/src/calendar-route-search";
+
+export type CalendarSearchResults = {
+  upcoming: CalendarOccurrence[];
+  past: CalendarOccurrence[];
+};
+
+/** Stable empty result for idle browse — callers may reuse this identity. */
+export const EMPTY_SEARCH_RESULTS: CalendarSearchResults = {
+  upcoming: [],
+  past: [],
+};
+
+export type CalendarSearchDateRange = { start: string; end: string };
+
+/**
+ * Convert the Dexie/JMAP bootstrap window into the PlainDateTime range
+ * `occurrencesInRange` expects. Do not fetch a wider JMAP window.
+ */
+export function calendarSearchRange(
+  today: Temporal.PlainDate = Temporal.Now.plainDateISO(),
+): CalendarSearchDateRange {
+  const { utcStart, utcEnd } = calendarBootstrapWindow(today);
+  return {
+    start: utcDateToPlainDateTimeString(utcStart),
+    end: utcDateToPlainDateTimeString(utcEnd),
+  };
+}
+
+/**
+ * Bootstrap corpus plus the on-screen period. Week/month navigation can sit
+ * outside `calendarBootstrapWindow()` (Storybook 2033 seed, or a far jump)
+ * while those events are already in `data.events`.
+ */
+export function unionCalendarSearchRange(
+  today?: Temporal.PlainDate,
+  visibleRange?: CalendarSearchDateRange,
+): CalendarSearchDateRange {
+  const bootstrap = calendarSearchRange(today);
+  if (!visibleRange) return bootstrap;
+  return {
+    start: minDateTimeString(bootstrap.start, visibleRange.start),
+    end: maxDateTimeString(bootstrap.end, visibleRange.end),
+  };
+}
+
+function utcDateToPlainDateTimeString(date: Date): string {
+  return date
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "")
+    .replace(/Z$/, "");
+}
+
+export function expandSearchOccurrences(
+  events: readonly JmapCalendarEvent[],
+  options: {
+    calendars?: readonly CalendarInfo[];
+    visibleCalendarIds?: ReadonlySet<string>;
+    today?: Temporal.PlainDate;
+    visibleRange?: CalendarSearchDateRange;
+  } = {},
+): CalendarOccurrence[] {
+  return occurrencesInRange(
+    [...events],
+    unionCalendarSearchRange(options.today, options.visibleRange),
+    {
+      calendars: options.calendars ? [...options.calendars] : undefined,
+      visibleCalendarIds: options.visibleCalendarIds,
+    },
+  );
+}
+
+export function matchCalendarOccurrences(
+  occurrences: readonly CalendarOccurrence[],
+  events: readonly JmapCalendarEvent[],
+  query: string,
+  now: Temporal.PlainDateTime = Temporal.Now.plainDateTimeISO(),
+): CalendarSearchResults {
+  const needle = query.trim().toLowerCase();
+  if (!isCalendarSearchQueryActive(needle)) {
+    return EMPTY_SEARCH_RESULTS;
+  }
+
+  const descriptionByEventId = new Map<string, string>();
+  const locationsByEventId = new Map<string, string>();
+  for (const event of events) {
+    if (event.description) {
+      descriptionByEventId.set(event.id, event.description);
+    }
+    const joined = joinWireLocationNames(event);
+    if (joined) {
+      locationsByEventId.set(event.id, joined);
+    }
+  }
+
+  const upcoming: CalendarOccurrence[] = [];
+  const past: CalendarOccurrence[] = [];
+  for (const occurrence of occurrences) {
+    if (!occurrenceMatches(occurrence, needle, descriptionByEventId, locationsByEventId)) {
+      continue;
+    }
+    if (Temporal.PlainDateTime.compare(occurrence.end, now) > 0) {
+      upcoming.push(occurrence);
+    } else {
+      past.push(occurrence);
+    }
+  }
+
+  upcoming.sort((a, b) => Temporal.PlainDateTime.compare(a.start, b.start));
+  past.sort((a, b) => Temporal.PlainDateTime.compare(b.start, a.start));
+
+  return { upcoming, past };
+}
+
+export function searchCalendarEvents(
+  events: readonly JmapCalendarEvent[],
+  query: string,
+  options: {
+    calendars?: readonly CalendarInfo[];
+    visibleCalendarIds?: ReadonlySet<string>;
+    today?: Temporal.PlainDate;
+    now?: Temporal.PlainDateTime;
+    visibleRange?: CalendarSearchDateRange;
+  } = {},
+): CalendarSearchResults {
+  const needle = query.trim().toLowerCase();
+  if (!isCalendarSearchQueryActive(needle)) {
+    return EMPTY_SEARCH_RESULTS;
+  }
+  const candidates = events.filter((event) => masterMightMatch(event, needle));
+  const occurrences = expandSearchOccurrences(candidates, {
+    calendars: options.calendars,
+    visibleCalendarIds: options.visibleCalendarIds,
+    today: options.today,
+    visibleRange: options.visibleRange,
+  });
+  return matchCalendarOccurrences(occurrences, events, query, options.now);
+}
+
+function masterMightMatch(event: JmapCalendarEvent, needle: string): boolean {
+  if (includesExactSubstring(event.title, needle)) return true;
+  if (includesExactSubstring(event.description, needle)) return true;
+  if (includesExactSubstring(joinWireLocationNames(event), needle)) return true;
+  const overrides = event.recurrenceOverrides;
+  if (!overrides) return false;
+  for (const patch of Object.values(overrides)) {
+    if (!patch || typeof patch !== "object") continue;
+    if (overrideMightMatch(patch, needle)) return true;
+  }
+  return false;
+}
+
+/**
+ * Prefilter must keep masters whose only hit is a this-instance title or
+ * location patch. Description overrides stay a documented non-goal.
+ */
+function overrideMightMatch(patch: object, needle: string): boolean {
+  const record = patch as { title?: unknown };
+  if (typeof record.title === "string" && includesExactSubstring(record.title, needle)) {
+    return true;
+  }
+  return includesExactSubstring(joinOverrideLocationNames(patch), needle);
+}
+
+function occurrenceMatches(
+  occurrence: CalendarOccurrence,
+  needle: string,
+  descriptionByEventId: ReadonlyMap<string, string>,
+  locationsByEventId: ReadonlyMap<string, string>,
+): boolean {
+  const title = occurrence.title;
+  const location = occurrence.location || locationsByEventId.get(occurrence.eventId) || "";
+  const description = descriptionByEventId.get(occurrence.eventId) ?? "";
+  return (
+    includesExactSubstring(title, needle) ||
+    includesExactSubstring(location, needle) ||
+    includesExactSubstring(description, needle)
+  );
+}
+
+function includesExactSubstring(haystack: string | undefined, needle: string): boolean {
+  return (haystack ?? "").toLowerCase().includes(needle);
+}
+
+function minDateTimeString(left: string, right: string): string {
+  return left <= right ? left : right;
+}
+
+function maxDateTimeString(left: string, right: string): string {
+  return left >= right ? left : right;
+}
+
+/** Month+year bounds of the searched window (snapped bootstrap / union range). */
+export function formatCalendarSearchScopeRange(
+  range: CalendarSearchDateRange,
+  locale: string,
+): { start: string; end: string } {
+  const start = Temporal.PlainDateTime.from(range.start);
+  const end = Temporal.PlainDateTime.from(range.end);
+  const formatter = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return {
+    start: formatter.format(new Date(Date.UTC(start.year, start.month - 1, 1))),
+    end: formatter.format(new Date(Date.UTC(end.year, end.month - 1, 1))),
+  };
+}
+
+export function formatCalendarSearchScopeLabel(
+  template: string,
+  range: CalendarSearchDateRange,
+  locale: string,
+): string {
+  const { start, end } = formatCalendarSearchScopeRange(range, locale);
+  return template.replaceAll("{start}", start).replaceAll("{end}", end);
+}
+
+/** First paint and each auto-append for the unified search agenda. */
+export const CALENDAR_SEARCH_PAGE_SIZE = 100;
+
+/** One chronological agenda: past oldest→newest, then upcoming. */
+export function unifiedSearchOccurrences(results: CalendarSearchResults): CalendarOccurrence[] {
+  return [...results.past].reverse().concat(results.upcoming);
+}
+
+/**
+ * Index of the first painted row. When the first upcoming sits past one page
+ * of older past hits, start just early enough that it is still on screen.
+ */
+export function calendarSearchPageStart(
+  occurrences: readonly CalendarOccurrence[],
+  firstUpcomingKey: string | undefined,
+  pageSize: number = CALENDAR_SEARCH_PAGE_SIZE,
+): number {
+  if (!firstUpcomingKey) return 0;
+  const anchor = occurrences.findIndex((row) => row.key === firstUpcomingKey);
+  if (anchor <= 0) return 0;
+  return Math.max(0, anchor + 1 - pageSize);
+}
+
+/** Unified hits currently on screen: first page, then extra appended pages. */
+export function visibleSearchOccurrences(
+  occurrences: readonly CalendarOccurrence[],
+  extraPages: number,
+  firstUpcomingKey?: string,
+  pageSize: number = CALENDAR_SEARCH_PAGE_SIZE,
+): CalendarOccurrence[] {
+  const start = calendarSearchPageStart(occurrences, firstUpcomingKey, pageSize);
+  const count = pageSize * (Math.max(0, extraPages) + 1);
+  return occurrences.slice(start, start + count);
+}
+
+/** Already-expanded instances for `calendar-list-view use-event-set`. */
+export function searchOccurrencesToEngineMap(
+  occurrences: readonly CalendarOccurrence[],
+): CalendarEventsMap {
+  const map: CalendarEventsMap = new Map();
+  for (const occurrence of occurrences) {
+    map.set(occurrence.key, {
+      calendarId: occurrence.calendarId,
+      eventId: occurrence.eventId,
+      isRecurring: occurrence.isRecurring,
+      data: {
+        start: occurrence.start,
+        end: occurrence.end,
+        allDay: occurrence.allDay,
+        summary: occurrence.title,
+        color: occurrence.color,
+        ...(occurrence.location ? { location: occurrence.location } : {}),
+      },
+    });
+  }
+  return map;
+}
+
+function joinWireLocationNames(event: JmapCalendarEvent): string {
+  return joinLocationNames(event.locations);
+}
+
+function joinOverrideLocationNames(patch: object): string {
+  const record = patch as Record<string, unknown>;
+  const fromMap = joinLocationNames(record.locations);
+  if (fromMap) return fromMap;
+  return Object.entries(record)
+    .filter(([key, value]) => /^locations\/[^/]+\/name$/.test(key) && typeof value === "string")
+    .map(([, value]) => (value as string).trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function joinLocationNames(locations: JmapCalendarEvent["locations"] | unknown): string {
+  if (!locations || typeof locations !== "object" || Array.isArray(locations)) return "";
+  return Object.values(locations as Record<string, { name?: string } | null | undefined>)
+    .map((location) => location?.name?.trim() ?? "")
+    .filter(Boolean)
+    .join(" ");
+}
