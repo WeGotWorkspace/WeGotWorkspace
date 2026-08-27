@@ -9,6 +9,7 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
@@ -25,6 +26,7 @@ final class TaskRepository
         private readonly TaskListRepository $taskLists,
         private readonly SearchIndexerService $searchIndexer,
         private readonly DriveGroupResolver $groups,
+        private readonly CalendarCollectionAccess $collectionAccess,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
     ) {}
 
@@ -120,6 +122,7 @@ final class TaskRepository
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveTaskListFromPayload($username, $payload);
+        $this->collectionAccess->assertCollectionWritable($instance, 'This task list is read-only.');
         $taskPayload = $this->normalizeTaskPayload($payload);
         $objectUri = $this->allocateObjectUri((int) $instance->calendarid, $taskPayload);
         $ics = $this->mapper->toIcs($taskPayload);
@@ -167,6 +170,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
+        $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
         $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
 
         $instance = $located['instance'];
@@ -230,6 +234,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
+        $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
         $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
 
         $instance = $located['instance'];
@@ -292,6 +297,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
+        $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
         $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
 
         $instance = $located['instance'];
@@ -415,7 +421,7 @@ final class TaskRepository
         $objectUri = $parsed['objectUri'];
         $vtodoUid = $parsed['vtodoUid'];
 
-        $row = CalendarObject::query()
+        $rows = CalendarObject::query()
             ->from('calendarobjects as o')
             ->join('calendars as c', 'c.id', '=', 'o.calendarid')
             ->join('calendarinstances as i', 'i.calendarid', '=', 'c.id')
@@ -424,25 +430,23 @@ final class TaskRepository
             ->where('c.components', 'like', '%VTODO%')
             ->select([
                 'o.id',
-                'o.calendardata',
-                'o.uri',
-                'o.calendarid',
-                'o.lastmodified',
                 'i.id as instance_id',
-                'i.uri as list_uri',
             ])
-            ->first();
+            ->get();
 
-        if ($row === null) {
+        if ($rows->isEmpty()) {
             return null;
         }
 
-        $object = CalendarObject::query()->find((int) $row->id);
+        $object = CalendarObject::query()->find((int) $rows->first()->id);
         if ($object === null) {
             return null;
         }
 
-        $instance = CalendarInstance::query()->find((int) $row->instance_id);
+        $instances = CalendarInstance::query()
+            ->whereIn('id', $rows->pluck('instance_id')->all())
+            ->get();
+        $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
         if ($instance === null) {
             return null;
         }
