@@ -1,101 +1,121 @@
+import { useState, type ReactNode } from "react";
+import { Bell } from "lucide-react";
+import { IconButton } from "@/button/src/icon-button";
+import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import { CardPanel } from "@/card/src/card-panel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
-  absoluteReminderAlert,
-  offsetReminderAlert,
-  taskAlertsFromList,
-  taskAlertsToList,
-} from "@/tasks-core/src/tasks-task-utils";
+  formValuesToTaskAlerts,
+  remindButtonLabel,
+  taskAlertCount,
+  taskAlertsToFormValues,
+} from "@/tasks-core/src/tasks-alert-mapping";
 
-export type RemindPreset = "none" | "at-due" | "30m" | "1h" | "1d" | "custom";
+type TasksRemindVisualProps = {
+  count: number;
+  className?: string;
+  label?: string;
+  children: ReactNode;
+};
+
+/** Shared bell + count badge used by the composer/edit picker and list-row indicator. */
+function TasksRemindVisual({ count, className, label, children }: TasksRemindVisualProps) {
+  return (
+    <span
+      className={`tasks-main-view__remind${className ? ` ${className}` : ""}`}
+      {...(label ? { role: "img" as const, "aria-label": label } : {})}
+    >
+      {children}
+      {count > 1 ? (
+        <span className="tasks-main-view__remind-badge" aria-hidden>
+          {count}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+type TasksRemindIndicatorProps = {
+  labels: TasksUILabels;
+  alerts: Task["alerts"] | undefined;
+};
+
+/** Display-only row mark. Hidden when the task has no alarms. */
+export function TasksRemindIndicator({ labels, alerts }: TasksRemindIndicatorProps) {
+  const count = taskAlertCount(alerts);
+  if (count === 0) return null;
+
+  return (
+    <span className="tasks-main-view__meta-item">
+      <TasksRemindVisual
+        count={count}
+        className="tasks-main-view__remind--row"
+        label={remindButtonLabel(labels, alerts)}
+      >
+        <Bell aria-hidden />
+      </TasksRemindVisual>
+    </span>
+  );
+}
 
 type TasksRemindPickerProps = {
   labels: TasksUILabels;
   alerts: Task["alerts"] | undefined;
-  due: string | null | undefined;
   onChange: (alerts: Task["alerts"] | undefined) => void;
+  disabled?: boolean;
 };
 
-function detectPreset(alerts: Task["alerts"] | undefined): RemindPreset {
-  const alert = taskAlertsToList(alerts)[0];
-  if (!alert) return "none";
-  const trigger = alert.trigger;
-  if (trigger["@type"] === "OffsetTrigger") {
-    if (trigger.offset === "PT0S" || trigger.offset === "-PT0S") return "at-due";
-    if (trigger.offset === "-PT30M") return "30m";
-    if (trigger.offset === "-PT1H") return "1h";
-    if (trigger.offset === "-P1D") return "1d";
-  }
-  if (trigger["@type"] === "AbsoluteTrigger") return "custom";
-  return "none";
-}
-
-function absoluteValue(alerts: Task["alerts"] | undefined): string {
-  const alert = taskAlertsToList(alerts)[0];
-  if (alert?.trigger["@type"] === "AbsoluteTrigger") {
-    return alert.trigger.when.slice(0, 16);
-  }
-  return "";
-}
-
-export function TasksRemindPicker({ labels, alerts, due, onChange }: TasksRemindPickerProps) {
-  const preset = detectPreset(alerts);
-  const customValue = absoluteValue(alerts);
-
-  const applyPreset = (next: RemindPreset) => {
-    switch (next) {
-      case "none":
-        onChange(undefined);
-        break;
-      case "at-due":
-        onChange(taskAlertsFromList([offsetReminderAlert("PT0S")]));
-        break;
-      case "30m":
-        onChange(taskAlertsFromList([offsetReminderAlert("-PT30M")]));
-        break;
-      case "1h":
-        onChange(taskAlertsFromList([offsetReminderAlert("-PT1H")]));
-        break;
-      case "1d":
-        onChange(taskAlertsFromList([offsetReminderAlert("-P1D")]));
-        break;
-      case "custom":
-        onChange(taskAlertsFromList([absoluteReminderAlert(due ?? new Date().toISOString())]));
-        break;
-      default:
-        break;
-    }
-  };
+export function TasksRemindPicker({
+  labels,
+  alerts,
+  onChange,
+  disabled = false,
+}: TasksRemindPickerProps) {
+  const [open, setOpen] = useState(false);
+  const formAlerts = taskAlertsToFormValues(alerts);
+  const count = taskAlertCount(alerts);
+  const buttonLabel = remindButtonLabel(labels, alerts);
 
   return (
-    <div className="tasks-remind-picker flex flex-col gap-2">
-      <label className="text-sm font-medium" htmlFor="tasks-remind-select">
-        {labels.remindMe}
-      </label>
-      <select
-        id="tasks-remind-select"
-        className="tasks-remind-picker__select rounded-md border px-3 py-2 text-sm"
-        value={preset}
-        onChange={(event) => applyPreset(event.target.value as RemindPreset)}
-      >
-        <option value="none">{labels.remindNone}</option>
-        <option value="at-due">{labels.remindAtDue}</option>
-        <option value="30m">{labels.remind30Min}</option>
-        <option value="1h">{labels.remind1Hour}</option>
-        <option value="1d">{labels.remind1Day}</option>
-        <option value="custom">{labels.remindCustom}</option>
-      </select>
-      {preset === "custom" ? (
-        <input
-          type="datetime-local"
-          className="rounded-md border px-3 py-2 text-sm"
-          value={customValue}
-          onChange={(event) => {
-            const when = event.target.value ? new Date(event.target.value).toISOString() : "";
-            if (when) onChange(taskAlertsFromList([absoluteReminderAlert(when)]));
-          }}
+    <>
+      <TasksRemindVisual count={count} className="tasks-main-view__remind--composer">
+        <IconButton
+          label={buttonLabel}
+          icon={<Bell aria-hidden />}
+          size="md"
+          variant="outline"
+          active={count > 0}
+          disabled={disabled}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className="tasks-main-view__remind-button"
+          onClick={() => setOpen(true)}
         />
-      ) : null}
-    </div>
+      </TasksRemindVisual>
+      <Dialog open={disabled ? false : open} onOpenChange={setOpen}>
+        <DialogContent
+          className="tasks-dialog-surface tasks-remind-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogHeader>
+            <DialogTitle>{defaultCalendarLabels.eventAlarmsLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="share-access-card calendar-alarms-card tasks-remind-dialog__alarms">
+            <CardPanel>
+              <CalendarAlarmsRows
+                alerts={formAlerts}
+                labels={defaultCalendarLabels}
+                disabled={disabled}
+                defaultRelatedTo="end"
+                onChange={(next) => onChange(formValuesToTaskAlerts(next))}
+              />
+            </CardPanel>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

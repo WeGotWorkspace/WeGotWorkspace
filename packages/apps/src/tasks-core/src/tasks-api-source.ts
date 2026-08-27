@@ -78,7 +78,7 @@ function createMockTasksOperations(
             ...patch,
             taskListId: listId,
             categories: patch.categories ?? task.categories,
-            alerts: patch.alerts ?? task.alerts,
+            alerts: patch.alerts !== undefined ? (patch.alerts ?? undefined) : task.alerts,
           };
           return updated;
         }),

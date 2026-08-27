@@ -1,11 +1,13 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
+import "@/tasks-core/src/tasks-workspace.css";
 
 const bootstrap = createTasksAppBootstrap();
 
@@ -34,6 +36,7 @@ function renderEditDialog(overrides: Partial<React.ComponentProps<typeof TasksEd
 describe("TasksEditDialog", () => {
   beforeEach(() => {
     cleanup();
+    Element.prototype.scrollIntoView = vi.fn();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -71,6 +74,32 @@ describe("TasksEditDialog", () => {
         title: "Updated task title",
         description: "Updated notes",
         listId: task.taskListId,
+      }),
+    );
+  });
+
+  it("prefills an existing reminder and can clear it", () => {
+    const reminded = bootstrap.data.tasks.find(
+      (item) => item.alerts && Object.keys(item.alerts).length > 0,
+    );
+    expect(reminded).toBeTruthy();
+
+    const { onSave } = renderEditDialog({ task: reminded });
+
+    const remind = screen.getByRole("button", { name: "Reminding 30 mins before" });
+    expect(remind.classList.contains("icon-button--active")).toBe(true);
+
+    fireEvent.click(remind);
+    fireEvent.click(
+      screen.getAllByRole("combobox", { name: defaultCalendarLabels.eventAlarmOffset })[0]!,
+    );
+    fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarmNone }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.saveTaskButton }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alerts: undefined,
       }),
     );
   });

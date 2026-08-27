@@ -81,6 +81,14 @@ describe("TasksTaskFormFields", () => {
       defaultTasksLabels.stateCancelled,
     ]);
   });
+
+  it("renders the remind picker in create and edit modes", () => {
+    renderFormFields({ mode: "create" });
+    expect(screen.getByLabelText(defaultTasksLabels.noReminders)).toBeTruthy();
+    cleanup();
+    renderFormFields({ mode: "edit" });
+    expect(screen.getByLabelText(defaultTasksLabels.noReminders)).toBeTruthy();
+  });
 });
 
 describe("task form helpers", () => {
@@ -102,6 +110,7 @@ describe("task form helpers", () => {
       workflowStatus: "in-process",
       priority: 1,
       due: "2026-07-08T00:00:00",
+      alerts: task.alerts,
     });
   });
 });

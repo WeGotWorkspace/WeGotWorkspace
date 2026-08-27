@@ -9004,7 +9004,7 @@ export interface components {
             };
             alerts?: {
                 [key: string]: components["schemas"]["TaskAlert"];
-            };
+            } | null;
             participants?: {
                 [key: string]: components["schemas"]["TaskParticipant"];
             };

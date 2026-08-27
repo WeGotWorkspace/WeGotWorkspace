@@ -50,6 +50,23 @@ describe("tasks-api-source mock operations", () => {
     expect(mockFetchTasksLiveBootstrap).not.toHaveBeenCalled();
   });
 
+  it("patchTask alerts null clears the reminder", async () => {
+    const source = createDefaultTasksApiSource();
+    const bootstrap = await source.loadBootstrap();
+    const operations = source.createOperations();
+    const task = bootstrap.data.tasks.find(
+      (item) => item.alerts && Object.keys(item.alerts).length > 0,
+    );
+    expect(task).toBeTruthy();
+
+    const result = await operations!.patchTask(task!.id, { alerts: null });
+
+    expect(result.alerts).toBeUndefined();
+    const afterBootstrap = await source.loadBootstrap();
+    const updated = afterBootstrap.data.tasks.find((item) => item.id === task!.id);
+    expect(updated?.alerts).toBeUndefined();
+  });
+
   it("deleteTask removes from bootstrap and does not refetch", async () => {
     const source = createDefaultTasksApiSource();
     const bootstrap = await source.loadBootstrap();

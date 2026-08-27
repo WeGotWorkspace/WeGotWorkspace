@@ -38,12 +38,9 @@ export type TasksUILabels = {
   noDue: string;
   descriptionLabel: string;
   remindMe: string;
-  remindNone: string;
-  remindAtDue: string;
-  remind30Min: string;
-  remind1Hour: string;
-  remind1Day: string;
-  remindCustom: string;
+  noReminders: string;
+  remindingBefore: (durations: string) => string;
+  remindingAfter: (durations: string) => string;
   kanbanToggle: string;
   listView: string;
   showCompletedTasks: string;
@@ -145,12 +142,9 @@ export const defaultTasksLabels: TasksUILabels = {
   noDue: "No due date",
   descriptionLabel: "Notes",
   remindMe: "Remind me",
-  remindNone: "None",
-  remindAtDue: "At time of task",
-  remind30Min: "30 minutes before",
-  remind1Hour: "1 hour before",
-  remind1Day: "1 day before",
-  remindCustom: "Custom date & time",
+  noReminders: "No reminders",
+  remindingBefore: (durations) => `Reminding ${durations} before`,
+  remindingAfter: (durations) => `Reminding ${durations} after`,
   kanbanToggle: "Kanban",
   listView: "List",
   showCompletedTasks: "Show completed",

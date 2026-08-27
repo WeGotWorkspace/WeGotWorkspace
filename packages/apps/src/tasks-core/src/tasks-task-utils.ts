@@ -32,6 +32,7 @@ export function mergeCreatedTask(optimistic: Task, created: Task): Task {
     workflowStatus: created.workflowStatus ?? optimistic.workflowStatus,
     priority: isTaskPriorityNone(created.priority) ? optimistic.priority : created.priority,
     due: createdDue !== undefined ? created.due : optimistic.due,
+    alerts: created.alerts !== undefined ? created.alerts : optimistic.alerts,
   };
 }
 
@@ -337,12 +338,6 @@ export function statusLabel(
   }
 }
 
-export function taskAlertsToList(alerts: Task["alerts"] | undefined): TaskAlert[] {
-  if (!alerts) return [];
-  if (Array.isArray(alerts)) return alerts;
-  return Object.values(alerts);
-}
-
 export function taskAlertsFromList(alerts: TaskAlert[] | null): Task["alerts"] | undefined {
   if (!alerts || alerts.length === 0) return undefined;
   const map: Record<string, TaskAlert> = {};
@@ -350,6 +345,13 @@ export function taskAlertsFromList(alerts: TaskAlert[] | null): Task["alerts"] |
     map[`alert${index + 1}`] = alert;
   });
   return map;
+}
+
+export function taskAlertsEqual(
+  a: Task["alerts"] | null | undefined,
+  b: Task["alerts"] | null | undefined,
+): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
 export function offsetReminderAlert(offset: string): TaskAlert {

@@ -9,6 +9,7 @@ import {
   isTaskCompleted,
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
+  taskAlertsEqual,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
@@ -52,13 +53,22 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   );
 
   const createTaskFromForm = useCallback(
-    async ({ title, description, listId, workflowStatus, priority, due }: TasksCreateInput) => {
+    async ({
+      title,
+      description,
+      listId,
+      workflowStatus,
+      priority,
+      due,
+      alerts,
+    }: TasksCreateInput) => {
       if (!operations || !title.trim()) return;
       const trimmedTitle = title.trim();
       const trimmedDescription = description.trim() || null;
       const status = workflowStatus ?? "needs-action";
       const taskPriority = priority === TASK_PRIORITY_NONE ? null : priority;
       const taskDue = due ?? null;
+      const taskAlerts = alerts;
       const tempId = `pending-${crypto.randomUUID()}`;
       const optimistic: Task = {
         "@type": "Task",
@@ -73,6 +83,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         isDraft: false,
         sortOrder: Number.MAX_SAFE_INTEGER,
         categories: [],
+        alerts: taskAlerts,
       };
 
       setTasks((prev) => [...prev, optimistic]);
@@ -85,6 +96,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
           workflowStatus: status,
           priority: taskPriority,
           due: taskDue,
+          alerts: taskAlerts,
         });
         setTasks((prev) =>
           prev.map((task) => (task.id === tempId ? mergeCreatedTask(optimistic, created) : task)),
@@ -168,6 +180,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       const status = input.workflowStatus ?? "needs-action";
       const taskPriority = input.priority === TASK_PRIORITY_NONE ? null : input.priority;
       const taskDue = input.due ?? null;
+      const taskAlerts = input.alerts;
       const listChanged = input.listId !== task.taskListId;
 
       const patch: TaskPatch = {};
@@ -179,6 +192,9 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       if (status !== (task.workflowStatus ?? "needs-action")) patch.workflowStatus = status;
       const beforePriority = normalizeTaskPriority(task.priority);
       if (taskPriority !== beforePriority) patch.priority = taskPriority;
+      if (!taskAlertsEqual(taskAlerts, task.alerts)) {
+        patch.alerts = taskAlerts ?? null;
+      }
 
       const hasPatch = Object.keys(patch).length > 0;
       if (!hasPatch && !listChanged) {
@@ -195,6 +211,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         workflowStatus: status,
         priority: taskPriority,
         taskListId: input.listId,
+        alerts: taskAlerts,
       };
 
       setTasks((prev) => prev.map((item) => (item.id === taskId ? optimistic : item)));

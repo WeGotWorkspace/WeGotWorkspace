@@ -93,7 +93,7 @@
 }
 
 .tasks-main-view__meta {
-  @apply mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm;
+  @apply mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 overflow-visible text-sm;
   color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
@@ -195,8 +195,15 @@
   @apply flex items-center gap-2;
 }
 
+/* Defeat `.select-trigger > span { line-clamp }` which stacks icon above label. */
+.tasks-main-view__composer-select > .tasks-main-view__composer-select-option {
+  @apply flex items-center gap-2 overflow-visible;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
 .tasks-main-view__composer-due-popover {
-  @apply overflow-hidden;
+  @apply w-auto overflow-hidden p-0;
 }
 
 .tasks-main-view__composer-due-popover .rdp-nav .rdp-button_previous,
@@ -208,8 +215,8 @@
 }
 
 .tasks-main-view__composer-due-popover .rdp-chevron,
-.tasks-main-view__composer-due-popover .rdp-button_previous svg,
-.tasks-main-view__composer-due-popover .rdp-button_next svg {
+.tasks-main-view__composer-due-popover .rdp-nav .rdp-button_previous svg,
+.tasks-main-view__composer-due-popover .rdp-nav .rdp-button_next svg {
   width: 1.25rem !important;
   height: 1.25rem !important;
   flex-shrink: 0;
@@ -222,6 +229,63 @@
 
 .tasks-main-view__composer-due-clear-button {
   @apply w-full justify-center;
+}
+
+.tasks-main-view__remind {
+  --tasks-remind-badge-size: 1rem;
+  --tasks-remind-badge-font-size: 0.625rem;
+  --tasks-remind-pad: 0.375rem;
+
+  @apply relative inline-flex shrink-0 items-center overflow-visible;
+  padding-block-start: var(--tasks-remind-pad);
+  padding-inline-end: var(--tasks-remind-pad);
+}
+
+.tasks-main-view__remind--composer {
+  --input-height: 2rem;
+  --control-height-md: 2rem;
+  --button-outline-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  margin-block-start: calc(-1 * var(--tasks-remind-pad));
+  margin-inline-end: calc(-1 * var(--tasks-remind-pad));
+}
+
+.tasks-main-view__remind-button {
+  @apply shrink-0;
+}
+
+.tasks-main-view__remind-badge {
+  @apply pointer-events-none absolute z-10 flex items-center justify-center rounded-full font-semibold leading-none;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: var(--tasks-remind-badge-size);
+  block-size: var(--tasks-remind-badge-size);
+  font-size: var(--tasks-remind-badge-font-size);
+  background-color: var(--color-ink);
+  color: var(--color-cream, #ffffff);
+}
+
+.tasks-main-view__remind--row {
+  --tasks-remind-badge-size: 0.625rem;
+  --tasks-remind-badge-font-size: 0.5rem;
+  --tasks-remind-pad: 0.5rem;
+
+  @apply pointer-events-none;
+  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  margin-block-start: calc(-1 * var(--tasks-remind-pad));
+  margin-inline-end: calc(-1 * var(--tasks-remind-pad));
+}
+
+.tasks-main-view__remind--row svg {
+  @apply size-3.5 shrink-0;
+  fill: currentColor;
+}
+
+.tasks-remind-dialog {
+  @apply max-w-lg;
+}
+
+.tasks-remind-dialog__alarms {
+  @apply p-0;
 }
 
 /* Touch: 32px (2rem) composer dropdown targets — matches desktop compact height. */
