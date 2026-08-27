@@ -17,6 +17,17 @@
   border-color: var(--collection-row-color, var(--color-ink));
 }
 
+.collection-sidebar-row__visibility[data-state="checked"] {
+  background-color: var(--collection-row-color, var(--color-ink));
+  border-color: var(--collection-row-color, var(--color-ink));
+  color: #ffffff;
+}
+
+.collection-sidebar-row__visibility[data-state="unchecked"] {
+  background-color: transparent;
+  opacity: 0.85;
+}
+
 .collection-sidebar-row__dot {
   @apply size-2.5 shrink-0 rounded-full;
   background-color: var(--collection-row-color, var(--color-ink));

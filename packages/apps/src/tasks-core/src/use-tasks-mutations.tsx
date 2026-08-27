@@ -28,7 +28,16 @@ type UseTasksMutationsArgs = {
 };
 
 export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutationsArgs) {
-  const { L, tasks, setTasks, taskLists, operations, showMutationError, view } = shell;
+  const {
+    L,
+    tasks,
+    setTasks,
+    taskLists,
+    operations,
+    showMutationError,
+    view,
+    ensureTaskListVisible,
+  } = shell;
   const { queueMutation } = list;
   const { beginTaskExit, cancelTaskExit } = exitAnimation;
 
@@ -57,6 +66,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       if (!operations || !title.trim()) return;
       const targetList = taskLists.find((list) => list.id === listId);
       if (!canWriteTaskList(targetList)) return;
+      ensureTaskListVisible(listId);
       const trimmedTitle = title.trim();
       const trimmedDescription = description.trim() || null;
       const status = workflowStatus ?? "needs-action";

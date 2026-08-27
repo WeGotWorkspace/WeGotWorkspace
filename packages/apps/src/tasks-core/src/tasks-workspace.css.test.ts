@@ -22,6 +22,11 @@ describe("tasks workspace header and sidebar", () => {
     expect(tsx).toMatch(/editLabel=\{L\.editList\}/);
   });
 
+  it("wires CollectionSidebarRow visibility checkboxes", () => {
+    expect(tsx).toMatch(/onToggleVisibility=\{\(\) => onToggleVisibility\(list\.id\)\}/);
+    expect(tsx).toMatch(/visible=\{!hiddenTaskListIds\.has\(list\.id\)\}/);
+  });
+
   it("does not close the sidebar when Add list is clicked", () => {
     expect(tsx).toMatch(
       /onCreateList=\{canManageProjects \? openCreateProjectDialog : undefined\}/,

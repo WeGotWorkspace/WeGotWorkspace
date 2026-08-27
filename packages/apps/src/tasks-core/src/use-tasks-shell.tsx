@@ -7,10 +7,12 @@ import {
   canWriteTaskList,
   defaultTaskListId,
   filterHiddenCompletedTasks,
+  filterTasksByHiddenLists,
   filterTasksByView,
   shouldApplyCompletedTaskFilter,
 } from "@/tasks-core/src/tasks-task-utils";
 import type { Task, TasksAPIOperations, TasksUIData } from "@/tasks-core/src/tasks-types";
+import { useTasksHiddenIds } from "@/tasks-core/src/use-tasks-hidden-ids";
 
 export type UseTasksShellArgs = {
   data: TasksUIData;
@@ -35,6 +37,7 @@ export function useTasksShell({
   const [view, setView] = useState<string>(() => initialView ?? DEFAULT_TASKS_VIEW);
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const { hiddenTaskListIds, setHiddenTaskListIds } = useTasksHiddenIds(taskLists);
 
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -104,6 +107,30 @@ export function useTasksShell({
   );
   const canCreateTask = Boolean(operations) && canWriteTaskList(createTargetList);
 
+  const ensureTaskListVisible = useCallback(
+    (listId: string) => {
+      setHiddenTaskListIds((current) => {
+        if (!current.has(listId)) return current;
+        const next = new Set(current);
+        next.delete(listId);
+        return next;
+      });
+    },
+    [setHiddenTaskListIds],
+  );
+
+  const toggleTaskListVisibility = useCallback(
+    (listId: string) => {
+      setHiddenTaskListIds((current) => {
+        const next = new Set(current);
+        if (next.has(listId)) next.delete(listId);
+        else next.add(listId);
+        return next;
+      });
+    },
+    [setHiddenTaskListIds],
+  );
+
   const selectView = useCallback(
     (nextView: string) => {
       const normalized = normalizeTasksView(nextView, taskLists);
@@ -128,10 +155,14 @@ export function useTasksShell({
   const showCompletedToggle = useMemo(() => shouldApplyCompletedTaskFilter(view), [view]);
 
   const visibleTasks = useMemo(() => {
-    const byView = filterTasksByView(tasks, view);
+    const byView = filterTasksByHiddenLists(
+      filterTasksByView(tasks, view),
+      view,
+      hiddenTaskListIds,
+    );
     if (!showCompletedToggle || showCompletedTasks) return byView;
     return filterHiddenCompletedTasks(byView);
-  }, [showCompletedTasks, showCompletedToggle, tasks, view]);
+  }, [hiddenTaskListIds, showCompletedTasks, showCompletedToggle, tasks, view]);
 
   const toggleShowCompletedTasks = useCallback(() => {
     setShowCompletedTasks((current) => !current);
@@ -155,6 +186,9 @@ export function useTasksShell({
     selectView,
     operations,
     createListId,
+    hiddenTaskListIds,
+    toggleTaskListVisibility,
+    ensureTaskListVisible,
     show,
     showMutationError,
   };

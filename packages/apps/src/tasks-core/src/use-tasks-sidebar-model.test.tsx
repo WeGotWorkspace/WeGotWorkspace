@@ -54,7 +54,7 @@ describe("useTasksSidebarModel", () => {
     );
   });
 
-  it("starts the top nav with All Lists and keeps time filters", () => {
+  it("starts the top nav with All Tasks and keeps time filters", () => {
     const { result } = renderHook(() =>
       useTasksSidebarModel({
         labels: defaultTasksLabels,

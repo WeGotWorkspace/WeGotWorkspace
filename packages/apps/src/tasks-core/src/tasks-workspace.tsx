@@ -59,6 +59,8 @@ function TasksSidebarRows({
   viewOnlyLabel,
   selectView,
   onEdit,
+  hiddenTaskListIds,
+  onToggleVisibility,
   sidebarDropZoneProps,
   moveToList,
 }: {
@@ -68,6 +70,8 @@ function TasksSidebarRows({
   viewOnlyLabel: string;
   selectView: (view: string) => void;
   onEdit: (listId: string) => void;
+  hiddenTaskListIds: ReadonlySet<string>;
+  onToggleVisibility: (listId: string) => void;
   sidebarDropZoneProps: (
     target: string,
     onDrop: (ids: string[]) => void,
@@ -90,7 +94,8 @@ function TasksSidebarRows({
             name={list.name}
             color={taskListDotColor(list)}
             selected={view === `list:${list.id}`}
-            showColorDot
+            visible={!hiddenTaskListIds.has(list.id)}
+            onToggleVisibility={() => onToggleVisibility(list.id)}
             onSelect={() => selectView(`list:${list.id}`)}
             onEdit={() => onEdit(list.id)}
             editLabel={editLabel}
@@ -158,6 +163,8 @@ export function TasksWorkspace({
     requestDeleteTask,
     moveToList,
     createListId,
+    hiddenTaskListIds,
+    toggleTaskListVisibility,
     showCompletedTasks,
     showCompletedToggle,
     toggleShowCompletedTasks,
@@ -258,6 +265,8 @@ export function TasksWorkspace({
                   viewOnlyLabel={L.viewOnlyListBadge}
                   selectView={selectView}
                   onEdit={openEditProjectDialog}
+                  hiddenTaskListIds={hiddenTaskListIds}
+                  onToggleVisibility={toggleTaskListVisibility}
                   sidebarDropZoneProps={sidebarDropZoneProps}
                   moveToList={moveToList}
                 />
@@ -272,6 +281,8 @@ export function TasksWorkspace({
                   viewOnlyLabel={L.viewOnlyListBadge}
                   selectView={selectView}
                   onEdit={openEditProjectDialog}
+                  hiddenTaskListIds={hiddenTaskListIds}
+                  onToggleVisibility={toggleTaskListVisibility}
                   sidebarDropZoneProps={sidebarDropZoneProps}
                   moveToList={moveToList}
                 />

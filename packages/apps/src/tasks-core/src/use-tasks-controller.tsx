@@ -86,6 +86,8 @@ export function useTasksController({
     sidebarOpen: shell.sidebarOpen,
     setSidebarOpen: shell.setSidebarOpen,
     createListId: shell.createListId,
+    hiddenTaskListIds: shell.hiddenTaskListIds,
+    toggleTaskListVisibility: shell.toggleTaskListVisibility,
     exitingTaskIds: exitAnimation.exitingTaskIds,
     isItemDragging: list.isItemDragging,
     itemDragHandlers: list.itemDragHandlers,

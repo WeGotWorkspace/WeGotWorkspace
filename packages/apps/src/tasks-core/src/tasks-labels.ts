@@ -134,7 +134,7 @@ export const defaultTasksLabels: TasksUILabels = {
   sidebarInbox: "Inbox",
   sidebarProjects: "My lists",
   sidebarSharedWithMe: "Shared with me",
-  stateAll: "All Lists",
+  stateAll: "All Tasks",
   newTaskMenu: "More create options",
   addList: "Add list",
   editList: "Edit list",

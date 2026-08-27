@@ -3,6 +3,7 @@ import {
   canChangeTaskListOwner,
   composerDefaultDueForView,
   defaultTaskListId,
+  filterTasksByHiddenLists,
   filterTasksByView,
   formatComposerDueDateLabel,
   INBOX_TASK_LIST_ID,
@@ -112,6 +113,15 @@ describe("tasks-task-utils", () => {
   it("taskListDotColor falls back to deterministic hash from list id", () => {
     expect(taskListDotColor("work")).toBe(taskListDotColor({ id: "work", color: null }));
     expect(taskListDotColor({ id: "work" })).toBe(taskListDotColor("work"));
+  });
+
+  it("filterTasksByHiddenLists drops hidden lists except on a list view", () => {
+    const hidden = new Set(["default"]);
+    expect(filterTasksByHiddenLists(sampleTasks, "state:all", hidden)).toEqual([]);
+    expect(filterTasksByHiddenLists(sampleTasks, "priority:none", hidden)).toEqual([]);
+    expect(
+      filterTasksByHiddenLists(sampleTasks, "list:default", hidden).map((task) => task.id),
+    ).toEqual(["t1", "t2", "t3"]);
   });
 
   it("filterTasksByView filters by priority slug", () => {

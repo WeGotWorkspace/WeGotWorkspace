@@ -28,12 +28,12 @@ describe("tasks-route-search", () => {
     ).toBe("list:work");
   });
 
-  it("redirects legacy tag paths to All Lists", () => {
+  it("redirects legacy tag paths to All Tasks", () => {
     expect(tasksViewFromLocation("/tasks/tags/focus", {})).toBe("state:all");
     expect(tasksViewFromLocation("/tasks/tags/My%20Tag", {})).toBe("state:all");
   });
 
-  it("defaults bare /tasks and unknown paths to All Lists", () => {
+  it("defaults bare /tasks and unknown paths to All Tasks", () => {
     expect(DEFAULT_TASKS_VIEW).toBe("state:all");
     expect(tasksViewFromLocation("/tasks", {})).toBe("state:all");
     expect(tasksViewFromLocation("/calendar", {})).toBe("state:all");

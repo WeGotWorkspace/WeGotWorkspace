@@ -104,6 +104,16 @@ function isCompleted(task: Task): boolean {
   return task.workflowStatus === "completed" || task.workflowStatus === "cancelled";
 }
 
+/** Aggregate views hide tasks from lists the user unchecked. A list view stays unfiltered. */
+export function filterTasksByHiddenLists(
+  tasks: Task[],
+  view: string,
+  hiddenListIds: ReadonlySet<string>,
+): Task[] {
+  if (hiddenListIds.size === 0 || view.startsWith("list:")) return tasks;
+  return tasks.filter((task) => !hiddenListIds.has(task.taskListId));
+}
+
 export function filterTasksByView(tasks: Task[], view: string): Task[] {
   if (view.startsWith("tag:")) {
     const tag = normalizeTag(view.slice(4));
