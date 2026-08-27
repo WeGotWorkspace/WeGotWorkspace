@@ -29,7 +29,6 @@ import { createWgwMeetGuestOrHostApiSource } from "@/meet-core/src/meet-api-sour
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
-import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
 import { SettingsApp } from "@/settings-core/src/settings-app";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
@@ -519,7 +518,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/tasks",
     head: tasksPwaHead,
     beforeLoad: () => {
-      throw redirect({ to: "/tasks/lists/$listId", params: { listId: INBOX_TASK_LIST_ID } });
+      throw redirect({ to: "/tasks/state/all" });
     },
   });
 
@@ -542,7 +541,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/tasks/tags/$tagSlug",
     head: tasksPwaHead,
     beforeLoad: () => {
-      throw redirect({ to: "/tasks/lists/$listId", params: { listId: INBOX_TASK_LIST_ID } });
+      throw redirect({ to: "/tasks/state/all" });
     },
   });
 

@@ -1,23 +1,14 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
+import {
+  TaskProjectDialog,
+  taskProjectDialogLabelsFrom,
+} from "@/tasks-core/src/task-project-dialog";
 import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 
-const dialogLabels = {
-  createTitle: defaultTasksLabels.newProject,
-  editTitle: defaultTasksLabels.renameProject,
-  nameLabel: defaultTasksLabels.projectNameLabel,
-  colorLabel: defaultTasksLabels.projectColorLabel,
-  scopeLabel: defaultTasksLabels.projectScopeLabel,
-  scopePersonal: defaultTasksLabels.projectScopePersonal,
-  scopeGroup: defaultTasksLabels.projectScopeGroup,
-  scopeReadOnlyLabel: defaultTasksLabels.projectScopeReadOnlyLabel,
-  createButton: defaultTasksLabels.createProjectButton,
-  saveButton: defaultTasksLabels.saveProjectButton,
-  cancel: defaultTasksLabels.cancel,
-};
+const dialogLabels = taskProjectDialogLabelsFrom(defaultTasksLabels);
 
 const groups = [
   { slug: "team", displayName: "Team" },
@@ -124,6 +115,53 @@ describe("TaskProjectDialog", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
+  });
+
+  it("lets the owner change directory on edit after confirm", () => {
+    const onConfirm = vi.fn();
+
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "work",
+          name: "Work",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+          canChangeOwner: true,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+        labels={dialogLabels}
+      />,
+    );
+
+    const ownerSelect = screen.getByRole("combobox", {
+      name: defaultTasksLabels.projectScopeLabel,
+    });
+    expect(ownerSelect).toHaveProperty("disabled", false);
+    fireEvent.click(ownerSelect);
+    fireEvent.click(
+      screen.getByRole("option", { name: defaultTasksLabels.projectScopeGroup("Team") }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.saveProjectButton }));
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", { name: defaultTasksLabels.changeListOwnerConfirmTitle }),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultTasksLabels.changeListOwnerConfirm }),
+    );
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: "Work",
+      color: "#6366f1",
+      groupSlug: "team",
+    });
   });
 
   it("shows read-only owner on edit and submits name/color changes", () => {
@@ -266,5 +304,78 @@ describe("TaskProjectDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.cancel }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("hosts list share copy when mayShare is set", () => {
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "inbox",
+          name: "Inbox",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+          mayShare: true,
+          shareWith: null,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        labels={dialogLabels}
+        share={{
+          online: true,
+          onSearchPrincipals: async () => [],
+          onPatchShareWith: async () => undefined,
+        }}
+      />,
+    );
+
+    expect(screen.getByText(defaultTasksLabels.shareListSectionTitle)).toBeTruthy();
+    expect(screen.getByText(defaultTasksLabels.shareListSectionHint)).toBeTruthy();
+    expect(screen.queryByText("calendar")).toBeNull();
+  });
+
+  it("lets a sharee rename and offers Remove list", () => {
+    const onRemoveShared = vi.fn();
+    const onConfirm = vi.fn();
+
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "shared-inbox",
+          name: "Inbox",
+          color: "#3b82f6",
+          scope: "personal",
+          groupSlug: null,
+          isSharee: true,
+          mayShare: false,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+        onRemoveShared={onRemoveShared}
+        labels={dialogLabels}
+      />,
+    );
+
+    expect(screen.queryByText(defaultTasksLabels.shareListSectionTitle)).toBeNull();
+    fireEvent.change(screen.getByLabelText(defaultTasksLabels.projectNameLabel), {
+      target: { value: "Alice inbox" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.saveProjectButton }));
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: "Alice inbox",
+      color: "#3b82f6",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.removeSharedList }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: defaultTasksLabels.removeSharedList }).at(-1)!,
+    );
+    expect(onRemoveShared).toHaveBeenCalledTimes(1);
   });
 });

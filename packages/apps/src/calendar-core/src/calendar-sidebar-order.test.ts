@@ -93,4 +93,28 @@ describe("calendar sidebar sections", () => {
     ]);
     expect(sharedWithMeCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual(["family"]);
   });
+
+  it("keeps a group member who cannot share in My calendars, and prefers isSharee", () => {
+    const groupMember: CalendarInfo = {
+      id: "group-member",
+      name: "Ops",
+      color: "#14b8a6",
+      scope: "group",
+      groupSlug: "ops",
+      mayShare: false,
+    };
+    const inboundInbox: CalendarInfo = {
+      id: "shared-inbox",
+      name: "Inbox",
+      color: "#f97316",
+      isSharee: true,
+      mayShare: false,
+    };
+    expect(ownedAndTeamCalendarsForSidebar([groupMember]).map((entry) => entry.id)).toEqual([
+      "group-member",
+    ]);
+    expect(sharedWithMeCalendarsForSidebar([inboundInbox]).map((entry) => entry.id)).toEqual([
+      "shared-inbox",
+    ]);
+  });
 });

@@ -1,0 +1,47 @@
+@import "../../styles.css" reference;
+
+.collection-sidebar-row {
+  @apply flex min-h-8 min-w-0 items-center gap-2 rounded px-4 py-1 text-sm font-medium;
+  color: color-mix(in oklab, var(--color-ink) 75%, transparent);
+}
+
+.collection-sidebar-row--selected {
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  color: var(--color-ink);
+}
+
+.collection-sidebar-row__visibility {
+  --primary: var(--collection-row-color, var(--color-ink));
+  --primary-foreground: #ffffff;
+  flex-shrink: 0;
+  border-color: var(--collection-row-color, var(--color-ink));
+}
+
+.collection-sidebar-row__dot {
+  @apply size-2.5 shrink-0 rounded-full;
+  background-color: var(--collection-row-color, var(--color-ink));
+}
+
+.collection-sidebar-row__select {
+  @apply flex min-w-0 flex-1 items-center gap-1.5;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.collection-sidebar-row__title {
+  @apply inline-flex min-w-0 items-center gap-1;
+}
+
+.collection-sidebar-row__name {
+  @apply min-w-0 truncate;
+}
+
+.collection-sidebar-row__action.button {
+  @apply size-6 shrink-0;
+}

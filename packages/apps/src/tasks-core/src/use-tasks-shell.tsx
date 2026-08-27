@@ -4,6 +4,7 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
 import {
+  canWriteTaskList,
   defaultTaskListId,
   filterHiddenCompletedTasks,
   filterTasksByView,
@@ -83,6 +84,7 @@ export function useTasksShell({
       if (slug === "high") return L.priorityHigh;
       if (slug === "medium") return L.priorityMedium;
       if (slug === "low") return L.priorityLow;
+      if (slug === "none") return L.priorityNone;
     }
     if (view.startsWith("list:")) {
       const listId = view.slice(5);
@@ -92,7 +94,15 @@ export function useTasksShell({
   }, [L, taskLists, view]);
 
   const selectedListId = view.startsWith("list:") ? view.slice(5) : null;
-  const canCreateTask = Boolean(operations) && view !== "state:overdue";
+  const createListId = useMemo(
+    () => selectedListId ?? defaultTaskListId(taskLists),
+    [selectedListId, taskLists],
+  );
+  const createTargetList = useMemo(
+    () => taskLists.find((list) => list.id === createListId),
+    [createListId, taskLists],
+  );
+  const canCreateTask = Boolean(operations) && canWriteTaskList(createTargetList);
 
   const selectView = useCallback(
     (nextView: string) => {
@@ -127,11 +137,6 @@ export function useTasksShell({
     setShowCompletedTasks((current) => !current);
   }, []);
 
-  const createListId = useMemo(
-    () => selectedListId ?? defaultTaskListId(taskLists),
-    [selectedListId, taskLists],
-  );
-
   return {
     L,
     tasks,
@@ -146,7 +151,6 @@ export function useTasksShell({
     showCompletedTasks,
     showCompletedToggle,
     toggleShowCompletedTasks,
-    selectedListId,
     canCreateTask,
     selectView,
     operations,

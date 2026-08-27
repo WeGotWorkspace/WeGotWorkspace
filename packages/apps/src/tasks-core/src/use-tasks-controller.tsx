@@ -103,14 +103,14 @@ export function useTasksController({
     moveToList: mutations.moveToList,
     handleTaskExitAnimationEnd: mutations.handleTaskExitAnimationEnd,
     canManageProjects: projectMutations.canManageProjects,
-    canRenameProject: projectMutations.canRenameProject,
-    selectedList: projectMutations.selectedList,
     projectDialog: projectMutations.projectDialog,
     setProjectDialog: projectMutations.setProjectDialog,
     openCreateProjectDialog: projectMutations.openCreateProjectDialog,
     openEditProjectDialog: projectMutations.openEditProjectDialog,
     createProject: projectMutations.createProject,
     updateProject: projectMutations.updateProject,
+    patchShareWith: projectMutations.patchShareWith,
+    removeSharedList: projectMutations.removeSharedList,
   };
 }
 

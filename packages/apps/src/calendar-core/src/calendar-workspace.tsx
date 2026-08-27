@@ -1,7 +1,6 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Pencil, Rss } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Rss } from "lucide-react";
 import {
   type ChangeEvent,
-  type CSSProperties,
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
@@ -13,10 +12,10 @@ import {
 } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
+import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
-import { Checkbox } from "@/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -173,29 +172,19 @@ function CalendarSidebarRows({
         const canManage = mayEdit || mayDelete;
         const selected = calendar.id === defaultCalendarId;
         return (
-          <li
+          <CollectionSidebarRow
             key={calendar.id}
-            className={cn("calendar-sidebar-row", selected && "calendar-sidebar-row--selected")}
-            style={
-              {
-                "--calendar-row-color": calendar.color || "var(--color-ink)",
-              } as CSSProperties
-            }
-          >
-            <Checkbox
-              checked={visible}
-              aria-label={`${visible ? "Hide" : "Show"} ${calendar.name}`}
-              className="calendar-sidebar-row__visibility"
-              onCheckedChange={() => onToggleVisibility(calendar.id)}
-              onClick={(event) => event.stopPropagation()}
-            />
-            <button
-              type="button"
-              className="calendar-sidebar-row__select"
-              onClick={() => onSelectDefault(calendar.id)}
-            >
-              <span className="calendar-sidebar-row__title">
-                <span className="calendar-sidebar-row__name">{calendar.name}</span>
+            blockName="calendar-sidebar-row"
+            name={calendar.name}
+            color={calendar.color}
+            selected={selected}
+            visible={visible}
+            onToggleVisibility={() => onToggleVisibility(calendar.id)}
+            onSelect={() => onSelectDefault(calendar.id)}
+            onEdit={canManage ? () => onEdit(calendar.id) : undefined}
+            editLabel={editLabel}
+            badges={
+              <>
                 {subscribed ? (
                   <CalendarSidebarMark
                     label={subscribedLabel}
@@ -212,8 +201,10 @@ function CalendarSidebarRows({
                     <Eye className="size-3.5" aria-hidden />
                   </CalendarSidebarMark>
                 ) : null}
-              </span>
-              {pendingCalendarIds?.has(calendar.id) ? (
+              </>
+            }
+            trailing={
+              pendingCalendarIds?.has(calendar.id) ? (
                 <span
                   className="calendar-sidebar-row__pending-sync"
                   role="img"
@@ -221,19 +212,9 @@ function CalendarSidebarRows({
                 >
                   <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
                 </span>
-              ) : null}
-            </button>
-            {canManage ? (
-              <IconButton
-                label={editLabel}
-                icon={<Pencil className="size-3.5" aria-hidden />}
-                size="sm"
-                variant="ghost"
-                className="calendar-sidebar-row__action calendar-sidebar-row__edit"
-                onClick={() => onEdit(calendar.id)}
-              />
-            ) : null}
-          </li>
+              ) : null
+            }
+          />
         );
       })}
     </>

@@ -17,6 +17,16 @@ describe("wegotworkspace tasks routes", () => {
     });
   });
 
+  it("registers /tasks with a beforeLoad redirect", () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/tasks/state/all"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const route = router.routesByPath["/tasks"];
+    expect(route?.options.beforeLoad).toEqual(expect.any(Function));
+    expect(() => route?.options.beforeLoad?.({} as never)).toThrow();
+  });
+
   it("matches state slug on /tasks/state/:stateSlug deep links", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/tasks/state/today"],

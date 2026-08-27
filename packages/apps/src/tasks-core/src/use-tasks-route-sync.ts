@@ -25,7 +25,7 @@ export function useTasksRouteSync() {
     (view: string) => {
       const livePath = router.state.location.pathname;
       // Leaving tasks (app switcher, back) must not rewrite the new app onto
-      // `/tasks/...`. Parse treats foreign paths as the inbox default.
+      // `/tasks/...`. Parse treats foreign paths as the All Lists default.
       if (!isTasksPathname(livePath)) return;
       const routeView = tasksViewFromLocation(livePath, params);
       if (view === routeView) return;

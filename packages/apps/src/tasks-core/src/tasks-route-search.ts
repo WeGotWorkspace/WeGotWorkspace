@@ -10,7 +10,7 @@
 
 import { INBOX_TASK_LIST_ID, isInboxTaskList } from "@/tasks-core/src/tasks-task-utils";
 
-export const DEFAULT_TASKS_VIEW = `list:${INBOX_TASK_LIST_ID}`;
+export const DEFAULT_TASKS_VIEW = "state:all";
 
 export type TasksRouteParams = {
   stateSlug?: string;
@@ -21,7 +21,7 @@ export type TasksRouteParams = {
 type TaskListRouteEntry = {
   id: string;
   role?: string | null;
-  name?: string | null;
+  isSharee?: boolean;
 };
 
 /** True only for the tasks app prefix — never `/calendar`, `/contacts`, etc. */
@@ -92,10 +92,7 @@ export type TasksNavigateTarget = {
 
 export function tasksNavigateTarget(view: string): TasksNavigateTarget {
   if (view.startsWith("tag:")) {
-    return {
-      to: "/tasks/lists/$listId",
-      params: { listId: INBOX_TASK_LIST_ID },
-    };
+    return { to: "/tasks/state/all", params: {} };
   }
   if (view.startsWith("state:")) {
     const stateSlug = encodeURIComponent(view.slice(6));
@@ -112,8 +109,5 @@ export function tasksNavigateTarget(view: string): TasksNavigateTarget {
     const prioritySlug = encodeURIComponent(view.slice(9));
     return { to: "/tasks/priority/$prioritySlug", params: { prioritySlug } };
   }
-  return {
-    to: "/tasks/lists/$listId",
-    params: { listId: INBOX_TASK_LIST_ID },
-  };
+  return { to: "/tasks/state/all", params: {} };
 }

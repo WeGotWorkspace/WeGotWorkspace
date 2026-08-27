@@ -24,6 +24,7 @@ import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
 import {
+  canWriteTaskList,
   composerDefaultDueForView,
   formatComposerDueDateLabel,
   isTaskCompleted,
@@ -52,14 +53,16 @@ type TasksMainViewProps = {
   displayTasks: Task[];
   exitingTaskIds: ReadonlySet<string>;
   taskLists: TaskList[];
+  /** All lists for row meta; defaults to `taskLists` (composer targets). */
+  allTaskLists?: TaskList[];
   defaultListId: string;
   view: string;
   canCreate: boolean;
   onToggleComplete: (taskId: string) => void;
   onEditTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
-  onCreateTask: (input: TasksCreateInput) => void;
   onTaskExitAnimationEnd: (taskId: string) => void;
+  onCreateTask: (input: TasksCreateInput) => void;
   itemDragHandlers: (id: string) => Record<string, unknown>;
   isItemDragging: (id: string) => boolean;
 };
@@ -73,6 +76,7 @@ type TaskRowProps = {
   task: Task;
   L: TasksUILabels;
   taskLists: TaskList[];
+  canMutate: boolean;
   isExiting: boolean;
   isDragging: boolean;
   onToggleComplete: (taskId: string) => void;
@@ -86,6 +90,7 @@ function TaskRow({
   task,
   L,
   taskLists,
+  canMutate,
   isExiting,
   isDragging,
   onToggleComplete,
@@ -117,15 +122,15 @@ function TaskRow({
   }, [isExiting, onTaskExitAnimationEnd, task.id]);
 
   const handleBodyClick = useCallback(() => {
-    if (isExiting) return;
+    if (isExiting || !canMutate) return;
     onEditTask(task.id);
-  }, [isExiting, onEditTask, task.id]);
+  }, [canMutate, isExiting, onEditTask, task.id]);
 
   return (
     <div
       role="listitem"
       className={`tasks-main-view__row${isExiting ? " tasks-main-view__row--exiting" : completed ? " tasks-main-view__row--completed" : ""}${isDragging ? " opacity-50" : ""}`}
-      draggable={!isExiting}
+      draggable={!isExiting && canMutate}
       onDragStart={dragHandlers.onDragStart}
       onDragEnd={dragHandlers.onDragEnd}
       onAnimationEnd={(event) => {
@@ -138,7 +143,7 @@ function TaskRow({
         className={`tasks-main-view__complete${completed ? " tasks-main-view__complete--done" : ""}`}
         aria-label={completed ? L.markIncomplete : L.markComplete}
         onClick={() => onToggleComplete(task.id)}
-        disabled={isExiting}
+        disabled={isExiting || !canMutate}
       >
         {completed ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
       </button>
@@ -183,7 +188,7 @@ function TaskRow({
               icon={<MoreVertical className="size-4" />}
               size="sm"
               variant="subtle"
-              disabled={isExiting}
+              disabled={isExiting || !canMutate}
             />
           }
           items={[
@@ -192,12 +197,14 @@ function TaskRow({
               label: L.editTask,
               icon: <Pencil className="size-4" />,
               onClick: () => onEditTask(task.id),
+              disabled: !canMutate,
             },
             {
               id: "delete",
               label: L.delete,
               icon: <Trash2 className="size-4" />,
               onClick: () => onDeleteTask(task.id),
+              disabled: !canMutate,
             },
           ]}
         />
@@ -213,6 +220,7 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
       displayTasks,
       exitingTaskIds,
       taskLists,
+      allTaskLists,
       defaultListId,
       view,
       canCreate,
@@ -234,6 +242,7 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
     }));
     const [composerExpanded, setComposerExpanded] = useState(false);
     const viewDefaultDue = composerDefaultDueForView(view);
+    const displayLists = allTaskLists ?? taskLists;
 
     useImperativeHandle(
       ref,
@@ -300,7 +309,10 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                 key={task.id}
                 task={task}
                 L={L}
-                taskLists={taskLists}
+                taskLists={displayLists}
+                canMutate={canWriteTaskList(
+                  displayLists.find((list) => list.id === task.taskListId),
+                )}
                 isExiting={exitingTaskIds.has(task.id)}
                 isDragging={isItemDragging(task.id)}
                 onToggleComplete={onToggleComplete}

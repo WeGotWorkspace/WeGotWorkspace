@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  canChangeTaskListOwner,
   composerDefaultDueForView,
   defaultTaskListId,
   filterTasksByView,
   formatComposerDueDateLabel,
   INBOX_TASK_LIST_ID,
+  isInboxTaskList,
   isProtectedTaskList,
   mergeCreatedTask,
   taskListDotColor,
@@ -49,22 +51,46 @@ const sampleTasks: Task[] = [
 ];
 
 describe("tasks-task-utils", () => {
-  it("isProtectedTaskList guards only inbox lists", () => {
-    expect(isProtectedTaskList({ id: "inbox", role: "inbox", name: "Inbox" })).toBe(true);
-    expect(isProtectedTaskList({ id: "tl-inbox-uuid", role: "inbox", name: "Inbox" })).toBe(true);
-    expect(isProtectedTaskList({ id: "tasks-home", role: "home", name: "Home" })).toBe(false);
-    expect(isProtectedTaskList({ id: "tasks-work", role: "work", name: "Work" })).toBe(false);
-    expect(isProtectedTaskList({ id: "group-team", role: "group", name: "Team" })).toBe(false);
-    expect(isProtectedTaskList({ id: "custom", role: null, name: "Custom" })).toBe(false);
+  it("isInboxTaskList uses owned role or uri, never display name", () => {
+    expect(isInboxTaskList({ id: "inbox", role: "inbox" })).toBe(true);
+    expect(isInboxTaskList({ id: "tl-inbox-uuid", role: "inbox" })).toBe(true);
+    expect(isInboxTaskList({ id: "tasks-inbox" })).toBe(true);
+    expect(isInboxTaskList({ id: "custom", role: null })).toBe(false);
+    expect(isInboxTaskList({ id: "custom" })).toBe(false);
+    expect(isInboxTaskList({ id: "shared-inbox", role: "inbox", isSharee: true })).toBe(false);
+    expect(isInboxTaskList({ id: "shared-inbox", isSharee: true })).toBe(false);
+  });
+
+  it("isProtectedTaskList guards only owned inbox lists", () => {
+    expect(isProtectedTaskList({ id: "inbox", role: "inbox" })).toBe(true);
+    expect(isProtectedTaskList({ id: "tl-inbox-uuid", role: "inbox" })).toBe(true);
+    expect(isProtectedTaskList({ id: "tasks-home", role: "home" })).toBe(false);
+    expect(isProtectedTaskList({ id: "tasks-work", role: "work" })).toBe(false);
+    expect(isProtectedTaskList({ id: "group-team", role: "group" })).toBe(false);
+    expect(isProtectedTaskList({ id: "custom", role: null })).toBe(false);
   });
 
   it("defaultTaskListId prefers inbox over other lists", () => {
     expect(
       defaultTaskListId([
-        { id: "work", name: "Work", isDefault: false },
-        { id: INBOX_TASK_LIST_ID, role: "inbox", name: "Inbox", isDefault: true },
+        { id: "work", isDefault: false },
+        { id: INBOX_TASK_LIST_ID, role: "inbox", isDefault: true },
       ]),
     ).toBe(INBOX_TASK_LIST_ID);
+  });
+
+  it("defaultTaskListId ignores a shared Inbox even when named Inbox", () => {
+    expect(
+      defaultTaskListId([
+        {
+          id: "shared-inbox",
+          role: "inbox",
+          isSharee: true,
+          isDefault: true,
+        },
+        { id: "inbox", role: "inbox", isDefault: true, isSharee: false },
+      ]),
+    ).toBe("inbox");
   });
 
   it("defaultTaskListId falls back to isDefault then first list", () => {
@@ -94,6 +120,7 @@ describe("tasks-task-utils", () => {
       "t2",
     ]);
     expect(filterTasksByView(sampleTasks, "priority:low")).toEqual([]);
+    expect(filterTasksByView(sampleTasks, "priority:none").map((task) => task.id)).toEqual(["t3"]);
   });
 
   it("filterTasksByView matches legacy inverted API priority values", () => {
@@ -195,7 +222,57 @@ describe("tasks-task-utils", () => {
 
     expect(composerDefaultDueForView("state:today", now)).toBe("2026-07-08T00:00:00");
     expect(composerDefaultDueForView("state:upcoming", now)).toBe("2026-07-09T00:00:00");
-    expect(composerDefaultDueForView("state:overdue", now)).toBeNull();
+    expect(composerDefaultDueForView("state:overdue", now)).toBe("2026-07-07T00:00:00");
     expect(composerDefaultDueForView("state:all", now)).toBeNull();
+  });
+
+  it("canChangeTaskListOwner allows personal owners and user-created group lists", () => {
+    expect(
+      canChangeTaskListOwner({
+        id: "work",
+        myRights: { mayShare: true },
+      }),
+    ).toBe(true);
+    expect(
+      canChangeTaskListOwner({
+        id: "roadmap",
+        scope: "group",
+        groupSlug: "team",
+        myRights: { mayShare: true },
+      }),
+    ).toBe(true);
+  });
+
+  it("canChangeTaskListOwner locks inbox, default, provisioned group, and sharees", () => {
+    expect(
+      canChangeTaskListOwner({
+        id: "inbox",
+        role: "inbox",
+        isDefault: true,
+        myRights: { mayShare: true },
+      }),
+    ).toBe(false);
+    expect(
+      canChangeTaskListOwner({
+        id: "work",
+        isDefault: true,
+        myRights: { mayShare: true },
+      }),
+    ).toBe(false);
+    expect(
+      canChangeTaskListOwner({
+        id: "group-team",
+        scope: "group",
+        groupSlug: "team",
+        myRights: { mayShare: true },
+      }),
+    ).toBe(false);
+    expect(
+      canChangeTaskListOwner({
+        id: "shared-inbox",
+        isSharee: true,
+        myRights: { mayShare: false },
+      }),
+    ).toBe(false);
   });
 });

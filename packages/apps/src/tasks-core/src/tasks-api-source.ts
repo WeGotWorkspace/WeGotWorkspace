@@ -1,13 +1,34 @@
 import { createTasksAppBootstrap, type TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import type { Task, TaskList, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type {
+  Task,
+  TaskList,
+  TaskListPatch,
+  TasksAPIOperations,
+} from "@/tasks-core/src/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
+import {
+  filterSharePrincipals,
+  mergeShareWith,
+  sharePrincipalsFromDirectory,
+} from "@/share-ui/collection-share";
 import {
   createHybridTasksOperations,
   loadTasksBootstrapHybrid,
 } from "@/lib/offline/tasks-hybrid-operations";
 import { resolveTasksOfflineUsername } from "@/lib/offline/offline-session";
+
+function taskListAfterSharePatch(list: TaskList, patch: TaskListPatch): TaskList {
+  const { shareWith, ...rest } = patch;
+  return {
+    ...list,
+    ...rest,
+    ...(shareWith !== undefined
+      ? { shareWith: mergeShareWith(list.shareWith, shareWith ?? {}) as TaskList["shareWith"] }
+      : {}),
+  };
+}
 
 export type TasksApiSource = {
   loadBootstrap: () => Promise<TasksAppBootstrap>;
@@ -111,6 +132,7 @@ function createMockTasksOperations(
         isDefault: false,
         sortOrder: getBootstrap().data.taskLists.length,
         isSubscribed: true,
+        isSharee: false,
         myRights: {
           mayReadItems: true,
           mayWriteAll: true,
@@ -119,6 +141,7 @@ function createMockTasksOperations(
           mayRSVP: true,
           mayAdmin: true,
           mayDelete: true,
+          mayShare: true,
         },
       };
       updateTaskLists((lists) => [...lists, created]);
@@ -129,12 +152,23 @@ function createMockTasksOperations(
       updateTaskLists((lists) =>
         lists.map((list) => {
           if (list.id !== taskListId) return list;
-          updated = { ...list, ...patch };
-          return updated;
+          const next = taskListAfterSharePatch(list, patch);
+          updated = next;
+          return next;
         }),
       );
       if (!updated) throw new Error("Task list not found");
       return updated;
+    },
+    searchSharePrincipals: async (query) => {
+      const bootstrap = getBootstrap();
+      return filterSharePrincipals(
+        query,
+        sharePrincipalsFromDirectory({
+          groups: bootstrap.data.groups,
+          excludeId: bootstrap.session.user.username,
+        }),
+      );
     },
     deleteTaskList: async (taskListId, opts) => {
       updateTaskLists((lists) => lists.filter((list) => list.id !== taskListId));

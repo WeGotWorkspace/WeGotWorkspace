@@ -402,6 +402,13 @@ describe("TasksMainView composer", () => {
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueTomorrow);
     });
 
+    it("prefills due date to yesterday on overdue view", () => {
+      renderMainView({ view: "state:overdue", canCreate: true });
+
+      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueYesterday);
+    });
+
     it("clears view-prefilled due when switching away from today view", () => {
       const { rerender } = renderMainView({ view: "state:today" });
 
@@ -435,19 +442,15 @@ describe("TasksMainView composer", () => {
     });
   });
 
-  it("disables composer fields on overdue view", () => {
-    renderMainView({ view: "state:overdue", canCreate: false });
+  it("keeps composer fields enabled on overdue view", () => {
+    renderMainView({ view: "state:overdue", canCreate: true });
 
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskDue) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(
-      (screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    ).toBe(false);
 
     const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
     const listTrigger = screen.getByLabelText(defaultTasksLabels.addTaskList);

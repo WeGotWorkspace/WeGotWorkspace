@@ -184,7 +184,7 @@ describe("useTasksController URL routing", () => {
     expect(result.current.displayTasks.some((task) => task.id === "task-done")).toBe(true);
   });
 
-  it("disables task creation on overdue view when operations are available", () => {
+  it("allows task creation on overdue view when operations are available", () => {
     const { result } = renderHook(() =>
       useTasksController({
         data: bootstrap.data,
@@ -193,7 +193,53 @@ describe("useTasksController URL routing", () => {
       }),
     );
 
+    expect(result.current.canCreateTask).toBe(true);
+  });
+
+  it("defaults to All Lists when no initial view is provided", () => {
+    const { result } = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: mockOperations,
+      }),
+    );
+
+    expect(result.current.view).toBe("state:all");
+    expect(result.current.createListId).toBe(INBOX_TASK_LIST_ID);
+  });
+
+  it("disables creation on a view-only shared list", () => {
+    const data = {
+      ...bootstrap.data,
+      taskLists: [
+        ...bootstrap.data.taskLists,
+        {
+          ...bootstrap.data.taskLists[0],
+          id: "shared-inbox",
+          name: "Inbox",
+          role: null,
+          isDefault: false,
+          isSharee: true,
+          myRights: {
+            ...bootstrap.data.taskLists[0]!.myRights,
+            mayWriteAll: false,
+            mayWriteOwn: false,
+            mayShare: false,
+          },
+        },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useTasksController({
+        data,
+        operations: mockOperations,
+        initialView: "list:shared-inbox",
+      }),
+    );
+
     expect(result.current.canCreateTask).toBe(false);
+    expect(result.current.createListId).toBe("shared-inbox");
   });
 
   it("allows task creation on today view when operations are available", () => {
