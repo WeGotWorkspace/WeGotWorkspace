@@ -105,8 +105,14 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
 
     public function test_meeting_status_is_public(): void
     {
-        $this->getJson($this->meetStatusPath())
+        $this->reserveMeetRoom()->assertCreated();
+
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath())
             ->assertOk()
-            ->assertJson(['active' => false]);
+            ->assertExactJson([
+                'reserved' => true,
+                'active' => false,
+            ]);
     }
 }

@@ -11,6 +11,7 @@ function createRoomStub(): MeetRoomState {
   return {
     status: "in-call",
     setStatus: vi.fn(),
+    setError: vi.fn(),
     setRoomCode: vi.fn(),
     setSelfId: vi.fn(),
     setStartedAt: vi.fn(),
@@ -29,16 +30,17 @@ function createRoomStub(): MeetRoomState {
   } as unknown as MeetRoomState;
 }
 
-function createSessionStub() {
+function createSessionStub(operations?: { reserveRoom?: ReturnType<typeof vi.fn> }) {
   const meetRtc = {
     leave: vi.fn().mockResolvedValue(undefined),
+    join: vi.fn().mockResolvedValue(undefined),
     getSessionKey: vi.fn(() => null),
   };
   return {
     meetRtc,
-    operationsRef: { current: undefined },
+    operationsRef: { current: operations },
     debugRtc: vi.fn(),
-    ensureLocalMedia: vi.fn(),
+    ensureLocalMedia: vi.fn().mockResolvedValue(undefined),
     stopLocalMedia: vi.fn(),
   } as unknown as MeetCallSessionState;
 }
@@ -67,5 +69,35 @@ describe("useMeetMutations", () => {
 
     unmount();
     expect(session.meetRtc.leave).toHaveBeenCalledTimes(1);
+  });
+
+  it("reserves an ad-hoc room owned by the acting user before joining", async () => {
+    const reserveRoom = vi.fn().mockResolvedValue({ reserved: true, active: false });
+    const session = createSessionStub({ reserveRoom });
+    const room = createRoomStub();
+    room.displayNameRef = { current: "Bob" };
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: true,
+        actingUsername: "bob",
+        leaveRef,
+      }),
+    );
+
+    await result.current.startMeeting();
+
+    expect(reserveRoom).toHaveBeenCalledTimes(1);
+    const reserved = reserveRoom.mock.calls[0]?.[0] as {
+      room: string;
+      ownerPrincipal: string;
+      expiresAt: string;
+    };
+    expect(reserved.ownerPrincipal).toBe("u:bob");
+    expect(reserved.room).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+    expect(session.meetRtc.join).toHaveBeenCalled();
   });
 });

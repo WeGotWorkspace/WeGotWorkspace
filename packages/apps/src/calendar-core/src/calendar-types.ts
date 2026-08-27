@@ -26,6 +26,7 @@ import type {
 import type {
   JmapCalendarEvent,
   JSCalendarAlert,
+  JSCalendarLink,
   JSCalendarPatchObject,
   JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
@@ -115,6 +116,11 @@ export type CalendarEventDraft = {
   recurrenceOverrides?: Record<string, JSCalendarPatchObject | null> | null;
   attendees?: CalendarAttendee[];
   organizer?: { email: string; name?: string };
+  /**
+   * JSCalendar `links` map. Create omits when empty; `null` on patch clears
+   * the stored conference href.
+   */
+  links?: Record<string, JSCalendarLink> | null;
 };
 
 export type CalendarEventPatch = Partial<Omit<CalendarEventDraft, "calendarId" | "id">> & {

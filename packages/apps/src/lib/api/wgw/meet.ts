@@ -11,6 +11,7 @@ import type {
   WgwMeetLeaveResponse,
   WgwMeetPollRequest,
   WgwMeetPollResponse,
+  WgwMeetRoomStatusResponse,
   WgwMeetSendResponse,
 } from "@/lib/api/wgw/types";
 import type { MeetAPIOperations, MeetAppBootstrap } from "@/meet-core/src/meet-types";
@@ -95,16 +96,71 @@ export async function fetchMeetGuestBootstrap(): Promise<MeetAppBootstrap> {
   };
 }
 
+function readRoomStatus(body: unknown): WgwMeetRoomStatusResponse {
+  const payload = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  return {
+    reserved: payload.reserved === true,
+    active: payload.active === true,
+    ownerPrincipal: typeof payload.ownerPrincipal === "string" ? payload.ownerPrincipal : undefined,
+    createdBy: typeof payload.createdBy === "string" ? payload.createdBy : undefined,
+    expiresAt:
+      payload.expiresAt === null
+        ? null
+        : typeof payload.expiresAt === "string"
+          ? payload.expiresAt
+          : undefined,
+  };
+}
+
 function createMeetOperations(fetchImpl: typeof wgwFetch | HttpSignalingFetch): MeetAPIOperations {
   return {
     roomStatus: async (input, opts) => {
       const path = `/meetings/rooms/${encodeURIComponent(input.room)}`;
-      return wgwMeetJson<{ active: boolean }>(
+      const res = await fetchImpl(path, { method: "GET", signal: opts?.signal });
+      if (res.status === 404) {
+        return { reserved: false, active: false };
+      }
+      if (!res.ok) {
+        throw new Error(await readApiError(res, `GET ${path} failed`));
+      }
+      return readRoomStatus(await res.json());
+    },
+    reserveRoom: async (input, opts) => {
+      const path = "/meetings/rooms";
+      const body: Record<string, unknown> = {
+        room: input.room,
+        ownerPrincipal: input.ownerPrincipal,
+      };
+      if (input.expiresAt !== undefined) {
+        body.expiresAt = input.expiresAt;
+      }
+      const created = await wgwMeetJson<unknown>(
         path,
-        { method: "GET", signal: opts?.signal },
-        `GET ${path} failed`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: opts?.signal,
+        },
+        `POST ${path} failed`,
         fetchImpl,
       );
+      return readRoomStatus(created);
+    },
+    patchRoomExpiresAt: async (input, opts) => {
+      const path = `/meetings/rooms/${encodeURIComponent(input.room)}`;
+      const updated = await wgwMeetJson<unknown>(
+        path,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expiresAt: input.expiresAt }),
+          signal: opts?.signal,
+        },
+        `PATCH ${path} failed`,
+        fetchImpl,
+      );
+      return readRoomStatus(updated);
     },
     join: async (input, opts) =>
       wgwMeetJson<WgwMeetJoinResponse>(

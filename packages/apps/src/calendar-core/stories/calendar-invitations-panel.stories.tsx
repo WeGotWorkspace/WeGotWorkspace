@@ -109,6 +109,26 @@ export const Responded: Story = {
   },
 };
 
+export const WithMeetJoin: Story = {
+  args: {
+    ...panelHandlers,
+    workspaceOrigin: "https://workspace.example.com",
+    onJoinMeeting: () => {},
+    meetOperations: {
+      roomStatus: async () => ({ reserved: true, active: false }),
+    },
+    notifications: [
+      {
+        ...sample,
+        url: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+      },
+      canceled,
+      accepted,
+      maybe,
+    ],
+  },
+};
+
 export const Empty: Story = {
   args: {
     ...panelHandlers,

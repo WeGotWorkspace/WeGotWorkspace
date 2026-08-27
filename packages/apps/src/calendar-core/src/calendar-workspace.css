@@ -688,8 +688,42 @@
 
 .calendar-dialog-surface .calendar-event-dialog__repeat-trigger,
 .calendar-dialog-surface .calendar-event-dialog__timezone-trigger,
-.calendar-dialog-surface .calendar-event-dialog__show-as-trigger {
+.calendar-dialog-surface .calendar-event-dialog__show-as-trigger,
+.calendar-dialog-surface .calendar-event-dialog__meet-scope-trigger {
   @apply w-full min-w-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet {
+  --meet-accent: #06b6d4;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-generate {
+  --button-outline-color: #ffffff;
+  --loading-spinner-color: currentColor;
+  background-color: var(--meet-accent);
+  color: #ffffff;
+  border-color: var(--meet-accent);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-generate:hover {
+  background-color: color-mix(in oklab, var(--meet-accent) 88%, black);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-row {
+  @apply flex min-w-0 w-full items-center gap-2;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-row .input,
+.calendar-dialog-surface .calendar-event-dialog__meet-row input {
+  @apply min-w-0 flex-1;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-row .icon-button--size-sm {
+  @apply size-9 shrink-0;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-readonly {
+  @apply flex flex-col items-stretch gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {

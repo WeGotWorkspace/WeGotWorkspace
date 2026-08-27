@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock, Repeat } from "lucide-react";
+import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
+import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { Temporal } from "@js-temporal/polyfill";
 import { Button } from "@/button/src/button";
 import { Card } from "@/card/src/card";
@@ -19,6 +22,7 @@ import {
   sessionEventInviteeStatus,
   type CalendarInvitee,
 } from "@/calendar-core/src/calendar-attendees";
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { CalendarAlarmsCard } from "@/calendar-core/src/calendar-alarms-card";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import {
@@ -60,9 +64,19 @@ export type CalendarEventDialogProps = {
   busy?: boolean;
   onChange: (next: CalendarEventFormValue) => void;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (scope?: RecurrenceEditScope) => void;
   onDelete?: () => void;
+  recurrenceId?: string;
+  recurrenceSaveScope?: RecurrenceEditScope;
+  thisInstanceLocked?: boolean;
+  meetOperations?: CalendarMeetOperations;
+  workspaceOrigin?: string;
+  sessionUsername?: string;
+  onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
+  onJoinMeeting?: (href: string) => void;
   invitees?: CalendarInvitee[];
+  contactCards?: ContactCard[];
+  onRefreshContactCards?: () => void;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
   onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
@@ -158,9 +172,19 @@ export function CalendarEventDialog({
   onSave,
   onDelete,
   invitees = [],
+  contactCards = [],
+  onRefreshContactCards,
   canSubmitEmail = true,
   sessionEmail,
   onRsvp,
+  recurrenceId,
+  recurrenceSaveScope,
+  thisInstanceLocked = false,
+  meetOperations,
+  workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
+  sessionUsername,
+  onRecurrenceSaveScopeChange,
+  onJoinMeeting,
 }: CalendarEventDialogProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail, invitees);
@@ -176,11 +200,27 @@ export function CalendarEventDialog({
   const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
     incomingRsvp ?? "",
   );
+  const [uncontrolledMeetScope, setUncontrolledMeetScope] =
+    useState<RecurrenceEditScope>("thisAndFuture");
+  const abandonStagedReserveRef = useRef<(() => void) | null>(null);
+  const meetSaveScope = thisInstanceLocked
+    ? "thisInstance"
+    : (recurrenceSaveScope ?? uncontrolledMeetScope);
+
+  const dismiss = () => {
+    abandonStagedReserveRef.current?.();
+    onClose();
+  };
 
   useEffect(() => {
     setDraftCalendarId(form.calendarId);
     setDraftRsvp(incomingRsvp ?? "");
   }, [form.calendarId, incomingRsvp, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setUncontrolledMeetScope(thisInstanceLocked ? "thisInstance" : "thisAndFuture");
+  }, [open, recurrenceId, thisInstanceLocked]);
 
   const valid = calendarEventFormIsValid(form);
   const recurrenceLocked = form.recurrencePreset === "custom";
@@ -217,7 +257,7 @@ export function CalendarEventDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && !busy && dismiss()}>
       <DialogContent
         className="calendar-dialog-surface calendar-event-dialog"
         lang={locale}
@@ -242,7 +282,7 @@ export function CalendarEventDialog({
               return;
             }
             if (readOnly || !valid) return;
-            onSave();
+            onSave(form.meetingUrl.trim() || form.meetRoomCode ? meetSaveScope : undefined);
           }}
         >
           <div className="calendar-event-dialog__fields">
@@ -279,6 +319,24 @@ export function CalendarEventDialog({
                 disabled={fieldsDisabled}
               />
             </FieldLabelRow>
+
+            <CalendarMeetCard
+              form={form}
+              labels={labels}
+              calendar={calendar}
+              username={sessionUsername}
+              workspaceOrigin={workspaceOrigin}
+              recurrenceId={recurrenceId}
+              recurrenceSaveScope={meetSaveScope}
+              thisInstanceLocked={thisInstanceLocked}
+              meetOperations={meetOperations}
+              disabled={fieldsDisabled}
+              readOnly={readOnly}
+              onChange={onChange}
+              abandonStagedReserveRef={abandonStagedReserveRef}
+              onRecurrenceSaveScopeChange={onRecurrenceSaveScopeChange ?? setUncontrolledMeetScope}
+              onJoin={onJoinMeeting}
+            />
 
             <Card
               className="calendar-event-dialog__card"
@@ -443,6 +501,8 @@ export function CalendarEventDialog({
             <CalendarInviteesCard
               attendees={form.attendees}
               invitees={invitees}
+              contactCards={contactCards}
+              onRefreshContactCards={onRefreshContactCards}
               labels={labels}
               busy={busy}
               readOnly={readOnly}
@@ -511,7 +571,7 @@ export function CalendarEventDialog({
               </Button>
             ) : null}
             {showSaveCancel ? (
-              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+              <Button type="button" variant="outline" onClick={dismiss} disabled={busy}>
                 {labels.cancel}
               </Button>
             ) : null}

@@ -32,5 +32,7 @@ export {
   createDefaultMeetApiSource,
   createWgwMeetApiSource,
   createWgwMeetGuestApiSource,
+  createWgwMeetGuestOrHostApiSource,
+  meetGuestLinkAllowsHostUpgrade,
   type MeetApiSource,
 } from "@/meet-core/src/meet-api-source";

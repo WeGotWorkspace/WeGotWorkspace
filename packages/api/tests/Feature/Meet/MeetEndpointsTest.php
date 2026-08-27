@@ -21,8 +21,8 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
     {
         $response = $this->getJson('/api/v1/meetings/rooms/'.self::ROOM_ID);
 
-        $response->assertOk();
-        $response->assertJson(['active' => false]);
+        $response->assertNotFound();
+        $response->assertJson(['error' => 'not_found']);
     }
 
     public function test_guest_join_returns_session_key_and_peers(): void
@@ -66,16 +66,16 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
         $leave->assertJson(['ok' => true]);
     }
 
-    public function test_room_active_after_guest_join(): void
+    public function test_room_active_after_guest_join_requires_reservation(): void
     {
         $this->postJson('/api/v1/rooms/'.self::ROOM_ID.'/participants', [
             'peerId' => 'peer-alpha',
             'name' => 'Guest One',
         ])->assertOk();
 
-        $room = $this->getJson('/api/v1/meetings/rooms/'.self::ROOM_ID);
-        $room->assertOk();
-        $room->assertJson(['active' => true]);
+        $this->getJson('/api/v1/meetings/rooms/'.self::ROOM_ID)
+            ->assertNotFound()
+            ->assertJson(['error' => 'not_found']);
     }
 
     public function test_guest_rejoin_reuses_session_key(): void

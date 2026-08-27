@@ -250,6 +250,24 @@ describe("calendar workspace search results", () => {
   });
 });
 
+describe("calendar event dialog Meet field", () => {
+  it("lays out the Meet URL row with BEM + @apply", () => {
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \{[\s\S]*@apply/,
+    );
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*@apply/,
+    );
+    expect(css).toMatch(/\.calendar-event-dialog__meet-generate/);
+    expect(css).toContain("--meet-accent: #06b6d4");
+    expect(css).toContain("background-color: var(--meet-accent)");
+    expect(css).toContain("color: #ffffff");
+    expect(css).toContain("--loading-spinner-color: currentColor");
+    expect(css).not.toContain("calendar-event-dialog__meet-switch");
+    expect(css).toMatch(/\.calendar-event-dialog__meet-scope-trigger/);
+  });
+});
+
 describe("calendar workspace stacked header", () => {
   it("uses a viewport two-row grid so flattening main cannot drop the query", () => {
     expect(css).toMatch(

@@ -16,6 +16,7 @@ import {
 } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
+import { linksFromMeetingUrl, meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
 import {
   alertMapsEqual,
   alertsToWire,
@@ -651,6 +652,11 @@ export function occurrenceRecurrenceOverrides(
   const nextAlerts = alertsToWire(form.alerts);
   if (!alertMapsEqual(nextAlerts, original.alerts)) {
     patch.alerts = nextAlerts;
+  }
+
+  const originalMeetingUrl = meetingUrlFromLinks(original.links);
+  if ((form.meetingUrl ?? "").trim() !== originalMeetingUrl.trim()) {
+    patch.links = linksFromMeetingUrl(form.meetingUrl) ?? null;
   }
 
   if (Object.keys(patch).length === 0) return null;

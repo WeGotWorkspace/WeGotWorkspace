@@ -30,6 +30,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `app_migrations` | `App\Models\AppMigration` | Legacy schema version audit (upgraded installs) |
 | `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key) |
 | `meet_messages` | `App\Models\MeetMessage` | Meet signaling messages |
+| `meet_reservations` | `App\Models\MeetReservation` | Reserved Meet rooms (`id` = room code; `owner_principal`; `created_by`; nullable `expires_at`; `activated_at` when first joinable) |
 | `collab_peers` | `App\Models\CollabPeer` | Collab signaling peers |
 | `collab_messages` | `App\Models\CollabMessage` | Collab signaling messages |
 | `search_documents` | `App\Models\SearchDocument` | Unified search index documents |

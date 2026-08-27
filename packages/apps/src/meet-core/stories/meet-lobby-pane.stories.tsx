@@ -36,6 +36,8 @@ const meta = {
   endedMessage={null}
   showMissingInviteScreen={false}
   showInviteCheckingScreen={false}
+  showWaitingForHostScreen={false}
+  showInviteErrorScreen={false}
   onDisplayNameChange={setDisplayName}
   onJoin={join}
   onCancelJoin={cancelJoin}
@@ -53,6 +55,9 @@ const meta = {
     endedMessage: storyTextControl,
     showMissingInviteScreen: storyBooleanControl,
     showInviteCheckingScreen: storyBooleanControl,
+    showWaitingForHostScreen: storyBooleanControl,
+    showInviteErrorScreen: storyBooleanControl,
+    canStartReservedRoom: storyBooleanControl,
     videoOn: storyBooleanControl,
     error: storyTextControl,
   },
@@ -71,6 +76,9 @@ const hostBase: MeetLobbyPaneStoryArgs = {
   endedMessage: "",
   showMissingInviteScreen: false,
   showInviteCheckingScreen: false,
+  showWaitingForHostScreen: false,
+  showInviteErrorScreen: false,
+  canStartReservedRoom: true,
   videoOn: true,
   error: "",
 };
@@ -106,6 +114,9 @@ export const GuestJoin: Story = {
     endedMessage: "",
     showMissingInviteScreen: false,
     showInviteCheckingScreen: false,
+    showWaitingForHostScreen: false,
+    showInviteErrorScreen: false,
+    canStartReservedRoom: false,
     videoOn: true,
     error: "",
   },
@@ -123,6 +134,9 @@ export const Knocking: Story = {
     endedMessage: "",
     showMissingInviteScreen: false,
     showInviteCheckingScreen: false,
+    showWaitingForHostScreen: false,
+    showInviteErrorScreen: false,
+    canStartReservedRoom: false,
     videoOn: true,
     error: "",
   },
@@ -149,6 +163,34 @@ export const CheckingInvite: Story = {
   args: {
     ...hostBase,
     showInviteCheckingScreen: true,
+  },
+};
+
+export const WaitingForHost: Story = {
+  name: "Waiting for host",
+  tags: ["vitest-ci"],
+  args: {
+    ...hostBase,
+    inJoinFlow: true,
+    hasSignedInIdentity: false,
+    invitedRoom: "abcd-efgh-ijkl",
+    canStartReservedRoom: false,
+    showWaitingForHostScreen: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Waiting for the host" })).toBeInTheDocument();
+    await expect(
+      canvas.getByText("This meeting has not started yet. You can join when the host arrives."),
+    ).toBeInTheDocument();
+  },
+};
+
+export const InviteError: Story = {
+  name: "Invite check error",
+  args: {
+    ...hostBase,
+    showInviteErrorScreen: true,
   },
 };
 

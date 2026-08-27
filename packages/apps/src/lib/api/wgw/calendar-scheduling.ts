@@ -14,6 +14,8 @@ export type CalendarSchedulingNotification = {
   start?: string | null;
   end?: string | null;
   location?: string | null;
+  /** First conference href from CONFERENCE / URL / X-GOOGLE / Microsoft X-prop. */
+  url?: string | null;
   color?: string | null;
   recurring?: boolean;
   participationStatus: CalendarParticipationStatus;
