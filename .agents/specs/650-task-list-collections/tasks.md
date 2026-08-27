@@ -14,7 +14,7 @@ Source plan: [plan.md](./plan.md)
 | `caldav-share-interop` | builder (this phase) | api, testing | CalDAV sharing tests + shared trait | targeted PHPUnit (VTODO + existing VEVENT) | done |
 | `shared-primitives` | later | apps-ui, workspace, storybook | `calendar-new-menu`, `calendar-sidebar-order`, `calendar-share-section`, `calendar-share.ts` | calendar Vitest/stories + primitive tests | done |
 | `tasks-sidebar` | later | workspace, apps-ui, storybook | `tasks-core` sidebar, dialog, hybrid | Vitest + mock-tier stories (apps-done-gate in verify chunk) | done |
-| `verify` | later | testing, verify-issue, code-review | merged A–D | `pnpm test:api-done-gate`, `pnpm test:apps-done-gate`, verify-issue | pending |
+| `verify` | later | testing, verify-issue, code-review | merged A–D | `pnpm test:api-done-gate`, `pnpm test:apps-done-gate`, verify-issue | done |
 
 ## Notes
 
