@@ -1,15 +1,7 @@
 @import "../../styles.css" reference;
 
-.calendar-calendar-dialog__name-color-row {
-  @apply flex items-center gap-2;
-}
-
 .calendar-dialog-surface .field-label-row + .field-label-row {
   @apply mt-3;
-}
-
-.calendar-calendar-dialog__name-input {
-  @apply min-w-0 flex-[1_1_85%];
 }
 
 .calendar-calendar-dialog__share {

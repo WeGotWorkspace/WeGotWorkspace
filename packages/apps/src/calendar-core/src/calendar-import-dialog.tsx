@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
+import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
+import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import {
   CalendarPickerMenuItem,
   defaultPickerCalendarId,
@@ -20,7 +22,6 @@ import {
   CALENDAR_COLOR_SWATCHES,
   DEFAULT_CALENDAR_COLOR,
 } from "@/calendar-core/src/calendar-calendar-dialog";
-import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
 import {
   inferCalendarNameFromIcsFileName,
   NEW_CALENDAR_IMPORT_VALUE,
@@ -116,7 +117,7 @@ export function CalendarImportDialog({
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <CalendarColorSwatchTrigger
+                <ColorSwatchTrigger
                   id="calendar-import-destination"
                   color={selectedCalendar?.color}
                   showSwatch={!creating}
@@ -125,7 +126,7 @@ export function CalendarImportDialog({
                   disabled={busy}
                 >
                   {destinationName}
-                </CalendarColorSwatchTrigger>
+                </ColorSwatchTrigger>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
@@ -152,10 +153,10 @@ export function CalendarImportDialog({
           {creating ? (
             <div className="calendar-import-dialog__create-fields">
               <FieldLabelRow label={labels.calendarNameLabel} htmlFor="calendar-import-name">
-                <div className="calendar-import-dialog__name-color-row">
+                <NameColorRow>
                   <Input
                     id="calendar-import-name"
-                    className="calendar-import-dialog__name-input"
+                    className={NAME_COLOR_ROW_INPUT_CLASS}
                     value={name}
                     disabled={busy}
                     onChange={(event) => setName(event.target.value)}
@@ -166,13 +167,13 @@ export function CalendarImportDialog({
                     colorLabel={labels.calendarColorLabel}
                     swatches={CALENDAR_COLOR_SWATCHES}
                   >
-                    <CalendarColorSwatchTrigger
+                    <ColorSwatchTrigger
                       color={color}
                       label={labels.calendarColorLabel}
                       aria-haspopup="dialog"
                     />
                   </SwatchColorPicker>
-                </div>
+                </NameColorRow>
               </FieldLabelRow>
             </div>
           ) : null}

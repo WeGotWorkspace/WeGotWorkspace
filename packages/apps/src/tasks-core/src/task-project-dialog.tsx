@@ -25,6 +25,7 @@ import { TaskProjectColorPicker } from "@/tasks-core/src/task-project-color-pick
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
+import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import "@/share-ui/share-ui.css";
 import "./task-project-dialog.css";
 
@@ -224,10 +225,10 @@ export function TaskProjectDialog({
             }}
           >
             <FieldLabelRow label={labels.nameLabel} htmlFor="task-project-name">
-              <div className="task-project-dialog__name-color-row">
+              <NameColorRow>
                 <Input
                   id="task-project-name"
-                  className="task-project-dialog__name-input"
+                  className={NAME_COLOR_ROW_INPUT_CLASS}
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}
@@ -236,9 +237,8 @@ export function TaskProjectDialog({
                   value={selectedColor}
                   onChange={setColor}
                   colorLabel={labels.colorLabel}
-                  previewListId={dialog?.mode === "edit" ? dialog.listId : trimmedName || "preview"}
                 />
-              </div>
+              </NameColorRow>
             </FieldLabelRow>
 
             <OwnerScopeField

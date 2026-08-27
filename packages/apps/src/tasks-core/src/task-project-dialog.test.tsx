@@ -262,7 +262,7 @@ describe("TaskProjectDialog", () => {
       />,
     );
 
-    const dot = document.querySelector(".task-project-color-picker__dot") as HTMLElement;
+    const dot = document.querySelector(".color-swatch-trigger__dot") as HTMLElement;
     expect(dot.style.backgroundColor).toBe(referenceColor);
     expect(referenceColor).not.toBe("");
     expect(taskListDotColor({ id: listId, color: null })).not.toBe(DEFAULT_TASK_LIST_COLOR);

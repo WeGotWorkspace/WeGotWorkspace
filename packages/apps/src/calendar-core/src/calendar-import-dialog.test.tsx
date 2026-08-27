@@ -62,7 +62,7 @@ describe("CalendarImportDialog", () => {
     );
 
     const trigger = destinationTrigger("Personal");
-    const triggerSwatch = trigger.querySelector(".calendar-color-swatch-trigger__dot");
+    const triggerSwatch = trigger.querySelector(".color-swatch-trigger__dot");
     expect(triggerSwatch).toBeTruthy();
     expect((triggerSwatch as HTMLElement | null)?.style.backgroundColor).toBeTruthy();
     expect(screen.queryByLabelText(L.calendarNameLabel)).toBeNull();
@@ -113,7 +113,7 @@ describe("CalendarImportDialog", () => {
     const name = screen.getByLabelText(L.calendarNameLabel);
     expect(name).toHaveProperty("value", "team-offsite");
     expect(
-      destinationTrigger(L.newCalendar).querySelector(".calendar-color-swatch-trigger__dot"),
+      destinationTrigger(L.newCalendar).querySelector(".color-swatch-trigger__dot"),
     ).toBeNull();
 
     fireEvent.change(name, { target: { value: "  Travel  " } });
@@ -139,7 +139,7 @@ describe("CalendarImportDialog", () => {
     );
 
     expect(
-      destinationTrigger(L.newCalendar).querySelector(".calendar-color-swatch-trigger__dot"),
+      destinationTrigger(L.newCalendar).querySelector(".color-swatch-trigger__dot"),
     ).toBeNull();
     const name = screen.getByLabelText(L.calendarNameLabel);
     expect(name).toHaveProperty("value", L.newCalendar);

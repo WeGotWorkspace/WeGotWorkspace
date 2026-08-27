@@ -1,0 +1,9 @@
+@import "../styles.css" reference;
+
+.name-color-row {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.name-color-row__input {
+  @apply min-w-0 flex-1;
+}

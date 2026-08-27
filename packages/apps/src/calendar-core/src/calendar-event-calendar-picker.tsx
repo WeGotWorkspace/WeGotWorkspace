@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { CalendarColorSwatchTrigger } from "@/calendar-core/src/calendar-color-swatch-trigger";
+import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import { cn } from "@/lib/utils";
@@ -83,7 +83,7 @@ export function CalendarEventCalendarPicker({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <CalendarColorSwatchTrigger
+        <ColorSwatchTrigger
           color={selectedCalendar?.color ?? "transparent"}
           label={
             selectedCalendar

@@ -25,11 +25,8 @@
   @apply shrink-0;
 }
 
-/* control-surface is w-full; dialog scopes shrink only under .calendar-dialog-surface. */
 .calendar-invitation-card__calendar-trigger {
-  @apply inline-flex w-auto shrink-0;
-  width: auto;
-  min-width: 3.25rem;
+  @apply shrink-0;
 }
 
 .calendar-invitation-card__event {

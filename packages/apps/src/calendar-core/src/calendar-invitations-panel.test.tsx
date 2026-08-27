@@ -148,11 +148,11 @@ describe("CalendarInvitationsPanel", () => {
   it("reuses the event-dialog calendar picker on new invites", () => {
     renderPanel();
     const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
-    expect(trigger.className).toContain("calendar-color-swatch-trigger");
+    expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
     expect(trigger.className).toContain("calendar-invitation-card__calendar-trigger");
-    expect(trigger.querySelector(".calendar-color-swatch-trigger__dot")).toBeTruthy();
-    expect(trigger.querySelector(".calendar-color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
     const actions = document.querySelector(
       "[data-invitation-id='invite-1.ics'] .docs-collab-card__actions",
     );

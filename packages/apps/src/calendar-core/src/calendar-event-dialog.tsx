@@ -9,6 +9,7 @@ import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
 import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
@@ -286,9 +287,9 @@ export function CalendarEventDialog({
           }}
         >
           <div className="calendar-event-dialog__fields">
-            <div className="calendar-event-dialog__title-row">
+            <NameColorRow className="calendar-event-dialog__title-row">
               <Input
-                className="calendar-event-dialog__title-input"
+                className={NAME_COLOR_ROW_INPUT_CLASS}
                 value={form.title}
                 onChange={(event) => set("title", event.target.value)}
                 placeholder={labels.eventTitleLabel}
@@ -309,7 +310,7 @@ export function CalendarEventDialog({
                   set("calendarId", calendarId);
                 }}
               />
-            </div>
+            </NameColorRow>
 
             <FieldLabelRow label={labels.eventLocationLabel}>
               <Input

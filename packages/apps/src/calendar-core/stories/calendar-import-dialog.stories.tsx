@@ -35,7 +35,7 @@ export const ExistingDestination: Story = {
   tags: ["vitest-ci"],
   play: async () => {
     const trigger = destinationTrigger("Personal");
-    await expect(trigger.querySelector(".calendar-color-swatch-trigger__dot")).toBeTruthy();
+    await expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
     await expect(screen.queryByLabelText(defaultCalendarLabels.calendarNameLabel)).toBeNull();
     await expect(
       screen.getByRole("button", { name: defaultCalendarLabels.importSubmit }),
@@ -58,7 +58,7 @@ export const ExistingDestination: Story = {
     );
     await expect(
       destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(
-        ".calendar-color-swatch-trigger__dot",
+        ".color-swatch-trigger__dot",
       ),
     ).toBeNull();
   },
@@ -72,7 +72,7 @@ export const NewCalendar: Story = {
   play: async () => {
     await expect(
       destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(
-        ".calendar-color-swatch-trigger__dot",
+        ".color-swatch-trigger__dot",
       ),
     ).toBeNull();
     const name = screen.getByLabelText(defaultCalendarLabels.calendarNameLabel);
