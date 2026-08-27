@@ -79,10 +79,36 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
             static fn (array $row): bool => ($row['isSharee'] ?? false) === true && ($row['name'] ?? '') === InboxTaskListProvisioner::DISPLAY_NAME
         );
         $this->assertIsArray($sharedInbox);
+        $this->assertTrue($sharedInbox['isSharee']);
         $this->assertNotSame('inbox', $sharedInbox['role']);
         $this->assertFalse($sharedInbox['isDefault']);
         $this->assertNull($sharedInbox['shareWith']);
         $this->assertFalse($sharedInbox['myRights']['mayShare']);
+        $sharedInboxId = (string) $sharedInbox['id'];
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/tasks/tasklists/'.InboxTaskListProvisioner::URI, [
+                'shareWith' => ['alice' => null],
+            ])
+            ->assertOk()
+            ->assertJsonPath('shareWith', null);
+
+        $afterRevoke = collect($this->asUser('alice')->getJson('/api/v1/tasks/tasklists')->assertOk()->json('list'));
+
+        $ownInboxAfter = $afterRevoke->first(
+            static fn (array $row): bool => ($row['role'] ?? null) === 'inbox' && ($row['isDefault'] ?? false) === true
+        );
+        $this->assertIsArray($ownInboxAfter);
+        $this->assertSame(InboxTaskListProvisioner::URI, $ownInboxAfter['id']);
+        $this->assertFalse($ownInboxAfter['isSharee']);
+
+        $this->assertNull(
+            $afterRevoke->first(
+                static fn (array $row): bool => ($row['id'] ?? null) === $sharedInboxId
+                    || (($row['isSharee'] ?? false) === true && ($row['name'] ?? '') === InboxTaskListProvisioner::DISPLAY_NAME)
+            ),
+            'Expected the shared Inbox to disappear after revoke',
+        );
     }
 
     public function test_read_share_denies_task_create_update_and_delete(): void
@@ -303,6 +329,8 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
         $listId = CalendarCollectionUris::groupTaskListApiId(self::TEAM);
         $groupList = $this->asUser('bob')->getJson('/api/v1/tasks/tasklists/'.$listId)->assertOk()->json();
         $this->assertSame('group', $groupList['scope']);
+        $this->assertSame('group', $groupList['role']);
+        $this->assertSame(self::TEAM, $groupList['groupSlug']);
         $this->assertFalse($groupList['isSharee']);
         $this->assertTrue($groupList['myRights']['mayWriteAll']);
 
