@@ -8,7 +8,9 @@ use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,7 @@ use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\PropPatch;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class TaskListRepository
 {
@@ -26,32 +29,23 @@ final class TaskListRepository
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly DriveGroupResolver $groups,
+        private readonly CalendarCollectionAccess $collectionAccess,
+        private readonly CalendarShareInvites $shareInvites,
     ) {}
 
     public function list(string $username): array
     {
-        $principalUri = $this->principalUri($username);
-        $this->calendarCollectionsProvisioner->ensureForPrincipal($principalUri);
+        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
 
-        $instances = CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $principalUri)
-            ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
-            ->orderBy('calendarorder')
-            ->orderBy('id')
-            ->get();
+        $lists = $this->collectionAccess
+            ->accessibleInstances($username, fn ($query) => $query->vtodoOnly())
+            ->map(function (CalendarInstance $instance): array {
+                $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        $lists = $instances
-            ->map(fn (CalendarInstance $i): array => $this->mapTaskList($i))
+                return $this->mapTaskList($instance, $groupSlug);
+            })
             ->values()
             ->all();
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $groupLists = $this->groupTaskListInstances($slug);
-            foreach ($groupLists as $instance) {
-                $lists[] = $this->mapTaskList($instance, $slug);
-            }
-        }
 
         return ['list' => $lists];
     }
@@ -138,6 +132,13 @@ final class TaskListRepository
         }
         [$instance, $groupSlug] = $resolved;
 
+        $this->collectionAccess->assertShareePatchAllowed(
+            $instance,
+            $payload,
+            ['description', 'shareWith', 'groupSlug'],
+            'Sharees can only change their own list name and color.',
+        );
+
         $mutations = [];
         if (array_key_exists('name', $payload)) {
             $name = trim((string) $payload['name']);
@@ -160,7 +161,16 @@ final class TaskListRepository
             $propPatch->commit();
         }
 
+        if (array_key_exists('shareWith', $payload)) {
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+        }
+
+        if (array_key_exists('groupSlug', $payload)) {
+            $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
+        }
+
         $instance->refresh();
+        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         return $this->mapTaskList($instance, $groupSlug);
     }
@@ -171,9 +181,15 @@ final class TaskListRepository
         if ($resolved === null) {
             throw new ApiHttpException(404, 'Task list not found.', 'not_found');
         }
-        [$instance] = $resolved;
+        [$instance, $groupSlug] = $resolved;
+        if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
+            return ['ok' => true];
+        }
         if ((string) $instance->uri === InboxTaskListProvisioner::URI) {
             throw new ApiHttpException(403, 'The Inbox task list cannot be deleted.', 'forbidden');
+        }
+        if ($this->isProvisionedGroupTaskList($instance, $groupSlug)) {
+            throw new ApiHttpException(403, 'The group task list cannot be deleted.', 'forbidden');
         }
         if ($instance->objects()->where('componenttype', 'VTODO')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
             throw new ApiHttpException(409, 'Task list contains tasks.', 'taskListHasContents');
@@ -186,18 +202,11 @@ final class TaskListRepository
 
     public function changes(string $username, ?string $since): array
     {
-        $instances = CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
-            ->orderBy('uri')
-            ->get();
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupTaskListInstances($slug) as $groupInstance) {
-                $instances->push($groupInstance);
-            }
-        }
+        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
+        $instances = $this->collectionAccess->accessibleInstances(
+            $username,
+            fn ($query) => $query->vtodoOnly(),
+        );
 
         $currentState = $this->computeInstancesState($instances);
         $previous = $this->parseInstancesState($since);
@@ -288,29 +297,101 @@ final class TaskListRepository
      */
     private function resolveWritableTaskList(string $username, string $taskListId): ?array
     {
-        $groupSlug = CalendarCollectionUris::parseGroupTaskListApiId($taskListId);
-        if ($groupSlug !== null) {
+        $instance = $this->findAccessibleTaskList($username, $taskListId);
+        if ($instance === null) {
             return null;
         }
 
-        $owned = $this->findOwnedTaskList($username, $taskListId);
-        if ($owned !== null) {
-            return [$owned, null];
+        $groupSlug = CalendarCollectionUris::parseGroupTaskListApiId($taskListId)
+            ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+
+        return [$instance, $groupSlug];
+    }
+
+    private function isProvisionedGroupTaskList(CalendarInstance $instance, ?string $groupSlug): bool
+    {
+        return $groupSlug !== null
+            && (string) $instance->uri === CalendarCollectionUris::groupTaskListCalDavUri($groupSlug);
+    }
+
+    /**
+     * Tasks stay on calendarid; sharee rows and shareWith grants are untouched.
+     */
+    private function transferOwner(
+        string $username,
+        CalendarInstance $instance,
+        ?string $currentGroupSlug,
+        mixed $requested,
+    ): void {
+        $this->assertOwnerTransferAllowed($instance, $currentGroupSlug);
+        $newGroupSlug = $this->normalizePatchGroupSlug($requested);
+        if ($newGroupSlug === $currentGroupSlug) {
+            return;
         }
 
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findTaskListInstance(AdminConstants::GROUP_PREFIX.$slug, $taskListId);
-            if ($instance !== null) {
-                $uri = (string) $instance->uri;
-                if ($uri === CalendarCollectionUris::groupTaskListCalDavUri($slug)) {
-                    return null;
-                }
-
-                return [$instance, $slug];
-            }
+        $principalUri = $this->principalUriForOwnerScope($username, $instance, $newGroupSlug);
+        $existing = $this->findTaskListInstance($principalUri, (string) $instance->uri);
+        if ($existing !== null && (int) $existing->id !== (int) $instance->id) {
+            throw new ApiHttpException(409, 'Task list id already exists.', 'alreadyExists');
         }
 
-        return null;
+        $instance->principaluri = $principalUri;
+        $instance->save();
+    }
+
+    private function assertOwnerTransferAllowed(CalendarInstance $instance, ?string $currentGroupSlug): void
+    {
+        if ($this->shareInvites->isSharee($instance)) {
+            throw new ApiHttpException(403, 'Sharees cannot change list owner.', 'forbidden');
+        }
+        if (! $this->shareInvites->canShare($instance, $currentGroupSlug)) {
+            throw new ApiHttpException(403, 'Only list administrators can change owner.', 'forbidden');
+        }
+        $uri = (string) $instance->uri;
+        if ($uri === CalendarCollectionUris::TASK_INBOX || $uri === CalendarCollectionUris::LEGACY_TASK_INBOX) {
+            throw new ApiHttpException(403, 'The inbox list cannot change owner.', 'forbidden');
+        }
+        if ($this->isProvisionedGroupTaskList($instance, $currentGroupSlug)) {
+            throw new ApiHttpException(403, 'The group list cannot change owner.', 'forbidden');
+        }
+    }
+
+    private function normalizePatchGroupSlug(mixed $requested): ?string
+    {
+        if ($requested !== null && ! is_string($requested)) {
+            throw new ApiHttpException(400, 'groupSlug must be a string or null.', 'invalidProperties');
+        }
+
+        $groupSlug = is_string($requested) ? trim($requested) : null;
+
+        return $groupSlug === '' ? null : $groupSlug;
+    }
+
+    private function principalUriForOwnerScope(
+        string $username,
+        CalendarInstance $instance,
+        ?string $groupSlug,
+    ): string {
+        if ($groupSlug === null) {
+            return $this->principalUri($username);
+        }
+        if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
+            throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+        }
+        $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
+        $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
+        if ($group === null) {
+            throw new ApiHttpException(404, 'Group not found.', 'not_found');
+        }
+        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
+            (string) $group->uri,
+            (string) ($group->displayname ?? $groupSlug),
+        );
+        if ((string) $instance->uri === CalendarCollectionUris::groupTaskListCalDavUri($groupSlug)) {
+            throw new ApiHttpException(409, 'Task list id already exists.', 'alreadyExists');
+        }
+
+        return $principalUri;
     }
 
     private function allocateTaskListUri(string $principalUri, ?string $requestedId, string $name): string
@@ -386,13 +467,51 @@ final class TaskListRepository
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? '')) ?: $uri;
         $isGroup = $groupSlug !== null;
-        $isSharedGroupList = $isGroup && $uri === CalendarCollectionUris::groupTaskListCalDavUri($groupSlug);
+        $isSharedGroupList = $this->isProvisionedGroupTaskList($instance, $groupSlug);
+        $isSharee = $this->shareInvites->isSharee($instance);
+        $isOwnedInbox = ! $isSharee && ! $isGroup && $uri === InboxTaskListProvisioner::URI;
+        $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
+        $mayWrite = ! $this->shareInvites->isReadOnly($instance);
+
+        $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
+            SharingPlugin::ACCESS_READ => [
+                'mayReadItems' => true,
+                'mayWriteAll' => false,
+                'mayWriteOwn' => false,
+                'mayUpdatePrivate' => false,
+                'mayRSVP' => false,
+                'mayAdmin' => false,
+                'mayDelete' => true,
+                'mayShare' => false,
+            ],
+            SharingPlugin::ACCESS_READWRITE => [
+                'mayReadItems' => true,
+                'mayWriteAll' => true,
+                'mayWriteOwn' => true,
+                'mayUpdatePrivate' => true,
+                'mayRSVP' => true,
+                'mayAdmin' => false,
+                'mayDelete' => true,
+                'mayShare' => false,
+            ],
+            default => [
+                'mayReadItems' => true,
+                'mayWriteAll' => $mayWrite,
+                'mayWriteOwn' => $mayWrite,
+                'mayUpdatePrivate' => $mayWrite,
+                'mayRSVP' => $mayWrite,
+                'mayAdmin' => false,
+                'mayDelete' => ! $isSharedGroupList && $uri !== InboxTaskListProvisioner::URI,
+                'mayShare' => $mayShare,
+            ],
+        };
 
         return [
             'id' => $isSharedGroupList ? CalendarCollectionUris::groupTaskListApiId($groupSlug) : $uri,
             'role' => match (true) {
+                $isOwnedInbox => 'inbox',
                 $isSharedGroupList => 'group',
-                $uri === InboxTaskListProvisioner::URI => 'inbox',
+                $isSharee => null,
                 $uri === CalendarCollectionUris::TASK_HOME => 'home',
                 $uri === CalendarCollectionUris::TASK_WORK => 'work',
                 default => null,
@@ -401,20 +520,13 @@ final class TaskListRepository
             'description' => is_string($instance->description) && trim($instance->description) !== '' ? trim($instance->description) : null,
             'color' => is_string($instance->calendarcolor) && trim($instance->calendarcolor) !== '' ? trim($instance->calendarcolor) : null,
             'sortOrder' => (int) ($instance->calendarorder ?? $instance->id ?? 0),
-            'isDefault' => ! $isGroup && $uri === InboxTaskListProvisioner::URI,
+            'isDefault' => $isOwnedInbox,
             'isSubscribed' => true,
             'scope' => $isGroup ? 'group' : 'personal',
             'groupSlug' => $isGroup ? $groupSlug : null,
-            'shareWith' => null,
-            'myRights' => [
-                'mayReadItems' => true,
-                'mayWriteAll' => true,
-                'mayWriteOwn' => true,
-                'mayUpdatePrivate' => true,
-                'mayRSVP' => true,
-                'mayAdmin' => false,
-                'mayDelete' => ! $isSharedGroupList && $uri !== InboxTaskListProvisioner::URI,
-            ],
+            'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
+            'isSharee' => $isSharee,
+            'myRights' => $rights,
         ];
     }
 

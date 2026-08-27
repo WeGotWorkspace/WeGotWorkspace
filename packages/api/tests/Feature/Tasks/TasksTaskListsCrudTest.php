@@ -94,6 +94,32 @@ final class TasksTaskListsCrudTest extends WgwDatabaseTestCase
             ->assertJsonPath('groupSlug', 'team');
     }
 
+    public function test_owner_can_move_personal_list_to_a_group(): void
+    {
+        $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $bob = Principal::forUsername('bob');
+        $this->assertNotNull($bob);
+        $this->addPrincipalToGroup($team, $bob);
+
+        $created = $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/tasklists', [
+                'name' => 'Roadmap',
+                'color' => '#22c55e',
+            ])
+            ->assertCreated();
+
+        $listId = (string) $created->json('id');
+
+        $this->withBearer($this->userBearerToken())
+            ->patchJson('/api/v1/tasks/tasklists/'.$listId, [
+                'groupSlug' => 'team',
+            ])
+            ->assertOk()
+            ->assertJsonPath('id', $listId)
+            ->assertJsonPath('scope', 'group')
+            ->assertJsonPath('groupSlug', 'team');
+    }
+
     public function test_calendars_list_excludes_vtodo_only_inbox(): void
     {
         $this->setAppSetting(WgwSettings::CALENDAR_ENABLED, true);

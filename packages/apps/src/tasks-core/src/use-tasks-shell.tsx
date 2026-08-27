@@ -4,12 +4,15 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
 import {
+  canWriteTaskList,
   defaultTaskListId,
   filterHiddenCompletedTasks,
+  filterTasksByHiddenLists,
   filterTasksByView,
   shouldApplyCompletedTaskFilter,
 } from "@/tasks-core/src/tasks-task-utils";
 import type { Task, TasksAPIOperations, TasksUIData } from "@/tasks-core/src/tasks-types";
+import { useTasksHiddenIds } from "@/tasks-core/src/use-tasks-hidden-ids";
 
 export type UseTasksShellArgs = {
   data: TasksUIData;
@@ -34,6 +37,7 @@ export function useTasksShell({
   const [view, setView] = useState<string>(() => initialView ?? DEFAULT_TASKS_VIEW);
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const { hiddenTaskListIds, setHiddenTaskListIds } = useTasksHiddenIds(taskLists);
 
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -83,6 +87,7 @@ export function useTasksShell({
       if (slug === "high") return L.priorityHigh;
       if (slug === "medium") return L.priorityMedium;
       if (slug === "low") return L.priorityLow;
+      if (slug === "none") return L.priorityNone;
     }
     if (view.startsWith("list:")) {
       const listId = view.slice(5);
@@ -92,7 +97,39 @@ export function useTasksShell({
   }, [L, taskLists, view]);
 
   const selectedListId = view.startsWith("list:") ? view.slice(5) : null;
-  const canCreateTask = Boolean(operations) && view !== "state:overdue";
+  const createListId = useMemo(
+    () => selectedListId ?? defaultTaskListId(taskLists),
+    [selectedListId, taskLists],
+  );
+  const createTargetList = useMemo(
+    () => taskLists.find((list) => list.id === createListId),
+    [createListId, taskLists],
+  );
+  const canCreateTask = Boolean(operations) && canWriteTaskList(createTargetList);
+
+  const ensureTaskListVisible = useCallback(
+    (listId: string) => {
+      setHiddenTaskListIds((current) => {
+        if (!current.has(listId)) return current;
+        const next = new Set(current);
+        next.delete(listId);
+        return next;
+      });
+    },
+    [setHiddenTaskListIds],
+  );
+
+  const toggleTaskListVisibility = useCallback(
+    (listId: string) => {
+      setHiddenTaskListIds((current) => {
+        const next = new Set(current);
+        if (next.has(listId)) next.delete(listId);
+        else next.add(listId);
+        return next;
+      });
+    },
+    [setHiddenTaskListIds],
+  );
 
   const selectView = useCallback(
     (nextView: string) => {
@@ -118,19 +155,18 @@ export function useTasksShell({
   const showCompletedToggle = useMemo(() => shouldApplyCompletedTaskFilter(view), [view]);
 
   const visibleTasks = useMemo(() => {
-    const byView = filterTasksByView(tasks, view);
+    const byView = filterTasksByHiddenLists(
+      filterTasksByView(tasks, view),
+      view,
+      hiddenTaskListIds,
+    );
     if (!showCompletedToggle || showCompletedTasks) return byView;
     return filterHiddenCompletedTasks(byView);
-  }, [showCompletedTasks, showCompletedToggle, tasks, view]);
+  }, [hiddenTaskListIds, showCompletedTasks, showCompletedToggle, tasks, view]);
 
   const toggleShowCompletedTasks = useCallback(() => {
     setShowCompletedTasks((current) => !current);
   }, []);
-
-  const createListId = useMemo(
-    () => selectedListId ?? defaultTaskListId(taskLists),
-    [selectedListId, taskLists],
-  );
 
   return {
     L,
@@ -146,11 +182,13 @@ export function useTasksShell({
     showCompletedTasks,
     showCompletedToggle,
     toggleShowCompletedTasks,
-    selectedListId,
     canCreateTask,
     selectView,
     operations,
     createListId,
+    hiddenTaskListIds,
+    toggleTaskListVisibility,
+    ensureTaskListVisible,
     show,
     showMutationError,
   };

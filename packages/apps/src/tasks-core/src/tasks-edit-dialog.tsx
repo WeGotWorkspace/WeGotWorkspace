@@ -17,6 +17,7 @@ type TasksEditDialogProps = {
   task: Task | null;
   taskLists: TaskList[];
   labels: TasksUILabels;
+  readOnly?: boolean;
   onClose: () => void;
   onSave: (value: TasksTaskFormValue) => void;
 };
@@ -26,6 +27,7 @@ export function TasksEditDialog({
   task,
   taskLists,
   labels,
+  readOnly = false,
   onClose,
   onSave,
 }: TasksEditDialogProps) {
@@ -49,7 +51,7 @@ export function TasksEditDialog({
           className="tasks-edit-dialog__form"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!trimmedTitle) return;
+            if (!trimmedTitle || readOnly) return;
             onSave({ ...form, title: trimmedTitle });
           }}
         >
@@ -61,13 +63,14 @@ export function TasksEditDialog({
               taskLists={taskLists}
               mode="edit"
               showDescription
+              disabled={readOnly}
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               {labels.cancel}
             </Button>
-            <Button type="submit" disabled={!trimmedTitle}>
+            <Button type="submit" disabled={!trimmedTitle || readOnly}>
               {labels.saveTaskButton}
             </Button>
           </DialogFooter>

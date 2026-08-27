@@ -1,122 +1,54 @@
-import type { ShareUIPermission } from "@/share-ui/share-access-map";
+import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import type {
   CalendarDirectoryGroup,
   CalendarInfo,
   CalendarSharePrincipal,
+  CalendarShareWith,
+} from "@/calendar-core/src/calendar-types";
+import type { JmapCalendar } from "@/lib/jmap-client";
+import {
+  displayNameForSharePrincipal,
+  filterSharePrincipals,
+  isShareGroupId,
+  mergeShareWith,
+  shareGrantEntries,
+  sharePermissionFromRights,
+  sharePrincipalsFromDirectory,
+  shareRightsAllowWrite,
+  shareRightsForPermission,
+} from "@/share-ui/collection-share";
+
+export { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
+export type {
+  CalendarSharePrincipal,
   CalendarShareRights,
   CalendarShareWith,
 } from "@/calendar-core/src/calendar-types";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
-import type { JmapCalendar } from "@/lib/jmap-client";
 
-export { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
-export type { CalendarSharePrincipal, CalendarShareRights, CalendarShareWith };
-
-const GROUP_PREFIX = "groups/";
-
-export function calendarRightsAllowWrite(rights?: CalendarShareRights | null): boolean {
-  if (!rights) return true;
-  if (typeof rights.mayWriteAll === "boolean") return rights.mayWriteAll;
-  if (typeof rights.mayWrite === "boolean") return rights.mayWrite;
-  return true;
-}
-
-export function calendarShareRightsForPermission(
-  permission: ShareUIPermission,
-): CalendarShareRights {
-  const write = permission === "edit";
-  return {
-    mayRead: true,
-    mayWrite: write,
-    mayWriteAll: write,
-    mayShare: false,
-    mayDelete: false,
-  };
-}
-
-export function calendarSharePermissionFromRights(
-  rights: CalendarShareRights | null | undefined,
-): ShareUIPermission {
-  return calendarRightsAllowWrite(rights) ? "edit" : "view";
-}
-
-export function isCalendarShareGroupId(id: string): boolean {
-  return id.startsWith(GROUP_PREFIX);
-}
-
-export function mergeCalendarShareWith(
-  current: CalendarShareWith | null | undefined,
-  patch: CalendarShareWith,
-): CalendarShareWith | null {
-  const next: CalendarShareWith = { ...(current ?? {}) };
-  for (const [id, grant] of Object.entries(patch)) {
-    if (grant === null) delete next[id];
-    else next[id] = grant;
-  }
-  return Object.keys(next).length === 0 ? null : next;
-}
-
-export function calendarShareGrantEntries(
-  shareWith: CalendarShareWith | null | undefined,
-): { id: string; rights: CalendarShareRights; isGroup: boolean }[] {
-  if (!shareWith) return [];
-  return Object.entries(shareWith)
-    .filter((entry): entry is [string, CalendarShareRights] => entry[1] != null)
-    .map(([id, rights]) => ({
-      id,
-      rights,
-      isGroup: isCalendarShareGroupId(id),
-    }))
-    .sort((left, right) => {
-      if (left.isGroup !== right.isGroup) return left.isGroup ? -1 : 1;
-      return left.id.localeCompare(right.id);
-    });
-}
-
-export function displayNameForSharePrincipal(
-  id: string,
-  known: readonly CalendarSharePrincipal[] = [],
-): string {
-  const match = known.find((row) => row.id === id);
-  if (match?.displayName.trim()) return match.displayName;
-  return isCalendarShareGroupId(id) ? id.slice(GROUP_PREFIX.length) : id;
-}
-
-export function filterCalendarSharePrincipals(
-  query: string,
-  principals: readonly CalendarSharePrincipal[],
-  options?: { excludeIds?: ReadonlySet<string> },
-): CalendarSharePrincipal[] {
-  const needle = query.trim().toLowerCase();
-  if (needle.length < 2) return [];
-  return principals.filter((principal) => {
-    if (options?.excludeIds?.has(principal.id)) return false;
-    return (
-      principal.displayName.toLowerCase().includes(needle) ||
-      principal.id.toLowerCase().includes(needle)
-    );
-  });
-}
+export const calendarRightsAllowWrite = shareRightsAllowWrite;
+export const calendarShareRightsForPermission = shareRightsForPermission;
+export const calendarSharePermissionFromRights = sharePermissionFromRights;
+export const isCalendarShareGroupId = isShareGroupId;
+export const mergeCalendarShareWith = mergeShareWith;
+export const calendarShareGrantEntries = shareGrantEntries;
+export { displayNameForSharePrincipal };
+export const filterCalendarSharePrincipals = filterSharePrincipals;
 
 export function calendarSharePrincipalsFromDirectory(args: {
   invitees?: readonly CalendarInvitee[];
   groups?: readonly CalendarDirectoryGroup[];
   excludeUsername?: string | null;
 }): CalendarSharePrincipal[] {
-  const exclude = args.excludeUsername?.trim();
-  const users: CalendarSharePrincipal[] = (args.invitees ?? [])
-    .filter((invitee) => invitee.username && invitee.username !== exclude)
-    .map((invitee) => ({
-      id: invitee.username,
-      displayName: invitee.name.trim() || invitee.username,
-      principalType: "user",
-    }));
-  const groups: CalendarSharePrincipal[] = (args.groups ?? []).map((group) => ({
-    id: `${GROUP_PREFIX}${group.slug}`,
-    displayName: group.displayName,
-    principalType: "group",
-  }));
-  return [...groups, ...users];
+  return sharePrincipalsFromDirectory({
+    users: (args.invitees ?? [])
+      .filter((invitee) => invitee.username)
+      .map((invitee) => ({
+        id: invitee.username,
+        displayName: invitee.name.trim() || invitee.username,
+      })),
+    groups: args.groups,
+    excludeId: args.excludeUsername,
+  });
 }
 
 function shareWithFromJmap(

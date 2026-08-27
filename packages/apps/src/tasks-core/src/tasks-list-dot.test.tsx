@@ -8,18 +8,16 @@ describe("TaskListDot", () => {
     cleanup();
   });
 
-  it("renders inbox icon for inbox list id", () => {
-    const { container } = render(<TaskListDot list={INBOX_TASK_LIST_ID} />);
-    expect(container.querySelector(".tasks-list-inbox-icon")).toBeTruthy();
-    expect(container.querySelector(".tasks-list-dot")).toBeNull();
+  it("renders a color dot for the owned inbox", () => {
+    const { container } = render(<TaskListDot list={{ id: INBOX_TASK_LIST_ID }} />);
+    expect(container.querySelector(".tasks-list-dot")).toBeTruthy();
+    expect(container.querySelector(".tasks-list-inbox-icon")).toBeNull();
   });
 
-  it("renders inbox icon for inbox list object", () => {
-    const { container } = render(
-      <TaskListDot list={{ id: "tl-inbox-uuid", role: "inbox", name: "Inbox" }} />,
-    );
-    expect(container.querySelector(".tasks-list-inbox-icon")).toBeTruthy();
-    expect(container.querySelector(".tasks-list-dot")).toBeNull();
+  it("renders a color dot for a renamed inbox list", () => {
+    const { container } = render(<TaskListDot list={{ id: "tl-inbox-uuid" }} />);
+    expect(container.querySelector(".tasks-list-dot")).toBeTruthy();
+    expect(container.querySelector(".tasks-list-inbox-icon")).toBeNull();
   });
 
   it("renders colored dot for non-inbox lists", () => {
@@ -27,6 +25,5 @@ describe("TaskListDot", () => {
     const dot = container.querySelector(".tasks-list-dot") as HTMLSpanElement | null;
     expect(dot).toBeTruthy();
     expect(dot?.style.backgroundColor).toBe("rgb(255, 0, 0)");
-    expect(container.querySelector(".tasks-list-inbox-icon")).toBeNull();
   });
 });

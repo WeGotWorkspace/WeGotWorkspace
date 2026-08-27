@@ -49,10 +49,11 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
     ...actual,
     patchTask: vi.fn(),
     getTask: vi.fn(),
+    patchTaskList: vi.fn(),
   };
 });
 
-import { patchTask } from "@/lib/api/wgw/tasks";
+import { patchTask, patchTaskList } from "@/lib/api/wgw/tasks";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 describe("createHybridTasksOperations", () => {
@@ -102,5 +103,45 @@ describe("createHybridTasksOperations", () => {
     const outbox = await listOutboxMutations(username);
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.op).toBe("update");
+  });
+
+  it("persists shareWith on cached lists and refuses offline share grants", async () => {
+    const shareWith = {
+      bob: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
+    };
+    vi.mocked(patchTaskList).mockResolvedValue({
+      ...seededBootstrap.data.taskLists[0]!,
+      shareWith,
+    });
+
+    const operations = createHybridTasksOperations(username);
+    const updated = await operations.patchTaskList!("inbox", { shareWith });
+    expect(updated.shareWith).toEqual(shareWith);
+    const cached = await readTasksBootstrapFromCache(username);
+    expect(cached?.data.taskLists.find((list) => list.id === "inbox")?.shareWith).toEqual(
+      shareWith,
+    );
+
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await expect(
+      operations.patchTaskList!("inbox", {
+        shareWith: {
+          carol: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: false },
+        },
+      }),
+    ).rejects.toThrow("Sharing changes require a connection.");
+    await expect(listOutboxMutations(username)).resolves.toEqual([]);
+  });
+
+  it("refuses offline owner transfers", async () => {
+    const operations = createHybridTasksOperations(username);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await expect(operations.patchTaskList!("work", { groupSlug: "team" })).rejects.toThrow(
+      "Owner changes require a connection.",
+    );
+    await expect(
+      operations.patchTaskList!("work", { name: "Desk", groupSlug: null }),
+    ).rejects.toThrow("Owner changes require a connection.");
+    await expect(listOutboxMutations(username)).resolves.toEqual([]);
   });
 });

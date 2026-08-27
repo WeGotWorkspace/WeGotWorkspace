@@ -11,7 +11,7 @@
   },
   "TaskListRights": {
     "type": "object",
-    "required": ["mayReadItems", "mayWriteAll", "mayWriteOwn", "mayUpdatePrivate", "mayRSVP", "mayAdmin", "mayDelete"],
+    "required": ["mayReadItems", "mayWriteAll", "mayWriteOwn", "mayUpdatePrivate", "mayRSVP", "mayAdmin", "mayDelete", "mayShare"],
     "properties": {
       "mayReadItems": { "type": "boolean" },
       "mayWriteAll": { "type": "boolean" },
@@ -19,7 +19,8 @@
       "mayUpdatePrivate": { "type": "boolean" },
       "mayRSVP": { "type": "boolean" },
       "mayAdmin": { "type": "boolean" },
-      "mayDelete": { "type": "boolean" }
+      "mayDelete": { "type": "boolean" },
+      "mayShare": { "type": "boolean", "description": "May modify shareWith. True for personal list owners and group-collection members." }
     },
     "additionalProperties": false
   },
@@ -44,7 +45,21 @@
         "type": ["string", "null"],
         "description": "Group slug when scope is group; null for personal task lists."
       },
-      "shareWith": { "type": ["object", "null"] },
+      "shareWith": {
+        "description": "Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": { "$ref": "#/components/schemas/JmapId" },
+            "additionalProperties": { "$ref": "#/components/schemas/CalendarRights" }
+          },
+          { "type": "null" }
+        ]
+      },
+      "isSharee": {
+        "type": "boolean",
+        "description": "True when this instance is an inbound ACL share (access 2 or 3), not the owner or group-collection member."
+      },
       "myRights": { "$ref": "#/components/schemas/TaskListRights" }
     },
     "additionalProperties": false

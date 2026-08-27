@@ -17,7 +17,7 @@ export const COMPOSER_PRIORITY_VALUES = [
 
 export type TaskPriorityValue = (typeof COMPOSER_PRIORITY_VALUES)[number];
 
-export const PRIORITY_FILTER_SLUGS = ["high", "medium", "low"] as const;
+export const PRIORITY_FILTER_SLUGS = ["high", "medium", "low", "none"] as const;
 export type PriorityFilterSlug = (typeof PRIORITY_FILTER_SLUGS)[number];
 
 export const TASK_PRIORITY_FLAG_COLORS = {
@@ -152,6 +152,7 @@ export function priorityIcon(priority: number | string | null | undefined): Reac
 }
 
 export function priorityFilterIcon(slug: PriorityFilterSlug): ReactNode {
+  if (slug === "none") return priorityIcon(TASK_PRIORITY_NONE);
   return priorityIcon(priorityFromFilterSlug(slug));
 }
 
@@ -163,5 +164,7 @@ export function priorityFilterLabel(slug: PriorityFilterSlug, L: TasksUILabels):
       return L.priorityMedium;
     case "low":
       return L.priorityLow;
+    case "none":
+      return L.priorityNone;
   }
 }

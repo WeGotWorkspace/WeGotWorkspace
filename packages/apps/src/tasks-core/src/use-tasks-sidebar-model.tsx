@@ -7,22 +7,29 @@ import {
   CircleDot,
   CircleX,
   Clock,
-  Inbox as InboxIcon,
+  LayoutList,
 } from "lucide-react";
+import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
-import { INBOX_TASK_LIST_ID, isInboxTaskList } from "@/tasks-core/src/tasks-task-utils";
+import {
+  canWriteTaskList,
+  defaultTaskListId,
+  isInboxTaskList,
+} from "@/tasks-core/src/tasks-task-utils";
 import {
   PRIORITY_FILTER_SLUGS,
   priorityFilterIcon,
   priorityFilterLabel,
 } from "@/tasks-core/src/tasks-priority";
 
-type TaskListSidebarEntry = {
+export type TaskListSidebarEntry = {
   id: string;
   name: string;
   role?: string | null;
   color?: string | null;
+  isSharee?: boolean;
+  isDefault?: boolean;
+  myRights?: { mayWriteAll?: boolean; mayShare?: boolean } | null;
 };
 
 type UseTasksSidebarModelArgs = {
@@ -30,11 +37,6 @@ type UseTasksSidebarModelArgs = {
   view: string;
   taskLists: TaskListSidebarEntry[];
   selectView: (view: string) => void;
-  sidebarDropZoneProps: (
-    target: string,
-    onDrop: (ids: string[]) => void,
-  ) => Record<string, unknown>;
-  moveToList: (ids: string[], listId: string) => void;
 };
 
 export function useTasksSidebarModel({
@@ -42,27 +44,21 @@ export function useTasksSidebarModel({
   view,
   taskLists,
   selectView,
-  sidebarDropZoneProps,
-  moveToList,
 }: UseTasksSidebarModelArgs) {
-  const inboxListId = useMemo(() => {
-    const inboxList = taskLists.find(isInboxTaskList);
-    return inboxList?.id ?? INBOX_TASK_LIST_ID;
-  }, [taskLists]);
+  const ownInboxId = useMemo(() => defaultTaskListId(taskLists), [taskLists]);
 
-  const projectTaskLists = useMemo(
-    () => taskLists.filter((list) => !isInboxTaskList(list)),
+  const { owned: ownedLists, shared: sharedLists } = useMemo(
+    () => partitionOwnedAndShared(taskLists),
     [taskLists],
   );
 
   const topSidebarItems = useMemo(
     () => [
       {
-        label: labels.sidebarInbox,
-        icon: <InboxIcon className="size-3.5" />,
-        selected: view === `list:${inboxListId}`,
-        onClick: () => selectView(`list:${inboxListId}`),
-        ...sidebarDropZoneProps(`list:${inboxListId}`, (ids) => moveToList(ids, inboxListId)),
+        label: labels.stateAll,
+        icon: <LayoutList className="size-3.5" />,
+        selected: view === "state:all",
+        onClick: () => selectView("state:all"),
       },
       {
         label: labels.stateToday,
@@ -83,7 +79,7 @@ export function useTasksSidebarModel({
         onClick: () => selectView("state:overdue"),
       },
     ],
-    [inboxListId, labels, moveToList, selectView, sidebarDropZoneProps, view],
+    [labels, selectView, view],
   );
 
   const statusSidebarItems = useMemo(
@@ -127,22 +123,20 @@ export function useTasksSidebarModel({
     [labels, selectView, view],
   );
 
-  const projectSidebarItems = useMemo(
-    () =>
-      projectTaskLists.map((list) => ({
-        label: list.name,
-        icon: <TaskListDot list={list} />,
-        selected: view === `list:${list.id}`,
-        onClick: () => selectView(`list:${list.id}`),
-        ...sidebarDropZoneProps(`list:${list.id}`, (ids) => moveToList(ids, list.id)),
-      })),
-    [moveToList, projectTaskLists, selectView, sidebarDropZoneProps, view],
-  );
-
   return {
+    ownInboxId,
+    ownedLists,
+    sharedLists,
     topSidebarItems,
     statusSidebarItems,
     prioritySidebarItems,
-    projectSidebarItems,
   };
+}
+
+export function isViewOnlyTaskList(list: TaskListSidebarEntry): boolean {
+  return !canWriteTaskList(list);
+}
+
+export function isOwnedInboxSidebarList(list: TaskListSidebarEntry): boolean {
+  return isInboxTaskList(list);
 }

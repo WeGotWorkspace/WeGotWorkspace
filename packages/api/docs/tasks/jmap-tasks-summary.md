@@ -44,6 +44,7 @@ Planned incremental sync ([#158](https://github.com/WeGotWorkspace/wegotworkspac
 - Legacy mixed `default` calendar: migration `2026_07_07_000140_wgw_migrate_default_mixed_calendar_vtodos` moves VTODOs to `tasks-inbox` and strips VTODO from `default`
 - Pre-#482 instances with VTODO uri `inbox` are renamed to `tasks-inbox` by `InboxTaskListProvisioner` / migration `2026_08_19_000240_wgw_rename_tasks_inbox_uri`
 - Task list CRUD: `POST/PATCH/DELETE /tasks/tasklists` (VTODO-only collections)
+- Task list sharing: `PATCH /tasks/tasklists/{id}` `shareWith` uses the same collection-ACL extract as Calendar (`CalendarShareInvites` / `calendar_share_dismissals`). Inbox can be shared; a shared Inbox is never the recipient’s default.
 - Calendar create via REST remains VEVENT-only; mixed collections are not supported going forward
 
 Conversion detail: [ics-jmap-task-conversion-matrix.md](./ics-jmap-task-conversion-matrix.md) (filled in with #134).
