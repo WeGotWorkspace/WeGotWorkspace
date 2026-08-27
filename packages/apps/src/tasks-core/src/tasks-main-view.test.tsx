@@ -109,13 +109,18 @@ describe("TasksMainView composer", () => {
     });
   });
 
+  it("shows description without focusing the title", () => {
+    renderComposer();
+
+    expect(screen.getByLabelText(defaultTasksLabels.descriptionLabel)).toBeTruthy();
+  });
+
   it("keeps description editable after title blur", () => {
     renderComposer();
 
     const title = screen.getByLabelText(defaultTasksLabels.addTaskName);
-    fireEvent.focus(title);
-
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
+    fireEvent.focus(title);
     fireEvent.blur(title);
     fireEvent.change(description, { target: { value: "Follow up tomorrow" } });
 
@@ -191,7 +196,6 @@ describe("TasksMainView composer", () => {
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
       target: { value: "New task" },
     });
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.descriptionLabel), {
       target: { value: "Details here" },
@@ -215,7 +219,6 @@ describe("TasksMainView composer", () => {
     fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
       target: { value: "New task" },
     });
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Details here" } });
@@ -233,14 +236,14 @@ describe("TasksMainView composer", () => {
     expect((screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).value).toBe(
       "",
     );
-    expect(screen.queryByLabelText(defaultTasksLabels.descriptionLabel)).toBeNull();
+    expect(
+      (screen.getByLabelText(defaultTasksLabels.descriptionLabel) as HTMLTextAreaElement).value,
+    ).toBe("");
   });
 
   it("does not submit when pressing Enter in description with empty title", () => {
     const onCreateTask = vi.fn();
     renderComposer(onCreateTask);
-
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Details only" } });
@@ -252,8 +255,6 @@ describe("TasksMainView composer", () => {
 
   it("allows newline when pressing Shift+Enter in description", () => {
     renderComposer();
-
-    fireEvent.focus(screen.getByLabelText(defaultTasksLabels.addTaskName));
 
     const description = screen.getByLabelText(defaultTasksLabels.descriptionLabel);
     fireEvent.change(description, { target: { value: "Line one" } });

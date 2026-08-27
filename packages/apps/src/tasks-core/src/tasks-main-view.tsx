@@ -254,7 +254,6 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
       ...emptyTaskForm(defaultListId),
       due: composerDefaultDueForView(view),
     }));
-    const [composerExpanded, setComposerExpanded] = useState(false);
     const viewDefaultDue = composerDefaultDueForView(view);
     const displayLists = allTaskLists ?? taskLists;
 
@@ -274,7 +273,6 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
         ...emptyTaskForm(defaultListId),
         due: composerDefaultDueForView(view),
       });
-      setComposerExpanded(false);
     }, [defaultListId, view]);
 
     useEffect(() => {
@@ -311,8 +309,6 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
       draft.title.trim().length > 0 ||
       draft.description.trim().length > 0 ||
       (draft.due !== null && draft.due !== viewDefaultDue);
-
-    const showDescription = composerExpanded || draft.description.trim().length > 0;
 
     return (
       <div className="tasks-main-view">
@@ -354,9 +350,7 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                   taskLists={taskLists}
                   mode="create"
                   disabled={!canCreate}
-                  showDescription={showDescription}
                   titleRef={titleRef}
-                  onTitleFocus={() => setComposerExpanded(true)}
                   onDescriptionKeyDown={(event) => {
                     if (event.key !== "Enter" || event.shiftKey) return;
                     event.preventDefault();
