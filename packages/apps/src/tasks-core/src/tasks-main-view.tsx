@@ -36,6 +36,7 @@ import {
 } from "@/tasks-core/src/tasks-task-utils";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
 import { isTaskPriorityNone, priorityIcon, priorityLabel } from "@/tasks-core/src/tasks-priority";
+import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";
 import {
   emptyTaskForm,
   TasksTaskFormFields,
@@ -190,6 +191,7 @@ function TaskRow({
               {priorityIcon(task.priority)}
             </span>
           ) : null}
+          <TasksRemindIndicator labels={L} alerts={task.alerts} />
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import {
   alertsToWire,
   alertsAfterOffsetChange,
   defaultEventAlert,
+  formatAlertOffsetQuantity,
   formatUnmatchedAlertOffset,
   freeBusyStatusFromWire,
   matchAlertOffsetPreset,
@@ -45,6 +46,14 @@ describe("alert offset presets", () => {
     expect(formatUnmatchedAlertOffset("-PT2H")).toBe("2 hours before");
     expect(formatUnmatchedAlertOffset("-P3D")).toBe("3 days before");
     expect(formatUnmatchedAlertOffset("not-a-duration")).toBe("not-a-duration");
+  });
+
+  it("formats compact duration quantities for reminder tooltips", () => {
+    expect(formatAlertOffsetQuantity("-PT5M", "mins")).toBe("5 mins");
+    expect(formatAlertOffsetQuantity("-PT1M", "mins")).toBe("1 min");
+    expect(formatAlertOffsetQuantity("-PT1H", "mins")).toBe("1 hour");
+    expect(formatAlertOffsetQuantity("-P1D", "mins")).toBe("1 day");
+    expect(formatAlertOffsetQuantity("PT0S", "mins")).toBeNull();
   });
 });
 
@@ -195,6 +204,28 @@ describe("alertsAfterOffsetChange", () => {
     expect(alertsAfterOffsetChange({ alerts: existing, rowId: "alert1", value: "1h" })).toEqual([
       { id: "alert1", action: "display", offset: "-PT1H" },
     ]);
+  });
+
+  it("applies defaultRelatedTo end on new rows without changing calendar start defaults", () => {
+    expect(alertsAfterOffsetChange({ alerts: [], rowId: null, value: "15m" })).toEqual([
+      { id: "alert1", action: "display", offset: "-PT15M" },
+    ]);
+    expect(
+      alertsAfterOffsetChange({
+        alerts: [],
+        rowId: null,
+        value: "15m",
+        defaultRelatedTo: "end",
+      }),
+    ).toEqual([{ id: "alert1", action: "display", offset: "-PT15M", relatedTo: "end" }]);
+    expect(
+      alertsAfterOffsetChange({
+        alerts: [{ id: "alert1", action: "display", offset: "-PT15M", relatedTo: "start" }],
+        rowId: "alert1",
+        value: "1h",
+        defaultRelatedTo: "end",
+      }),
+    ).toEqual([{ id: "alert1", action: "display", offset: "-PT1H", relatedTo: "start" }]);
   });
 
   it("clears an unmatched leftover offset when choosing None", () => {

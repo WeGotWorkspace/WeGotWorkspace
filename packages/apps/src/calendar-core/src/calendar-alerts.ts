@@ -70,37 +70,51 @@ export function presetToOffset(preset: CalendarAlertOffsetPreset): string {
   return found?.offset ?? "PT0S";
 }
 
-/** Display-only label for a leftover offset that is not a prefab. */
-export function formatUnmatchedAlertOffset(offset: string): string {
+export type AlertOffsetMinuteStyle = "minutes" | "mins";
+
+function minuteUnit(count: number, style: AlertOffsetMinuteStyle): string {
+  if (style === "mins") return count === 1 ? "min" : "mins";
+  return count === 1 ? "minute" : "minutes";
+}
+
+/** Duration quantity only (`5 mins`, `1 day`) — no before/after. */
+export function formatAlertOffsetQuantity(
+  offset: string,
+  minuteStyle: AlertOffsetMinuteStyle = "minutes",
+): string | null {
   try {
-    const negated = offset.startsWith("-");
     const duration = Temporal.Duration.from(offset.replace(/^-/, ""));
-    let quantity = "";
     if (
       duration.days > 0 &&
       duration.hours === 0 &&
       duration.minutes === 0 &&
       duration.seconds === 0
     ) {
-      quantity = `${duration.days} ${duration.days === 1 ? "day" : "days"}`;
-    } else if (
+      return `${duration.days} ${duration.days === 1 ? "day" : "days"}`;
+    }
+    if (
       duration.hours > 0 &&
       duration.days === 0 &&
       duration.minutes === 0 &&
       duration.seconds === 0
     ) {
-      quantity = `${duration.hours} ${duration.hours === 1 ? "hour" : "hours"}`;
-    } else {
-      const totalMinutes = Math.round(duration.total({ unit: "minutes" }));
-      if (totalMinutes > 0 && duration.days === 0) {
-        quantity = `${totalMinutes} ${totalMinutes === 1 ? "minute" : "minutes"}`;
-      }
+      return `${duration.hours} ${duration.hours === 1 ? "hour" : "hours"}`;
     }
-    if (!quantity) return offset;
-    return negated ? `${quantity} before` : `${quantity} after`;
+    const totalMinutes = Math.round(duration.total({ unit: "minutes" }));
+    if (totalMinutes > 0 && duration.days === 0) {
+      return `${totalMinutes} ${minuteUnit(totalMinutes, minuteStyle)}`;
+    }
+    return null;
   } catch {
-    return offset;
+    return null;
   }
+}
+
+/** Display-only label for a leftover offset that is not a prefab. */
+export function formatUnmatchedAlertOffset(offset: string): string {
+  const quantity = formatAlertOffsetQuantity(offset);
+  if (!quantity) return offset;
+  return offset.startsWith("-") ? `${quantity} before` : `${quantity} after`;
 }
 
 export function defaultEventAlert(
@@ -129,17 +143,35 @@ export function alertsAfterOffsetChange(args: {
   alerts: CalendarEventAlertFormValue[];
   rowId: string | null;
   value: CalendarAlertOffsetSelectValue;
+  /** Tasks default to due/end; calendar omits this (event start). */
+  defaultRelatedTo?: "start" | "end";
 }): CalendarEventAlertFormValue[] {
   if (args.value === "none") {
     if (!args.rowId) return args.alerts;
     return args.alerts.filter((row) => row.id !== args.rowId);
   }
   const offset = presetToOffset(args.value);
+  const relatedTo = args.defaultRelatedTo === "end" ? ("end" as const) : undefined;
   if (!args.rowId) {
-    return [...args.alerts, { id: nextAlertId(args.alerts), action: "display", offset }];
+    return [
+      ...args.alerts,
+      {
+        id: nextAlertId(args.alerts),
+        action: "display",
+        offset,
+        ...(relatedTo ? { relatedTo } : {}),
+      },
+    ];
   }
   return args.alerts.map((row) =>
-    row.id === args.rowId ? { ...row, offset, when: undefined } : row,
+    row.id === args.rowId
+      ? {
+          ...row,
+          offset,
+          when: undefined,
+          ...(row.relatedTo || !relatedTo ? {} : { relatedTo }),
+        }
+      : row,
   );
 }
 

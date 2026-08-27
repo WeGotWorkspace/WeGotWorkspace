@@ -10,6 +10,9 @@ import {
   isInboxTaskList,
   isProtectedTaskList,
   mergeCreatedTask,
+  offsetReminderAlert,
+  taskAlertsEqual,
+  taskAlertsFromList,
   taskListDotColor,
 } from "./tasks-task-utils";
 import { defaultTasksLabels } from "./tasks-labels";
@@ -225,6 +228,13 @@ describe("tasks-task-utils", () => {
     expect(formatComposerDueDateLabel(new Date(2026, 6, 7), labels, now)).toBe("Yesterday");
     expect(formatComposerDueDateLabel(new Date(2026, 6, 9), labels, now)).toBe("Tomorrow");
     expect(formatComposerDueDateLabel(new Date(2026, 6, 15), labels, now)).toBe("Jul 15, 2026");
+  });
+
+  it("treats empty and missing alerts as equal and distinguishes maps", () => {
+    const thirty = taskAlertsFromList([offsetReminderAlert("-PT30M")]);
+    expect(taskAlertsEqual(undefined, null)).toBe(true);
+    expect(taskAlertsEqual(thirty, thirty)).toBe(true);
+    expect(taskAlertsEqual(thirty, taskAlertsFromList([offsetReminderAlert("-PT1H")]))).toBe(false);
   });
 
   it("returns composer default due dates for time-filter views", () => {

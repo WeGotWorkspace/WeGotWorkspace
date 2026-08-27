@@ -1493,7 +1493,10 @@
             }
           },
           "alerts": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
             "additionalProperties": {
               "$ref": "#/components/schemas/TaskAlert"
             }

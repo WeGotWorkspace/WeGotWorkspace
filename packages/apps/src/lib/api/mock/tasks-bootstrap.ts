@@ -166,6 +166,31 @@ const mockTasks: Task[] = [
   },
   {
     "@type": "Task",
+    id: "task-two-reminders",
+    taskListId: "work",
+    uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440005",
+    title: "Prep launch notes",
+    description: null,
+    due: new Date(Date.now() + 259_200_000).toISOString().slice(0, 19),
+    workflowStatus: "needs-action",
+    isDraft: false,
+    sortOrder: 4,
+    categories: ["work"],
+    alerts: {
+      alert1: {
+        "@type": "Alert",
+        trigger: { "@type": "OffsetTrigger", offset: "-PT30M", relativeTo: "end" },
+        action: "display",
+      },
+      alert2: {
+        "@type": "Alert",
+        trigger: { "@type": "OffsetTrigger", offset: "-PT1H", relativeTo: "end" },
+        action: "display",
+      },
+    },
+  },
+  {
+    "@type": "Task",
     id: "task-overdue",
     taskListId: "default",
     uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440003",

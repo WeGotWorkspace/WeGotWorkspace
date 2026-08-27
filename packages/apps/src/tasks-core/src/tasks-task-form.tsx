@@ -15,6 +15,7 @@ import {
   type TaskPriorityValue,
 } from "@/tasks-core/src/tasks-priority";
 import { TasksComposerDuePicker } from "@/tasks-core/src/tasks-composer-due-picker";
+import { TasksRemindPicker } from "@/tasks-core/src/tasks-remind-picker";
 
 export type TasksTaskFormValue = {
   title: string;
@@ -23,6 +24,7 @@ export type TasksTaskFormValue = {
   workflowStatus: TaskWorkflowStatus;
   priority: TaskPriorityValue;
   due: string | null;
+  alerts?: Task["alerts"];
 };
 
 /** @deprecated Use TasksTaskFormValue */
@@ -44,6 +46,7 @@ export function emptyTaskForm(listId: string): TasksTaskFormValue {
     workflowStatus: DEFAULT_WORKFLOW_STATUS,
     priority: TASK_PRIORITY_NONE,
     due: null,
+    alerts: undefined,
   };
 }
 
@@ -55,6 +58,7 @@ export function taskToFormValue(task: Task, fallbackListId: string): TasksTaskFo
     workflowStatus: (task.workflowStatus ?? DEFAULT_WORKFLOW_STATUS) as TaskWorkflowStatus,
     priority: (normalizeTaskPriority(task.priority) ?? TASK_PRIORITY_NONE) as TaskPriorityValue,
     due: task.due ?? null,
+    alerts: task.alerts,
   };
 }
 
@@ -135,6 +139,13 @@ export function TasksTaskFormFields({
           onChange={(due) => setField("due", due)}
           disabled={disabled}
           triggerClassName={COMPOSER_SELECT_TRIGGER_CLASS}
+        />
+
+        <TasksRemindPicker
+          labels={L}
+          alerts={value.alerts}
+          onChange={(alerts) => setField("alerts", alerts)}
+          disabled={disabled}
         />
 
         <Select

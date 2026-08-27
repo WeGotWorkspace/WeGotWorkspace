@@ -5,7 +5,14 @@ export function taskEtag(task: Task): string | undefined {
 }
 
 export function applyTaskPatch(task: Task, patch: TaskPatch): Task {
-  return { ...task, ...patch };
+  const { alerts, ...rest } = patch;
+  const next: Task = { ...task, ...rest };
+  if (alerts === null) {
+    delete next.alerts;
+  } else if (alerts !== undefined) {
+    next.alerts = alerts;
+  }
+  return next;
 }
 
 export function coalesceTaskPatches(a: TaskPatch, b: TaskPatch): TaskPatch {

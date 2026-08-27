@@ -201,6 +201,102 @@ final class TasksCalDavInteropTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('TRIGGER;RELATED=END:-PT30M', $ics);
     }
 
+    public function test_rest_create_with_two_alerts_visible_in_caldav_storage(): void
+    {
+        $payload = [
+            'taskListIds' => [InboxTaskListProvisioner::URI => true],
+            'title' => 'Task with two reminders',
+            'due' => '2026-06-15T17:00:00',
+            'alerts' => [
+                'reminder30m' => [
+                    '@type' => 'Alert',
+                    'trigger' => [
+                        '@type' => 'OffsetTrigger',
+                        'offset' => '-PT30M',
+                        'relativeTo' => 'end',
+                    ],
+                ],
+                'reminder1d' => [
+                    '@type' => 'Alert',
+                    'trigger' => [
+                        '@type' => 'OffsetTrigger',
+                        'offset' => '-P1D',
+                        'relativeTo' => 'end',
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/items', $payload);
+
+        $response->assertCreated();
+        $alerts = $response->json('alerts');
+        $this->assertIsArray($alerts);
+        $this->assertCount(2, $alerts);
+        $offsets = array_map(
+            static fn (array $alert): string => (string) ($alert['trigger']['offset'] ?? ''),
+            $alerts,
+        );
+        $this->assertEqualsCanonicalizing(['-PT30M', '-P1D'], $offsets);
+
+        $taskId = (string) $response->json('id');
+        $stored = $this->findBobTask($taskId);
+        $this->assertNotNull($stored);
+
+        $ics = is_string($stored->calendardata) ? $stored->calendardata : (string) $stored->calendardata;
+        $this->assertSame(2, substr_count($ics, 'BEGIN:VALARM'));
+        $this->assertStringContainsString('TRIGGER;RELATED=END:-PT30M', $ics);
+        $this->assertStringContainsString('TRIGGER;RELATED=END:-P1D', $ics);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/tasks/items/'.$taskId)
+            ->assertOk()
+            ->assertJsonCount(2, 'alerts');
+    }
+
+    public function test_rest_patch_alerts_null_clears_valarm_from_caldav_storage(): void
+    {
+        $payload = [
+            'taskListIds' => [InboxTaskListProvisioner::URI => true],
+            'title' => 'Task with reminder to clear',
+            'due' => '2026-06-15T17:00:00',
+            'alerts' => [
+                'reminder' => [
+                    '@type' => 'Alert',
+                    'trigger' => [
+                        '@type' => 'OffsetTrigger',
+                        'offset' => '-PT30M',
+                        'relativeTo' => 'end',
+                    ],
+                ],
+            ],
+        ];
+
+        $create = $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/items', $payload);
+
+        $create->assertCreated()
+            ->assertJsonPath('alerts.alert1.trigger.offset', '-PT30M');
+
+        $taskId = (string) $create->json('id');
+        $url = '/api/v1/tasks/items/'.$taskId;
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->patchJson($url, [
+                'alerts' => null,
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)));
+
+        $response->assertOk()
+            ->assertJsonMissingPath('alerts');
+
+        $stored = $this->findBobTask($taskId);
+        $this->assertNotNull($stored);
+
+        $ics = is_string($stored->calendardata) ? $stored->calendardata : (string) $stored->calendardata;
+        $this->assertStringNotContainsString('BEGIN:VALARM', $ics);
+    }
+
     public function test_caldav_all_day_task_readable_via_rest_get(): void
     {
         $uid = 'urn:uuid:'.Str::uuid()->toString();
