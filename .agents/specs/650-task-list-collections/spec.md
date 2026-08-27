@@ -1,17 +1,19 @@
-Source: #650 (body-hash: ff2bc046)
+Source: #650 (body-hash: 0c3c549b)
 Goal: #559
 
 # Task lists match Calendar collection UX
 
 Technical translation of Task #650. Product context: Goal #559 (share a task list read/read-write from the browser). Delivery parent: Epic #649.
 
+**Scope change:** Later in the same delivery we added Calendar-parity visibility toggles + persist. This spec was updated to match Task #650. Sharee Remove/dismiss stays distinct from checkboxes.
+
 ## Goal
 
-A task list is the same CalDAV collection as a calendar (`calendars` + `calendarinstances`) with `VTODO` only. Extract one shared collection-ACL layer from Calendar; Calendar keeps using the extract (no behavior change). Tasks stays REST (`PATCH /tasks/tasklists/{id}` `shareWith`) — no JMAP `TaskList/set`. Inbox `role` / `isDefault` apply only to the viewer’s owned personal Inbox (`!isSharee`). Recipients see inbound ACL under Shared with me. Item write is `!isReadOnly` (same as Calendar). UX chrome (All Lists default, My lists / Shared with me, segmented Add list) lands in later chunks.
+A task list is the same CalDAV collection as a calendar (`calendars` + `calendarinstances`) with `VTODO` only. Extract one shared collection-ACL layer from Calendar; Calendar keeps using the extract (no behavior change). Tasks stays REST (`PATCH /tasks/tasklists/{id}` `shareWith`) — no JMAP `TaskList/set`. Inbox `role` / `isDefault` apply only to the viewer’s owned personal Inbox (`!isSharee`). Recipients see inbound ACL under Shared with me. Item write is `!isReadOnly` (same as Calendar). UX chrome (All Tasks default, My lists / Shared with me, segmented Add list, Calendar-parity visibility checkboxes) lands in later chunks.
 
 ## Non-goals
 
-- Visibility checkboxes / `hiddenCalendarIds` (Calendar grid show-hide). Sharee Remove (dismiss) is in scope and is a different mechanism
+- Sharee Remove (dismiss) is in scope and is a different mechanism from visibility checkboxes
 - Today / Upcoming / Overdue / Status / Priority filter changes
 - ICS subscribe/publish for task lists
 - Delete-list UI (API already exists)
@@ -40,6 +42,7 @@ A task list is the same CalDAV collection as a calendar (`calendars` + `calendar
 - Sharee PATCH: name/color only; reject `shareWith` / description. Sharee DELETE: dismiss, not destroy. Inbox: PATCH name/color/shareWith allowed; DELETE still forbidden.
 - Wire stays different: Calendar JMAP `Calendar/set`; Tasks REST. OpenAPI: `shareWith` on `TaskListPatch`, `mayShare` on `TaskListRights`; lift prohibited in `TaskListPatchRequest`.
 - Do not invent a second invites class, dismiss table, `searchTaskSharePrincipals`, second `mergeShareWith` / rights mapper, or second hybrid share-outbox.
+- Tasks list rows use the same `CollectionSidebarRow` visibility checkbox as Calendar (`onToggleVisibility` independent of `onSelect`). Hidden IDs persist like Calendar. Sharee dismiss is not checkbox state.
 
 ## Edge cases
 
@@ -50,3 +53,4 @@ A task list is the same CalDAV collection as a calendar (`calendars` + `calendar
 - Group member, not manager → listed as group scope (My lists), not inbound share.
 - Sabre auto-accepts invites — no accept/reject UI; dismiss is visibility only.
 - Offline outbox: queued task write that later `403`s after revoke/demote surfaces as failed sync (Chunk D).
+- Hidden list IDs persist in `tasks-view-prefs` (same pattern as calendar hidden IDs). All Tasks and other aggregate filters exclude tasks from hidden lists. Row click still navigates; create into a list may unhide it (Calendar create-target parity).

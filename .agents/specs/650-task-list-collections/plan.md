@@ -4,11 +4,13 @@ Derived from [spec.md](./spec.md). Chunk layout matches the Cursor plan `tasks_c
 
 ## Goal
 
-Align Tasks list UX with Calendar. Technically a task list is the same CalDAV collection (VTODO-only). One shared collection-ACL layer; Tasks stays REST (no JMAP `TaskList/set`). UX is the only intentional fork (All Lists, no checkboxes, Inbox role). Product context: Goal #559 / Epic #649 / Task #650.
+Align Tasks list UX with Calendar. Technically a task list is the same CalDAV collection (VTODO-only). One shared collection-ACL layer; Tasks stays REST (no JMAP `TaskList/set`). UX forks: All Tasks default, Inbox role; visibility checkboxes match Calendar. Product context: Goal #559 / Epic #649 / Task #650.
+
+**Scope change:** Later in the same delivery we added Calendar-parity visibility toggles + persist. This plan was updated to match. Sharee Remove/dismiss stays distinct from checkboxes.
 
 ## Non-goals
 
-- Visibility checkboxes / `hiddenCalendarIds`
+- Sharee Remove (dismiss inbound share) is in scope and is a different mechanism from visibility checkboxes
 - Today / Upcoming / Overdue / Status / Priority filter changes
 - ICS subscribe/publish for task lists
 - Delete-list UI
@@ -81,7 +83,7 @@ Align Tasks list UX with Calendar. Technically a task list is the same CalDAV co
   - Shared segmented New, partition helper (`isSharee` + optional predicates), collection row, generic share section exist
   - `calendar-share.ts` helpers live in one module; Calendar and Tasks import them — no `task-share.ts` fork
   - Principal search is the existing live helper (or a rename-neutral wrapper); Tasks does not add a second search API
-  - Row contract: `onToggleVisibility` (optional) and `onSelect` (optional) are **independent**. Calendar wires checkbox → visibility, row → create-target only (no route change). Tasks omits checkbox and wires `onSelect` → navigate. A Calendar row click must **not** start navigating or toggling visibility
+  - Row contract: `onToggleVisibility` (optional) and `onSelect` (optional) are **independent**. Calendar wires checkbox → visibility, row → create-target only (no route change). Tasks wires checkbox → visibility and `onSelect` → navigate. A Calendar row click must **not** start navigating or toggling visibility
   - Partition helper does not require `subscriptionId`; Calendar passes that predicate, Tasks does not
   - Share section copy is **injected** (title, hint, placeholder, empty, offline). Calendar keeps current “Team access” strings; no leftover “calendar” microcopy inside the generic component
   - **Calendar workspace uses them** with no visual/behavior regression (checkboxes still hide events; row still sets create-target; My/Shared unchanged; New menu items unchanged)
@@ -94,13 +96,15 @@ Align Tasks list UX with Calendar. Technically a task list is the same CalDAV co
 - **Skill:** workspace, apps-ui, storybook
 - **Inputs:** Chunk C primitives; Chunk A list payload (`mayShare`, `shareWith`, `isSharee` / `isDefault` / `role`)
 - **Done when:**
-  - Default view is All Lists (`DEFAULT_TASKS_VIEW = state:all`); `/tasks` → `/tasks/state/all`
+  - Default view is All Tasks (`DEFAULT_TASKS_VIEW = state:all`); `/tasks` → `/tasks/state/all`
   - Inbox is a My lists row (color dot, not Inbox icon); name/color editable via per-row pencil
   - No Lists `+`; Add list is under segmented New
   - My lists vs Shared with me uses `isSharee`; group member (not manager) stays in My lists
-  - Shared Inbox at the recipient is under Shared with me and is **not** `defaultTaskListId`; new tasks from All Lists / time filters still go to the recipient’s own Inbox
+  - Shared Inbox at the recipient is under Shared with me and is **not** `defaultTaskListId`; new tasks from All Tasks / time filters still go to the recipient’s own Inbox
+  - List rows use `CollectionSidebarRow` visibility checkboxes (`onToggleVisibility` independent of `onSelect`); hidden list IDs persist (`tasks-view-prefs` / same pattern as calendar hidden IDs)
+  - All Tasks and other aggregate filters (Today, Upcoming, Overdue, Status, Priority) exclude tasks from hidden lists; row click still navigates to that list; opening/selecting a list may unhide it if that matches Calendar create-target behavior
   - Edit dialog hosts share section for `mayShare` with **list** copy (not calendar strings); sharees can rename/recolor; view-only cannot create/edit/complete/delete tasks
-  - Sharee Remove dismisses the list without deleting the owner collection
+  - Sharee Remove dismisses the list without deleting the owner collection (distinct from visibility checkboxes)
   - Inbox identified by owned `role`/uri, not name
   - Hybrid: `shareWith` is online-only using the **same rule** as calendars-hybrid (refuse offline grants). A queued **task item** mutation that later gets `403` because the share was revoked or demoted to read-only must fail like other outbox errors — existing Tasks outbox 403/conflict path, no second grant-outbox
 - **Verify with:** Vitest on sidebar model (group-member-not-manager → My lists; shared Inbox ≠ default), routes, project mutations, dialog, outbox 403 after revoke; mock-tier Tasks stories; then `pnpm test:apps-done-gate`
@@ -119,8 +123,8 @@ Align Tasks list UX with Calendar. Technically a task list is the same CalDAV co
 
 - [ ] API: confirm method names → extract collection-ACL from CalendarRepository → **full** calendar-share PHPUnit + Calendar share smoke → OpenAPI + failing Tasks share tests → implement (Chunk A does not run `pnpm test:api-done-gate`)
 - [ ] API extra: share Inbox → recipient list payload has `isDefault: false` and `role` ≠ inbox; recipient own Inbox still default; group member not manager still listed as group scope
-- [ ] UI: mock-tier Tasks + Calendar stories; Vitest for rename-safe owned inbox, `state:all` default, `isSharee` partition, Calendar row-click ≠ checkbox / no navigation, New menu
-- [ ] Browser when implementing UI: All Lists landing → create task lands in **own** Inbox → rename Inbox → share Inbox to a second user → they see Shared with me → their New task still hits **their** Inbox → read cannot complete → write can → revoke hides without full reload
+- [ ] UI: mock-tier Tasks + Calendar stories; Vitest for rename-safe owned inbox, `state:all` default, `isSharee` partition, hidden-list filter on All Tasks, Calendar row-click ≠ checkbox / no navigation, New menu
+- [ ] Browser when implementing UI: All Tasks landing → create task lands in **own** Inbox → toggle a list off and confirm All Tasks hides its tasks → rename Inbox → share Inbox to a second user → they see Shared with me → their New task still hits **their** Inbox → read cannot complete → write can → revoke hides without full reload
 
 ## Doc updates
 
