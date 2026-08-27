@@ -27,6 +27,7 @@ Before announcing a Docker-capable release:
 | --- | --- |
 | **Assets uploaded** | GitHub Release includes `install`, `setup.sh`, `docker-compose.yml`, `env.example`, `manifest.json`, `wgw-docker-install-{version}.tar.gz` (see [Release assets](install-docker.md#release-assets)) |
 | **CI smoke green** | `release.yml` job **Smoke test install stack** passed — compose up, migrator, health, config persistence, bare container |
+| **Wizard e2e green** | Tag-run **install-e2e** matrix passed (ZIP/Docker × SQLite/MariaDB 11) — this is the last gate **before** GHCR/asset upload; not the same as the post-publish compose smoke |
 | **GHCR public** | Anonymous `docker pull` succeeds (see above) |
 | **Multi-arch manifest** | Image lists both `linux/amd64` and `linux/arm64` (see [Apple Silicon & ARM](#apple-silicon--arm)) |
 | **Spot-check `curl \| sh`** | On a clean directory, run the one-liner; confirm health and `/install/` load. Prefer an **arm64 Mac** host when validating Apple Silicon |
@@ -87,6 +88,27 @@ These commands ship in release `setup.sh` / `install` assets. Full operator exam
 | `setup.sh upgrade --yes` | Skip confirmation prompt (for scripts / `curl … --upgrade --yes`) |
 
 `check` never auto-applies. Upgrades always pin `WGW_IMAGE` to a semver tag in `.env` (never `:latest`).
+
+## Wizard install e2e (not in done-gate)
+
+The four-cell wizard smoke (`ZIP|Docker` × `SQLite|MariaDB 11`) lives in [`tools/e2e-install-matrix.sh`](../tools/e2e-install-matrix.sh) and `pnpm test:install-e2e`. It is **not** part of `composer done-gate` / `pnpm test:api-done-gate`. It walks `/install/` on a **fresh deploy ZIP** (Docker cells rebuild [`Dockerfile.runtime`](../docker/install/Dockerfile.runtime) from that ZIP — not the monorepo `Dockerfile`).
+
+On `main`, [`.github/workflows/install-e2e.yml`](../.github/workflows/install-e2e.yml) runs only when installer-relevant paths change. It is **not** required to merge. Release tags invoke the same reusable workflow from [`release.yml`](../.github/workflows/release.yml) **before** GHCR/asset upload.
+
+```bash
+# Reuse an existing deploy ZIP (preferred locally)
+pnpm test:install-e2e -- zip sqlite
+
+# Other cells (Docker rebuilds Dockerfile.runtime from the ZIP)
+pnpm test:install-e2e -- docker sqlite
+pnpm test:install-e2e -- zip mysql
+pnpm test:install-e2e -- docker mysql
+
+# Build a ZIP first if dist/releases/ is empty (slow: full UI + API build)
+WGW_E2E_BUILD_ZIP=1 pnpm test:install-e2e -- zip sqlite
+```
+
+`WGW_E2E_ZIP` points at a specific `wegotworkspace-deploy-*.zip`. Do not set `WGW_INSTALL_HEADLESS=1` for this smoke — that is a different product path.
 
 ## Contributor testing matrix
 

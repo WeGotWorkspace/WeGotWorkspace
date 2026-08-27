@@ -1,0 +1,159 @@
+name: Install e2e matrix (reusable)
+
+on:
+  workflow_call:
+
+# Job timeouts: build 25m, SQLite 15m, MariaDB 20m. Parallel matrix stays under ~45m wall clock.
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, imap, json, mbstring, openssl, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - uses: pnpm/action-setup@v4.4.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v4
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install backend Composer dependencies
+        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+
+      - name: Build monorepo
+        run: pnpm run build
+
+      - name: Build deploy ZIP
+        run: node tools/build-wegotworkspace-release.mjs
+
+      - name: Upload deploy ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: wegotworkspace-deploy-zip
+          path: dist/releases/wegotworkspace-deploy-*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  install-e2e:
+    needs: build-artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - channel: zip
+            db: sqlite
+            timeout_minutes: 15
+          - channel: zip
+            db: mysql
+            timeout_minutes: 20
+          - channel: docker
+            db: sqlite
+            timeout_minutes: 15
+          - channel: docker
+            db: mysql
+            timeout_minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download deploy ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: wegotworkspace-deploy-zip
+          path: dist/releases
+
+      - uses: shivammathur/setup-php@v2
+        if: matrix.channel == 'zip'
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, imap, json, mbstring, openssl, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - uses: pnpm/action-setup@v4.4.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
+      - name: Install Playwright Chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/api exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/api exec playwright install chromium
+          fi
+
+      - name: Set up Docker Buildx
+        if: matrix.channel == 'docker'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Rebuild runtime image from ZIP
+        if: matrix.channel == 'docker'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/install/Dockerfile.runtime
+          push: false
+          load: true
+          tags: wgw-install-e2e:local
+          cache-from: type=gha,scope=install-e2e-runtime
+          cache-to: type=gha,mode=max,scope=install-e2e-runtime
+
+      - name: Run install wizard matrix cell
+        env:
+          WGW_IMAGE: wgw-install-e2e:local
+          WGW_E2E_SKIP_IMAGE_BUILD: ${{ matrix.channel == 'docker' && '1' || '0' }}
+        run: bash tools/e2e-install-matrix.sh "${{ matrix.channel }}" "${{ matrix.db }}"
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-e2e-playwright-${{ matrix.channel }}-${{ matrix.db }}
+          path: packages/api/test-results
+          if-no-files-found: ignore
+          retention-days: 3

@@ -32,6 +32,7 @@
     "test:apps-done-gate": "pnpm --filter @wgw/apps run test:done-gate",
     "test:api-e2e": "tools/with-root-env.sh -- pnpm --filter @wgw/api test:e2e",
     "test:api-e2e:docker": "tools/with-root-env.sh -- bash tools/test-api-e2e-docker.sh",
+    "test:install-e2e": "bash tools/e2e-install-matrix.sh",
     "test:apps-e2e": "tools/with-root-env.sh -- pnpm --filter @wgw/apps test:e2e",
     "docker:up": "docker compose -f compose.dev.yml up -d --build",
     "docker:down": "docker compose -f compose.dev.yml down",

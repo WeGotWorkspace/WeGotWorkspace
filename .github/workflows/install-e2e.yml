@@ -1,0 +1,30 @@
+name: Install e2e
+
+# Path-filtered push to main. Not required to merge — signal only.
+# Tag/publish gate lives in release.yml (same reusable workflow, unfiltered, before GHCR).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker/install/**"
+      - "packages/api/app/Services/Installer/**"
+      - "packages/api/app/Http/Controllers/Api/V1/Installer/**"
+      - "packages/api/app/Http/Requests/Api/V1/Installer*"
+      - "packages/api/e2e/install*.spec.ts"
+      - "packages/api/playwright.config.mjs"
+      - "packages/apps/src/install-core/**"
+      - "packages/apps/src/login-core/**"
+      - "tools/build-wegotworkspace-release.mjs"
+      - "tools/e2e-install-matrix.sh"
+      - "package.json"
+      - ".github/workflows/install-e2e.yml"
+      - ".github/workflows/install-e2e-reusable.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  install-e2e:
+    uses: ./.github/workflows/install-e2e-reusable.yml

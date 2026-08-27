@@ -10,7 +10,14 @@ on:
   workflow_dispatch:
 
 jobs:
+  install-e2e:
+    uses: ./.github/workflows/install-e2e-reusable.yml
+    permissions:
+      contents: read
+      actions: write
+
   release:
+    needs: [install-e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: write

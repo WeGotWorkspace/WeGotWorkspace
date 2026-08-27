@@ -13,6 +13,8 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL,
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   webServer: process.env.WGW_API_E2E_NO_SERVER
     ? undefined

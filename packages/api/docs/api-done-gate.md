@@ -90,6 +90,7 @@ pnpm --filter @wgw/api run openapi:check-drift  # fail if built JSON still stale
 
 - **WebDAV / UI** (`routes/web.php`, Sabre, static shells) — separate smoke/e2e paths.
 - **Playwright API e2e** — `pnpm test:api-e2e:docker` locally after the gate (not run in CI).
+- **Install wizard matrix** — `pnpm test:install-e2e -- zip sqlite` (or `docker` / `mysql`). Not in this gate. CI: path-filtered on `main` ([`.github/workflows/install-e2e.yml`](../../../.github/workflows/install-e2e.yml)); unfiltered on release tags before publish. Maintainer notes: [install-docker-ops.md](../../../docs/install-docker-ops.md#wizard-install-e2e-not-in-done-gate).
 - **OpenAPI TypeScript drift** — `pnpm check:api-types` in CI.
 
 ## Definition of done (whole REST API)
