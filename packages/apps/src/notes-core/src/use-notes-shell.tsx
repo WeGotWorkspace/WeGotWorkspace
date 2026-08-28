@@ -12,7 +12,6 @@ import {
   normalizeTag,
   notesCanCreateInView,
   noteShowsTags,
-  sharedNotebookLabel,
 } from "./notes-note-utils";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
 
@@ -133,6 +132,10 @@ export function useNotesShell({
   }, [initialView]);
 
   const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
+  const notebookCollections = useMemo(
+    () => data.notebookCollections ?? [],
+    [data.notebookCollections],
+  );
   const tags = useMemo(
     () => [
       ...new Set(
@@ -165,19 +168,14 @@ export function useNotesShell({
     if (view === "all") return L.sidebarAllItems;
     if (view === "starred") return L.sidebarStarred;
     if (view === "archive") return L.sidebarArchive;
-    if (view === "shared-with-me") return L.sidebarSharedWithMe;
-    if (view.startsWith("shared-nb:")) {
-      const path = view.slice("shared-nb:".length);
-      const match = sharedNotebooks.find(
-        (entry) => entry.path === path || entry.path === `/${path.replace(/^\//, "")}`,
-      );
-      if (match) return sharedNotebookLabel(match);
-      return path.split("/").pop() ?? L.sectionSharedNotebooks;
+    if (view.startsWith("nb:")) {
+      const id = view.slice(3);
+      const match = notebookCollections.find((item) => item.id === id || item.name === id);
+      return match?.name ?? id;
     }
-    if (view.startsWith("nb:")) return view.slice(3);
     if (view.startsWith("tag:")) return L.tagViewTitle(view.slice(4));
     return L.fallbackViewTitle;
-  }, [L, sharedNotebooks, view]);
+  }, [L, notebookCollections, view]);
 
   const canCreateNote = notesCanCreateInView(view);
   const selectedNotebook = view.startsWith("nb:") ? view.slice(3) : null;
@@ -220,6 +218,7 @@ export function useNotesShell({
     notebooks,
     setNotebooks,
     sharedNotebooks,
+    notebookCollections,
     tags,
     viewLabel,
     canCreateNote,

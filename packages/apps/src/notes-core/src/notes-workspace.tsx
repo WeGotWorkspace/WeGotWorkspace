@@ -1,9 +1,10 @@
-import { Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
+import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
@@ -33,16 +34,24 @@ import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-tit
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
-import { useNotesSidebarModel } from "@/notes-core/src/use-notes-sidebar-model";
+import {
+  notebookViewKey,
+  useNotesSidebarModel,
+} from "@/notes-core/src/use-notes-sidebar-model";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { patchNotebook } from "@/lib/api/wgw/notes-vjournal";
+import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
-import { buildNoteCollabUrls, resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
+import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
-import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
-import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
-import { ShareDialog } from "@/share-ui/share-dialog";
+import { NotesNotebookShareDialog } from "@/notes-core/src/notes-notebook-share-dialog";
+import { NotesConflictDialog } from "@/notes-core/src/notes-conflict-dialog";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { CollectionShareWith } from "@/share-ui/collection-share";
+import { Callout } from "@/callout/src/callout";
+import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import "@/notes-core/src/notes-workspace.css";
 
 export function NotesWorkspace({
@@ -50,7 +59,6 @@ export function NotesWorkspace({
   session,
   labels,
   operations,
-  shareOperations,
   listLoading = false,
   bootstrapRevision = 0,
   onRefreshList,
@@ -71,6 +79,7 @@ export function NotesWorkspace({
     notes,
     notebooks,
     sharedNotebooks,
+    notebookCollections,
     tags,
     active,
     activeId,
@@ -129,43 +138,40 @@ export function NotesWorkspace({
     onNoteChange,
   });
 
-  const { primarySidebarItems, notebookSidebarItems, tagSidebarTags } = useNotesSidebarModel({
-    labels: L,
-    view,
-    notebooks,
-    sharedNotebooks,
-    tags,
-    selectView,
-    sidebarDropZoneProps,
-    moveToNotebook,
-    assignTagToNotes,
-  });
+  const { primarySidebarItems, ownedNotebooks, sharedNotebooks: sharedNotebookRows, tagSidebarTags } =
+    useNotesSidebarModel({
+      labels: L,
+      view,
+      notebooks,
+      sharedNotebooks,
+      notebookCollections,
+      tags,
+      selectView,
+      sidebarDropZoneProps,
+      moveToNotebook,
+      assignTagToNotes,
+    });
 
-  const shareDialog = useDriveShareDialog({
-    shareOperations,
-    username: session.user.username ?? "",
-  });
+  const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
+  const [shareNotebook, setShareNotebook] = useState<NotesNotebookCollection | null>(null);
+  const [accessLost, setAccessLost] = useState(false);
+  const [reconnectConflict, setReconnectConflict] = useState(false);
 
-  const activeSharePath = useMemo(() => {
-    if (!active || !session.user.username) return "";
-    return resolveNoteSharePath(active, session.user.username, !!archived[active.id]);
-  }, [active, archived, session.user.username]);
+  const activeNotebook = useMemo(() => {
+    if (!active) return null;
+    return (
+      [...ownedNotebooks, ...sharedNotebookRows].find(
+        (item) => item.id === active.notebookId || item.name === active.notebook,
+      ) ?? null
+    );
+  }, [active, ownedNotebooks, sharedNotebookRows]);
 
-  const shareRightsEnabled = Boolean(shareOperations && activeSharePath);
-  const {
-    myRights: noteMyRights,
-    mayShare: noteMayShare,
-    loading: noteShareRightsLoading,
-  } = useDriveShareMyRights({
-    path: activeSharePath,
-    operations: shareOperations,
-    enabled: shareRightsEnabled,
-  });
+  const noteMayShare = activeNotebook?.myRights?.mayShare === true || activeNotebook?.isSharee !== true;
   const noteEditable = resolveNotesEditorEditable(
-    noteMyRights ? { mayEditContent: noteMyRights.mayEditContent } : null,
-    shareRightsEnabled && noteShareRightsLoading,
+    active?.myRights ?? (activeNotebook?.myRights ? { mayEditContent: activeNotebook.myRights.mayWriteAll === true } : null),
+    false,
   );
-  const noteReadOnly = !noteEditable;
+  const noteReadOnly = !noteEditable || accessLost;
   const noteCanArchive = active ? noteAllowsStructureManage(active) : true;
   const activeShowsTags = active ? noteShowsTags(active) : true;
   const activeAllowsTagAssignment = active ? noteAllowsTagAssignment(active, noteEditable) : false;
@@ -187,9 +193,15 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
-    const path = resolveNoteSharePath(active, username, !!archived[active.id]);
+    setAccessLost(false);
     let cancelled = false;
-    void buildNoteCollabUrls(path)
+    void buildNoteCollabUrls(active.id, active.etag ?? "", {
+      onPersistForbidden: () => {
+        setAccessLost(true);
+        setNoteCollabUrls(undefined);
+      },
+      onReconnectConflict: () => setReconnectConflict(true),
+    })
       .then((urls) => {
         if (!cancelled) {
           setNoteCollabUrls(urls);
@@ -204,7 +216,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [active, archived, session.user.username]);
+  }, [active]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).
@@ -227,12 +239,21 @@ export function NotesWorkspace({
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
   const openShareActiveNote = useCallback(() => {
-    if (!active || !shareOperations) return;
-    const username = session.user.username;
-    if (!username) return;
-    const path = resolveNoteSharePath(active, username, !!archived[active.id]);
-    shareDialog.openShareDialog(path, noteListTitle(active));
-  }, [active, archived, session.user.username, shareDialog, shareOperations]);
+    if (!activeNotebook) return;
+    setShareNotebook(activeNotebook);
+  }, [activeNotebook]);
+
+  const patchNotebookShare = useCallback(
+    async (notebookId: string, shareWith: CollectionShareWith) => {
+      await patchNotebook(notebookId, { shareWith });
+    },
+    [],
+  );
+
+  const searchSharePrincipals = useCallback(
+    async (query: string) => searchCollectionSharePrincipals(query, session.user.username),
+    [session.user.username],
+  );
 
   const wrapDetailWithCollab = useCallback(
     (children: ReactNode) => {
@@ -317,7 +338,61 @@ export function NotesWorkspace({
             }
           >
             <SidebarSection items={primarySidebarItems} />
-            <SidebarSection title={L.sectionNotebooks} items={notebookSidebarItems} />
+            {ownedNotebooks.length > 0 ? (
+              <SidebarSection title={L.sectionNotebooks}>
+                {ownedNotebooks.map((notebook) => {
+                  const dropProps = sidebarDropZoneProps(`nb:${notebook.id}`, (ids) =>
+                    moveToNotebook(ids, notebook.name),
+                  );
+                  const { isDropTarget, ...dropHandlers } = dropProps;
+                  return (
+                    <CollectionSidebarRow
+                      key={notebook.id}
+                      name={notebook.name}
+                      color={notebook.color ?? ""}
+                      selected={view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`}
+                      onSelect={() => {
+                        selectView(notebookViewKey(notebook.id));
+                        closeSidebarOnMobile(c.closeSidebar);
+                      }}
+                      onEdit={() => setShareNotebook(notebook)}
+                      editLabel={L.share}
+                      showColorDot
+                      rootProps={{
+                        ...dropHandlers,
+                        className: isDropTarget ? "collection-sidebar-row--drop-target" : undefined,
+                      }}
+                    />
+                  );
+                })}
+              </SidebarSection>
+            ) : null}
+            {sharedNotebookRows.length > 0 ? (
+              <SidebarSection title={L.sectionSharedNotebooks}>
+                {sharedNotebookRows.map((notebook) => (
+                  <CollectionSidebarRow
+                    key={notebook.id}
+                    name={notebook.name}
+                    color={notebook.color ?? ""}
+                    selected={view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`}
+                    onSelect={() => {
+                      selectView(notebookViewKey(notebook.id));
+                      closeSidebarOnMobile(c.closeSidebar);
+                    }}
+                    onEdit={() => setShareNotebook(notebook)}
+                    editLabel={L.share}
+                    showColorDot
+                    badges={
+                      notebook.myRights?.mayWriteAll === false ? (
+                        <span className="collection-sidebar-row__mark" role="img" aria-label={L.viewOnly}>
+                          <Eye className="size-3.5" aria-hidden />
+                        </span>
+                      ) : null
+                    }
+                  />
+                ))}
+              </SidebarSection>
+            ) : null}
             <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
               {tagSidebarTags.map(({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
                 <li key={tag}>
@@ -388,7 +463,7 @@ export function NotesWorkspace({
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
               showCollabChrome={collabSessionActive}
-              onShare={shareOperations && noteMayShare === true ? openShareActiveNote : undefined}
+              onShare={noteMayShare ? openShareActiveNote : undefined}
               readOnly={noteReadOnly}
               canArchive={noteCanArchive}
             />
@@ -413,23 +488,28 @@ export function NotesWorkspace({
             );
           }
           return (
-            <NoteDetailView
-              noteId={active.id}
-              contentRevision={formatNoteDateForList(active.date)}
-              tags={active.tags}
-              availableTags={tags}
-              showTags={activeShowsTags}
-              onTagAdd={
-                activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
-              }
-              onTagRemove={
-                activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
-              }
-              pullQuote={active.pullQuote}
-              body={active.body}
-              collab={noteBodyCollab}
-              readOnly={noteReadOnly}
-            />
+            <>
+              {accessLost ? (
+                <Callout severity="warning" title={L.accessLostTitle} message={L.accessLostMessage} />
+              ) : null}
+              <NoteDetailView
+                noteId={active.id}
+                contentRevision={formatNoteDateForList(active.date)}
+                tags={active.tags}
+                availableTags={tags}
+                showTags={activeShowsTags}
+                onTagAdd={
+                  activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+                }
+                onTagRemove={
+                  activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+                }
+                pullQuote={active.pullQuote}
+                body={active.body}
+                collab={accessLost ? undefined : noteBodyCollab}
+                readOnly={noteReadOnly}
+              />
+            </>
           );
         }}
         detailFooter={() => {
@@ -495,17 +575,28 @@ export function NotesWorkspace({
         contentClassName="notes-dialog-surface"
       />
 
-      {shareOperations ? (
-        <ShareDialog
-          path={shareDialog.shareDialog.path}
-          title={shareDialog.shareDialog.title}
-          open={shareDialog.shareDialog.open}
-          onOpenChange={shareDialog.handleShareDialogOpenChange}
-          shareOperations={shareOperations}
-          mode="notes"
-          dialogSurfaceClassName="notes-dialog-surface"
-        />
-      ) : null}
+      <NotesNotebookShareDialog
+        notebook={shareNotebook}
+        open={shareNotebook !== null}
+        labels={L}
+        online={online}
+        onOpenChange={(open) => {
+          if (!open) setShareNotebook(null);
+        }}
+        onSearchPrincipals={searchSharePrincipals}
+        onPatchShareWith={patchNotebookShare}
+      />
+
+      <NotesConflictDialog
+        open={reconnectConflict}
+        noteTitle={active ? noteListTitle(active) : ""}
+        labels={L}
+        onKeepLocal={() => setReconnectConflict(false)}
+        onUseServer={() => {
+          setReconnectConflict(false);
+          onRefreshList?.();
+        }}
+      />
 
       {confirmDialog}
     </>

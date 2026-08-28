@@ -21,17 +21,18 @@ async function outboxRowsForNote(username: string, noteId: string) {
 }
 
 /**
- * "Keep mine": clear the cached-base guard and re-flush so the local note wins.
+ * "Keep mine": PATCH with the *new* server etag so local metadata overwrites.
  */
 export async function resolveNotesConflictKeepLocal(
   username: string,
   noteId: string,
 ): Promise<OutboxFlushResult> {
+  const fresh = await fetchServerNote(noteId);
   const rows = await outboxRowsForNote(username, noteId);
   for (const row of rows) {
     await putOutboxMutation(username, {
       ...row,
-      ifInState: undefined,
+      ifInState: fresh.etag,
       retries: 0,
       lastError: undefined,
     });

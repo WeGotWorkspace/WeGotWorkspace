@@ -71,6 +71,15 @@ export type NotesUILabels = {
   retrySync: string;
   /** Prefix for the detail-footer last-edited chip (`Last edited {time}`). */
   editedLabel: string;
+  accessLostTitle: string;
+  accessLostMessage: string;
+  shareNotebookTitle: string;
+  shareNotebookHint: string;
+  shareNotebookPlaceholder: string;
+  shareNotebookEmpty: string;
+  shareNotebookOffline: string;
+  removeNotebookShareTitle: string;
+  removeNotebookShareConfirm: string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -137,6 +146,15 @@ export const defaultNotesLabels: NotesUILabels = {
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: "Retry",
   editedLabel: "Last edited ",
+  accessLostTitle: "Access lost",
+  accessLostMessage: "You no longer have access to this note. Unsaved edits were not stored.",
+  shareNotebookTitle: "Share notebook",
+  shareNotebookHint: "People you add can open this notebook in Notes.",
+  shareNotebookPlaceholder: "Add people or groups",
+  shareNotebookEmpty: "No matches",
+  shareNotebookOffline: "Sharing is unavailable offline.",
+  removeNotebookShareTitle: "Remove access?",
+  removeNotebookShareConfirm: "They will no longer see this notebook.",
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {

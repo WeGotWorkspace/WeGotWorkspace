@@ -19,6 +19,20 @@ import {
 } from "@/lib/api/wgw/notes-filenode";
 import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import { usableNoteListPreview } from "@/notes-core/src/notes-note-utils";
+import {
+  createNote as createVjournalNote,
+  deleteNote as deleteVjournalNote,
+  fetchNotesVjournalBootstrap,
+  getNote,
+  listNotebooks,
+  noteFromVjournal,
+  patchNote,
+  patchNotebook,
+  starNote,
+  unstarNote,
+  createNotebook as createVjournalNotebook,
+  deleteNotebook as deleteVjournalNotebook,
+} from "@/lib/api/wgw/notes-vjournal";
 
 export { NotesRequestError };
 
@@ -464,7 +478,7 @@ export function noteFromWgwItem(row: WgwNoteItem): Note {
 
 /**
  * Full upsert shape (incl. `body`) for creating a note.
- * Live writes send title/tags via FileNode/set; `body` stays collab-owned.
+ * Live writes send title/tags via REST PATCH; `body` stays collab-owned.
  */
 export function wgwNoteUpsertFromNote(
   note: Note,
@@ -484,9 +498,9 @@ export function wgwNoteUpsertFromNote(
 }
 
 /**
- * Metadata-only upsert (no `body`) for FileNode/set title/tags/moves.
- * `starred` is consumed by Drive `POST|DELETE /files/star`, not YAML.
- * Body edits stay on `PUT /files/collaboration`.
+ * Metadata-only upsert (no `body`) for REST title/tags/moves.
+ * `starred` is consumed by `POST|DELETE /notes/items/{id}/star`.
+ * Body edits stay on `PATCH /notes/items/{id}` from the collab session.
  */
 export function wgwNoteMetadataFromNote(
   note: Note,
@@ -495,78 +509,68 @@ export function wgwNoteMetadataFromNote(
   return {
     id: note.id,
     notebook: note.notebook,
+    ...(note.title !== undefined ? { title: note.title } : {}),
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
     ...(note.scope === "group" && note.groupSlug?.trim()
       ? { groupSlug: note.groupSlug.trim() }
       : {}),
+    ...(note.etag ? { etag: note.etag } : {}),
   };
 }
 
 // --- live bootstrap ----------------------------------------------------------------------------
 
-/** Load notes + notebook names from FileNode query/get under `.notes`. */
+/** Load notes + notebooks from CalDAV VJOURNAL REST. */
 export async function fetchNotesLiveBootstrap(): Promise<NotesAppBootstrap> {
-  const session = await wgwFetchPrincipal();
-  const listing = await listOwnedNotesFromFileNodes();
-  const ownedNotes = listing.notes;
+  return fetchNotesVjournalBootstrap();
+}
 
-  let sharedWithMe: NotesSharedNoteEntry[] = [];
+async function notebooksForMap() {
+  return listNotebooks();
+}
+
+async function ifMatchForNote(
+  id: string,
+  preferred: string | undefined,
+  opts?: { signal?: AbortSignal },
+): Promise<string | undefined> {
+  if (preferred) return preferred;
   try {
-    sharedWithMe = await fetchNotesSharedWithMe();
+    return (await getNote(id, opts)).etag;
   } catch {
-    // Shared listings are best-effort — owned notes still load if these fail.
+    return undefined;
   }
-
-  const notes = mergeOwnedAndSharedInboxNotes(ownedNotes, sharedWithMe);
-
-  const personalFromApi = listing.notebooks;
-  const personalFromNotes = ownedNotes.filter((n) => n.scope !== "group").map((n) => n.notebook);
-  const notebooks = [...new Set([...personalFromApi, ...personalFromNotes])].filter((name) =>
-    name.trim(),
-  );
-
-  const groupRowsFromNotes = ownedNotes
-    .filter((n) => n.scope === "group" && n.groupSlug?.trim())
-    .map(
-      (n): NotesNotebookRow => ({
-        name: n.notebook,
-        scope: "group",
-        groupSlug: n.groupSlug ?? null,
-      }),
-    );
-  const sharedNotebooks = mergeGroupSharedNotebooks([
-    ...listing.notebookRows,
-    ...groupRowsFromNotes,
-  ]);
-
-  const tags = [...new Set(ownedNotes.flatMap((n) => n.tags))];
-
-  return {
-    data: { notes, notebooks, tags, sharedNotebooks },
-    session,
-  };
 }
 
 export async function createNoteItem(
   body: WgwNoteUpsertRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
-  const id = body.id?.trim();
-  if (!id) throw new NotesRequestError("Note create requires an id", 400);
-  return createNoteViaFileNode(
+  const notebooks = await notebooksForMap();
+  const notebook = notebooks.find(
+    (item) => item.name === body.notebook && (body.groupSlug ? item.groupSlug === body.groupSlug : true),
+  );
+  if (!notebook) {
+    throw new NotesRequestError("Notebook not found", 404);
+  }
+  const created = await createVjournalNote(
     {
-      id,
-      notebook: body.notebook,
-      tags: body.tags,
-      title: "",
-      starred: body.starred,
-      archived: body.archived,
-      groupSlug: body.groupSlug,
+      notebookId: notebook.id,
+      title: null,
+      body: body.body ?? "",
+      categories: body.tags ?? [],
+      status: body.archived ? "CANCELLED" : null,
+      uid: body.id,
     },
     opts,
   );
+  if (body.starred) {
+    await starNote(created.id, opts);
+    created.starred = true;
+  }
+  return noteFromVjournal(created, notebooks);
 }
 
 export async function updateNoteItem(
@@ -574,43 +578,54 @@ export async function updateNoteItem(
   body: WgwNoteUpsertRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
-  return updateNoteViaFileNode(
+  const notebooks = await notebooksForMap();
+  const notebook = notebooks.find((item) => item.name === body.notebook);
+  const ifMatch = await ifMatchForNote(id, body.etag, opts);
+  const patched = await patchNote(
     id,
     {
-      notebook: body.notebook,
-      tags: body.tags,
-      starred: body.starred,
-      archived: body.archived,
-      groupSlug: body.groupSlug,
+      ...(notebook ? { notebookId: notebook.id } : {}),
+      ...(body.title !== undefined ? { title: body.title } : {}),
+      categories: body.tags,
+      status: body.archived ? "CANCELLED" : "FINAL",
     },
-    opts,
+    { ...opts, ifMatch },
   );
+  if (body.starred === true) await starNote(id, opts);
+  if (body.starred === false) await unstarNote(id, opts);
+  return noteFromVjournal({ ...patched, starred: body.starred ?? patched.starred }, notebooks);
 }
 
 export async function deleteNoteItem(
   id: string,
-  body: { notebook: string; archived: boolean; groupSlug?: string | null },
+  _body: { notebook: string; archived: boolean; groupSlug?: string | null },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await deleteNoteViaFileNode(id, body, opts);
+  await deleteVjournalNote(id, opts);
 }
 
 export async function archiveNoteItem(
   id: string,
   opts?: { signal?: AbortSignal; groupSlug?: string | null },
 ): Promise<Note> {
-  return archiveNoteViaFileNode(id, opts);
+  const notebooks = await notebooksForMap();
+  const ifMatch = await ifMatchForNote(id, undefined, opts);
+  const patched = await patchNote(id, { status: "CANCELLED" }, { ...opts, ifMatch });
+  return noteFromVjournal(patched, notebooks);
 }
 
 export async function restoreNoteItem(
   id: string,
   opts?: { signal?: AbortSignal; groupSlug?: string | null },
 ): Promise<Note> {
-  return restoreNoteViaFileNode(id, opts);
+  const notebooks = await notebooksForMap();
+  const ifMatch = await ifMatchForNote(id, undefined, opts);
+  const patched = await patchNote(id, { status: "FINAL" }, { ...opts, ifMatch });
+  return noteFromVjournal(patched, notebooks);
 }
 
 export async function createNotebook(name: string, opts?: { signal?: AbortSignal }): Promise<void> {
-  await createNotebookViaFileNode(name, opts);
+  await createVjournalNotebook({ name }, opts);
 }
 
 export async function renameNotebook(
@@ -618,7 +633,10 @@ export async function renameNotebook(
   to: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await renameNotebookViaFileNode(from, to, opts);
+  const notebooks = await notebooksForMap();
+  const notebook = notebooks.find((item) => item.name === from);
+  if (!notebook) throw new NotesRequestError("Notebook not found", 404);
+  await patchNotebook(notebook.id, { name: to }, opts);
 }
 
 export async function deleteNotebook(
@@ -626,5 +644,20 @@ export async function deleteNotebook(
   action: { mode: "archive" | "move" | "purge"; target?: string },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await deleteNotebookViaFileNode(name, action, opts);
+  const notebooks = await notebooksForMap();
+  const notebook = notebooks.find((item) => item.name === name);
+  if (!notebook) throw new NotesRequestError("Notebook not found", 404);
+  if (action.mode === "move" && action.target) {
+    const dest = notebooks.find((item) => item.name === action.target);
+    if (!dest) throw new NotesRequestError("Target notebook not found", 404);
+    const { listNotes } = await import("@/lib/api/wgw/notes-vjournal");
+    const items = await listNotes({ notebookId: notebook.id, signal: opts?.signal });
+    for (const item of items) {
+      await patchNote(item.id, { notebookId: dest.id }, { ...opts, ifMatch: item.etag });
+    }
+  }
+  await deleteVjournalNotebook(notebook.id, {
+    ...opts,
+    onDestroyRemoveContents: action.mode === "purge" || action.mode === "archive",
+  });
 }

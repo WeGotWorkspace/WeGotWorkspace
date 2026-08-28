@@ -10,21 +10,14 @@ import {
   restoreNoteItem,
   updateNoteItem,
 } from "@/lib/api/wgw/notes";
-import {
-  findNoteFileNode,
-  listOwnedNotesFromFileNodes,
-  noteFromFileNodeNote,
-} from "@/lib/api/wgw/notes-filenode";
+import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
-import { applyDocsStarToggle } from "@/lib/offline/docs/docs-stars-store";
-import { resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
   listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
-  noteUpdatedAtMs,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
   removeOutboxMutation,
@@ -38,18 +31,25 @@ export type OutboxFlushResult = {
   bootstrap: NotesAppBootstrap | null;
 };
 
-/** Metadata-only FileNode upsert — no `body`; starred is routed to Drive stars. */
+function isPreconditionFailed(error: unknown): boolean {
+  return (error as { status?: number } | undefined)?.status === 412;
+}
+
+/** Metadata-only REST upsert — no `body`; starred is routed to `/notes/items/{id}/star`. */
 function noteMetadataUpsertRequest(
   noteId: string,
   metadata: NoteUpsertMetadata,
+  etag?: string,
 ): WgwNoteUpsertRequest {
   return {
     id: noteId,
     notebook: metadata.notebook,
+    ...(metadata.title !== undefined ? { title: metadata.title } : {}),
     tags: metadata.tags,
     ...(metadata.starred !== undefined ? { starred: metadata.starred } : {}),
     ...(metadata.archived !== undefined ? { archived: metadata.archived } : {}),
     ...(metadata.groupSlug?.trim() ? { groupSlug: metadata.groupSlug.trim() } : {}),
+    ...(etag ? { etag } : {}),
   };
 }
 
@@ -62,43 +62,6 @@ function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
   return { mode: "move", target: action.target };
 }
 
-async function fetchServerNotesById(): Promise<Map<string, { updatedAt?: string }>> {
-  try {
-    const listing = await listOwnedNotesFromFileNodes();
-    return new Map(listing.notes.map((item) => [item.id, { updatedAt: item.updatedAt }]));
-  } catch {
-    return new Map();
-  }
-}
-
-async function persistFlushedStar(
-  username: string,
-  noteId: string,
-  metadata: NoteUpsertMetadata,
-  apiPath?: string,
-): Promise<void> {
-  if (metadata.starred === undefined) return;
-  const path = resolveNoteSharePath(
-    {
-      id: noteId,
-      notebook: metadata.notebook,
-      scope: metadata.groupSlug?.trim() ? "group" : "personal",
-      groupSlug: metadata.groupSlug,
-      apiPath,
-    },
-    username,
-    !!metadata.archived,
-  );
-  await applyDocsStarToggle(username, path, metadata.starred);
-}
-
-function serverUpdatedAtMs(
-  serverNotes: Map<string, { updatedAt?: string }>,
-  noteId: string,
-): number {
-  return noteUpdatedAtMs(serverNotes.get(noteId)?.updatedAt);
-}
-
 export async function flushNotesOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) {
@@ -107,7 +70,6 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
 
   const rows = await listOutboxMutations(username);
   const stateMismatches: string[] = [];
-  const serverNotes = await fetchServerNotesById();
 
   for (const row of rows) {
     if (row.domain !== NOTES_DOMAIN) continue;
@@ -116,24 +78,16 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       if (row.op === "upsert") {
         const upsert = payload as NotesUpsertPayload;
         const noteId = upsert.noteId;
-        if (row.ifInState) {
-          const serverMs = serverUpdatedAtMs(serverNotes, noteId);
-          const baseMs = noteUpdatedAtMs(row.ifInState);
-          if (serverMs > baseMs) {
-            // Metadata-only conflict. Compare FileNode `changed` (index
-            // updated_at). Body-only collab saves should not bump it; if they
-            // do, this guard may false-conflict (residual until G).
-            stateMismatches.push(noteId);
-            await markOutboxError(username, row.id, "stateMismatch");
-            continue;
-          }
-        }
-        // FileNode/set preserves body bytes; 404 create seeds empty markdown.
-        const metadataRequest = noteMetadataUpsertRequest(noteId, upsert.metadata);
+        const metadataRequest = noteMetadataUpsertRequest(noteId, upsert.metadata, row.ifInState);
         let saved;
         try {
           saved = await updateNoteItem(noteId, metadataRequest);
         } catch (error) {
+          if (isPreconditionFailed(error)) {
+            stateMismatches.push(noteId);
+            await markOutboxError(username, row.id, "stateMismatch");
+            continue;
+          }
           const status = (error as { status?: number } | undefined)?.status;
           if (status !== 404) throw error;
           saved = await createNoteItem({ ...metadataRequest, body: "" });
@@ -150,19 +104,26 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           await removeNoteFromCache(username, tempId);
         }
         await upsertNoteInCache(username, saved, false);
-        await persistFlushedStar(username, saved.id, upsert.metadata, saved.apiPath);
-        serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =
           typeof payload.groupSlug === "string" && payload.groupSlug.trim()
             ? payload.groupSlug.trim()
             : undefined;
-        await deleteNoteItem(noteId, {
-          notebook: String(payload.notebook ?? ""),
-          archived: Boolean(payload.archived),
-          ...(groupSlug ? { groupSlug } : {}),
-        });
+        try {
+          await deleteNoteItem(noteId, {
+            notebook: String(payload.notebook ?? ""),
+            archived: Boolean(payload.archived),
+            ...(groupSlug ? { groupSlug } : {}),
+          });
+        } catch (error) {
+          if (isPreconditionFailed(error)) {
+            stateMismatches.push(noteId);
+            await markOutboxError(username, row.id, "stateMismatch");
+            continue;
+          }
+          throw error;
+        }
         await removeNoteFromCache(username, noteId);
       } else if (row.op === "archive") {
         const noteId = String(payload.noteId ?? "");
@@ -172,7 +133,6 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             : undefined;
         const saved = await archiveNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
         await upsertNoteInCache(username, saved, false);
-        serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "restore") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =
@@ -181,7 +141,6 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             : undefined;
         const saved = await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
         await upsertNoteInCache(username, saved, false);
-        serverNotes.set(saved.id, { updatedAt: saved.updatedAt ?? saved.date });
       } else if (row.op === "createNotebook") {
         await createNotebook(String(payload.name ?? ""));
       } else if (row.op === "renameNotebook") {
@@ -209,17 +168,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
   return { stateMismatches, bootstrap: nextBootstrap };
 }
 
-/** Fetch a single note from FileNode get (used by conflict resolution). */
+/** Fetch a single note from VJOURNAL REST (used by conflict resolution). */
 export async function fetchServerNote(noteId: string) {
-  const found = await findNoteFileNode(noteId);
-  if (!found) throw new Error(`Note ${noteId} not found on server`);
-  return noteFromFileNodeNote({
-    id: found.noteId,
-    projection: found.projection,
-    path: found.path,
-    scope: found.root.scope,
-    groupSlug: found.root.groupSlug,
-    modified: typeof found.node.modified === "string" ? found.node.modified : undefined,
-    changed: typeof found.node.changed === "string" ? found.node.changed : undefined,
-  });
+  const [row, notebooks] = await Promise.all([getNote(noteId), listNotebooks()]);
+  return noteFromVjournal(row, notebooks);
 }

@@ -1,5 +1,11 @@
 export type Note = {
   id: string;
+  /** VJOURNAL SUMMARY when known. List title prefers this over excerpt. */
+  title?: string;
+  /** REST notebook id (CalDAV collection uri / group- API id). */
+  notebookId?: string;
+  /** If-Match token from REST `etag`. */
+  etag?: string;
   category: string;
   /**
    * Display timestamp for list + “Edited” footer. Prefer API `contentUpdatedAt`
@@ -21,9 +27,9 @@ export type Note = {
   notebook: string;
   tags: string[];
   wordCount: number;
-  /** From FileNode `note.starred` (Drive star for the caller). YAML stars are ignored. */
+  /** From REST `note.starred` (`note_stars` for the caller). */
   starred?: boolean;
-  /** From FileNode `note.archived` (path under `.notes/.archive/`). */
+  /** From REST `status === CANCELLED`. */
   archived?: boolean;
   /** Personal vs group home; from Notes API / shared listings. */
   scope?: "personal" | "group";

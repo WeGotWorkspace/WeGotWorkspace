@@ -1,4 +1,5 @@
 import type { Note } from "@/lib/models/note";
+import type { CollectionShareWith } from "@/share-ui/collection-share";
 
 /** Group-membership notebook shown under the Notebooks sidebar. */
 export type NotesSharedNotebook = {
@@ -10,6 +11,19 @@ export type NotesSharedNotebook = {
   access?: string;
 };
 
+/** Collection-sidebar notebook (owned or inbound share). */
+export type NotesNotebookCollection = {
+  id: string;
+  name: string;
+  color?: string | null;
+  isSharee?: boolean;
+  isDefault?: boolean;
+  scope?: "personal" | "group";
+  groupSlug?: string | null;
+  shareWith?: CollectionShareWith | null;
+  myRights?: { mayWriteAll?: boolean; mayShare?: boolean; mayReadItems?: boolean } | null;
+};
+
 export type NotesUIData = {
   notes: Note[];
   /** Owned personal notebook names only (not group notebooks). */
@@ -17,6 +31,8 @@ export type NotesUIData = {
   tags: string[];
   /** Group-membership notebooks (Users icon under Notebooks). */
   sharedNotebooks?: NotesSharedNotebook[];
+  /** Collection rows for `@/collection-sidebar` partition + share. */
+  notebookCollections?: NotesNotebookCollection[];
 };
 
 export type DeleteNotebookAction =

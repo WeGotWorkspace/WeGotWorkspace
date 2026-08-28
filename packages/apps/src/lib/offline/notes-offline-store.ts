@@ -33,6 +33,7 @@ const META_SESSION = "notes:session";
  */
 export type NoteUpsertMetadata = {
   notebook: string;
+  title?: string;
   tags: string[];
   starred?: boolean;
   archived?: boolean;
@@ -50,6 +51,7 @@ export type NotesUpsertPayload = {
 export function extractNoteMetadata(note: Note): NoteUpsertMetadata {
   return {
     notebook: note.notebook,
+    ...(note.title !== undefined ? { title: note.title } : {}),
     tags: note.tags,
     ...(note.starred !== undefined ? { starred: note.starred } : {}),
     ...(note.archived !== undefined ? { archived: note.archived } : {}),

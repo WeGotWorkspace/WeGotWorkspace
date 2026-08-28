@@ -102,7 +102,13 @@ export function computeExcerpt(body: string[]): string {
 const NOTE_LIST_TITLE_MAX = 80;
 
 /** Derives the list-row heading from excerpt or body (notes have no separate title field). */
-export function noteListTitle(note: Pick<Note, "excerpt" | "body"> & { id?: string }): string {
+export function noteListTitle(
+  note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
+): string {
+  const titled = note.title?.trim();
+  if (titled) {
+    return titled.length <= NOTE_LIST_TITLE_MAX ? titled : `${titled.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
+  }
   // Re-strip so stale excerpts (or server listPreview) never leak raw markdown.
   const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
   if (excerpt) {
@@ -447,17 +453,22 @@ export function filterVisibleNotes(
         !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !archived[note.id];
     } else if (view === "archive") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && !!archived[note.id];
-    } else if (view === "shared-with-me") inView = !!note.sharedInbox && !archived[note.id];
-    else if (view.startsWith("shared-nb:")) {
-      const notebookPath = view.slice("shared-nb:".length);
-      inView = noteBelongsToSharedNotebook(note, notebookPath) && !archived[note.id];
+    } else if (view === "shared-with-me") {
+      inView = !archived[note.id];
+    } else if (view.startsWith("shared-nb:")) {
+      const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
+      inView =
+        parsed !== null &&
+        note.notebook === parsed.notebook &&
+        note.groupSlug === parsed.groupSlug &&
+        !archived[note.id];
     } else if (view.startsWith("nb:")) {
       const target = view.slice(3);
       inView =
         !note.sharedInbox &&
-        !note.sharedNotebookGrant &&
-        note.scope !== "group" &&
-        (note.notebook === target || note.notebook.toLowerCase() === target.toLowerCase()) &&
+        (note.notebookId === target ||
+          note.notebook === target ||
+          note.notebook.toLowerCase() === target.toLowerCase()) &&
         !archived[note.id];
     } else if (view.startsWith("tag:")) {
       inView =
@@ -494,8 +505,6 @@ export function notesCanCreateInView(view: string): boolean {
     return false;
   }
   if (view.startsWith("shared-nb:")) {
-    // Group membership notebooks: members can create. Personal ACL shares: no
-    // (API create is owner home or groupSlug only).
     return parseGroupNotebookPath(view.slice("shared-nb:".length)) !== null;
   }
   return true;

@@ -429,7 +429,9 @@ describe("notes-note-utils", () => {
       starred: {},
       searchQuery: "",
     });
-    expect(sharedWithMe.map((note) => note.id)).toEqual(["shared-1"]);
+    expect(sharedWithMe.map((note) => note.id).sort()).toEqual(
+      ["group-1", "n-1", "n-2", "shared-1"].sort(),
+    );
 
     const personalNb = filterVisibleNotes(notes, {
       view: "nb:Drafts",

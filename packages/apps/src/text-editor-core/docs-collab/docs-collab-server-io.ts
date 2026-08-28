@@ -40,7 +40,7 @@ export async function saveDocument(
   ydoc: Y.Doc,
   room: string | undefined,
   authToken?: string,
-  method: "POST" | "PUT" = "POST",
+  method: "POST" | "PUT" | "PATCH" = "POST",
 ): Promise<void> {
   const body: { markdown: string; yjs: number[]; room?: string } = {
     markdown,

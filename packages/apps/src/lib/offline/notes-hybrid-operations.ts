@@ -23,8 +23,6 @@ import {
   isFetchNetworkError,
   readBrowserOnline,
 } from "@/lib/offline/core/browser-online";
-import { applyDocsStarToggle } from "@/lib/offline/docs/docs-stars-store";
-import { resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
 import {
   createTempNoteId,
   isLocalTempNoteId,
@@ -73,7 +71,7 @@ function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
 }
 
 function baseUpdatedAt(note: Note): string | undefined {
-  // Prefer the metadata concurrency token; fall back to date for legacy cached rows.
+  if (note.etag) return note.etag;
   if (note.updatedAt) return note.updatedAt;
   return note.date !== "—" ? note.date : undefined;
 }
@@ -125,22 +123,12 @@ async function resolveCachedNote(
   }
 }
 
-async function persistLocalNoteStar(username: string, note: Note): Promise<void> {
-  if (note.starred === undefined) return;
-  await applyDocsStarToggle(
-    username,
-    resolveNoteSharePath(note, username, !!note.archived),
-    !!note.starred,
-  );
-}
-
 async function queueOfflineUpsert(
   username: string,
   note: Note,
   tempNoteId?: string,
 ): Promise<Note> {
   await upsertNoteInCache(username, note, true);
-  await persistLocalNoteStar(username, note);
   await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), tempNoteId);
   return note;
 }
@@ -217,7 +205,6 @@ async function upsertNoteOnline(
   try {
     const saved = await updateNoteItem(note.id, metadataRequest, opts);
     await upsertNoteInCache(username, saved, false);
-    await persistLocalNoteStar(username, { ...saved, starred: note.starred ?? saved.starred });
     await runner.flush();
     return saved;
   } catch (error) {
@@ -228,7 +215,6 @@ async function upsertNoteOnline(
       opts,
     );
     await upsertNoteInCache(username, saved, false);
-    await persistLocalNoteStar(username, { ...saved, starred: note.starred ?? saved.starred });
     await runner.flush();
     return saved;
   }

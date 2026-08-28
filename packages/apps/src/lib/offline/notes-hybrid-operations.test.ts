@@ -113,14 +113,14 @@ describe("createHybridNotesOperations", () => {
     expect(outbox[0]?.op).toBe("upsert");
   });
 
-  it("caches Drive star paths offline so flush can replay POST|DELETE /files/star", async () => {
+  it("caches starred flag offline so flush can replay POST /notes/items/{id}/star", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
 
     const operations = createHybridNotesOperations(username);
     await operations.upsertNote({ ...note, starred: true });
 
-    const { readDocsStarredPaths } = await import("@/lib/offline/docs/docs-stars-store");
-    expect(await readDocsStarredPaths(username)).toEqual(["/users/alice/.notes/Drafts/note-1.md"]);
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notes[0]?.starred).toBe(true);
   });
 
   it("queues upsert when live API fails with a network error", async () => {

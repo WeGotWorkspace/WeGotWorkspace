@@ -55,11 +55,13 @@ describe("notes conflict resolution", () => {
     await enqueueCoalescedNoteUpdate(username, note.id, note, note.date);
   });
 
-  it("keep local clears ifInState and re-flushes", async () => {
+  it("keep local PATCHes with the fresh server etag and re-flushes", async () => {
+    fetchServerNote.mockResolvedValue({ ...note, etag: '"etag-fresh"' });
+
     await resolveNotesConflictKeepLocal(username, note.id);
 
     const rows = await listOutboxMutations(username);
-    expect(rows[0]?.ifInState).toBeUndefined();
+    expect(rows[0]?.ifInState).toBe('"etag-fresh"');
     expect(rows[0]?.lastError).toBeUndefined();
     expect(flushNotesOutbox).toHaveBeenCalledOnce();
   });
