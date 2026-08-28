@@ -106,7 +106,7 @@ final class CalendarRepository
 
         $properties = [
             '{DAV:}displayname' => $name,
-            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT']),
         ];
 
         if (array_key_exists('description', $payload)) {

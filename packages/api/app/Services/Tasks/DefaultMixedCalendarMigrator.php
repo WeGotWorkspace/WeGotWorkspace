@@ -117,7 +117,7 @@ final class DefaultMixedCalendarMigrator
 
         Calendar::query()
             ->whereKey((int) $defaultInstance->calendarid)
-            ->update(['components' => 'VEVENT,VJOURNAL']);
+            ->update(['components' => 'VEVENT']);
 
         return ['migrated' => true, 'movedObjects' => $movedObjects];
     }

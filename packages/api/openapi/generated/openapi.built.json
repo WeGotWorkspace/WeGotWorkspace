@@ -2587,17 +2587,18 @@
             },
             "NotebookListResponse": {
                 "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
                 "properties": {
-                    "items": {
+                    "list": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/NotebookListItem"
+                            "$ref": "#/components/schemas/Notebook"
                         }
                     }
-                },
-                "required": [
-                    "items"
-                ]
+                }
             },
             "NotebookMutationResponse": {
                 "type": "object",
@@ -10288,6 +10289,332 @@
                         }
                     }
                 ]
+            },
+            "Note": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "notebookId",
+                    "title",
+                    "body",
+                    "categories",
+                    "status",
+                    "etag"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "VJOURNAL UID"
+                    },
+                    "notebookId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "FINAL",
+                            "CANCELLED",
+                            null
+                        ]
+                    },
+                    "etag": {
+                        "type": "string"
+                    },
+                    "starred": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "NoteListResponse": {
+                "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Note"
+                        }
+                    }
+                }
+            },
+            "NoteCreate": {
+                "type": "object",
+                "required": [
+                    "notebookId"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "notebookId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "FINAL",
+                            "CANCELLED",
+                            null
+                        ]
+                    },
+                    "uid": {
+                        "type": "string"
+                    }
+                }
+            },
+            "NotePatch": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "notebookId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "FINAL",
+                            "CANCELLED",
+                            null
+                        ]
+                    }
+                }
+            },
+            "Notebook": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "isDefault",
+                    "scope",
+                    "groupSlug",
+                    "myRights",
+                    "isSharee"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "isDefault": {
+                        "type": "boolean"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shareWith": {
+                        "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "$ref": "#/components/schemas/CalendarRights"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "isSharee": {
+                        "type": "boolean"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/TaskListRights"
+                    },
+                    "role": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sortOrder": {
+                        "type": "integer"
+                    },
+                    "isSubscribed": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "NotebookCreate": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "id": {
+                        "$ref": "#/components/schemas/JmapId"
+                    }
+                }
+            },
+            "NotebookPatch": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shareWith": {
+                        "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/CalendarRights"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "NotebookDeleteOptions": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "onDestroyRemoveContents": {
+                        "type": "boolean"
+                    }
+                }
             }
         },
         "responses": {
@@ -11588,35 +11915,103 @@
                 "tags": [
                     "Notes"
                 ],
-                "summary": "List notes with optional archive/notebook/search filters",
+                "summary": "List notes",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "starred",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Notes list"
+                        "description": "Notes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NoteListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
                     }
-                },
-                "x-wgw-access": "user"
+                }
             },
             "post": {
                 "tags": [
                     "Notes"
                 ],
-                "summary": "Create a new note",
+                "summary": "Create a note",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
-                "responses": {
-                    "201": {
-                        "description": "Created note"
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NoteCreate"
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "user"
+                "responses": {
+                    "201": {
+                        "description": "Created note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
             }
         },
         "/notes/items/{id}": {
@@ -11777,35 +12172,71 @@
                 "tags": [
                     "Notes"
                 ],
-                "summary": "List notebooks with active/archive counts",
+                "summary": "List notebooks",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
+                "x-wgw-access": "user",
                 "responses": {
                     "200": {
-                        "description": "Notebook list"
+                        "description": "Notebooks",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
                     }
-                },
-                "x-wgw-access": "user"
+                }
             },
             "post": {
                 "tags": [
                     "Notes"
                 ],
-                "summary": "Create notebook",
+                "summary": "Create a notebook",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
-                "responses": {
-                    "201": {
-                        "description": "Notebook created"
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotebookCreate"
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "user"
+                "responses": {
+                    "201": {
+                        "description": "Created notebook",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notebook"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
             }
         },
         "/notes/notebooks/{name}": {
@@ -15983,6 +16414,479 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/notes/notebooks/changes": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Notebook collection changes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/notes/notebooks/{notebookId}": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Fetch a notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notebook"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Update a notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotebookPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated notebook",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notebook"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Delete a notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotebookDeleteOptions"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/notes/items/changes": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Note item changes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Note changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/notes/items/{noteId}": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Fetch a note by VJOURNAL UID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Patch a note (If-Match required)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotePatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/JmapPreconditionFailed"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Delete a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/JmapPreconditionFailed"
+                    }
+                }
+            }
+        },
+        "/notes/items/{noteId}/star": {
+            "post": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Star a note for the current user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Starred",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Unstar a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unstarred",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
             }
         }
     }

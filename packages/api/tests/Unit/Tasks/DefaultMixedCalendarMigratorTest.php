@@ -56,7 +56,7 @@ final class DefaultMixedCalendarMigratorTest extends WgwDatabaseTestCase
             ->first();
 
         $this->assertNotNull($defaultCalendar);
-        $this->assertSame('VEVENT,VJOURNAL', (string) $defaultCalendar->components);
+        $this->assertSame('VEVENT', (string) $defaultCalendar->components);
         $this->assertFalse($defaultCalendar->supportsVtodo());
     }
 

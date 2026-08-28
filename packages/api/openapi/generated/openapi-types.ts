@@ -1566,27 +1566,36 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List notes with optional archive/notebook/search filters */
+        /** List notes */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    notebookId?: string;
+                    starred?: boolean;
+                    status?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Notes list */
+                /** @description Notes */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["NoteListResponse"];
+                    };
                 };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         put?: never;
-        /** Create a new note */
+        /** Create a note */
         post: {
             parameters: {
                 query?: never;
@@ -1594,15 +1603,25 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoteCreate"];
+                };
+            };
             responses: {
                 /** @description Created note */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["Note"];
+                    };
                 };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
             };
         };
         delete?: never;
@@ -1770,7 +1789,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List notebooks with active/archive counts */
+        /** List notebooks */
         get: {
             parameters: {
                 query?: never;
@@ -1780,17 +1799,20 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Notebook list */
+                /** @description Notebooks */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["NotebookListResponse"];
+                    };
                 };
+                403: components["responses"]["JmapForbidden"];
             };
         };
         put?: never;
-        /** Create notebook */
+        /** Create a notebook */
         post: {
             parameters: {
                 query?: never;
@@ -1798,15 +1820,24 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotebookCreate"];
+                };
+            };
             responses: {
-                /** @description Notebook created */
+                /** @description Created notebook */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["Notebook"];
+                    };
                 };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
             };
         };
         delete?: never;
@@ -6384,6 +6415,348 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notes/notebooks/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notebook collection changes */
+        get: {
+            parameters: {
+                query?: {
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notebook changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/notebooks/{notebookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a notebook */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notebookId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notebook */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notebook"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a notebook */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notebookId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotebookDeleteOptions"];
+                };
+            };
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a notebook */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notebookId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotebookPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated notebook */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notebook"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        trace?: never;
+    };
+    "/notes/items/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Note item changes */
+        get: {
+            parameters: {
+                query: {
+                    notebookId: string;
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Note changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/items/{noteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a note by VJOURNAL UID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Note */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Note"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a note */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                412: components["responses"]["JmapPreconditionFailed"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Patch a note (If-Match required) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotePatch"];
+                };
+            };
+            responses: {
+                /** @description Updated note */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Note"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+                412: components["responses"]["JmapPreconditionFailed"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        trace?: never;
+    };
+    "/notes/items/{noteId}/star": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Star a note for the current user */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Starred */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        /** Unstar a note */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unstarred */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7261,7 +7634,7 @@ export interface components {
         };
         NotebookListItemList: components["schemas"]["NotebookListItem"][];
         NotebookListResponse: {
-            items: components["schemas"]["NotebookListItem"][];
+            list: components["schemas"]["Notebook"][];
         };
         NotebookMutationResponse: {
             ok: boolean;
@@ -9896,6 +10269,77 @@ export interface components {
         };
         MeetReserveRoomResponse: components["schemas"]["MeetRoomOwnerStatus"] & {
             roomId: components["schemas"]["MeetRoomCode"];
+        };
+        Note: {
+            /** @description VJOURNAL UID */
+            id: string;
+            notebookId: string;
+            title: string | null;
+            body: string;
+            categories: string[];
+            /** @enum {string|null} */
+            status: "FINAL" | "CANCELLED" | null;
+            etag: string;
+            starred?: boolean;
+        };
+        NoteListResponse: {
+            list: components["schemas"]["Note"][];
+        };
+        NoteCreate: {
+            notebookId: string;
+            title?: string | null;
+            body?: string;
+            categories?: string[];
+            /** @enum {string|null} */
+            status?: "FINAL" | "CANCELLED" | null;
+            uid?: string;
+        };
+        NotePatch: {
+            notebookId?: string;
+            title?: string | null;
+            body?: string;
+            categories?: string[];
+            /** @enum {string|null} */
+            status?: "FINAL" | "CANCELLED" | null;
+        };
+        Notebook: {
+            id: string;
+            name: string;
+            description?: string | null;
+            color?: string | null;
+            isDefault: boolean;
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"];
+            } | null;
+            isSharee: boolean;
+            myRights: components["schemas"]["TaskListRights"];
+            role?: string | null;
+            sortOrder?: number;
+            isSubscribed?: boolean;
+        };
+        NotebookCreate: {
+            name: string;
+            description?: string | null;
+            color?: string | null;
+            groupSlug?: string | null;
+            id?: components["schemas"]["JmapId"];
+        };
+        NotebookPatch: {
+            name?: string;
+            description?: string | null;
+            color?: string | null;
+            groupSlug?: string | null;
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
+        };
+        NotebookDeleteOptions: {
+            onDestroyRemoveContents?: boolean;
         };
     };
     responses: {

@@ -23,6 +23,8 @@ final class CalendarCollectionUris
 
     public const TASK_WORK = 'tasks-work';
 
+    public const NOTE_GENERAL = 'notes-general';
+
     /**
      * Sabre CalendarHome always exposes this name as the RFC 6638 schedule-inbox.
      * User VEVENT/VTODO collections must not reuse it.
@@ -90,5 +92,36 @@ final class CalendarCollectionUris
         }
 
         return $matches[1];
+    }
+
+    public static function groupNotebookCalDavUri(string $groupSlug): string
+    {
+        return 'notes-'.$groupSlug;
+    }
+
+    public static function groupNotebookApiId(string $groupSlug): string
+    {
+        return 'group-'.$groupSlug;
+    }
+
+    public static function parseGroupNotebookApiId(string $notebookId): ?string
+    {
+        return self::parseGroupCollectionApiId($notebookId);
+    }
+
+    /** @return list<string> */
+    public static function reservedNoteUris(): array
+    {
+        return [self::NOTE_GENERAL];
+    }
+
+    /** @return list<string> */
+    public static function reservedNoteUriSlugs(): array
+    {
+        return array_values(array_unique(array_merge(
+            self::reservedNoteUris(),
+            self::reservedEventUris(),
+            self::reservedTaskUris(),
+        )));
     }
 }
