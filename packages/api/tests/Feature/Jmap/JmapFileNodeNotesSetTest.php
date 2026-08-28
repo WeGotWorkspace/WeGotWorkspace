@@ -36,7 +36,7 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
         $notesRootId = $this->personalNotesRootId();
         $draftsId = $this->childIdByName($notesRootId, 'Drafts');
 
-        $created = $this->fileNodeJmap([
+        $response = $this->fileNodeJmap([
             ['FileNode/set', ['accountId' => 'bob', 'create' => [
                 'n0' => [
                     'parentId' => $draftsId,
@@ -44,38 +44,10 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
                     'note' => ['title' => 'Fresh note', 'tags' => ['alpha']],
                 ],
             ]], 'c0'],
-        ])->assertOk()->json('methodResponses.0.1.created.n0');
+        ])->assertOk();
 
-        $this->assertSame('Fresh note', $created['note']['title']);
-        $this->assertSame(['alpha'], $created['note']['tags']);
-        $this->assertSame('Drafts', $created['note']['notebook']);
-        $this->assertFalse($created['note']['starred']);
-
-        $disk = app(WgwStorage::class)->files();
-        $raw = (string) $disk->get('users/bob/.notes/Drafts/fresh.md');
-        $this->assertStringContainsString('title: Fresh note', $raw);
-        $this->assertStringNotContainsString('starred:', $raw);
-
-        $disk->put(
-            'users/bob/.notes/Drafts/fresh.md',
-            "title: Fresh note\ntags: alpha\nstarred: true\n----\nkeep body"
-        );
-
-        $updated = $this->fileNodeJmap([
-            ['FileNode/set', ['accountId' => 'bob', 'update' => [
-                $created['id'] => ['note' => ['title' => 'Renamed', 'tags' => ['beta', 'gamma']]],
-            ]], 'c1'],
-        ])->assertOk()->json('methodResponses.0.1.updated.'.$created['id']);
-
-        $this->assertSame('Renamed', $updated['note']['title']);
-        $this->assertSame(['beta', 'gamma'], $updated['note']['tags']);
-        $this->assertFalse($updated['note']['starred']);
-
-        $rewritten = (string) $disk->get('users/bob/.notes/Drafts/fresh.md');
-        $this->assertStringContainsString('title: Renamed', $rewritten);
-        $this->assertStringContainsString('tags: beta, gamma', $rewritten);
-        $this->assertStringNotContainsString('starred:', $rewritten);
-        $this->assertStringContainsString("----\nkeep body", $rewritten);
+        $this->assertNull($response->json('methodResponses.0.1.created.n0'));
+        $this->assertNotEmpty($response->json('methodResponses.0.1.notCreated.n0'));
     }
 
     public function test_set_archives_restores_and_manages_notebook_directories(): void
@@ -97,8 +69,7 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
         $this->assertFalse($disk->fileExists('users/bob/.notes/Drafts/welcome.md'));
         $this->assertTrue($disk->fileExists('users/bob/.notes/.archive/Drafts/welcome.md'));
         $archived = $this->getNoteByName('welcome.md');
-        $this->assertTrue($archived['note']['archived']);
-        $this->assertSame('Drafts', $archived['note']['notebook']);
+        $this->assertArrayNotHasKey('note', $archived);
 
         $this->fileNodeJmap([
             ['FileNode/set', ['accountId' => 'bob', 'update' => [
@@ -106,7 +77,7 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
             ]], 'c1'],
         ])->assertOk();
         $this->assertTrue($disk->fileExists('users/bob/.notes/Drafts/welcome.md'));
-        $this->assertFalse($this->getNoteByName('welcome.md')['note']['archived']);
+        $this->assertArrayNotHasKey('note', $this->getNoteByName('welcome.md'));
 
         $created = $this->fileNodeJmap([
             ['FileNode/set', ['accountId' => 'bob', 'create' => [

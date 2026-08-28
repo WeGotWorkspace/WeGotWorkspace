@@ -9,7 +9,6 @@ use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
-use App\Services\Notes\GroupNotesHomesProvisioner;
 use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
 use Sabre\CardDAV\Backend\PDO as CardPDO;
@@ -19,7 +18,6 @@ final class InstallerSeeder
     public function __construct(
         private AppPaths $paths,
         private UserCalendarCollectionsProvisioner $calendarCollections,
-        private GroupNotesHomesProvisioner $notesHomes,
     ) {}
 
     public function seed(
@@ -91,8 +89,6 @@ final class InstallerSeeder
             ['uri' => AdminConstants::ADMIN_GROUP_URI],
             ['email' => null, 'displayname' => 'Administrators'],
         );
-        $this->notesHomes->ensureForSlug('administrators');
-
         $member = Principal::query()->where('uri', $memberPrincipalUri)->first();
         if ($member === null) {
             return;

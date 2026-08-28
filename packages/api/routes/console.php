@@ -13,6 +13,8 @@ use App\Services\Installer\WgwSchemaMigrator;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService;
 use App\Services\Meet\MeetReservationService;
+use App\Services\Notes\EventCalendarJournalStripper;
+use App\Services\Notes\NotesFileMigrator;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Foundation\Inspiring;
@@ -150,7 +152,38 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
     ));
 
     return self::SUCCESS;
-})->purpose('Provision home/work VEVENT calendars, tasks-home/tasks-work/tasks-inbox VTODO lists, and group VEVENT + VTODO calendars (idempotent)');
+})->purpose('Provision home/work VEVENT calendars, VTODO lists, VJOURNAL notebooks, and group collections (idempotent)');
+
+Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrator): int {
+    $result = $migrator->migrate();
+    $this->info(sprintf(
+        'Mapped %d path(s); imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
+        $result['mapped'],
+        $result['imported'],
+        $result['starred'],
+        $result['skipped'],
+        $result['discardedYjs'],
+        $result['images'],
+    ));
+    foreach ($result['notices'] as $notice) {
+        $this->line($notice);
+    }
+
+    return self::SUCCESS;
+})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks');
+
+Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJournalStripper $stripper): int {
+    $result = $stripper->stripAll();
+    $this->info(sprintf(
+        'Scanned %d calendar(s); stripped VJOURNAL from %d; moved %d journal object(s); skipped %d.',
+        $result['scanned'],
+        $result['stripped'],
+        $result['movedObjects'],
+        $result['skipped'],
+    ));
+
+    return self::SUCCESS;
+})->purpose('Strip VJOURNAL from event calendars and move stray journals into notes-general (idempotent)');
 
 Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', function (DevCalendarEventSeeder $seeder): int {
     $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));

@@ -160,11 +160,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         $withNotes->assertOk();
         $included = collect($withNotes->json('data'))->pluck('share.path')->all();
         $this->assertContains('/users/bob/drive-doc.md', $included);
-        $this->assertContains($notePath, $included);
-        $noteRow = collect($withNotes->json('data'))->firstWhere('share.path', $notePath);
-        $this->assertIsArray($noteRow);
-        $this->assertSame('view', $noteRow['share']['defaultAccess']);
-        $this->assertSame('file', $noteRow['entry']['type'] ?? null);
+        $this->assertNotContains($notePath, $included);
     }
 
     public function test_collab_rights_matrix_for_shared_note(): void
