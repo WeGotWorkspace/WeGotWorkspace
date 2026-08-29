@@ -24,6 +24,11 @@ export type NotesNotebookCollection = {
   myRights?: { mayWriteAll?: boolean; mayShare?: boolean; mayReadItems?: boolean } | null;
 };
 
+export type NotesDirectoryGroup = {
+  slug: string;
+  displayName: string;
+};
+
 export type NotesUIData = {
   notes: Note[];
   /** Owned personal notebook names only (not group notebooks). */
@@ -33,6 +38,8 @@ export type NotesUIData = {
   sharedNotebooks?: NotesSharedNotebook[];
   /** Collection rows for `@/collection-sidebar` partition + share. */
   notebookCollections?: NotesNotebookCollection[];
+  /** Directory groups for notebook owner transfer (same source as Tasks/Calendar). */
+  groups?: NotesDirectoryGroup[];
 };
 
 export type DeleteNotebookAction =
@@ -52,7 +59,20 @@ export type NotesAPIOperations = {
   ) => Promise<void>;
   archiveNote: (id: string, opts?: { signal?: AbortSignal }) => Promise<Note>;
   restoreNote: (id: string, opts?: { signal?: AbortSignal }) => Promise<Note>;
-  createNotebook: (name: string, opts?: { signal?: AbortSignal }) => Promise<void>;
+  createNotebook: (
+    name: string,
+    opts?: { signal?: AbortSignal; color?: string | null; groupSlug?: string | null },
+  ) => Promise<NotesNotebookCollection>;
+  patchNotebook?: (
+    notebookId: string,
+    patch: {
+      name?: string;
+      color?: string | null;
+      groupSlug?: string | null;
+      shareWith?: CollectionShareWith | null;
+    },
+    opts?: { signal?: AbortSignal },
+  ) => Promise<NotesNotebookCollection>;
   renameNotebook: (from: string, to: string, opts?: { signal?: AbortSignal }) => Promise<void>;
   deleteNotebook: (
     name: string,

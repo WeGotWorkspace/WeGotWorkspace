@@ -23,6 +23,7 @@ import {
   removeOutboxMutation,
   type NotesUpsertPayload,
   upsertNoteInCache,
+  upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
 
@@ -142,7 +143,19 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
         const saved = await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
         await upsertNoteInCache(username, saved, false);
       } else if (row.op === "createNotebook") {
-        await createNotebook(String(payload.name ?? ""));
+        const color =
+          typeof payload.color === "string" && payload.color.trim()
+            ? payload.color.trim()
+            : undefined;
+        const groupSlug =
+          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
+            ? payload.groupSlug.trim()
+            : undefined;
+        const created = await createNotebook(String(payload.name ?? ""), {
+          ...(color ? { color } : {}),
+          ...(groupSlug ? { groupSlug } : {}),
+        });
+        await upsertNotebookInCache(username, created);
       } else if (row.op === "renameNotebook") {
         await renameNotebook(String(payload.from ?? ""), String(payload.to ?? ""));
       } else if (row.op === "deleteNotebook") {

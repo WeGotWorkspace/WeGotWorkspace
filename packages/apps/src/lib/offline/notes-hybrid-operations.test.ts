@@ -348,6 +348,34 @@ describe("fetchNotesHybridBootstrap", () => {
     expect(result.data.notes[0]?.body[0]).toContain("Typed preview still in Dexie");
   });
 
+  it("keeps live notebookCollections after a Dexie cache merge", async () => {
+    const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
+
+    await writeNotesBootstrapToCache(username, bootstrap);
+
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["General"],
+        notebookCollections: [
+          { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+        ],
+        groups: [{ slug: "team", displayName: "Team" }],
+      },
+    });
+
+    const result = await fetchNotesHybridBootstrap();
+
+    expect(result.data.notebookCollections).toEqual([
+      { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+    ]);
+    expect(result.data.groups).toEqual([{ slug: "team", displayName: "Team" }]);
+    expect((await readNotesBootstrapFromCache(username))?.data.notebookCollections).toEqual([
+      { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+    ]);
+  });
+
   it("replaces Dexie ghost notebooks when the live list is empty", async () => {
     const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
 
@@ -394,5 +422,43 @@ describe("fetchNotesHybridBootstrap", () => {
 
     expect(deleteNotebook).toHaveBeenCalledWith("EmptyGhost", { mode: "purge" }, undefined);
     expect((await readNotesBootstrapFromCache(username))?.data.notebooks).toEqual(["Drafts"]);
+  });
+
+  it("createNotebook upserts color without dropping sibling notebooks", async () => {
+    const { createNotebook } = await import("@/lib/api/wgw/notes");
+    vi.mocked(createNotebook).mockResolvedValue({
+      id: "notes-ideas",
+      name: "Ideas",
+      color: "#ec4899",
+      isSharee: false,
+      scope: "personal",
+    });
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["Drafts", "General"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+          { id: "notes-general", name: "General", color: "#0ea5e9" },
+        ],
+      },
+    });
+
+    const operations = createHybridNotesOperations(username);
+    const created = await operations.createNotebook("Ideas", { color: "#ec4899" });
+
+    expect(createNotebook).toHaveBeenCalledWith("Ideas", { color: "#ec4899" });
+    expect(created.color).toBe("#ec4899");
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(expect.arrayContaining(["Drafts", "General", "Ideas"]));
+    expect(cached?.data.notebookCollections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Drafts" }),
+        expect.objectContaining({ name: "General" }),
+        expect.objectContaining({ name: "Ideas", color: "#ec4899" }),
+      ]),
+    );
   });
 });

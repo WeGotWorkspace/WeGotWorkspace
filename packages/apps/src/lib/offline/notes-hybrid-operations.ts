@@ -1,5 +1,9 @@
 import type { Note } from "@/lib/models/note";
-import type { DeleteNotebookAction, NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type {
+  DeleteNotebookAction,
+  NotesAPIOperations,
+  NotesNotebookCollection,
+} from "@/notes-core/src/notes-types";
 import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,
@@ -9,6 +13,7 @@ import {
   archiveNoteItem,
   createNoteItem,
   createNotebook as createNotebookApi,
+  patchNotebookCollection as patchNotebookApi,
   deleteNotebook as deleteNotebookApi,
   deleteNoteItem,
   fetchNotesLiveBootstrap,
@@ -31,8 +36,10 @@ import {
   listOutboxMutations,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
+  removeNotebookFromCache,
   removeOutboxMutationsForNote,
   upsertNoteInCache,
+  upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
@@ -51,13 +58,16 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (!isFetchNetworkError(error)) throw error;
 }
 
-async function patchCachedNotebooks(
-  username: string,
-  patch: (notebooks: string[]) => string[],
-): Promise<void> {
+async function renameCachedNotebook(username: string, from: string, to: string): Promise<void> {
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) return;
-  cached.data.notebooks = patch(cached.data.notebooks);
+  cached.data.notebooks = cached.data.notebooks.map((name) => (name === from ? to : name));
+  cached.data.notebookCollections = (cached.data.notebookCollections ?? []).map((item) =>
+    item.name === from ? { ...item, name: to } : item,
+  );
+  cached.data.notes = cached.data.notes.map((note) =>
+    note.notebook === from ? { ...note, notebook: to } : note,
+  );
   await writeNotesBootstrapToCache(username, cached);
 }
 
@@ -349,50 +359,55 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         return optimistic;
       }
     },
+    patchNotebook: async (notebookId, patch, opts) => {
+      const updated = await patchNotebookApi(notebookId, patch, opts);
+      await upsertNotebookInCache(username, updated);
+      return updated;
+    },
     createNotebook: async (name, opts) => {
+      const local: NotesNotebookCollection = {
+        id: name,
+        name,
+        color: opts?.color?.trim() || null,
+        isSharee: false,
+        scope: opts?.groupSlug?.trim() ? "group" : "personal",
+        groupSlug: opts?.groupSlug?.trim() || null,
+      };
+      const outboxPayload = JSON.stringify({
+        name,
+        ...(local.color ? { color: local.color } : {}),
+        ...(local.groupSlug ? { groupSlug: local.groupSlug } : {}),
+      });
       if (!readBrowserOnline()) {
-        await patchCachedNotebooks(username, (notebooks) =>
-          notebooks.includes(name) ? notebooks : [...notebooks, name],
-        );
+        await upsertNotebookInCache(username, local);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "createNotebook",
-          payload: JSON.stringify({ name }),
+          payload: outboxPayload,
         });
-        return;
+        return local;
       }
       try {
-        await createNotebookApi(name, opts);
-        await patchCachedNotebooks(username, (notebooks) =>
-          notebooks.includes(name) ? notebooks : [...notebooks, name],
-        );
+        const created = await createNotebookApi(name, opts);
+        await upsertNotebookInCache(username, created);
         await runner.flush();
+        return created;
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        await patchCachedNotebooks(username, (notebooks) =>
-          notebooks.includes(name) ? notebooks : [...notebooks, name],
-        );
+        await upsertNotebookInCache(username, local);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "createNotebook",
-          payload: JSON.stringify({ name }),
+          payload: outboxPayload,
         });
+        return local;
       }
     },
     renameNotebook: async (from, to, opts) => {
       if (!readBrowserOnline()) {
-        await patchCachedNotebooks(username, (notebooks) =>
-          notebooks.map((n) => (n === from ? to : n)),
-        );
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notes = cached.data.notes.map((n) =>
-            n.notebook === from ? { ...n, notebook: to } : n,
-          );
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await renameCachedNotebook(username, from, to);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -403,25 +418,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await renameNotebookApi(from, to, opts);
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notebooks = cached.data.notebooks.map((n) => (n === from ? to : n));
-          cached.data.notes = cached.data.notes.map((n) =>
-            n.notebook === from ? { ...n, notebook: to } : n,
-          );
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await renameCachedNotebook(username, from, to);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const cached = await readNotesBootstrapFromCache(username);
-        if (cached) {
-          cached.data.notebooks = cached.data.notebooks.map((n) => (n === from ? to : n));
-          cached.data.notes = cached.data.notes.map((n) =>
-            n.notebook === from ? { ...n, notebook: to } : n,
-          );
-          await writeNotesBootstrapToCache(username, cached);
-        }
+        await renameCachedNotebook(username, from, to);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -432,7 +433,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     deleteNotebook: async (name, action, opts) => {
       if (!readBrowserOnline()) {
-        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
+        await removeNotebookFromCache(username, name);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -443,11 +444,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await deleteNotebookApi(name, notebookDeleteBodyForAction(action), opts);
-        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
+        await removeNotebookFromCache(username, name);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        await patchCachedNotebooks(username, (notebooks) => notebooks.filter((n) => n !== name));
+        await removeNotebookFromCache(username, name);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -478,6 +479,8 @@ export async function fetchNotesHybridBootstrap(): Promise<
     // `length > 0` guard left Dexie ghosts (emptied / deleted dirs the API omits).
     cached.data.notebooks = bootstrap.data.notebooks;
     cached.data.sharedNotebooks = bootstrap.data.sharedNotebooks ?? [];
+    cached.data.notebookCollections = bootstrap.data.notebookCollections ?? [];
+    cached.data.groups = bootstrap.data.groups ?? [];
     if (!hadOutbox) {
       // Server is source of truth for membership/metadata, but body lives in
       // collab — keep a non-empty cached preview when the API body is still empty.

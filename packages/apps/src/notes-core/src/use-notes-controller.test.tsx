@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
+import { NOTES_VIEW_PREFS_STORAGE_KEY } from "./notes-view-prefs";
 import type { NotesUIData } from "./notes-types";
 import { useNotesController } from "./use-notes-controller";
 
@@ -57,6 +58,7 @@ function clickSelect(result: { current: ReturnType<typeof useNotesController> },
 describe("useNotesController bootstrap sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.removeItem(NOTES_VIEW_PREFS_STORAGE_KEY);
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -446,5 +448,36 @@ describe("useNotesController URL routing", () => {
 
     const calls = onNoteChange.mock.calls.map(([id]) => id);
     expect(calls).toContain("");
+  });
+
+  it("hides notes from unchecked notebooks on All, but not on that notebook view", () => {
+    const data: NotesUIData = {
+      notes: [
+        { ...localNote, id: "n1", notebook: "Drafts", notebookId: "drafts" },
+        { ...localNote, id: "n2", notebook: "Work", notebookId: "work" },
+      ],
+      notebooks: ["Drafts", "Work"],
+      notebookCollections: [
+        { id: "drafts", name: "Drafts" },
+        { id: "work", name: "Work" },
+      ],
+      tags: [],
+    };
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    expect(result.current.visibleNotes.map((note) => note.id).sort()).toEqual(["n1", "n2"]);
+
+    act(() => {
+      result.current.toggleNotebookVisibility("work");
+    });
+
+    expect(result.current.hiddenNotebookIds.has("work")).toBe(true);
+    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["n1"]);
+
+    act(() => {
+      result.current.selectView("nb:work");
+    });
+
+    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["n2"]);
   });
 });

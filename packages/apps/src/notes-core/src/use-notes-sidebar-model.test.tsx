@@ -21,7 +21,7 @@ describe("useNotesSidebarModel", () => {
       useNotesSidebarModel({
         labels: defaultNotesLabels,
         view: "all",
-        notebooks: ["Drafts"],
+        notebooks: ["General"],
         notebookCollections: [
           { id: "notes-general", name: "General", isSharee: false },
           { id: "shared-nb", name: "Shared Notes", isSharee: true },
@@ -45,10 +45,20 @@ describe("useNotesSidebarModel", () => {
   });
 
   it("partitions owned vs shared from collection-sidebar only", () => {
-    const collections = collectionsFromNotesData(["Drafts"], [], [
+    const collections = collectionsFromNotesData(["Alpha"], [], [
       { id: "a", name: "Alpha", isSharee: false },
       { id: "b", name: "Beta", isSharee: true },
     ]);
     expect(collections).toHaveLength(2);
+  });
+
+  it("keeps leftover sibling notebooks when collections is a single created row", () => {
+    const collections = collectionsFromNotesData(
+      ["General", "Drafts"],
+      [],
+      [{ id: "notes-ideas", name: "Ideas", color: "#ec4899", isSharee: false }],
+    );
+    expect(collections.map((item) => item.name)).toEqual(["Ideas", "General", "Drafts"]);
+    expect(collections.find((item) => item.name === "Ideas")?.color).toBe("#ec4899");
   });
 });

@@ -16,9 +16,25 @@ type Story = StoryObj<typeof NotesWorkspace>;
 
 const bootstrap = createNotesAppBootstrap();
 
+const storyOperations = {
+  upsertNote: async (note: (typeof bootstrap.data.notes)[number]) => note,
+  deleteNote: async () => {},
+  archiveNote: async (id: string) => bootstrap.data.notes.find((note) => note.id === id)!,
+  restoreNote: async (id: string) => bootstrap.data.notes.find((note) => note.id === id)!,
+  createNotebook: async (name: string) => ({ id: name, name }),
+  patchNotebook: async (id: string, patch: { name?: string; color?: string | null }) => ({
+    id,
+    name: patch.name ?? id,
+    color: patch.color,
+  }),
+  renameNotebook: async () => {},
+  deleteNotebook: async () => {},
+};
+
 export const Default: Story = {
   args: {
     ...bootstrap,
+    operations: storyOperations,
     shareOperations: createMockDriveShareOperations(),
   },
 };
@@ -45,15 +61,15 @@ export const WithSharedSections: Story = {
           },
         ],
         notebookCollections: [
-          ...(bootstrap.data.notebooks ?? []).map((name) => ({
-            id: name,
-            name,
+          ...(bootstrap.data.notebookCollections ?? []).map((notebook) => ({
+            ...notebook,
             isSharee: false,
             scope: "personal" as const,
           })),
           {
             id: "group-eng",
             name: "Specs",
+            color: "#ec4899",
             isSharee: true,
             scope: "group",
             groupSlug: "eng",
@@ -61,6 +77,7 @@ export const WithSharedSections: Story = {
         ],
       },
     }),
+    operations: storyOperations,
     initialView: "nb:group-eng",
   },
 };

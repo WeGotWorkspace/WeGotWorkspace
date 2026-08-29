@@ -13,7 +13,9 @@ import {
   notesCanCreateInView,
   noteShowsTags,
 } from "./notes-note-utils";
-import type { NotesAPIOperations, NotesUIData } from "./notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection, NotesUIData } from "./notes-types";
+import { useNotesHiddenIds } from "./use-notes-hidden-ids";
+import { collectionsFromNotesData } from "./use-notes-sidebar-model";
 
 /** Debounce bursts of edits before showing a save toast. */
 const AUTO_SAVE_TOAST_DEBOUNCE_MS = 1200;
@@ -88,6 +90,9 @@ export function useNotesShell({
   const [notebooks, setNotebooks] = useState(() =>
     collectPersonalNotebookNames(data.notebooks, data.notes),
   );
+  const [notebookCollections, setNotebookCollections] = useState<NotesNotebookCollection[]>(() =>
+    collectionsFromNotesData(data.notebooks, data.sharedNotebooks, data.notebookCollections),
+  );
 
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -123,7 +128,17 @@ export function useNotesShell({
     // Merge by id so optimistic tags/starred survive a stale bootstrap refresh
     // (tag upserts are write-queue delayed; create/list often returns first).
     setNotes((prev) => mergeBootstrapNotesPreservingOptimistic(data.notes.map(enrichNote), prev));
-    setNotebooks(collectPersonalNotebookNames(data.notebooks, data.notes));
+    const nextNames = collectPersonalNotebookNames(data.notebooks, data.notes);
+    setNotebooks(nextNames);
+    setNotebookCollections((prev) =>
+      collectionsFromNotesData(
+        nextNames,
+        data.sharedNotebooks,
+        data.notebookCollections && data.notebookCollections.length > 0
+          ? data.notebookCollections
+          : prev,
+      ),
+    );
   }, [bootstrapRevision, data]);
 
   useEffect(() => {
@@ -132,10 +147,19 @@ export function useNotesShell({
   }, [initialView]);
 
   const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
-  const notebookCollections = useMemo(
-    () => data.notebookCollections ?? [],
-    [data.notebookCollections],
+  const { hiddenNotebookIds, setHiddenNotebookIds } = useNotesHiddenIds(notebookCollections);
+  const toggleNotebookVisibility = useCallback(
+    (notebookId: string) => {
+      setHiddenNotebookIds((current) => {
+        const next = new Set(current);
+        if (next.has(notebookId)) next.delete(notebookId);
+        else next.add(notebookId);
+        return next;
+      });
+    },
+    [setHiddenNotebookIds],
   );
+  const groups = useMemo(() => data.groups ?? [], [data.groups]);
   const tags = useMemo(
     () => [
       ...new Set(
@@ -219,6 +243,8 @@ export function useNotesShell({
     setNotebooks,
     sharedNotebooks,
     notebookCollections,
+    setNotebookCollections,
+    groups,
     tags,
     viewLabel,
     canCreateNote,
@@ -226,6 +252,8 @@ export function useNotesShell({
     selectedTag,
     canEditDelete,
     selectView,
+    hiddenNotebookIds,
+    toggleNotebookVisibility,
     listLoading,
     operations,
     show,

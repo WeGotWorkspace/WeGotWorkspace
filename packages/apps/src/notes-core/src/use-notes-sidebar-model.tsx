@@ -39,9 +39,6 @@ export function collectionsFromNotesData(
   sharedNotebooks: NotesSharedNotebook[] = [],
   notebookCollections?: NotesNotebookCollection[],
 ): NotesNotebookCollection[] {
-  if (notebookCollections && notebookCollections.length > 0) {
-    return notebookCollections;
-  }
   const owned = notebooks.map(
     (name): NotesNotebookCollection => ({
       id: name,
@@ -61,7 +58,18 @@ export function collectionsFromNotesData(
         groupSlug: entry.groupSlug,
       }),
     );
-  return [...owned, ...shared];
+  if (!notebookCollections || notebookCollections.length === 0) {
+    return [...owned, ...shared];
+  }
+  const seen = new Set<string>();
+  for (const collection of notebookCollections) {
+    seen.add(collection.id);
+    seen.add(collection.name);
+  }
+  const extras = [...owned, ...shared].filter(
+    (item) => !seen.has(item.id) && !seen.has(item.name),
+  );
+  return [...notebookCollections, ...extras];
 }
 
 export function useNotesSidebarModel({

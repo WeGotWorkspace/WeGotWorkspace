@@ -13,8 +13,10 @@ import {
   NOTES_DOMAIN,
   notesNotebooksTable,
   notesNotesTable,
+  type OfflineNotebookRow,
   type OfflineNoteRow,
 } from "@/lib/offline/notes/notes-schema";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { enrichNote, noteHasListableBody } from "@/notes-core/src/notes-note-utils";
 
 export {
@@ -25,6 +27,8 @@ export {
 } from "@/lib/offline/core/outbox-store";
 
 const META_SESSION = "notes:session";
+const META_NOTEBOOK_COLLECTIONS = "notes:notebookCollections";
+const META_GROUPS = "notes:groups";
 
 /**
  * Frontmatter metadata coalesced through the Notes outbox. The note **body** is
@@ -79,6 +83,52 @@ function tagsFromNotes(notes: Note[]): string[] {
   return [...new Set(notes.flatMap((n) => n.tags))];
 }
 
+function isOwnedPersonalNotebook(notebook: NotesNotebookCollection): boolean {
+  return notebook.isSharee !== true && notebook.scope !== "group";
+}
+
+export function parseNotebookCacheRow(row: OfflineNotebookRow): NotesNotebookCollection {
+  try {
+    const parsed = JSON.parse(row.data) as unknown;
+    if (parsed && typeof parsed === "object") {
+      const rec = parsed as Record<string, unknown>;
+      const name = typeof rec.name === "string" && rec.name.trim() ? rec.name : row.id;
+      return {
+        ...(rec as NotesNotebookCollection),
+        id: typeof rec.id === "string" && rec.id.trim() ? rec.id : row.id,
+        name,
+      };
+    }
+  } catch {
+    // Name-only rows from older Dexie writes still hydrate.
+  }
+  return { id: row.id, name: row.id };
+}
+
+function collectionsForCache(bootstrap: NotesAppBootstrap): NotesNotebookCollection[] {
+  const collections = bootstrap.data.notebookCollections ?? [];
+  const seen = new Set<string>();
+  for (const collection of collections) {
+    seen.add(collection.id);
+    seen.add(collection.name);
+  }
+  const extras = (bootstrap.data.notebooks ?? [])
+    .filter((name) => !seen.has(name))
+    .map((name): NotesNotebookCollection => ({ id: name, name }));
+  return [...collections, ...extras];
+}
+
+function mergeNotebookIntoList(
+  collections: NotesNotebookCollection[],
+  notebook: NotesNotebookCollection,
+): NotesNotebookCollection[] {
+  const index = collections.findIndex(
+    (item) => item.id === notebook.id || item.name === notebook.name,
+  );
+  if (index === -1) return [...collections, notebook];
+  return collections.map((item, i) => (i === index ? { ...item, ...notebook } : item));
+}
+
 export async function readNotesBootstrapFromCache(
   username: string,
 ): Promise<NotesAppBootstrap | null> {
@@ -91,15 +141,37 @@ export async function readNotesBootstrapFromCache(
   if (books.length === 0 && notes.length === 0) return null;
 
   const session = JSON.parse(sessionRow.value) as NotesAppBootstrap["session"];
-  const notebooks = books.map((row) => row.id);
+  const fromRows = books.map(parseNotebookCacheRow);
+  const collectionsRow = await db.meta.get(META_NOTEBOOK_COLLECTIONS);
+  const fromMeta = collectionsRow?.value
+    ? (JSON.parse(collectionsRow.value) as NotesNotebookCollection[])
+    : undefined;
+  const notebookCollections = collectionsForCache({
+    session,
+    data: {
+      notes: [],
+      notebooks: fromRows.map((item) => item.name),
+      tags: [],
+      notebookCollections: fromMeta && fromMeta.length > 0 ? fromMeta : fromRows,
+    },
+  });
+  const notebooks = [
+    ...new Set(notebookCollections.filter(isOwnedPersonalNotebook).map((item) => item.name)),
+  ];
   const noteEntities = notes.map((row) => JSON.parse(row.data) as Note);
+  const groupsRow = await db.meta.get(META_GROUPS);
+  const groups = groupsRow?.value
+    ? (JSON.parse(groupsRow.value) as NotesAppBootstrap["data"]["groups"])
+    : undefined;
 
   return {
     session,
     data: {
       notes: noteEntities,
       notebooks,
+      notebookCollections,
       tags: tagsFromNotes(noteEntities),
+      ...(groups ? { groups } : {}),
     },
   };
 }
@@ -113,12 +185,23 @@ export async function writeNotesBootstrapToCache(
   const books = notesNotebooksTable(db);
   const pendingRows = await notes.filter((row) => row.pendingSync).toArray();
   await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+  const collections = collectionsForCache(bootstrap);
+  await db.meta.put({
+    key: META_NOTEBOOK_COLLECTIONS,
+    value: JSON.stringify(collections),
+  });
+  if (bootstrap.data.groups !== undefined) {
+    await db.meta.put({
+      key: META_GROUPS,
+      value: JSON.stringify(bootstrap.data.groups),
+    });
+  }
   rememberOfflineNotesUsername(username);
   await books.clear();
   await books.bulkPut(
-    bootstrap.data.notebooks.map((name) => ({
-      id: name,
-      data: JSON.stringify({ name }),
+    collections.map((collection) => ({
+      id: collection.id,
+      data: JSON.stringify(collection),
     })),
   );
   await notes.clear();
@@ -161,6 +244,54 @@ export async function upsertNoteInCache(
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await notesNotesTable(db).put(noteRow(note, pendingSync));
+}
+
+export async function upsertNotebookInCache(
+  username: string,
+  notebook: NotesNotebookCollection,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const books = notesNotebooksTable(db);
+  if (notebook.id !== notebook.name) {
+    const byName = await books.get(notebook.name);
+    if (byName) await books.delete(notebook.name);
+  }
+  await books.put({
+    id: notebook.id,
+    data: JSON.stringify(notebook),
+  });
+  const cached = await readNotesBootstrapFromCache(username);
+  if (!cached) return;
+  cached.data.notebookCollections = mergeNotebookIntoList(
+    cached.data.notebookCollections ?? [],
+    notebook,
+  );
+  if (isOwnedPersonalNotebook(notebook) && !cached.data.notebooks.includes(notebook.name)) {
+    cached.data.notebooks = [...cached.data.notebooks, notebook.name];
+  }
+  await writeNotesBootstrapToCache(username, cached);
+}
+
+export async function removeNotebookFromCache(
+  username: string,
+  notebookIdOrName: string,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const books = notesNotebooksTable(db);
+  const rows = await books.toArray();
+  for (const row of rows) {
+    const collection = parseNotebookCacheRow(row);
+    if (collection.id === notebookIdOrName || collection.name === notebookIdOrName) {
+      await books.delete(row.id);
+    }
+  }
+  const cached = await readNotesBootstrapFromCache(username);
+  if (!cached) return;
+  cached.data.notebookCollections = (cached.data.notebookCollections ?? []).filter(
+    (item) => item.id !== notebookIdOrName && item.name !== notebookIdOrName,
+  );
+  cached.data.notebooks = cached.data.notebooks.filter((name) => name !== notebookIdOrName);
+  await writeNotesBootstrapToCache(username, cached);
 }
 
 export async function removeNoteFromCache(username: string, noteId: string): Promise<void> {

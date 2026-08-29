@@ -1,4 +1,5 @@
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
+import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
 
 /**
  * User-visible copy for the notes workspace (sidebar, list chrome, dialogs, toasts).
@@ -22,6 +23,8 @@ export type NotesUILabels = {
   sectionSharedNotebooks: string;
   sectionTags: string;
   share: string;
+  titlePlaceholder: string;
+  /** Overflow item on the sidebar segmented New control. */
   addNotebook: string;
   addTag: string;
   listSelected: (count: number) => string;
@@ -30,6 +33,8 @@ export type NotesUILabels = {
   /** Detail pane when no note is selected (CollectionState empty). */
   emptyDetail: string;
   newNote: string;
+  /** Chevron menu on the sidebar segmented New control. */
+  newNoteMenu: string;
   edit: string;
   remove: string;
   emptyArchive: string;
@@ -80,6 +85,23 @@ export type NotesUILabels = {
   shareNotebookOffline: string;
   removeNotebookShareTitle: string;
   removeNotebookShareConfirm: string;
+  newNotebookTitle: string;
+  editNotebookTitle: string;
+  notebookNameLabel: string;
+  notebookColorLabel: string;
+  notebookOwnerLabel: string;
+  notebookOwnerPersonal: (ownerLabel: string) => string;
+  notebookOwnerGroup: (name: string) => string;
+  notebookOwnerReadOnly: string;
+  changeNotebookOwnerConfirmTitle: string;
+  changeNotebookOwnerConfirmToGroup: (groupName: string) => string;
+  changeNotebookOwnerConfirmToPersonal: string;
+  changeNotebookOwnerConfirm: string;
+  createNotebookButton: string;
+  saveNotebookButton: string;
+  removeSharedNotebook: string;
+  removeSharedNotebookConfirmTitle: string;
+  removeSharedNotebookConfirmDescription: string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -97,13 +119,15 @@ export const defaultNotesLabels: NotesUILabels = {
   sectionSharedNotebooks: "Shared notebooks",
   sectionTags: "Tags",
   share: "Share",
-  addNotebook: "New notebook",
+  titlePlaceholder: "Title",
+  addNotebook: "Create notebook",
   addTag: "New tag",
   listSelected: (count) => `${count} Selected`,
   listFiles: (count) => `${count} Files`,
   emptyList: "No items",
   emptyDetail: "Select a note",
   newNote: "New note",
+  newNoteMenu: "More create options",
   edit: "Edit",
   remove: "Remove",
   emptyArchive: "Empty archive",
@@ -155,9 +179,57 @@ export const defaultNotesLabels: NotesUILabels = {
   shareNotebookOffline: "Sharing is unavailable offline.",
   removeNotebookShareTitle: "Remove access?",
   removeNotebookShareConfirm: "They will no longer see this notebook.",
+  newNotebookTitle: "New notebook",
+  editNotebookTitle: "Edit notebook",
+  notebookNameLabel: "Name",
+  notebookColorLabel: "Color",
+  notebookOwnerLabel: "Owner",
+  notebookOwnerPersonal: (ownerLabel) => ownerLabel,
+  notebookOwnerGroup: (name) => name,
+  notebookOwnerReadOnly: "Owner cannot be changed for this notebook.",
+  changeNotebookOwnerConfirmTitle: "Change notebook owner?",
+  changeNotebookOwnerConfirmToGroup: (groupName) =>
+    `This notebook will move to ${groupName}. Members of that group will see it.`,
+  changeNotebookOwnerConfirmToPersonal: "This notebook will move to your personal notebooks.",
+  changeNotebookOwnerConfirm: "Change owner",
+  createNotebookButton: "Create",
+  saveNotebookButton: "Save",
+  removeSharedNotebook: "Remove notebook",
+  removeSharedNotebookConfirmTitle: "Remove this shared notebook?",
+  removeSharedNotebookConfirmDescription: "You will no longer see this notebook.",
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {
   if (!overrides) return defaultNotesLabels;
   return { ...defaultNotesLabels, ...overrides };
+}
+
+export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): TaskProjectDialogLabels {
+  return {
+    createTitle: labels.newNotebookTitle,
+    editTitle: labels.editNotebookTitle,
+    nameLabel: labels.notebookNameLabel,
+    colorLabel: labels.notebookColorLabel,
+    scopeLabel: labels.notebookOwnerLabel,
+    scopePersonal: labels.notebookOwnerPersonal,
+    scopeGroup: labels.notebookOwnerGroup,
+    scopeReadOnlyLabel: labels.notebookOwnerReadOnly,
+    changeOwnerConfirmTitle: labels.changeNotebookOwnerConfirmTitle,
+    changeOwnerConfirmToGroup: labels.changeNotebookOwnerConfirmToGroup,
+    changeOwnerConfirmToPersonal: labels.changeNotebookOwnerConfirmToPersonal,
+    changeOwnerConfirm: labels.changeNotebookOwnerConfirm,
+    createButton: labels.createNotebookButton,
+    saveButton: labels.saveNotebookButton,
+    cancel: labels.dialogCancel,
+    shareListSectionTitle: labels.shareNotebookTitle,
+    shareListSectionHint: labels.shareNotebookHint,
+    shareListAddPlaceholder: labels.shareNotebookPlaceholder,
+    shareListSearchEmpty: labels.shareNotebookEmpty,
+    shareListOffline: labels.shareNotebookOffline,
+    removeListShareTitle: labels.removeNotebookShareTitle,
+    removeListShareConfirm: labels.removeNotebookShareConfirm,
+    removeSharedList: labels.removeSharedNotebook,
+    removeSharedListConfirmTitle: labels.removeSharedNotebookConfirmTitle,
+    removeSharedListConfirmDescription: labels.removeSharedNotebookConfirmDescription,
+  };
 }

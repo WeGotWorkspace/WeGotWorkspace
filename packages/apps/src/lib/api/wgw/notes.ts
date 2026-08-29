@@ -32,6 +32,7 @@ import {
   unstarNote,
   createNotebook as createVjournalNotebook,
   deleteNotebook as deleteVjournalNotebook,
+  type NotesVjournalNotebook,
 } from "@/lib/api/wgw/notes-vjournal";
 
 export { NotesRequestError };
@@ -624,8 +625,31 @@ export async function restoreNoteItem(
   return noteFromVjournal(patched, notebooks);
 }
 
-export async function createNotebook(name: string, opts?: { signal?: AbortSignal }): Promise<void> {
-  await createVjournalNotebook({ name }, opts);
+export async function createNotebook(
+  name: string,
+  opts?: { signal?: AbortSignal; color?: string | null; groupSlug?: string | null },
+): Promise<NotesVjournalNotebook> {
+  return createVjournalNotebook(
+    {
+      name,
+      ...(opts?.color?.trim() ? { color: opts.color.trim() } : {}),
+      ...(opts?.groupSlug?.trim() ? { groupSlug: opts.groupSlug.trim() } : {}),
+    },
+    opts,
+  );
+}
+
+export async function patchNotebookCollection(
+  notebookId: string,
+  patch: {
+    name?: string;
+    color?: string | null;
+    groupSlug?: string | null;
+    shareWith?: Parameters<typeof patchNotebook>[1]["shareWith"];
+  },
+  opts?: { signal?: AbortSignal },
+) {
+  return patchNotebook(notebookId, patch, opts);
 }
 
 export async function renameNotebook(

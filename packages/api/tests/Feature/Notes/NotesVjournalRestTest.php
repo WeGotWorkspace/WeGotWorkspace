@@ -38,6 +38,40 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->assertSame('General', $general['name']);
     }
 
+    public function test_create_notebook_named_starred_does_not_use_reserved_uri(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/notebooks', ['name' => 'Starred'])
+            ->assertCreated()
+            ->json();
+        $this->assertSame('Starred', $created['name']);
+        $this->assertNotSame('starred', $created['id']);
+        $this->assertNotContains($created['id'], CalendarCollectionUris::reservedNoteUriSlugs());
+
+        $renamed = $this->asBob()->patchJson('/api/v1/notes/notebooks/'.$created['id'], [
+            'name' => 'Archive',
+        ])->assertOk()->json();
+        $this->assertSame($created['id'], $renamed['id']);
+        $this->assertSame('Archive', $renamed['name']);
+
+        $this->asBob()->postJson('/api/v1/notes/notebooks', ['id' => 'starred', 'name' => 'Also Starred'])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'alreadyExists');
+    }
+
+    public function test_create_notebook_persists_color(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Pink',
+            'color' => '#ec4899',
+        ])->assertCreated();
+        $created->assertJsonPath('name', 'Pink')->assertJsonPath('color', '#ec4899');
+
+        $list = $this->asBob()->getJson('/api/v1/notes/notebooks')->assertOk()->json('list');
+        $row = collect($list)->firstWhere('name', 'Pink');
+        $this->assertIsArray($row);
+        $this->assertSame('#ec4899', $row['color']);
+    }
+
     public function test_create_and_get_note_by_uid_when_uri_differs(): void
     {
         $uid = 'foreign-uid-'.bin2hex(random_bytes(4));

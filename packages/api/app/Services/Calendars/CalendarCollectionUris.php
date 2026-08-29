@@ -115,6 +115,26 @@ final class CalendarCollectionUris
         return [self::NOTE_GENERAL];
     }
 
+    /**
+     * SPA first-segment view keys and prefixes that must not be CalDAV notebook URIs.
+     *
+     * @return list<string>
+     */
+    public static function reservedNoteViewSlugs(): array
+    {
+        return [
+            'all',
+            'starred',
+            'archive',
+            'archived',
+            'inbox',
+            'shared-with-me',
+            'tags',
+            'shared-nb',
+            'notebooks',
+        ];
+    }
+
     /** @return list<string> */
     public static function reservedNoteUriSlugs(): array
     {
@@ -122,6 +142,7 @@ final class CalendarCollectionUris
             self::reservedNoteUris(),
             self::reservedEventUris(),
             self::reservedTaskUris(),
+            self::reservedNoteViewSlugs(),
         )));
     }
 }

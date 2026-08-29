@@ -2,6 +2,7 @@ import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
 
@@ -176,6 +177,7 @@ export async function patchNotebook(
   patch: {
     name?: string;
     color?: string | null;
+    groupSlug?: string | null;
     shareWith?: Record<string, { mayWriteAll?: boolean; mayReadItems?: boolean } | null> | null;
   },
   opts?: NotesRequestOpts,
@@ -238,7 +240,7 @@ export function noteFromVjournal(
     notebookId: row.notebookId,
     title: title ?? undefined,
     etag: row.etag,
-    excerpt: title || excerptFromBody(row.body ?? ""),
+    excerpt: excerptFromBody(row.body ?? ""),
     body,
     tags: row.categories ?? [],
     wordCount: wordCountFromText(flat),
@@ -257,6 +259,16 @@ export function noteFromVjournal(
 
 export async function fetchNotesVjournalBootstrap(): Promise<NotesAppBootstrap> {
   const session = await wgwFetchPrincipal();
+  let groups: NotesAppBootstrap["data"]["groups"] = [];
+  const settingsRes = await wgwFetch("/settings/state");
+  if (settingsRes.ok) {
+    const settings = (await wgwReadJson(settingsRes)) as {
+      groups?: { id: string; displayName: string }[];
+    };
+    if (Array.isArray(settings.groups)) {
+      groups = mapTaskProjectGroups(settings.groups);
+    }
+  }
   const notebooks = await listNotebooks();
   const notes: Note[] = [];
   for (const notebook of notebooks) {
@@ -273,6 +285,7 @@ export async function fetchNotesVjournalBootstrap(): Promise<NotesAppBootstrap> 
       notebooks: ownedNames,
       tags,
       notebookCollections: notebooks,
+      groups,
     },
     session,
   };

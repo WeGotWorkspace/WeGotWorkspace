@@ -307,7 +307,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
   const NotesComponent = isLive ? withWeGotWorkspaceAuth(NotesApp) : MockNotesRoute;
 
   // Each notes path is a root-level route with its own component so `useParams` in
-  // NotesApp resolves leaf params (noteId, notebookSlug, tagSlug) on direct page loads.
+  // NotesApp resolves leaf params (noteId, notebookId, tagSlug) on direct page loads.
   const notesIndexRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/notes",
@@ -403,14 +403,14 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
 
   const notesNotebookRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
-    path: "/notes/$notebookSlug",
+    path: "/notes/notebooks/$notebookId",
     head: notesPwaHead,
     component: NotesComponent,
   });
 
   const notesNotebookNoteRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
-    path: "/notes/$notebookSlug/$noteId",
+    path: "/notes/notebooks/$notebookId/$noteId",
     head: notesPwaHead,
     component: NotesComponent,
   });

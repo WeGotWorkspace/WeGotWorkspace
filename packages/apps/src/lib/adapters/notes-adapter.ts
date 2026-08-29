@@ -1,5 +1,9 @@
 import type { Note } from "@/lib/models/note";
-import type { NotesNotebookCollection, NotesSharedNotebook } from "@/notes-core/src/notes-types";
+import type {
+  NotesDirectoryGroup,
+  NotesNotebookCollection,
+  NotesSharedNotebook,
+} from "@/notes-core/src/notes-types";
 
 export type NotesSeedData = {
   notes: Note[];
@@ -7,6 +11,7 @@ export type NotesSeedData = {
   tags: string[];
   sharedNotebooks?: NotesSharedNotebook[];
   notebookCollections?: NotesNotebookCollection[];
+  groups?: NotesDirectoryGroup[];
 };
 
 export type NotesAdapter = {

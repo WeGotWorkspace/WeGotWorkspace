@@ -48,6 +48,59 @@ describe("notes offline store", () => {
     expect(cached?.data.notes[0]?.body).toEqual(["Body text"]);
   });
 
+  it("persists notebook color and does not drop sibling collections on upsert", async () => {
+    const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["Drafts", "General"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+          { id: "notes-general", name: "General", color: "#0ea5e9" },
+        ],
+      },
+    });
+
+    await upsertNotebookInCache(username, {
+      id: "notes-ideas",
+      name: "Ideas",
+      color: "#ec4899",
+      isSharee: false,
+      scope: "personal",
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(expect.arrayContaining(["Drafts", "General", "Ideas"]));
+    expect(cached?.data.notebookCollections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Drafts", color: "#14b8a6" }),
+        expect.objectContaining({ name: "General", color: "#0ea5e9" }),
+        expect.objectContaining({ name: "Ideas", color: "#ec4899" }),
+      ]),
+    );
+  });
+
+  it("persists notebookCollections and groups for edit/save", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["General"],
+        notebookCollections: [
+          { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+        ],
+        groups: [{ slug: "team", displayName: "Team" }],
+      },
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebookCollections).toEqual([
+      { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+    ]);
+    expect(cached?.data.groups).toEqual([{ slug: "team", displayName: "Team" }]);
+  });
+
   it("preserves pendingSync notes when bootstrap is rewritten from server", async () => {
     const localNote = { ...note, body: ["Local body"] };
     await upsertNoteInCache(username, localNote, true);

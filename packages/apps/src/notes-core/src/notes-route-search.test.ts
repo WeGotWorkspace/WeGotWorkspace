@@ -21,13 +21,13 @@ describe("notes-route-search", () => {
       }),
     ).toBe("tag:focus");
     expect(
-      notesViewFromLocation("/notes/Drafts", {
-        notebookSlug: "Drafts",
+      notesViewFromLocation("/notes/notebooks/notes-drafts", {
+        notebookId: "notes-drafts",
       }),
-    ).toBe("nb:Drafts");
+    ).toBe("nb:notes-drafts");
     expect(
-      notesViewFromLocation("/notes/My%20Notebook", {
-        notebookSlug: "My%20Notebook",
+      notesViewFromLocation("/notes/notebooks/My%20Notebook", {
+        notebookId: "My%20Notebook",
       }),
     ).toBe("nb:My Notebook");
   });
@@ -42,9 +42,9 @@ describe("notes-route-search", () => {
       to: "/notes/archive/$noteId",
       params: { noteId: "n-2" },
     });
-    expect(notesNavigateTarget("nb:Drafts", "n-3")).toEqual({
-      to: "/notes/$notebookSlug/$noteId",
-      params: { notebookSlug: "Drafts", noteId: "n-3" },
+    expect(notesNavigateTarget("nb:notes-drafts", "n-3")).toEqual({
+      to: "/notes/notebooks/$notebookId/$noteId",
+      params: { notebookId: "notes-drafts", noteId: "n-3" },
     });
     expect(notesNavigateTarget("tag:work")).toEqual({
       to: "/notes/tags/$tagSlug",
@@ -70,5 +70,24 @@ describe("notes-route-search", () => {
         sharedNbSlug: encodeURIComponent("/users/bob/.notes/TeamPad"),
       }),
     ).toBe("shared-nb:/users/bob/.notes/TeamPad");
+  });
+
+  it("does not let a notebook named Starred take over /notes/starred", () => {
+    expect(notesViewFromLocation("/notes/starred", {})).toBe("starred");
+    expect(notesViewFromLocation("/notes/archive", {})).toBe("archive");
+    expect(notesViewFromLocation("/notes/all", {})).toBe("all");
+    expect(notesNavigateTarget("starred")).toEqual({ to: "/notes/starred", params: {} });
+    expect(notesNavigateTarget("nb:starred")).toEqual({
+      to: "/notes/notebooks/$notebookId",
+      params: { notebookId: "starred" },
+    });
+    expect(notesNavigateTarget("nb:Starred")).toEqual({
+      to: "/notes/notebooks/$notebookId",
+      params: { notebookId: "Starred" },
+    });
+    expect(
+      notesViewFromLocation("/notes/notebooks/starred", { notebookId: "starred" }),
+    ).toBe("nb:starred");
+    expect(notesViewFromLocation("/notes/starred", { notebookId: "starred" })).toBe("starred");
   });
 });

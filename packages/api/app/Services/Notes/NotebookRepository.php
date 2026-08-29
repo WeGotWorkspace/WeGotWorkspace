@@ -424,6 +424,13 @@ final class NotebookRepository
     private function allocateNotebookUri(string $principalUri, ?string $requestedId, string $name): string
     {
         if ($requestedId !== null && $requestedId !== '') {
+            if (in_array($requestedId, CalendarCollectionUris::reservedNoteViewSlugs(), true)) {
+                throw new ApiHttpException(
+                    409,
+                    'This notebook id is reserved for a Notes view.',
+                    'alreadyExists',
+                );
+            }
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedNoteUriSlugs(), true)
                 || $this->findNotebookInstance($principalUri, $requestedId) !== null

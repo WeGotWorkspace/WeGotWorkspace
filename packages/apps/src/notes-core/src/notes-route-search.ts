@@ -14,13 +14,30 @@
  *   /notes/shared-nb/:sharedNbSlug/:noteId
  *   /notes/tags/:tagSlug
  *   /notes/tags/:tagSlug/:noteId
- *   /notes/:notebookSlug
- *   /notes/:notebookSlug/:noteId
+ *   /notes/notebooks/:notebookId
+ *   /notes/notebooks/:notebookId/:noteId
+ *
+ * Notebook URLs use the REST CalDAV collection id, never the display name, so a
+ * notebook named "Starred" cannot take over `/notes/starred`.
  */
+
+/** First-path-segment views that must never be treated as notebook ids. */
+export const NOTES_RESERVED_VIEW_SEGMENTS = [
+  "all",
+  "starred",
+  "archive",
+  "archived",
+  "inbox",
+  "shared-with-me",
+] as const;
+
+const NOTES_RESERVED_VIEW_ALIASES: Record<string, string> = {
+  archived: "archive",
+};
 
 export type NotesRouteParams = {
   tagSlug?: string;
-  notebookSlug?: string;
+  notebookId?: string;
   sharedNbSlug?: string;
   noteId?: string;
 };
@@ -31,13 +48,9 @@ export function notesViewFromLocation(pathname: string, params: NotesRouteParams
   if (parts[0] !== "notes") return "all";
 
   const segment = parts[1] ? decodeURIComponent(parts[1]) : "all";
-  if (
-    segment === "all" ||
-    segment === "starred" ||
-    segment === "archive" ||
-    segment === "shared-with-me"
-  ) {
-    return segment;
+  if ((NOTES_RESERVED_VIEW_SEGMENTS as readonly string[]).includes(segment)) {
+    if (segment === "inbox") return "all";
+    return NOTES_RESERVED_VIEW_ALIASES[segment] ?? segment;
   }
   if (segment === "shared-nb" && params.sharedNbSlug) {
     const path = decodeURIComponent(params.sharedNbSlug);
@@ -46,8 +59,11 @@ export function notesViewFromLocation(pathname: string, params: NotesRouteParams
   if (segment === "tags" && params.tagSlug) {
     return `tag:${decodeURIComponent(params.tagSlug)}`;
   }
-  if (params.notebookSlug) {
-    return `nb:${decodeURIComponent(params.notebookSlug)}`;
+  if (segment === "notebooks") {
+    const notebookId = parts[2] ?? params.notebookId;
+    if (notebookId) {
+      return `nb:${decodeURIComponent(notebookId)}`;
+    }
   }
   return "all";
 }
@@ -71,8 +87,8 @@ export type NotesNavigateTarget = {
     | "/notes/shared-nb/$sharedNbSlug/$noteId"
     | "/notes/tags/$tagSlug"
     | "/notes/tags/$tagSlug/$noteId"
-    | "/notes/$notebookSlug"
-    | "/notes/$notebookSlug/$noteId";
+    | "/notes/notebooks/$notebookId"
+    | "/notes/notebooks/$notebookId/$noteId";
   params: Record<string, string>;
 };
 
@@ -111,10 +127,10 @@ export function notesNavigateTarget(view: string, noteId = ""): NotesNavigateTar
       : { to: "/notes/tags/$tagSlug", params: { tagSlug } };
   }
   if (view.startsWith("nb:")) {
-    const notebookSlug = encodeURIComponent(view.slice(3));
+    const notebookId = encodeURIComponent(view.slice(3));
     return noteId
-      ? { to: "/notes/$notebookSlug/$noteId", params: { notebookSlug, noteId } }
-      : { to: "/notes/$notebookSlug", params: { notebookSlug } };
+      ? { to: "/notes/notebooks/$notebookId/$noteId", params: { notebookId, noteId } }
+      : { to: "/notes/notebooks/$notebookId", params: { notebookId } };
   }
   // Unknown view: keep an optional note id so selection never silently drops.
   return noteId

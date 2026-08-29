@@ -7,6 +7,7 @@ import {
   computeWordCount,
   createNoteSaveDebouncer,
   enrichNote,
+  filterNotesByHiddenNotebooks,
   filterVisibleNotes,
   dedupeNotesById,
   mapNotesWithBodyMarkdown,
@@ -17,6 +18,7 @@ import {
   noteAllowsTagAssignment,
   isPlaceholderNoteListLabel,
   noteHasListableBody,
+  noteListExcerpt,
   noteListTagOverflow,
   noteListTitle,
   usableNoteListPreview,
@@ -65,6 +67,16 @@ describe("notes-note-utils", () => {
     expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
     expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
     expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
+    expect(noteListTitle({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
+      "SUMMARY",
+    );
+  });
+
+  it("shows excerpt only when a title is already set", () => {
+    expect(noteListExcerpt({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
+      "Preview line",
+    );
+    expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("");
   });
 
   it("never uses FileNode name / local-* id as the list title", () => {
@@ -349,14 +361,29 @@ describe("notes-note-utils", () => {
   });
 
   it("treats TipTap trailing newlines as unchanged (avoids hydrate setState loops)", () => {
-    const note = { ...sampleNote, body: ["Hello world"], excerpt: "Hello world" };
+    const note = {
+      ...sampleNote,
+      title: "Hello world",
+      body: ["Hello world"],
+      excerpt: "Hello world",
+    };
     expect(normalizeNoteBodyMarkdown("Hello world\n\n")).toBe("Hello world");
     expect(applyNoteBodyMarkdown(note, "Hello world\n")).toBe(note);
     expect(applyNoteBodyMarkdown(note, "Hello world\r\n")).toBe(note);
   });
 
+  it("autofills empty SUMMARY from the first heading; later edits stick", () => {
+    const untitled = { ...sampleNote, title: undefined, body: [""], excerpt: "" };
+    const filled = applyNoteBodyMarkdown(untitled, "# Meeting\n\nNotes");
+    expect(filled.title).toBe("Meeting");
+    const stuck = applyNoteBodyMarkdown({ ...filled, title: "Kept" }, "# Other\n\nNotes");
+    expect(stuck.title).toBe("Kept");
+  });
+
   it("returns the same notes array when hydrate markdown is unchanged", () => {
-    const notes = [{ ...sampleNote, body: ["Stable body"], excerpt: "Stable body" }];
+    const notes = [
+      { ...sampleNote, title: "Stable body", body: ["Stable body"], excerpt: "Stable body" },
+    ];
     const first = mapNotesWithBodyMarkdown(notes, "n-1", "Stable body\n", { bumpDate: false });
     expect(first.notes).toBe(notes);
     expect(first.updated).toBeUndefined();
@@ -367,7 +394,7 @@ describe("notes-note-utils", () => {
   });
 
   it("returns the same note reference when collab markdown is unchanged", () => {
-    const note = { ...sampleNote, body: ["Same body"] };
+    const note = { ...sampleNote, title: "Same body", body: ["Same body"] };
     expect(applyNoteBodyMarkdown(note, "Same body")).toBe(note);
   });
 
@@ -525,6 +552,21 @@ describe("notes-note-utils", () => {
       searchQuery: "",
     });
     expect(after.map((note) => note.id)).toEqual(["n-old", "n-new"]);
+  });
+
+  it("filterNotesByHiddenNotebooks drops hidden notebooks except on a notebook view", () => {
+    const notes: Note[] = [
+      { ...sampleNote, id: "a", notebook: "Drafts", notebookId: "drafts" },
+      { ...sampleNote, id: "b", notebook: "Work", notebookId: "work" },
+    ];
+    const hidden = new Set(["work"]);
+    expect(filterNotesByHiddenNotebooks(notes, "all", hidden).map((note) => note.id)).toEqual([
+      "a",
+    ]);
+    expect(filterNotesByHiddenNotebooks(notes, "nb:work", hidden).map((note) => note.id)).toEqual([
+      "a",
+      "b",
+    ]);
   });
 });
 

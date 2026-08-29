@@ -6,6 +6,7 @@ import {
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
 
 export function persistBestEffort(promise: Promise<unknown>) {
   promise.catch(() => {});
@@ -101,13 +102,26 @@ export function computeExcerpt(body: string[]): string {
 
 const NOTE_LIST_TITLE_MAX = 80;
 
-/** Derives the list-row heading from excerpt or body (notes have no separate title field). */
+/** Body excerpt for the list row. Omitted when it would duplicate the title fallback. */
+export function noteListExcerpt(
+  note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
+): string {
+  const titled = note.title?.trim();
+  const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
+  if (!excerpt) return "";
+  if (!titled) return "";
+  return excerpt;
+}
+
+/** List-row heading: SUMMARY when set, otherwise excerpt/body until autofill. */
 export function noteListTitle(
   note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
 ): string {
   const titled = note.title?.trim();
   if (titled) {
-    return titled.length <= NOTE_LIST_TITLE_MAX ? titled : `${titled.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
+    return titled.length <= NOTE_LIST_TITLE_MAX
+      ? titled
+      : `${titled.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
   }
   // Re-strip so stale excerpts (or server listPreview) never leak raw markdown.
   const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
@@ -380,15 +394,19 @@ export function applyNoteBodyMarkdown(
   options?: { editedAt?: string; bumpDate?: boolean },
 ): Note {
   const normalized = normalizeNoteBodyMarkdown(markdown);
+  const autofilled = autofillNoteTitle(note.title, normalized);
+  const titleChanged = (autofilled ?? undefined) !== (note.title?.trim() || undefined);
   // Compare normalized forms so TipTap trailing newlines do not look like edits
   // (that retriggered hydrate → setNotes → “Maximum update depth exceeded”).
-  if (normalizeNoteBodyMarkdown(noteBodyToMarkdown(note.body)) === normalized) {
+  const bodyUnchanged = normalizeNoteBodyMarkdown(noteBodyToMarkdown(note.body)) === normalized;
+  if (bodyUnchanged && !titleChanged) {
     return note;
   }
-  const bumpDate = options?.bumpDate !== false;
+  const bumpDate = options?.bumpDate !== false && !bodyUnchanged;
   return enrichNote({
     ...note,
-    body: markdownToNoteBody(normalized),
+    ...(bodyUnchanged ? {} : { body: markdownToNoteBody(normalized) }),
+    ...(titleChanged ? { title: autofilled ?? undefined } : {}),
     ...(bumpDate ? { date: options?.editedAt ?? new Date().toISOString() } : {}),
   });
 }
@@ -427,6 +445,22 @@ export function dedupeNotesById(notes: Note[]): Note[] {
     result.push(note);
   }
   return result.length === notes.length ? notes : result;
+}
+
+/** Aggregate views hide notes from notebooks the user unchecked. A notebook view stays unfiltered. */
+export function filterNotesByHiddenNotebooks(
+  notes: Note[],
+  view: string,
+  hiddenNotebookIds: ReadonlySet<string>,
+): Note[] {
+  if (hiddenNotebookIds.size === 0 || view.startsWith("nb:") || view.startsWith("shared-nb:")) {
+    return notes;
+  }
+  return notes.filter((note) => {
+    if (note.notebookId && hiddenNotebookIds.has(note.notebookId)) return false;
+    if (hiddenNotebookIds.has(note.notebook)) return false;
+    return true;
+  });
 }
 
 export function filterVisibleNotes(
