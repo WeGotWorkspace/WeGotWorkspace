@@ -450,15 +450,30 @@ describe("notes-note-utils", () => {
     });
     expect(searchMatch).toHaveLength(0);
 
-    const sharedWithMe = filterVisibleNotes(notes, {
+    const sharedWithMeEmpty = filterVisibleNotes(notes, {
       view: "shared-with-me",
       archived: {},
       starred: {},
       searchQuery: "",
     });
-    expect(sharedWithMe.map((note) => note.id).sort()).toEqual(
-      ["group-1", "n-1", "n-2", "shared-1"].sort(),
-    );
+    expect(sharedWithMeEmpty).toEqual([]);
+
+    const inboundShared: Note = {
+      ...sampleNote,
+      id: "inbound-1",
+      notebook: "Shared Notes",
+      notebookId: "shared-nb",
+      excerpt: "Inbound shared note",
+      body: ["Inbound shared note"],
+    };
+    const sharedWithMe = filterVisibleNotes([...notes, inboundShared], {
+      view: "shared-with-me",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+      sharedNotebookKeys: new Set(["shared-nb", "Shared Notes"]),
+    });
+    expect(sharedWithMe.map((note) => note.id)).toEqual(["inbound-1"]);
 
     const personalNb = filterVisibleNotes(notes, {
       view: "nb:Drafts",
@@ -467,6 +482,14 @@ describe("notes-note-utils", () => {
       searchQuery: "",
     });
     expect(personalNb.map((note) => note.id)).toEqual(["n-1"]);
+
+    const sharedNotebookView = filterVisibleNotes([...notes, inboundShared], {
+      view: "nb:shared-nb",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(sharedNotebookView.map((note) => note.id)).toEqual(["inbound-1"]);
 
     const sharedNb = filterVisibleNotes(notes, {
       view: "shared-nb:/groups/eng/.notes/Specs",

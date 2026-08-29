@@ -463,6 +463,15 @@ export function filterNotesByHiddenNotebooks(
   });
 }
 
+function noteMatchesSharedNotebook(
+  note: Note,
+  sharedNotebookKeys: ReadonlySet<string> | undefined,
+): boolean {
+  if (!sharedNotebookKeys || sharedNotebookKeys.size === 0) return false;
+  if (note.notebookId && sharedNotebookKeys.has(note.notebookId)) return true;
+  return sharedNotebookKeys.has(note.notebook);
+}
+
 export function filterVisibleNotes(
   notes: Note[],
   {
@@ -470,11 +479,14 @@ export function filterVisibleNotes(
     archived,
     starred,
     searchQuery,
+    sharedNotebookKeys,
   }: {
     view: string;
     archived: Record<string, boolean>;
     starred: Record<string, boolean>;
     searchQuery: string;
+    /** isSharee notebook ids/names. Leftover `/notes/shared-with-me` — not Drive grants. */
+    sharedNotebookKeys?: ReadonlySet<string>;
   },
 ): Note[] {
   const q = searchQuery.trim().toLowerCase();
@@ -488,7 +500,11 @@ export function filterVisibleNotes(
     } else if (view === "archive") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && !!archived[note.id];
     } else if (view === "shared-with-me") {
-      inView = !archived[note.id];
+      inView =
+        !archived[note.id] &&
+        !note.sharedInbox &&
+        !note.sharedNotebookGrant &&
+        noteMatchesSharedNotebook(note, sharedNotebookKeys);
     } else if (view.startsWith("shared-nb:")) {
       const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
       inView =
@@ -522,7 +538,7 @@ export function filterVisibleNotes(
 
 /**
  * Parse `groups/{slug}/.notes/{notebook}` (with optional leading slash).
- * Used for group-membership notebook paths under the Notebooks sidebar.
+ * Used for leftover group-membership notebook paths (`shared-nb:`).
  */
 export function parseGroupNotebookPath(
   path: string,

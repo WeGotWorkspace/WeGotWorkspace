@@ -1,7 +1,7 @@
 import type { Note } from "@/lib/models/note";
 import type { CollectionShareWith } from "@/share-ui/collection-share";
 
-/** Group-membership notebook shown under the Notebooks sidebar. */
+/** Group-membership notebook shown under My notebooks (owned via group, not isSharee). */
 export type NotesSharedNotebook = {
   path: string;
   notebook: string;
@@ -34,7 +34,7 @@ export type NotesUIData = {
   /** Owned personal notebook names only (not group notebooks). */
   notebooks: string[];
   tags: string[];
-  /** Group-membership notebooks (Users icon under Notebooks). */
+  /** Group-membership notebooks (legacy path-shaped; partition as owned). */
   sharedNotebooks?: NotesSharedNotebook[];
   /** Collection rows for `@/collection-sidebar` partition + share. */
   notebookCollections?: NotesNotebookCollection[];

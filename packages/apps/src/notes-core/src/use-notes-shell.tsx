@@ -192,6 +192,7 @@ export function useNotesShell({
     if (view === "all") return L.sidebarAllItems;
     if (view === "starred") return L.sidebarStarred;
     if (view === "archive") return L.sidebarArchive;
+    if (view === "shared-with-me") return L.sidebarSharedWithMe;
     if (view.startsWith("nb:")) {
       const id = view.slice(3);
       const match = notebookCollections.find((item) => item.id === id || item.name === id);

@@ -8,7 +8,7 @@
  *   /notes/starred/:noteId
  *   /notes/archive
  *   /notes/archive/:noteId
- *   /notes/shared-with-me
+ *   /notes/shared-with-me          ← leftover deep-link: notes from isSharee notebooks
  *   /notes/shared-with-me/:noteId
  *   /notes/shared-nb/:sharedNbSlug
  *   /notes/shared-nb/:sharedNbSlug/:noteId

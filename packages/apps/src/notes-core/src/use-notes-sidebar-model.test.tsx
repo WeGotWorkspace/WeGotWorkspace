@@ -3,7 +3,9 @@ import { renderHook } from "@testing-library/react";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import {
   collectionsFromNotesData,
+  isViewOnlyNotebook,
   notebookViewKey,
+  sharedNotebookFilterKeys,
   useNotesSidebarModel,
 } from "@/notes-core/src/use-notes-sidebar-model";
 
@@ -50,6 +52,67 @@ describe("useNotesSidebarModel", () => {
       { id: "b", name: "Beta", isSharee: true },
     ]);
     expect(collections).toHaveLength(2);
+  });
+
+  it("keeps group membership in My notebooks and inbound ACL under Shared with me", () => {
+    const { result } = renderHook(() =>
+      useNotesSidebarModel({
+        labels: defaultNotesLabels,
+        view: "all",
+        notebooks: ["General"],
+        sharedNotebooks: [
+          {
+            path: "/groups/eng/.notes/Specs",
+            notebook: "Specs",
+            owner: "eng",
+            scope: "group",
+            groupSlug: "eng",
+          },
+        ],
+        notebookCollections: [
+          { id: "notes-general", name: "General", isSharee: false },
+          { id: "group-eng", name: "Specs", isSharee: false, scope: "group" },
+          {
+            id: "shared-nb",
+            name: "Shared Notes",
+            isSharee: true,
+            myRights: { mayWriteAll: false },
+          },
+        ],
+        tags: [],
+        selectView: vi.fn(),
+        sidebarDropZoneProps: () => dropZone(),
+        moveToNotebook: vi.fn(),
+        assignTagToNotes: vi.fn(),
+      }),
+    );
+
+    expect(result.current.ownedNotebooks.map((item) => item.name)).toEqual(["General", "Specs"]);
+    expect(result.current.sharedNotebooks.map((item) => item.name)).toEqual(["Shared Notes"]);
+    expect(isViewOnlyNotebook(result.current.sharedNotebooks[0]!)).toBe(true);
+    expect(isViewOnlyNotebook(result.current.ownedNotebooks[0]!)).toBe(false);
+    expect([...sharedNotebookFilterKeys(result.current.sharedNotebooks)]).toEqual(
+      expect.arrayContaining(["shared-nb", "Shared Notes"]),
+    );
+  });
+
+  it("maps leftover group sharedNotebooks as owned, not Shared with me", () => {
+    const collections = collectionsFromNotesData(
+      ["General"],
+      [
+        {
+          path: "/groups/eng/.notes/Specs",
+          notebook: "Specs",
+          owner: "eng",
+          scope: "group",
+          groupSlug: "eng",
+        },
+      ],
+    );
+    expect(collections.map((item) => ({ name: item.name, isSharee: item.isSharee }))).toEqual([
+      { name: "General", isSharee: false },
+      { name: "Specs", isSharee: false },
+    ]);
   });
 
   it("keeps leftover sibling notebooks when collections is a single created row", () => {

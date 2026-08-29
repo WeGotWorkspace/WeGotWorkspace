@@ -45,7 +45,13 @@ import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-tit
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
-import { notebookViewKey, useNotesSidebarModel } from "@/notes-core/src/use-notes-sidebar-model";
+import {
+  isViewOnlyNotebook,
+  notebookViewKey,
+  useNotesSidebarModel,
+} from "@/notes-core/src/use-notes-sidebar-model";
+import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
@@ -63,6 +69,68 @@ import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import { Callout } from "@/callout/src/callout";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import "@/notes-core/src/notes-workspace.css";
+
+function NotesSidebarRows({
+  notebooks,
+  view,
+  editLabel,
+  viewOnlyLabel,
+  hiddenNotebookIds,
+  onToggleVisibility,
+  onSelect,
+  onEdit,
+  sidebarDropZoneProps,
+  moveToNotebook,
+}: {
+  notebooks: NotesNotebookCollection[];
+  view: string;
+  editLabel: string;
+  viewOnlyLabel: string;
+  hiddenNotebookIds: ReadonlySet<string>;
+  onToggleVisibility: (notebookId: string) => void;
+  onSelect: (notebookId: string) => void;
+  onEdit: (notebook: NotesNotebookCollection) => void;
+  sidebarDropZoneProps: (target: string, onDrop: (ids: string[]) => void) => ListDropZoneProps;
+  moveToNotebook: (ids: string[], notebook: string) => void;
+}) {
+  return (
+    <>
+      {notebooks.map((notebook) => {
+        const viewOnly = isViewOnlyNotebook(notebook);
+        const dropProps = viewOnly
+          ? undefined
+          : sidebarDropZoneProps(`nb:${notebook.id}`, (ids) =>
+              moveToNotebook(ids, notebook.name),
+            );
+        const { isDropTarget, ...dropHandlers } = dropProps ?? {};
+        return (
+          <CollectionSidebarRow
+            key={notebook.id}
+            name={notebook.name}
+            color={notebookDotColor(notebook)}
+            selected={view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`}
+            visible={!hiddenNotebookIds.has(notebook.id)}
+            onToggleVisibility={() => onToggleVisibility(notebook.id)}
+            onSelect={() => onSelect(notebook.id)}
+            onEdit={() => onEdit(notebook)}
+            editLabel={editLabel}
+            badges={
+              viewOnly ? (
+                <CollectionSidebarMark label={viewOnlyLabel}>
+                  <Eye className="size-3.5" aria-hidden />
+                </CollectionSidebarMark>
+              ) : null
+            }
+            rootProps={{
+              ...dropHandlers,
+              className: isDropTarget ? "collection-sidebar-row--drop-target" : undefined,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
 
 export function NotesWorkspace({
   data,
@@ -364,63 +432,40 @@ export function NotesWorkspace({
             <SidebarSection items={primarySidebarItems} />
             {ownedNotebooks.length > 0 ? (
               <SidebarSection title={L.sectionNotebooks}>
-                {ownedNotebooks.map((notebook) => {
-                  const dropProps = sidebarDropZoneProps(`nb:${notebook.id}`, (ids) =>
-                    moveToNotebook(ids, notebook.name),
-                  );
-                  const { isDropTarget, ...dropHandlers } = dropProps;
-                  return (
-                    <CollectionSidebarRow
-                      key={notebook.id}
-                      name={notebook.name}
-                      color={notebookDotColor(notebook)}
-                      selected={
-                        view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`
-                      }
-                      visible={!hiddenNotebookIds.has(notebook.id)}
-                      onToggleVisibility={() => toggleNotebookVisibility(notebook.id)}
-                      onSelect={() => {
-                        selectView(notebookViewKey(notebook.id));
-                        closeSidebarOnMobile(c.closeSidebar);
-                      }}
-                      onEdit={() => openEditNotebookDialog(notebook)}
-                      editLabel={L.edit}
-                      rootProps={{
-                        ...dropHandlers,
-                        className: isDropTarget ? "collection-sidebar-row--drop-target" : undefined,
-                      }}
-                    />
-                  );
-                })}
+                <NotesSidebarRows
+                  notebooks={ownedNotebooks}
+                  view={view}
+                  editLabel={L.edit}
+                  viewOnlyLabel={L.viewOnly}
+                  hiddenNotebookIds={hiddenNotebookIds}
+                  onToggleVisibility={toggleNotebookVisibility}
+                  onSelect={(notebookId) => {
+                    selectView(notebookViewKey(notebookId));
+                    closeSidebarOnMobile(c.closeSidebar);
+                  }}
+                  onEdit={openEditNotebookDialog}
+                  sidebarDropZoneProps={sidebarDropZoneProps}
+                  moveToNotebook={moveToNotebook}
+                />
               </SidebarSection>
             ) : null}
             {sharedNotebookRows.length > 0 ? (
-              <SidebarSection title={L.sectionSharedNotebooks}>
-                {sharedNotebookRows.map((notebook) => (
-                  <CollectionSidebarRow
-                    key={notebook.id}
-                    name={notebook.name}
-                    color={notebookDotColor(notebook)}
-                    selected={
-                      view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`
-                    }
-                    visible={!hiddenNotebookIds.has(notebook.id)}
-                    onToggleVisibility={() => toggleNotebookVisibility(notebook.id)}
-                    onSelect={() => {
-                      selectView(notebookViewKey(notebook.id));
-                      closeSidebarOnMobile(c.closeSidebar);
-                    }}
-                    onEdit={() => openEditNotebookDialog(notebook)}
-                    editLabel={L.edit}
-                    badges={
-                      notebook.myRights?.mayWriteAll === false ? (
-                        <CollectionSidebarMark label={L.viewOnly}>
-                          <Eye className="size-3.5" aria-hidden />
-                        </CollectionSidebarMark>
-                      ) : null
-                    }
-                  />
-                ))}
+              <SidebarSection title={L.sidebarSharedWithMe}>
+                <NotesSidebarRows
+                  notebooks={sharedNotebookRows}
+                  view={view}
+                  editLabel={L.edit}
+                  viewOnlyLabel={L.viewOnly}
+                  hiddenNotebookIds={hiddenNotebookIds}
+                  onToggleVisibility={toggleNotebookVisibility}
+                  onSelect={(notebookId) => {
+                    selectView(notebookViewKey(notebookId));
+                    closeSidebarOnMobile(c.closeSidebar);
+                  }}
+                  onEdit={openEditNotebookDialog}
+                  sidebarDropZoneProps={sidebarDropZoneProps}
+                  moveToNotebook={moveToNotebook}
+                />
               </SidebarSection>
             ) : null}
             <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">

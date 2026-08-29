@@ -480,4 +480,44 @@ describe("useNotesController URL routing", () => {
 
     expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["n2"]);
   });
+
+  it("lists notes from isSharee notebooks on leftover shared-with-me, not Drive inbox stubs", () => {
+    const data: NotesUIData = {
+      notes: [
+        { ...localNote, id: "owned", notebook: "Drafts", notebookId: "notes-general" },
+        {
+          ...localNote,
+          id: "inbound",
+          notebook: "Shared Notes",
+          notebookId: "shared-nb",
+          excerpt: "From shared notebook",
+        },
+        {
+          ...localNote,
+          id: "drive-grant",
+          notebook: "TeamPad",
+          sharedInbox: true,
+          excerpt: "Old file grant",
+        },
+      ],
+      notebooks: ["Drafts"],
+      notebookCollections: [
+        { id: "notes-general", name: "Drafts", isSharee: false },
+        { id: "shared-nb", name: "Shared Notes", isSharee: true },
+      ],
+      tags: [],
+    };
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, initialView: "shared-with-me" }),
+    );
+
+    expect(result.current.viewLabel).toBe("Shared with me");
+    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["inbound"]);
+
+    act(() => {
+      result.current.selectView("nb:shared-nb");
+    });
+    expect(result.current.viewLabel).toBe("Shared Notes");
+    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["inbound"]);
+  });
 });

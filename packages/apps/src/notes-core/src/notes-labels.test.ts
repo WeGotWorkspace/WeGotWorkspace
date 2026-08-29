@@ -7,6 +7,12 @@ describe("notes create-collection labels", () => {
     expect(defaultNotesLabels.newNoteMenu).toBe("More create options");
     expect(defaultNotesLabels.newNotebookTitle).toBe("New notebook");
   });
+
+  it("matches Tasks/Calendar owned vs shared section headings", () => {
+    expect(defaultNotesLabels.sectionNotebooks).toBe("My notebooks");
+    expect(defaultNotesLabels.sidebarSharedWithMe).toBe("Shared with me");
+    expect(defaultNotesLabels.sectionSharedNotebooks).toBe("Shared with me");
+  });
 });
 
 describe("notesNotebookDialogLabelsFrom", () => {

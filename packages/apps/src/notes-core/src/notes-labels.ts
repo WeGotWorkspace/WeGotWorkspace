@@ -19,7 +19,9 @@ export type NotesUILabels = {
   viewOnly: string;
   /** Accessible name for the list-row share icon (owner outgoing shares). */
   shared: string;
+  /** Owned collections heading — same pattern as Tasks “My lists” / Calendar “My calendars”. */
   sectionNotebooks: string;
+  /** Inbound ACL heading. Prefer {@link sidebarSharedWithMe} at callsites (Tasks pattern). */
   sectionSharedNotebooks: string;
   sectionTags: string;
   share: string;
@@ -115,8 +117,8 @@ export const defaultNotesLabels: NotesUILabels = {
   sharedBy: (username) => username,
   viewOnly: "View only",
   shared: "Shared",
-  sectionNotebooks: "Notebooks",
-  sectionSharedNotebooks: "Shared notebooks",
+  sectionNotebooks: "My notebooks",
+  sectionSharedNotebooks: "Shared with me",
   sectionTags: "Tags",
   share: "Share",
   titlePlaceholder: "Title",

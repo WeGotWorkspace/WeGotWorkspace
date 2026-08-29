@@ -24,12 +24,20 @@ describe("notes workspace sidebar create", () => {
   });
 
   it("wires CollectionSidebarRow visibility checkboxes like Tasks/Calendar", () => {
-    expect(tsx).toMatch(/onToggleVisibility=\{\(\) => toggleNotebookVisibility\(notebook\.id\)\}/);
+    expect(tsx).toMatch(/onToggleVisibility=\{\(\) => onToggleVisibility\(notebook\.id\)\}/);
     expect(tsx).toMatch(/visible=\{!hiddenNotebookIds\.has\(notebook\.id\)\}/);
     expect(tsx).toMatch(/color=\{notebookDotColor\(notebook\)\}/);
     expect(tsx).not.toMatch(/showColorDot/);
     expect(tsx).not.toMatch(/NotesNotebookRow/);
     expect(tsx).toMatch(/CollectionSidebarMark/);
+  });
+
+  it("splits My notebooks and Shared with me like Tasks, hiding Shared when empty", () => {
+    expect(tsx).toMatch(/title=\{L\.sectionNotebooks\}/);
+    expect(tsx).toMatch(/title=\{L\.sidebarSharedWithMe\}/);
+    expect(tsx).toMatch(/ownedNotebooks\.length > 0/);
+    expect(tsx).toMatch(/sharedNotebookRows\.length > 0/);
+    expect(tsx).not.toMatch(/title=\{L\.sectionSharedNotebooks\}/);
   });
 });
 

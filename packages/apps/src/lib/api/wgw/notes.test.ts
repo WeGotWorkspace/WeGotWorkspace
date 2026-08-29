@@ -411,18 +411,19 @@ describe("shared notes listing parsers", () => {
     ];
 
     const merged = mergeOwnedAndSharedInboxNotes(owned, sharedWithMe);
+    expect(merged.filter((n) => n.sharedInbox).map((n) => n.apiPath).sort()).toEqual(
+      [sharedPath, `/users/admin/.notes/Test/${sharedId}.md`, serverNotePath].sort(),
+    );
+    expect(merged.find((n) => n.apiPath === sharedPath)?.id).toBe(sharedInboxFallbackId(sharedPath));
+    expect(merged.find((n) => n.id === "n1781784157")?.apiPath).toBe(serverNotePath);
+
     const inbox = filterVisibleNotes(merged, {
       view: "shared-with-me",
       archived: { [sharedId]: true },
       starred: {},
       searchQuery: "",
+      sharedNotebookKeys: new Set(["Drafts"]),
     });
-
-    expect(inbox.map((n) => n.apiPath).sort()).toEqual(
-      [sharedPath, `/users/admin/.notes/Test/${sharedId}.md`, serverNotePath].sort(),
-    );
-    expect(inbox.every((n) => n.sharedInbox)).toBe(true);
-    expect(inbox.find((n) => n.apiPath === sharedPath)?.id).toBe(sharedInboxFallbackId(sharedPath));
-    expect(inbox.find((n) => n.id === "n1781784157")?.apiPath).toBe(serverNotePath);
+    expect(inbox).toEqual([]);
   });
 });

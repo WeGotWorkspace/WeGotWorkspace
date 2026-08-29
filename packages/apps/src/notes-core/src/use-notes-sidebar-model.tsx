@@ -34,6 +34,26 @@ export function notebookViewKey(notebookId: string): string {
   return `nb:${notebookId}`;
 }
 
+/** Same as Tasks `isViewOnlyTaskList`: missing `mayWriteAll` is writable. */
+export function isViewOnlyNotebook(
+  notebook: Pick<NotesNotebookCollection, "myRights">,
+): boolean {
+  return notebook.myRights?.mayWriteAll === false;
+}
+
+/** REST ids + display names for leftover `/notes/shared-with-me` (isSharee notebooks only). */
+export function sharedNotebookFilterKeys(
+  collections: readonly NotesNotebookCollection[],
+): Set<string> {
+  const keys = new Set<string>();
+  for (const item of collections) {
+    if (item.isSharee !== true) continue;
+    keys.add(item.id);
+    keys.add(item.name);
+  }
+  return keys;
+}
+
 export function collectionsFromNotesData(
   notebooks: string[],
   sharedNotebooks: NotesSharedNotebook[] = [],
@@ -53,7 +73,8 @@ export function collectionsFromNotesData(
       (entry): NotesNotebookCollection => ({
         id: entry.groupSlug ? `group-${entry.groupSlug}` : entry.path,
         name: entry.notebook,
-        isSharee: true,
+        // Group membership is ownership (Tasks/Calendar), not inbound ACL.
+        isSharee: false,
         scope: "group",
         groupSlug: entry.groupSlug,
       }),

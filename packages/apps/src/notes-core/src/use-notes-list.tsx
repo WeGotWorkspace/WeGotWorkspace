@@ -11,6 +11,7 @@ import {
   filterVisibleNotes,
   mergeCreatedNotePreservingLocalOptimistic,
 } from "./notes-note-utils";
+import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import type { NotesShellState } from "./use-notes-shell";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
@@ -31,6 +32,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     starred,
     archived,
     hiddenNotebookIds,
+    notebookCollections,
     showMutationError,
   } = shell;
 
@@ -54,14 +56,19 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     onNoteChange?.(activeId);
   }, [activeId, onNoteChange]);
 
+  const sharedNotebookKeys = useMemo(
+    () => sharedNotebookFilterKeys(notebookCollections),
+    [notebookCollections],
+  );
+
   const visibleNotes = useMemo(
     () =>
       filterNotesByHiddenNotebooks(
-        filterVisibleNotes(notes, { view, archived, starred, searchQuery }),
+        filterVisibleNotes(notes, { view, archived, starred, searchQuery, sharedNotebookKeys }),
         view,
         hiddenNotebookIds,
       ),
-    [archived, hiddenNotebookIds, notes, searchQuery, starred, view],
+    [archived, hiddenNotebookIds, notes, searchQuery, sharedNotebookKeys, starred, view],
   );
 
   const {
