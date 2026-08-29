@@ -38,6 +38,10 @@
   --notes-list-star-color: var(--notes-accent);
   /* Soft gold fill needs ink check (white on #f6d176 fails WCAG UI 3:1). */
   --list-item-checkbox-icon-color: var(--color-ink);
+  --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
+  --checkbox-checked-bg: var(--notes-accent);
+  --checkbox-checked-border: var(--notes-accent);
+  --checkbox-checked-fg: var(--color-ink);
   --note-detail-tag-bg: var(--notes-accent);
   --note-detail-tag-fg: var(--color-ink);
   --note-detail-title-font-family: var(--font-serif);
@@ -94,6 +98,10 @@
  * Portaled notes dialogs/alerts sit outside `.notes-workspace`; repeat accent tokens so
  * {@link Button} and {@link buttonVariants} match the notes shell.
  */
+.notes-dialog-surface .field-label-row + .field-label-row {
+  @apply mt-3;
+}
+
 .notes-dialog-surface {
   --notes-accent: #f6d176;
   --color-emerald: var(--notes-accent);
@@ -105,29 +113,16 @@
   --segmented-control-track-active-bg: var(--color-ink);
 }
 
-.notes-workspace .note-detail-view__title {
-  font-family: var(--note-detail-title-font-family);
-  color: var(--color-ink);
-}
-
 .notes-workspace .notes-detail-footer__meta-tag--edited .tag {
   background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
   color: color-mix(in oklab, var(--color-ink) 58%, transparent);
 }
 
-/*
- * Labeled move-notebook only (showLabel + active): filled soft-gold chip, dark text/icon.
- * Star/archive keep generic icon-button--active (accent-colored glyphs, no fill bg).
- * Parent sets button tokens; Button/IconButton consume them.
- */
-.notes-workspace .action-bar__action--labeled.button.icon-button--active {
-  --button-active-color: var(--color-ink);
-  --button-subtle-background: var(--notes-accent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--notes-accent) 86%, var(--color-ink));
-}
-
-.notes-workspace .action-bar__action--labeled.button.icon-button--active .button__icon > svg {
-  fill: none;
+/* Calendar view-select pattern: compact cream trigger in the detail header. */
+.notes-workspace .action-bar .notes-notebook-select {
+  width: auto;
+  min-width: 7rem;
+  background-color: var(--color-cream, #ffffff);
 }
 
 .notes-workspace .note-detail-view__tag-group {
@@ -184,6 +179,10 @@
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 35%, transparent);
 }
 
+.notes-workspace .collection-sidebar-row--drop-target {
+  background-color: color-mix(in oklab, var(--notes-accent) 28%, transparent);
+}
+
 .notes-workspace .note-detail-view__pull-quote {
   font-family: var(--font-sans);
   color: color-mix(in oklab, var(--color-ink) 85%, transparent);
@@ -214,24 +213,4 @@
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
   background-color: var(--workspace-detail-bg, var(--color-cream, #ffffff));
-}
-
-/* Owner outgoing-share pip on personal notebook rows (not a count badge). */
-.notes-workspace .notes-sidebar-notebook--shared .menu-item__badge {
-  @apply h-auto min-w-0 px-0;
-  background-color: transparent;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-}
-
-.notes-workspace .notes-sidebar-notebook--shared.menu-item--selected .menu-item__badge {
-  background-color: transparent;
-  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-}
-
-.notes-workspace .notes-sidebar-notebook__shared-pip {
-  @apply inline-flex size-3 shrink-0 items-center justify-center;
-}
-
-.notes-workspace .notes-sidebar-notebook__shared-icon {
-  @apply size-3 shrink-0 block;
 }

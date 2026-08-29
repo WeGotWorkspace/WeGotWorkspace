@@ -1,15 +1,11 @@
-import {
-  Archive,
-  ArchiveRestore,
-  BookOpen,
-  MoreHorizontal,
-  Share2,
-  Star,
-  Users,
-} from "lucide-react";
+import { Archive, ArchiveRestore, MoreHorizontal, Star } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import {
+  NotesNotebookSelect,
+  type NotesNotebookSelectItem,
+} from "@/notes-core/src/notes-notebook-select";
 import { noteListLocationLabel, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
 import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
 
@@ -21,13 +17,15 @@ type NotesDetailActionBarProps = {
   closeMobileDetail: () => void;
   /** List / view title shown on the mobile back control. */
   backLabel?: string;
-  openMoveDialog: (ids: string[]) => void;
+  notebooks: NotesNotebookSelectItem[];
+  onMoveToNotebook: (notebook: NotesNotebookSelectItem) => void;
+  onCreateNotebook?: () => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
   /** When true, renders collab presence ahead of note actions (requires NoteCollabSession). */
   showCollabChrome?: boolean;
-  /** Opens Notes-mode ShareDialog for the active note. */
-  onShare?: () => void;
+  /** Notebook `calendarcolor` for the switcher (same mark as CollectionSidebarRow). */
+  notebookColor?: string | null;
   /**
    * View-only share: disable move / star (body+tags gated separately
    * via NoteDetailView `readOnly`).
@@ -47,11 +45,13 @@ export function NotesDetailActionBar({
   starred,
   closeMobileDetail,
   backLabel,
-  openMoveDialog,
+  notebooks,
+  onMoveToNotebook,
+  onCreateNotebook,
   toggleStar,
   toggleArchive,
   showCollabChrome = false,
-  onShare,
+  notebookColor,
   readOnly = false,
   canArchive = true,
 }: NotesDetailActionBarProps) {
@@ -74,29 +74,7 @@ export function NotesDetailActionBar({
       active.notebook.trim() ||
       labels.toolbarMoveToNotebook;
 
-  const notebookIcon = sharedInbox ? <Share2 /> : groupNotebook ? <Users /> : <BookOpen />;
-
   const rightActions = [
-    ...(onShare
-      ? [
-          {
-            id: "share",
-            label: labels.share,
-            onClick: onShare,
-            icon: <Share2 />,
-          },
-        ]
-      : []),
-    {
-      id: "move-to-notebook",
-      label: locationLabel,
-      tooltip: notebookLocked ? locationLabel : labels.toolbarMoveToNotebook,
-      onClick: notebookLocked ? undefined : () => openMoveDialog([active.id]),
-      icon: notebookIcon,
-      active: true,
-      showLabel: true,
-      disabled: notebookLocked,
-    },
     ...(showStar
       ? [
           {
@@ -123,7 +101,24 @@ export function NotesDetailActionBar({
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
-      rightLeading={showCollabChrome ? <NoteCollabChrome /> : undefined}
+      rightLeading={
+        <>
+          {showCollabChrome ? <NoteCollabChrome /> : null}
+          <NotesNotebookSelect
+            notebooks={notebooks}
+            value={{
+              id: active.notebookId,
+              name: locationLabel,
+              color: notebookColor,
+            }}
+            labels={labels}
+            ariaLabel={notebookLocked ? locationLabel : labels.toolbarMoveToNotebook}
+            disabled={notebookLocked}
+            onNotebookChange={onMoveToNotebook}
+            onCreateNotebook={notebookLocked ? undefined : onCreateNotebook}
+          />
+        </>
+      }
       rightActions={rightActions}
       rightMenuLabel="More actions"
       rightMenuIcon={<MoreHorizontal />}

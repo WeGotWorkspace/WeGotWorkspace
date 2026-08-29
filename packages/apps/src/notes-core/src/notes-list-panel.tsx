@@ -1,7 +1,12 @@
-import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
+import {
+  useRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   Archive,
-  BookOpen,
   Circle,
   Eye,
   Pencil,
@@ -10,7 +15,6 @@ import {
   Star,
   Tag as TagIcon,
   Trash2,
-  Users,
 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
@@ -20,6 +24,7 @@ import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import {
+  noteListExcerpt,
   noteListTagOverflow,
   noteListTitle,
   noteListLocationLabel,
@@ -28,8 +33,11 @@ import {
   noteShowsTags,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
+import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import "@/collection-sidebar/src/collection-sidebar-row.css";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
@@ -48,13 +56,24 @@ function notesListItemTags(tags: string[]): ReactNode {
   );
 }
 
-function NotesListLocation({ note, labels }: { note: Note; labels: NotesUILabels }) {
+function NotesListLocation({
+  note,
+  labels,
+  notebookColor,
+}: {
+  note: Note;
+  labels: NotesUILabels;
+  notebookColor?: string | null;
+}) {
   const location = noteListLocationLabel(note, labels);
   if (!location) return null;
-  const Icon = note.sharedInbox ? Share2 : note.scope === "group" ? Users : BookOpen;
   return (
     <span className="notes-list-panel__notebook">
-      <Icon className="notes-list-panel__notebook-icon" aria-hidden />
+      <span
+        className="collection-sidebar-row__dot notes-list-panel__notebook-dot"
+        style={{ "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties}
+        aria-hidden
+      />
       <span className="notes-list-panel__notebook-name">{location}</span>
     </span>
   );
@@ -69,6 +88,7 @@ type NotesListPanelProps = {
   selectionMode: boolean;
   listLoading: boolean;
   visibleNotes: Note[];
+  notebookCollections?: NotesNotebookCollection[];
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -103,6 +123,7 @@ export function NotesListPanel({
   selectionMode,
   listLoading,
   visibleNotes,
+  notebookCollections = [],
   searchQuery,
   setSearchQuery,
   searchInputRef,
@@ -237,14 +258,28 @@ export function NotesListPanel({
             const showShared = noteShowsSharedBadge(note);
             const showViewOnly = noteShowsViewOnlyBadge(note);
             const canArchive = noteAllowsStructureManage(note);
+            const notebook = notebookCollections.find(
+              (item) => item.id === note.notebookId || item.name === note.notebook,
+            );
+            const excerpt = noteListExcerpt(note);
+            const tagsRow = showTags ? notesListItemTags(note.tags) : null;
             return (
               <ListItem
                 key={note.id}
                 id={note.id}
                 title={noteListTitle(note)}
-                subtitle={<NotesListLocation note={note} labels={L} />}
+                subtitle={
+                  <NotesListLocation note={note} labels={L} notebookColor={notebook?.color} />
+                }
                 date={formatNoteDateForList(note.date)}
-                text={showTags ? notesListItemTags(note.tags) : null}
+                text={
+                  excerpt || tagsRow ? (
+                    <>
+                      {excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
+                      {tagsRow}
+                    </>
+                  ) : null
+                }
                 icons={[
                   isPendingSync ? (
                     <span

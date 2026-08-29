@@ -1,9 +1,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import type { Note } from "@/lib/models/note";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
+import type { NotesNotebookSelectItem } from "@/notes-core/src/notes-notebook-select";
 import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
@@ -13,6 +14,11 @@ afterEach(() => {
 function renderBar(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
+
+const notebooks: NotesNotebookSelectItem[] = [
+  { id: "Drafts", name: "Drafts", color: "#f59e0b" },
+  { id: "The Journal", name: "The Journal", color: "#14b8a6" },
+];
 
 const owned: Note = {
   id: "n-1",
@@ -34,19 +40,21 @@ const shared: Note = {
   apiPath: "/users/bob/.notes/TeamPad/swm-1.md",
 };
 
+const barProps = {
+  labels: defaultNotesLabels,
+  archived: {},
+  starred: {},
+  closeMobileDetail: () => {},
+  notebooks,
+  onMoveToNotebook: vi.fn(),
+  toggleStar: () => {},
+  toggleArchive: () => {},
+};
+
 describe("NotesDetailActionBar", () => {
   it("renders nothing when no note is active", () => {
     const { container } = renderBar(
-      <NotesDetailActionBar
-        active={undefined}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={() => {}}
-        toggleStar={() => {}}
-        toggleArchive={() => {}}
-      />,
+      <NotesDetailActionBar active={undefined} {...barProps} />,
     );
     expect(container.querySelector(".action-bar")).toBeNull();
   });
@@ -55,12 +63,8 @@ describe("NotesDetailActionBar", () => {
     renderBar(
       <NotesDetailActionBar
         active={owned}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
+        {...barProps}
         backLabel="All Items"
-        openMoveDialog={vi.fn()}
         toggleStar={vi.fn()}
         toggleArchive={vi.fn()}
       />,
@@ -71,51 +75,46 @@ describe("NotesDetailActionBar", () => {
     expect(back.className).toContain("action-bar__back");
   });
 
-  it("shows notebook name and keeps move enabled for owned notes", () => {
-    const openMoveDialog = vi.fn();
+  it("shows a notebook dropdown for owned notes", () => {
     renderBar(
       <NotesDetailActionBar
         active={owned}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={openMoveDialog}
-        toggleStar={() => {}}
-        toggleArchive={() => {}}
+        {...barProps}
+        onMoveToNotebook={vi.fn()}
+        onCreateNotebook={vi.fn()}
       />,
     );
 
-    const move = screen.getByRole("button", { name: defaultNotesLabels.toolbarMoveToNotebook });
+    const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
     expect(move.textContent).toContain("Drafts");
     expect(move.hasAttribute("disabled")).toBe(false);
-    move.click();
-    expect(openMoveDialog).toHaveBeenCalledWith(["n-1"]);
+    expect(move.className).toContain("notes-notebook-select");
+    expect(move.className).toContain("select-trigger--size-sm");
   });
 
   it("disables notebook switch for shared-inbox notes without a username chip", () => {
-    const openMoveDialog = vi.fn();
+    const onMoveToNotebook = vi.fn();
+    const onCreateNotebook = vi.fn();
     const { container } = renderBar(
       <NotesDetailActionBar
         active={shared}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={openMoveDialog}
-        toggleStar={() => {}}
-        toggleArchive={() => {}}
+        {...barProps}
+        onMoveToNotebook={onMoveToNotebook}
+        onCreateNotebook={onCreateNotebook}
+        toggleStar={vi.fn()}
+        toggleArchive={vi.fn()}
       />,
     );
 
-    const move = screen.getByRole("button", { name: "TeamPad" });
+    const move = screen.getByRole("combobox", { name: "TeamPad" });
     expect(move.textContent).toContain("TeamPad");
     expect(move.textContent).not.toContain("bob");
     expect(move.textContent).not.toContain("Shared by");
     expect(container.querySelector(".notes-detail-action-bar__shared-by")).toBeNull();
     expect(move.hasAttribute("disabled")).toBe(true);
-    move.click();
-    expect(openMoveDialog).not.toHaveBeenCalled();
+    fireEvent.click(move);
+    expect(onMoveToNotebook).not.toHaveBeenCalled();
+    expect(onCreateNotebook).not.toHaveBeenCalled();
   });
 
   it("disables star and archive when readOnly (view-only share)", () => {
@@ -124,11 +123,7 @@ describe("NotesDetailActionBar", () => {
     const { container } = renderBar(
       <NotesDetailActionBar
         active={owned}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={vi.fn()}
+        {...barProps}
         toggleStar={toggleStar}
         toggleArchive={toggleArchive}
         readOnly
@@ -153,11 +148,7 @@ describe("NotesDetailActionBar", () => {
     const { container } = renderBar(
       <NotesDetailActionBar
         active={shared}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={vi.fn()}
+        {...barProps}
         toggleStar={vi.fn()}
         toggleArchive={toggleArchive}
         canArchive={false}
@@ -175,11 +166,7 @@ describe("NotesDetailActionBar", () => {
     const { container } = renderBar(
       <NotesDetailActionBar
         active={owned}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={vi.fn()}
+        {...barProps}
         toggleStar={vi.fn()}
         toggleArchive={toggleArchive}
         canArchive
@@ -196,11 +183,7 @@ describe("NotesDetailActionBar", () => {
     const { container } = renderBar(
       <NotesDetailActionBar
         active={shared}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={vi.fn()}
+        {...barProps}
         toggleStar={vi.fn()}
         toggleArchive={vi.fn()}
       />,
@@ -221,11 +204,7 @@ describe("NotesDetailActionBar", () => {
     const { container } = renderBar(
       <NotesDetailActionBar
         active={group}
-        labels={defaultNotesLabels}
-        archived={{}}
-        starred={{}}
-        closeMobileDetail={() => {}}
-        openMoveDialog={vi.fn()}
+        {...barProps}
         toggleStar={vi.fn()}
         toggleArchive={vi.fn()}
       />,

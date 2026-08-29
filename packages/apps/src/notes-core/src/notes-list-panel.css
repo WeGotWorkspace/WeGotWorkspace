@@ -55,8 +55,12 @@
   @apply inline-flex max-w-full min-w-0 items-center gap-1.5;
 }
 
-.notes-list-panel__notebook-icon {
-  @apply size-3 shrink-0 opacity-70;
+.notes-list-panel__notebook-dot {
+  @apply size-2.5 shrink-0 rounded-full;
+}
+
+.notes-list-panel__excerpt {
+  @apply block truncate;
 }
 
 .notes-list-panel__notebook-name {

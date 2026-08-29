@@ -140,7 +140,7 @@ describe("NotesListPanel access chips", () => {
     );
     const meta = container.querySelector(".notes-list-panel__notebook");
     expect(meta).toBeTruthy();
-    expect(meta!.querySelector(".notes-list-panel__notebook-icon")).toBeTruthy();
+    expect(meta!.querySelector(".collection-sidebar-row__dot")).toBeTruthy();
     expect(meta!.querySelector(".notes-list-panel__notebook-name")?.textContent).toBe("bob");
     expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
     expect(container.querySelector(".tag")).toBeNull();

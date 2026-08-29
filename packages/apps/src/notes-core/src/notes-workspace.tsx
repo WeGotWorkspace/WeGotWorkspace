@@ -1,10 +1,21 @@
-import { Eye, Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Button } from "@/button/src/button";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
-import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import {
+  CollectionSidebarMark,
+  CollectionSidebarRow,
+} from "@/collection-sidebar/src/collection-sidebar-row";
+import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
@@ -34,22 +45,21 @@ import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-tit
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
-import {
-  notebookViewKey,
-  useNotesSidebarModel,
-} from "@/notes-core/src/use-notes-sidebar-model";
+import { notebookViewKey, useNotesSidebarModel } from "@/notes-core/src/use-notes-sidebar-model";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { patchNotebook } from "@/lib/api/wgw/notes-vjournal";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
 import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
-import { NotesNotebookShareDialog } from "@/notes-core/src/notes-notebook-share-dialog";
+import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
+import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
+import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { pendingMoveAfterNotebookCreate } from "@/notes-core/src/notes-notebook-select";
 import { NotesConflictDialog } from "@/notes-core/src/notes-conflict-dialog";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
+import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import { Callout } from "@/callout/src/callout";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import "@/notes-core/src/notes-workspace.css";
@@ -126,6 +136,19 @@ export function NotesWorkspace({
     deleteTag,
     toggleNoteTag,
     applyLocalBodyMarkdown,
+    updateNote,
+    groups,
+    canManageNotebooks,
+    notebookDialog,
+    setNotebookDialog,
+    openCreateNotebookDialog,
+    openEditNotebookDialog,
+    createNotebookCollection,
+    updateNotebookCollection,
+    patchNotebookShareWith,
+    removeSharedNotebook,
+    hiddenNotebookIds,
+    toggleNotebookVisibility,
   } = useNotesController({
     data,
     labels,
@@ -138,22 +161,25 @@ export function NotesWorkspace({
     onNoteChange,
   });
 
-  const { primarySidebarItems, ownedNotebooks, sharedNotebooks: sharedNotebookRows, tagSidebarTags } =
-    useNotesSidebarModel({
-      labels: L,
-      view,
-      notebooks,
-      sharedNotebooks,
-      notebookCollections,
-      tags,
-      selectView,
-      sidebarDropZoneProps,
-      moveToNotebook,
-      assignTagToNotes,
-    });
+  const {
+    primarySidebarItems,
+    ownedNotebooks,
+    sharedNotebooks: sharedNotebookRows,
+    tagSidebarTags,
+  } = useNotesSidebarModel({
+    labels: L,
+    view,
+    notebooks,
+    sharedNotebooks,
+    notebookCollections,
+    tags,
+    selectView,
+    sidebarDropZoneProps,
+    moveToNotebook,
+    assignTagToNotes,
+  });
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
-  const [shareNotebook, setShareNotebook] = useState<NotesNotebookCollection | null>(null);
   const [accessLost, setAccessLost] = useState(false);
   const [reconnectConflict, setReconnectConflict] = useState(false);
 
@@ -165,10 +191,24 @@ export function NotesWorkspace({
       ) ?? null
     );
   }, [active, ownedNotebooks, sharedNotebookRows]);
+  const selectNotebooks = useMemo(
+    () => [...ownedNotebooks, ...sharedNotebookRows],
+    [ownedNotebooks, sharedNotebookRows],
+  );
+  const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
+  const openCreateNotebook = useCallback(
+    (moveNoteIds?: string[]) => {
+      pendingMoveAfterCreateRef.current = moveNoteIds?.length ? moveNoteIds : null;
+      openCreateNotebookDialog();
+    },
+    [openCreateNotebookDialog],
+  );
 
-  const noteMayShare = activeNotebook?.myRights?.mayShare === true || activeNotebook?.isSharee !== true;
   const noteEditable = resolveNotesEditorEditable(
-    active?.myRights ?? (activeNotebook?.myRights ? { mayEditContent: activeNotebook.myRights.mayWriteAll === true } : null),
+    active?.myRights ??
+      (activeNotebook?.myRights
+        ? { mayEditContent: activeNotebook.myRights.mayWriteAll === true }
+        : null),
     false,
   );
   const noteReadOnly = !noteEditable || accessLost;
@@ -238,18 +278,6 @@ export function NotesWorkspace({
   const showSingleNoteDetail = selectedIds.length === 1 && !!active && selectedIds[0] === active.id;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
-  const openShareActiveNote = useCallback(() => {
-    if (!activeNotebook) return;
-    setShareNotebook(activeNotebook);
-  }, [activeNotebook]);
-
-  const patchNotebookShare = useCallback(
-    async (notebookId: string, shareWith: CollectionShareWith) => {
-      await patchNotebook(notebookId, { shareWith });
-    },
-    [],
-  );
-
   const searchSharePrincipals = useCallback(
     async (query: string) => searchCollectionSharePrincipals(query, session.user.username),
     [session.user.username],
@@ -303,7 +331,7 @@ export function NotesWorkspace({
   });
 
   return (
-    <>
+    <TooltipProvider delayDuration={300}>
       <WorkspaceApp
         ref={workspaceLayoutRef}
         workspaceRoot={{
@@ -322,18 +350,14 @@ export function NotesWorkspace({
               />
             }
             primaryButton={
-              <Button
-                label={L.newNote}
-                icon={<Pencil />}
-                onClick={() => {
+              <NotesNewMenu
+                labels={L}
+                disabled={!canCreateNote}
+                onCreateNote={() => {
                   createNote();
                   closeSidebarOnMobile(c.closeSidebar);
                 }}
-                size="lg"
-                pill
-                variant="primary"
-                disabled={!canCreateNote}
-                className="w-full"
+                onCreateNotebook={canManageNotebooks ? () => openCreateNotebook() : undefined}
               />
             }
           >
@@ -349,15 +373,18 @@ export function NotesWorkspace({
                     <CollectionSidebarRow
                       key={notebook.id}
                       name={notebook.name}
-                      color={notebook.color ?? ""}
-                      selected={view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`}
+                      color={notebookDotColor(notebook)}
+                      selected={
+                        view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`
+                      }
+                      visible={!hiddenNotebookIds.has(notebook.id)}
+                      onToggleVisibility={() => toggleNotebookVisibility(notebook.id)}
                       onSelect={() => {
                         selectView(notebookViewKey(notebook.id));
                         closeSidebarOnMobile(c.closeSidebar);
                       }}
-                      onEdit={() => setShareNotebook(notebook)}
-                      editLabel={L.share}
-                      showColorDot
+                      onEdit={() => openEditNotebookDialog(notebook)}
+                      editLabel={L.edit}
                       rootProps={{
                         ...dropHandlers,
                         className: isDropTarget ? "collection-sidebar-row--drop-target" : undefined,
@@ -373,20 +400,23 @@ export function NotesWorkspace({
                   <CollectionSidebarRow
                     key={notebook.id}
                     name={notebook.name}
-                    color={notebook.color ?? ""}
-                    selected={view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`}
+                    color={notebookDotColor(notebook)}
+                    selected={
+                      view === notebookViewKey(notebook.id) || view === `nb:${notebook.name}`
+                    }
+                    visible={!hiddenNotebookIds.has(notebook.id)}
+                    onToggleVisibility={() => toggleNotebookVisibility(notebook.id)}
                     onSelect={() => {
                       selectView(notebookViewKey(notebook.id));
                       closeSidebarOnMobile(c.closeSidebar);
                     }}
-                    onEdit={() => setShareNotebook(notebook)}
-                    editLabel={L.share}
-                    showColorDot
+                    onEdit={() => openEditNotebookDialog(notebook)}
+                    editLabel={L.edit}
                     badges={
                       notebook.myRights?.mayWriteAll === false ? (
-                        <span className="collection-sidebar-row__mark" role="img" aria-label={L.viewOnly}>
+                        <CollectionSidebarMark label={L.viewOnly}>
                           <Eye className="size-3.5" aria-hidden />
-                        </span>
+                        </CollectionSidebarMark>
                       ) : null
                     }
                   />
@@ -439,7 +469,18 @@ export function NotesWorkspace({
             handleSelect,
             enterSelectionFor,
             itemDragHandlers,
-            openEditDialog: setEditDialog,
+            openEditDialog: (item) => {
+              if (item.kind === "notebook") {
+                const notebook = [...ownedNotebooks, ...sharedNotebookRows].find(
+                  (entry) => entry.id === item.name || entry.name === item.name,
+                );
+                if (notebook) {
+                  openEditNotebookDialog(notebook);
+                  return;
+                }
+              }
+              setEditDialog(item);
+            },
             openDeleteDialog: setDeleteDialog,
             openDeleteConfirmForArchive: openDeleteConfirm,
             toggleStar,
@@ -447,6 +488,7 @@ export function NotesWorkspace({
             selectionBar,
             onRefreshList,
             pendingNoteIds,
+            notebookCollections,
           })
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}
@@ -459,11 +501,17 @@ export function NotesWorkspace({
               starred={starred}
               closeMobileDetail={c.closeMobileDetail}
               backLabel={viewLabel}
-              openMoveDialog={(ids) => setMoveDialog({ ids })}
+              notebooks={selectNotebooks}
+              onMoveToNotebook={(notebook) => {
+                if (active) moveToNotebook([active.id], notebook.name);
+              }}
+              onCreateNotebook={
+                canManageNotebooks && active ? () => openCreateNotebook([active.id]) : undefined
+              }
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
               showCollabChrome={collabSessionActive}
-              onShare={noteMayShare ? openShareActiveNote : undefined}
+              notebookColor={activeNotebook?.color}
               readOnly={noteReadOnly}
               canArchive={noteCanArchive}
             />
@@ -490,11 +538,20 @@ export function NotesWorkspace({
           return (
             <>
               {accessLost ? (
-                <Callout severity="warning" title={L.accessLostTitle} message={L.accessLostMessage} />
+                <Callout
+                  severity="warning"
+                  title={L.accessLostTitle}
+                  message={L.accessLostMessage}
+                />
               ) : null}
               <NoteDetailView
                 noteId={active.id}
                 contentRevision={formatNoteDateForList(active.date)}
+                title={active.title ?? ""}
+                titlePlaceholder={L.titlePlaceholder}
+                onTitleChange={
+                  noteReadOnly ? undefined : (title) => updateNote(active.id, { title })
+                }
                 tags={active.tags}
                 availableTags={tags}
                 showTags={activeShowsTags}
@@ -575,16 +632,47 @@ export function NotesWorkspace({
         contentClassName="notes-dialog-surface"
       />
 
-      <NotesNotebookShareDialog
-        notebook={shareNotebook}
-        open={shareNotebook !== null}
-        labels={L}
-        online={online}
-        onOpenChange={(open) => {
-          if (!open) setShareNotebook(null);
+      <TaskProjectDialog
+        dialog={notebookDialog}
+        groups={groups}
+        personalOwnerLabel={personalOwnerLabel(session)}
+        onClose={() => {
+          pendingMoveAfterCreateRef.current = null;
+          setNotebookDialog(null);
         }}
-        onSearchPrincipals={searchSharePrincipals}
-        onPatchShareWith={patchNotebookShare}
+        onConfirm={(input) => {
+          if (!notebookDialog) return;
+          if (notebookDialog.mode === "create") {
+            void createNotebookCollection(input).then((created) => {
+              const pending = pendingMoveAfterNotebookCreate(
+                created,
+                pendingMoveAfterCreateRef.current,
+              );
+              pendingMoveAfterCreateRef.current = null;
+              if (pending) moveToNotebook(pending.ids, pending.notebook);
+            });
+            return;
+          }
+          void updateNotebookCollection(notebookDialog.listId, input);
+        }}
+        share={
+          notebookDialog?.mode === "edit" && notebookDialog.mayShare
+            ? {
+                online,
+                onSearchPrincipals: searchSharePrincipals,
+                onPatchShareWith: patchNotebookShareWith,
+              }
+            : undefined
+        }
+        onRemoveShared={
+          notebookDialog?.mode === "edit" && notebookDialog.isSharee
+            ? () => {
+                void removeSharedNotebook(notebookDialog.listId);
+              }
+            : undefined
+        }
+        labels={notesNotebookDialogLabelsFrom(L)}
+        contentClassName="notes-dialog-surface"
       />
 
       <NotesConflictDialog
@@ -599,6 +687,6 @@ export function NotesWorkspace({
       />
 
       {confirmDialog}
-    </>
+    </TooltipProvider>
   );
 }
