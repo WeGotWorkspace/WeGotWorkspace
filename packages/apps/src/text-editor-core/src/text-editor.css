@@ -1,4 +1,5 @@
 @import "../../styles.css" reference;
+@import "../../ui/checkbox.css";
 
 /* Parent-scoped tokens for the text editor workspace */
 :root {
@@ -540,73 +541,58 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 1.125rem;
-  width: 1.125rem;
+  @apply m-0 flex cursor-pointer select-none items-center justify-center;
+  flex: 0 0 var(--checkbox-size, 1rem);
+  width: var(--checkbox-size, 1rem);
   height: 1.7em;
-  margin: 0;
-  cursor: pointer;
-  user-select: none;
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  @apply sr-only;
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:focus-visible + span {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  @apply outline-none ring-1;
+  --tw-ring-color: var(--checkbox-ring-color, var(--ring));
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label span {
-  position: relative;
-  display: block;
-  width: 1.125rem;
-  height: 1.125rem;
-  flex-shrink: 0;
-  border: 1.5px solid color-mix(in oklab, var(--foreground) 28%, var(--border));
-  border-radius: 0.3rem;
-  background: var(--background);
-  box-shadow: inset 0 1px 1px color-mix(in oklab, var(--foreground) 6%, transparent);
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.text-editor-prose ul[data-type="taskList"] li > label:hover span {
-  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
-  background: color-mix(in oklab, var(--primary) 6%, var(--background));
+  @apply relative grid shrink-0 place-content-center border shadow;
+  width: var(--checkbox-size, 1rem);
+  height: var(--checkbox-size, 1rem);
+  border-radius: var(--checkbox-radius, var(--radius-sm));
+  border-color: var(--checkbox-border-color, var(--primary));
+  background-color: var(--checkbox-bg, transparent);
+  color: var(--checkbox-checked-fg, var(--primary-foreground));
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span,
 .text-editor-prose ul[data-type="taskList"] li[data-checked="true"] > label span {
-  border-color: var(--primary);
-  background: var(--primary);
-  box-shadow: none;
+  background-color: var(--checkbox-checked-bg, var(--primary));
+  border-color: var(--checkbox-checked-border, var(--checkbox-checked-bg, var(--primary)));
+  color: var(--checkbox-checked-fg, var(--primary-foreground));
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span::after,
 .text-editor-prose ul[data-type="taskList"] li[data-checked="true"] > label span::after {
   content: "";
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  width: 0.3125rem;
-  height: 0.5625rem;
-  border: solid var(--primary-foreground);
-  border-width: 0 2px 2px 0;
-  transform: translate(-50%, -50%) rotate(45deg);
+  width: var(--checkbox-size, 1rem);
+  height: var(--checkbox-size, 1rem);
+  background-color: currentColor;
+  /* Lucide `Check` path — matches `.checkbox__icon`. */
+  --checkbox-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  -webkit-mask-image: var(--checkbox-check-mask);
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-image: var(--checkbox-check-mask);
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+
+.text-editor-prose ul[data-type="taskList"] li > label input:disabled + span {
+  @apply cursor-not-allowed opacity-50;
 }
 
 .text-editor-prose .is-editor-empty:first-child::before {
@@ -1051,8 +1037,9 @@
     li[data-checked="true"]
     > label
     span {
-    border-color: var(--primary) !important;
-    background: var(--primary) !important;
+    border-color: var(--checkbox-checked-border, var(--checkbox-checked-bg, var(--primary))) !important;
+    background: var(--checkbox-checked-bg, var(--primary)) !important;
+    color: var(--checkbox-checked-fg, var(--primary-foreground)) !important;
     box-shadow: none !important;
   }
 
@@ -1072,7 +1059,7 @@
     > label
     span::after {
     content: "" !important;
-    border-color: var(--primary-foreground) !important;
+    background-color: currentColor !important;
   }
 
   .text-editor-sheet__surface {

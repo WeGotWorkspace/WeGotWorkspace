@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 import { TextEditor } from "@/text-editor-core/src/text-editor";
 import { TEXT_EDITOR_CONTENT_FORMATS } from "@/text-editor-core/src/text-editor-content";
 import { textEditorDemoContent } from "@/text-editor-core/src/text-editor-fixtures";
@@ -73,6 +74,26 @@ export const EmptyMarkdown: Story = {
     editable: true,
     placeholder: "Start writing, or type / for blocks…",
     showPrint: false,
+  },
+};
+
+export const TaskList: Story = {
+  name: "Task list",
+  tags: ["vitest-ci"],
+  args: {
+    format: "markdown",
+    content: "## Task list\n\n- [ ] Unchecked item\n- [x] Checked item\n",
+    editable: true,
+    showPrint: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const boxes = await canvas.findAllByRole("checkbox");
+    await expect(boxes).toHaveLength(2);
+    await expect(boxes[0]).not.toBeChecked();
+    await expect(boxes[1]).toBeChecked();
+    await userEvent.click(boxes[0]);
+    await expect(boxes[0]).toBeChecked();
   },
 };
 
