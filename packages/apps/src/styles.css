@@ -274,12 +274,13 @@
   color: var(--color-ink);
 }
 
-/* iOS Safari zooms focused fields under 16px; keep text entry ≥1rem. */
+/* iOS Safari zooms focused fields under 16px; keep text entry ≥1rem.
+ * Document titles opt out — they use title-scale (`--text-3xl` / `--text-4xl`). */
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not(
     [type="radio"]
   ):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(
     [type="image"]
-  ),
+  ):not(.note-detail-view__title),
 textarea,
 select {
   font-size: max(1rem, 100%) !important;

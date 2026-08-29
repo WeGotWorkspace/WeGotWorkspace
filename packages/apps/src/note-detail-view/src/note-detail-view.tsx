@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
@@ -6,6 +7,7 @@ import {
   NoteTextEditorBody,
   type NoteCollabConfig,
 } from "@/note-detail-view/src/note-text-editor-body";
+import "@/note-detail-view/src/note-detail-view.css";
 
 export type NoteDetailViewProps = {
   /** Used for React keys on editors when switching notes. */
@@ -26,6 +28,10 @@ export type NoteDetailViewProps = {
    * Default `true`.
    */
   showTags?: boolean;
+  /** VJOURNAL SUMMARY. Required in the product; empty until autofill or the user types. */
+  title?: string;
+  onTitleChange?: (title: string) => void;
+  titlePlaceholder?: string;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
   body: string[];
@@ -48,6 +54,9 @@ export function NoteDetailView({
   onTagAdd,
   onTagRemove,
   showTags = true,
+  title = "",
+  onTitleChange,
+  titlePlaceholder = "Title",
   pullQuote,
   body,
   collab,
@@ -60,8 +69,22 @@ export function NoteDetailView({
   const useCollabSurface = collab != null;
   const tagsReadOnly = readOnly || onTagAdd == null;
 
+  const titleReadOnly = readOnly || onTitleChange == null;
+  const titleFieldId = useId();
+
   return (
     <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
+      <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
+        {titlePlaceholder}
+      </label>
+      <input
+        id={titleFieldId}
+        className="note-detail-view__title"
+        value={title}
+        placeholder={titlePlaceholder}
+        readOnly={titleReadOnly}
+        onChange={titleReadOnly ? undefined : (event) => onTitleChange(event.target.value)}
+      />
       {showTags ? (
         <TagGroup
           className="note-detail-view__tag-group py-6 mb-6"

@@ -26,6 +26,8 @@ function NotesDetailPaneHarness({
           <NoteDetailView
             noteId={base.noteId}
             contentRevision={base.lastEdited}
+            title={base.title}
+            onTitleChange={readOnly ? undefined : () => {}}
             tags={base.tags}
             readOnly={readOnly}
             pullQuote={base.pullQuote}

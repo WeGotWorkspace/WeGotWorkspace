@@ -1,0 +1,24 @@
+@import "../../styles.css" reference;
+
+.note-detail-view__title-label {
+  @apply sr-only;
+}
+
+/**
+ * Document-title scale (mail / detail-header: text-3xl → md:text-4xl).
+ * Exempted from the global iOS 1rem input floor in styles.css.
+ */
+.note-detail-view__title {
+  @apply mb-4 h-auto min-h-0 w-full appearance-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none;
+  @apply text-3xl font-semibold leading-[1.1] tracking-tight md:text-4xl;
+  font-family: var(--note-detail-title-font-family, var(--font-serif));
+  color: var(--color-ink);
+}
+
+.note-detail-view__title::placeholder {
+  color: color-mix(in oklab, var(--color-ink) 35%, transparent);
+}
+
+.note-detail-view__title:read-only {
+  @apply cursor-default;
+}
