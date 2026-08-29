@@ -3,7 +3,6 @@ import {
   type ChangeEvent,
   type MouseEvent,
   type PointerEvent,
-  type ReactNode,
   useCallback,
   useMemo,
   useRef,
@@ -12,10 +11,13 @@ import {
 } from "react";
 import { Button, IconButton } from "@/button/src/button";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
-import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import {
+  CollectionSidebarMark,
+  CollectionSidebarRow,
+} from "@/collection-sidebar/src/collection-sidebar-row";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
+import { TooltipProvider } from "@/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -108,27 +110,6 @@ function closeSidebarOnMobile(close: () => void) {
   close();
 }
 
-function CalendarSidebarMark({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className: string;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className={className} role="img" aria-label={label}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 function CalendarSidebarRows({
   calendars,
   hiddenCalendarIds,
@@ -186,20 +167,20 @@ function CalendarSidebarRows({
             badges={
               <>
                 {subscribed ? (
-                  <CalendarSidebarMark
+                  <CollectionSidebarMark
                     label={subscribedLabel}
-                    className="calendar-sidebar-row__mark calendar-sidebar-row__subscription"
+                    className="calendar-sidebar-row__subscription"
                   >
                     <Rss className="size-3.5" aria-hidden />
-                  </CalendarSidebarMark>
+                  </CollectionSidebarMark>
                 ) : null}
                 {viewOnly && !subscribed ? (
-                  <CalendarSidebarMark
+                  <CollectionSidebarMark
                     label={viewOnlyLabel}
-                    className="calendar-sidebar-row__mark calendar-sidebar-row__readonly"
+                    className="calendar-sidebar-row__readonly"
                   >
                     <Eye className="size-3.5" aria-hidden />
-                  </CalendarSidebarMark>
+                  </CollectionSidebarMark>
                 ) : null}
               </>
             }

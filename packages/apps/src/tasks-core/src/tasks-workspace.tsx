@@ -1,10 +1,13 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import { CheckCircle2, Eye, RefreshCw } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
+import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import {
+  CollectionSidebarMark,
+  CollectionSidebarRow,
+} from "@/collection-sidebar/src/collection-sidebar-row";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -38,19 +41,6 @@ import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
 import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import "./tasks-workspace.css";
 import "./tasks-main-view.css";
-
-function TasksSidebarMark({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="collection-sidebar-row__mark" role="img" aria-label={label}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 function TasksSidebarRows({
   lists,
@@ -101,9 +91,9 @@ function TasksSidebarRows({
             editLabel={editLabel}
             badges={
               viewOnly ? (
-                <TasksSidebarMark label={viewOnlyLabel}>
+                <CollectionSidebarMark label={viewOnlyLabel}>
                   <Eye className="size-3.5" aria-hidden />
-                </TasksSidebarMark>
+                </CollectionSidebarMark>
               ) : null
             }
             rootProps={{

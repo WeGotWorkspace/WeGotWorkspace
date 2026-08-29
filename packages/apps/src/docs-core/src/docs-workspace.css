@@ -46,6 +46,10 @@
 
   --button-primary-bg: var(--docs-accent);
   --button-primary-fg: #ffffff;
+  --checkbox-border-color: var(--docs-accent);
+  --checkbox-checked-bg: var(--docs-accent);
+  --checkbox-checked-border: var(--docs-accent);
+  --checkbox-checked-fg: #ffffff;
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
 

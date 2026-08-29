@@ -59,7 +59,7 @@ export type TaskProjectDialogShare = {
   onPatchShareWith: (listId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
 
-type TaskProjectDialogLabels = {
+export type TaskProjectDialogLabels = {
   createTitle: string;
   editTitle: string;
   nameLabel: string;

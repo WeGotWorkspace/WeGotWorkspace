@@ -1,6 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import { TooltipProvider } from "@/ui/tooltip";
+import {
+  CollectionSidebarMark,
+  CollectionSidebarRow,
+} from "@/collection-sidebar/src/collection-sidebar-row";
 
 describe("CollectionSidebarRow", () => {
   it("calls onSelect from the row and onToggleVisibility from the checkbox independently", () => {
@@ -27,6 +31,25 @@ describe("CollectionSidebarRow", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
+  it("exposes collection color as --collection-row-color for the visibility checkbox", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Work"
+          color="#0ea5e9"
+          visible
+          onSelect={vi.fn()}
+          onToggleVisibility={vi.fn()}
+        />
+      </ul>,
+    );
+    const row = screen.getByText("Work").closest(".collection-sidebar-row") as HTMLElement;
+    expect(row.style.getPropertyValue("--collection-row-color")).toBe("#0ea5e9");
+    expect(screen.getByRole("checkbox", { name: "Hide Work" }).className).toMatch(
+      /collection-sidebar-row__visibility/,
+    );
+  });
+
   it("omits the checkbox when onToggleVisibility is not provided", () => {
     render(
       <ul>
@@ -35,5 +58,36 @@ describe("CollectionSidebarRow", () => {
     );
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.getByRole("button", { name: "Inbox" })).toBeTruthy();
+  });
+
+  it("keeps the shared BEM block when Calendar aliases calendar-sidebar-row", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Work"
+          color="#0ea5e9"
+          selected
+          blockName="calendar-sidebar-row"
+          onSelect={vi.fn()}
+          onToggleVisibility={vi.fn()}
+        />
+      </ul>,
+    );
+    const row = screen.getByText("Work").closest(".collection-sidebar-row");
+    expect(row?.className).toMatch(/collection-sidebar-row--selected/);
+    expect(row?.className).toMatch(/calendar-sidebar-row--selected/);
+  });
+
+  it("renders CollectionSidebarMark with the shared mark class", () => {
+    render(
+      <TooltipProvider>
+        <CollectionSidebarMark label="View only">
+          <span>eye</span>
+        </CollectionSidebarMark>
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole("img", { name: "View only" }).className).toMatch(
+      /collection-sidebar-row__mark/,
+    );
   });
 });
