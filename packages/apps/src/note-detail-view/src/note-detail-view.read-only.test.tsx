@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { TooltipProvider } from "@/ui/tooltip";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
+
+function renderDetail(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 describe("NoteDetailView readOnly", () => {
   it("renders a non-editable contenteditable surface when readOnly", () => {
@@ -83,5 +89,26 @@ describe("NoteDetailView readOnly", () => {
     );
     const input = screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement;
     expect(input.readOnly).toBe(true);
+  });
+
+  it("calls onTagRemove when a detail-pane chip X is clicked", () => {
+    const onTagRemove = vi.fn();
+    renderDetail(
+      <NoteDetailView
+        noteId="n-tags"
+        contentRevision="rev-1"
+        title="Tagged"
+        onTitleChange={() => {}}
+        tags={["planning", "draft"]}
+        availableTags={["planning", "draft"]}
+        onTagAdd={() => {}}
+        onTagRemove={onTagRemove}
+        body={["Notes"]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove tag planning" }));
+    expect(onTagRemove).toHaveBeenCalledTimes(1);
+    expect(onTagRemove).toHaveBeenCalledWith("planning");
   });
 });

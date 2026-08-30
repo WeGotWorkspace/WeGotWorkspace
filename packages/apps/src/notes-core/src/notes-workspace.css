@@ -13,6 +13,13 @@
 .notes-workspace {
   --notes-accent: #f6d176;
   --notes-sidebar: #f3c450;
+  /*
+   * Calendar: `--calendar-accent-strong` (#5558e8) is a darker step of
+   * `--calendar-accent` (#6366f1) — selected Today icon/label (`--button-active-color`).
+   * Notes has no standalone strong hex; do not invent one. Same derivation:
+   * mix the product accent toward `--color-ink` (the existing gold contrast pair).
+   */
+  --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 70%, var(--color-ink));
   /* List selected ≈ 18% accent; body sits a step heavier on cream. */
   --notes-detail-body-bg: color-mix(in oklab, var(--notes-accent) 26%, var(--color-cream, #ffffff));
   --workspace-accent: var(--notes-accent);
@@ -42,8 +49,13 @@
   --checkbox-checked-bg: var(--notes-accent);
   --checkbox-checked-border: var(--notes-accent);
   --checkbox-checked-fg: var(--color-ink);
-  --note-detail-tag-bg: var(--notes-accent);
-  --note-detail-tag-fg: var(--color-ink);
+  /* Selected sidebar tag chip — source of truth for assigned detail tags. */
+  --notes-tag-selected-bg: var(--color-ink);
+  --notes-tag-selected-fg: var(--notes-accent);
+  --notes-tag-selected-border: var(--color-ink);
+  --note-detail-tag-bg: var(--notes-tag-selected-bg);
+  --note-detail-tag-fg: var(--notes-tag-selected-fg);
+  --note-detail-tag-border: var(--notes-tag-selected-border);
   --note-detail-title-font-family: var(--font-serif);
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
@@ -113,9 +125,16 @@
   --segmented-control-track-active-bg: var(--color-ink);
 }
 
+/* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
+.notes-workspace .notes-detail-footer__meta-tag--edited {
+  @apply shrink-0;
+  --tag-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --tag-fg: color-mix(in oklab, var(--color-ink) 58%, transparent);
+}
+
 .notes-workspace .notes-detail-footer__meta-tag--edited .tag {
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  color: color-mix(in oklab, var(--color-ink) 58%, transparent);
+  background-color: var(--tag-bg);
+  color: var(--tag-fg);
 }
 
 /* Calendar view-select pattern: compact cream trigger in the detail header. */
@@ -125,8 +144,42 @@
   background-color: var(--color-cream, #ffffff);
 }
 
+/*
+ * Selected Star / Archive: Calendar Today chrome remapped to notes tokens.
+ * Wash stays accent 18%/24% on cream. Icon/label uses `--notes-accent-strong`
+ * (Today’s `--calendar-accent-strong` role) — not action-bar ink-70% grey,
+ * not raw `--color-ink`. Idle chips keep action-bar muted; Today idle is
+ * also default subtle grey, not accent.
+ */
+.notes-workspace .action-bar .button--variant-subtle.icon-button--active {
+  --button-active-color: var(--notes-accent-strong);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--notes-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--notes-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+/* Lucide icons are stroke-based; generic icon-button--active fill blobs them. */
+.notes-workspace
+  .action-bar
+  .button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
+  fill: none;
+  color: var(--notes-accent-strong);
+}
+
 .notes-workspace .note-detail-view__tag-group {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --tag-bg: var(--note-detail-tag-bg);
+  --tag-fg: var(--note-detail-tag-fg);
+  --tag-remove-fg: var(--note-detail-tag-fg);
   --tag-group-input-border: color-mix(in oklab, var(--color-ink) 16%, transparent);
   --tag-group-input-bg: color-mix(in oklab, var(--color-ink) 4%, transparent);
   --tag-group-input-bg-focus: #ffffff;
@@ -137,6 +190,8 @@
 }
 
 .notes-workspace .note-detail-view__tag-group .tag {
+  @apply border;
+  border-color: var(--note-detail-tag-border);
   background-color: var(--note-detail-tag-bg);
   color: var(--note-detail-tag-fg);
 }
@@ -169,9 +224,9 @@
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
 .notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
-  background-color: var(--color-ink);
-  border-color: var(--color-ink);
-  color: var(--notes-accent);
+  background-color: var(--notes-tag-selected-bg);
+  border-color: var(--notes-tag-selected-border);
+  color: var(--notes-tag-selected-fg);
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {
