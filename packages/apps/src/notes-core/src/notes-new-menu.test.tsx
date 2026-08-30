@@ -1,7 +1,13 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const workspaceCss = readFileSync(join(here, "notes-workspace.css"), "utf8");
 
 const L = defaultNotesLabels;
 
@@ -57,5 +63,19 @@ describe("NotesNewMenu", () => {
     const main = screen.getByRole("button", { name: L.newNote });
     expect(main).toHaveProperty("disabled", true);
     expect(main.getAttribute("aria-label")).toBe(L.newNote);
+  });
+});
+
+describe("NotesNewMenu primary tokens", () => {
+  it("paints sidebar New note gold fill + ink label (invert of selected chips)", () => {
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--notes-accent\)/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-ink\)/,
+    );
+    expect(workspaceCss).not.toMatch(
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink\)/,
+    );
   });
 });

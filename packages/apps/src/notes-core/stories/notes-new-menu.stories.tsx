@@ -15,7 +15,9 @@ const meta: Meta<typeof NotesNewMenu> = {
   },
   render: (args) => (
     <div className="notes-workspace max-w-xs p-6">
-      <NotesNewMenu {...args} />
+      <div className="app-sidebar__scroll">
+        <NotesNewMenu {...args} />
+      </div>
     </div>
   ),
 };
