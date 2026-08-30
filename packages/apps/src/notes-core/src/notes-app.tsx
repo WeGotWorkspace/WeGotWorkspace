@@ -48,6 +48,7 @@ export function NotesApp({ apiSource }: NotesAppProps = {}) {
     bootstrapRevision,
     syncing,
     listLoading,
+    listRefreshing,
     refreshList,
     data,
     session,
@@ -121,6 +122,7 @@ export function NotesApp({ apiSource }: NotesAppProps = {}) {
             operations={operations}
             shareOperations={shareOperations}
             listLoading={listLoading}
+            listRefreshing={listRefreshing}
             bootstrapRevision={bootstrapRevision}
             onRefreshList={refreshList}
             initialView={initialView}

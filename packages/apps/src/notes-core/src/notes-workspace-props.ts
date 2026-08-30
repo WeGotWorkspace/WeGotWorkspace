@@ -13,6 +13,8 @@ export type NotesWorkspaceProps = {
   shareOperations?: DriveShareOperations;
   /** Show list-column spinner while notes bootstrap (shell + sidebar visible). */
   listLoading?: boolean;
+  /** Manual refresh in flight — button busy only; list stays visible. */
+  listRefreshing?: boolean;
   /** Bumps when bootstrap is patched after reconnect or conflict resolution. */
   bootstrapRevision?: number;
   /** Refresh cached bootstrap after reconnect or conflict resolution. */

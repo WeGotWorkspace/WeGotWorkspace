@@ -87,6 +87,7 @@ type NotesListPanelProps = {
   selectedIds: string[];
   selectionMode: boolean;
   listLoading: boolean;
+  listRefreshing?: boolean;
   visibleNotes: Note[];
   notebookCollections?: NotesNotebookCollection[];
   searchQuery: string;
@@ -117,6 +118,7 @@ export function NotesListPanel({
   selectedIds,
   selectionMode,
   listLoading,
+  listRefreshing = false,
   visibleNotes,
   notebookCollections = [],
   searchQuery,
@@ -161,9 +163,12 @@ export function NotesListPanel({
               <IconButton
                 label={L.refreshList}
                 onClick={onRefreshList}
-                disabled={listLoading}
+                disabled={listLoading || listRefreshing}
                 icon={
-                  <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
+                  <RefreshCw
+                    className={cn("size-4", listRefreshing && "animate-spin")}
+                    aria-hidden
+                  />
                 }
                 size="sm"
                 variant="subtle"

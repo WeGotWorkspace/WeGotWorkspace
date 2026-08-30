@@ -29,6 +29,9 @@ function ListHarness({
   view = "all",
   viewLabel = "All Items",
   notebookCollections,
+  listLoading = false,
+  listRefreshing = false,
+  onRefreshList,
   slot = "list",
 }: {
   notes: Note[];
@@ -37,7 +40,10 @@ function ListHarness({
   view?: string;
   viewLabel?: string;
   notebookCollections?: NotesNotebookCollection[];
-  slot?: "list" | "header";
+  listLoading?: boolean;
+  listRefreshing?: boolean;
+  onRefreshList?: () => void;
+  slot?: "list" | "header" | "both";
 }) {
   const panel = NotesListPanel({
     L: defaultNotesLabels,
@@ -46,7 +52,9 @@ function ListHarness({
     viewLabel,
     selectedIds,
     selectionMode: false,
-    listLoading: false,
+    listLoading,
+    listRefreshing,
+    onRefreshList,
     visibleNotes: notes,
     notebookCollections,
     searchQuery: "",
@@ -66,8 +74,48 @@ function ListHarness({
     toggleArchive: () => {},
     selectionBar: null,
   });
+  if (slot === "both") {
+    return (
+      <>
+        {panel.header}
+        {panel.listContent}
+      </>
+    );
+  }
   return <>{slot === "header" ? panel.header : panel.listContent}</>;
 }
+
+describe("NotesListPanel refresh vs initial load", () => {
+  it("keeps existing rows visible while the refresh button is busy", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness
+          notes={[baseNote]}
+          listRefreshing
+          onRefreshList={() => {}}
+          slot="both"
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      (screen.getByRole("button", { name: defaultNotesLabels.refreshList }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.queryByText(defaultNotesLabels.listLoading)).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByText("Hello")).toBeTruthy();
+  });
+
+  it("shows the list loading spinner only on initial load", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness notes={[baseNote]} listLoading slot="both" />
+      </TooltipProvider>,
+    );
+    expect(screen.getByText(defaultNotesLabels.listLoading)).toBeTruthy();
+    expect(screen.queryByText("Hello")).toBeNull();
+  });
+});
 
 describe("NotesListPanel header chrome", () => {
   it("does not show edit or delete notebook controls on the view header", () => {

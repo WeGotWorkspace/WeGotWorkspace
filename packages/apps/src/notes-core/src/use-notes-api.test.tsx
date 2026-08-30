@@ -64,7 +64,7 @@ describe("useNotesAPI", () => {
     vi.useRealTimers();
   });
 
-  it("refreshList reloads bootstrap and patches workspace data", async () => {
+  it("refreshList reloads bootstrap in the background without list loading state", async () => {
     const source: NotesApiSource = {
       loadBootstrap: mockLoadBootstrap,
       createOperations: () => undefined,
@@ -76,16 +76,18 @@ describe("useNotesAPI", () => {
       result.current.refreshList();
     });
 
-    expect(result.current.listLoading).toBe(true);
+    expect(result.current.listLoading).toBe(false);
+    expect(result.current.listRefreshing).toBe(true);
 
     await waitFor(() => {
-      expect(result.current.listLoading).toBe(false);
+      expect(result.current.listRefreshing).toBe(false);
     });
 
     expect(mockLoadBootstrap).toHaveBeenCalledTimes(1);
     expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
     expect(mockPatchBootstrap.mock.calls[0]?.[0]()).toEqual(bootstrap);
     expect(result.current.bootstrapRevision).toBe(1);
+    expect(result.current.listLoading).toBe(false);
   });
 
   it("flushes the outbox, reloads bootstrap, and notifies other tabs on reconnect", async () => {
