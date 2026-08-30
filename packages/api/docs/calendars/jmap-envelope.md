@@ -57,6 +57,13 @@ ResultReferences (§3.7): every `#key` argument is resolved against the matching
 | `FileNode/copy` | — | Single account per principal: same-account → `invalidArguments` (RFC 8620 §5.4), other → `fromAccountNotFound` |
 | `FileNode/query` | node index | Supported filters `isTopLevel`/`parentId`/`ancestorId`/`nodeType`/`name`/`nameMatch` + `depth` recursion; sorts `name`/`nodeType`; rest → `unsupportedFilter`/`unsupportedSort` |
 | `FileNode/queryChanges` | — | Always `cannotCalculateChanges`, same rationale |
+| `Notebook/get` | `NotebookRepository::list()` | Vendor `urn:wgw:jmap:notes`; envelope-codec state over VJOURNAL notebooks |
+| `Notebook/changes` | `NoteRepository::notebookSyncTokens()` | Existence/token diff via the envelope codec |
+| `Notebook/set` | `NotebookRepository::create/update/delete` | Top-level `ifInState`; `onDestroyRemoveContents` → `notebookHasContents` |
+| `Note/get` | `NoteRepository::show()` / `list()` | ids null enumerates all notebooks; REST shapes unchanged |
+| `Note/changes` | per-notebook `NoteRepository::changes()` | **Account-wide** fan-out (same algorithm as `CalendarEvent/changes`) |
+| `Note/set` | `NoteRepository::create/patch/delete` | Top-level `ifInState`; optional `starred` / `etag` on the patch |
+| `Note/queryChanges` | — | Always `cannotCalculateChanges` |
 
 Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `unsupportedFilter`, `unsupportedSort`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary (calendars) or are normalized from the legacy snake_case shapes at the adapter layer (contacts); unknown internal codes normalize to `serverFail` instead of inventing types.
 

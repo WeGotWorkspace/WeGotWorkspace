@@ -84,12 +84,13 @@ Persistence reuses the existing Sabre CalDAV PDO backend (`calendars`, `calendar
 
 **Decision:**
 
-- **No JMAP Notes wire protocol** in v1.
-- **Yes JMAP-shaped REST DTOs** — `Notebook`, `Note` (`id` = `UID`, `title`, `body`, `categories`, `notebookId`, `status`, `etag`).
+- **Vendor JMAP envelope** `urn:wgw:jmap:notes` on `POST /jmap` — `Notebook/get|changes|set` and `Note/get|changes|set`. Not IETF `urn:ietf:params:jmap:notes` (no such type).
+- **JMAP-shaped REST DTOs remain** — `Notebook`, `Note` (`id` = `UID`, `title`, `body`, `categories`, `notebookId`, `status`, `etag`) for non-sync CRUD.
+- **Dexie inbound:** the Notes app working set is Dexie. Inbound `Note/changes` → `Note/get` (account-wide fan-out) writes the cache; the UI does not remount from a full live GET.
 
-**Why:** Same pattern as Tasks. One REST translation layer for the web app while CalDAV remains the store.
+**Why:** Calendar-shaped sync. CalDAV VJOURNAL stays the document of record. REST `/notes/*` is unchanged.
 
-**Implication:** Converters under `app/Services/Notes/Conversion/`. Create always writes a single-VJOURNAL object. href may be `{uid}.ics`.
+**Implication:** Converters under `app/Services/Notes/Conversion/`. Create always writes a single-VJOURNAL object. href may be `{uid}.ics`. Envelope handlers call `NoteRepository` / `NotebookRepository` only.
 
 ---
 
@@ -305,7 +306,7 @@ Old tree stays **read-only one release**; no dual-write. Drain FileNode Dexie ou
 
 ## Known limitations / parked
 
-- **JMAP Notes wire** — not v1 (Decision 5).
+- **IETF `urn:ietf:params:jmap:notes`** — no such type; vendor `urn:wgw:jmap:notes` is Decision 5.
 - **Foreign journal clients** — Sabre accepts PUT; no product UX (Decision 17).
 - **Guest email invite** — post-v1 (existing principal `mailto:` works once shareWith lands).
 - **Server-side collab kick** — parked (platform).
