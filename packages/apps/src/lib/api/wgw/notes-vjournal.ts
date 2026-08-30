@@ -29,6 +29,10 @@ export type NotesVjournalNote = {
   status: "FINAL" | "CANCELLED" | null;
   etag: string;
   starred?: boolean;
+  /** LAST-MODIFIED, else DTSTAMP, else calendarobjects.lastmodified. */
+  updatedAt?: string;
+  /** Optional content mtime when the API projects it (collab body saves). */
+  contentUpdatedAt?: string;
 };
 
 type NotesRequestOpts = {
@@ -234,6 +238,9 @@ export function noteFromVjournal(
   const body = splitBodyParagraphs(row.body ?? "");
   const flat = body.join("\n\n");
   const title = row.title ?? autofillNoteTitle(row.title, row.body ?? "");
+  const metadataUpdatedAt = row.updatedAt;
+  // Same display rule as noteFromWgwItem: content mtime, else LAST-MODIFIED/DTSTAMP.
+  const displayDate = row.contentUpdatedAt ?? metadataUpdatedAt ?? "—";
   return {
     id: row.id,
     notebook: notebook?.name ?? row.notebookId,
@@ -245,7 +252,8 @@ export function noteFromVjournal(
     tags: row.categories ?? [],
     wordCount: wordCountFromText(flat),
     category: "Note",
-    date: "—",
+    date: displayDate,
+    ...(metadataUpdatedAt !== undefined ? { updatedAt: metadataUpdatedAt } : {}),
     starred: row.starred,
     archived: row.status === "CANCELLED",
     scope: notebook?.scope,

@@ -7,10 +7,12 @@ namespace App\Services\Notes\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarObject;
+use App\Services\VObject\ICalendarDateTime;
 use DateTimeImmutable;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property;
 use Sabre\VObject\Reader;
 
 final class NoteJournalConverter
@@ -124,6 +126,12 @@ final class NoteJournalConverter
         $note['notebookId'] = $notebookId;
         $note['etag'] = OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag;
         $note['starred'] = $starred;
+        if (! isset($note['updatedAt']) || ! is_string($note['updatedAt']) || $note['updatedAt'] === '') {
+            $lastModified = (int) ($object->lastmodified ?? 0);
+            if ($lastModified > 0) {
+                $note['updatedAt'] = gmdate('Y-m-d\TH:i:s\Z', $lastModified);
+            }
+        }
 
         return $note;
     }
@@ -179,13 +187,41 @@ final class NoteJournalConverter
             $status = null;
         }
 
-        return [
+        $note = [
             'id' => $uid !== '' ? $uid : $fallbackUid,
             'title' => $title !== '' ? $title : null,
             'body' => $body,
             'categories' => $categories,
             'status' => $status,
         ];
+        $updatedAt = $this->journalUpdatedAt($journal);
+        if ($updatedAt !== null) {
+            $note['updatedAt'] = $updatedAt;
+        }
+
+        return $note;
+    }
+
+    /**
+     * LAST-MODIFIED, then DTSTAMP — same ICS pair Tasks maps to `updated`.
+     */
+    private function journalUpdatedAt(VJournal $journal): ?string
+    {
+        foreach (['LAST-MODIFIED', 'DTSTAMP'] as $name) {
+            if (! isset($journal->{$name})) {
+                continue;
+            }
+            $property = $journal->{$name};
+            if (! $property instanceof Property) {
+                continue;
+            }
+            $value = ICalendarDateTime::fromProperty($property)['value'];
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     public function assertBodySize(string $body): void

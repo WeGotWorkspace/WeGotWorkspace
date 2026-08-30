@@ -12,7 +12,7 @@ export function NotesDetailFooter({
   lastEdited,
   editedLabel = "Last edited ",
 }: NotesDetailFooterProps) {
-  const hasEdited = lastEdited != null && lastEdited !== "";
+  const hasEdited = lastEdited != null && lastEdited !== "" && lastEdited !== "—";
   if (!hasEdited) return null;
 
   return (

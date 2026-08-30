@@ -31,7 +31,7 @@ import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
-import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
+import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import {
@@ -548,7 +548,7 @@ export function NotesWorkspace({
               backLabel={viewLabel}
               notebooks={selectNotebooks}
               onMoveToNotebook={(notebook) => {
-                if (active) moveToNotebook([active.id], notebook.name);
+                if (active) moveToNotebook([active.id], notebook.id || notebook.name);
               }}
               onCreateNotebook={
                 canManageNotebooks && active ? () => openCreateNotebook([active.id]) : undefined
@@ -618,7 +618,7 @@ export function NotesWorkspace({
           if (!showSingleNoteDetail || !active) return null;
           return (
             <NotesDetailFooter
-              lastEdited={formatNoteDateForList(active.date)}
+              lastEdited={formatNoteLastEdited(active)}
               editedLabel={L.editedLabel}
             />
           );

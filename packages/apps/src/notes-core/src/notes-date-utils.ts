@@ -55,3 +55,10 @@ export function formatNoteDateForDetail(raw: string): string {
     minute: "2-digit",
   }).format(new Date(ts));
 }
+
+/** Compact list-style stamp for the detail footer. Empty when no real timestamp. */
+export function formatNoteLastEdited(note: Pick<Note, "date" | "updatedAt">): string {
+  const raw = note.date !== "—" && note.date !== "" ? note.date : (note.updatedAt ?? "");
+  if (!raw || raw === "—") return "";
+  return formatNoteDateForList(raw);
+}
