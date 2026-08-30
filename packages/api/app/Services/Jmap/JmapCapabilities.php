@@ -21,6 +21,12 @@ final class JmapCapabilities
     public const FILENODE = 'urn:ietf:params:jmap:filenode';
 
     /**
+     * Vendor Notes envelope over CalDAV VJOURNAL. There is no IETF Notes
+     * datatype — do not advertise urn:ietf:params:jmap:notes.
+     */
+    public const NOTES = 'urn:wgw:jmap:notes';
+
+    /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
      * constant plus a digest of the enabled capability URNs, so a feature
@@ -115,6 +121,19 @@ final class JmapCapabilities
             'webUrlTemplate' => null,
             // Clients use FileNode/set + blob upload (roadmap non-goal).
             'webWriteUrlTemplate' => null,
+        ];
+    }
+
+    /**
+     * Vendor notes account-level capability. Session-level value is the empty object.
+     *
+     * @return array<string, mixed>
+     */
+    public static function notesAccountCapability(): array
+    {
+        return [
+            'maxNotebooksPerNote' => 1,
+            'mayCreateNotebook' => true,
         ];
     }
 }

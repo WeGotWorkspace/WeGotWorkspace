@@ -33,6 +33,7 @@ final class JmapCapabilitySet
         CalendarsCapabilityProvider::class,
         ContactsCapabilityProvider::class,
         FilesCapabilityProvider::class,
+        NotesCapabilityProvider::class,
     ];
 
     /** @var list<JmapCapabilityProviderInterface> */

@@ -311,6 +311,35 @@ final class NoteRepository
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function notebookSyncTokens(string $username): array
+    {
+        return $this->notebooks->notebookSyncTokens($username);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function noteIdsInNotebook(string $username, string $notebookId): array
+    {
+        try {
+            $list = $this->list($username, $notebookId, null, null)['list'];
+        } catch (ApiHttpException) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($list as $note) {
+            if (isset($note['id']) && is_string($note['id']) && $note['id'] !== '') {
+                $ids[] = $note['id'];
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return array{object: CalendarObject, instance: CalendarInstance}|null
      */
     public function findAccessibleNote(string $username, string $noteId): ?array

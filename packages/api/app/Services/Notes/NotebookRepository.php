@@ -200,6 +200,26 @@ final class NotebookRepository
         return ['ok' => true];
     }
 
+    /**
+     * Current per-notebook sync tokens for every accessible VJOURNAL collection.
+     *
+     * @return array<string, string> notebook api id => synctoken
+     */
+    public function notebookSyncTokens(string $username): array
+    {
+        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
+        $tokens = [];
+        $instances = $this->collectionAccess->accessibleInstances(
+            $username,
+            fn ($query) => $query->vjournalOnly(),
+        );
+        foreach ($instances as $instance) {
+            $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+        }
+
+        return $tokens;
+    }
+
     public function changes(string $username, ?string $since): array
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
