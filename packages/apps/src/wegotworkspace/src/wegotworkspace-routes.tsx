@@ -38,7 +38,6 @@ import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
@@ -138,14 +137,12 @@ function MockDocsRoute() {
 function MockNotesRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createNotesAppBootstrap(), []);
-  const shareOperations = useMemo(() => createMockDriveShareOperations(), []);
   const { initialView, initialNoteId, handleViewChange, handleNoteChange } = useNotesRouteSync();
   return (
     <NotesWorkspace
       data={bootstrap.data}
       session={bootstrap.session}
       listLoading={false}
-      shareOperations={shareOperations}
       onLogout={onLogout}
       initialView={initialView}
       initialNoteId={initialNoteId}

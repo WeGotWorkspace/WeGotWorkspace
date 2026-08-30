@@ -100,7 +100,7 @@ describe("useNotesController bootstrap sync", () => {
 
     expect(result.current.activeId).toBe(syncedNote.id);
     expect(result.current.active?.id).toBe(syncedNote.id);
-    expect(result.current.active?.body).toEqual(["Synced body"]);
+    expect(result.current.active?.body).toEqual(["Draft body"]);
   });
 
   it("updates active.tags when toggleNoteTag assigns a tag", () => {
@@ -519,7 +519,15 @@ describe("useNotesController bootstrap sync", () => {
       tags: [],
     };
     const syncedData: NotesUIData = {
-      notes: [{ ...localNote, id: "note-1", excerpt: "After sync", body: ["Server body"] }],
+      notes: [
+        {
+          ...localNote,
+          id: "note-1",
+          date: "2024-10-13T10:00:00.000Z",
+          excerpt: "After sync",
+          body: ["Server body"],
+        },
+      ],
       notebooks: ["Drafts"],
       tags: [],
     };

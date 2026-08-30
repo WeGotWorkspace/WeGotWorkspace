@@ -13,6 +13,7 @@ export const CORE_CAPABILITY = "urn:ietf:params:jmap:core";
 export const CALENDARS_CAPABILITY = "urn:ietf:params:jmap:calendars";
 export const CONTACTS_CAPABILITY = "urn:ietf:params:jmap:contacts";
 export const FILENODE_CAPABILITY = "urn:ietf:params:jmap:filenode";
+export const NOTES_CAPABILITY = "urn:wgw:jmap:notes";
 
 export type JmapAccount = {
   name: string;

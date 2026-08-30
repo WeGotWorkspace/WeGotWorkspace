@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { createNotesJmapClient } from "@/lib/api/wgw/notes-jmap";
+import { noteFromVjournal, type NotesVjournalNote } from "@/lib/api/wgw/notes-vjournal";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { JmapNotesAdapter, type JmapNote, type JmapNotebook } from "@/lib/jmap-client";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridNotesOperations,
@@ -11,7 +15,16 @@ import {
   subscribeNotesBootstrapUpdated,
 } from "@/lib/offline/notes-bootstrap-sync";
 import { syncNotesBodiesForOffline } from "@/lib/offline/notes/notes-body-sync";
-import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import {
+  ingestRemoteNote,
+  ingestRemoteNoteDestroyed,
+  ingestRemoteNotebook,
+  ingestRemoteNotebookDestroyed,
+} from "@/lib/offline/notes-jmap-inbound";
+import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
+import {
+  readNotesBootstrapFromCache,
+} from "@/lib/offline/notes-offline-store";
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,
@@ -22,12 +35,27 @@ import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-fl
 import type { NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
 
-/** Full bootstrap fetch while online — lighter than pending-sync badge polls. */
-const ONLINE_BOOTSTRAP_POLL_MS = 10_000;
+/** Inbound `/changes` poll — not a full-body listNotes loop. */
+const ONLINE_CHANGES_POLL_MS = 10_000;
 
 export type UseNotesAPIOptions = {
   onSyncConflict?: (noteIds: string[]) => void;
 };
+
+function jmapNoteToVjournal(note: JmapNote): NotesVjournalNote {
+  return {
+    id: note.id,
+    notebookId: note.notebookId,
+    title: note.title ?? null,
+    body: note.body ?? "",
+    categories: note.categories ?? [],
+    status: note.status ?? null,
+    etag: note.etag ?? "",
+    starred: note.starred,
+    updatedAt: note.updatedAt,
+    contentUpdatedAt: note.contentUpdatedAt,
+  };
+}
 
 export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOptions) {
   const { online } = useConnectivity();
@@ -75,32 +103,42 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const crossTabRefreshInFlightRef = useRef(false);
 
-  const applyBootstrapRefresh = useCallback(async () => {
-    const next = await resolvedSource.loadBootstrap();
-    patchBootstrap(() => next);
+  const patchFromCache = useCallback(async () => {
+    if (!offlineUsername) return;
+    const next = await readNotesBootstrapFromCache(offlineUsername);
+    if (next) patchBootstrap(() => next);
     setBootstrapRevision((revision) => revision + 1);
-    return next;
-  }, [patchBootstrap, resolvedSource]);
+  }, [offlineUsername, patchBootstrap]);
+
+  const applyInboundRefresh = useCallback(async () => {
+    if (!offlineUsername) return;
+    const notebookIds = (data?.data.notebookCollections ?? []).map((item) => item.id);
+    await syncNotesInboundFromRest(offlineUsername, notebookIds);
+    await patchFromCache();
+  }, [data?.data.notebookCollections, offlineUsername, patchFromCache]);
 
   const refreshList = useCallback(() => {
     if (listRefreshing) return;
     setListRefreshing(true);
-    void applyBootstrapRefresh()
+    void applyInboundRefresh()
       .then(() => {
         if (offlineUsername) notifyNotesBootstrapUpdated(offlineUsername);
       })
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [applyBootstrapRefresh, listRefreshing, offlineUsername]);
+  }, [applyInboundRefresh, listRefreshing, offlineUsername]);
 
   const reconnectSyncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
       if (!offlineUsername) return;
       await getNotesSyncRunner(offlineUsername).flush();
-      const next = await applyBootstrapRefresh();
-      await syncNotesBodiesForOffline(offlineUsername, next.data.notes).catch(() => undefined);
+      await applyInboundRefresh();
+      const next = await readNotesBootstrapFromCache(offlineUsername);
+      if (next) {
+        await syncNotesBodiesForOffline(offlineUsername, next.data.notes).catch(() => undefined);
+      }
       notifyNotesBootstrapUpdated(offlineUsername);
     },
   });
@@ -110,11 +148,11 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     return subscribeNotesBootstrapUpdated(offlineUsername, () => {
       if (crossTabRefreshInFlightRef.current || reconnectSyncing || listRefreshing) return;
       crossTabRefreshInFlightRef.current = true;
-      void applyBootstrapRefresh().finally(() => {
+      void applyInboundRefresh().finally(() => {
         crossTabRefreshInFlightRef.current = false;
       });
     });
-  }, [applyBootstrapRefresh, listRefreshing, offlineUsername, reconnectSyncing]);
+  }, [applyInboundRefresh, listRefreshing, offlineUsername, reconnectSyncing]);
 
   useEffect(() => {
     const notes = data?.data.notes ?? [];
@@ -125,6 +163,57 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
     if (typeof window === "undefined") return;
+    if (!wgwLiveApiEnabled()) return;
+
+    const username = offlineUsername;
+    const adapter = new JmapNotesAdapter({
+      client: createNotesJmapClient(),
+      onRemoteNote: (note) => {
+        const collections = data?.data.notebookCollections ?? [];
+        void ingestRemoteNote(username, noteFromVjournal(jmapNoteToVjournal(note), collections)).then(
+          () => {
+            void patchFromCache();
+          },
+        );
+      },
+      onRemoteNoteDestroyed: (noteId) => {
+        void ingestRemoteNoteDestroyed(username, noteId).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRemoteNotebook: (notebook: JmapNotebook) => {
+        void ingestRemoteNotebook(username, notebook).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRemoteNotebookDestroyed: (notebookId) => {
+        void ingestRemoteNotebookDestroyed(username, notebookId).then(() => {
+          void patchFromCache();
+        });
+      },
+    });
+
+    let cancelled = false;
+    void adapter
+      .initialize()
+      .then(() => {
+        if (cancelled) return;
+        adapter.startPolling(ONLINE_CHANGES_POLL_MS);
+      })
+      .catch(() => {
+        // Session missing notes capability or offline — REST inbound still runs below.
+      });
+
+    return () => {
+      cancelled = true;
+      adapter.stopPolling();
+    };
+  }, [data?.data.notebookCollections, offlineUsername, online, patchFromCache, phase]);
+
+  useEffect(() => {
+    if (!offlineUsername || !online || phase !== "ready") return;
+    if (typeof window === "undefined") return;
+    if (wgwLiveApiEnabled()) return;
 
     let cancelled = false;
 
@@ -133,7 +222,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
         return;
       }
       crossTabRefreshInFlightRef.current = true;
-      void applyBootstrapRefresh().finally(() => {
+      void applyInboundRefresh().finally(() => {
         crossTabRefreshInFlightRef.current = false;
       });
     };
@@ -141,7 +230,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     const intervalId = window.setInterval(() => {
       if (document.hidden) return;
       runSilentRefresh();
-    }, ONLINE_BOOTSTRAP_POLL_MS);
+    }, ONLINE_CHANGES_POLL_MS);
 
     const onVisibilityChange = () => {
       if (!document.hidden) runSilentRefresh();
@@ -153,7 +242,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [applyBootstrapRefresh, listRefreshing, offlineUsername, online, phase, reconnectSyncing]);
+  }, [applyInboundRefresh, listRefreshing, offlineUsername, online, phase, reconnectSyncing]);
 
   return {
     phase,

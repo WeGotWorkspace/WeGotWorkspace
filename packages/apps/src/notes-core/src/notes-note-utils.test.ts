@@ -482,6 +482,24 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.title).toBe("Event");
   });
 
+  it("keeps a newer local body when the server row still has stale DESCRIPTION", () => {
+    const local: Note = {
+      ...sampleNote,
+      body: ["Typed offline"],
+      excerpt: "Typed offline",
+      date: "2026-08-10T12:00:01.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      body: ["Old server"],
+      excerpt: "Old server",
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.body).toEqual(["Typed offline"]);
+    expect(merged[0]?.excerpt).toBe("Typed offline");
+  });
+
   it("prefers non-empty server body over cached body on refresh merge", () => {
     const server: Note = {
       ...sampleNote,

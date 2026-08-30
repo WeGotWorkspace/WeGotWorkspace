@@ -359,7 +359,9 @@ export function mergeBootstrapNotesPreservingOptimistic(
       localNewerOrEqual && local.archived !== undefined && local.archived !== server.archived;
     const preserveNotebook =
       localNewerOrEqual && !!local.notebook && local.notebook !== server.notebook;
-    const preserveBody = !noteHasListableBody(server) && noteHasListableBody(local);
+    const preserveBody =
+      noteHasListableBody(local) &&
+      (!noteHasListableBody(server) || localNewerOrEqual);
     const localTitle = local.title?.trim();
     const serverTitle = server.title?.trim();
     const preserveTitle =

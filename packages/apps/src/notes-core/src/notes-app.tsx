@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import {
   resolveNotesConflictKeepLocal,
@@ -14,9 +14,6 @@ import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
 import { useNotesRouteSync } from "@/notes-core/src/use-notes-route-sync";
 import { useNotesAPI } from "@/notes-core/src/use-notes-api";
-import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
-import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 
 export type NotesAppProps = {
   /** When set (e.g. Storybook live story), bypasses `wgwLiveApiEnabled()` routing. */
@@ -54,12 +51,6 @@ export function NotesApp({ apiSource }: NotesAppProps = {}) {
     session,
     operations,
   } = useNotesAPI(apiSource, { onSyncConflict: handleSyncConflict });
-
-  const shareOperations = useMemo(
-    () =>
-      wgwLiveApiEnabled() ? createWgwDriveShareOperations() : createMockDriveShareOperations(),
-    [],
-  );
 
   useOfflineSyncToast(syncing, defaultNotesLabels.toastSynced);
 
@@ -114,13 +105,11 @@ export function NotesApp({ apiSource }: NotesAppProps = {}) {
         retry={retry}
         errorTitle="Could not load live notes"
         successVersion={successVersion}
-        render={(key) => (
+        render={() => (
           <NotesWorkspace
-            key={key}
             data={data}
             session={session}
             operations={operations}
-            shareOperations={shareOperations}
             listLoading={listLoading}
             listRefreshing={listRefreshing}
             bootstrapRevision={bootstrapRevision}

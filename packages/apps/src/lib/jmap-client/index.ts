@@ -1,5 +1,9 @@
 export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
+export type { JmapNotesAdapterOptions } from "./adapter/JmapNotesAdapter.js";
+export { JmapNotesAdapter } from "./adapter/JmapNotesAdapter.js";
+export { NOTES_USING, JmapNotesClient } from "./notes/JmapNotesClient.js";
+export type { JmapNote, JmapNotebook } from "./notes/types.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
 export { JmapCalendarsClient } from "./calendars/JmapCalendarsClient.js";
 export { JmapFileNodePathCache } from "./filenodes/JmapFileNodePathCache.js";
@@ -35,6 +39,7 @@ export {
   type ChangesResponse,
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  NOTES_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,

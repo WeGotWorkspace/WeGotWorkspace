@@ -8,11 +8,17 @@ import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
 
 export class NotesVjournalRequestError extends Error {
   status: number;
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
+}
+
+export function isNotesCannotCalculateChanges(error: unknown): boolean {
+  return error instanceof NotesVjournalRequestError && error.code === "cannotCalculateChanges";
 }
 
 export type NotesVjournalNotebook = NotesNotebookCollection & {
@@ -61,7 +67,14 @@ async function requestNotesJson(
 
   const res = await wgwFetch(path, init);
   if (!res.ok) {
-    throw new NotesVjournalRequestError(`${method} ${path} failed (${res.status})`, res.status);
+    let code: string | undefined;
+    try {
+      const body = (await res.json()) as { code?: string };
+      if (typeof body.code === "string") code = body.code;
+    } catch {
+      // Status alone is enough when the body is not JSON.
+    }
+    throw new NotesVjournalRequestError(`${method} ${path} failed (${res.status})`, res.status, code);
   }
   if (res.status === 204) return undefined;
   return wgwReadJson(res);
@@ -73,9 +86,78 @@ function parseList<T>(json: unknown): T[] {
   return Array.isArray(list) ? list : [];
 }
 
+export type NotesChangesDelta = {
+  oldState: string;
+  newState: string;
+  created: string[];
+  updated: string[];
+  destroyed: string[];
+  hasMoreChanges?: boolean;
+};
+
 export async function listNotebooks(opts?: { signal?: AbortSignal }): Promise<NotesVjournalNotebook[]> {
   const json = await requestNotesJson("/notes/notebooks", "GET", undefined, opts);
   return parseList<NotesVjournalNotebook>(json);
+}
+
+export async function getNotebook(
+  notebookId: string,
+  opts?: { signal?: AbortSignal },
+): Promise<NotesVjournalNotebook> {
+  const json = await requestNotesJson(
+    `/notes/notebooks/${encodeURIComponent(notebookId)}`,
+    "GET",
+    undefined,
+    opts,
+  );
+  return json as NotesVjournalNotebook;
+}
+
+function parseChanges(json: unknown): NotesChangesDelta {
+  const row = json as Partial<NotesChangesDelta>;
+  return {
+    oldState: typeof row.oldState === "string" ? row.oldState : "0",
+    newState: typeof row.newState === "string" ? row.newState : "0",
+    created: Array.isArray(row.created) ? row.created.filter((id): id is string => typeof id === "string") : [],
+    updated: Array.isArray(row.updated) ? row.updated.filter((id): id is string => typeof id === "string") : [],
+    destroyed: Array.isArray(row.destroyed)
+      ? row.destroyed.filter((id): id is string => typeof id === "string")
+      : [],
+    ...(row.hasMoreChanges === true ? { hasMoreChanges: true } : {}),
+  };
+}
+
+export async function listNotebookChanges(
+  since?: string | null,
+  opts?: { signal?: AbortSignal },
+): Promise<NotesChangesDelta> {
+  const params = new URLSearchParams();
+  if (since) params.set("since", since);
+  const query = params.toString();
+  const json = await requestNotesJson(
+    `/notes/notebooks/changes${query ? `?${query}` : ""}`,
+    "GET",
+    undefined,
+    opts,
+  );
+  return parseChanges(json);
+}
+
+export async function listNoteChanges(
+  notebookId: string,
+  since?: string | null,
+  opts?: { signal?: AbortSignal },
+): Promise<NotesChangesDelta> {
+  const params = new URLSearchParams();
+  params.set("notebookId", notebookId);
+  if (since) params.set("since", since);
+  const json = await requestNotesJson(
+    `/notes/items/changes?${params.toString()}`,
+    "GET",
+    undefined,
+    opts,
+  );
+  return parseChanges(json);
 }
 
 export async function listNotes(opts: {

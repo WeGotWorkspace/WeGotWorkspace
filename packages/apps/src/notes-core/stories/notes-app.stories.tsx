@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
 
 const meta: Meta<typeof NotesWorkspace> = {
@@ -35,7 +34,6 @@ export const Default: Story = {
   args: {
     ...bootstrap,
     operations: storyOperations,
-    shareOperations: createMockDriveShareOperations(),
   },
 };
 
