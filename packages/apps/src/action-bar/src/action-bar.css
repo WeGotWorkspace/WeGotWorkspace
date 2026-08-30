@@ -9,6 +9,10 @@
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
   border-color: var(--action-bar-border-color);
+  background-color: var(
+    --action-bar-bg,
+    var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff))
+  );
 }
 
 .action-bar__back {

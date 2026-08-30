@@ -1,8 +1,8 @@
 @import "../../styles.css" reference;
 
-/* Flush note body — detail pane owns the yellow surface (no paper sheet).
- * Zero sheet padding/gutter so tags + prose share `.workspace-detail-pane__scroll`
- * inset (including ≤768px, where text-editor otherwise tightens sheet tokens). */
+/* Flush note body — `.note-detail-sheet` is the paper card. Zero nested
+ * text-editor sheet padding/gutter so tags + prose share the card inset
+ * (including ≤768px, where text-editor otherwise tightens sheet tokens). */
 .note-text-editor-body.text-editor {
   --text-editor-sheet: transparent;
   --text-editor-shadow-sheet: none;
@@ -12,7 +12,7 @@
 }
 
 .note-text-editor-body .text-editor-prose {
-  color: var(--color-ink);
+  color: var(--notes-detail-contrast-fg, var(--color-ink));
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }

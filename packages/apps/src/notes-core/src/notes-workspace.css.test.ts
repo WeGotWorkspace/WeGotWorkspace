@@ -9,6 +9,12 @@ const tsx = readFileSync(join(here, "notes-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "notes-workspace.css"), "utf8");
 const actionBar = readFileSync(join(here, "notes-detail-action-bar.tsx"), "utf8");
 const changeDialog = readFileSync(join(here, "notes-change-notebook-dialog.tsx"), "utf8");
+const listPanel = readFileSync(join(here, "notes-list-panel.tsx"), "utf8");
+const listPanelCss = readFileSync(join(here, "notes-list-panel.css"), "utf8");
+const notebookSelect = readFileSync(join(here, "notes-notebook-select.tsx"), "utf8");
+const notebookIconCss = readFileSync(join(here, "notes-notebook-color-icon.css"), "utf8");
+const actionBarCss = readFileSync(join(here, "../../action-bar/src/action-bar.css"), "utf8");
+const workspaceAppTsx = readFileSync(join(here, "../../workspace-app/src/workspace-app.tsx"), "utf8");
 
 describe("notes workspace sidebar create", () => {
   it("puts create notebook on the shared segmented New menu, not a section +", () => {
@@ -31,7 +37,15 @@ describe("notes workspace sidebar create", () => {
     expect(tsx).toMatch(/visible=\{!hiddenNotebookIds\.has\(notebook\.id\)\}/);
     expect(tsx).toMatch(/color=\{notebookDotColor\(notebook\)\}/);
     expect(tsx).not.toMatch(/showColorDot/);
+    expect(tsx).not.toMatch(/NotesNotebookColorIcon/);
     expect(tsx).not.toMatch(/NotesNotebookRow/);
+    expect(listPanel).toMatch(/<NotesNotebookColorIcon/);
+    expect(listPanel).not.toMatch(/collection-sidebar-row__dot|notes-list-panel__notebook-dot/);
+    expect(notebookSelect).toMatch(/<NotesNotebookColorIcon/);
+    expect(notebookSelect).not.toMatch(/collection-sidebar-row__dot/);
+    expect(listPanelCss).not.toMatch(/rounded-full/);
+    expect(notebookIconCss).toMatch(/color:\s*var\(--collection-row-color/);
+    expect(notebookIconCss).not.toMatch(/rounded-full/);
     expect(tsx).toMatch(/CollectionSidebarMark/);
   });
 
@@ -65,18 +79,27 @@ describe("notes workspace change-notebook dialog", () => {
 });
 
 describe("notes workspace editor checkboxes", () => {
-  it("maps detail editor fill to notebook accent and the check mark to contrast fg", () => {
+  it("maps detail editor checks to the same notebook wash as tags", () => {
     expect(css).toMatch(
       /--notes-detail-accent:\s*var\(--notes-detail-tint,\s*var\(--notes-accent\)\)/,
     );
     expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-border-color:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 28%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-bg:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 16%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-border:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 28%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-fg:\s*var\(--notes-detail-accent-strong\)/,
+    );
+    expect(css).not.toMatch(
       /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-bg:\s*var\(--notes-detail-accent\)/,
     );
-    expect(css).toMatch(
-      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-border:\s*var\(--notes-detail-accent\)/,
-    );
-    expect(css).toMatch(
-      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-fg:\s*var\(--notes-detail-contrast-fg,\s*var\(--note-detail-tag-fg\)\)/,
+    expect(css).not.toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-fg:\s*var\(--notes-detail-check-fg/,
     );
     expect(css).toMatch(
       /\.notes-workspace \{[\s\S]*--checkbox-checked-bg:\s*var\(--notes-accent\)/,
@@ -101,15 +124,17 @@ describe("notes workspace last-edited footer chip", () => {
 });
 
 describe("notes workspace selected tag chips", () => {
-  it("keeps sidebar selected chips on ink + gold and detail chips on notebook fill", () => {
+  it("keeps sidebar selected chips on ink + gold and detail chips on notebook accent", () => {
     expect(css).toMatch(/--notes-tag-selected-bg:\s*var\(--color-ink\)/);
     expect(css).toMatch(/--notes-tag-selected-fg:\s*var\(--notes-accent\)/);
     expect(css).toMatch(/--notes-tag-selected-border:\s*var\(--color-ink\)/);
-    expect(css).toMatch(/--note-detail-tag-bg:\s*var\(--notes-detail-accent\)/);
     expect(css).toMatch(
-      /--note-detail-tag-fg:\s*var\(--notes-detail-contrast-fg,\s*var\(--color-ink\)\)/,
+      /--note-detail-tag-bg:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 16%/,
     );
-    expect(css).toMatch(/--note-detail-tag-border:\s*var\(--notes-detail-accent\)/);
+    expect(css).toMatch(/--note-detail-tag-fg:\s*var\(--notes-detail-accent-strong\)/);
+    expect(css).toMatch(
+      /--note-detail-tag-border:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 28%/,
+    );
     expect(css).not.toMatch(/--note-detail-tag-fg:\s*var\(--notes-tag-selected-fg\)/);
     expect(css).not.toMatch(/--note-detail-tag-fg:\s*var\(--notes-detail-accent\)/);
     expect(css).not.toMatch(/--note-detail-tag-fg:\s*var\(--notes-accent\)/);
@@ -132,6 +157,7 @@ describe("notes workspace selected tag chips", () => {
       /\.notes-workspace \.note-detail-view__tag-group \.tag \{[\s\S]*border-color:\s*var\(--note-detail-tag-border\)/,
     );
     expect(css).not.toMatch(/--note-detail-tag-bg:\s*var\(--notes-accent\)/);
+    expect(css).not.toMatch(/--note-detail-tag-bg:\s*var\(--notes-detail-accent\)/);
     expect(css).not.toMatch(/--note-detail-tag-bg:\s*var\(--color-ink\)/);
   });
 });
@@ -164,24 +190,88 @@ describe("notes workspace action-bar selected Star/Archive", () => {
       /\.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/,
     );
   });
+
+  it("paints the live detail-pane action bar cream, not a Storybook-only shell", () => {
+    expect(css).toMatch(/--workspace-chrome-footer-bg:\s*var\(--color-cream/);
+    expect(css).toMatch(
+      /--action-bar-bg:\s*var\(--workspace-chrome-footer-bg,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.workspace-detail-pane > \.action-bar \{\s*background-color:\s*var\(--workspace-chrome-footer-bg/,
+    );
+    expect(css).not.toMatch(
+      /\.notes-workspace \.action-bar \{\s*background-color:\s*var\(--workspace-chrome-footer-bg/,
+    );
+    expect(actionBarCss).toMatch(
+      /\.action-bar \{[\s\S]*background-color:\s*var\(\s*--action-bar-bg,/,
+    );
+    expect(workspaceAppTsx).toMatch(/className=\{cn\("workspace-detail-pane"/);
+    expect(workspaceAppTsx).toMatch(/\{actionBar\?\.\(chrome\)\}/);
+    expect(workspaceAppTsx).toMatch(/workspace-detail-pane__scroll/);
+  });
+});
+
+describe("notes workspace detail paper sheet tokens", () => {
+  it("paints the paper card with a very light notebook wash on a cream desk", () => {
+    expect(css).toMatch(
+      new RegExp(
+        `--note-detail-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-cream,\\s*#ffffff\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-cream`,
+      ),
+    );
+    expect(css).toMatch(
+      /--note-detail-sheet-shadow:\s*0 1px 1px color-mix\(in oklab,\s*var\(--color-ink\) 22%/,
+    );
+    expect(css).toMatch(
+      /--note-detail-sheet-shadow:[\s\S]*0 3px 6px color-mix\(in oklab,\s*var\(--color-ink\) 12%/,
+    );
+    expect(css).toMatch(
+      /--note-detail-sheet-shadow:[\s\S]*0 12px 20px -4px color-mix\(in oklab,\s*var\(--color-ink\) 14%/,
+    );
+    expect(css).toMatch(
+      /--note-detail-sheet-shadow:[\s\S]*0 32px 48px -12px color-mix\(in oklab,\s*var\(--color-ink\) 16%/,
+    );
+    expect(css).not.toMatch(/0 12px 32px -12px/);
+    expect(css).not.toMatch(/0 18px 28px -8px/);
+    expect(css).toMatch(
+      /@media \(max-width: 47\.999rem\) \{[\s\S]*\.note-detail-sheet \{[\s\S]*box-shadow:\s*none/,
+    );
+    expect(css).toMatch(/--notes-detail-body-bg:\s*var\(--workspace-detail-bg\)/);
+    expect(css).not.toMatch(/--notes-detail-body-bg:\s*var\(--note-detail-sheet-bg\)/);
+    expect(css).not.toMatch(/--note-detail-sheet-bg:\s*var\(--notes-detail-tint,\s*var\(--color-cream/);
+    expect(css).toMatch(
+      /\.notes-workspace \.note-detail-sheet \{[\s\S]*min-height:\s*100%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.workspace-detail-pane__scroll:has\(\.note-detail-sheet\) \{[\s\S]*flex-direction:\s*column/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 47\.999rem\) \{[\s\S]*\.workspace-detail-pane__scroll:has\(\.note-detail-sheet\) \{[\s\S]*px-0/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 47\.999rem\) \{[\s\S]*\.note-detail-sheet \{[\s\S]*max-w-none/,
+    );
+  });
 });
 
 describe("notes workspace detail notebook tint", () => {
-  const eventColor = readFileSync(
-    join(here, "../../lib/calendar-elements/utils/EventColor.ts"),
-    "utf8",
-  );
-
-  it("mixes --workspace-detail-bg from --notes-detail-tint at Calendar light-wash %", () => {
-    expect(eventColor).toMatch(/surfaceTint\(color,\s*11\)/);
-    expect(NOTES_DETAIL_TINT_PERCENT).toBe(11);
+  it("paints the detail desk cream like the footer, not a notes-accent wash", () => {
     expect(css).toMatch(
-      /--workspace-detail-bg:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-tint,\s*transparent\) 11%,\s*var\(--color-cream/,
+      /--workspace-detail-bg:\s*var\(--workspace-chrome-footer-bg,\s*var\(--color-cream/,
     );
     expect(css).toMatch(/--notes-detail-body-bg:\s*var\(--workspace-detail-bg\)/);
     expect(css).not.toMatch(
-      /--notes-detail-body-bg:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 26%/,
+      /--workspace-detail-bg:\s*color-mix\(\s*in oklab,\s*var\(--notes-accent\) 12%/,
     );
+    expect(css).not.toMatch(
+      /--workspace-detail-bg:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-tint/,
+    );
+  });
+
+  it("softens title/body ink onto the sheet, not full ink", () => {
+    expect(css).toMatch(
+      /--notes-detail-contrast-fg:\s*color-mix\(\s*in oklab,\s*var\(--color-ink\) 85%,\s*var\(--note-detail-sheet-bg/,
+    );
+    expect(css).not.toMatch(/--notes-detail-contrast-fg:\s*var\(--color-ink\)/);
   });
 
   it("sets --notes-detail-tint from the live notebook color for a single note only", () => {

@@ -5,6 +5,7 @@ import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
+import "@/workspace-app/src/workspace-app.css";
 
 function NotesDetailPaneHarness({
   readOnly = false,
@@ -66,6 +67,14 @@ export const Editable: Story = {
   tags: ["vitest-ci"],
   args: {},
   play: async ({ canvasElement }) => {
+    const sheet = canvasElement.querySelector(".note-detail-sheet");
+    expect(sheet).toBeTruthy();
+    expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();
+    expect(sheet!.querySelector(".note-detail-view__tag-group")).toBeTruthy();
+    expect(sheet!.querySelector(".note-text-editor-body")).toBeTruthy();
+    expect(sheet!.querySelector(".notes-detail-footer")).toBeNull();
+    expect(canvasElement.querySelector(".notes-detail-footer")).toBeTruthy();
+
     const editor = canvasElement.querySelector('[contenteditable="true"]');
     expect(editor).toBeTruthy();
     await userEvent.click(editor!);
@@ -130,23 +139,65 @@ export const NotebookTint: Story = {
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
       "#ec4899",
     );
+    const sheet = canvasElement.querySelector(".note-detail-sheet") as HTMLElement | null;
+    const scroll = canvasElement.querySelector(
+      ".workspace-detail-pane__scroll",
+    ) as HTMLElement | null;
+    expect(sheet).toBeTruthy();
+    expect(scroll).toBeTruthy();
+    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
+      getComputedStyle(scroll!).backgroundColor,
+    );
     const chip = canvasElement.querySelector(
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
     const tintBg = document.createElement("span");
+    const sheetBg = document.createElement("span");
+    const paneBg = document.createElement("span");
     const detailFg = document.createElement("span");
     const sidebarFg = document.createElement("span");
     tintBg.style.backgroundColor = "var(--notes-detail-tint)";
+    sheetBg.style.backgroundColor = "var(--note-detail-sheet-bg)";
+    paneBg.style.backgroundColor = "var(--workspace-detail-bg)";
     detailFg.style.color = "var(--note-detail-tag-fg)";
     sidebarFg.style.color = "var(--notes-tag-selected-fg)";
     workspace!.appendChild(tintBg);
+    workspace!.appendChild(sheetBg);
+    workspace!.appendChild(paneBg);
     workspace!.appendChild(detailFg);
     workspace!.appendChild(sidebarFg);
-    expect(getComputedStyle(chip!).backgroundColor).toBe(getComputedStyle(tintBg).backgroundColor);
+    expect(getComputedStyle(sheet!).backgroundColor).toBe(getComputedStyle(sheetBg).backgroundColor);
+    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
+      getComputedStyle(tintBg).backgroundColor,
+    );
+    expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(paneBg).backgroundColor);
+    expect(getComputedStyle(scroll!).backgroundColor).not.toBe(
+      getComputedStyle(tintBg).backgroundColor,
+    );
+    const cream = document.createElement("span");
+    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff))";
+    workspace!.appendChild(cream);
+    expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(cream).backgroundColor);
+    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
+      getComputedStyle(cream).backgroundColor,
+    );
+    cream.remove();
+    expect(getComputedStyle(chip!).backgroundColor).not.toBe(
+      getComputedStyle(tintBg).backgroundColor,
+    );
     expect(getComputedStyle(chip!).color).toBe(getComputedStyle(detailFg).color);
     expect(getComputedStyle(chip!).color).not.toBe(getComputedStyle(sidebarFg).color);
+    const sheetRect = sheet!.getBoundingClientRect();
+    const scrollStyle = getComputedStyle(scroll!);
+    const padY =
+      Number.parseFloat(scrollStyle.paddingTop) + Number.parseFloat(scrollStyle.paddingBottom);
+    expect(getComputedStyle(sheet!).minHeight).toBe("100%");
+    expect(getComputedStyle(sheet!).borderRadius).toBe("0px");
+    expect(sheetRect.height).toBeGreaterThanOrEqual(scroll!.clientHeight - padY - 1);
     tintBg.remove();
+    sheetBg.remove();
+    paneBg.remove();
     detailFg.remove();
     sidebarFg.remove();
 
@@ -154,17 +205,35 @@ export const NotebookTint: Story = {
     expect(editor).toBeTruthy();
     const checkboxFill = document.createElement("span");
     const checkboxMark = document.createElement("span");
+    const checkboxBorder = document.createElement("span");
+    const tagBg = document.createElement("span");
+    const tagFg = document.createElement("span");
+    const tagBorder = document.createElement("span");
     const accentProbe = document.createElement("span");
     checkboxFill.style.color = "var(--checkbox-checked-bg)";
     checkboxMark.style.color = "var(--checkbox-checked-fg)";
+    checkboxBorder.style.color = "var(--checkbox-checked-border)";
+    tagBg.style.color = "var(--note-detail-tag-bg)";
+    tagFg.style.color = "var(--note-detail-tag-fg)";
+    tagBorder.style.color = "var(--note-detail-tag-border)";
     accentProbe.style.color = "var(--notes-detail-accent)";
     editor!.appendChild(checkboxFill);
     editor!.appendChild(checkboxMark);
+    editor!.appendChild(checkboxBorder);
+    editor!.appendChild(tagBg);
+    editor!.appendChild(tagFg);
+    editor!.appendChild(tagBorder);
     workspace!.appendChild(accentProbe);
-    expect(getComputedStyle(checkboxFill).color).toBe(getComputedStyle(accentProbe).color);
-    expect(getComputedStyle(checkboxMark).color).toBe(getComputedStyle(chip!).color);
+    expect(getComputedStyle(checkboxFill).color).toBe(getComputedStyle(tagBg).color);
+    expect(getComputedStyle(checkboxFill).color).not.toBe(getComputedStyle(accentProbe).color);
+    expect(getComputedStyle(checkboxMark).color).toBe(getComputedStyle(tagFg).color);
+    expect(getComputedStyle(checkboxBorder).color).toBe(getComputedStyle(tagBorder).color);
     checkboxFill.remove();
     checkboxMark.remove();
+    checkboxBorder.remove();
+    tagBg.remove();
+    tagFg.remove();
+    tagBorder.remove();
     accentProbe.remove();
   },
 };
@@ -175,25 +244,50 @@ export const NotebookTintDark: Story = {
   play: async ({ canvasElement }) => {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     expect(workspace).toBeTruthy();
-    expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-contrast-fg").trim()).toBe(
+    expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-cream)",
     );
     const chip = canvasElement.querySelector(
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
-    const cream = document.createElement("span");
-    cream.style.color = "var(--color-cream)";
-    workspace!.appendChild(cream);
-    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(cream).color);
+    const ink = document.createElement("span");
+    const accentStrong = document.createElement("span");
+    ink.style.color = "var(--color-ink)";
+    accentStrong.style.color = "var(--notes-detail-accent-strong)";
+    workspace!.appendChild(ink);
+    workspace!.appendChild(accentStrong);
+    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(accentStrong).color);
+    const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement | null;
+    const softInk = document.createElement("span");
+    softInk.style.color = "var(--notes-detail-contrast-fg)";
+    workspace!.appendChild(softInk);
+    expect(title).toBeTruthy();
+    expect(getComputedStyle(title!).color).toBe(getComputedStyle(softInk).color);
+    expect(getComputedStyle(title!).color).not.toBe(getComputedStyle(ink).color);
+    softInk.remove();
     const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
     expect(editor).toBeTruthy();
+    const fill = document.createElement("span");
     const mark = document.createElement("span");
+    const accent = document.createElement("span");
+    const cream = document.createElement("span");
+    fill.style.color = "var(--checkbox-checked-bg)";
     mark.style.color = "var(--checkbox-checked-fg)";
+    accent.style.color = "var(--notes-detail-accent)";
+    cream.style.color = "var(--color-cream)";
+    editor!.appendChild(fill);
     editor!.appendChild(mark);
+    workspace!.appendChild(accent);
+    workspace!.appendChild(cream);
+    expect(getComputedStyle(fill).color).toBe(getComputedStyle(accent).color);
     expect(getComputedStyle(mark).color).toBe(getComputedStyle(cream).color);
+    fill.remove();
     mark.remove();
+    accent.remove();
     cream.remove();
+    ink.remove();
+    accentStrong.remove();
   },
 };
 

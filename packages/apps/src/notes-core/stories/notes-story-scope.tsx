@@ -11,7 +11,7 @@ export function NotesStoryScope({
 }: {
   children: ReactNode;
   variant?: NotesStoryScopeVariant;
-  /** Runtime notebook color for `--notes-detail-tint` (empty/unset stays cream). */
+  /** Runtime notebook color for `--notes-detail-tint` (light-washes the paper card). */
   detailTint?: string;
 }) {
   if (variant === "list-column") {

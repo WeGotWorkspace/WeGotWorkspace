@@ -55,6 +55,29 @@ describe("NoteDetailView readOnly", () => {
     expect(container.querySelector(".tag-group")).toBeNull();
   });
 
+  it("wraps title, tags, and editor in a paper sheet", () => {
+    const { container } = renderDetail(
+      <NoteDetailView
+        noteId="n-sheet"
+        contentRevision="rev-1"
+        title="Paper"
+        onTitleChange={() => {}}
+        tags={["travel"]}
+        onTagAdd={() => {}}
+        onTagRemove={() => {}}
+        body={["Body"]}
+      />,
+    );
+
+    const sheet = container.querySelector(".note-detail-sheet");
+    expect(sheet).toBeTruthy();
+    expect(sheet!.classList.contains("note-detail-view")).toBe(true);
+    expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();
+    expect(sheet!.querySelector(".note-detail-view__tag-group")).toBeTruthy();
+    expect(sheet!.querySelector(".note-text-editor-body")).toBeTruthy();
+    expect(sheet!.querySelector(".notes-detail-footer")).toBeNull();
+  });
+
   it("exposes a first-class title field that the user can edit", () => {
     const onTitleChange = vi.fn();
     render(

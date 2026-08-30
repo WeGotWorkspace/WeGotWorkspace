@@ -73,7 +73,7 @@ export function NoteDetailView({
   const titleFieldId = useId();
 
   return (
-    <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
+    <article className={cn("note-detail-view note-detail-sheet", className)}>
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>
@@ -87,7 +87,7 @@ export function NoteDetailView({
       />
       {showTags ? (
         <TagGroup
-          className="note-detail-view__tag-group py-6 mb-6"
+          className="note-detail-view__tag-group"
           size="lg"
           tags={tags}
           readonly={tagsReadOnly}

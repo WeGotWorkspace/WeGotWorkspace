@@ -6,14 +6,16 @@
  * Tasks chrome: accent mixed onto cream, not a full-bleed wash).
  * `--notes-accent` is the brand warm yellow (`#f6d176` — same hex as the
  * Notes icon / webmanifest). Sidebar selected chips stay that yellow on ink
- * (WCAG AA). Detail pane tints from `--notes-detail-tint` (runtime notebook
- * color) at Calendar event-card light wash (11%). Empty / multi-select leave
- * the var unset (`transparent` fallback) so the pane stays cream. When a
- * note is open, `--notes-detail-accent` binds to that tint so editor
- * checkboxes, CATEGORIES chip fill, and selected Star/Archive match the
- * notebook color — not the product yellow. Chip text/remove and the editor
- * check mark share `--notes-detail-contrast-fg` (ink or cream from
- * `notebookContrastFg`), never hardcoded yellow or ink.
+ * (WCAG AA). Detail pane / desk is the same cream as the footer and action
+ * bar (`--workspace-chrome-footer-bg`), so the open-note paper card can
+ * read as a tinted sheet. `--note-detail-sheet-bg` is cream mixed with
+ * `--notes-detail-tint` at 11% (same wash as Calendar event cards) — a
+ * very light notebook tint, never the full collection color.
+ * `--notes-detail-accent` still binds to that tint so selected
+ * Star/Archive, tags, and editor checks use the live notebook hue.
+ * Title/body use `--notes-detail-contrast-fg` (ink mixed onto the sheet,
+ * not full ink). Detail task-list checks share the tag wash (16% fill,
+ * 28% border, accent-strong mark) — not a full-sat fill.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
@@ -36,16 +38,13 @@
     var(--notes-detail-accent) 70%,
     var(--color-ink)
   );
+  --workspace-chrome-footer-bg: var(--color-cream, #ffffff);
+  --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
   /*
-   * Calendar event cards: `surfaceTint(color, 11)` → srgb 11% on surface.
-   * Notes: same 11% in oklab on cream. `--notes-detail-tint` is set from TSX
-   * for a single open note; unset/transparent keeps cream.
+   * Detail desk: same cream as footer / action bar. The paper card is the
+   * notebook-tinted sheet — not this pane.
    */
-  --workspace-detail-bg: color-mix(
-    in oklab,
-    var(--notes-detail-tint, transparent) 11%,
-    var(--color-cream, #ffffff)
-  );
+  --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
@@ -71,27 +70,58 @@
   --list-item-checkbox-icon-color: var(--color-ink);
   --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
   /* Workspace-level yellow — sidebar collection rows override with row color.
-   * Detail editor task-lists bind `--notes-detail-accent` below. */
+   * Detail editor task-lists use the tag wash on `.note-text-editor-body`. */
   --checkbox-checked-bg: var(--notes-accent);
   --checkbox-checked-border: var(--notes-accent);
   --checkbox-checked-fg: var(--color-ink);
   /* Selected sidebar tag chip — ink + product yellow. Detail CATEGORIES chips
-   * fill with the notebook color. `--notes-detail-contrast-fg` is set from
-   * TSX (ink vs cream) and shared with editor check marks. Nested
-   * `.notes-workspace` inherits it so stories do not reset chip text. */
+   * use the live notebook accent on the light paper sheet. Title/body use
+   * `--notes-detail-contrast-fg` (softer ink). Nested `.notes-workspace`
+   * inherits the tokens so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--color-ink);
   --notes-tag-selected-fg: var(--notes-accent);
   --notes-tag-selected-border: var(--color-ink);
-  --note-detail-tag-bg: var(--notes-detail-accent);
-  --note-detail-tag-fg: var(--notes-detail-contrast-fg, var(--color-ink));
-  --note-detail-tag-border: var(--notes-detail-accent);
+  --note-detail-tag-bg: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 16%,
+    transparent
+  );
+  --note-detail-tag-fg: var(--notes-detail-accent-strong);
+  --note-detail-tag-border: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 28%,
+    transparent
+  );
   --note-detail-title-font-family: var(--font-serif);
+  /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
+  --note-detail-sheet-bg: color-mix(
+    in oklab,
+    var(--notes-detail-tint, var(--color-cream, #ffffff)) 11%,
+    var(--color-cream, #ffffff)
+  );
+  /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
+  --notes-detail-contrast-fg: color-mix(
+    in oklab,
+    var(--color-ink) 85%,
+    var(--note-detail-sheet-bg, var(--color-cream, #ffffff))
+  );
+  /*
+   * Top-lit paper (reference sheet): tight contact at the edge, a short mid
+   * occlusion, then a broad ambient falloff below. All y-offsets downward —
+   * almost no shadow on the top edge. Ink at low alpha reads as warm charcoal
+   * on the cream desk (not a cool black blob).
+   */
+  --note-detail-sheet-shadow:
+    0 1px 1px color-mix(in oklab, var(--color-ink) 22%, transparent),
+    0 3px 6px color-mix(in oklab, var(--color-ink) 12%, transparent),
+    0 12px 20px -4px color-mix(in oklab, var(--color-ink) 14%, transparent),
+    0 32px 48px -12px color-mix(in oklab, var(--color-ink) 16%, transparent);
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
 }
 
-/* Detail scroll shares the notebook-tint pane token (unset tint → cream). */
+/* Detail scroll shares the cream desk (card is the notebook sheet). */
 .notes-workspace .workspace-detail-pane__scroll {
   background-color: var(--notes-detail-body-bg);
 }
@@ -99,11 +129,58 @@
 /*
  * Notes detail editor task-list only — not Docs, not sidebar 16px collection
  * checkboxes (those set `--checkbox-checked-*` from `--collection-row-color`).
+ * Same family as detail tags: notebook wash, not a full-sat neon square.
  */
 .notes-workspace .note-text-editor-body {
-  --checkbox-checked-bg: var(--notes-detail-accent);
-  --checkbox-checked-border: var(--notes-detail-accent);
-  --checkbox-checked-fg: var(--notes-detail-contrast-fg, var(--note-detail-tag-fg));
+  --checkbox-border-color: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 28%,
+    transparent
+  );
+  --checkbox-checked-bg: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 16%,
+    transparent
+  );
+  --checkbox-checked-border: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 28%,
+    transparent
+  );
+  --checkbox-checked-fg: var(--notes-detail-accent-strong);
+}
+
+/*
+ * Short notes still look like a full-height sticky sheet: the scroll host
+ * is a column so the card can grow. `min-height: 100%` is the content box
+ * (pane minus the scroll padding that insets the card). Long notes grow.
+ */
+.notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-workspace .note-detail-sheet {
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+
+/*
+ * Same split as `.workspace-detail-pane` (`absolute` → `md:relative`,
+ * `@media (max-width: 47.999rem)` in workspace-app.css): below 48rem the
+ * detail pane is already full-width. Flush the paper sheet to the pane —
+ * no scroll inset, no max-width column, no floating shadow.
+ */
+@media (max-width: 47.999rem) {
+  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+    @apply px-0 pt-0 pb-0;
+  }
+
+  .notes-workspace .note-detail-sheet {
+    @apply mx-0 max-w-none;
+    min-height: 100%;
+    box-shadow: none;
+  }
 }
 
 /*
@@ -175,6 +252,11 @@
 .notes-workspace .notes-detail-footer__meta-tag--edited .tag {
   background-color: var(--tag-bg);
   color: var(--tag-fg);
+}
+
+/* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
+.notes-workspace .workspace-detail-pane > .action-bar {
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
 }
 
 /* Calendar view-select pattern: compact cream trigger in the detail header. */
@@ -275,7 +357,7 @@
 
 .notes-workspace .note-detail-view__pull-quote {
   font-family: var(--font-sans);
-  color: color-mix(in oklab, var(--color-ink) 85%, transparent);
+  color: color-mix(in oklab, var(--notes-detail-contrast-fg, var(--color-ink)) 85%, transparent);
 }
 
 /* Storybook scopes — mirror workspace chrome without inline presets */
@@ -302,5 +384,5 @@
 
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: var(--workspace-detail-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
 }

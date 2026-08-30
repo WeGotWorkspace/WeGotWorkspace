@@ -100,7 +100,7 @@ export const CollabChromePreview: Story = {
         ]}
       />
       <div className="workspace-detail-pane__scroll flex-1">
-        <article className="note-detail-view max-w-[680px] mx-auto">
+        <article className="note-detail-view note-detail-sheet">
           <p className="text-muted-foreground text-sm">
             Collab session chrome preview — presence sits in the action bar; edited meta pins in the
             footer.

@@ -20,7 +20,7 @@ function renderPane(tint?: string) {
 }
 
 describe("notes workspace detail tint (computed)", () => {
-  it("leaves --notes-detail-tint unset on empty detail so the pane stays cream", () => {
+  it("leaves --notes-detail-tint unset on empty detail (pane stays the notes-accent wash)", () => {
     const { container } = renderPane();
     const root = container.querySelector(".notes-workspace") as HTMLElement;
     expect(getComputedStyle(root).getPropertyValue("--notes-detail-tint").trim()).toBe("");
@@ -32,17 +32,23 @@ describe("notes workspace detail tint (computed)", () => {
     expect(getComputedStyle(root).getPropertyValue("--notes-detail-tint").trim()).toBe("#0ea5e9");
   });
 
-  it("sets chip fg to ink on a light notebook and cream on a dark notebook", () => {
+  it("does not force full-ink sheet text; check-mark contrast still follows the fill", () => {
     const light = renderPane("#fde68a");
     const lightRoot = light.container.querySelector(".notes-workspace") as HTMLElement;
-    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).toBe(
+    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).not.toBe(
+      "var(--color-ink)",
+    );
+    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-ink)",
     );
     light.unmount();
 
     const dark = renderPane("#1e3a5f");
     const darkRoot = dark.container.querySelector(".notes-workspace") as HTMLElement;
-    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).toBe(
+    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).not.toBe(
+      "var(--color-ink)",
+    );
+    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-cream)",
     );
     dark.unmount();
