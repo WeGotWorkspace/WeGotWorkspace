@@ -48,6 +48,21 @@ export const Editable: Story = {
   },
 };
 
+/** Long wrapping SUMMARY — descenders (g, y) stay visible; no ellipsis. */
+export const LongTitle: Story = {
+  args: {
+    ...base,
+    title: "Typography going through wrapping titles and lengthy summaries",
+    pullQuote: undefined,
+    body: [
+      "# Section heading",
+      "## Subsection",
+      "### Heading three",
+      "First paragraph of the note.",
+    ],
+  },
+};
+
 /** Empty SUMMARY — document-title scale, not a tiny form input. */
 export const EmptyTitle: Story = {
   tags: ["vitest-ci"],
@@ -58,9 +73,10 @@ export const EmptyTitle: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = canvas.getByRole("textbox", { name: "Title" }) as HTMLInputElement;
-    expect(input.classList.contains("note-detail-view__title")).toBe(true);
-    expect(input.placeholder).toBe("Title");
+    const title = canvas.getByRole("textbox", { name: "Title" }) as HTMLTextAreaElement;
+    expect(title.tagName).toBe("TEXTAREA");
+    expect(title.classList.contains("note-detail-view__title")).toBe(true);
+    expect(title.placeholder).toBe("Title");
   },
 };
 

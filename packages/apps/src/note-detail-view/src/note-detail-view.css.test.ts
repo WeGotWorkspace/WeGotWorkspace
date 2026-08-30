@@ -28,7 +28,8 @@ describe("note-detail-view paper sheet CSS", () => {
     expect(css).toMatch(
       /\.note-detail-view__title \{[\s\S]*color:\s*var\(--notes-detail-contrast-fg,\s*var\(--color-ink\)\)/,
     );
-    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*auto;/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*normal;/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box-trim:\s*none;/);
   });
 
   it("does not invent decorative sheet chrome", () => {
@@ -38,14 +39,43 @@ describe("note-detail-view paper sheet CSS", () => {
 
 describe("note-detail-view title CSS", () => {
   it("sizes SUMMARY as a document title, not a form input", () => {
-    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-3xl/);
-    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*md:text-4xl/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-4xl/);
+    expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*text-3xl/);
     expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*text-sm\b/);
+    expect(styles).toMatch(/textarea:not\(\.note-detail-view__title\)/);
     expect(styles).toMatch(/:not\(\.note-detail-view__title\)/);
   });
 
-  it("trims title leading with text-box: auto", () => {
-    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*auto;/);
+  it("keeps serif descenders visible", () => {
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*normal;/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box-trim:\s*none;/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*overflow-visible/);
+    expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*overflow-hidden/);
+    expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*line-clamp/);
+  });
+
+  it("wraps long titles instead of truncating to one line", () => {
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*whitespace-pre-wrap/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*break-words/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*resize-none/);
+    expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*truncate/);
+    expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*whitespace-nowrap/);
+    expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*text-ellipsis/);
+  });
+
+  it("keeps the sheet title at least as large as body h1", () => {
+    const titleRem = 2.25;
+    const multipliers = [1, 2, 3, 4, 5, 6].map((level) => {
+      const match = css.match(
+        new RegExp(`--text-editor-prose-heading-h${level}-size:\\s*([\\d.]+)`),
+      );
+      expect(match, `missing h${level} token`).toBeTruthy();
+      return Number(match![1]);
+    });
+    expect(titleRem).toBeGreaterThanOrEqual(multipliers[0]!);
+    for (let i = 1; i < multipliers.length; i++) {
+      expect(multipliers[i]!).toBeLessThan(multipliers[i - 1]!);
+    }
   });
 
   it("keeps the title label visually hidden", () => {

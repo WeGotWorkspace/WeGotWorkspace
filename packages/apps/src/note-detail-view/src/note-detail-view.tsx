@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type KeyboardEvent } from "react";
 import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
@@ -7,7 +7,22 @@ import {
   NoteTextEditorBody,
   type NoteCollabConfig,
 } from "@/note-detail-view/src/note-text-editor-body";
+import { TextareaAutosize } from "@/ui/textarea-autosize";
 import "@/note-detail-view/src/note-detail-view.css";
+
+function focusNoteBodyFromTitle(titleEl: HTMLTextAreaElement): void {
+  const root = titleEl.closest(".note-detail-view");
+  const body = root?.querySelector<HTMLElement>(
+    ".note-text-editor-body [contenteditable='true']",
+  );
+  body?.focus();
+}
+
+function handleTitleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
+  if (event.key !== "Enter" || event.shiftKey) return;
+  event.preventDefault();
+  focusNoteBodyFromTitle(event.currentTarget);
+}
 
 export type NoteDetailViewProps = {
   /** Used for React keys on editors when switching notes. */
@@ -77,13 +92,17 @@ export function NoteDetailView({
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>
-      <input
+      <TextareaAutosize
         id={titleFieldId}
         className="note-detail-view__title"
         value={title}
         placeholder={titlePlaceholder}
         readOnly={titleReadOnly}
+        minRows={1}
+        maxRows={12}
+        wrap="soft"
         onChange={titleReadOnly ? undefined : (event) => onTitleChange(event.target.value)}
+        onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
       />
       {showTags ? (
         <TagGroup

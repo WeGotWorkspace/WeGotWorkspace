@@ -78,24 +78,51 @@ describe("NoteDetailView readOnly", () => {
     expect(sheet!.querySelector(".notes-detail-footer")).toBeNull();
   });
 
-  it("exposes a first-class title field that the user can edit", () => {
+  it("exposes a first-class wrapping title textarea that the user can edit", () => {
     const onTitleChange = vi.fn();
+    const longTitle =
+      "Typography going along a long wrapping note title that should not stay on one line";
     render(
       <NoteDetailView
         noteId="n-title"
         contentRevision="rev-1"
-        title="Meeting"
+        title={longTitle}
         onTitleChange={onTitleChange}
         tags={[]}
         body={["Notes"]}
       />,
     );
-    const input = screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement;
-    expect(input.value).toBe("Meeting");
-    expect(input.classList.contains("note-detail-view__title")).toBe(true);
-    expect(document.querySelector(`label[for="${input.id}"]`)).toBeTruthy();
-    fireEvent.change(input, { target: { value: "Kept" } });
+    const title = screen.getByRole("textbox", { name: "Title" }) as HTMLTextAreaElement;
+    expect(title.tagName).toBe("TEXTAREA");
+    expect(title.value).toBe(longTitle);
+    expect(title.classList.contains("note-detail-view__title")).toBe(true);
+    expect(title.wrap).toBe("soft");
+    expect(title.rows).toBe(1);
+    expect(title.className).not.toMatch(/truncate|line-clamp|whitespace-nowrap/);
+    expect(document.querySelector(`label[for="${title.id}"]`)).toBeTruthy();
+    fireEvent.change(title, { target: { value: "Kept" } });
     expect(onTitleChange).toHaveBeenCalledWith("Kept");
+  });
+
+  it("moves focus to the body when Enter is pressed in the title", () => {
+    render(
+      <NoteDetailView
+        noteId="n-title-enter"
+        contentRevision="rev-1"
+        title="Going"
+        onTitleChange={() => {}}
+        tags={[]}
+        body={["Notes"]}
+      />,
+    );
+    const title = screen.getByRole("textbox", { name: "Title" });
+    const body = document.querySelector<HTMLElement>(
+      ".note-text-editor-body [contenteditable='true']",
+    );
+    expect(body).toBeTruthy();
+    title.focus();
+    fireEvent.keyDown(title, { key: "Enter" });
+    expect(document.activeElement).toBe(body);
   });
 
   it("locks the title field when readOnly", () => {
@@ -110,8 +137,9 @@ describe("NoteDetailView readOnly", () => {
         readOnly
       />,
     );
-    const input = screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement;
-    expect(input.readOnly).toBe(true);
+    const title = screen.getByRole("textbox", { name: "Title" }) as HTMLTextAreaElement;
+    expect(title.tagName).toBe("TEXTAREA");
+    expect(title.readOnly).toBe(true);
   });
 
   it("calls onTagRemove when a detail-pane chip X is clicked", () => {

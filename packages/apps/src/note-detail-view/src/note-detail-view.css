@@ -23,21 +23,59 @@
   );
 }
 
+/**
+ * Notes sheet type ramp. Multipliers × `--text-editor-prose-font-size` (16px).
+ * Title is `text-4xl` (2.25rem / 36px) so it stays ≥ body h1. Docs headings
+ * keep the shared `--text-editor-prose-heading-h*` defaults.
+ */
+.note-detail-view {
+  --text-editor-prose-heading-h1-size: 1.875;
+  --text-editor-prose-heading-h2-size: 1.5;
+  --text-editor-prose-heading-h3-size: 1.25;
+  --text-editor-prose-heading-h4-size: 1.125;
+  --text-editor-prose-heading-h5-size: 1.0625;
+  --text-editor-prose-heading-h6-size: 1;
+}
+
+.note-detail-view .text-editor-prose h4 {
+  font-size: calc(
+    var(--text-editor-prose-heading-h4-size) *
+      var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size))
+  );
+}
+
+.note-detail-view .text-editor-prose h5 {
+  font-size: calc(
+    var(--text-editor-prose-heading-h5-size) *
+      var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size))
+  );
+}
+
+.note-detail-view .text-editor-prose h6 {
+  font-size: calc(
+    var(--text-editor-prose-heading-h6-size) *
+      var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size))
+  );
+}
+
 .note-detail-view__title-label {
   @apply sr-only;
 }
 
 /**
- * Document-title scale (mail / detail-header: text-3xl → md:text-4xl).
- * Exempted from the global iOS 1rem input floor in styles.css.
- * Tailwind has no `text-box-*` utility; trim matches `.view-header__title`.
+ * Document title — always text-4xl (2.25rem) so it stays ≥ body h1 (1.875×16px).
+ * Growing textarea: soft-wrap, no line-clamp / ellipsis. Exempted from the
+ * global iOS 1rem input/textarea floor in styles.css. `text-box: auto` compiles
+ * to `trim-both` and clips serif descenders; `normal` + `text-box-trim: none`
+ * keep g/y/p visible.
  */
 .note-detail-view__title {
-  @apply mb-3.5 h-auto min-h-0 w-full appearance-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none;
-  @apply text-3xl font-semibold leading-[1.1] tracking-tight md:text-4xl;
+  @apply mb-3.5 h-auto min-h-0 w-full resize-none appearance-none rounded-none border-0 bg-transparent px-0 py-[0.06em] shadow-none outline-none;
+  @apply overflow-visible whitespace-pre-wrap break-words text-4xl font-semibold leading-[1.2] tracking-tight;
   font-family: var(--note-detail-title-font-family, var(--font-serif));
   color: var(--notes-detail-contrast-fg, var(--color-ink));
-  text-box: auto;
+  text-box: normal;
+  text-box-trim: none;
 }
 
 .note-detail-view__title::placeholder {
