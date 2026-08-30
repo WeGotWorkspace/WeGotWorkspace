@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { Note } from "@/lib/models/note";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 
 afterEach(() => {
   cleanup();
@@ -24,10 +25,12 @@ function ListHarness({
   notes,
   selectedIds = [],
   activeId = "",
+  notebookCollections,
 }: {
   notes: Note[];
   selectedIds?: string[];
   activeId?: string;
+  notebookCollections?: NotesNotebookCollection[];
 }) {
   const panel = NotesListPanel({
     L: defaultNotesLabels,
@@ -38,6 +41,7 @@ function ListHarness({
     selectionMode: false,
     listLoading: false,
     visibleNotes: notes,
+    notebookCollections,
     searchQuery: "",
     setSearchQuery: () => {},
     searchInputRef: createRef<HTMLInputElement>(),
@@ -62,6 +66,26 @@ function ListHarness({
   });
   return <>{panel.listContent}</>;
 }
+
+describe("NotesListPanel notebook labels", () => {
+  it("shows the live collection name when the note still has the old name", () => {
+    render(
+      <ListHarness
+        notes={[
+          { ...baseNote, id: "n-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...baseNote, id: "n-2", notebook: "Work", notebookId: "notes-work" },
+        ]}
+        notebookCollections={[
+          { id: "notes-drafts", name: "Journal" },
+          { id: "notes-work", name: "Work" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Journal")).toBeTruthy();
+    expect(screen.getByText("Work")).toBeTruthy();
+    expect(screen.queryByText("Drafts")).toBeNull();
+  });
+});
 
 describe("NotesListPanel selection paint", () => {
   it("does not paint active/selected when selectedIds is empty but activeId is stale", () => {

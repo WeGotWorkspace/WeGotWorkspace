@@ -62,17 +62,16 @@ export function NotesDetailActionBar({
   }
 
   const sharedInbox = !!active.sharedInbox;
-  const groupNotebook = !sharedInbox && active.scope === "group";
-  const notebookLocked = sharedInbox || groupNotebook || readOnly;
+  // Writable group notebooks are My notebooks — same move as personal.
+  // Lock only inbound Shared-with-me leftovers and view-only shares.
+  const notebookLocked = sharedInbox || readOnly;
   const showStar = noteShowsStarControls(active);
   const archiveLocked = !canArchive;
   // Personal shares: keep grantor username on the list row only — detail switcher
   // shows notebook / Shared with me, not the username chip.
   const locationLabel = sharedInbox
     ? active.notebook.trim() || labels.sidebarSharedWithMe
-    : noteListLocationLabel(active, labels) ||
-      active.notebook.trim() ||
-      labels.toolbarMoveToNotebook;
+    : noteListLocationLabel(active, labels, notebooks) || labels.toolbarMoveToNotebook;
 
   const rightActions = [
     ...(showStar

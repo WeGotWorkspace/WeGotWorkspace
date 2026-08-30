@@ -41,6 +41,7 @@ function shellStub(overrides: Partial<NotesShellState> = {}): NotesShellState {
       },
     ],
     setNotebookCollections: vi.fn(),
+    setNotes: vi.fn(),
     selectView: vi.fn(),
     view: "all",
     show: vi.fn(),
@@ -248,6 +249,55 @@ describe("useNotesNotebookMutations", () => {
       groupSlug: "team",
     });
     expect(result.current.notebookDialog).toBe(null);
+  });
+
+  it("updateNotebook rewrites denormalized note.notebook for the renamed collection only", async () => {
+    let notes = [
+      {
+        id: "n-1",
+        notebook: "General",
+        notebookId: "notes-general",
+        category: "Note",
+        date: "—",
+        excerpt: "",
+        body: [""],
+        tags: [] as string[],
+        wordCount: 0,
+      },
+      {
+        id: "n-2",
+        notebook: "Work",
+        notebookId: "notes-work",
+        category: "Note",
+        date: "—",
+        excerpt: "",
+        body: [""],
+        tags: [] as string[],
+        wordCount: 0,
+      },
+    ];
+    const setNotes = vi.fn((updater) => {
+      notes = typeof updater === "function" ? updater(notes) : updater;
+    });
+    const { result } = renderHook(() =>
+      useNotesNotebookMutations({
+        shell: shellStub({
+          setNotes,
+        }),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.updateNotebook("notes-general", {
+        name: "Journal",
+        color: null,
+      });
+    });
+
+    expect(notes.map((note) => ({ id: note.id, notebook: note.notebook }))).toEqual([
+      { id: "n-1", notebook: "Journal" },
+      { id: "n-2", notebook: "Work" },
+    ]);
   });
 
   it("updateNotebook still patches when collections were dropped from cache", async () => {

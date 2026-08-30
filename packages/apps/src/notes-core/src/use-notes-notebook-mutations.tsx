@@ -3,6 +3,7 @@ import type { CollectionShareWith } from "@/share-ui/collection-share";
 import type { TaskProjectDialogConfirmInput, TaskProjectDialogState } from "@/tasks-core/src/task-project-dialog";
 import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
+import { notesWithRenamedNotebook } from "@/notes-core/src/notes-note-utils";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 
@@ -57,6 +58,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     setNotebooks,
     notebookCollections,
     setNotebookCollections,
+    setNotes,
     selectView,
     view,
     show,
@@ -132,14 +134,25 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
       try {
         const targetId = current?.id ?? notebookId;
         const updated = await operations.patchNotebook(targetId, patch);
+        const nextName = updated.name.trim() || trimmed;
+        const previousName = current?.name;
         setNotebookCollections((prev) => {
           if (prev.some((item) => item.id === targetId)) {
             return prev.map((item) => (item.id === targetId ? { ...item, ...updated } : item));
           }
           return [...prev, updated];
         });
-        if (current && trimmed !== current.name && current.scope !== "group") {
-          setNotebooks((prev) => prev.map((item) => (item === current.name ? trimmed : item)));
+        if (previousName !== nextName) {
+          setNotes((prev) =>
+            notesWithRenamedNotebook(prev, {
+              notebookId: targetId,
+              fromName: previousName ?? nextName,
+              toName: nextName,
+            }),
+          );
+        }
+        if (current && nextName !== current.name && current.scope !== "group") {
+          setNotebooks((prev) => prev.map((item) => (item === current.name ? nextName : item)));
         }
         show(L.toastSaved);
         setNotebookDialog(null);
@@ -147,7 +160,16 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         showMutationError();
       }
     },
-    [L.toastSaved, notebookCollections, operations, setNotebookCollections, setNotebooks, show, showMutationError],
+    [
+      L.toastSaved,
+      notebookCollections,
+      operations,
+      setNotebookCollections,
+      setNotebooks,
+      setNotes,
+      show,
+      showMutationError,
+    ],
   );
 
   const patchShareWith = useCallback(

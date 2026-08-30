@@ -60,12 +60,14 @@ function NotesListLocation({
   note,
   labels,
   notebookColor,
+  notebookCollections,
 }: {
   note: Note;
   labels: NotesUILabels;
   notebookColor?: string | null;
+  notebookCollections: NotesNotebookCollection[];
 }) {
-  const location = noteListLocationLabel(note, labels);
+  const location = noteListLocationLabel(note, labels, notebookCollections);
   if (!location) return null;
   return (
     <span className="notes-list-panel__notebook">
@@ -163,7 +165,7 @@ export function NotesListPanel({
         subtitle={
           selectionMode || selectedIds.length > 1
             ? L.listSelected(selectedIds.length)
-            : L.listFiles(visibleNotes.length)
+            : L.listItems(visibleNotes.length)
         }
         actions={
           <div className="notes-list-panel__header-actions flex items-center gap-2">
@@ -269,7 +271,12 @@ export function NotesListPanel({
                 id={note.id}
                 title={noteListTitle(note)}
                 subtitle={
-                  <NotesListLocation note={note} labels={L} notebookColor={notebook?.color} />
+                  <NotesListLocation
+                    note={note}
+                    labels={L}
+                    notebookColor={notebook?.color}
+                    notebookCollections={notebookCollections}
+                  />
                 }
                 date={formatNoteDateForList(note.date)}
                 text={
