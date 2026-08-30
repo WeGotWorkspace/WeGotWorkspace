@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { blurWorkspaceDetailEditor } from "@/hooks/blur-workspace-detail-editor";
 import { useIsTouch } from "@/hooks/use-is-touch";
@@ -37,6 +37,35 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
 
   const [activeId, setActiveId] = useState<string>(() => initialNoteId ?? "");
   const isTouch = useIsTouch();
+  const lastNotifiedNoteRef = useRef<string | null>(null);
+
+  const notifyNoteChange = useCallback(
+    (noteId: string) => {
+      if (lastNotifiedNoteRef.current === noteId) return;
+      lastNotifiedNoteRef.current = noteId;
+      return onNoteChange?.(noteId);
+    },
+    [onNoteChange],
+  );
+
+  const openMobileDetail = useCallback(
+    (noteId?: string) => {
+      const during =
+        noteId === undefined
+          ? undefined
+          : () => {
+              setActiveId(noteId);
+              return notifyNoteChange(noteId);
+            };
+      const handle = workspaceLayoutRef.current;
+      if (handle) {
+        handle.openMobileDetail(during);
+        return;
+      }
+      void during?.();
+    },
+    [notifyNoteChange, workspaceLayoutRef],
+  );
 
   useEffect(() => {
     if (!initialNoteId) return;
@@ -47,13 +76,14 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   useEffect(() => {
     if (!noteSyncedRef.current) {
       noteSyncedRef.current = true;
+      lastNotifiedNoteRef.current = activeId;
       return;
     }
     // Include local-* temp ids: offline creates often keep that prefix until
     // (or after) sync, and skipping them left All/Starred selection without a
     // path update. Remap still fires onNoteChange again with the server id.
-    onNoteChange?.(activeId);
-  }, [activeId, onNoteChange]);
+    notifyNoteChange(activeId);
+  }, [activeId, notifyNoteChange]);
 
   const sharedNotebookKeys = useMemo(
     () => sharedNotebookFilterKeys(notebookCollections),
@@ -111,16 +141,30 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     initialId: initialNoteId,
     onPrimarySelect: (id) => {
       blurWorkspaceDetailEditor();
-      setActiveId(id);
-      workspaceLayoutRef.current?.openMobileDetail();
+      openMobileDetail(id);
     },
     onNavigateToId: () => {
       blurWorkspaceDetailEditor();
-      workspaceLayoutRef.current?.openMobileDetail();
+      openMobileDetail();
     },
     onMutationError: showMutationError,
     queueDelayMs: WRITE_QUEUE_DELAY_MS,
   });
+
+  const closeMobileDetail = useCallback(() => {
+    const during = () => {
+      setActiveId("");
+      setSelectedIds([]);
+      setSelectionMode(false);
+      return notifyNoteChange("");
+    };
+    const handle = workspaceLayoutRef.current;
+    if (handle) {
+      handle.closeMobileDetail(during);
+      return;
+    }
+    void during();
+  }, [notifyNoteChange, setSelectedIds, setSelectionMode, workspaceLayoutRef]);
 
   // URL / deep-link changes update activeId — keep selectedIds aligned so
   // isActive and isSelected never paint two different rows in single-select UI.
@@ -230,6 +274,8 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     undoLatest,
     navigateListByKeyboard,
     beginOptimisticUpdate,
+    openMobileDetail,
+    closeMobileDetail,
   };
 }
 

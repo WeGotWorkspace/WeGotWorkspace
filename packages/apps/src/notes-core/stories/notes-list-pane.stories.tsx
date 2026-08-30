@@ -85,7 +85,7 @@ export function NotesListPaneHarness({
 
   return (
     <NotesStoryScope variant="list-column">
-      <CollectionListWorkspace detailOpenMobile={false} {...listProps} />
+      <CollectionListWorkspace {...listProps} />
       {controller.confirmDialog}
     </NotesStoryScope>
   );

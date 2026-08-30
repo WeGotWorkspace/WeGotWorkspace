@@ -110,6 +110,7 @@ export function useNotesController({
     selectionBarButtons: mutations.selectionBarButtons,
     selectionBar: mutations.selectionBar,
     handleSelect: list.handleSelect,
+    closeMobileDetail: list.closeMobileDetail,
     enterSelectionFor: list.enterSelectionFor,
     selectView,
     hiddenNotebookIds: shell.hiddenNotebookIds,

@@ -311,14 +311,25 @@ export function useContactsController({
     onPrimarySelect: (id) => {
       if (createMode) return;
       stashActiveEditDraft();
-      setActiveId(id);
       restoreEditDraftForContact(id);
-      workspaceLayoutRef.current?.openMobileDetail();
+      workspaceLayoutRef.current?.openMobileDetail(() => {
+        setActiveId(id);
+        return onContactChange?.(id);
+      });
     },
     onNavigateToId: () => workspaceLayoutRef.current?.openMobileDetail(),
     onMutationError: showMutationError,
     queueDelayMs: WRITE_QUEUE_DELAY_MS,
   });
+
+  const closeMobileDetail = useCallback(() => {
+    workspaceLayoutRef.current?.closeMobileDetail(() => {
+      setActiveId("");
+      setSelectedIds([]);
+      setSelectionMode(false);
+      return onContactChange?.("");
+    });
+  }, [onContactChange, setSelectedIds, setSelectionMode]);
 
   useSelectionResetOnKeyChange({
     resetKey: view,
@@ -1318,6 +1329,7 @@ export function useContactsController({
     sidebarDropZoneProps,
     handleSelect,
     enterSelectionFor,
+    closeMobileDetail,
     selectView,
     setSearchQuery,
     createContact,

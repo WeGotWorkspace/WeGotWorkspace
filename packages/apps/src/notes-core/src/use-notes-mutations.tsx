@@ -68,6 +68,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     activeId,
     setActiveId,
     beginOptimisticUpdate,
+    openMobileDetail,
   } = list;
 
   const debouncerRef = useRef(createNoteSaveDebouncer(AUTOSAVE_WRITE_DEBOUNCE_MS));
@@ -631,9 +632,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         : {}),
     };
     setNotes((prev) => [note, ...prev]);
-    setActiveId(id);
     selectSingle(id);
-    workspaceLayoutRef.current?.openMobileDetail();
+    openMobileDetail(id);
     // Persist immediately. Leaving the detail pane without a body (or title)
     // must not DELETE — empty DESCRIPTION is a valid VJOURNAL.
     if (operations) {

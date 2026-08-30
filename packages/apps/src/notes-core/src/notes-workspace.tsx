@@ -187,6 +187,7 @@ export function NotesWorkspace({
     selectionBar,
     handleSelect,
     enterSelectionFor,
+    closeMobileDetail,
     selectView,
     setSearchQuery,
     setMoveDialog,
@@ -402,6 +403,7 @@ export function NotesWorkspace({
     <TooltipProvider delayDuration={300}>
       <WorkspaceApp
         ref={workspaceLayoutRef}
+        initialDetailOpenMobile={Boolean(initialNoteId)}
         workspaceRoot={{
           className: cn("notes-workspace", className),
         }}
@@ -544,7 +546,7 @@ export function NotesWorkspace({
               labels={L}
               archived={archived}
               starred={starred}
-              closeMobileDetail={c.closeMobileDetail}
+              closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
               notebooks={selectNotebooks}
               onMoveToNotebook={(notebook) => {

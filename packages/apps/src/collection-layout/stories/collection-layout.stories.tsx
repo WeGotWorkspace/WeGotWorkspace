@@ -14,7 +14,7 @@ type Story = StoryObj;
 export const Default: Story = {
   render: () => (
     <div className="flex h-dvh w-full">
-      <CollectionListPane detailOpenMobile={false}>
+      <CollectionListPane>
         <CollectionHeader>
           <h2
             className="text-3xl leading-none flex-1 min-w-0 truncate"

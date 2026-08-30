@@ -44,12 +44,13 @@ export function useNotesRouteSync() {
 
   const handleNoteChange = useCallback(
     (noteId: string) => {
+      if (currentNoteRef.current === noteId) return;
       currentNoteRef.current = noteId;
       const view = currentViewRef.current;
       const target = notesNavigateTarget(view, noteId);
       // Push when opening a note so Back returns to the list/filter path;
       // replace when clearing the note id (view switches already replace).
-      void navigate({ ...target, replace: !noteId });
+      return navigate({ ...target, replace: !noteId });
     },
     [navigate],
   );

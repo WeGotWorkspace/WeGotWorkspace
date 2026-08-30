@@ -102,6 +102,18 @@ describe("useNotesRouteSync", () => {
     });
   });
 
+  it("skips navigate when the note id is already current", () => {
+    mockPathname = "/notes/all";
+    mockParams = { noteId: "n-1" };
+    const { result } = renderHook(() => useNotesRouteSync());
+
+    act(() => {
+      result.current.handleNoteChange("n-1");
+    });
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("replaces when clearing the note id", () => {
     mockPathname = "/notes/all";
     mockParams = { noteId: "n-1" };

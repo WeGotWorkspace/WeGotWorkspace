@@ -81,7 +81,7 @@ function ContactsListPaneHarness({
 
   return (
     <ContactsStoryScope variant="list-column">
-      <CollectionListWorkspace detailOpenMobile={false} {...listProps} />
+      <CollectionListWorkspace {...listProps} />
       {controller.confirmDialog}
     </ContactsStoryScope>
   );

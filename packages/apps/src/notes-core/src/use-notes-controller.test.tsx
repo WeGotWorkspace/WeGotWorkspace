@@ -617,6 +617,25 @@ describe("useNotesController URL routing", () => {
     expect(onViewChange).toHaveBeenCalledWith("archive");
   });
 
+  it("closeMobileDetail clears the active note so the path can drop noteId", () => {
+    const onNoteChange = vi.fn();
+    const { result } = renderHook(() =>
+      useNotesController({
+        data,
+        listLoading: false,
+        initialNoteId: "note-1",
+        onNoteChange,
+      }),
+    );
+
+    act(() => {
+      result.current.closeMobileDetail();
+    });
+
+    expect(result.current.activeId).toBe("");
+    expect(onNoteChange).toHaveBeenCalledWith("");
+  });
+
   it("onNoteChange is called when a note is selected (not on mount)", () => {
     const onNoteChange = vi.fn();
     const { result } = renderHook(() =>
