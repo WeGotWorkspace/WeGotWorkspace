@@ -62,7 +62,11 @@ import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
-import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import {
+  notebookDisplayColor,
+  notebookDotColor,
+  notesDetailTintStyle,
+} from "@/notes-core/src/notes-notebook-color";
 import {
   notebookSelectValueForNotes,
   pendingMoveAfterNotebookCreate,
@@ -402,9 +406,7 @@ export function NotesWorkspace({
         initialDetailOpenMobile={Boolean(initialNoteId)}
         workspaceRoot={{
           className: cn("notes-workspace", className),
-          style: notesDetailTint
-            ? ({ ["--notes-detail-tint"]: notesDetailTint } as CSSProperties)
-            : undefined,
+          style: notesDetailTintStyle(notesDetailTint) as CSSProperties | undefined,
         }}
         sidebar={(c) => (
           <AppSidebar

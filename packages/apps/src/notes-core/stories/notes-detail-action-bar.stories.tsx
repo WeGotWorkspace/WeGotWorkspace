@@ -9,9 +9,11 @@ import { NotesStoryScope } from "./notes-story-scope";
 function NotesDetailActionBarHarness({
   archived: archivedInitial = false,
   starred: starredInitial = false,
+  detailTint,
 }: {
   archived?: boolean;
   starred?: boolean;
+  detailTint?: string;
 }) {
   const data = useMemo(() => createNotesAppBootstrap().data, []);
   const active = data.notes[0];
@@ -34,7 +36,7 @@ function NotesDetailActionBarHarness({
   }
 
   return (
-    <NotesStoryScope variant="detail">
+    <NotesStoryScope variant="detail" detailTint={detailTint}>
       <div className="notes-story-scope__action-bar-shell sticky top-0 z-10 border-b px-2 py-2">
         <NotesDetailActionBar
           active={active}
@@ -75,9 +77,9 @@ export const Default: Story = {
 };
 
 export const Starred: Story = {
-  args: { starred: true },
+  args: { starred: true, detailTint: "#ec4899" },
 };
 
 export const Archived: Story = {
-  args: { archived: true },
+  args: { archived: true, detailTint: "#0ea5e9" },
 };

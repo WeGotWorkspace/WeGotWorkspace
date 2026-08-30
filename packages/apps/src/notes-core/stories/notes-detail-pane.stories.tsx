@@ -81,7 +81,7 @@ export const Editable: Story = {
     const workspace = canvasElement.querySelector(".notes-workspace");
     expect(workspace).toBeTruthy();
     const probe = document.createElement("span");
-    probe.style.color = "var(--notes-tag-selected-fg)";
+    probe.style.color = "var(--note-detail-tag-fg)";
     workspace!.appendChild(probe);
     expect(getComputedStyle(remove!).color).toBe(getComputedStyle(probe).color);
     probe.remove();
@@ -130,6 +130,70 @@ export const NotebookTint: Story = {
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
       "#ec4899",
     );
+    const chip = canvasElement.querySelector(
+      ".note-detail-view__tag-group .tag",
+    ) as HTMLElement | null;
+    expect(chip).toBeTruthy();
+    const tintBg = document.createElement("span");
+    const detailFg = document.createElement("span");
+    const sidebarFg = document.createElement("span");
+    tintBg.style.backgroundColor = "var(--notes-detail-tint)";
+    detailFg.style.color = "var(--note-detail-tag-fg)";
+    sidebarFg.style.color = "var(--notes-tag-selected-fg)";
+    workspace!.appendChild(tintBg);
+    workspace!.appendChild(detailFg);
+    workspace!.appendChild(sidebarFg);
+    expect(getComputedStyle(chip!).backgroundColor).toBe(getComputedStyle(tintBg).backgroundColor);
+    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(detailFg).color);
+    expect(getComputedStyle(chip!).color).not.toBe(getComputedStyle(sidebarFg).color);
+    tintBg.remove();
+    detailFg.remove();
+    sidebarFg.remove();
+
+    const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
+    expect(editor).toBeTruthy();
+    const checkboxFill = document.createElement("span");
+    const checkboxMark = document.createElement("span");
+    const accentProbe = document.createElement("span");
+    checkboxFill.style.color = "var(--checkbox-checked-bg)";
+    checkboxMark.style.color = "var(--checkbox-checked-fg)";
+    accentProbe.style.color = "var(--notes-detail-accent)";
+    editor!.appendChild(checkboxFill);
+    editor!.appendChild(checkboxMark);
+    workspace!.appendChild(accentProbe);
+    expect(getComputedStyle(checkboxFill).color).toBe(getComputedStyle(accentProbe).color);
+    expect(getComputedStyle(checkboxMark).color).toBe(getComputedStyle(chip!).color);
+    checkboxFill.remove();
+    checkboxMark.remove();
+    accentProbe.remove();
+  },
+};
+
+export const NotebookTintDark: Story = {
+  tags: ["vitest-ci"],
+  args: { detailTint: "#1e3a5f" },
+  play: async ({ canvasElement }) => {
+    const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
+    expect(workspace).toBeTruthy();
+    expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-contrast-fg").trim()).toBe(
+      "var(--color-cream)",
+    );
+    const chip = canvasElement.querySelector(
+      ".note-detail-view__tag-group .tag",
+    ) as HTMLElement | null;
+    expect(chip).toBeTruthy();
+    const cream = document.createElement("span");
+    cream.style.color = "var(--color-cream)";
+    workspace!.appendChild(cream);
+    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(cream).color);
+    const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
+    expect(editor).toBeTruthy();
+    const mark = document.createElement("span");
+    mark.style.color = "var(--checkbox-checked-fg)";
+    editor!.appendChild(mark);
+    expect(getComputedStyle(mark).color).toBe(getComputedStyle(cream).color);
+    mark.remove();
+    cream.remove();
   },
 };
 
@@ -147,9 +211,9 @@ export const ReadOnly: Story = {
     expect(workspace).toBeTruthy();
     expect(chip).toBeTruthy();
     const probe = document.createElement("span");
-    probe.style.backgroundColor = "var(--notes-tag-selected-bg)";
-    probe.style.color = "var(--notes-tag-selected-fg)";
-    probe.style.borderColor = "var(--notes-tag-selected-border)";
+    probe.style.backgroundColor = "var(--note-detail-tag-bg)";
+    probe.style.color = "var(--note-detail-tag-fg)";
+    probe.style.borderColor = "var(--note-detail-tag-border)";
     workspace!.appendChild(probe);
     const chipStyle = getComputedStyle(chip!);
     const probeStyle = getComputedStyle(probe);

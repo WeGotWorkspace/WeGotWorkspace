@@ -8,7 +8,12 @@
  * Notes icon / webmanifest). Sidebar selected chips stay that yellow on ink
  * (WCAG AA). Detail pane tints from `--notes-detail-tint` (runtime notebook
  * color) at Calendar event-card light wash (11%). Empty / multi-select leave
- * the var unset (`transparent` fallback) so the pane stays cream.
+ * the var unset (`transparent` fallback) so the pane stays cream. When a
+ * note is open, `--notes-detail-accent` binds to that tint so editor
+ * checkboxes, CATEGORIES chip fill, and selected Star/Archive match the
+ * notebook color — not the product yellow. Chip text/remove and the editor
+ * check mark share `--notes-detail-contrast-fg` (ink or cream from
+ * `notebookContrastFg`), never hardcoded yellow or ink.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
@@ -21,6 +26,16 @@
    * mix the product accent toward `--color-ink` (the existing yellow contrast pair).
    */
   --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 70%, var(--color-ink));
+  /*
+   * Detail-pane accent: live notebook color when `--notes-detail-tint` is set
+   * (single open note); product yellow when unset (empty / multi-select).
+   */
+  --notes-detail-accent: var(--notes-detail-tint, var(--notes-accent));
+  --notes-detail-accent-strong: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 70%,
+    var(--color-ink)
+  );
   /*
    * Calendar event cards: `surfaceTint(color, 11)` → srgb 11% on surface.
    * Notes: same 11% in oklab on cream. `--notes-detail-tint` is set from TSX
@@ -55,16 +70,21 @@
   /* Soft yellow fill needs ink check (white on yellow fails WCAG UI 3:1). */
   --list-item-checkbox-icon-color: var(--color-ink);
   --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
+  /* Workspace-level yellow — sidebar collection rows override with row color.
+   * Detail editor task-lists bind `--notes-detail-accent` below. */
   --checkbox-checked-bg: var(--notes-accent);
   --checkbox-checked-border: var(--notes-accent);
   --checkbox-checked-fg: var(--color-ink);
-  /* Selected sidebar tag chip — source of truth for assigned detail tags. */
+  /* Selected sidebar tag chip — ink + product yellow. Detail CATEGORIES chips
+   * fill with the notebook color. `--notes-detail-contrast-fg` is set from
+   * TSX (ink vs cream) and shared with editor check marks. Nested
+   * `.notes-workspace` inherits it so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--color-ink);
   --notes-tag-selected-fg: var(--notes-accent);
   --notes-tag-selected-border: var(--color-ink);
-  --note-detail-tag-bg: var(--notes-tag-selected-bg);
-  --note-detail-tag-fg: var(--notes-tag-selected-fg);
-  --note-detail-tag-border: var(--notes-tag-selected-border);
+  --note-detail-tag-bg: var(--notes-detail-accent);
+  --note-detail-tag-fg: var(--notes-detail-contrast-fg, var(--color-ink));
+  --note-detail-tag-border: var(--notes-detail-accent);
   --note-detail-title-font-family: var(--font-serif);
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
@@ -74,6 +94,16 @@
 /* Detail scroll shares the notebook-tint pane token (unset tint → cream). */
 .notes-workspace .workspace-detail-pane__scroll {
   background-color: var(--notes-detail-body-bg);
+}
+
+/*
+ * Notes detail editor task-list only — not Docs, not sidebar 16px collection
+ * checkboxes (those set `--checkbox-checked-*` from `--collection-row-color`).
+ */
+.notes-workspace .note-text-editor-body {
+  --checkbox-checked-bg: var(--notes-detail-accent);
+  --checkbox-checked-border: var(--notes-detail-accent);
+  --checkbox-checked-fg: var(--notes-detail-contrast-fg, var(--note-detail-tag-fg));
 }
 
 /*
@@ -156,21 +186,20 @@
 
 /*
  * Selected Star / Archive: Calendar Today chrome remapped to notes tokens.
- * Wash stays accent 18%/24% on cream. Icon/label uses `--notes-accent-strong`
- * (Today’s `--calendar-accent-strong` role) — not action-bar ink-70% grey,
- * not raw `--color-ink`. Idle chips keep action-bar muted; Today idle is
- * also default subtle grey, not accent.
+ * Wash stays accent 18%/24% on cream. Icon/label uses the detail strong
+ * token (notebook color when a note is open; product yellow when unset).
+ * Idle chips keep action-bar muted.
  */
 .notes-workspace .action-bar .button--variant-subtle.icon-button--active {
-  --button-active-color: var(--notes-accent-strong);
+  --button-active-color: var(--notes-detail-accent-strong);
   --button-subtle-background: color-mix(
     in oklab,
-    var(--notes-accent) 18%,
+    var(--notes-detail-accent) 18%,
     var(--color-cream, #ffffff)
   );
   --button-subtle-hover-background: color-mix(
     in oklab,
-    var(--notes-accent) 24%,
+    var(--notes-detail-accent) 24%,
     var(--color-cream, #ffffff)
   );
 }
@@ -178,7 +207,7 @@
 /* Lucide icons are stroke-based; generic icon-button--active fill blobs them. */
 .notes-workspace .action-bar .button--variant-subtle.icon-button--active .button__icon > svg {
   fill: none;
-  color: var(--notes-accent-strong);
+  color: var(--notes-detail-accent-strong);
 }
 
 .notes-workspace .note-detail-view__tag-group {

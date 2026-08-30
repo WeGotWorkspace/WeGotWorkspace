@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_NOTEBOOK_COLOR,
+  notebookContrastFg,
   notebookDisplayColor,
   notebookDotColor,
+  notesDetailTintStyle,
 } from "@/notes-core/src/notes-notebook-color";
 
 describe("notebookDotColor", () => {
@@ -45,5 +47,35 @@ describe("notebookDisplayColor", () => {
       notebookDisplayColor({ notebook: "Gone", notebookId: "missing" }, collections),
     ).toBeUndefined();
     expect(notebookDisplayColor({ notebook: "Gone" }, [])).toBeUndefined();
+  });
+});
+
+describe("notebookContrastFg", () => {
+  it("uses ink on a light notebook fill", () => {
+    expect(notebookContrastFg("#fde68a")).toBe("var(--color-ink)");
+    expect(notebookContrastFg("#d4bc72")).toBe("var(--color-ink)");
+  });
+
+  it("uses cream on a dark notebook fill", () => {
+    expect(notebookContrastFg("#1e3a5f")).toBe("var(--color-cream)");
+    expect(notebookContrastFg("#042a22")).toBe("var(--color-cream)");
+  });
+
+  it("falls back to ink when the hex is missing", () => {
+    expect(notebookContrastFg("")).toBe("var(--color-ink)");
+  });
+});
+
+describe("notesDetailTintStyle", () => {
+  it("binds chip fill tint and contrast-safe fg for light vs dark notebooks", () => {
+    expect(notesDetailTintStyle(undefined)).toBeUndefined();
+    expect(notesDetailTintStyle("#fde68a")).toEqual({
+      ["--notes-detail-tint"]: "#fde68a",
+      ["--notes-detail-contrast-fg"]: "var(--color-ink)",
+    });
+    expect(notesDetailTintStyle("#1e3a5f")).toEqual({
+      ["--notes-detail-tint"]: "#1e3a5f",
+      ["--notes-detail-contrast-fg"]: "var(--color-cream)",
+    });
   });
 });

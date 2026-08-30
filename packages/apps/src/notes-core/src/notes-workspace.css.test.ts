@@ -65,9 +65,23 @@ describe("notes workspace change-notebook dialog", () => {
 });
 
 describe("notes workspace editor checkboxes", () => {
-  it("maps task-item marks to notes accent + ink check", () => {
-    expect(css).toMatch(/--checkbox-checked-bg:\s*var\(--notes-accent\)/);
-    expect(css).toMatch(/--checkbox-checked-fg:\s*var\(--color-ink\)/);
+  it("maps detail editor fill to notebook accent and the check mark to contrast fg", () => {
+    expect(css).toMatch(
+      /--notes-detail-accent:\s*var\(--notes-detail-tint,\s*var\(--notes-accent\)\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-bg:\s*var\(--notes-detail-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-border:\s*var\(--notes-detail-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.note-text-editor-body \{[\s\S]*--checkbox-checked-fg:\s*var\(--notes-detail-contrast-fg,\s*var\(--note-detail-tag-fg\)\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \{[\s\S]*--checkbox-checked-bg:\s*var\(--notes-accent\)/,
+    );
+    expect(css).toMatch(/\.notes-workspace \{[\s\S]*--checkbox-checked-fg:\s*var\(--color-ink\)/);
     expect(css).not.toMatch(/--checkbox-size:/);
   });
 });
@@ -87,15 +101,23 @@ describe("notes workspace last-edited footer chip", () => {
 });
 
 describe("notes workspace selected tag chips", () => {
-  it("paints detail assigned tags with the selected sidebar chip tokens", () => {
+  it("keeps sidebar selected chips on ink + gold and detail chips on notebook fill", () => {
     expect(css).toMatch(/--notes-tag-selected-bg:\s*var\(--color-ink\)/);
     expect(css).toMatch(/--notes-tag-selected-fg:\s*var\(--notes-accent\)/);
     expect(css).toMatch(/--notes-tag-selected-border:\s*var\(--color-ink\)/);
-    expect(css).toMatch(/--note-detail-tag-bg:\s*var\(--notes-tag-selected-bg\)/);
-    expect(css).toMatch(/--note-detail-tag-fg:\s*var\(--notes-tag-selected-fg\)/);
-    expect(css).toMatch(/--note-detail-tag-border:\s*var\(--notes-tag-selected-border\)/);
+    expect(css).toMatch(/--note-detail-tag-bg:\s*var\(--notes-detail-accent\)/);
+    expect(css).toMatch(
+      /--note-detail-tag-fg:\s*var\(--notes-detail-contrast-fg,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).toMatch(/--note-detail-tag-border:\s*var\(--notes-detail-accent\)/);
+    expect(css).not.toMatch(/--note-detail-tag-fg:\s*var\(--notes-tag-selected-fg\)/);
+    expect(css).not.toMatch(/--note-detail-tag-fg:\s*var\(--notes-detail-accent\)/);
+    expect(css).not.toMatch(/--note-detail-tag-fg:\s*var\(--notes-accent\)/);
     expect(css).toMatch(
       /\.notes-workspace \.notes-sidebar-tags__item--selected \.tag,[\s\S]*background-color:\s*var\(--notes-tag-selected-bg\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.notes-sidebar-tags__item--selected \.tag,[\s\S]*color:\s*var\(--notes-tag-selected-fg\)/,
     );
     expect(css).toMatch(
       /\.notes-workspace \.note-detail-view__tag-group \{[\s\S]*--tag-bg:\s*var\(--note-detail-tag-bg\)/,
@@ -110,28 +132,32 @@ describe("notes workspace selected tag chips", () => {
       /\.notes-workspace \.note-detail-view__tag-group \.tag \{[\s\S]*border-color:\s*var\(--note-detail-tag-border\)/,
     );
     expect(css).not.toMatch(/--note-detail-tag-bg:\s*var\(--notes-accent\)/);
+    expect(css).not.toMatch(/--note-detail-tag-bg:\s*var\(--color-ink\)/);
   });
 });
 
 describe("notes workspace action-bar selected Star/Archive", () => {
-  it("colors selected action-bar icons with notes accent-strong, not grey/ink", () => {
+  it("colors selected action-bar icons with --notes-detail-accent, not leftover gold", () => {
     expect(css).toMatch(
       /--notes-accent-strong:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 70%,\s*var\(--color-ink\)\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--notes-accent-strong\)/,
+      /--notes-detail-accent-strong:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 70%,\s*var\(--color-ink\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--notes-accent\) 18%/,
+      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--notes-detail-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--notes-accent\) 24%/,
+      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--notes-detail-accent\) 18%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--notes-detail-accent\) 24%/,
     );
     expect(css).toMatch(
       /\.notes-workspace[\s\S]*\.action-bar[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.action-bar[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--notes-accent-strong\)/,
+      /\.notes-workspace[\s\S]*\.action-bar[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--notes-detail-accent-strong\)/,
     );
     expect(css).not.toMatch(/var\(--calendar-accent/);
     expect(css).not.toMatch(
@@ -160,7 +186,7 @@ describe("notes workspace detail notebook tint", () => {
 
   it("sets --notes-detail-tint from the live notebook color for a single note only", () => {
     expect(tsx).toMatch(/notebookDisplayColor\(active, notebookCollections\)/);
-    expect(tsx).toMatch(/\["--notes-detail-tint"\]:\s*notesDetailTint/);
+    expect(tsx).toMatch(/notesDetailTintStyle\(notesDetailTint\)/);
     expect(tsx).toMatch(/const notesDetailTint =\s*showSingleNoteDetail && active/);
   });
 });

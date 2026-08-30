@@ -1,6 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import type { CSSProperties } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { notesDetailTintStyle } from "@/notes-core/src/notes-notebook-color";
 import "@/notes-core/src/notes-workspace.css";
 
 afterEach(() => cleanup());
@@ -9,7 +10,7 @@ function renderPane(tint?: string) {
   return render(
     <div
       className="notes-workspace"
-      style={tint ? ({ ["--notes-detail-tint"]: tint } as CSSProperties) : undefined}
+      style={notesDetailTintStyle(tint) as CSSProperties | undefined}
     >
       <div className="workspace-detail-pane">
         <div className="workspace-detail-pane__scroll" />
@@ -31,13 +32,19 @@ describe("notes workspace detail tint (computed)", () => {
     expect(getComputedStyle(root).getPropertyValue("--notes-detail-tint").trim()).toBe("#0ea5e9");
   });
 
-  it("resolves --notes-accent to a quieter gold than #f6d176", () => {
-    const { container } = renderPane();
-    const root = container.querySelector(".notes-workspace") as HTMLElement;
-    const probe = document.createElement("span");
-    probe.style.color = "var(--notes-accent)";
-    root.appendChild(probe);
-    expect(getComputedStyle(probe).color).not.toBe("rgb(246, 209, 118)");
-    probe.remove();
+  it("sets chip fg to ink on a light notebook and cream on a dark notebook", () => {
+    const light = renderPane("#fde68a");
+    const lightRoot = light.container.querySelector(".notes-workspace") as HTMLElement;
+    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).toBe(
+      "var(--color-ink)",
+    );
+    light.unmount();
+
+    const dark = renderPane("#1e3a5f");
+    const darkRoot = dark.container.querySelector(".notes-workspace") as HTMLElement;
+    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).toBe(
+      "var(--color-cream)",
+    );
+    dark.unmount();
   });
 });
