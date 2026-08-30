@@ -281,6 +281,19 @@ describe("notes workspace detail notebook tint", () => {
   });
 });
 
+describe("notes workspace selected list row", () => {
+  it("paints selected/active list rows with the sidebar surface, not an accent wash", () => {
+    expect(css).toMatch(/--list-item-selected-bg:\s*var\(--app-sidebar-bg\)/);
+    expect(css).toMatch(/--list-item-active-bg:\s*var\(--app-sidebar-bg\)/);
+    expect(css).toMatch(/--app-sidebar-bg:\s*var\(--notes-sidebar\)/);
+    expect(css).not.toMatch(/--list-item-selected-bg:\s*color-mix/);
+    expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--notes-accent/);
+    expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--note-detail-sheet-bg/);
+    expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--notes-detail-tint/);
+    expect(css).not.toMatch(/--list-item-active-bg:\s*color-mix/);
+  });
+});
+
 describe("notes workspace accent tokens", () => {
   it("uses brand warm yellow #f6d176 for chrome accents, mixed 12% onto cream", () => {
     const accent = css.match(

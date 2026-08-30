@@ -66,6 +66,13 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
+  /*
+   * Open / selected list row: same fill as `.app-sidebar` (`--app-sidebar-bg` →
+   * `--notes-sidebar`). Not a second accent wash, not `--notes-accent`, not
+   * the notebook sheet tint.
+   */
+  --list-item-selected-bg: var(--app-sidebar-bg);
+  --list-item-active-bg: var(--app-sidebar-bg);
   /* Soft yellow fill needs ink check (white on yellow fails WCAG UI 3:1). */
   --list-item-checkbox-icon-color: var(--color-ink);
   --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
