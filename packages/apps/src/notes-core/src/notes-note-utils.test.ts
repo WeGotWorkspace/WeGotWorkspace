@@ -916,6 +916,20 @@ describe("notebookDisplayName", () => {
       ]),
     ).toBe("Work");
   });
+
+  it("resolves a group collection when the note still stores the collection id as the name", () => {
+    expect(
+      notebookDisplayName(
+        { notebook: "group-administrators", notebookId: "group-administrators" },
+        [{ id: "group-administrators", name: "Administratorss" }],
+      ),
+    ).toBe("Administratorss");
+    expect(
+      notebookDisplayName({ notebook: "group-administrators" }, [
+        { id: "group-administrators", name: "Administratorss" },
+      ]),
+    ).toBe("Administratorss");
+  });
 });
 
 describe("notesWithRenamedNotebook", () => {
@@ -975,18 +989,36 @@ describe("noteListLocationLabel", () => {
     ).toBe("Shared with me");
   });
 
-  it("returns group slug for group-scoped notes (single notebook per group)", () => {
+  it("returns the collection display name for group notebooks, not the group slug", () => {
     expect(
       noteListLocationLabel(
         {
           ...sampleNote,
-          notebook: "General",
+          notebook: "group-administrators",
+          notebookId: "group-administrators",
           scope: "group",
           groupSlug: "administrators",
         },
         defaultNotesLabels,
+        [{ id: "group-administrators", name: "Administratorss" }],
       ),
-    ).toBe("administrators");
+    ).toBe("Administratorss");
+  });
+
+  it("does not fall back to a group-… slug when the collection display name exists", () => {
+    expect(
+      noteListLocationLabel(
+        {
+          ...sampleNote,
+          notebook: "group-administrators",
+          notebookId: "group-administrators",
+          scope: "group",
+          groupSlug: "administrators",
+        },
+        defaultNotesLabels,
+        [{ id: "group-administrators", name: "Administratorss" }],
+      ),
+    ).not.toMatch(/^group-/);
   });
 
   it("sharedNotebookLabel uses group name for membership notebooks", () => {

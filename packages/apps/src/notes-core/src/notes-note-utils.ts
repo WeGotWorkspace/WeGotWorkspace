@@ -773,7 +773,9 @@ export function notebookDisplayName(
     if (byId?.name.trim()) return byId.name;
   }
   const byName = collections.find((item) => item.name === note.notebook);
-  return byName?.name ?? note.notebook;
+  if (byName?.name.trim()) return byName.name;
+  const byStoredId = collections.find((item) => item.id === note.notebook);
+  return byStoredId?.name ?? note.notebook;
 }
 
 /** Rewrite denormalized `note.notebook` after a collection rename. */
@@ -802,21 +804,18 @@ export function notesWithRenamedNotebook(
 }
 
 /**
- * List/detail location line: notebook name for owned notes, group name for
- * group-scoped notes, grantor username for Shared-with-me file grants.
+ * List/detail location line: live collection display name (same as the sidebar
+ * row / Tasks `taskListName`), grantor username for Shared-with-me file grants.
+ * Group-membership notebooks are My notebooks — never the `group-…` id/slug.
  */
 export function noteListLocationLabel(
-  note: Pick<Note, "notebook" | "notebookId" | "sharedInbox" | "sharedBy" | "scope" | "groupSlug">,
+  note: Pick<Note, "notebook" | "notebookId" | "sharedInbox" | "sharedBy">,
   labels: Pick<NotesUILabels, "sharedBy" | "sidebarSharedWithMe">,
   collections: readonly { id: string; name: string }[] = [],
 ): string | null {
   if (note.sharedInbox) {
     const who = note.sharedBy?.trim();
     return who ? labels.sharedBy(who) : labels.sidebarSharedWithMe;
-  }
-  if (note.scope === "group") {
-    const group = note.groupSlug?.trim();
-    if (group) return group;
   }
   const notebook = notebookDisplayName(note, collections).trim();
   return notebook || null;

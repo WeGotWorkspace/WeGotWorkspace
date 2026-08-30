@@ -6,7 +6,8 @@ import {
   NotesNotebookSelect,
   type NotesNotebookSelectItem,
 } from "@/notes-core/src/notes-notebook-select";
-import { noteListLocationLabel, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
+import { notebookDisplayName, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
+import { notebookDisplayColor } from "@/notes-core/src/notes-notebook-color";
 import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
 
 type NotesDetailActionBarProps = {
@@ -24,7 +25,7 @@ type NotesDetailActionBarProps = {
   toggleArchive: (id: string) => void;
   /** When true, renders collab presence ahead of note actions (requires NoteCollabSession). */
   showCollabChrome?: boolean;
-  /** Notebook `calendarcolor` for the switcher (same mark as CollectionSidebarRow). */
+  /** Notebook `calendarcolor` for the switcher (same colored notebook icon as list/sidebar). */
   notebookColor?: string | null;
   /**
    * View-only share: disable move / star (body+tags gated separately
@@ -68,10 +69,12 @@ export function NotesDetailActionBar({
   const showStar = noteShowsStarControls(active);
   const archiveLocked = !canArchive;
   // Personal shares: keep grantor username on the list row only — detail switcher
-  // shows notebook / Shared with me, not the username chip.
+  // shows notebook / Shared with me, not the username chip. Group notebooks use
+  // the collection display name (same as the sidebar), never the group-… slug.
   const locationLabel = sharedInbox
     ? active.notebook.trim() || labels.sidebarSharedWithMe
-    : noteListLocationLabel(active, labels, notebooks) || labels.toolbarMoveToNotebook;
+    : notebookDisplayName(active, notebooks).trim() || labels.toolbarMoveToNotebook;
+  const selectColor = notebookColor ?? notebookDisplayColor(active, notebooks);
 
   const rightActions = [
     ...(showStar
@@ -108,7 +111,7 @@ export function NotesDetailActionBar({
             value={{
               id: active.notebookId,
               name: locationLabel,
-              color: notebookColor,
+              color: selectColor,
             }}
             labels={labels}
             ariaLabel={notebookLocked ? locationLabel : labels.toolbarMoveToNotebook}

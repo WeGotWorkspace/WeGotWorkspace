@@ -61,6 +61,31 @@ describe("NotesNotebookSelect helpers", () => {
     expect(notebookSelectValueForNotes([], undefined, notebooks)).toEqual({ name: "" });
   });
 
+  it("resolves a group collection display name when the note still stores the collection id", () => {
+    const groupNotebooks = [
+      { id: "group-administrators", name: "Administratorss", color: "#ea8c72" },
+    ];
+    expect(
+      notebookSelectValueForNotes(
+        [{ id: "n-1", notebook: "group-administrators", notebookId: "group-administrators" }],
+        ["n-1"],
+        groupNotebooks,
+      ),
+    ).toEqual({ id: "group-administrators", name: "Administratorss", color: "#ea8c72" });
+    expect(
+      notebooksWithCurrent(groupNotebooks, {
+        id: "group-administrators",
+        name: "group-administrators",
+      }).map((item) => item.name),
+    ).toEqual(["Administratorss"]);
+    expect(
+      resolveNotebookSelectValue(groupNotebooks, {
+        id: "group-administrators",
+        name: "group-administrators",
+      }),
+    ).toBe("group-administrators");
+  });
+
   it("compares notebook identity by id when both sides have one", () => {
     expect(
       notebookSelectionEquals(
@@ -93,7 +118,7 @@ describe("NotesNotebookSelect", () => {
     cleanup();
   });
 
-  it("lists notebooks with sidebar color dots, the current notebook selected, and Create after a separator", () => {
+  it("lists notebooks with colored notebook icons, the current notebook selected, and Create after a separator", () => {
     const onNotebookChange = vi.fn();
     const onCreateNotebook = vi.fn();
     const { container } = render(
@@ -118,10 +143,9 @@ describe("NotesNotebookSelect", () => {
       defaultNotesLabels.addNotebook,
     ]);
     expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
-    expect(container.querySelectorAll(".collection-sidebar-row__dot")).toHaveLength(1);
-    expect(document.querySelectorAll('[role="listbox"] .collection-sidebar-row__dot')).toHaveLength(
-      3,
-    );
+    expect(container.querySelectorAll(".notes-notebook-color-icon")).toHaveLength(1);
+    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-icon')).toHaveLength(3);
+    expect(document.querySelector(".collection-sidebar-row__dot")).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(
       "checked",
     );

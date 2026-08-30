@@ -105,6 +105,44 @@ describe("NotesListPanel notebook labels", () => {
     expect(screen.getByText("Work")).toBeTruthy();
     expect(screen.queryByText("Drafts")).toBeNull();
   });
+
+  it("shows the group collection display name and color, not the group-… slug", () => {
+    const { container } = render(
+      <ListHarness
+        notes={[
+          {
+            ...baseNote,
+            id: "n-group",
+            notebook: "group-administrators",
+            notebookId: "group-administrators",
+            scope: "group",
+            groupSlug: "administrators",
+          },
+        ]}
+        notebookCollections={[
+          {
+            id: "group-administrators",
+            name: "Administratorss",
+            color: "#ea8c72",
+            scope: "group",
+            groupSlug: "administrators",
+            isSharee: false,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Administratorss")).toBeTruthy();
+    expect(screen.queryByText("group-administrators")).toBeNull();
+    expect(screen.queryByText("administrators")).toBeNull();
+    const location = container.querySelector(".notes-list-panel__notebook");
+    expect(location).toBeTruthy();
+    expect((location as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
+      "#ea8c72",
+    );
+    expect(location!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(location!.querySelector(".collection-sidebar-row__dot")).toBeNull();
+    expect(location!.querySelector(".notes-list-panel__notebook-dot")).toBeNull();
+  });
 });
 
 describe("NotesListPanel selection paint", () => {
@@ -184,7 +222,8 @@ describe("NotesListPanel access chips", () => {
     );
     const meta = container.querySelector(".notes-list-panel__notebook");
     expect(meta).toBeTruthy();
-    expect(meta!.querySelector(".collection-sidebar-row__dot")).toBeTruthy();
+    expect(meta!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(meta!.querySelector(".collection-sidebar-row__dot")).toBeNull();
     expect(meta!.querySelector(".notes-list-panel__notebook-name")?.textContent).toBe("bob");
     expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
     expect(container.querySelector(".tag")).toBeNull();

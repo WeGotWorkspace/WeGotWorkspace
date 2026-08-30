@@ -7,7 +7,8 @@ export const NOTES_CREAM_HEX = "#ffffff";
 
 /**
  * Calendar event-card light wash (`surfaceTint(color, 11)` in srgb).
- * Notes detail uses the same percentage in oklab on cream.
+ * Paper card (`--note-detail-sheet-bg`) uses the same percentage in oklab
+ * on cream — a very light notebook tint, not the full collection color.
  */
 export const NOTES_DETAIL_TINT_PERCENT = 11;
 
@@ -29,7 +30,9 @@ export function notebookDisplayColor(
     if (byId) return notebookDotColor(byId);
   }
   const byName = collections.find((item) => item.name === note.notebook);
-  return byName ? notebookDotColor(byName) : undefined;
+  if (byName) return notebookDotColor(byName);
+  const byStoredId = collections.find((item) => item.id === note.notebook);
+  return byStoredId ? notebookDotColor(byStoredId) : undefined;
 }
 
 function hexChannel(value: number): number {
@@ -55,8 +58,9 @@ function contrastRatio(background: string, foreground: string): number {
 }
 
 /**
- * WCAG contrast pick for text on a notebook-colored fill.
- * Returns the ink/cream CSS tokens (not gold).
+ * WCAG contrast pick for a mark on a full-strength notebook fill
+ * (checked task-list boxes). Title/body use `--notes-detail-contrast-fg`
+ * from workspace CSS (ink mixed onto the light sheet).
  */
 export function notebookContrastFg(background: string): string {
   if (!/^#[0-9A-F]{6}$/i.test(background.trim())) return "var(--color-ink)";
@@ -65,13 +69,19 @@ export function notebookContrastFg(background: string): string {
   return cream > ink ? "var(--color-cream)" : "var(--color-ink)";
 }
 
-/** Inline vars for a single open note — tint + contrast-safe chip/check mark. */
+export type NotesDetailTintStyle = {
+  ["--notes-detail-tint"]: string;
+  ["--notes-detail-check-fg"]: string;
+};
+
+/** Inline vars for a single open note — live notebook hex + check-mark contrast. */
 export function notesDetailTintStyle(
   tint: string | undefined,
-): { ["--notes-detail-tint"]: string; ["--notes-detail-contrast-fg"]: string } | undefined {
+): NotesDetailTintStyle | undefined {
   if (!tint) return undefined;
   return {
     ["--notes-detail-tint"]: tint,
-    ["--notes-detail-contrast-fg"]: notebookContrastFg(tint),
+    // Checkmark sits on a full-accent checkbox, so pick ink vs cream from the hex.
+    ["--notes-detail-check-fg"]: notebookContrastFg(tint),
   };
 }

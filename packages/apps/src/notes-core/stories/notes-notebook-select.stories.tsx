@@ -72,6 +72,8 @@ export const Default: Story = {
       defaultNotesLabels.addNotebook,
     ]);
     await expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
+    await expect(document.querySelectorAll(".notes-notebook-color-icon").length).toBeGreaterThan(0);
+    await expect(document.querySelector(".collection-sidebar-row__dot")).toBeNull();
     await expect(screen.getByRole("option", { name: "Drafts" })).toHaveAttribute(
       "data-state",
       "checked",

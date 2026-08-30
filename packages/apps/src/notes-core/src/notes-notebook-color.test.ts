@@ -48,6 +48,17 @@ describe("notebookDisplayColor", () => {
     ).toBeUndefined();
     expect(notebookDisplayColor({ notebook: "Gone" }, [])).toBeUndefined();
   });
+
+  it("uses the group collection color when the note stores the collection id as the name", () => {
+    const group = [{ id: "group-administrators", name: "Administratorss", color: "#ea8c72" }];
+    expect(
+      notebookDisplayColor(
+        { notebook: "group-administrators", notebookId: "group-administrators" },
+        group,
+      ),
+    ).toBe("#ea8c72");
+    expect(notebookDisplayColor({ notebook: "group-administrators" }, group)).toBe("#ea8c72");
+  });
 });
 
 describe("notebookContrastFg", () => {
@@ -67,15 +78,16 @@ describe("notebookContrastFg", () => {
 });
 
 describe("notesDetailTintStyle", () => {
-  it("binds chip fill tint and contrast-safe fg for light vs dark notebooks", () => {
+  it("binds the notebook hex and check-mark contrast, not full-ink sheet text", () => {
     expect(notesDetailTintStyle(undefined)).toBeUndefined();
     expect(notesDetailTintStyle("#fde68a")).toEqual({
       ["--notes-detail-tint"]: "#fde68a",
-      ["--notes-detail-contrast-fg"]: "var(--color-ink)",
+      ["--notes-detail-check-fg"]: "var(--color-ink)",
     });
     expect(notesDetailTintStyle("#1e3a5f")).toEqual({
       ["--notes-detail-tint"]: "#1e3a5f",
-      ["--notes-detail-contrast-fg"]: "var(--color-cream)",
+      ["--notes-detail-check-fg"]: "var(--color-cream)",
     });
+    expect(notesDetailTintStyle("#fde68a")).not.toHaveProperty("--notes-detail-contrast-fg");
   });
 });

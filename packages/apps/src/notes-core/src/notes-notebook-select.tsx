@@ -9,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/select";
+import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
 import { cn } from "@/lib/utils";
-import "@/collection-sidebar/src/collection-sidebar-row.css";
 import "@/notes-core/src/notes-notebook-select.css";
 
 /** Sentinel so Create stays out of the selected notebook value (Calendar Select pattern). */
@@ -47,11 +47,14 @@ export function notebookSelectValueForNotes(
   const sample = ids?.length ? notes.find((note) => note.id === ids[0]) : undefined;
   if (!sample) return { name: "" };
   const match = notebooks.find(
-    (notebook) => notebook.id === sample.notebookId || notebook.name === sample.notebook,
+    (notebook) =>
+      notebook.id === sample.notebookId ||
+      notebook.id === sample.notebook ||
+      notebook.name === sample.notebook,
   );
   return {
     id: sample.notebookId ?? match?.id,
-    name: sample.notebook,
+    name: match?.name ?? sample.notebook,
     color: match?.color,
   };
 }
@@ -61,7 +64,14 @@ export function notebooksWithCurrent(
   current: NotesNotebookSelectValue,
 ): NotesNotebookSelectItem[] {
   if (!current.name.trim()) return notebooks;
-  if (notebooks.some((notebook) => notebook.id === current.id || notebook.name === current.name)) {
+  if (
+    notebooks.some(
+      (notebook) =>
+        notebook.id === current.id ||
+        notebook.id === current.name ||
+        notebook.name === current.name,
+    )
+  ) {
     return notebooks;
   }
   return [{ id: current.id ?? current.name, name: current.name, color: current.color }, ...notebooks];
@@ -79,7 +89,10 @@ export function resolveNotebookSelectValue(
   notebooks: NotesNotebookSelectItem[],
   current: { id?: string; name: string },
 ): string {
-  const match = notebooks.find((notebook) => notebook.id === current.id || notebook.name === current.name);
+  const match = notebooks.find(
+    (notebook) =>
+      notebook.id === current.id || notebook.id === current.name || notebook.name === current.name,
+  );
   return match?.id ?? current.id ?? current.name;
 }
 
@@ -93,12 +106,11 @@ export function pendingMoveAfterNotebookCreate(
 
 function NotebookSelectOption({ notebook }: { notebook: NotesNotebookSelectItem }) {
   return (
-    <span className="notes-notebook-select__option">
-      <span
-        className="collection-sidebar-row__dot"
-        style={{ "--collection-row-color": notebookDotColor(notebook) } as CSSProperties}
-        aria-hidden
-      />
+    <span
+      className="notes-notebook-select__option"
+      style={{ "--collection-row-color": notebookDotColor(notebook) } as CSSProperties}
+    >
+      <NotesNotebookColorIcon />
       <span className="notes-notebook-select__name">{notebook.name}</span>
     </span>
   );

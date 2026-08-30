@@ -253,7 +253,10 @@ export function NotesWorkspace({
     if (!active) return null;
     return (
       [...ownedNotebooks, ...sharedNotebookRows].find(
-        (item) => item.id === active.notebookId || item.name === active.notebook,
+        (item) =>
+          item.id === active.notebookId ||
+          item.id === active.notebook ||
+          item.name === active.notebook,
       ) ?? null
     );
   }, [active, ownedNotebooks, sharedNotebookRows]);

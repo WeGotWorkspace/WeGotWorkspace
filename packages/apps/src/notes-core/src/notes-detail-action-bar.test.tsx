@@ -279,6 +279,40 @@ describe("NotesDetailActionBar", () => {
     );
   });
 
+  it("shows only the group collection display name and color, not a mashed group-… slug", () => {
+    const group: Note = {
+      ...owned,
+      id: "g-1",
+      notebook: "group-administrators",
+      notebookId: "group-administrators",
+      scope: "group",
+      groupSlug: "administrators",
+    };
+    const groupNotebooks: NotesNotebookSelectItem[] = [
+      { id: "group-administrators", name: "Administratorss", color: "#ea8c72" },
+    ];
+    const { container } = renderBar(
+      <NotesDetailActionBar
+        active={group}
+        {...barProps}
+        notebooks={groupNotebooks}
+        notebookColor="#ea8c72"
+      />,
+    );
+
+    const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
+    expect(move.textContent).toContain("Administratorss");
+    expect(move.textContent).not.toContain("group-administrators");
+    expect(move.textContent).not.toMatch(/group-administrators.*Administratorss|Administratorss.*group-administrators/);
+    const option = container.querySelector(".notes-notebook-select .notes-notebook-select__option");
+    expect(option).toBeTruthy();
+    expect((option as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
+      "#ea8c72",
+    );
+    expect(option!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(container.querySelector(".notes-notebook-select .collection-sidebar-row__dot")).toBeNull();
+  });
+
   it("disables notebook switch when readOnly (view-only sharee)", () => {
     const onMoveToNotebook = vi.fn();
     const onCreateNotebook = vi.fn();

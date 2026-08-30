@@ -32,11 +32,11 @@ import {
   noteShowsTags,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
-import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import "@/collection-sidebar/src/collection-sidebar-row.css";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
@@ -69,12 +69,11 @@ function NotesListLocation({
   const location = noteListLocationLabel(note, labels, notebookCollections);
   if (!location) return null;
   return (
-    <span className="notes-list-panel__notebook">
-      <span
-        className="collection-sidebar-row__dot notes-list-panel__notebook-dot"
-        style={{ "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties}
-        aria-hidden
-      />
+    <span
+      className="notes-list-panel__notebook"
+      style={{ "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties}
+    >
+      <NotesNotebookColorIcon className="notes-list-panel__notebook-icon" />
       <span className="notes-list-panel__notebook-name">{location}</span>
     </span>
   );
@@ -219,9 +218,7 @@ export function NotesListPanel({
             const showShared = noteShowsSharedBadge(note);
             const showViewOnly = noteShowsViewOnlyBadge(note);
             const canArchive = noteAllowsStructureManage(note);
-            const notebook = notebookCollections.find(
-              (item) => item.id === note.notebookId || item.name === note.notebook,
-            );
+            const notebookColor = notebookDisplayColor(note, notebookCollections);
             const excerpt = noteListExcerpt(note);
             const tagsRow = showTags ? notesListItemTags(note.tags) : null;
             return (
@@ -233,7 +230,7 @@ export function NotesListPanel({
                   <NotesListLocation
                     note={note}
                     labels={L}
-                    notebookColor={notebook?.color}
+                    notebookColor={notebookColor}
                     notebookCollections={notebookCollections}
                   />
                 }
