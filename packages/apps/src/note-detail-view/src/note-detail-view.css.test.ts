@@ -15,6 +15,10 @@ describe("note-detail-view title CSS", () => {
     expect(styles).toMatch(/:not\(\.note-detail-view__title\)/);
   });
 
+  it("trims title leading with text-box: auto", () => {
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*auto;/);
+  });
+
   it("keeps the title label visually hidden", () => {
     expect(css).toMatch(/\.note-detail-view__title-label \{[\s\S]*sr-only/);
   });

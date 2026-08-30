@@ -7,12 +7,14 @@
 /**
  * Document-title scale (mail / detail-header: text-3xl → md:text-4xl).
  * Exempted from the global iOS 1rem input floor in styles.css.
+ * Tailwind has no `text-box-*` utility; trim matches `.view-header__title`.
  */
 .note-detail-view__title {
   @apply mb-4 h-auto min-h-0 w-full appearance-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none;
   @apply text-3xl font-semibold leading-[1.1] tracking-tight md:text-4xl;
   font-family: var(--note-detail-title-font-family, var(--font-serif));
   color: var(--color-ink);
+  text-box: auto;
 }
 
 .note-detail-view__title::placeholder {
