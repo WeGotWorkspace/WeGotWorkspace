@@ -2,23 +2,23 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream panes + a light gold sidebar tint (Calendar /
- * Tasks chrome: accent mixed onto cream, not a full-bleed gold wash).
- * `--notes-accent` is a dusty gold (`#d4bc72`) — quieter than the former
- * neon `#f6d176`. Chip text stays that gold on ink (WCAG AA). Detail pane
- * tints from `--notes-detail-tint` (runtime notebook color) at Calendar
- * event-card light wash (11%). Empty / multi-select leave the var unset
- * (`transparent` fallback) so the pane stays cream.
+ * Notes product shell: cream panes + a light yellow sidebar tint (Calendar /
+ * Tasks chrome: accent mixed onto cream, not a full-bleed wash).
+ * `--notes-accent` is the brand warm yellow (`#f6d176` — same hex as the
+ * Notes icon / webmanifest). Sidebar selected chips stay that yellow on ink
+ * (WCAG AA). Detail pane tints from `--notes-detail-tint` (runtime notebook
+ * color) at Calendar event-card light wash (11%). Empty / multi-select leave
+ * the var unset (`transparent` fallback) so the pane stays cream.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --notes-accent: #d4bc72;
+  --notes-accent: #f6d176;
   --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #ffffff));
   /*
    * Calendar: `--calendar-accent-strong` (#5558e8) is a darker step of
    * `--calendar-accent` (#6366f1) — selected Today icon/label (`--button-active-color`).
    * Notes has no standalone strong hex; do not invent one. Same derivation:
-   * mix the product accent toward `--color-ink` (the existing gold contrast pair).
+   * mix the product accent toward `--color-ink` (the existing yellow contrast pair).
    */
   --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 70%, var(--color-ink));
   /*
@@ -52,7 +52,7 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
-  /* Soft gold fill needs ink check (white on gold fails WCAG UI 3:1). */
+  /* Soft yellow fill needs ink check (white on yellow fails WCAG UI 3:1). */
   --list-item-checkbox-icon-color: var(--color-ink);
   --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
   --checkbox-checked-bg: var(--notes-accent);
@@ -124,7 +124,7 @@
 }
 
 .notes-dialog-surface {
-  --notes-accent: #d4bc72;
+  --notes-accent: #f6d176;
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink);

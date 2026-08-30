@@ -140,18 +140,6 @@ describe("notes workspace action-bar selected Star/Archive", () => {
   });
 });
 
-function hexSaturation(hex: string): number {
-  const n = hex.slice(1);
-  const r = Number.parseInt(n.slice(0, 2), 16) / 255;
-  const g = Number.parseInt(n.slice(2, 4), 16) / 255;
-  const b = Number.parseInt(n.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  if (max === min) return 0;
-  return (max - min) / (1 - Math.abs(2 * l - 1));
-}
-
 describe("notes workspace detail notebook tint", () => {
   const eventColor = readFileSync(
     join(here, "../../lib/calendar-elements/utils/EventColor.ts"),
@@ -178,14 +166,13 @@ describe("notes workspace detail notebook tint", () => {
 });
 
 describe("notes workspace accent tokens", () => {
-  it("uses a quieter gold than #f6d176 for chrome accents", () => {
+  it("uses brand warm yellow #f6d176 for chrome accents, mixed 12% onto cream", () => {
     const accent = css.match(
       /\.notes-workspace \{[\s\S]*?--notes-accent:\s*(#[0-9a-fA-F]{6})/,
     )?.[1];
-    expect(accent).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(accent?.toLowerCase()).not.toBe("#f6d176");
-    expect(hexSaturation(accent!)).toBeLessThan(hexSaturation("#f6d176"));
-    expect(css).not.toMatch(/--notes-accent:\s*#f6d176/i);
+    expect(accent?.toLowerCase()).toBe("#f6d176");
+    expect(css).toMatch(/\.notes-dialog-surface \{[\s\S]*?--notes-accent:\s*#f6d176/i);
+    expect(css).not.toMatch(/--notes-accent:\s*#d4bc72/i);
     expect(css).toMatch(
       /--notes-sidebar:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 12%,\s*var\(--color-cream/,
     );
