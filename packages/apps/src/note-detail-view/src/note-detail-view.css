@@ -70,12 +70,15 @@
  * keep g/y/p visible.
  */
 .note-detail-view__title {
-  @apply mb-3.5 h-auto min-h-0 w-full resize-none appearance-none rounded-none border-0 bg-transparent px-0 py-[0.06em] shadow-none outline-none;
-  @apply overflow-visible whitespace-pre-wrap break-words text-4xl font-semibold leading-[1.2] tracking-tight;
+  @apply mb-3.5 h-auto min-h-0 w-full resize-none appearance-none rounded-none border-0 bg-transparent px-0 pt-[0.08em] pb-[0.22em] shadow-none outline-none;
+  @apply whitespace-pre-wrap break-words text-4xl font-semibold leading-[1.3] tracking-tight;
   font-family: var(--note-detail-title-font-family, var(--font-serif));
   color: var(--notes-detail-contrast-fg, var(--color-ink));
+  field-sizing: content;
   text-box: normal;
   text-box-trim: none;
+  /* Beat TextareaAutosize’s inline overflow-y: hidden so serif descenders paint. */
+  overflow: visible !important;
 }
 
 .note-detail-view__title::placeholder {

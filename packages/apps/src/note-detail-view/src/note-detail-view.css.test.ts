@@ -49,7 +49,7 @@ describe("note-detail-view title CSS", () => {
   it("keeps serif descenders visible", () => {
     expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*normal;/);
     expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box-trim:\s*none;/);
-    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*overflow-visible/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*overflow:\s*visible\s*!important/);
     expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*overflow-hidden/);
     expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*line-clamp/);
   });
