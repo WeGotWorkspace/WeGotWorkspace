@@ -297,14 +297,19 @@ function noteTitleForMerge(local: Note, saved: Note): string | undefined {
 export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: Note): Note {
   const tagsDiffer = !noteTagsEqual(local.tags, saved.tags);
   const starredDiffer = local.starred !== saved.starred;
-  const preserveBody = noteHasListableBody(local) && !noteHasListableBody(saved);
+  const archivedDiffer = (local.archived ?? false) !== (saved.archived ?? false);
+  // Metadata PUT/PATCH omits body — the response still carries on-disk DESCRIPTION,
+  // which is often stale vs the collab preview. Keep any local listable body.
+  const preserveBody = noteHasListableBody(local);
   const title = noteTitleForMerge(local, saved);
   const titleDiffer = (title ?? "") !== (saved.title?.trim() ?? "");
+  const notebook = local.notebook || saved.notebook;
+  const preserveNotebook = !!local.notebook && local.notebook !== saved.notebook;
   // When keeping optimistic metadata, ensure display date is at least the
   // server row's so a follow-up bootstrap merge (local date >= server) keeps
   // the same tags/title — even if the create response clock is ahead of the client.
   const date =
-    tagsDiffer || starredDiffer || titleDiffer
+    tagsDiffer || starredDiffer || archivedDiffer || titleDiffer || preserveNotebook
       ? noteDisplayTimestampMs(local) >= noteDisplayTimestampMs(saved)
         ? local.date
         : saved.date
@@ -315,8 +320,16 @@ export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: No
     ...saved,
     tags: local.tags,
     starred: local.starred ?? saved.starred,
-    notebook: local.notebook || saved.notebook,
+    archived: local.archived !== undefined ? local.archived : saved.archived,
+    notebook,
     date,
+    ...(preserveNotebook
+      ? {
+          notebookId: local.notebookId,
+          scope: local.scope,
+          groupSlug: local.groupSlug,
+        }
+      : {}),
     ...(title ? { title } : {}),
     ...(preserveBody
       ? { body: local.body, excerpt: local.excerpt, wordCount: local.wordCount }
@@ -326,7 +339,7 @@ export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: No
 
 /**
  * Merge bootstrap/server notes into current UI notes without dropping optimistic
- * tags/starred/archived/title that are still ahead of a stale list payload (same id),
+ * tags/starred/archived/notebook/title that are still ahead of a stale list payload (same id),
  * and without dropping in-flight local-* creates the list has not seen yet.
  */
 export function mergeBootstrapNotesPreservingOptimistic(
@@ -344,6 +357,8 @@ export function mergeBootstrapNotesPreservingOptimistic(
       localNewerOrEqual && local.starred !== undefined && local.starred !== server.starred;
     const preserveArchived =
       localNewerOrEqual && local.archived !== undefined && local.archived !== server.archived;
+    const preserveNotebook =
+      localNewerOrEqual && !!local.notebook && local.notebook !== server.notebook;
     const preserveBody = !noteHasListableBody(server) && noteHasListableBody(local);
     const localTitle = local.title?.trim();
     const serverTitle = server.title?.trim();
@@ -355,6 +370,14 @@ export function mergeBootstrapNotesPreservingOptimistic(
       ...(preserveTags ? { tags: local.tags } : {}),
       ...(preserveStarred ? { starred: local.starred } : {}),
       ...(preserveArchived ? { archived: local.archived } : {}),
+      ...(preserveNotebook
+        ? {
+            notebook: local.notebook,
+            notebookId: local.notebookId,
+            scope: local.scope,
+            groupSlug: local.groupSlug,
+          }
+        : {}),
       ...(preserveTitle ? { title: local.title } : {}),
       ...(preserveBody
         ? {

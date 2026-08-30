@@ -314,6 +314,24 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.archived).toBe(true);
   });
 
+  it("keeps optimistic notebook when merging a stale bootstrap row", () => {
+    const local: Note = {
+      ...sampleNote,
+      notebook: "Ideas",
+      notebookId: "nb-ideas",
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      notebook: "Drafts",
+      notebookId: "nb-drafts",
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.notebook).toBe("Ideas");
+    expect(merged[0]?.notebookId).toBe("nb-ideas");
+  });
+
   it("keeps local tags when create response remaps before the tag upsert lands", () => {
     const local: Note = {
       ...sampleNote,
@@ -355,6 +373,61 @@ describe("notes-note-utils", () => {
     expect(merged.id).toBe("n-server");
     expect(merged.title).toBe("Meeting notes");
     expect(noteListTitle(merged)).toBe("Meeting notes");
+  });
+
+  it("keeps a local listable body when the metadata response still has the old DESCRIPTION", () => {
+    const local: Note = {
+      ...sampleNote,
+      title: "Event",
+      excerpt: "Typed in collab",
+      body: ["Typed in collab"],
+      wordCount: 3,
+      date: "2026-08-10T12:00:06.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      title: "Event",
+      excerpt: "Old on-disk body",
+      body: ["Old on-disk body"],
+      wordCount: 3,
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.body).toEqual(["Typed in collab"]);
+    expect(noteListTitle(merged)).toBe("Event");
+  });
+
+  it("keeps optimistic archived when the metadata response still has FINAL", () => {
+    const local: Note = {
+      ...sampleNote,
+      archived: true,
+      date: "2026-08-10T12:00:06.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      archived: false,
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.archived).toBe(true);
+  });
+
+  it("keeps an optimistic notebook move when the metadata response is still the old collection", () => {
+    const local: Note = {
+      ...sampleNote,
+      notebook: "Ideas",
+      notebookId: "nb-ideas",
+      date: "2026-08-10T12:00:06.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      notebook: "Drafts",
+      notebookId: "nb-drafts",
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.notebook).toBe("Ideas");
+    expect(merged.notebookId).toBe("nb-ideas");
   });
 
   it("never treats an empty created note as a disposable draft", () => {
