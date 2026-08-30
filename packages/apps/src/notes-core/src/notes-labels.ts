@@ -104,6 +104,9 @@ export type NotesUILabels = {
   removeSharedNotebook: string;
   removeSharedNotebookConfirmTitle: string;
   removeSharedNotebookConfirmDescription: string;
+  deleteNotebook: string;
+  deleteNotebookConfirmTitle: string;
+  deleteNotebookConfirmDescription: string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -199,6 +202,10 @@ export const defaultNotesLabels: NotesUILabels = {
   removeSharedNotebook: "Remove notebook",
   removeSharedNotebookConfirmTitle: "Remove this shared notebook?",
   removeSharedNotebookConfirmDescription: "You will no longer see this notebook.",
+  deleteNotebook: "Delete notebook",
+  deleteNotebookConfirmTitle: "Delete notebook?",
+  deleteNotebookConfirmDescription:
+    "Notes in this notebook will be permanently deleted. This cannot be undone.",
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {
@@ -233,5 +240,9 @@ export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): TaskProjec
     removeSharedList: labels.removeSharedNotebook,
     removeSharedListConfirmTitle: labels.removeSharedNotebookConfirmTitle,
     removeSharedListConfirmDescription: labels.removeSharedNotebookConfirmDescription,
+    deleteList: labels.deleteNotebook,
+    deleteListConfirmTitle: labels.deleteNotebookConfirmTitle,
+    deleteListConfirmDescription: labels.deleteNotebookConfirmDescription,
+    delete: labels.dialogDelete,
   };
 }

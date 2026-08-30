@@ -224,6 +224,47 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     ],
   );
 
+  const deleteNotebookCollection = useCallback(
+    async (notebookId: string) => {
+      if (!operations?.deleteNotebook) return;
+      const current = findNotebookCollection(notebookCollections, notebookId);
+      if (!current || current.isSharee === true || current.isDefault === true) return;
+      try {
+        await operations.deleteNotebook(current.name, { kind: "purge" });
+        const targetId = current.id;
+        setNotebookCollections((prev) =>
+          prev.filter((item) => item.id !== targetId && item.name !== current.name),
+        );
+        setNotebooks((prev) => prev.filter((name) => name !== current.name));
+        setNotes((prev) =>
+          prev.filter((note) => {
+            if (note.notebookId) return note.notebookId !== targetId;
+            return note.notebook !== current.name;
+          }),
+        );
+        if (view === notebookViewKey(notebookId) || view === `nb:${current.name}`) {
+          selectView("all");
+        }
+        show(L.toastSaved);
+        setNotebookDialog(null);
+      } catch {
+        showMutationError();
+      }
+    },
+    [
+      L.toastSaved,
+      notebookCollections,
+      operations,
+      selectView,
+      setNotebookCollections,
+      setNotebooks,
+      setNotes,
+      show,
+      showMutationError,
+      view,
+    ],
+  );
+
   const openCreateNotebookDialog = useCallback(() => {
     setNotebookDialog({ mode: "create" });
   }, []);
@@ -241,9 +282,13 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         isSharee: notebook.isSharee === true,
         shareWith: notebook.shareWith ?? null,
         canChangeOwner: notebook.isSharee !== true && notebook.isDefault !== true,
+        mayDelete:
+          notebook.isSharee !== true &&
+          notebook.isDefault !== true &&
+          Boolean(operations?.deleteNotebook),
       });
     },
-    [],
+    [operations?.deleteNotebook],
   );
 
   return {
@@ -254,6 +299,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     openEditNotebookDialog,
     createNotebook,
     updateNotebook,
+    deleteNotebookCollection,
     patchShareWith,
     removeSharedNotebook,
     notebooks,

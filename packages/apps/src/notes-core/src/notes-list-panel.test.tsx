@@ -5,6 +5,7 @@ import type { Note } from "@/lib/models/note";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
   cleanup();
@@ -25,18 +26,24 @@ function ListHarness({
   notes,
   selectedIds = [],
   activeId = "",
+  view = "all",
+  viewLabel = "All Items",
   notebookCollections,
+  slot = "list",
 }: {
   notes: Note[];
   selectedIds?: string[];
   activeId?: string;
+  view?: string;
+  viewLabel?: string;
   notebookCollections?: NotesNotebookCollection[];
+  slot?: "list" | "header";
 }) {
   const panel = NotesListPanel({
     L: defaultNotesLabels,
     sidebarOpen: true,
     onToggleSidebar: () => {},
-    viewLabel: "All Items",
+    viewLabel,
     selectedIds,
     selectionMode: false,
     listLoading: false,
@@ -45,10 +52,7 @@ function ListHarness({
     searchQuery: "",
     setSearchQuery: () => {},
     searchInputRef: createRef<HTMLInputElement>(),
-    canEditDelete: false,
-    selectedNotebook: null,
-    selectedTag: null,
-    view: "all",
+    view,
     isTouch: false,
     starred: {},
     archived: {},
@@ -57,15 +61,31 @@ function ListHarness({
     handleSelect: () => {},
     enterSelectionFor: () => {},
     itemDragHandlers: () => ({}),
-    openEditDialog: () => {},
-    openDeleteDialog: () => {},
     openDeleteConfirmForArchive: () => {},
     toggleStar: () => {},
     toggleArchive: () => {},
     selectionBar: null,
   });
-  return <>{panel.listContent}</>;
+  return <>{slot === "header" ? panel.header : panel.listContent}</>;
 }
+
+describe("NotesListPanel header chrome", () => {
+  it("does not show edit or delete notebook controls on the view header", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness
+          notes={[baseNote]}
+          view="nb:notes-drafts"
+          viewLabel="Drafts"
+          slot="header"
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.edit })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.remove })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.deleteNotebook })).toBeNull();
+  });
+});
 
 describe("NotesListPanel notebook labels", () => {
   it("shows the live collection name when the note still has the old name", () => {

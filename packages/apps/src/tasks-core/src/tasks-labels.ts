@@ -23,6 +23,9 @@ export type TasksUILabels = {
   removeSharedList: string;
   removeSharedListConfirmTitle: string;
   removeSharedListConfirmDescription: string;
+  deleteList: string;
+  deleteListConfirmTitle: string;
+  deleteListConfirmDescription: string;
   toastListShareRemoved: string;
   stateToday: string;
   stateUpcoming: string;
@@ -150,6 +153,10 @@ export const defaultTasksLabels: TasksUILabels = {
   removeSharedListConfirmTitle: "Remove this list?",
   removeSharedListConfirmDescription:
     "It disappears from your sidebar. The owner’s list is unchanged, so it can be added again later.",
+  deleteList: "Delete list",
+  deleteListConfirmTitle: "Delete list?",
+  deleteListConfirmDescription:
+    "Tasks on this list will be permanently deleted. This cannot be undone.",
   toastListShareRemoved: "List removed",
   stateToday: "Today",
   stateUpcoming: "Upcoming",

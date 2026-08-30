@@ -203,9 +203,6 @@ export function useNotesShell({
   }, [L, notebookCollections, view]);
 
   const canCreateNote = notesCanCreateInView(view);
-  const selectedNotebook = view.startsWith("nb:") ? view.slice(3) : null;
-  const selectedTag = view.startsWith("tag:") ? view.slice(4) : null;
-  const canEditDelete = !!(selectedNotebook || selectedTag);
 
   const selectView = useCallback((nextView: string) => {
     setView(nextView);
@@ -249,9 +246,6 @@ export function useNotesShell({
     tags,
     viewLabel,
     canCreateNote,
-    selectedNotebook,
-    selectedTag,
-    canEditDelete,
     selectView,
     hiddenNotebookIds,
     toggleNotebookVisibility,

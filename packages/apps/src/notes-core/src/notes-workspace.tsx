@@ -19,7 +19,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
-import { MoveToDialog, EditDialog, DeleteDialog } from "@/dialogs/src/dialogs";
+import { MoveToDialog } from "@/dialogs/src/dialogs";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -168,14 +168,9 @@ export function NotesWorkspace({
     selectedIds,
     selectionMode,
     canCreateNote,
-    selectedNotebook,
-    selectedTag,
-    canEditDelete,
     searchQuery,
     searchInputRef,
     moveDialog,
-    editDialog,
-    deleteDialog,
     visibleNotes,
     workspaceLayoutRef,
     isTouch,
@@ -191,18 +186,12 @@ export function NotesWorkspace({
     selectView,
     setSearchQuery,
     setMoveDialog,
-    setEditDialog,
-    setDeleteDialog,
     moveToNotebook,
     assignTagToNotes,
     createNote,
     toggleStar,
     toggleArchive,
     openDeleteConfirm,
-    renameNotebook,
-    renameTag,
-    deleteNotebook,
-    deleteTag,
     toggleNoteTag,
     applyLocalBodyMarkdown,
     updateNote,
@@ -214,6 +203,7 @@ export function NotesWorkspace({
     openEditNotebookDialog,
     createNotebookCollection,
     updateNotebookCollection,
+    deleteNotebookCollection,
     patchNotebookShareWith,
     removeSharedNotebook,
     hiddenNotebookIds,
@@ -504,9 +494,6 @@ export function NotesWorkspace({
             searchQuery,
             setSearchQuery,
             searchInputRef,
-            canEditDelete,
-            selectedNotebook,
-            selectedTag,
             view,
             isTouch,
             starred,
@@ -516,19 +503,6 @@ export function NotesWorkspace({
             handleSelect,
             enterSelectionFor,
             itemDragHandlers,
-            openEditDialog: (item) => {
-              if (item.kind === "notebook") {
-                const notebook = [...ownedNotebooks, ...sharedNotebookRows].find(
-                  (entry) => entry.id === item.name || entry.name === item.name,
-                );
-                if (notebook) {
-                  openEditNotebookDialog(notebook);
-                  return;
-                }
-              }
-              setEditDialog(item);
-            },
-            openDeleteDialog: setDeleteDialog,
             openDeleteConfirmForArchive: openDeleteConfirm,
             toggleStar,
             toggleArchive,
@@ -647,38 +621,6 @@ export function NotesWorkspace({
         contentClassName="notes-dialog-surface"
       />
 
-      <EditDialog
-        item={editDialog}
-        onClose={() => setEditDialog(null)}
-        onConfirm={(newName) => {
-          if (!editDialog) return;
-          if (editDialog.kind === "notebook") renameNotebook(editDialog.name, newName);
-          else renameTag(editDialog.name, newName);
-          setEditDialog(null);
-        }}
-        contentClassName="notes-dialog-surface"
-      />
-
-      <DeleteDialog
-        item={deleteDialog}
-        notebooks={notebooks}
-        affectedCount={
-          deleteDialog
-            ? deleteDialog.kind === "notebook"
-              ? notes.filter((note) => note.notebook === deleteDialog.name).length
-              : notes.filter((note) => note.tags.includes(deleteDialog.name)).length
-            : 0
-        }
-        onClose={() => setDeleteDialog(null)}
-        onConfirm={(opts) => {
-          if (!deleteDialog) return;
-          if (deleteDialog.kind === "notebook") deleteNotebook(deleteDialog.name, opts);
-          else deleteTag(deleteDialog.name);
-          setDeleteDialog(null);
-        }}
-        contentClassName="notes-dialog-surface"
-      />
-
       <TaskProjectDialog
         dialog={notebookDialog}
         groups={groups}
@@ -715,6 +657,13 @@ export function NotesWorkspace({
           notebookDialog?.mode === "edit" && notebookDialog.isSharee
             ? () => {
                 void removeSharedNotebook(notebookDialog.listId);
+              }
+            : undefined
+        }
+        onDelete={
+          notebookDialog?.mode === "edit" && notebookDialog.mayDelete
+            ? () => {
+                void deleteNotebookCollection(notebookDialog.listId);
               }
             : undefined
         }

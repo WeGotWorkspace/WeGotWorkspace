@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
 import { notesNotebookDialogLabelsFrom, defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
 import {
@@ -33,6 +34,9 @@ function NotesNotebookDialogHarness({
       contentClassName="notes-dialog-surface"
       onClose={() => setDialog(null)}
       onConfirm={() => setDialog(null)}
+      onDelete={
+        dialog?.mode === "edit" && dialog.mayDelete ? () => setDialog(null) : undefined
+      }
       share={
         dialog?.mode === "edit" && dialog.mayShare
           ? {
@@ -62,6 +66,7 @@ export const Create: Story = {
 };
 
 export const Edit: Story = {
+  tags: ["vitest-ci"],
   args: {
     initial: {
       mode: "edit",
@@ -72,8 +77,15 @@ export const Edit: Story = {
       groupSlug: null,
       mayShare: true,
       isSharee: false,
+      mayDelete: true,
       shareWith: { alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false } },
       canChangeOwner: true,
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("button", { name: defaultNotesLabels.deleteNotebook }),
+    ).toBeInTheDocument();
   },
 };

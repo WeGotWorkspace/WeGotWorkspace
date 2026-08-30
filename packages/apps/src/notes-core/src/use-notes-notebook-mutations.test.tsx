@@ -92,7 +92,28 @@ describe("useNotesNotebookMutations", () => {
       listId: "notes-general",
       name: "General",
       canChangeOwner: true,
+      mayDelete: true,
     });
+  });
+
+  it("does not offer owner delete for a sharee or default notebook", () => {
+    const { result } = renderHook(() => useNotesNotebookMutations({ shell: shellStub() }));
+    act(() => {
+      result.current.openEditNotebookDialog({
+        id: "notes-shared",
+        name: "Shared",
+        isSharee: true,
+      });
+    });
+    expect(result.current.notebookDialog).toMatchObject({ mayDelete: false, isSharee: true });
+    act(() => {
+      result.current.openEditNotebookDialog({
+        id: "notes-general",
+        name: "General",
+        isDefault: true,
+      });
+    });
+    expect(result.current.notebookDialog).toMatchObject({ mayDelete: false });
   });
 
   it("createNotebook forwards name, color, and owner", async () => {
@@ -397,6 +418,55 @@ describe("useNotesNotebookMutations", () => {
         color: "#ec4899",
         groupSlug: "team",
       });
+    });
+  });
+
+  it("Delete on edit confirms then purges the collection", async () => {
+    const deleteNotebook = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useNotesNotebookMutations({
+        shell: shellStub({
+          operations: {
+            ...shellStub().operations!,
+            deleteNotebook,
+          },
+        }),
+      }),
+    );
+
+    act(() => {
+      result.current.openEditNotebookDialog({
+        id: "notes-general",
+        name: "General",
+        color: "#14b8a6",
+        isSharee: false,
+        isDefault: false,
+        scope: "personal",
+        groupSlug: null,
+      });
+    });
+
+    render(
+      <TaskProjectDialog
+        dialog={result.current.notebookDialog}
+        groups={[{ slug: "team", displayName: "Team" }]}
+        personalOwnerLabel="Ada"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={() => {
+          const dialog = result.current.notebookDialog;
+          if (dialog?.mode !== "edit") return;
+          void result.current.deleteNotebookCollection(dialog.listId);
+        }}
+        labels={notesNotebookDialogLabelsFrom(defaultNotesLabels)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.deleteNotebook }));
+    fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.dialogDelete }));
+
+    await waitFor(() => {
+      expect(deleteNotebook).toHaveBeenCalledWith("General", { kind: "purge" });
     });
   });
 });

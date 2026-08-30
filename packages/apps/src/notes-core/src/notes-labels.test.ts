@@ -32,5 +32,8 @@ describe("notesNotebookDialogLabelsFrom", () => {
     expect(labels.createTitle).toBe("New notebook");
     expect(labels.editTitle).toBe("Edit notebook");
     expect(labels.shareListSectionTitle).toBe(defaultNotesLabels.shareNotebookTitle);
+    expect(labels.deleteList).toBe("Delete notebook");
+    expect(labels.deleteListConfirmTitle).toBe("Delete notebook?");
+    expect(labels.delete).toBe(defaultNotesLabels.dialogDelete);
   });
 });

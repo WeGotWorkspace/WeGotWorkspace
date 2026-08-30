@@ -9,7 +9,6 @@ import {
   Archive,
   Circle,
   Eye,
-  Pencil,
   RefreshCw,
   Share2,
   Star,
@@ -94,9 +93,6 @@ type NotesListPanelProps = {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
-  canEditDelete: boolean;
-  selectedNotebook: string | null;
-  selectedTag: string | null;
   view: string;
   isTouch: boolean;
   starred: Record<string, boolean>;
@@ -106,8 +102,6 @@ type NotesListPanelProps = {
   handleSelect: (id: string, e: ReactMouseEvent) => void;
   enterSelectionFor: (id: string) => void;
   itemDragHandlers: (id: string) => Record<string, unknown>;
-  openEditDialog: (item: { kind: "notebook" | "tag"; name: string }) => void;
-  openDeleteDialog: (item: { kind: "notebook" | "tag"; name: string }) => void;
   openDeleteConfirmForArchive: (ids: string[], mode: "selected" | "all") => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
@@ -129,9 +123,6 @@ export function NotesListPanel({
   searchQuery,
   setSearchQuery,
   searchInputRef,
-  canEditDelete,
-  selectedNotebook,
-  selectedTag,
   view,
   isTouch,
   starred,
@@ -141,8 +132,6 @@ export function NotesListPanel({
   handleSelect,
   enterSelectionFor,
   itemDragHandlers,
-  openEditDialog,
-  openDeleteDialog,
   openDeleteConfirmForArchive,
   toggleStar,
   toggleArchive,
@@ -180,36 +169,6 @@ export function NotesListPanel({
                 size="sm"
                 variant="subtle"
               />
-            ) : null}
-            {canEditDelete ? (
-              <>
-                <IconButton
-                  label={L.edit}
-                  onClick={() =>
-                    openEditDialog(
-                      selectedNotebook
-                        ? { kind: "notebook", name: selectedNotebook }
-                        : { kind: "tag", name: selectedTag! },
-                    )
-                  }
-                  icon={<Pencil />}
-                  size="sm"
-                  variant="subtle"
-                />
-                <IconButton
-                  label={L.remove}
-                  onClick={() =>
-                    openDeleteDialog(
-                      selectedNotebook
-                        ? { kind: "notebook", name: selectedNotebook }
-                        : { kind: "tag", name: selectedTag! },
-                    )
-                  }
-                  icon={<Trash2 />}
-                  size="sm"
-                  variant="subtle"
-                />
-              </>
             ) : null}
             {view === "archive" && visibleNotes.length > 0 ? (
               <IconButton

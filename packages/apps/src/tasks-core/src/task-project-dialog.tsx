@@ -44,6 +44,8 @@ export type TaskProjectDialogState =
       shareWith?: CollectionShareWith | null;
       /** Enable Owner (personal ↔ group), same options as create. */
       canChangeOwner?: boolean;
+      /** Owner delete in the footer — same gate as Calendar `mayDelete`. */
+      mayDelete?: boolean;
     };
 
 export type TaskProjectDialogConfirmInput = {
@@ -85,6 +87,10 @@ export type TaskProjectDialogLabels = {
   removeSharedList: string;
   removeSharedListConfirmTitle: string;
   removeSharedListConfirmDescription: string;
+  deleteList: string;
+  deleteListConfirmTitle: string;
+  deleteListConfirmDescription: string;
+  delete: string;
 };
 
 type TaskProjectDialogProps = {
@@ -97,6 +103,7 @@ type TaskProjectDialogProps = {
   contentClassName?: string;
   share?: TaskProjectDialogShare;
   onRemoveShared?: () => void;
+  onDelete?: () => void;
 };
 
 function editDialogDisplayColor(listId: string, color: string | null): string {
@@ -130,6 +137,10 @@ export function taskProjectDialogLabelsFrom(labels: TasksUILabels): TaskProjectD
     removeSharedList: labels.removeSharedList,
     removeSharedListConfirmTitle: labels.removeSharedListConfirmTitle,
     removeSharedListConfirmDescription: labels.removeSharedListConfirmDescription,
+    deleteList: labels.deleteList,
+    deleteListConfirmTitle: labels.deleteListConfirmTitle,
+    deleteListConfirmDescription: labels.deleteListConfirmDescription,
+    delete: labels.delete,
   };
 }
 
@@ -143,22 +154,26 @@ export function TaskProjectDialog({
   contentClassName,
   share,
   onRemoveShared,
+  onDelete,
 }: TaskProjectDialogProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(DEFAULT_TASK_LIST_COLOR);
   const [scopeValue, setScopeValue] = useState(PERSONAL_SCOPE_VALUE);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [confirmOwnerOpen, setConfirmOwnerOpen] = useState(false);
   const open = dialog !== null;
   const isCreate = dialog?.mode === "create";
   const isSharee = dialog?.mode === "edit" && Boolean(dialog.isSharee);
   const showShare = dialog?.mode === "edit" && Boolean(dialog.mayShare) && Boolean(share);
   const canRemoveShared = isSharee && Boolean(onRemoveShared);
+  const canDelete = dialog?.mode === "edit" && dialog.mayDelete === true && Boolean(onDelete);
   const canChangeOwner = isCreate || (dialog?.mode === "edit" && Boolean(dialog.canChangeOwner));
 
   useEffect(() => {
     if (!dialog) {
       setConfirmRemoveOpen(false);
+      setConfirmDeleteOpen(false);
       setConfirmOwnerOpen(false);
       return;
     }
@@ -275,7 +290,16 @@ export function TaskProjectDialog({
             ) : null}
 
             <DialogFooter className="task-project-dialog__footer">
-              {canRemoveShared ? (
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="task-project-dialog__delete"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                >
+                  {labels.deleteList}
+                </Button>
+              ) : canRemoveShared ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -333,6 +357,32 @@ export function TaskProjectDialog({
               }}
             >
               {labels.removeSharedList}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent className={contentClassName}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.deleteListConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{labels.deleteListConfirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline">{labels.cancel}</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setConfirmDeleteOpen(false);
+                  onDelete?.();
+                }}
+              >
+                {labels.delete}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

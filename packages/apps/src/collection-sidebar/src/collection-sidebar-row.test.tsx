@@ -50,6 +50,25 @@ describe("CollectionSidebarRow", () => {
     );
   });
 
+  it("keeps hover-edit when onEdit is provided", () => {
+    const onEdit = vi.fn();
+    render(
+      <TooltipProvider>
+        <ul>
+          <CollectionSidebarRow
+            name="Drafts"
+            color="#14b8a6"
+            onSelect={vi.fn()}
+            onEdit={onEdit}
+            editLabel="Edit"
+          />
+        </ul>
+      </TooltipProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(onEdit).toHaveBeenCalledOnce();
+  });
+
   it("omits the checkbox when onToggleVisibility is not provided", () => {
     render(
       <ul>
