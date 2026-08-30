@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { blurWorkspaceDetailEditor } from "@/hooks/blur-workspace-detail-editor";
 import { useIsTouch } from "@/hooks/use-is-touch";
-import { useSelectionResetOnKeyChange } from "@/hooks/use-selection-reset-on-key-change";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
@@ -64,11 +63,27 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   const visibleNotes = useMemo(
     () =>
       filterNotesByHiddenNotebooks(
-        filterVisibleNotes(notes, { view, archived, starred, searchQuery, sharedNotebookKeys }),
+        filterVisibleNotes(notes, {
+          view,
+          archived,
+          starred,
+          searchQuery,
+          sharedNotebookKeys,
+          notebookCollections,
+        }),
         view,
         hiddenNotebookIds,
       ),
-    [archived, hiddenNotebookIds, notes, searchQuery, sharedNotebookKeys, starred, view],
+    [
+      archived,
+      hiddenNotebookIds,
+      notebookCollections,
+      notes,
+      searchQuery,
+      sharedNotebookKeys,
+      starred,
+      view,
+    ],
   );
 
   const {
@@ -120,11 +135,22 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     }
   }, [initialNoteId, selectSingle, setActiveId, setSelectedIds, setSelectionMode]);
 
-  useSelectionResetOnKeyChange({
-    resetKey: view,
-    setSelectedIds,
-    setSelectionMode,
-  });
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
+  // Sidebar selectView clears activeId first, so this still resets to empty.
+  // Notebook move keeps activeId so the same note stays selected after the
+  // destination view (and URL) catch up.
+  useEffect(() => {
+    const id = activeIdRef.current;
+    if (id) {
+      selectSingle(id);
+      setSelectionMode(false);
+    } else {
+      setSelectedIds([]);
+      setSelectionMode(false);
+    }
+  }, [selectSingle, setSelectedIds, setSelectionMode, view]);
 
   const prevNotesRef = useRef(notes);
 

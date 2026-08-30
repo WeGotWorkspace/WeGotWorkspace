@@ -44,4 +44,18 @@ describe("NotesNewMenu", () => {
     expect(main.className).toMatch(/sidebar-segmented-new-menu__main--solo/);
     expect(screen.queryByRole("button", { name: L.newNoteMenu })).toBeNull();
   });
+
+  it("keeps New note enabled unless disabled is set", () => {
+    render(<NotesNewMenu labels={L} onCreateNote={vi.fn()} />);
+    const main = screen.getByRole("button", { name: L.newNote });
+    expect(main).toHaveProperty("disabled", false);
+    expect(main.getAttribute("aria-label")).toBe(L.newNote);
+  });
+
+  it("disables New note only when disabled is set", () => {
+    render(<NotesNewMenu labels={L} onCreateNote={vi.fn()} disabled />);
+    const main = screen.getByRole("button", { name: L.newNote });
+    expect(main).toHaveProperty("disabled", true);
+    expect(main.getAttribute("aria-label")).toBe(L.newNote);
+  });
 });

@@ -33,8 +33,10 @@ export function useNotesRouteSync() {
   const handleViewChange = useCallback(
     (view: string) => {
       currentViewRef.current = view;
-      currentNoteRef.current = "";
-      const target = notesNavigateTarget(view);
+      // Keep the open note so follow-the-note (notebook move) lands on
+      // `/notes/notebooks/NEW/:noteId`. Sidebar selectView clears activeId
+      // first; onNoteChange("") then drops the note from the path.
+      const target = notesNavigateTarget(view, currentNoteRef.current);
       void navigate({ ...target, replace: true });
     },
     [navigate],
