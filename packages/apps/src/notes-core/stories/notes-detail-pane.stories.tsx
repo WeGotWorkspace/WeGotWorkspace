@@ -11,17 +11,22 @@ function NotesDetailPaneHarness({
   readOnly = false,
   withPullQuote = false,
   tallBody = false,
+  withTasks = false,
   detailTint,
 }: {
   readOnly?: boolean;
   withPullQuote?: boolean;
   tallBody?: boolean;
+  withTasks?: boolean;
   detailTint?: string;
 }) {
   const base = getNotesDetailStoryProps({
     extraBody: tallBody,
     pullQuote: withPullQuote ? "A highlighted line for layout checks." : undefined,
   });
+  const body = withTasks
+    ? [...base.body, "- [ ] Unchecked next to tags\n- [x] Checked next to tags"]
+    : base.body;
   const [tags, setTags] = useState(base.tags);
 
   return (
@@ -43,7 +48,7 @@ function NotesDetailPaneHarness({
             }
             readOnly={readOnly}
             pullQuote={base.pullQuote}
-            body={base.body}
+            body={body}
           />
         </div>
         <NotesDetailFooter lastEdited={base.lastEdited} editedLabel={base.editedLabel} />
@@ -132,7 +137,7 @@ export const Editable: Story = {
 
 export const NotebookTint: Story = {
   tags: ["vitest-ci"],
-  args: { detailTint: "#ec4899" },
+  args: { detailTint: "#ec4899", withTasks: true },
   play: async ({ canvasElement }) => {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     expect(workspace).toBeTruthy();
@@ -240,7 +245,7 @@ export const NotebookTint: Story = {
 
 export const NotebookTintDark: Story = {
   tags: ["vitest-ci"],
-  args: { detailTint: "#1e3a5f" },
+  args: { detailTint: "#1e3a5f", withTasks: true },
   play: async ({ canvasElement }) => {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     expect(workspace).toBeTruthy();
@@ -270,20 +275,26 @@ export const NotebookTintDark: Story = {
     expect(editor).toBeTruthy();
     const fill = document.createElement("span");
     const mark = document.createElement("span");
+    const tagBg = document.createElement("span");
     const accent = document.createElement("span");
     const cream = document.createElement("span");
     fill.style.color = "var(--checkbox-checked-bg)";
     mark.style.color = "var(--checkbox-checked-fg)";
+    tagBg.style.color = "var(--note-detail-tag-bg)";
     accent.style.color = "var(--notes-detail-accent)";
     cream.style.color = "var(--color-cream)";
     editor!.appendChild(fill);
     editor!.appendChild(mark);
+    editor!.appendChild(tagBg);
     workspace!.appendChild(accent);
     workspace!.appendChild(cream);
-    expect(getComputedStyle(fill).color).toBe(getComputedStyle(accent).color);
-    expect(getComputedStyle(mark).color).toBe(getComputedStyle(cream).color);
+    expect(getComputedStyle(fill).color).toBe(getComputedStyle(tagBg).color);
+    expect(getComputedStyle(fill).color).not.toBe(getComputedStyle(accent).color);
+    expect(getComputedStyle(mark).color).toBe(getComputedStyle(accentStrong).color);
+    expect(getComputedStyle(mark).color).not.toBe(getComputedStyle(cream).color);
     fill.remove();
     mark.remove();
+    tagBg.remove();
     accent.remove();
     cream.remove();
     ink.remove();
