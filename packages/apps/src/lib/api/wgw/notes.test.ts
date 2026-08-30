@@ -35,7 +35,19 @@ describe("wgwNoteMetadataFromNote", () => {
       starred: true,
       archived: false,
     });
+    expect(request).not.toHaveProperty("notebookId");
     expect(request).not.toHaveProperty("title");
+  });
+
+  it("includes SUMMARY when the note has a title", () => {
+    const request = wgwNoteMetadataFromNote({ ...note, title: "Event" });
+    expect(request.title).toBe("Event");
+  });
+
+  it("includes notebookId so a move can resolve dest by collection id", () => {
+    const request = wgwNoteMetadataFromNote({ ...note, notebookId: "notes-work", notebook: "Work" });
+    expect(request.notebookId).toBe("notes-work");
+    expect(request.notebook).toBe("Work");
   });
 
   it("omits starred/archived when not provided", () => {
@@ -52,6 +64,10 @@ describe("wgwNoteUpsertFromNote", () => {
     const request = wgwNoteUpsertFromNote(note);
 
     expect(request.body).toBe("Body text\n\nSecond paragraph");
+  });
+
+  it("includes title on the create path so SUMMARY is not dropped", () => {
+    expect(wgwNoteUpsertFromNote({ ...note, title: "Event" }).title).toBe("Event");
   });
 
   it("includes groupSlug for group-scoped create/update", () => {

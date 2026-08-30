@@ -488,6 +488,7 @@ export function wgwNoteUpsertFromNote(
   return {
     id: note.id,
     notebook: note.notebook,
+    ...(note.title !== undefined ? { title: note.title } : {}),
     body: note.body.join("\n\n"),
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
@@ -510,6 +511,7 @@ export function wgwNoteMetadataFromNote(
   return {
     id: note.id,
     notebook: note.notebook,
+    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(note.title !== undefined ? { title: note.title } : {}),
     tags: note.tags,
     ...(opts?.starred !== undefined && { starred: opts.starred }),
@@ -559,7 +561,7 @@ export async function createNoteItem(
   const created = await createVjournalNote(
     {
       notebookId: notebook.id,
-      title: null,
+      title: body.title !== undefined ? body.title : null,
       body: body.body ?? "",
       categories: body.tags ?? [],
       status: body.archived ? "CANCELLED" : null,
@@ -580,7 +582,10 @@ export async function updateNoteItem(
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
   const notebooks = await notebooksForMap();
-  const notebook = notebooks.find((item) => item.name === body.notebook);
+  const notebook =
+    (body.notebookId
+      ? notebooks.find((item) => item.id === body.notebookId)
+      : undefined) ?? notebooks.find((item) => item.name === body.notebook);
   const ifMatch = await ifMatchForNote(id, body.etag, opts);
   const patched = await patchNote(
     id,
@@ -588,7 +593,8 @@ export async function updateNoteItem(
       ...(notebook ? { notebookId: notebook.id } : {}),
       ...(body.title !== undefined ? { title: body.title } : {}),
       categories: body.tags,
-      status: body.archived ? "CANCELLED" : "FINAL",
+      // Archive/restore own STATUS. A metadata upsert with stale archived:false
+      // was PATCHing FINAL and un-archiving the note.
     },
     { ...opts, ifMatch },
   );
@@ -605,24 +611,42 @@ export async function deleteNoteItem(
   await deleteVjournalNote(id, opts);
 }
 
-export async function archiveNoteItem(
+function isNotePreconditionFailed(error: unknown): boolean {
+  return (error as { status?: number } | undefined)?.status === 412;
+}
+
+async function patchNoteArchiveStatus(
   id: string,
-  opts?: { signal?: AbortSignal; groupSlug?: string | null },
+  status: "CANCELLED" | "FINAL",
+  opts?: { signal?: AbortSignal; groupSlug?: string | null; ifMatch?: string },
 ): Promise<Note> {
   const notebooks = await notebooksForMap();
-  const ifMatch = await ifMatchForNote(id, undefined, opts);
-  const patched = await patchNote(id, { status: "CANCELLED" }, { ...opts, ifMatch });
-  return noteFromVjournal(patched, notebooks);
+  const apply = async (ifMatch: string | undefined) => {
+    const patched = await patchNote(id, { status }, { ...opts, ifMatch });
+    return noteFromVjournal(patched, notebooks);
+  };
+  const ifMatch = await ifMatchForNote(id, opts?.ifMatch, opts);
+  try {
+    return await apply(ifMatch);
+  } catch (error) {
+    if (!isNotePreconditionFailed(error)) throw error;
+    const retryMatch = await ifMatchForNote(id, undefined, opts);
+    return await apply(retryMatch);
+  }
+}
+
+export async function archiveNoteItem(
+  id: string,
+  opts?: { signal?: AbortSignal; groupSlug?: string | null; ifMatch?: string },
+): Promise<Note> {
+  return patchNoteArchiveStatus(id, "CANCELLED", opts);
 }
 
 export async function restoreNoteItem(
   id: string,
-  opts?: { signal?: AbortSignal; groupSlug?: string | null },
+  opts?: { signal?: AbortSignal; groupSlug?: string | null; ifMatch?: string },
 ): Promise<Note> {
-  const notebooks = await notebooksForMap();
-  const ifMatch = await ifMatchForNote(id, undefined, opts);
-  const patched = await patchNote(id, { status: "FINAL" }, { ...opts, ifMatch });
-  return noteFromVjournal(patched, notebooks);
+  return patchNoteArchiveStatus(id, "FINAL", opts);
 }
 
 export async function createNotebook(
