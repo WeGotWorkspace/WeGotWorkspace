@@ -29,7 +29,22 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: defaultNotesLabels.newNote }));
+    const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
+    await expect(workspace).toBeTruthy();
+    const main = canvas.getByRole("button", { name: defaultNotesLabels.newNote });
+    const ink = document.createElement("span");
+    ink.style.backgroundColor = "var(--color-ink)";
+    const accent = document.createElement("span");
+    accent.style.color = "var(--notes-accent)";
+    workspace!.append(ink, accent);
+    await expect(getComputedStyle(main).backgroundColor).toBe(
+      getComputedStyle(ink).backgroundColor,
+    );
+    await expect(getComputedStyle(main).color).toBe(getComputedStyle(accent).color);
+    ink.remove();
+    accent.remove();
+
+    await userEvent.click(main);
     await expect(args.onCreateNote).toHaveBeenCalledOnce();
 
     await userEvent.click(canvas.getByRole("button", { name: defaultNotesLabels.newNoteMenu }));

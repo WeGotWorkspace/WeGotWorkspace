@@ -67,15 +67,15 @@ describe("NotesNewMenu", () => {
 });
 
 describe("NotesNewMenu primary tokens", () => {
-  it("paints sidebar New note gold fill + ink label (invert of selected chips)", () => {
+  it("paints sidebar New note ink fill + gold label (same pair as selected chips)", () => {
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--notes-accent\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-ink\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--notes-accent\)/,
     );
     expect(workspaceCss).not.toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--notes-accent\)/,
     );
   });
 });
