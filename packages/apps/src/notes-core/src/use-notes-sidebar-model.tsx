@@ -34,6 +34,16 @@ export function notebookViewKey(notebookId: string): string {
   return `nb:${notebookId}`;
 }
 
+export function tagViewKey(tag: string): string {
+  return `tag:${tag}`;
+}
+
+/** Re-clicking the active tag clears the filter and returns to All Items. */
+export function nextNotesTagView(view: string, tag: string): string {
+  const next = tagViewKey(tag);
+  return view === next ? "all" : next;
+}
+
 /** Same as Tasks `isViewOnlyTaskList`: missing `mayWriteAll` is writable. */
 export function isViewOnlyNotebook(
   notebook: Pick<NotesNotebookCollection, "myRights">,
@@ -145,9 +155,9 @@ export function useNotesSidebarModel({
         .sort((a, b) => a.localeCompare(b))
         .map((tag) => ({
           tag,
-          selected: view === `tag:${tag}`,
-          onSelect: () => selectView(`tag:${tag}`),
-          ...sidebarDropZoneProps(`tag:${tag}`, (ids) => assignTagToNotes(ids, tag)),
+          selected: view === tagViewKey(tag),
+          onSelect: () => selectView(nextNotesTagView(view, tag)),
+          ...sidebarDropZoneProps(tagViewKey(tag), (ids) => assignTagToNotes(ids, tag)),
         })),
     [assignTagToNotes, selectView, sidebarDropZoneProps, tags, view],
   );

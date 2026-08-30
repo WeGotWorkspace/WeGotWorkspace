@@ -4,8 +4,10 @@ import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import {
   collectionsFromNotesData,
   isViewOnlyNotebook,
+  nextNotesTagView,
   notebookViewKey,
   sharedNotebookFilterKeys,
+  tagViewKey,
   useNotesSidebarModel,
 } from "@/notes-core/src/use-notes-sidebar-model";
 
@@ -123,5 +125,48 @@ describe("useNotesSidebarModel", () => {
     );
     expect(collections.map((item) => item.name)).toEqual(["Ideas", "General", "Drafts"]);
     expect(collections.find((item) => item.name === "Ideas")?.color).toBe("#ec4899");
+  });
+
+  it("toggles the active tag back to All Items and selects a different tag", () => {
+    expect(tagViewKey("focus")).toBe("tag:focus");
+    expect(nextNotesTagView("all", "focus")).toBe("tag:focus");
+    expect(nextNotesTagView("tag:focus", "focus")).toBe("all");
+    expect(nextNotesTagView("tag:focus", "work")).toBe("tag:work");
+    expect(nextNotesTagView("nb:notes-general", "focus")).toBe("tag:focus");
+
+    const selectView = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ view }: { view: string }) =>
+        useNotesSidebarModel({
+          labels: defaultNotesLabels,
+          view,
+          notebooks: ["General"],
+          tags: ["focus", "work"],
+          selectView,
+          sidebarDropZoneProps: () => dropZone(),
+          moveToNotebook: vi.fn(),
+          assignTagToNotes: vi.fn(),
+        }),
+      { initialProps: { view: "all" } },
+    );
+
+    const focus = result.current.tagSidebarTags.find((entry) => entry.tag === "focus")!;
+    expect(focus.selected).toBe(false);
+    focus.onSelect();
+    expect(selectView).toHaveBeenCalledWith("tag:focus");
+
+    selectView.mockClear();
+    rerender({ view: "tag:focus" });
+    const selectedFocus = result.current.tagSidebarTags.find((entry) => entry.tag === "focus")!;
+    const work = result.current.tagSidebarTags.find((entry) => entry.tag === "work")!;
+    expect(selectedFocus.selected).toBe(true);
+    expect(work.selected).toBe(false);
+
+    selectedFocus.onSelect();
+    expect(selectView).toHaveBeenCalledWith("all");
+
+    selectView.mockClear();
+    work.onSelect();
+    expect(selectView).toHaveBeenCalledWith("tag:work");
   });
 });
