@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "notes-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "notes-workspace.css"), "utf8");
+const actionBar = readFileSync(join(here, "notes-detail-action-bar.tsx"), "utf8");
+const changeDialog = readFileSync(join(here, "notes-change-notebook-dialog.tsx"), "utf8");
 
 describe("notes workspace sidebar create", () => {
   it("puts create notebook on the shared segmented New menu, not a section +", () => {
@@ -38,6 +40,26 @@ describe("notes workspace sidebar create", () => {
     expect(tsx).toMatch(/ownedNotebooks\.length > 0/);
     expect(tsx).toMatch(/sharedNotebookRows\.length > 0/);
     expect(tsx).not.toMatch(/title=\{L\.sectionSharedNotebooks\}/);
+  });
+});
+
+describe("notes workspace change-notebook dialog", () => {
+  it("reuses NotesNotebookSelect from the action bar", () => {
+    expect(tsx).toMatch(/<NotesChangeNotebookDialog/);
+    expect(tsx).toMatch(/notebookSelectValueForNotes\(notes, moveDialog\?\.ids, selectNotebooks\)/);
+    expect(tsx).not.toMatch(/MoveToDialog/);
+    expect(actionBar).toMatch(/<NotesNotebookSelect/);
+    expect(changeDialog).toMatch(/<NotesNotebookSelect/);
+    expect(changeDialog).not.toMatch(/RadioGroup|CREATE_NEW_VALUE|BookOpen/);
+  });
+
+  it("confirms the change-dialog draft with Change, not on select or create", () => {
+    expect(changeDialog).toMatch(/label=\{confirmLabel\}/);
+    expect(changeDialog).toMatch(/changeNotebookConfirm/);
+    expect(changeDialog).toMatch(/onNotebookChange=\{setDraft\}/);
+    expect(tsx).not.toMatch(/openCreateNotebook\(moveDialog\.ids\)/);
+    expect(tsx).toMatch(/setCreatedMoveDraft/);
+    expect(actionBar).toMatch(/onNotebookChange=\{onMoveToNotebook\}/);
   });
 });
 

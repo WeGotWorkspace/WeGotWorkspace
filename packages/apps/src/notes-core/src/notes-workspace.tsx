@@ -19,7 +19,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
-import { MoveToDialog } from "@/dialogs/src/dialogs";
+import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -62,7 +62,11 @@ import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
-import { pendingMoveAfterNotebookCreate } from "@/notes-core/src/notes-notebook-select";
+import {
+  notebookSelectValueForNotes,
+  pendingMoveAfterNotebookCreate,
+  type NotesNotebookSelectItem,
+} from "@/notes-core/src/notes-notebook-select";
 import { NotesConflictDialog } from "@/notes-core/src/notes-conflict-dialog";
 import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
@@ -255,6 +259,7 @@ export function NotesWorkspace({
     [ownedNotebooks, sharedNotebookRows],
   );
   const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
+  const [createdMoveDraft, setCreatedMoveDraft] = useState<NotesNotebookSelectItem | null>(null);
   const openCreateNotebook = useCallback(
     (moveNoteIds?: string[]) => {
       pendingMoveAfterCreateRef.current = moveNoteIds?.length ? moveNoteIds : null;
@@ -601,24 +606,22 @@ export function NotesWorkspace({
         }}
       />
 
-      <MoveToDialog
+      <NotesChangeNotebookDialog
         open={!!moveDialog}
-        notebooks={notebooks}
-        title="Change notebook"
-        description="Choose or create a notebook for the selected notes."
-        confirmLabel="Change"
-        allowCreate
-        currentNotebook={
-          moveDialog?.ids.length === 1
-            ? notes.find((note) => note.id === moveDialog.ids[0])?.notebook
-            : undefined
-        }
-        onClose={() => setMoveDialog(null)}
-        onConfirm={(notebook) => {
-          if (moveDialog) moveToNotebook(moveDialog.ids, notebook);
+        notebooks={selectNotebooks}
+        value={notebookSelectValueForNotes(notes, moveDialog?.ids, selectNotebooks)}
+        createdNotebook={createdMoveDraft}
+        labels={L}
+        onClose={() => {
           setMoveDialog(null);
+          setCreatedMoveDraft(null);
         }}
-        contentClassName="notes-dialog-surface"
+        onNotebookChange={(notebook) => {
+          if (moveDialog) moveToNotebook(moveDialog.ids, notebook.id || notebook.name);
+        }}
+        onCreateNotebook={
+          canManageNotebooks && moveDialog ? () => openCreateNotebook() : undefined
+        }
       />
 
       <TaskProjectDialog
@@ -638,7 +641,17 @@ export function NotesWorkspace({
                 pendingMoveAfterCreateRef.current,
               );
               pendingMoveAfterCreateRef.current = null;
-              if (pending) moveToNotebook(pending.ids, pending.notebook);
+              if (pending) {
+                moveToNotebook(pending.ids, pending.notebook);
+                return;
+              }
+              if (created && moveDialog) {
+                setCreatedMoveDraft({
+                  id: created.id,
+                  name: created.name,
+                  color: created.color,
+                });
+              }
             });
             return;
           }

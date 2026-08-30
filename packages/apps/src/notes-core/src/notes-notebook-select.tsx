@@ -22,9 +22,15 @@ export type NotesNotebookSelectItem = {
   color?: string | null;
 };
 
+export type NotesNotebookSelectValue = {
+  id?: string;
+  name: string;
+  color?: string | null;
+};
+
 export type NotesNotebookSelectProps = {
   notebooks: NotesNotebookSelectItem[];
-  value: { id?: string; name: string; color?: string | null };
+  value: NotesNotebookSelectValue;
   labels: Pick<NotesUILabels, "addNotebook" | "toolbarMoveToNotebook">;
   ariaLabel?: string;
   disabled?: boolean;
@@ -33,15 +39,40 @@ export type NotesNotebookSelectProps = {
   onCreateNotebook?: () => void;
 };
 
+export function notebookSelectValueForNotes(
+  notes: ReadonlyArray<{ id: string; notebook: string; notebookId?: string }>,
+  ids: readonly string[] | undefined,
+  notebooks: readonly NotesNotebookSelectItem[],
+): NotesNotebookSelectValue {
+  const sample = ids?.length ? notes.find((note) => note.id === ids[0]) : undefined;
+  if (!sample) return { name: "" };
+  const match = notebooks.find(
+    (notebook) => notebook.id === sample.notebookId || notebook.name === sample.notebook,
+  );
+  return {
+    id: sample.notebookId ?? match?.id,
+    name: sample.notebook,
+    color: match?.color,
+  };
+}
+
 export function notebooksWithCurrent(
   notebooks: NotesNotebookSelectItem[],
-  current: { id?: string; name: string; color?: string | null },
+  current: NotesNotebookSelectValue,
 ): NotesNotebookSelectItem[] {
   if (!current.name.trim()) return notebooks;
   if (notebooks.some((notebook) => notebook.id === current.id || notebook.name === current.name)) {
     return notebooks;
   }
   return [{ id: current.id ?? current.name, name: current.name, color: current.color }, ...notebooks];
+}
+
+export function notebookSelectionEquals(
+  left: { id?: string; name: string },
+  right: { id?: string; name: string },
+): boolean {
+  if (left.id && right.id) return left.id === right.id;
+  return left.name === right.name;
 }
 
 export function resolveNotebookSelectValue(

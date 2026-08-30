@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   NOTES_CREATE_NOTEBOOK_VALUE,
   NotesNotebookSelect,
+  notebookSelectValueForNotes,
+  notebookSelectionEquals,
   notebooksWithCurrent,
   pendingMoveAfterNotebookCreate,
   resolveNotebookSelectValue,
@@ -43,6 +45,36 @@ describe("NotesNotebookSelect helpers", () => {
 
   it("resolves the selected value to the matching collection id", () => {
     expect(resolveNotebookSelectValue(notebooks, { name: "Drafts" })).toBe("nb-drafts");
+  });
+
+  it("resolves the picker value from the first selected note", () => {
+    expect(
+      notebookSelectValueForNotes(
+        [
+          { id: "n-1", notebook: "Drafts", notebookId: "nb-drafts" },
+          { id: "n-2", notebook: "The Journal", notebookId: "nb-journal" },
+        ],
+        ["n-1", "n-2"],
+        notebooks,
+      ),
+    ).toEqual({ id: "nb-drafts", name: "Drafts", color: "#f59e0b" });
+    expect(notebookSelectValueForNotes([], undefined, notebooks)).toEqual({ name: "" });
+  });
+
+  it("compares notebook identity by id when both sides have one", () => {
+    expect(
+      notebookSelectionEquals(
+        { id: "nb-drafts", name: "Drafts" },
+        { id: "nb-drafts", name: "Renamed" },
+      ),
+    ).toBe(true);
+    expect(
+      notebookSelectionEquals(
+        { id: "nb-drafts", name: "Drafts" },
+        { id: "nb-journal", name: "The Journal" },
+      ),
+    ).toBe(false);
+    expect(notebookSelectionEquals({ name: "Drafts" }, { name: "Drafts" })).toBe(true);
   });
 
   it("does not move until a created notebook exists", () => {

@@ -92,6 +92,25 @@ describe("NotesDetailActionBar", () => {
     expect(back.className).toContain("action-bar__back");
   });
 
+  it("opens Create notebook from the shared picker", () => {
+    stubSelectEnv();
+    const onCreateNotebook = vi.fn();
+    const onMoveToNotebook = vi.fn();
+    renderBar(
+      <NotesDetailActionBar
+        active={owned}
+        {...barProps}
+        onMoveToNotebook={onMoveToNotebook}
+        onCreateNotebook={onCreateNotebook}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }));
+    fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
+    expect(onCreateNotebook).toHaveBeenCalledTimes(1);
+    expect(onMoveToNotebook).not.toHaveBeenCalled();
+  });
+
   it("shows a notebook dropdown for owned notes", () => {
     renderBar(
       <NotesDetailActionBar

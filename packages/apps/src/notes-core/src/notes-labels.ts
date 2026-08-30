@@ -54,6 +54,8 @@ export type NotesUILabels = {
   swipeArchive: string;
   swipeUnarchive: string;
   toolbarMoveToNotebook: string;
+  /** Confirm notebook assignment in the change-notebook dialog (draft until clicked). */
+  changeNotebookConfirm: string;
   toolbarStar: string;
   toolbarArchive: string;
   toolbarUnarchive: string;
@@ -150,6 +152,7 @@ export const defaultNotesLabels: NotesUILabels = {
   swipeArchive: "Archive",
   swipeUnarchive: "Unarchive",
   toolbarMoveToNotebook: "Change notebook",
+  changeNotebookConfirm: "Change",
   toolbarStar: "Star",
   toolbarArchive: "Archive",
   toolbarUnarchive: "Unarchive",
