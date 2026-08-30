@@ -23,6 +23,7 @@ describe("collection sidebar row CSS", () => {
 
   it("tints the visibility checkbox from --collection-row-color, not parent --checkbox-*", () => {
     const visibility = css.match(/\.collection-sidebar-row__visibility \{[^}]+\}/)?.[0];
+    expect(visibility).toMatch(/--checkbox-size:\s*1rem/);
     expect(visibility).toMatch(/--checkbox-checked-bg:\s*var\(--collection-row-color/);
     expect(visibility).toMatch(/--checkbox-checked-border:\s*var\(--collection-row-color/);
     expect(visibility).toMatch(/--checkbox-checked-fg:\s*#ffffff/);

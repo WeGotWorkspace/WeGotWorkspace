@@ -18,7 +18,9 @@
   --primary: var(--collection-row-color, var(--color-ink));
   --primary-foreground: #ffffff;
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
-   * primitive paints calendarcolor / list / notebook color, not the app accent. */
+   * primitive paints calendarcolor / list / notebook color, not the app accent.
+   * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
+  --checkbox-size: 1rem;
   --checkbox-border-color: var(--collection-row-color, var(--color-ink));
   --checkbox-checked-bg: var(--collection-row-color, var(--color-ink));
   --checkbox-checked-border: var(--collection-row-color, var(--color-ink));

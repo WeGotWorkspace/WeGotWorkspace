@@ -513,6 +513,10 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] {
+  /* Match Tasks `--tasks-marker-size` (size-6). Radius stays `--radius-sm`. */
+  --checkbox-size: 1.5rem;
+  /* Inset Lucide check — same as `.checkbox__icon` (size-4), not the full 24px box. */
+  --checkbox-check-size: 1rem;
   list-style: none;
   padding-left: 0.25rem;
 }
@@ -542,8 +546,8 @@
 
 .text-editor-prose ul[data-type="taskList"] li > label {
   @apply m-0 flex cursor-pointer select-none items-center justify-center;
-  flex: 0 0 var(--checkbox-size, 1rem);
-  width: var(--checkbox-size, 1rem);
+  flex: 0 0 var(--checkbox-size, 1.5rem);
+  width: var(--checkbox-size, 1.5rem);
   height: 1.7em;
 }
 
@@ -557,9 +561,10 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label span {
-  @apply relative grid shrink-0 place-content-center border shadow;
-  width: var(--checkbox-size, 1rem);
-  height: var(--checkbox-size, 1rem);
+  /* 2px matches Tasks Lucide `strokeWidth` (Circle / CheckCircle2). No drop shadow. */
+  @apply relative grid shrink-0 place-content-center border border-2 shadow-none;
+  width: var(--checkbox-size, 1.5rem);
+  height: var(--checkbox-size, 1.5rem);
   border-radius: var(--checkbox-radius, var(--radius-sm));
   border-color: var(--checkbox-border-color, var(--primary));
   background-color: var(--checkbox-bg, transparent);
@@ -576,11 +581,11 @@
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span::after,
 .text-editor-prose ul[data-type="taskList"] li[data-checked="true"] > label span::after {
   content: "";
-  width: var(--checkbox-size, 1rem);
-  height: var(--checkbox-size, 1rem);
+  width: var(--checkbox-check-size, 1rem);
+  height: var(--checkbox-check-size, 1rem);
   background-color: currentColor;
-  /* Lucide `Check` path — matches `.checkbox__icon`. */
-  --checkbox-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  /* Lucide `Check` path — stroke 2 matches `.checkbox__icon`. */
+  --checkbox-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
   -webkit-mask-image: var(--checkbox-check-mask);
   -webkit-mask-position: center;
   -webkit-mask-size: contain;
