@@ -18,7 +18,7 @@ final class NotePatchRequest extends FormRequest
         return [
             'notebookId' => ['sometimes', 'string', 'min:1'],
             'title' => ['sometimes', 'nullable', 'string', 'max:1024'],
-            'body' => ['sometimes', 'string'],
+            'body' => ['sometimes', 'nullable', 'string'],
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string', 'max:255'],
             'status' => ['sometimes', 'nullable', 'in:FINAL,CANCELLED'],

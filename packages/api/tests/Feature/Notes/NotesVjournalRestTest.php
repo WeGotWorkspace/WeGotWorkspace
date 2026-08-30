@@ -81,7 +81,8 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $note->assertJsonPath('id', $uid)
             ->assertJsonPath('title', 'Foreign href')
             ->assertJsonPath('body', 'Body')
-            ->assertJsonPath('notebookId', CalendarCollectionUris::NOTE_GENERAL);
+            ->assertJsonPath('notebookId', CalendarCollectionUris::NOTE_GENERAL)
+            ->assertJsonPath('updatedAt', '2026-08-28T12:00:00Z');
 
         $row = CalendarObject::query()->where('uid', $uid)->first();
         $this->assertNotNull($row);
@@ -235,6 +236,37 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $newDestToken = (int) DB::connection('wgw')->table('calendars')->where('id', $destCalendarId)->value('synctoken');
         $this->assertGreaterThan($sourceToken, $newSourceToken);
         $this->assertGreaterThan(1, $newDestToken);
+    }
+
+    public function test_empty_description_create_and_patch_persist(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => null,
+            'body' => '',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $created->assertJsonPath('id', $id)
+            ->assertJsonPath('title', null)
+            ->assertJsonPath('body', '');
+
+        $list = $this->asBob()->getJson(
+            '/api/v1/notes/items?notebookId='.CalendarCollectionUris::NOTE_GENERAL
+        )->assertOk()->json('list');
+        $ids = array_column($list, 'id');
+        $this->assertContains($id, $ids);
+
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, ['title' => 'Title only', 'body' => ''])
+            ->assertOk()
+            ->assertJsonPath('title', 'Title only')
+            ->assertJsonPath('body', '');
+
+        $this->asBob()->getJson('/api/v1/notes/items/'.$id)
+            ->assertOk()
+            ->assertJsonPath('title', 'Title only')
+            ->assertJsonPath('body', '');
     }
 
     public function test_archive_status_cancelled_and_title_patch_does_not_clobber_body(): void

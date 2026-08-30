@@ -6,19 +6,33 @@ import {
 } from "@/notes-core/src/notes-title-autofill";
 
 describe("notes title autofill", () => {
-  it("takes the first heading", () => {
+  it("takes the first heading once the line is complete", () => {
     expect(titleFromNoteMarkdown("# Hello\n\nbody")).toBe("Hello");
   });
 
-  it("falls back to the first non-empty line", () => {
+  it("falls back to the first complete non-empty line", () => {
     expect(titleFromNoteMarkdown("\n\nMeeting notes\nmore")).toBe("Meeting notes");
+  });
+
+  it("does not treat an in-progress first line as SUMMARY", () => {
+    expect(titleFromNoteMarkdown("H")).toBeNull();
+    expect(titleFromNoteMarkdown("Hello")).toBeNull();
+    expect(titleFromNoteMarkdown("Hello\n")).toBeNull();
+    expect(titleFromNoteMarkdown("Hello\n\n")).toBeNull();
+    expect(titleFromNoteMarkdown("# Other")).toBeNull();
   });
 
   it("fills only when SUMMARY is empty; user edits stick", () => {
     expect(shouldAutofillNoteTitle(null)).toBe(true);
     expect(shouldAutofillNoteTitle("")).toBe(true);
     expect(shouldAutofillNoteTitle("Kept")).toBe(false);
-    expect(autofillNoteTitle("Kept", "# Other")).toBe("Kept");
-    expect(autofillNoteTitle("", "# Other")).toBe("Other");
+    expect(autofillNoteTitle("Kept", "# Other\n\nNotes")).toBe("Kept");
+    expect(autofillNoteTitle("", "# Other\n\nNotes")).toBe("Other");
+    expect(autofillNoteTitle("Event", "Hello\n\nworld")).toBe("Event");
+  });
+
+  it("autofills a one-character first line only after it is complete", () => {
+    expect(autofillNoteTitle("", "A")).toBeNull();
+    expect(autofillNoteTitle("", "A\n\nrest")).toBe("A");
   });
 });
