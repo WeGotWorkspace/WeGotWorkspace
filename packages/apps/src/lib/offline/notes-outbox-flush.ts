@@ -15,6 +15,7 @@ import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
+  dropLocalNoteAfterServerGone,
   listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
@@ -26,6 +27,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
+import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 
 export type OutboxFlushResult = {
   stateMismatches: string[];
@@ -91,6 +93,12 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           }
           const status = (error as { status?: number } | undefined)?.status;
           if (status !== 404) throw error;
+          // local-* first persist: create. A real UID 404 is gone — drop, don't resurrect.
+          if (!upsert.tempNoteId) {
+            await dropLocalNoteAfterServerGone(username, noteId);
+            await removeOutboxMutation(username, row.id);
+            continue;
+          }
           saved = await createNoteItem({ ...metadataRequest, body: "" });
         }
         const tempId = upsert.tempNoteId;
@@ -123,25 +131,34 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             await markOutboxError(username, row.id, "stateMismatch");
             continue;
           }
+          if (isNotesPersistGone(error)) {
+            await dropLocalNoteAfterServerGone(username, noteId);
+            await removeOutboxMutation(username, row.id);
+            continue;
+          }
           throw error;
         }
         await removeNoteFromCache(username, noteId);
-      } else if (row.op === "archive") {
+      } else if (row.op === "archive" || row.op === "restore") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =
           typeof payload.groupSlug === "string" && payload.groupSlug.trim()
             ? payload.groupSlug.trim()
             : undefined;
-        const saved = await archiveNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
-        await upsertNoteInCache(username, saved, false);
-      } else if (row.op === "restore") {
-        const noteId = String(payload.noteId ?? "");
-        const groupSlug =
-          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
-            ? payload.groupSlug.trim()
-            : undefined;
-        const saved = await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
-        await upsertNoteInCache(username, saved, false);
+        try {
+          const saved =
+            row.op === "archive"
+              ? await archiveNoteItem(noteId, groupSlug ? { groupSlug } : undefined)
+              : await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
+          await upsertNoteInCache(username, saved, false);
+        } catch (error) {
+          if (isNotesPersistGone(error)) {
+            await dropLocalNoteAfterServerGone(username, noteId);
+            await removeOutboxMutation(username, row.id);
+            continue;
+          }
+          throw error;
+        }
       } else if (row.op === "createNotebook") {
         const color =
           typeof payload.color === "string" && payload.color.trim()

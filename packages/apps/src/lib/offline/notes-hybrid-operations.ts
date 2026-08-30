@@ -30,6 +30,7 @@ import {
 } from "@/lib/offline/core/browser-online";
 import {
   createTempNoteId,
+  dropLocalNoteAfterServerGone,
   isLocalTempNoteId,
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
@@ -42,6 +43,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
+import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes-outbox-flush";
@@ -56,6 +58,20 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
   if (!isFetchNetworkError(error)) throw error;
+}
+
+/**
+ * On 404, the server object is gone — drop Dexie/outbox so the note cannot linger
+ * as a zombie you cannot archive. 403/401/412/5xx must not delete local.
+ */
+async function dropLocalIfServerGone(
+  username: string,
+  noteId: string,
+  error: unknown,
+): Promise<boolean> {
+  if (!isNotesPersistGone(error)) return false;
+  await dropLocalNoteAfterServerGone(username, noteId);
+  return true;
 }
 
 async function renameCachedNotebook(username: string, from: string, to: string): Promise<void> {
@@ -220,13 +236,19 @@ async function upsertNoteOnline(
   } catch (error) {
     const status = (error as { status?: number } | undefined)?.status;
     if (status !== 404) throw error;
-    const saved = await createNoteItem(
-      wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
-      opts,
-    );
-    await upsertNoteInCache(username, saved, false);
-    await runner.flush();
-    return saved;
+    // local-* first persist: 404 on PUT means "never created" → POST create.
+    // A real UID 404 means the object is gone — do not resurrect a ghost.
+    if (isLocalTempNoteId(note.id)) {
+      const saved = await createNoteItem(
+        wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
+        opts,
+      );
+      await upsertNoteInCache(username, saved, false);
+      await runner.flush();
+      return saved;
+    }
+    await dropLocalNoteAfterServerGone(username, note.id);
+    throw error;
   }
 }
 
@@ -275,6 +297,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         await removeNoteFromCache(username, target.id);
         await runner.flush();
       } catch (error) {
+        if (await dropLocalIfServerGone(username, target.id, error)) return;
         rethrowUnlessOfflineQueue(error, opts?.signal);
         await queueOfflineDelete(username, target);
       }
@@ -307,6 +330,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         await runner.flush();
         return saved;
       } catch (error) {
+        if (await dropLocalIfServerGone(username, id, error)) throw error;
         rethrowUnlessOfflineQueue(error, opts?.signal);
         const optimistic = { ...existing, archived: true };
         await upsertNoteInCache(username, optimistic, true);
@@ -347,6 +371,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         await runner.flush();
         return saved;
       } catch (error) {
+        if (await dropLocalIfServerGone(username, id, error)) throw error;
         rethrowUnlessOfflineQueue(error, opts?.signal);
         const optimistic = { ...existing, archived: false };
         await upsertNoteInCache(username, optimistic, true);

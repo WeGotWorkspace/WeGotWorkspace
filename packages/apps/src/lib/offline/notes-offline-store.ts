@@ -17,7 +17,11 @@ import {
   type OfflineNoteRow,
 } from "@/lib/offline/notes/notes-schema";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
-import { enrichNote, noteHasListableBody } from "@/notes-core/src/notes-note-utils";
+import {
+  enrichNote,
+  noteHasListableBody,
+  notesWithRenamedNotebook,
+} from "@/notes-core/src/notes-note-utils";
 
 export {
   enqueueOutboxMutation,
@@ -262,11 +266,22 @@ export async function upsertNotebookInCache(
   });
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) return;
+  const previous = (cached.data.notebookCollections ?? []).find((item) => item.id === notebook.id);
+  const previousName = previous?.name;
   cached.data.notebookCollections = mergeNotebookIntoList(
     cached.data.notebookCollections ?? [],
     notebook,
   );
-  if (isOwnedPersonalNotebook(notebook) && !cached.data.notebooks.includes(notebook.name)) {
+  if (previousName && previousName !== notebook.name) {
+    cached.data.notes = notesWithRenamedNotebook(cached.data.notes, {
+      notebookId: notebook.id,
+      fromName: previousName,
+      toName: notebook.name,
+    });
+    cached.data.notebooks = cached.data.notebooks.map((name) =>
+      name === previousName ? notebook.name : name,
+    );
+  } else if (isOwnedPersonalNotebook(notebook) && !cached.data.notebooks.includes(notebook.name)) {
     cached.data.notebooks = [...cached.data.notebooks, notebook.name];
   }
   await writeNotesBootstrapToCache(username, cached);
@@ -297,6 +312,18 @@ export async function removeNotebookFromCache(
 export async function removeNoteFromCache(username: string, noteId: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await notesNotesTable(db).delete(noteId);
+}
+
+/**
+ * Drop Dexie + outbox for a note the server reported as gone (HTTP 404).
+ * Callers must only invoke this after a 404 persist error — not 403/412/5xx.
+ */
+export async function dropLocalNoteAfterServerGone(
+  username: string,
+  noteId: string,
+): Promise<void> {
+  await removeOutboxMutationsForNote(username, noteId);
+  await removeNoteFromCache(username, noteId);
 }
 
 export async function listFailedNotesOutbox(username: string): Promise<OfflineOutboxRow[]> {

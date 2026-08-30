@@ -101,6 +101,46 @@ describe("notes offline store", () => {
     expect(cached?.data.groups).toEqual([{ slug: "team", displayName: "Team" }]);
   });
 
+  it("rewrites cached note.notebook when a collection is renamed", async () => {
+    const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+        ],
+        notebooks: ["Drafts", "Work"],
+        tags: ["essay"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+          { id: "notes-work", name: "Work", color: "#0ea5e9" },
+        ],
+      },
+    });
+
+    await upsertNotebookInCache(username, {
+      id: "notes-drafts",
+      name: "Journal",
+      color: "#14b8a6",
+      isSharee: false,
+      scope: "personal",
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Journal", "Work"]);
+    expect(cached?.data.notes.map((item) => ({ id: item.id, notebook: item.notebook }))).toEqual([
+      { id: "note-1", notebook: "Journal" },
+      { id: "note-2", notebook: "Work" },
+    ]);
+    expect(cached?.data.notebookCollections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "notes-drafts", name: "Journal" }),
+        expect.objectContaining({ id: "notes-work", name: "Work" }),
+      ]),
+    );
+  });
+
   it("preserves pendingSync notes when bootstrap is rewritten from server", async () => {
     const localNote = { ...note, body: ["Local body"] };
     await upsertNoteInCache(username, localNote, true);

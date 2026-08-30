@@ -75,7 +75,13 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));
 
-import { deleteNoteItem, updateNoteItem } from "@/lib/api/wgw/notes";
+import {
+  archiveNoteItem,
+  createNoteItem,
+  deleteNoteItem,
+  restoreNoteItem,
+  updateNoteItem,
+} from "@/lib/api/wgw/notes";
 import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 
@@ -212,6 +218,74 @@ describe("createHybridNotesOperations", () => {
       { notebook: note.notebook, archived: true },
       undefined,
     );
+  });
+
+  it("archives online via PATCH STATUS CANCELLED and caches archived", async () => {
+    vi.mocked(archiveNoteItem).mockResolvedValue({ ...note, archived: true });
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.archiveNote(note.id);
+
+    expect(archiveNoteItem).toHaveBeenCalledWith(note.id, undefined);
+    expect(saved.archived).toBe(true);
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.archived).toBe(true);
+  });
+
+  it("restores online via PATCH STATUS FINAL and clears archived", async () => {
+    await upsertNoteInCache(username, { ...note, archived: true }, false);
+    vi.mocked(restoreNoteItem).mockResolvedValue({ ...note, archived: false });
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.restoreNote(note.id);
+
+    expect(restoreNoteItem).toHaveBeenCalledWith(note.id, undefined);
+    expect(saved.archived).toBe(false);
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.archived).toBeFalsy();
+  });
+
+  it("drops Dexie and outbox when archive persist returns 404", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, { ...note, starred: true }, note.date);
+    vi.mocked(archiveNoteItem).mockRejectedValue(
+      Object.assign(new Error("Note not found"), { status: 404 }),
+    );
+
+    const operations = createHybridNotesOperations(username);
+    await expect(operations.archiveNote(note.id)).rejects.toMatchObject({ status: 404 });
+
+    expect(await listOutboxMutations(username)).toHaveLength(0);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(note.id)).toBeUndefined();
+    expect((await readNotesBootstrapFromCache(username))?.data.notes ?? []).toEqual([]);
+  });
+
+  it("keeps the Dexie row when archive persist returns 412 or 403", async () => {
+    const operations = createHybridNotesOperations(username);
+    vi.mocked(archiveNoteItem).mockRejectedValueOnce(
+      Object.assign(new Error("precondition"), { status: 412 }),
+    );
+    await expect(operations.archiveNote(note.id)).rejects.toMatchObject({ status: 412 });
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
+
+    vi.mocked(archiveNoteItem).mockRejectedValueOnce(
+      Object.assign(new Error("forbidden"), { status: 403 }),
+    );
+    await expect(operations.archiveNote(note.id)).rejects.toMatchObject({ status: 403 });
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
+  });
+
+  it("drops a real-UID upsert 404 instead of creating a ghost", async () => {
+    vi.mocked(updateNoteItem).mockRejectedValue(
+      Object.assign(new Error("Note not found"), { status: 404 }),
+    );
+
+    const operations = createHybridNotesOperations(username);
+    await expect(operations.upsertNote({ ...note, title: "Gone" })).rejects.toMatchObject({
+      status: 404,
+    });
+
+    expect(createNoteItem).not.toHaveBeenCalled();
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(note.id)).toBeUndefined();
   });
 
   it("queues delete offline and removes note from cache", async () => {

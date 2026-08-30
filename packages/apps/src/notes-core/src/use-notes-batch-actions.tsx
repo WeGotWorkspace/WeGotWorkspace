@@ -4,6 +4,7 @@ import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
 import { noteShowsStarControls } from "./notes-note-utils";
+import { persistNoteOrDropGone } from "./notes-persist-access";
 import type { NotesAPIOperations } from "./notes-types";
 
 type QueueMutation = (args: {
@@ -37,6 +38,7 @@ type UseNotesBatchActionsArgs = {
   setSelectionMode: Dispatch<SetStateAction<boolean>>;
   operations?: NotesAPIOperations;
   queueMutation: QueueMutation;
+  dropGoneNote: (noteId: string) => void;
   batchToggleStarForIds: (ids: string[]) => { count: number; allWereStarred: boolean } | null;
   requestConfirm: (args: {
     title: string;
@@ -60,6 +62,7 @@ export function useNotesBatchActions({
   setSelectionMode,
   operations,
   queueMutation,
+  dropGoneNote,
   batchToggleStarForIds,
   requestConfirm,
   deleteConfirmCopy,
@@ -88,10 +91,13 @@ export function useNotesBatchActions({
           operations
             ? Promise.all(
                 rows.map((note) =>
-                  operations.deleteNote({
-                    ...note,
-                    archived: !!archived[note.id] || !!note.archived,
-                  }),
+                  persistNoteOrDropGone(
+                    operations.deleteNote({
+                      ...note,
+                      archived: !!archived[note.id] || !!note.archived,
+                    }),
+                    () => dropGoneNote(note.id),
+                  ),
                 ),
               ).then(() => {})
             : Promise.resolve(),
@@ -100,7 +106,17 @@ export function useNotesBatchActions({
         undoToastMessage: "Deletion undone.",
       });
     },
-    [notes, operations, queueMutation, selectedIds, setNotes, setSelectedIds, setSelectionMode],
+    [
+      archived,
+      dropGoneNote,
+      notes,
+      operations,
+      queueMutation,
+      selectedIds,
+      setNotes,
+      setSelectedIds,
+      setSelectionMode,
+    ],
   );
 
   const openDeleteConfirm = useCallback(
@@ -153,7 +169,11 @@ export function useNotesBatchActions({
       icon: toastIcon,
       execute: async () => {
         if (!operations) return;
-        await Promise.all(updatedRows.map((row) => operations.upsertNote(row)));
+        await Promise.all(
+          updatedRows.map((row) =>
+            persistNoteOrDropGone(operations.upsertNote(row), () => dropGoneNote(row.id)),
+          ),
+        );
       },
       rollback: () => {
         batchToggleStarForIds(starIds);
@@ -166,7 +186,7 @@ export function useNotesBatchActions({
       },
       undoToastMessage: "Star changes undone.",
     });
-  }, [batchToggleStarForIds, notes, operations, queueMutation, selectedIds, setNotes]);
+  }, [batchToggleStarForIds, dropGoneNote, notes, operations, queueMutation, selectedIds, setNotes]);
 
   const batchArchive = useCallback(() => {
     const beforeRows = notes.filter((note) => selectedIds.includes(note.id));
@@ -194,9 +214,12 @@ export function useNotesBatchActions({
         if (!operations) return;
         await Promise.all(
           selectedIds.map((id) =>
-            allArchived
-              ? operations.restoreNote(id, { signal })
-              : operations.archiveNote(id, { signal }),
+            persistNoteOrDropGone(
+              allArchived
+                ? operations.restoreNote(id, { signal })
+                : operations.archiveNote(id, { signal }),
+              () => dropGoneNote(id),
+            ),
           ),
         );
       },
@@ -217,7 +240,7 @@ export function useNotesBatchActions({
       },
       undoToastMessage: "Archive changes undone.",
     });
-  }, [archived, notes, operations, queueMutation, selectedIds, setArchived, setNotes]);
+  }, [archived, dropGoneNote, notes, operations, queueMutation, selectedIds, setArchived, setNotes]);
 
   const requestDeleteSelected = useCallback(() => {
     if (selectedIds.length === 0) return;

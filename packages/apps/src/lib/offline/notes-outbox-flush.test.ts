@@ -8,6 +8,7 @@ import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
+  readNotesBootstrapFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -39,10 +40,11 @@ const bootstrap = {
   },
 };
 
-const { updateNoteItem, createNoteItem, deleteNoteItem } = vi.hoisted(() => ({
+const { updateNoteItem, createNoteItem, deleteNoteItem, archiveNoteItem } = vi.hoisted(() => ({
   updateNoteItem: vi.fn(),
   createNoteItem: vi.fn(),
   deleteNoteItem: vi.fn(),
+  archiveNoteItem: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
@@ -52,6 +54,7 @@ vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
     updateNoteItem,
     createNoteItem,
     deleteNoteItem,
+    archiveNoteItem,
   };
 });
 
@@ -64,6 +67,7 @@ describe("flushNotesOutbox", () => {
     updateNoteItem.mockReset();
     createNoteItem.mockReset();
     deleteNoteItem.mockReset();
+    archiveNoteItem.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await db.meta.clear();
@@ -206,6 +210,40 @@ describe("flushNotesOutbox", () => {
       archived: false,
     });
     expect(result.bootstrap?.data.notes.some((row) => row.id === note.id)).toBe(false);
+  });
+
+  it("drops Dexie and outbox when a queued archive hits 404", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "archive-row-1",
+      domain: NOTES_DOMAIN,
+      op: "archive",
+      payload: JSON.stringify({ noteId: note.id }),
+    });
+    archiveNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
+
+    const result = await flushNotesOutbox(username);
+
+    expect(archiveNoteItem).toHaveBeenCalledOnce();
+    expect(result.bootstrap?.data.notes.some((row) => row.id === note.id)).toBe(false);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await db.outbox.toArray()).toHaveLength(0);
+    expect(await notesNotesTable(db).get(note.id)).toBeUndefined();
+  });
+
+  it("keeps a queued archive on 412 instead of dropping local", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "archive-row-412",
+      domain: NOTES_DOMAIN,
+      op: "archive",
+      payload: JSON.stringify({ noteId: note.id }),
+    });
+    archiveNoteItem.mockRejectedValue(Object.assign(new Error("precondition"), { status: 412 }));
+
+    await flushNotesOutbox(username);
+
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await db.outbox.toArray()).toHaveLength(1);
   });
 
   it("replays starred upserts through REST metadata (not Drive /files/star)", async () => {
