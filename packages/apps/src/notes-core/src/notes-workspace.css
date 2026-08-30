@@ -2,17 +2,18 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream panes + gold sidebar.
- * Chip/button accent (`--notes-accent`) stays soft `#f6d176`. Full-bleed
- * `--notes-sidebar` is a richer gold — soft accent reads washed on large
- * surfaces (no cream frame), so the sidebar token is stepped up toward former
- * `#f0b422`. Detail body (scroll only) uses a toned wash slightly heavier than
- * list-item selected (`18%` accent) — no paper sheet.
+ * Notes product shell: cream panes + a light gold sidebar tint (Calendar /
+ * Tasks chrome: accent mixed onto cream, not a full-bleed gold wash).
+ * `--notes-accent` is a dusty gold (`#d4bc72`) — quieter than the former
+ * neon `#f6d176`. Chip text stays that gold on ink (WCAG AA). Detail pane
+ * tints from `--notes-detail-tint` (runtime notebook color) at Calendar
+ * event-card light wash (11%). Empty / multi-select leave the var unset
+ * (`transparent` fallback) so the pane stays cream.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --notes-accent: #f6d176;
-  --notes-sidebar: #f3c450;
+  --notes-accent: #d4bc72;
+  --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #ffffff));
   /*
    * Calendar: `--calendar-accent-strong` (#5558e8) is a darker step of
    * `--calendar-accent` (#6366f1) — selected Today icon/label (`--button-active-color`).
@@ -20,12 +21,20 @@
    * mix the product accent toward `--color-ink` (the existing gold contrast pair).
    */
   --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 70%, var(--color-ink));
-  /* List selected ≈ 18% accent; body sits a step heavier on cream. */
-  --notes-detail-body-bg: color-mix(in oklab, var(--notes-accent) 26%, var(--color-cream, #ffffff));
+  /*
+   * Calendar event cards: `surfaceTint(color, 11)` → srgb 11% on surface.
+   * Notes: same 11% in oklab on cream. `--notes-detail-tint` is set from TSX
+   * for a single open note; unset/transparent keeps cream.
+   */
+  --workspace-detail-bg: color-mix(
+    in oklab,
+    var(--notes-detail-tint, transparent) 11%,
+    var(--color-cream, #ffffff)
+  );
+  --notes-detail-body-bg: var(--workspace-detail-bg);
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
-  --workspace-detail-bg: var(--color-cream, #ffffff);
   --app-sidebar-bg: var(--notes-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -43,7 +52,7 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
-  /* Soft gold fill needs ink check (white on #f6d176 fails WCAG UI 3:1). */
+  /* Soft gold fill needs ink check (white on gold fails WCAG UI 3:1). */
   --list-item-checkbox-icon-color: var(--color-ink);
   --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
   --checkbox-checked-bg: var(--notes-accent);
@@ -62,7 +71,7 @@
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
 }
 
-/* Yellow only on the detail scroll body — action bar + footer stay cream. */
+/* Detail scroll shares the notebook-tint pane token (unset tint → cream). */
 .notes-workspace .workspace-detail-pane__scroll {
   background-color: var(--notes-detail-body-bg);
 }
@@ -115,7 +124,7 @@
 }
 
 .notes-dialog-surface {
-  --notes-accent: #f6d176;
+  --notes-accent: #d4bc72;
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink);
@@ -166,11 +175,7 @@
 }
 
 /* Lucide icons are stroke-based; generic icon-button--active fill blobs them. */
-.notes-workspace
-  .action-bar
-  .button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
+.notes-workspace .action-bar .button--variant-subtle.icon-button--active .button__icon > svg {
   fill: none;
   color: var(--notes-accent-strong);
 }

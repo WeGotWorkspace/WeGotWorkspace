@@ -10,10 +10,12 @@ function NotesDetailPaneHarness({
   readOnly = false,
   withPullQuote = false,
   tallBody = false,
+  detailTint,
 }: {
   readOnly?: boolean;
   withPullQuote?: boolean;
   tallBody?: boolean;
+  detailTint?: string;
 }) {
   const base = getNotesDetailStoryProps({
     extraBody: tallBody,
@@ -22,7 +24,7 @@ function NotesDetailPaneHarness({
   const [tags, setTags] = useState(base.tags);
 
   return (
-    <NotesStoryScope variant="detail">
+    <NotesStoryScope variant="detail" detailTint={detailTint}>
       <div className="notes-workspace flex min-h-dvh flex-col">
         <div className="workspace-detail-pane__scroll flex-1">
           <NoteDetailView
@@ -32,11 +34,11 @@ function NotesDetailPaneHarness({
             onTitleChange={readOnly ? undefined : () => {}}
             tags={tags}
             availableTags={base.tags}
-            onTagAdd={
-              readOnly ? undefined : (label) => setTags((prev) => [...prev, label])
-            }
+            onTagAdd={readOnly ? undefined : (label) => setTags((prev) => [...prev, label])}
             onTagRemove={
-              readOnly ? undefined : (label) => setTags((prev) => prev.filter((tag) => tag !== label))
+              readOnly
+                ? undefined
+                : (label) => setTags((prev) => prev.filter((tag) => tag !== label))
             }
             readOnly={readOnly}
             pullQuote={base.pullQuote}
@@ -73,7 +75,7 @@ export const Editable: Story = {
     });
 
     const remove = canvasElement.querySelector(
-      '.note-detail-view__tag-group .tag__remove',
+      ".note-detail-view__tag-group .tag__remove",
     ) as HTMLButtonElement | null;
     expect(remove).toBeTruthy();
     const workspace = canvasElement.querySelector(".notes-workspace");
@@ -105,6 +107,29 @@ export const Editable: Story = {
     const rect = chip!.getBoundingClientRect();
     expect(rect.width).toBeGreaterThan(0);
     expect(rect.height).toBeGreaterThan(0);
+
+    expect(
+      getComputedStyle(workspace as HTMLElement)
+        .getPropertyValue("--notes-detail-tint")
+        .trim(),
+    ).toBe("");
+    const accentProbe = document.createElement("span");
+    accentProbe.style.color = "var(--notes-accent)";
+    workspace!.appendChild(accentProbe);
+    expect(getComputedStyle(accentProbe).color).not.toBe("rgb(246, 209, 118)");
+    accentProbe.remove();
+  },
+};
+
+export const NotebookTint: Story = {
+  tags: ["vitest-ci"],
+  args: { detailTint: "#ec4899" },
+  play: async ({ canvasElement }) => {
+    const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
+    expect(workspace).toBeTruthy();
+    expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
+      "#ec4899",
+    );
   },
 };
 

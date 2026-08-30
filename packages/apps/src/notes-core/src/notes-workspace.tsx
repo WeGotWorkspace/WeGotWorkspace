@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -61,7 +62,7 @@ import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
-import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import {
   notebookSelectValueForNotes,
   pendingMoveAfterNotebookCreate,
@@ -103,9 +104,7 @@ function NotesSidebarRows({
         const viewOnly = isViewOnlyNotebook(notebook);
         const dropProps = viewOnly
           ? undefined
-          : sidebarDropZoneProps(`nb:${notebook.id}`, (ids) =>
-              moveToNotebook(ids, notebook.name),
-            );
+          : sidebarDropZoneProps(`nb:${notebook.id}`, (ids) => moveToNotebook(ids, notebook.name));
         const { isDropTarget, ...dropHandlers } = dropProps ?? {};
         return (
           <CollectionSidebarRow
@@ -340,6 +339,8 @@ export function NotesWorkspace({
   // alone: cmd/ctrl-deselect and view selection-reset clear selectedIds while
   // leaving a stale activeId — list looks unselected but the action bar stayed.
   const showSingleNoteDetail = selectedIds.length === 1 && !!active && selectedIds[0] === active.id;
+  const notesDetailTint =
+    showSingleNoteDetail && active ? notebookDisplayColor(active, notebookCollections) : undefined;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
 
   const searchSharePrincipals = useCallback(
@@ -401,6 +402,9 @@ export function NotesWorkspace({
         initialDetailOpenMobile={Boolean(initialNoteId)}
         workspaceRoot={{
           className: cn("notes-workspace", className),
+          style: notesDetailTint
+            ? ({ ["--notes-detail-tint"]: notesDetailTint } as CSSProperties)
+            : undefined,
         }}
         sidebar={(c) => (
           <AppSidebar
@@ -619,9 +623,7 @@ export function NotesWorkspace({
         onNotebookChange={(notebook) => {
           if (moveDialog) moveToNotebook(moveDialog.ids, notebook.id || notebook.name);
         }}
-        onCreateNotebook={
-          canManageNotebooks && moveDialog ? () => openCreateNotebook() : undefined
-        }
+        onCreateNotebook={canManageNotebooks && moveDialog ? () => openCreateNotebook() : undefined}
       />
 
       <TaskProjectDialog

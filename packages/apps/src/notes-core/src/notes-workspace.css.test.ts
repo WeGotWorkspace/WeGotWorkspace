@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { NOTES_DETAIL_TINT_PERCENT } from "@/notes-core/src/notes-notebook-color";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "notes-workspace.tsx"), "utf8");
@@ -135,6 +136,58 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(css).not.toMatch(/var\(--calendar-accent/);
     expect(css).not.toMatch(
       /\.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/,
+    );
+  });
+});
+
+function hexSaturation(hex: string): number {
+  const n = hex.slice(1);
+  const r = Number.parseInt(n.slice(0, 2), 16) / 255;
+  const g = Number.parseInt(n.slice(2, 4), 16) / 255;
+  const b = Number.parseInt(n.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return 0;
+  return (max - min) / (1 - Math.abs(2 * l - 1));
+}
+
+describe("notes workspace detail notebook tint", () => {
+  const eventColor = readFileSync(
+    join(here, "../../lib/calendar-elements/utils/EventColor.ts"),
+    "utf8",
+  );
+
+  it("mixes --workspace-detail-bg from --notes-detail-tint at Calendar light-wash %", () => {
+    expect(eventColor).toMatch(/surfaceTint\(color,\s*11\)/);
+    expect(NOTES_DETAIL_TINT_PERCENT).toBe(11);
+    expect(css).toMatch(
+      /--workspace-detail-bg:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-tint,\s*transparent\) 11%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(/--notes-detail-body-bg:\s*var\(--workspace-detail-bg\)/);
+    expect(css).not.toMatch(
+      /--notes-detail-body-bg:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 26%/,
+    );
+  });
+
+  it("sets --notes-detail-tint from the live notebook color for a single note only", () => {
+    expect(tsx).toMatch(/notebookDisplayColor\(active, notebookCollections\)/);
+    expect(tsx).toMatch(/\["--notes-detail-tint"\]:\s*notesDetailTint/);
+    expect(tsx).toMatch(/const notesDetailTint =\s*showSingleNoteDetail && active/);
+  });
+});
+
+describe("notes workspace accent tokens", () => {
+  it("uses a quieter gold than #f6d176 for chrome accents", () => {
+    const accent = css.match(
+      /\.notes-workspace \{[\s\S]*?--notes-accent:\s*(#[0-9a-fA-F]{6})/,
+    )?.[1];
+    expect(accent).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(accent?.toLowerCase()).not.toBe("#f6d176");
+    expect(hexSaturation(accent!)).toBeLessThan(hexSaturation("#f6d176"));
+    expect(css).not.toMatch(/--notes-accent:\s*#f6d176/i);
+    expect(css).toMatch(
+      /--notes-sidebar:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 12%,\s*var\(--color-cream/,
     );
   });
 });
