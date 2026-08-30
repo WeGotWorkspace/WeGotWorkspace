@@ -30,7 +30,7 @@ export type NotesUILabels = {
   addNotebook: string;
   addTag: string;
   listSelected: (count: number) => string;
-  listFiles: (count: number) => string;
+  listItems: (count: number) => string;
   emptyList: string;
   /** Detail pane when no note is selected (CollectionState empty). */
   emptyDetail: string;
@@ -125,7 +125,7 @@ export const defaultNotesLabels: NotesUILabels = {
   addNotebook: "Create notebook",
   addTag: "New tag",
   listSelected: (count) => `${count} Selected`,
-  listFiles: (count) => `${count} Files`,
+  listItems: (count) => `${count} Items`,
   emptyList: "No items",
   emptyDetail: "Select a note",
   newNote: "New note",

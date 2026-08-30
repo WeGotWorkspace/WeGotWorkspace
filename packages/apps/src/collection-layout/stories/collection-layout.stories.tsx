@@ -26,7 +26,7 @@ export const Default: Story = {
             className="text-[10px] mt-2 uppercase tracking-[0.18em]"
             style={{ color: "color-mix(in oklab, var(--color-ink) 45%, transparent)" }}
           >
-            12 Files
+            12 Items
           </p>
           <CollectionSearchInput value="" onChange={() => {}} placeholder="Search..." />
         </CollectionHeader>

@@ -15,6 +15,17 @@ describe("notes create-collection labels", () => {
   });
 });
 
+describe("notes item collection copy", () => {
+  it("uses items for list counts and empty states", () => {
+    expect(defaultNotesLabels.sidebarAllItems).toBe("All Items");
+    expect(defaultNotesLabels.listItems(1)).toBe("1 Items");
+    expect(defaultNotesLabels.listItems(3)).toBe("3 Items");
+    expect(defaultNotesLabels.emptyList).toBe("No items");
+    expect(defaultNotesLabels.dialogDeleteItemsTitle(1)).toBe("Delete 1 item?");
+    expect(defaultNotesLabels.dialogDeleteItemsTitle(2)).toBe("Delete 2 items?");
+  });
+});
+
 describe("notesNotebookDialogLabelsFrom", () => {
   it("maps notebook copy onto the shared collection dialog", () => {
     const labels = notesNotebookDialogLabelsFrom(defaultNotesLabels);
