@@ -39,4 +39,37 @@ describe("useNotesHiddenIds", () => {
 
     expect(result.current.hiddenNotebookIds.has("archive")).toBe(true);
   });
+
+  it("keeps a user-hidden notebook after remount", () => {
+    const first = renderHook(() => useNotesHiddenIds(baseNotebooks));
+    act(() => {
+      first.result.current.setHiddenNotebookIds(new Set(["work"]));
+    });
+    expect(first.result.current.hiddenNotebookIds.has("work")).toBe(true);
+    first.unmount();
+
+    const second = renderHook(() => useNotesHiddenIds(baseNotebooks));
+    expect(second.result.current.hiddenNotebookIds.has("work")).toBe(true);
+    expect(second.result.current.hiddenNotebookIds.has("shared")).toBe(false);
+  });
+
+  it("hydrates persisted hides after an empty placeholder first paint", () => {
+    const seed = renderHook(() => useNotesHiddenIds(baseNotebooks));
+    act(() => {
+      seed.result.current.setHiddenNotebookIds(new Set(["work"]));
+    });
+    seed.unmount();
+
+    const placeholder = renderHook(({ notebooks }) => useNotesHiddenIds(notebooks), {
+      initialProps: { notebooks: [] as typeof baseNotebooks },
+    });
+    expect(placeholder.result.current.hiddenNotebookIds.has("work")).toBe(true);
+
+    placeholder.rerender({ notebooks: baseNotebooks });
+    expect(placeholder.result.current.hiddenNotebookIds.has("work")).toBe(true);
+    placeholder.unmount();
+
+    const remount = renderHook(() => useNotesHiddenIds(baseNotebooks));
+    expect(remount.result.current.hiddenNotebookIds.has("work")).toBe(true);
+  });
 });
