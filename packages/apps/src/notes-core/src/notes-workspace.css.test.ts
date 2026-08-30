@@ -124,6 +124,24 @@ describe("notes workspace last-edited footer chip", () => {
 });
 
 describe("notes workspace selected tag chips", () => {
+  it("paints list-row tags with the same idle family as sidebar chips", () => {
+    expect(css).toMatch(/--notes-tag-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 8%/);
+    expect(css).toMatch(/--notes-tag-fg:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/--notes-tag-border:\s*color-mix\(in oklab,\s*var\(--color-ink\) 18%/);
+    expect(css).toMatch(
+      /\.notes-workspace \.notes-sidebar-tags__item \.tag,[\s\S]*\.list-item__tags \.tag \{[\s\S]*border-color:\s*var\(--notes-tag-border\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.notes-sidebar-tags__item \.tag,[\s\S]*\.list-item__tags \.tag \{[\s\S]*background-color:\s*var\(--notes-tag-bg\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.notes-sidebar-tags__item \.tag,[\s\S]*\.list-item__tags \.tag \{[\s\S]*color:\s*var\(--notes-tag-fg\)/,
+    );
+    expect(css).not.toMatch(/\.list-item__tags \.tag \{[\s\S]*--note-detail-tag-/);
+    expect(css).not.toMatch(/--notes-tag-bg:\s*var\(--note-detail-tag-bg\)/);
+    expect(css).not.toMatch(/--notes-tag-border:\s*var\(--note-detail-tag-border\)/);
+  });
+
   it("keeps sidebar selected chips on ink + gold and detail chips on notebook accent", () => {
     expect(css).toMatch(/--notes-tag-selected-bg:\s*var\(--color-ink\)/);
     expect(css).toMatch(/--notes-tag-selected-fg:\s*var\(--notes-accent\)/);

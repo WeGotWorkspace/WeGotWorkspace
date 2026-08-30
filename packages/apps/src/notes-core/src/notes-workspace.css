@@ -81,9 +81,13 @@
   --checkbox-checked-bg: var(--notes-accent);
   --checkbox-checked-border: var(--notes-accent);
   --checkbox-checked-fg: var(--color-ink);
-  /* Selected sidebar tag chip — ink + product yellow. Detail CATEGORIES chips
-   * use the live notebook accent on the light paper sheet. Title/body use
-   * `--notes-detail-contrast-fg` (softer ink). Nested `.notes-workspace`
+  /* Idle tag chips — sidebar filters + list-row pills share this family.
+   * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
+   * use `--note-detail-tag-*` (notebook wash on the paper sheet). */
+  --notes-tag-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --notes-tag-fg: var(--color-ink);
+  --notes-tag-border: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  /* Selected sidebar tag chip — ink + product yellow. Nested `.notes-workspace`
    * inherits the tokens so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--color-ink);
   --notes-tag-selected-fg: var(--notes-accent);
@@ -335,11 +339,17 @@
   --tw-ring-color: color-mix(in oklab, var(--color-ink) 35%, transparent);
 }
 
+/* Idle chips: sidebar filters and list-row pills share one family. */
+.notes-workspace .notes-sidebar-tags__item .tag,
+.notes-workspace .list-item__tags .tag {
+  @apply border;
+  border-color: var(--notes-tag-border);
+  background-color: var(--notes-tag-bg);
+  color: var(--notes-tag-fg);
+}
+
 .notes-workspace .notes-sidebar-tags__item .tag {
-  @apply border max-w-full;
-  border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  background-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  color: var(--color-ink);
+  @apply max-w-full;
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {
