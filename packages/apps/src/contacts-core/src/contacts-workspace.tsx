@@ -262,7 +262,7 @@ export function ContactsWorkspace({
               : undefined,
           };
         }}
-        actionBar={(c) =>
+        actionBar={(_c) =>
           selectedIds.length > 1 ? null : (
             <ContactsDetailActionBar
               labels={L}

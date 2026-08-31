@@ -2,20 +2,11 @@ import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import type { WgwNoteItem, WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
-import { wgwFetchPrincipal } from "@/lib/api/wgw/http";
 import {
-  archiveNoteViaFileNode,
-  createNotebookViaFileNode,
-  createNoteViaFileNode,
-  deleteNotebookViaFileNode,
-  deleteNoteViaFileNode,
   fileNodeNoteProjectionAtPath,
   listOwnedNotesFromFileNodes,
   NotesRequestError,
   parseNoteVirtualPath,
-  renameNotebookViaFileNode,
-  restoreNoteViaFileNode,
-  updateNoteViaFileNode,
 } from "@/lib/api/wgw/notes-filenode";
 import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import { usableNoteListPreview } from "@/notes-core/src/notes-note-utils";
@@ -399,29 +390,6 @@ export function mergeOwnedAndSharedInboxNotes(
     inboxNotes.push(note);
   }
   return [...ownedNotes, ...inboxNotes];
-}
-
-function sharedNotebookFromGroupRow(row: NotesNotebookRow): NotesSharedNotebookEntry | null {
-  if (row.scope !== "group" || !row.groupSlug?.trim()) return null;
-  const slug = row.groupSlug.trim();
-  return {
-    path: normalizeNotesPath(`/groups/${slug}/.notes/${row.name}`),
-    notebook: row.name,
-    owner: slug,
-    scope: "group",
-    groupSlug: slug,
-  };
-}
-
-/** Group-membership notebooks only (personal ACL notebook shares are not a product feature). */
-function mergeGroupSharedNotebooks(groupRows: NotesNotebookRow[]): NotesSharedNotebookEntry[] {
-  const byPath = new Map<string, NotesSharedNotebookEntry>();
-  for (const row of groupRows) {
-    const entry = sharedNotebookFromGroupRow(row);
-    if (!entry) continue;
-    if (!byPath.has(entry.path)) byPath.set(entry.path, entry);
-  }
-  return [...byPath.values()].sort((a, b) => a.notebook.localeCompare(b.notebook));
 }
 
 // --- WGW note shapes → app `Note` + request helpers ----------------------------------------------
