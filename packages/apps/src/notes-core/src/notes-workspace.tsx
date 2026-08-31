@@ -296,7 +296,7 @@ export function NotesWorkspace({
     reconnectConflict,
     setReconnectConflict,
     keepMine,
-    useTheirs,
+    applyTheirs,
     resolving: resolvingReconnect,
     collabEpoch,
   } = useNotesReconnectConflict({
@@ -723,7 +723,7 @@ export function NotesWorkspace({
         busy={resolvingReconnect}
         labels={L}
         onKeepLocal={() => void keepMine()}
-        onUseServer={() => void useTheirs()}
+        onUseServer={() => void applyTheirs()}
       />
 
       {confirmDialog}

@@ -43,7 +43,7 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
   it("notes-workspace supplies dirty and both dialog actions", () => {
     expect(workspaceSource).toContain("getLocalDirty");
     expect(workspaceSource).toContain("void keepMine()");
-    expect(workspaceSource).toContain("void useTheirs()");
+    expect(workspaceSource).toContain("void applyTheirs()");
     expect(workspaceSource).toContain("useNotesReconnectConflict");
   });
 
@@ -135,7 +135,7 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     const epochBefore = result.current.collabEpoch;
 
     await act(async () => {
-      await result.current.useTheirs();
+      await result.current.applyTheirs();
     });
 
     expect(writeNoteCollabOfflineContent).toHaveBeenCalledWith(note.id, "Server body");

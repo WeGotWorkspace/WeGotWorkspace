@@ -31,7 +31,7 @@ export async function keepMineNotesReconnect(input: {
 /**
  * Use theirs: write server DESCRIPTION into the UID Y.Doc, then remount/refresh.
  */
-export async function useTheirsNotesReconnect(input: {
+export async function applyTheirsNotesReconnect(input: {
   noteId: string;
   applyServerBody: (markdown: string) => void;
   refreshList?: () => void;

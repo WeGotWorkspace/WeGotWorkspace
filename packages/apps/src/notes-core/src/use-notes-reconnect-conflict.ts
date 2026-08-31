@@ -4,7 +4,7 @@ import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import {
   isNotesLocalDirty,
   keepMineNotesReconnect,
-  useTheirsNotesReconnect,
+  applyTheirsNotesReconnect,
 } from "@/notes-core/src/notes-reconnect-actions";
 
 type ApplyLocalBodyMarkdown = (
@@ -68,7 +68,7 @@ export function useNotesReconnectConflict(options: {
     }
   }, []);
 
-  const useTheirs = useCallback(async () => {
+  const applyTheirs = useCallback(async () => {
     const note = activeRef.current;
     if (!note) {
       setReconnectConflict(false);
@@ -76,7 +76,7 @@ export function useNotesReconnectConflict(options: {
     }
     setResolving(true);
     try {
-      await useTheirsNotesReconnect({
+      await applyTheirsNotesReconnect({
         noteId: note.id,
         applyServerBody: (markdown) => applyBodyRef.current(note.id, markdown, { bumpDate: false }),
         refreshList: refreshRef.current,
@@ -95,7 +95,7 @@ export function useNotesReconnectConflict(options: {
     reconnectConflict,
     setReconnectConflict,
     keepMine,
-    useTheirs,
+    applyTheirs,
     resolving,
     collabEpoch,
   };
