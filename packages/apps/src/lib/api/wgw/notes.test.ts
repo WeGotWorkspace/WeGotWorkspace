@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Note } from "@/lib/models/note";
 import {
   coerceNoteItem,
+  coerceNotebookRow,
   noteFromWgwItem,
   wgwNoteMetadataFromNote,
   wgwNoteUpsertFromNote,
@@ -87,93 +88,6 @@ describe("wgwNoteUpsertFromNote", () => {
   });
 });
 
-describe("noteFromFileNodeNote", () => {
-  it("maps FileNode note projection and Drive starred, never YAML", async () => {
-    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
-    const mapped = noteFromFileNodeNote({
-      id: "welcome",
-      path: "/users/bob/.notes/Drafts/welcome.md",
-      scope: "personal",
-      modified: "2026-06-01T12:00:00.000Z",
-      changed: "2024-01-01T00:00:00.000Z",
-      projection: {
-        title: "Welcome",
-        tags: ["intro"],
-        excerpt: "Hello from FileNode",
-        notebook: "Drafts",
-        archived: false,
-        starred: true,
-      },
-    });
-    expect(mapped.starred).toBe(true);
-    expect(mapped.excerpt).toContain("Hello from FileNode");
-    expect(mapped.date).toBe("2026-06-01T12:00:00.000Z");
-    expect(mapped.updatedAt).toBe("2024-01-01T00:00:00.000Z");
-    expect(mapped.apiPath).toBe("/users/bob/.notes/Drafts/welcome.md");
-    expect(mapped.tags).toEqual(["intro"]);
-  });
-
-  it("does not use FileNode title when it is the note id or local-* filename", async () => {
-    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
-    const { noteListTitle, noteHasListableBody } =
-      await import("@/notes-core/src/notes-note-utils");
-    const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
-
-    const untitled = noteFromFileNodeNote({
-      id: localId,
-      path: `/users/bob/.notes/Drafts/${localId}.md`,
-      scope: "personal",
-      projection: {
-        title: localId,
-        tags: [],
-        excerpt: "",
-        notebook: "Drafts",
-        archived: false,
-        starred: false,
-      },
-    });
-    expect(untitled.excerpt).toBe("");
-    expect(untitled.body).toEqual([""]);
-    expect(noteHasListableBody(untitled)).toBe(false);
-    expect(noteListTitle(untitled)).toBe("Untitled note");
-    expect(noteListTitle(untitled)).not.toBe(localId);
-
-    const withBody = noteFromFileNodeNote({
-      id: localId,
-      path: `/users/bob/.notes/Drafts/${localId}.md`,
-      scope: "personal",
-      projection: {
-        title: localId,
-        tags: [],
-        excerpt: "Pasta with garlic and oil",
-        notebook: "Drafts",
-        archived: false,
-        starred: false,
-      },
-    });
-    expect(noteListTitle(withBody)).toBe("Pasta with garlic and oil");
-    expect(noteListTitle(withBody)).not.toMatch(/^local-/);
-  });
-
-  it("treats missing Drive star as unstarred even when a YAML star used to exist", async () => {
-    const { noteFromFileNodeNote } = await import("@/lib/api/wgw/notes-filenode");
-    const mapped = noteFromFileNodeNote({
-      id: "old",
-      path: "/users/bob/.notes/Drafts/old.md",
-      scope: "personal",
-      projection: {
-        title: "Old",
-        tags: [],
-        excerpt: "was yaml-starred",
-        notebook: "Drafts",
-        archived: false,
-        starred: false,
-      },
-    });
-    expect(mapped.starred).toBe(false);
-  });
-});
-
 describe("noteFromWgwItem", () => {
   it("prefers contentUpdatedAt for display date and keeps metadata updatedAt", () => {
     const row = coerceNoteItem({
@@ -218,73 +132,8 @@ describe("noteFromWgwItem", () => {
     expect(mapped.scope).toBe("group");
     expect(mapped.groupSlug).toBe("eng");
   });
-});
 
-describe("shared notes listing parsers", () => {
-  it("maps Drive shared-with-me note paths without calling /notes/shared-*", async () => {
-    const { noteEntryFromDriveSharedPath, noteFromSharedEntry } =
-      await import("@/lib/api/wgw/notes");
-    const entry = noteEntryFromDriveSharedPath({
-      path: "/users/bob/.notes/TeamPad/n1.md",
-      access: "view",
-      myRights: { mayEditContent: false },
-      title: "Hello",
-      tags: ["planning", "shared"],
-    });
-    expect(entry).toMatchObject({
-      path: "/users/bob/.notes/TeamPad/n1.md",
-      id: "n1",
-      notebook: "TeamPad",
-      owner: "bob",
-      scope: "personal",
-      access: "view",
-      myRights: { mayEditContent: false },
-    });
-    expect(noteFromSharedEntry(entry!).sharedInbox).toBe(true);
-    expect(noteEntryFromDriveSharedPath({ path: "/users/bob/drive-doc.md" })).toBeNull();
-  });
-
-  it("parses shared-with-me payloads and empty shared-notebooks", async () => {
-    const { parseSharedNotesPayload, parseSharedNotebooksPayload, noteFromSharedEntry } =
-      await import("@/lib/api/wgw/notes");
-
-    const notes = parseSharedNotesPayload({
-      items: [
-        {
-          path: "/users/bob/.notes/TeamPad/n1.md",
-          id: "n1",
-          notebook: "TeamPad",
-          title: "Hello",
-          tags: ["planning", "shared"],
-          owner: "bob",
-          scope: "personal",
-          groupSlug: null,
-          access: "view",
-          myRights: { mayView: true },
-        },
-      ],
-    });
-    expect(notes).toHaveLength(1);
-    expect(notes[0]?.tags).toEqual(["planning", "shared"]);
-    expect(noteFromSharedEntry(notes[0]!).sharedInbox).toBe(true);
-    expect(noteFromSharedEntry(notes[0]!).apiPath).toBe("/users/bob/.notes/TeamPad/n1.md");
-    expect(noteFromSharedEntry(notes[0]!).sharedBy).toBe("bob");
-    expect(noteFromSharedEntry(notes[0]!).notebook).toBe("TeamPad");
-    // Recipients never surface tags on Shared-with-me stubs.
-    expect(noteFromSharedEntry(notes[0]!).tags).toEqual([]);
-    expect(noteFromSharedEntry(notes[0]!).myRights).toEqual({ mayEditContent: false });
-    expect(notes[0]?.myRights).toEqual({ mayEditContent: false });
-
-    // Personal ACL notebook-dir shares removed — API returns empty ACL payload.
-    expect(parseSharedNotebooksPayload({})).toEqual({ items: [], notes: [] });
-    expect(parseSharedNotebooksPayload({ items: [], notes: [] })).toEqual({
-      items: [],
-      notes: [],
-    });
-  });
-
-  it("maps hasShares from owned notes list items to isShared", async () => {
-    const { noteFromWgwItem, coerceNoteItem } = await import("@/lib/api/wgw/notes");
+  it("maps hasShares from owned notes list items to isShared", () => {
     const row = coerceNoteItem({
       id: "n1",
       notebook: "Drafts",
@@ -314,9 +163,10 @@ describe("shared notes listing parsers", () => {
       ).isShared,
     ).toBeUndefined();
   });
+});
 
-  it("maps hasShares from owned notebook list rows", async () => {
-    const { coerceNotebookRow } = await import("@/lib/api/wgw/notes");
+describe("coerceNotebookRow", () => {
+  it("maps hasShares from owned notebook list rows", () => {
     expect(
       coerceNotebookRow({
         name: "SharedPad",
@@ -334,121 +184,5 @@ describe("shared notes listing parsers", () => {
         archivedCount: 0,
       })?.hasShares,
     ).toBeUndefined();
-  });
-
-  it("maps shared-with-me body preview into list title without using local-* id", async () => {
-    const { noteFromSharedEntry, sharedEntryListPreview } = await import("@/lib/api/wgw/notes");
-    const { noteListTitle } = await import("@/notes-core/src/notes-note-utils");
-    const localId = "local-55a6723bcd6e453aa11abf548f043398";
-
-    const withBody = noteFromSharedEntry({
-      path: `/users/wouter/.notes/Cooking/${localId}.md`,
-      id: localId,
-      notebook: "Cooking",
-      title: "Pasta with garlic and oil",
-      tags: [],
-      owner: "wouter",
-      scope: "personal",
-      groupSlug: null,
-    });
-    expect(noteListTitle(withBody)).toBe("Pasta with garlic and oil");
-    expect(noteListTitle(withBody)).not.toMatch(/^local-/);
-
-    // API may still echo the id when body is empty — never show it as the list title.
-    expect(sharedEntryListPreview({ id: localId, title: localId })).toBe("");
-    expect(sharedEntryListPreview({ id: localId, title: "" })).toBe("");
-    const emptyBody = noteFromSharedEntry({
-      path: `/users/wouter/.notes/Cooking/${localId}.md`,
-      id: localId,
-      notebook: "Cooking",
-      title: localId,
-      tags: [],
-      owner: "wouter",
-      scope: "personal",
-      groupSlug: null,
-    });
-    expect(emptyBody.excerpt).toBe("");
-    expect(emptyBody.body).toEqual([""]);
-    expect(noteListTitle(emptyBody)).toBe("Untitled note");
-    expect(noteListTitle(emptyBody)).not.toBe(localId);
-  });
-
-  it("keeps shared inbox notes when owned ids collide (local-* leak / duplicate grants)", async () => {
-    const { mergeOwnedAndSharedInboxNotes, sharedInboxFallbackId } =
-      await import("@/lib/api/wgw/notes");
-    const { filterVisibleNotes } = await import("@/notes-core/src/notes-note-utils");
-
-    const sharedId = "local-0ee49942b3c448658dc9a8f79202220a";
-    const sharedPath = `/users/admin/.notes/Drafts/${sharedId}.md`;
-    const serverNotePath = "/users/admin/.notes/Drafts/n1781784157.md";
-    const owned = [
-      {
-        id: sharedId,
-        notebook: "Drafts",
-        excerpt: "mine",
-        body: ["mine"],
-        tags: [],
-        wordCount: 1,
-        category: "Note",
-        date: "—",
-        archived: true,
-      },
-    ];
-    const sharedWithMe = [
-      {
-        path: sharedPath,
-        id: sharedId,
-        notebook: "Drafts",
-        title: "Shared local",
-        tags: [],
-        owner: "admin",
-        scope: "personal" as const,
-        groupSlug: null,
-        access: "edit",
-      },
-      {
-        path: `/users/admin/.notes/Test/${sharedId}.md`,
-        id: sharedId,
-        notebook: "Test",
-        title: "Shared local test",
-        tags: [],
-        owner: "admin",
-        scope: "personal" as const,
-        groupSlug: null,
-        access: "edit",
-      },
-      {
-        path: serverNotePath,
-        id: "n1781784157",
-        notebook: "Drafts",
-        title: "E2E seed",
-        tags: [],
-        owner: "admin",
-        scope: "personal" as const,
-        groupSlug: null,
-        access: "edit",
-      },
-    ];
-
-    const merged = mergeOwnedAndSharedInboxNotes(owned, sharedWithMe);
-    expect(
-      merged
-        .filter((n) => n.sharedInbox)
-        .map((n) => n.apiPath)
-        .sort(),
-    ).toEqual([sharedPath, `/users/admin/.notes/Test/${sharedId}.md`, serverNotePath].sort());
-    expect(merged.find((n) => n.apiPath === sharedPath)?.id).toBe(
-      sharedInboxFallbackId(sharedPath),
-    );
-    expect(merged.find((n) => n.id === "n1781784157")?.apiPath).toBe(serverNotePath);
-
-    const inbox = filterVisibleNotes(merged, {
-      view: "shared-with-me",
-      archived: { [sharedId]: true },
-      starred: {},
-      searchQuery: "",
-      sharedNotebookKeys: new Set(["Drafts"]),
-    });
-    expect(inbox).toEqual([]);
   });
 });

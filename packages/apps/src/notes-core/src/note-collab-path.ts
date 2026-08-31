@@ -1,6 +1,5 @@
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getNote, persistNoteMarkdown } from "@/lib/api/wgw/notes-vjournal";
-import type { Note } from "@/lib/models/note";
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
 import {
   isNotesPersistForbidden,
@@ -8,61 +7,6 @@ import {
 } from "@/notes-core/src/notes-persist-access";
 import { resolveNotesReconnect } from "@/notes-core/src/notes-reconnect";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
-
-/**
- * Legacy Drive-path helpers kept for FileNode teardown / offline migration.
- * Live collab uses {@link buildNoteCollabUrls} keyed by VJOURNAL UID.
- */
-export type NoteCollabScope =
-  | { kind: "personal"; username: string }
-  | { kind: "group"; slug: string };
-
-export type NoteCollabPathArgs = {
-  scope: NoteCollabScope;
-  notebook: string;
-  noteId: string;
-  archived?: boolean;
-};
-
-function scopeRoot(scope: NoteCollabScope): string {
-  return scope.kind === "group" ? `groups/${scope.slug}/.notes` : `users/${scope.username}/.notes`;
-}
-
-export function noteCollabScopeFromNote(
-  note: Pick<Note, "scope" | "groupSlug">,
-  username: string,
-): NoteCollabScope {
-  if (note.scope === "group" && note.groupSlug?.trim()) {
-    return { kind: "group", slug: note.groupSlug.trim() };
-  }
-  return { kind: "personal", username };
-}
-
-export function notebookCollabPath(scope: NoteCollabScope, notebook: string): string {
-  return `${scopeRoot(scope)}/${notebook}`;
-}
-
-export function noteCollabPath({ scope, notebook, noteId, archived }: NoteCollabPathArgs): string {
-  const root = scopeRoot(scope);
-  const notebookDir = archived ? `${root}/.archive/${notebook}` : `${root}/${notebook}`;
-  return `${notebookDir}/${noteId}.md`;
-}
-
-export function resolveNoteSharePath(
-  note: Pick<Note, "id" | "notebook" | "scope" | "groupSlug" | "apiPath">,
-  username: string,
-  archived = false,
-): string {
-  const known = note.apiPath?.trim();
-  if (known) return known.startsWith("/") ? known : `/${known}`;
-  const path = noteCollabPath({
-    scope: noteCollabScopeFromNote(note, username),
-    notebook: note.notebook,
-    noteId: note.id,
-    archived,
-  });
-  return path.startsWith("/") ? path : `/${path}`;
-}
 
 /** Room key = VJOURNAL UID = REST noteId. */
 export function encodeNoteRoomId(uid: string): string {

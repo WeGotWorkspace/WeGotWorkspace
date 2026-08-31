@@ -3593,7 +3593,7 @@
           "Files"
         ],
         "summary": "List paths shared with current user",
-        "description": "Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).",
+        "description": "Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.",
         "security": [
           {
             "bearerAuth": []
@@ -3608,7 +3608,7 @@
               "type": "boolean",
               "default": false
             },
-            "description": "When true, include file grants under `.notes`. Default is false."
+            "description": "When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks)."
           }
         ],
         "responses": {

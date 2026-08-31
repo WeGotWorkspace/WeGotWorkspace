@@ -11,7 +11,7 @@
 //   1. Confirm `expectPendingDotVisible` / `expectSyncCompleted` resolve against
 //      the collab pending-sync indicator for body-only edits (the helpers may
 //      need a collab-specific selector vs. the metadata dot).
-//   2. Add a shared-note scenario under `groups/{slug}/.notes/...` (#236):
+//   2. Add a shared-notebook scenario (group principal / CalendarShareInvites):
 //      two members edit the same shared note body over the mesh + reconnect.
 import { expect, test } from "@playwright/test";
 import {

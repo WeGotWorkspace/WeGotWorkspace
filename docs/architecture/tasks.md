@@ -339,7 +339,7 @@ Tracked in [#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331). 
 
 ### Tier 2 — Yjs / RTC mesh (optional)
 
-Notes/Docs collab ([collab-hooks.md](../../.agents/skills/workspace/collab-hooks.md)) is Yjs + TipTap + `/files/collaboration` + RTC mesh for **continuous text editing**. Reuse **only** for rich-text fields — do not mount `useDocsCollab` for the whole task record.
+Docs collab ([collab-hooks.md](../../.agents/skills/workspace/collab-hooks.md)) is Yjs + TipTap + `/files/collaboration` + RTC mesh. Notes reuse the mesh but persist with `PATCH /notes/items/{uid}` (room = VJOURNAL UID) — not `/files/collaboration`. Reuse **only** for rich-text fields — do not mount `useDocsCollab` for the whole task record.
 
 | Field | Tier 1 (REST + offline) | Tier 2 (Yjs) |
 |-------|-------------------------|--------------|

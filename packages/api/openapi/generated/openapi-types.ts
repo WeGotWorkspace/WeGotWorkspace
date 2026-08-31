@@ -1491,74 +1491,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notes/capabilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Notes capabilities */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes capabilities */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Notes runtime boot state for authenticated user */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/notes/items": {
         parameters: {
             query?: never;
@@ -1630,158 +1562,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notes/items/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Save/update a note */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
-        /** Delete a note */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Patch note (e.g. archive) */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/notes/items/{id}/archive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Archive a note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Archived note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NoteMutationResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/items/{id}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restore an archived note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Restored note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NoteMutationResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/notes/notebooks": {
         parameters: {
             query?: never;
@@ -1844,62 +1624,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/notes/notebooks/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete notebook (archive, move, or purge) */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    name: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Rename notebook */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    name: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook renamed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         trace?: never;
     };
     "/plugins": {
@@ -4872,12 +4596,12 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).
+         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description When true, include file grants under `.notes`. Default is false. */
+                    /** @description When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks). */
                     includeNotes?: boolean;
                 };
                 header?: never;
@@ -5305,84 +5029,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareByPrincipalDataResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/shared-with-me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List note files shared with the current user via path grants
-         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Shared notes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotesSharedWithMeResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/shared-notebooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List shared notebook ACL rows (compat — always empty)
-         * @description Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Compat empty list (personal notebook-directory ACL shares removed). */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotesSharedNotebooksResponse"];
                     };
                 };
             };
@@ -7560,21 +7206,21 @@ export interface components {
             starred?: boolean | null;
             archived: boolean;
             /**
-             * @description Storage scope: personal (users/{username}/.notes) or group (groups/{slug}/.notes).
+             * @description Notebook scope: personal (caller principal) or group (group principal). Not a Drive .notes path.
              * @enum {string}
              */
             scope: "personal" | "group";
             /** @description Group slug when scope is group, null for personal notes. */
             groupSlug: string | null;
-            /** @description Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value. */
+            /** @description Metadata concurrency token from VJOURNAL LAST-MODIFIED / DTSTAMP. Body-only collab saves do not advance this value. */
             updatedAt: string;
-            /** @description File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards. */
+            /** @description Content timestamp. Advances when DESCRIPTION is rewritten (including collab saves). Prefer for list/footer last-edited display; use updatedAt for offline ifInState guards. */
             contentUpdatedAt?: string;
-            /** @description True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note. */
+            /** @description True when the notebook has outgoing collection shares. Omitted or false when unshared. */
             hasShares?: boolean;
-            /** @description True when this note file or its notebook directory has an active public link share. */
+            /** @description True when the notebook has an active public link share. */
             hasPublicShare?: boolean;
-            /** @description True when this note file or its notebook directory has active team grants (users or groups). */
+            /** @description True when the notebook has active team grants (users or groups). */
             hasTeamShare?: boolean;
         };
         NoteItemList: components["schemas"]["NoteItem"][];
@@ -7605,7 +7251,7 @@ export interface components {
             tags?: components["schemas"]["NoteTagList"];
             starred?: boolean;
             archived?: boolean;
-            /** @description Target a shared group notebook (groups/{slug}/.notes). Omit or null for the caller's personal notes. Caller must be a group member. */
+            /** @description Target a group-principal notebook. Omit or null for the caller's personal notes. Caller must be a group member. */
             groupSlug?: string | null;
         };
         /**
@@ -7618,7 +7264,7 @@ export interface components {
         NoteDeleteRequest: {
             notebook: string;
             archived: boolean;
-            /** @description Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes. */
+            /** @description Group slug when deleting a note in a group-principal notebook. Omit or null for personal notes. */
             groupSlug?: string | null;
         };
         NotebookListItem: {
@@ -7626,7 +7272,7 @@ export interface components {
             activeCount: number;
             archivedCount: number;
             /**
-             * @description personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes.
+             * @description personal = caller-owned notebook; group = group-principal notebook.
              * @enum {string}
              */
             scope?: "personal" | "group";

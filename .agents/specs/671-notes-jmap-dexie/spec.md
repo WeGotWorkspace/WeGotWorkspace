@@ -1,13 +1,15 @@
-Source: #671 (body-hash: 3924279e)
+Source: #671 (body-hash: 609abe04)
 Goal: #661
 
 # Notes JMAP + Dexie inbound sync
 
-Technical translation of [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671). VJOURNAL stays the document of record. Dexie becomes the Notes working set. Inbound `/changes` (then vendor `Note/*` on `POST /jmap`) updates that cache. The workspace must not remount from a full live GET.
+Technical translation of [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671). **Current truth (JMAP-back iteration):** CalDAV VJOURNAL is the document of record. Dexie is the Notes UI working set. Live inbound is vendor `Note/*` + `Notebook/*` on `POST /jmap` (`urn:wgw:jmap:notes`). REST `/notes/*` stays for CRUD + reconnect / mock / fallback. The workspace must not remount from a full live GET.
+
+Issue #671 AC matches this JMAP-first inbound. REST `/changes` is reconnect / mock / fallback only.
 
 ## Goal
 
-Calendar-shaped Notes sync: CalDAV VJOURNAL on Sabre, JMAP-shaped sync into Dexie, UI reads only the cache. P0 uses existing REST `/notes/*/changes`. P1 adds `urn:wgw:jmap:notes` and switches inbound to the envelope.
+Calendar-shaped Notes sync: CalDAV VJOURNAL on Sabre, vendor JMAP envelope into Dexie, UI reads only the cache.
 
 ## Non-goals
 
@@ -26,14 +28,15 @@ Calendar-shaped Notes sync: CalDAV VJOURNAL on Sabre, JMAP-shaped sync into Dexi
 
 ## Technical constraints
 
-- REST `GET /notes/items/changes` requires `notebookId`. P0 client fans out per visible notebook. P1 `Note/changes` is account-wide (copy `CalendarEventChangesMethod` + `JmapAccountStateCodec`).
+- **Live inbound:** `POST /jmap` capability `urn:wgw:jmap:notes` — `Notebook/get|changes|set` and `Note/get|changes|set`. `Note/changes` is account-wide (same fan-out as `CalendarEventChangesMethod` + `JmapAccountStateCodec`).
+- **REST `/notes/*`:** non-sync CRUD after the envelope landed. `GET /notes/items/changes` still requires `notebookId` and remains for reconnect / manual refresh / mock-tier fallback when the live JMAP session is missing.
 - Inbound GET **changed** ids only — do not re-list every notebook’s full bodies on the poll.
 - Skip pending outbox ids on ingest (Calendar `calendars-jmap-inbound` pattern).
 - `successVersion` must not remount `NotesWorkspace` on cache→live follow-up.
 - Title/tags/star/notebook: Dexie `pendingSync` immediately; network may stay debounced.
 - Body cache + y-indexeddb crash buffer keyed by **UID**, never Drive path.
 - Envelope handlers call `NoteRepository` / `NotebookRepository` only — no second writer.
-- REST `/notes/*` stays for non-sync CRUD after P1.
+- Each principal has a default notebook that cannot be deleted. Provisioned group homes (e.g. Administrators / `group-administrators`) also cannot be deleted — UI hides delete like calendars/tasks.
 
 ## Edge cases
 

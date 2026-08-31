@@ -8,7 +8,7 @@ Notes become CalDAV VJOURNAL objects in VJOURNAL-only notebooks, with Tasks-shap
 
 ## Non-goals
 
-- JMAP Notes wire; dual-write; ATTACH; mixing VJOURNAL into event/task collections
+- IETF JMAP Notes wire (vendor `urn:wgw:jmap:notes` is #671); dual-write; ATTACH; mixing VJOURNAL into event/task collections
 - Guest email invite; server-side collab kick; task-comment journals
 - Third sidebar pattern; last-write-wins; object-uri REST id
 

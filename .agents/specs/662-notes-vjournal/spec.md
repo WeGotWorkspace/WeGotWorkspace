@@ -11,7 +11,7 @@ Move Notes from Drive markdown / FileNode + Yjs sidecars to CalDAV **VJOURNAL** 
 
 ## Non-goals
 
-- JMAP Notes wire protocol
+- IETF JMAP Notes (`urn:ietf:params:jmap:notes`) or hanging journals off `CalendarEvent` — vendor envelope `urn:wgw:jmap:notes` shipped later as [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671) / [671-notes-jmap-dexie](../671-notes-jmap-dexie/spec.md)
 - Dual-write with files / FileNode projection
 - `ATTACH` / upload pipeline
 - Mixing VJOURNAL into event calendars or task lists

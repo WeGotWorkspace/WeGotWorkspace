@@ -4,7 +4,7 @@ Canonical reference for engineers (human and AI) working on the WeGotWorkspace N
 
 **Tracker:** [Goal #661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661) · **Epic:** [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662) · **Product Goals:** [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1)
 
-**Delivery Tasks:** isolation [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663) · REST [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664) · ACL [#665](https://github.com/WeGotWorkspace/wegotworkspace/issues/665) · collection-sidebar [#666](https://github.com/WeGotWorkspace/wegotworkspace/issues/666) · apps/collab [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667) · migration [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668) · teardown [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669)
+**Delivery Tasks:** isolation [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663) · REST [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664) · ACL [#665](https://github.com/WeGotWorkspace/wegotworkspace/issues/665) · collection-sidebar [#666](https://github.com/WeGotWorkspace/wegotworkspace/issues/666) · apps/collab [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667) · migration [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668) · teardown [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669) · JMAP + Dexie inbound [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671)
 
 This replaces YAML-frontmatter `.md` files, FileNode `note` projection, `PUT /files/collaboration` for `.notes` paths, and per-note Drive grants.
 
@@ -86,9 +86,9 @@ Persistence reuses the existing Sabre CalDAV PDO backend (`calendars`, `calendar
 
 - **Vendor JMAP envelope** `urn:wgw:jmap:notes` on `POST /jmap` — `Notebook/get|changes|set` and `Note/get|changes|set`. Not IETF `urn:ietf:params:jmap:notes` (no such type).
 - **JMAP-shaped REST DTOs remain** — `Notebook`, `Note` (`id` = `UID`, `title`, `body`, `categories`, `notebookId`, `status`, `etag`) for non-sync CRUD.
-- **Dexie inbound:** the Notes app working set is Dexie. Inbound `Note/changes` → `Note/get` (account-wide fan-out) writes the cache; the UI does not remount from a full live GET.
+- **Dexie inbound:** the Notes app working set is Dexie. Live inbound is `Note/changes` → `Note/get` (account-wide fan-out). REST `GET /notes/*/changes` is reconnect / manual refresh / mock-tier fallback only. The UI does not remount from a full live GET.
 
-**Why:** Calendar-shaped sync. CalDAV VJOURNAL stays the document of record. REST `/notes/*` is unchanged.
+**Why:** Calendar-shaped sync. CalDAV VJOURNAL stays the document of record. REST `/notes/*` stays for CRUD.
 
 **Implication:** Converters under `app/Services/Notes/Conversion/`. Create always writes a single-VJOURNAL object. href may be `{uid}.ics`. Envelope handlers call `NoteRepository` / `NotebookRepository` only.
 
@@ -267,8 +267,8 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 
 - **Principal:** `principals/users/{username}`; group principals `notes-{groupSlug}`.
 - **ACL:** `calendarinstances.access` (1=owner, 2=read, 3=read-write); CalDAV sharing plugin.
-- **REST paths:** `/api/v1/notes/notebooks`, `/api/v1/notes/items`, `/api/v1/notes/items/{uid}`, `/changes`.
-- **Default notebook:** `notes-general` (`General`) per user and per group principal.
+- **REST paths:** `/api/v1/notes/notebooks`, `/api/v1/notes/items`, `/api/v1/notes/items/{uid}`, `/changes` (CRUD + fallback inbound). Live sync is `POST /api/v1/jmap`.
+- **Default notebook:** `notes-general` (`General`) per user and per group principal. Personal default and provisioned group homes (e.g. Administrators / `group-administrators`) cannot be deleted — UI hides delete like calendars/tasks.
 - **Synctoken / changes:** Per-collection `calendarchanges` + `synctoken` — same as Calendar/Tasks. Moves must write dual changelog rows (Decision 12).
 
 ---
@@ -278,8 +278,8 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 | | v1 Notes |
 |---|----------|
 | Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive) |
-| Offline path | IDB Y.Doc session + etag outbox; dirty+stale → conflict dialog |
-| Transport | Body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same |
+| Offline path | Dexie working set + UID-keyed y-indexeddb crash buffer; dirty+stale → conflict dialog |
+| Transport | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same |
 | Stars | Notes stars table (not Drive `/files/star`) |
 | Collab | Yjs + RTC mesh; room = `UID`; no server sidecar |
 
@@ -331,6 +331,7 @@ Old tree stays **read-only one release**; no dual-write. Drain FileNode Dexie ou
 | Apps + collab | [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667) |
 | One-way migration | [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668) |
 | FileNode teardown | [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669) |
+| JMAP + Dexie inbound | [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671) |
 | Former FileNode notes (superseded store) | [000-notes-filenode spec](../../.agents/specs/000-notes-filenode/spec.md) |
 
 **Execution order:** 0 → 1 → 2 → 3; 3b after 0 and before 4 (may overlap 2/3); 4 after 2+3b; 5 after 2; 6 after 5.

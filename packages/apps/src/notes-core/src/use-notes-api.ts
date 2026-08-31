@@ -34,7 +34,7 @@ import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-fl
 import type { NotesNotebookCollection, NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
 
-/** Inbound `/changes` poll — not a full-body listNotes loop. */
+/** Live JMAP inbound poll (REST `/changes` is reconnect / mock-tier fallback). */
 const ONLINE_CHANGES_POLL_MS = 10_000;
 
 export type UseNotesAPIOptions = {
@@ -226,7 +226,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
         adapter.startPolling(ONLINE_CHANGES_POLL_MS);
       })
       .catch(() => {
-        // Session missing notes capability or offline — REST inbound still runs below.
+        // Session missing notes capability — REST `/changes` fallback still runs below.
       });
 
     return () => {

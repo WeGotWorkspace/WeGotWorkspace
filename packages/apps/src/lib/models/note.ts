@@ -36,11 +36,11 @@ export type Note = {
   /** Present when {@link scope} is `group`. */
   groupSlug?: string | null;
   /**
-   * Virtual drive path when known (collab / share). Shared-with-me stubs set this
-   * from the listing `path`; owned notes may omit it and rebuild via `noteCollabPath`.
+   * Optional leftover Drive path. Live Notes identity is the VJOURNAL UID;
+   * collab rooms are UID-keyed, not a `.notes` path.
    */
   apiPath?: string;
-  /** True for Shared-with-me file-grant stubs (excluded from All / personal notebooks). */
+  /** Leftover Shared-with-me file-grant stub flag (per-note inbox is gone). */
   sharedInbox?: boolean;
   /**
    * @deprecated Personal ACL notebook-directory grants were removed. Unused.

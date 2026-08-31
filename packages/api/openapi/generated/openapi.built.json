@@ -2393,7 +2393,7 @@
                             "personal",
                             "group"
                         ],
-                        "description": "Storage scope: personal (users/{username}/.notes) or group (groups/{slug}/.notes)."
+                        "description": "Notebook scope: personal (caller principal) or group (group principal). Not a Drive .notes path."
                     },
                     "groupSlug": {
                         "type": [
@@ -2404,23 +2404,23 @@
                     },
                     "updatedAt": {
                         "type": "string",
-                        "description": "Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value."
+                        "description": "Metadata concurrency token from VJOURNAL LAST-MODIFIED / DTSTAMP. Body-only collab saves do not advance this value."
                     },
                     "contentUpdatedAt": {
                         "type": "string",
-                        "description": "File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards."
+                        "description": "Content timestamp. Advances when DESCRIPTION is rewritten (including collab saves). Prefer for list/footer last-edited display; use updatedAt for offline ifInState guards."
                     },
                     "hasShares": {
                         "type": "boolean",
-                        "description": "True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note."
+                        "description": "True when the notebook has outgoing collection shares. Omitted or false when unshared."
                     },
                     "hasPublicShare": {
                         "type": "boolean",
-                        "description": "True when this note file or its notebook directory has an active public link share."
+                        "description": "True when the notebook has an active public link share."
                     },
                     "hasTeamShare": {
                         "type": "boolean",
-                        "description": "True when this note file or its notebook directory has active team grants (users or groups)."
+                        "description": "True when the notebook has active team grants (users or groups)."
                     }
                 },
                 "required": [
@@ -2497,7 +2497,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Target a shared group notebook (groups/{slug}/.notes). Omit or null for the caller's personal notes. Caller must be a group member."
+                        "description": "Target a group-principal notebook. Omit or null for the caller's personal notes. Caller must be a group member."
                     }
                 },
                 "required": [
@@ -2528,7 +2528,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes."
+                        "description": "Group slug when deleting a note in a group-principal notebook. Omit or null for personal notes."
                     }
                 },
                 "required": [
@@ -2559,7 +2559,7 @@
                             "personal",
                             "group"
                         ],
-                        "description": "personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes."
+                        "description": "personal = caller-owned notebook; group = group-principal notebook."
                     },
                     "groupSlug": {
                         "type": [
@@ -11872,44 +11872,6 @@
                 }
             }
         },
-        "/notes/capabilities": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Notes capabilities",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notes capabilities"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/state": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Notes runtime boot state for authenticated user",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notes state"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/notes/items": {
             "get": {
                 "tags": [
@@ -12014,159 +11976,6 @@
                 }
             }
         },
-        "/notes/items/{id}": {
-            "put": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Save/update a note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated note"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Delete a note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted note"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Patch note (e.g. archive)",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/items/{id}/archive": {
-            "post": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Archive a note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Archived note",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NoteMutationResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/notes/items/{id}/restore": {
-            "post": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Restore an archived note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Restored note",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NoteMutationResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/notes/notebooks": {
             "get": {
                 "tags": [
@@ -12237,62 +12046,6 @@
                         "$ref": "#/components/responses/JmapConflict"
                     }
                 }
-            }
-        },
-        "/notes/notebooks/{name}": {
-            "patch": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Rename notebook",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notebook renamed"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Delete notebook (archive, move, or purge)",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notebook deleted"
-                    }
-                },
-                "x-wgw-access": "user"
             }
         },
         "/plugins": {
@@ -14781,7 +14534,7 @@
                     "Files"
                 ],
                 "summary": "List paths shared with current user",
-                "description": "Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).",
+                "description": "Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -14796,7 +14549,7 @@
                             "type": "boolean",
                             "default": false
                         },
-                        "description": "When true, include file grants under `.notes`. Default is false."
+                        "description": "When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks)."
                     }
                 ],
                 "responses": {
@@ -15262,60 +15015,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DriveShareByPrincipalDataResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/shared-with-me": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "List note files shared with the current user via path grants",
-                "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Shared notes",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotesSharedWithMeResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/shared-notebooks": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "List shared notebook ACL rows (compat — always empty)",
-                "description": "Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Compat empty list (personal notebook-directory ACL shares removed).",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotesSharedNotebooksResponse"
                                 }
                             }
                         }

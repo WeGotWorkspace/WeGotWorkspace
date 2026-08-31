@@ -67,8 +67,9 @@ async function syncNotebooks(username: string): Promise<{
 }
 
 /**
- * REST `/changes` inbound: notebooks first, then per-visible-notebook items.
- * Full list only on `cannotCalculateChanges`.
+ * REST `/changes` inbound (reconnect / manual refresh / mock-tier fallback).
+ * Live poll uses `POST /jmap` via `JmapNotesAdapter`. Notebooks first, then
+ * per-visible-notebook items. Full list only on `cannotCalculateChanges`.
  */
 export async function syncNotesInboundFromRest(
   username: string,
