@@ -6,6 +6,8 @@ namespace App\Services\Notes;
 
 use App\Models\JmapNoteState;
 use App\Services\Calendars\JmapCalendarEventStateService;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Survives notebook purge so Note/changes can expand destroyed ids
@@ -19,6 +21,38 @@ final class JmapNoteStateService
             return;
         }
 
+        try {
+            $this->persist($username, $noteId, $notebookUri, $objectUri);
+        } catch (QueryException $exception) {
+            $this->logFailure('remember', $username, $noteId, $exception);
+        }
+    }
+
+    /**
+     * Every note id previously surfaced for this notebook — the destroyed-branch
+     * primitive when the collection disappeared since sinceState.
+     *
+     * @return list<string>
+     */
+    public function recordedNoteIdsForNotebook(string $username, string $notebookUri): array
+    {
+        try {
+            return JmapNoteState::query()
+                ->where('username', $username)
+                ->where('notebook_uri', $notebookUri)
+                ->pluck('note_id')
+                ->map(static fn ($id): string => (string) $id)
+                ->values()
+                ->all();
+        } catch (QueryException $exception) {
+            $this->logFailure('recordedNoteIdsForNotebook', $username, $notebookUri, $exception);
+
+            return [];
+        }
+    }
+
+    private function persist(string $username, string $noteId, string $notebookUri, ?string $objectUri): void
+    {
         $row = JmapNoteState::query()
             ->where('username', $username)
             ->where('note_id', $noteId)
@@ -49,20 +83,17 @@ final class JmapNoteStateService
         }
     }
 
-    /**
-     * Every note id previously surfaced for this notebook — the destroyed-branch
-     * primitive when the collection disappeared since sinceState.
-     *
-     * @return list<string>
-     */
-    public function recordedNoteIdsForNotebook(string $username, string $notebookUri): array
+    private function logFailure(string $op, string $username, string $key, QueryException $exception): void
     {
-        return JmapNoteState::query()
-            ->where('username', $username)
-            ->where('notebook_uri', $notebookUri)
-            ->pluck('note_id')
-            ->map(static fn ($id): string => (string) $id)
-            ->values()
-            ->all();
+        try {
+            Log::warning('jmap_note_state_failed', [
+                'op' => $op,
+                'username' => $username,
+                'key' => $key,
+                'message' => $exception->getMessage(),
+            ]);
+        } catch (\Throwable) {
+            // Logging is optional outside the Laravel container (e.g. unit tests).
+        }
     }
 }
