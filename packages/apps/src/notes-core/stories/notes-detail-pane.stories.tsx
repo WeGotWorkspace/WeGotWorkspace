@@ -254,7 +254,7 @@ export const NotebookTintDark: Story = {
     const workspace = (canvasElement.querySelector(".notes-story-scope--detail") ??
       canvasElement.querySelector(".notes-workspace")) as HTMLElement | null;
     expect(workspace).toBeTruthy();
-    expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
+    expect(workspace!.style.getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-cream)",
     );
     const chip = canvasElement.querySelector(

@@ -312,10 +312,15 @@ export function useContactsController({
       if (createMode) return;
       stashActiveEditDraft();
       restoreEditDraftForContact(id);
-      workspaceLayoutRef.current?.openMobileDetail(() => {
+      const during = () => {
         setActiveId(id);
-        return onContactChange?.(id);
-      });
+      };
+      const handle = workspaceLayoutRef.current;
+      if (handle) {
+        handle.openMobileDetail(during);
+        return;
+      }
+      void during();
     },
     onNavigateToId: () => workspaceLayoutRef.current?.openMobileDetail(),
     onMutationError: showMutationError,
@@ -323,13 +328,18 @@ export function useContactsController({
   });
 
   const closeMobileDetail = useCallback(() => {
-    workspaceLayoutRef.current?.closeMobileDetail(() => {
+    const during = () => {
       setActiveId("");
       setSelectedIds([]);
       setSelectionMode(false);
-      return onContactChange?.("");
-    });
-  }, [onContactChange, setSelectedIds, setSelectionMode]);
+    };
+    const handle = workspaceLayoutRef.current;
+    if (handle) {
+      handle.closeMobileDetail(during);
+      return;
+    }
+    void during();
+  }, [setSelectedIds, setSelectionMode]);
 
   useSelectionResetOnKeyChange({
     resetKey: view,

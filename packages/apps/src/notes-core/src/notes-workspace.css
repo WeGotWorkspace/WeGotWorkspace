@@ -208,7 +208,7 @@
 .notes-workspace .app-sidebar__scroll {
   /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: var(--color-ink);
+  --button-primary-fg: var(--color-ink, #042a22);
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
@@ -248,7 +248,7 @@
   --notes-accent: #f6d176;
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: var(--color-ink);
+  --button-primary-fg: var(--color-ink, #042a22);
   --primary: var(--notes-accent);
   --primary-foreground: var(--color-ink);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
