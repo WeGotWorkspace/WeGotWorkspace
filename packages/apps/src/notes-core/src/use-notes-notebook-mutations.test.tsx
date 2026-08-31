@@ -233,6 +233,23 @@ describe("useNotesNotebookMutations", () => {
       groupSlug: "team",
     });
     expect(created!).toMatchObject({ id: "notes-ideas", name: "Ideas" });
+    expect(result.current).toBeTruthy();
+  });
+
+  it("createNotebook toasts Notebook created, not Note saved", async () => {
+    const show = vi.fn();
+    const { result } = renderHook(() =>
+      useNotesNotebookMutations({
+        shell: shellStub({ show }),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.createNotebook({ name: "Ideas", color: "#ec4899" });
+    });
+
+    expect(show).toHaveBeenCalledWith("Notebook created");
+    expect(show).not.toHaveBeenCalledWith("Note saved");
   });
 
   it("createNotebook keeps sibling notebooks and persists color in the list row", async () => {

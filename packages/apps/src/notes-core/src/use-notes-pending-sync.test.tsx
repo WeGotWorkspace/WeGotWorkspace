@@ -37,6 +37,13 @@ describe("useNotesPendingSync", () => {
     expect(result.current.size).toBe(2);
   });
 
+  it("still shows the list dot for metadata-pending notes", async () => {
+    vi.mocked(listPendingNoteIds).mockResolvedValue(["meta-pending"]);
+    const { result } = renderHook(() => useNotesPendingSync("bob"));
+
+    await waitFor(() => expect(result.current.has("meta-pending")).toBe(true));
+  });
+
   it("unions metadata pending ids with UID-keyed collab body pending", async () => {
     vi.mocked(listPendingNoteIds).mockResolvedValue(["meta-1"]);
     vi.mocked(readNotesBootstrapFromCache).mockResolvedValue({

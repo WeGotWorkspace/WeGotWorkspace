@@ -26,6 +26,16 @@ describe("notes item collection copy", () => {
   });
 });
 
+describe("notes notebook toasts", () => {
+  it("does not reuse Note saved for notebook actions", () => {
+    expect(defaultNotesLabels.toastSaved).toBe("Note saved");
+    expect(defaultNotesLabels.toastNotebookCreated).toBe("Notebook created");
+    expect(defaultNotesLabels.toastNotebookUpdated).toBe("Notebook updated");
+    expect(defaultNotesLabels.toastNotebookDeleted("Ideas")).toBe("Notebook “Ideas” deleted");
+    expect(defaultNotesLabels.toastNotebookShareRemoved).toBe("Notebook removed");
+  });
+});
+
 describe("notesNotebookDialogLabelsFrom", () => {
   it("maps notebook copy onto the shared collection dialog", () => {
     const labels = notesNotebookDialogLabelsFrom(defaultNotesLabels);

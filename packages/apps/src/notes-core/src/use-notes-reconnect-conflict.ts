@@ -18,16 +18,13 @@ type ApplyLocalBodyMarkdown = (
  */
 export function useNotesReconnectConflict(options: {
   active: Note | null;
-  pendingNoteIds: ReadonlySet<string>;
   applyLocalBodyMarkdown: ApplyLocalBodyMarkdown;
   onRefreshList?: () => void;
 }) {
-  const { active, pendingNoteIds, applyLocalBodyMarkdown, onRefreshList } = options;
+  const { active, applyLocalBodyMarkdown, onRefreshList } = options;
   const editorDirtyRef = useRef(false);
   const activeRef = useRef(active);
   activeRef.current = active;
-  const pendingRef = useRef(pendingNoteIds);
-  pendingRef.current = pendingNoteIds;
   const applyBodyRef = useRef(applyLocalBodyMarkdown);
   applyBodyRef.current = applyLocalBodyMarkdown;
   const refreshRef = useRef(onRefreshList);
@@ -52,7 +49,6 @@ export function useNotesReconnectConflict(options: {
   const getLocalDirty = useCallback(() => {
     return isNotesLocalDirty({
       noteId: activeRef.current?.id,
-      pendingNoteIds: pendingRef.current,
       editorDirty: editorDirtyRef.current,
     });
   }, []);

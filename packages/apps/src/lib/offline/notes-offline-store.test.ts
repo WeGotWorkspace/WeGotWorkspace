@@ -5,12 +5,16 @@ import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { Note } from "@/lib/models/note";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
+import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
+  listPendingNoteIds,
   readNotesBootstrapFromCache,
   removeNotebookFromCache,
+  removeNoteFromCache,
+  upsertNoteBodyPreviewInCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -250,6 +254,46 @@ describe("notes offline store", () => {
     // Body is never coalesced into the metadata outbox.
     expect(payload).not.toHaveProperty("note");
     expect(payload.metadata).not.toHaveProperty("body");
+  });
+
+  it("preserves pendingSync when updating a body preview", async () => {
+    await upsertNoteInCache(username, note, false);
+    await upsertNoteBodyPreviewInCache(username, {
+      ...note,
+      body: ["Hydrated body"],
+      excerpt: "Hydrated body",
+    });
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const row = await notesNotesTable(db).get(note.id);
+    expect(row?.pendingSync).toBe(false);
+    expect(JSON.parse(row?.data ?? "{}").body).toEqual(["Hydrated body"]);
+    expect(await listPendingNoteIds(username)).toEqual([]);
+  });
+
+  it("keeps metadata-pending notes pending after a body preview write", async () => {
+    await upsertNoteInCache(username, note, true);
+    await upsertNoteBodyPreviewInCache(username, {
+      ...note,
+      body: ["Still pending metadata"],
+    });
+
+    expect(await listPendingNoteIds(username)).toEqual([note.id]);
+  });
+
+  it("does not resurrect a remapped local-* row from a body preview write", async () => {
+    const tempId = "local-c55e3aa68b224beab477053dfeb10efd";
+    const serverId = "11111111-2222-3333-4444-555555555555";
+    await upsertNoteInCache(username, { ...note, id: serverId }, false);
+    await removeNoteFromCache(username, tempId);
+
+    await upsertNoteBodyPreviewInCache(username, { ...note, id: tempId, body: ["Ghost"] });
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(tempId)).toBeUndefined();
+    expect(await listPendingNoteIds(username)).not.toContain(tempId);
+    const server = await notesNotesTable(db).get(serverId);
+    expect(server?.pendingSync).toBe(false);
   });
 
   it("orders outbox mutations by createdAt", async () => {

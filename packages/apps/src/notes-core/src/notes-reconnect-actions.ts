@@ -4,16 +4,17 @@ import { getDocsCollabSyncState } from "@/text-editor-core/docs-collab/docs-coll
 
 export type NotesLocalDirtyInput = {
   noteId: string | null | undefined;
-  pendingNoteIds: ReadonlySet<string>;
   editorDirty: boolean;
 };
 
-/** Open-editor dirty, pending Yjs save, or Dexie pending — Decision 6. */
+/**
+ * Body dirty only (editor or pending Yjs save). Metadata pending (tags/title)
+ * must not open Keep mine — that is an own-etag race, not two-device conflict.
+ */
 export function isNotesLocalDirty(input: NotesLocalDirtyInput): boolean {
   const noteId = input.noteId;
   if (!noteId) return false;
   if (input.editorDirty) return true;
-  if (input.pendingNoteIds.has(noteId)) return true;
   return getDocsCollabSyncState(noteId).pendingServerSave;
 }
 

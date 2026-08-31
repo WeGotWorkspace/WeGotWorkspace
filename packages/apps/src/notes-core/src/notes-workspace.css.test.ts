@@ -23,6 +23,16 @@ const selectionPresentation = readFileSync(
   "utf8",
 );
 
+describe("notes workspace create title focus", () => {
+  it("focuses the title after New note and keeps that request across id remap", () => {
+    expect(tsx).toMatch(/beginCreateNote/);
+    expect(tsx).toMatch(/setFocusTitleAfterCreate\(true\)/);
+    expect(tsx).toMatch(/autoFocusTitle=\{focusTitleAfterCreate && !noteReadOnly\}/);
+    expect(tsx).toMatch(/onAutoFocusTitleConsumed=\{\(\) => setFocusTitleAfterCreate\(false\)\}/);
+    expect(tsx).toMatch(/handleSelectClearingTitleFocus/);
+  });
+});
+
 describe("notes workspace sidebar create", () => {
   it("puts create notebook on the shared segmented New menu, not a section +", () => {
     expect(tsx).toMatch(/<NotesNewMenu/);

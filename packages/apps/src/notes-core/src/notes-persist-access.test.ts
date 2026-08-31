@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  isNotesMetadataSyncRace,
   isNotesPersistForbidden,
   isNotesPersistGone,
   NOTES_ACCESS_LOST_MESSAGE,
+  persistNoteKeepingSyncRace,
   persistNoteOrDropGone,
   resolveNotesPersistAccess,
 } from "@/notes-core/src/notes-persist-access";
@@ -46,6 +48,31 @@ describe("notes persist 404", () => {
     const gone = Object.assign(new Error("not found"), { status: 404 });
     await expect(persistNoteOrDropGone(Promise.reject(gone), onGone)).resolves.toBeUndefined();
     expect(onGone).toHaveBeenCalledOnce();
+  });
+
+  it("does not treat a local-* 404 as gone", () => {
+    expect(isNotesPersistGone({ status: 404 }, "local-abc123")).toBe(false);
+    expect(isNotesPersistGone({ status: 404 }, "note-1")).toBe(true);
+  });
+
+  it("keeps optimistic tags on 412 or local-* 404 via persistNoteKeepingSyncRace", async () => {
+    const onGone = vi.fn();
+    await expect(
+      persistNoteKeepingSyncRace(
+        Promise.reject(Object.assign(new Error("precondition"), { status: 412 })),
+        onGone,
+        "note-1",
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      persistNoteKeepingSyncRace(
+        Promise.reject(Object.assign(new Error("not found"), { status: 404 })),
+        onGone,
+        "local-abc123",
+      ),
+    ).resolves.toBeUndefined();
+    expect(onGone).not.toHaveBeenCalled();
+    expect(isNotesMetadataSyncRace({ status: 412 }, "note-1")).toBe(true);
   });
 
   it("rethrows 412/403 so callers keep the local row", async () => {

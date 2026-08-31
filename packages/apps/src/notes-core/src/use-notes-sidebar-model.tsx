@@ -163,6 +163,7 @@ export function useNotesSidebarModel({
     ownedNotebooks,
     sharedNotebooks: sharedNotebookRows,
     tagSidebarTags,
+    showTagsSection: tagSidebarTags.length > 0,
     notebookViewKey,
     moveToNotebook,
   };

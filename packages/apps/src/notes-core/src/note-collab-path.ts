@@ -1,5 +1,6 @@
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getNote, persistNoteMarkdown } from "@/lib/api/wgw/notes-vjournal";
+import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   isNotesPayloadTooLargeError,
   NOTES_TOO_LARGE_MESSAGE,
@@ -7,6 +8,7 @@ import {
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
 import {
   isNotesPersistForbidden,
+  persistHttpStatus,
   resolveNotesPersistAccess,
 } from "@/notes-core/src/notes-persist-access";
 import { resolveNotesReconnect } from "@/notes-core/src/notes-reconnect";
@@ -35,8 +37,15 @@ export async function buildNoteCollabUrls(
   let etag = initialEtag;
 
   const persistMarkdown = async (markdown: string) => {
+    if (isLocalTempNoteId(noteId)) return;
     try {
-      const updated = await persistNoteMarkdown(noteId, markdown, etag);
+      const updated = await persistNoteMarkdown(noteId, markdown, etag).catch(async (error) => {
+        if (persistHttpStatus(error) !== 412) throw error;
+        const fresh = await getNote(noteId);
+        etag = fresh.etag;
+        hooks?.onEtag?.(etag);
+        return persistNoteMarkdown(noteId, markdown, etag);
+      });
       etag = updated.etag;
       hooks?.onEtag?.(etag);
       hooks?.onPersistSuccess?.(markdown);

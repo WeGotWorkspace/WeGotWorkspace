@@ -60,21 +60,51 @@ describe("buildNoteCollabUrls reconnect + persist", () => {
     expect(onPersistSuccess).toHaveBeenCalledWith("saved body");
   });
 
-  it("does not notify persist success on 412 or 413", async () => {
+  it("retries body persist once with a fresh etag after 412", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    const onPersistSuccess = vi.fn();
+    getNote.mockResolvedValue({ id: "n1", body: "", etag: '"fresh"' });
+    persistNoteMarkdown
+      .mockRejectedValueOnce(Object.assign(new Error("PATCH failed (412)"), { status: 412 }))
+      .mockResolvedValueOnce({ id: "n1", etag: '"saved"' });
+    const urls = await buildNoteCollabUrls("n1", '"etag"', { onPersistSuccess });
+
+    await urls.persistMarkdown?.("conflict body");
+
+    expect(persistNoteMarkdown).toHaveBeenNthCalledWith(2, "n1", "conflict body", '"fresh"');
+    expect(onPersistSuccess).toHaveBeenCalledWith("conflict body");
+  });
+
+  it("does not notify persist success on a second 412 or on 413", async () => {
     const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
     const onPersistSuccess = vi.fn();
     const urls = await buildNoteCollabUrls("n1", '"etag"', { onPersistSuccess });
+    getNote.mockResolvedValue({ id: "n1", body: "", etag: '"fresh"' });
 
-    persistNoteMarkdown.mockRejectedValueOnce(
+    persistNoteMarkdown.mockRejectedValue(
       Object.assign(new Error("PATCH failed (412)"), { status: 412 }),
     );
     await expect(urls.persistMarkdown?.("conflict body")).rejects.toThrow(/412/);
 
+    persistNoteMarkdown.mockReset();
     persistNoteMarkdown.mockRejectedValueOnce(
       Object.assign(new Error("PATCH failed (413)"), { status: 413, code: "markdown_too_large" }),
     );
     await expect(urls.persistMarkdown?.("huge body")).rejects.toMatchObject({ status: 413 });
 
+    expect(onPersistSuccess).not.toHaveBeenCalled();
+  });
+
+  it("does not PATCH a local-* temp id", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    const onPersistSuccess = vi.fn();
+    const urls = await buildNoteCollabUrls("local-c55e3aa68b224beab477053dfeb10efd", '"etag"', {
+      onPersistSuccess,
+    });
+
+    await urls.persistMarkdown?.("typed body");
+
+    expect(persistNoteMarkdown).not.toHaveBeenCalled();
     expect(onPersistSuccess).not.toHaveBeenCalled();
   });
 

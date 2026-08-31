@@ -104,6 +104,86 @@ describe("NoteDetailView readOnly", () => {
     expect(onTitleChange).toHaveBeenCalledWith("Kept");
   });
 
+  it("focuses the title when autoFocusTitle is set", () => {
+    render(
+      <NoteDetailView
+        noteId="local-1"
+        contentRevision="rev-1"
+        title=""
+        onTitleChange={() => {}}
+        tags={[]}
+        body={[""]}
+        autoFocusTitle
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Title" }));
+  });
+
+  it("keeps the title focused when noteId remaps while autoFocusTitle is set", () => {
+    const { rerender } = render(
+      <NoteDetailView
+        noteId="local-1"
+        contentRevision="rev-1"
+        title=""
+        onTitleChange={() => {}}
+        tags={[]}
+        body={[""]}
+        autoFocusTitle
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Title" }));
+
+    rerender(
+      <NoteDetailView
+        noteId="n-server-1"
+        contentRevision="rev-2"
+        title=""
+        onTitleChange={() => {}}
+        tags={[]}
+        body={[""]}
+        autoFocusTitle
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Title" }));
+  });
+
+  it("does not focus the title when opening an existing note", () => {
+    render(
+      <NoteDetailView
+        noteId="n-existing"
+        contentRevision="rev-1"
+        title="Already titled"
+        onTitleChange={() => {}}
+        tags={[]}
+        body={["Notes"]}
+      />,
+    );
+    expect(document.activeElement).not.toBe(screen.getByRole("textbox", { name: "Title" }));
+  });
+
+  it("reports title auto-focus consumed when the user leaves for the body", () => {
+    const onAutoFocusTitleConsumed = vi.fn();
+    render(
+      <NoteDetailView
+        noteId="local-1"
+        contentRevision="rev-1"
+        title=""
+        onTitleChange={() => {}}
+        tags={[]}
+        body={[""]}
+        autoFocusTitle
+        onAutoFocusTitleConsumed={onAutoFocusTitleConsumed}
+      />,
+    );
+    const title = screen.getByRole("textbox", { name: "Title" });
+    const body = document.querySelector<HTMLElement>(
+      ".note-text-editor-body [contenteditable='true']",
+    );
+    expect(body).toBeTruthy();
+    fireEvent.blur(title, { relatedTarget: body });
+    expect(onAutoFocusTitleConsumed).toHaveBeenCalledOnce();
+  });
+
   it("moves focus to the body when Enter is pressed in the title", () => {
     render(
       <NoteDetailView

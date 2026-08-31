@@ -1,7 +1,9 @@
+import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+
 export const NOTES_ACCESS_LOST_MESSAGE =
   "You no longer have access to this note. Unsaved edits were not stored.";
 
-function persistHttpStatus(error: unknown): number | undefined {
+export function persistHttpStatus(error: unknown): number | undefined {
   if (error && typeof error === "object" && "status" in error) {
     const status = (error as { status?: unknown }).status;
     if (typeof status === "number") return status;
@@ -18,27 +20,49 @@ export function isNotesPersistForbidden(error: unknown): boolean {
 }
 
 /**
- * 404 means the collection object is gone (or never existed) for this user.
- * Keeping a local-only ghost is worse: it cannot be archived and outbox retries
- * forever. Do not treat 401/403/412/5xx as gone — those are auth, precondition,
- * or transient failures and the Dexie row must stay.
+ * Real-UID 404: the object is gone — drop Dexie so it cannot linger as a
+ * zombie. `local-*` 404 is a create race, not gone. Auth / 412 / 5xx stay.
  */
-export function isNotesPersistGone(error: unknown): boolean {
-  return persistHttpStatus(error) === 404;
+export function isNotesPersistGone(error: unknown, noteId?: string): boolean {
+  if (persistHttpStatus(error) !== 404) return false;
+  if (noteId && isLocalTempNoteId(noteId)) return false;
+  return true;
 }
 
-/** Run a note write; on 404 drop the local ghost and resolve instead of retrying. */
+/** 412 or local-* 404: keep the optimistic metadata row. */
+export function isNotesMetadataSyncRace(error: unknown, noteId: string): boolean {
+  const status = persistHttpStatus(error);
+  if (status === 412) return true;
+  return status === 404 && isLocalTempNoteId(noteId);
+}
+
+/** Drop the local ghost on a real-UID 404; rethrow anything else. */
 export async function persistNoteOrDropGone<T>(
   write: Promise<T>,
   onGone: () => void,
+  noteId?: string,
 ): Promise<T | undefined> {
   try {
     return await write;
   } catch (error) {
-    if (isNotesPersistGone(error)) {
+    if (isNotesPersistGone(error, noteId)) {
       onGone();
       return undefined;
     }
+    throw error;
+  }
+}
+
+/** Metadata upsert: also swallow 412 / local-* 404 so the write queue stays up. */
+export async function persistNoteKeepingSyncRace<T>(
+  write: Promise<T>,
+  onGone: () => void,
+  noteId: string,
+): Promise<T | undefined> {
+  try {
+    return await persistNoteOrDropGone(write, onGone, noteId);
+  } catch (error) {
+    if (isNotesMetadataSyncRace(error, noteId)) return undefined;
     throw error;
   }
 }

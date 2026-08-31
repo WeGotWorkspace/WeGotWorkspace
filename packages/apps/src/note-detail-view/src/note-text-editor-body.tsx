@@ -7,7 +7,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { Editor } from "@tiptap/react";
+import type { Editor, UseEditorOptions } from "@tiptap/react";
 import { cn } from "@/lib/utils";
 import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
@@ -206,10 +206,13 @@ export function NoteCollabChrome({ className }: { className?: string }) {
 export function NoteCollabEditorSurface({
   className,
   editable = true,
+  autofocus,
 }: {
   className?: string;
   /** When false, TipTap rejects typing (view-only share). */
   editable?: boolean;
+  /** Override TipTap mount focus. Omit to keep the collab default (end). */
+  autofocus?: UseEditorOptions["autofocus"];
 }) {
   const { session, onMarkdownChange, registerMarkdownGetter } = useNoteCollabContext();
 
@@ -232,6 +235,7 @@ export function NoteCollabEditorSurface({
       format="markdown"
       formatBar={false}
       editable={editable}
+      autofocus={autofocus}
       className={cn("note-text-editor-body", className)}
       onContentChange={onMarkdownChange}
       onEditorReady={handleEditorReady}

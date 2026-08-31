@@ -105,7 +105,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
           );
         }
         selectView(notebookViewKey(collection.id));
-        show(L.toastSaved);
+        show(L.toastNotebookCreated);
         setNotebookDialog(null);
         return collection;
       } catch {
@@ -114,7 +114,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
       }
     },
     [
-      L.toastSaved,
+      L.toastNotebookCreated,
       operations,
       selectView,
       setNotebookCollections,
@@ -166,14 +166,14 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         if (current && nextName !== current.name && current.scope !== "group") {
           setNotebooks((prev) => prev.map((item) => (item === current.name ? nextName : item)));
         }
-        show(L.toastSaved);
+        show(L.toastNotebookUpdated);
         setNotebookDialog(null);
       } catch {
         showMutationError();
       }
     },
     [
-      L.toastSaved,
+      L.toastNotebookUpdated,
       notebookCollections,
       operations,
       setNotebookCollections,
@@ -218,14 +218,14 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         if (view === notebookViewKey(notebookId) || view === `nb:${current.name}`) {
           selectView("all");
         }
-        show(L.toastSaved);
+        show(L.toastNotebookShareRemoved);
         setNotebookDialog(null);
       } catch {
         showMutationError();
       }
     },
     [
-      L.toastSaved,
+      L.toastNotebookShareRemoved,
       notebookCollections,
       operations,
       selectView,
@@ -257,14 +257,14 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         if (view === notebookViewKey(notebookId) || view === `nb:${current.name}`) {
           selectView("all");
         }
-        show(L.toastSaved);
+        show(L.toastNotebookDeleted(current.name));
         setNotebookDialog(null);
       } catch {
         showMutationError();
       }
     },
     [
-      L.toastSaved,
+      L.toastNotebookDeleted,
       notebookCollections,
       operations,
       selectView,

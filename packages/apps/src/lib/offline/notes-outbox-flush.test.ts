@@ -107,8 +107,29 @@ describe("flushNotesOutbox", () => {
 
     const result = await flushNotesOutbox(username);
     expect(result.stateMismatches).toEqual(["note-1"]);
-    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(updateNoteItem).toHaveBeenCalledTimes(2);
     expect(updateNoteItem.mock.calls[0]?.[1]).toMatchObject({ etag: '"etag-stale"' });
+    expect(updateNoteItem.mock.calls[1]?.[1]).not.toMatchObject({ etag: '"etag-stale"' });
+  });
+
+  it("retries a stale-etag tag upsert after create without reporting a conflict", async () => {
+    const tempId = "local-just-created";
+    const serverId = "11111111-2222-3333-4444-555555555555";
+    const tagged = { ...note, id: serverId, tags: ["focus"], etag: '"etag-minted"' };
+    await upsertNoteInCache(username, tagged, true);
+    await enqueueCoalescedNoteUpdate(username, serverId, tagged, '"etag-stale"', tempId);
+
+    updateNoteItem
+      .mockRejectedValueOnce(Object.assign(new Error("precondition"), { status: 412 }))
+      .mockResolvedValueOnce({ ...tagged, etag: '"etag-tag"' });
+
+    const result = await flushNotesOutbox(username);
+    expect(result.stateMismatches).toEqual([]);
+    expect(updateNoteItem).toHaveBeenCalledTimes(2);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const row = await notesNotesTable(db).get(serverId);
+    expect(row?.pendingSync).toBe(false);
+    expect(JSON.parse(row?.data ?? "{}").tags).toEqual(["focus"]);
   });
 
   it("creates a server note and drops the local temp id from cache", async () => {
@@ -121,13 +142,12 @@ describe("flushNotesOutbox", () => {
 
     await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
 
-    updateNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
     const saved = { ...note, id: "server-note-99", body: ["Created offline"] };
     createNoteItem.mockResolvedValue(saved);
 
     const result = await flushNotesOutbox(username);
 
-    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(updateNoteItem).not.toHaveBeenCalled();
     expect(createNoteItem).toHaveBeenCalledOnce();
     expect(result.bootstrap?.data.notes.some((row) => row.id === "server-note-99")).toBe(true);
     expect(result.bootstrap?.data.notes.some((row) => row.id === tempId)).toBe(false);
@@ -153,7 +173,6 @@ describe("flushNotesOutbox", () => {
     };
     await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
 
-    updateNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
     createNoteItem.mockResolvedValue({ ...offlineNote, id: savedId });
 
     await flushNotesOutbox(username);
