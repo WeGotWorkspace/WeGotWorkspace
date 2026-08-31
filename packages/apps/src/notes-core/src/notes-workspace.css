@@ -19,9 +19,6 @@
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  /* Pin theme hexes so notes chrome does not depend on `@theme inline` emission. */
-  --color-ink: #042a22;
-  --color-cream: #ffffff;
   --notes-accent: #f6d176;
   --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #ffffff));
   /*

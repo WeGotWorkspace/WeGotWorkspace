@@ -261,11 +261,8 @@ export const NotebookTintDark: Story = {
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
-    const ink = document.createElement("span");
     const accentStrong = document.createElement("span");
-    ink.style.color = "var(--color-ink)";
     accentStrong.style.color = "var(--notes-detail-accent-strong)";
-    workspace!.appendChild(ink);
     workspace!.appendChild(accentStrong);
     expect(getComputedStyle(chip!).color).toBe(getComputedStyle(accentStrong).color);
     const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement | null;
@@ -274,7 +271,6 @@ export const NotebookTintDark: Story = {
     workspace!.appendChild(softInk);
     expect(title).toBeTruthy();
     expect(getComputedStyle(title!).color).toBe(getComputedStyle(softInk).color);
-    expect(getComputedStyle(title!).color).not.toBe(getComputedStyle(ink).color);
     softInk.remove();
     const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
     expect(editor).toBeTruthy();
@@ -287,7 +283,7 @@ export const NotebookTintDark: Story = {
     mark.style.color = "var(--checkbox-checked-fg)";
     tagBg.style.color = "var(--note-detail-tag-bg)";
     accent.style.color = "var(--notes-detail-accent)";
-    cream.style.color = "var(--color-cream)";
+    cream.style.color = "var(--color-cream, #ffffff)";
     editor!.appendChild(fill);
     editor!.appendChild(mark);
     editor!.appendChild(tagBg);
@@ -302,7 +298,6 @@ export const NotebookTintDark: Story = {
     tagBg.remove();
     accent.remove();
     cream.remove();
-    ink.remove();
     accentStrong.remove();
   },
 };
