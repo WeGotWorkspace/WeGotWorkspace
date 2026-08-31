@@ -79,14 +79,17 @@ final class NoteSetMethod implements JmapMethodInterface
             try {
                 $fieldPatch = $patch;
                 unset($fieldPatch['starred'], $fieldPatch['etag']);
-                $ifMatch = isset($patch['etag']) && is_string($patch['etag']) ? $patch['etag'] : null;
+                $ifMatch = isset($patch['etag']) && is_string($patch['etag']) && $patch['etag'] !== ''
+                    ? $patch['etag']
+                    : null;
                 if ($fieldPatch !== []) {
+                    // Decision 6: updates require If-Match (etag). Destroy may omit it.
                     $this->notes->patch(
                         $username,
                         (string) $noteId,
                         $fieldPatch,
                         $ifMatch,
-                        requirePrecondition: $ifMatch !== null,
+                        requirePrecondition: true,
                     );
                 }
                 $this->applyStarred($username, (string) $noteId, $patch);

@@ -57,6 +57,14 @@ final class NoteJournalConverterTest extends TestCase
         $this->assertNull($note['title']);
         $this->assertSame('', $note['body']);
 
+        $blanked = $converter->toIcs([
+            'id' => 'n-blank',
+            'title' => '',
+            'body' => '',
+        ]);
+        $this->assertStringContainsString('SUMMARY', $blanked);
+        $this->assertSame('', $converter->fromIcs($blanked, 'n-blank')['title']);
+
         $patched = $converter->mergeIntoIcs($ics, ['title' => 'Only title', 'body' => '']);
         $merged = $converter->fromIcs($patched, 'n-empty');
         $this->assertSame('Only title', $merged['title']);

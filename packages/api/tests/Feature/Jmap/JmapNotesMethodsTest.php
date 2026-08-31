@@ -251,12 +251,14 @@ final class JmapNotesMethodsTest extends WgwDatabaseTestCase
             ], 'c0'],
         ])->assertOk();
         $noteId = $created->json('methodResponses.0.1.created.k0.id');
+        $etag = $created->json('methodResponses.0.1.created.k0.etag');
         $this->assertTrue($created->json('methodResponses.0.1.created.k0.starred'));
+        $this->assertIsString($etag);
 
         $patched = $this->jmap([
             ['Note/set', [
                 'accountId' => 'bob',
-                'update' => [$noteId => ['title' => 'Ready', 'starred' => false]],
+                'update' => [$noteId => ['title' => 'Ready', 'starred' => false, 'etag' => $etag]],
             ], 'c0'],
         ])->assertOk();
         $patched->assertJsonPath("methodResponses.0.1.updated.{$noteId}", null);
@@ -272,6 +274,60 @@ final class JmapNotesMethodsTest extends WgwDatabaseTestCase
             ['Note/set', ['accountId' => 'bob', 'destroy' => [$noteId]], 'c0'],
         ])->assertOk();
         $destroyed->assertJsonPath('methodResponses.0.1.destroyed', [$noteId]);
+    }
+
+    public function test_note_set_update_without_etag_is_state_mismatch(): void
+    {
+        $created = $this->jmap([
+            ['Note/set', [
+                'accountId' => 'bob',
+                'create' => ['k0' => [
+                    'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                    'title' => 'Draft',
+                ]],
+            ], 'c0'],
+        ])->assertOk();
+        $noteId = $created->json('methodResponses.0.1.created.k0.id');
+        $before = $this->jmap([
+            ['Note/get', ['accountId' => 'bob', 'ids' => [$noteId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+
+        $ungarded = $this->jmap([
+            ['Note/set', [
+                'accountId' => 'bob',
+                'update' => [$noteId => ['title' => 'Lost write']],
+            ], 'c0'],
+        ])->assertOk();
+        $ungarded->assertJsonPath("methodResponses.0.1.notUpdated.{$noteId}.type", 'stateMismatch');
+        $this->assertArrayNotHasKey($noteId, $ungarded->json('methodResponses.0.1.updated') ?? []);
+
+        $got = $this->jmap([
+            ['Note/get', ['accountId' => 'bob', 'ids' => [$noteId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame('Draft', $got['title']);
+        $this->assertSame($before['etag'], $got['etag']);
+    }
+
+    public function test_note_set_ignores_client_supplied_uid(): void
+    {
+        $hostile = 'alice-secret-note-uid';
+        $created = $this->jmap([
+            ['Note/set', [
+                'accountId' => 'bob',
+                'create' => ['k0' => [
+                    'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                    'title' => 'Mine',
+                    'uid' => $hostile,
+                ]],
+            ], 'c0'],
+        ])->assertOk();
+        $noteId = $created->json('methodResponses.0.1.created.k0.id');
+        $this->assertIsString($noteId);
+        $this->assertNotSame($hostile, $noteId);
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $noteId,
+        );
     }
 
     public function test_note_set_move_and_changes_does_not_report_destroyed(): void
@@ -298,11 +354,12 @@ final class JmapNotesMethodsTest extends WgwDatabaseTestCase
             ], 'c0'],
         ])->assertOk();
         $noteId = $created->json('methodResponses.0.1.created.n0.id');
+        $etag = $created->json('methodResponses.0.1.created.n0.etag');
 
         $moved = $this->jmap([
             ['Note/set', [
                 'accountId' => 'bob',
-                'update' => [$noteId => ['notebookId' => $destId]],
+                'update' => [$noteId => ['notebookId' => $destId, 'etag' => $etag]],
             ], 'c0'],
         ])->assertOk();
         $moved->assertJsonPath("methodResponses.0.1.updated.{$noteId}", null);
@@ -370,5 +427,6 @@ final class JmapNotesMethodsTest extends WgwDatabaseTestCase
         ])->assertOk()->json('methodResponses.0.1');
         $this->assertNotContains($noteId, $noteChanges['updated']);
         $this->assertNotContains($noteId, $noteChanges['created']);
+        $this->assertContains($noteId, $noteChanges['destroyed']);
     }
 }

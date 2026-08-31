@@ -10,6 +10,7 @@ use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\SeedsWgwIdentity;
@@ -90,22 +91,38 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->assertNotSame($uid.'.ics', (string) $row->uri);
     }
 
-    public function test_duplicate_uid_in_same_notebook_is_conflict(): void
+    public function test_client_supplied_uid_is_ignored(): void
     {
-        $uid = 'dup-uid-'.bin2hex(random_bytes(4));
-        $this->asBob()->postJson('/api/v1/notes/items', [
+        $hostile = '../alice/secret-note';
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
             'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
-            'title' => 'First',
+            'title' => 'Mine',
             'body' => 'one',
-            'uid' => $uid,
+            'uid' => $hostile,
         ])->assertCreated();
+        $id = (string) $created->json('id');
+        $this->assertNotSame($hostile, $id);
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $id,
+        );
+    }
 
-        $this->asBob()->postJson('/api/v1/notes/items', [
-            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
-            'title' => 'Second',
-            'body' => 'two',
-            'uid' => $uid,
-        ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
+    public function test_duplicate_uid_is_conflict_not_server_error(): void
+    {
+        $uid = (string) Str::uuid();
+        $this->seedJournalViaPdo($uid.'.ics', $this->journalIcs($uid, 'First', 'one'), $uid);
+
+        Str::createUuidsUsing(static fn () => \Ramsey\Uuid\Uuid::fromString($uid));
+        try {
+            $this->asBob()->postJson('/api/v1/notes/items', [
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'title' => 'Second',
+                'body' => 'two',
+            ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
+        } finally {
+            Str::createUuidsNormally();
+        }
     }
 
     public function test_patch_requires_if_match_and_rejects_stale_etag(): void

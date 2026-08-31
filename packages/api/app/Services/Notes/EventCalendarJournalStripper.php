@@ -8,6 +8,7 @@ use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\Admin\AdminConstants;
+use RuntimeException;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Support\Facades\DB;
@@ -111,11 +112,16 @@ final class EventCalendarJournalStripper
         $sourceId = [(int) $source->calendarid, (int) $source->id];
         $targetId = [(int) $notebook->calendarid, (int) $notebook->id];
         $existingUris = [];
+        $existingUids = [];
         CalendarObject::query()
             ->where('calendarid', (int) $notebook->calendarid)
-            ->pluck('uri')
-            ->each(function (mixed $uri) use (&$existingUris): void {
-                $existingUris[(string) $uri] = true;
+            ->get(['uri', 'uid'])
+            ->each(function (CalendarObject $row) use (&$existingUris, &$existingUids): void {
+                $existingUris[(string) $row->uri] = true;
+                $uid = trim((string) $row->uid);
+                if ($uid !== '') {
+                    $existingUids[$uid] = true;
+                }
             });
 
         $moved = 0;
@@ -129,9 +135,18 @@ final class EventCalendarJournalStripper
                 $sourceId,
                 $targetId,
                 &$existingUris,
+                &$existingUids,
                 &$moved,
             ): void {
                 $objectUri = (string) $object->uri;
+                $sourceUid = trim((string) $object->uid);
+                if ($sourceUid !== '' && isset($existingUids[$sourceUid])) {
+                    throw new RuntimeException(sprintf(
+                        'Cannot strip VJOURNAL: uid %s already exists in notebook calendar %s.',
+                        $sourceUid,
+                        $targetId[0],
+                    ));
+                }
                 $targetUri = $objectUri;
                 if (isset($existingUris[$targetUri])) {
                     $base = str_ends_with($objectUri, '.ics') ? substr($objectUri, 0, -4) : $objectUri;
@@ -142,6 +157,9 @@ final class EventCalendarJournalStripper
                     } while (isset($existingUris[$targetUri]));
                 }
                 $existingUris[$targetUri] = true;
+                if ($sourceUid !== '') {
+                    $existingUids[$sourceUid] = true;
+                }
                 $data = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $caldav->createCalendarObject($targetId, $targetUri, $data);
                 $caldav->deleteCalendarObject($sourceId, $objectUri);

@@ -16,6 +16,7 @@ use App\Services\Search\SearchIndexerService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PDOException;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 final class NoteRepository
@@ -26,6 +27,7 @@ final class NoteRepository
         private readonly NoteMoveHelper $moveHelper,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly SearchIndexerService $searchIndexer,
+        private readonly JmapNoteStateService $noteStates = new JmapNoteStateService,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
     ) {}
 
@@ -57,7 +59,7 @@ final class NoteRepository
         $apiId = $this->notebooks->apiIdForInstance($instance);
         $notes = [];
         foreach ($objects as $object) {
-            $note = $this->converter->fromObject($object, $apiId, isset($starredIds[(int) $object->id]));
+            $note = $this->rememberedNote($username, $object, $apiId, isset($starredIds[(int) $object->id]));
             if ($status === 'CANCELLED' && ($note['status'] ?? null) !== 'CANCELLED') {
                 continue;
             }
@@ -85,7 +87,8 @@ final class NoteRepository
             ->where('calendar_object_id', (int) $located['object']->id)
             ->exists();
 
-        return $this->converter->fromObject(
+        return $this->rememberedNote(
+            $username,
             $located['object'],
             $this->notebooks->apiIdForInstance($located['instance']),
             $starred,
@@ -105,10 +108,10 @@ final class NoteRepository
         }
         $this->collectionAccess->assertCollectionWritable($instance, 'This notebook is read-only.');
 
-        $uid = isset($payload['uid']) && is_string($payload['uid']) && trim($payload['uid']) !== ''
-            ? trim($payload['uid'])
-            : (string) Str::uuid();
-        $this->assertUidAvailable((int) $instance->calendarid, $uid);
+        // Decision 7: room key = UID. Always mint so clients cannot aim at
+        // another principal's collab room. Client-supplied `uid` is ignored.
+        $uid = (string) Str::uuid();
+        $this->assertUidAvailable($uid);
 
         $note = [
             'id' => $uid,
@@ -126,8 +129,8 @@ final class NoteRepository
                 $objectUri,
                 $ics,
             );
-        } catch (QueryException $exception) {
-            $this->throwIfUidConflict($exception);
+        } catch (QueryException|PDOException $exception) {
+            NoteUidConflict::throwIf($exception);
             throw $exception;
         }
 
@@ -137,7 +140,7 @@ final class NoteRepository
         }
         $this->indexObject($username, $instance, $object);
 
-        return $this->converter->fromObject($object, $this->notebooks->apiIdForInstance($instance));
+        return $this->rememberedNote($username, $object, $this->notebooks->apiIdForInstance($instance));
     }
 
     /**
@@ -175,7 +178,7 @@ final class NoteRepository
             }
             $this->collectionAccess->assertCollectionWritable($destination, 'This notebook is read-only.');
             if ((int) $destination->calendarid !== (int) $object->calendarid) {
-                $this->assertUidAvailable((int) $destination->calendarid, (string) $object->uid);
+                $this->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
                 $this->moveHelper->move($object, (int) $destination->calendarid);
                 $object->refresh();
                 $instance = $destination;
@@ -193,8 +196,8 @@ final class NoteRepository
                     (string) $object->uri,
                     $ics,
                 );
-            } catch (QueryException $exception) {
-                $this->throwIfUidConflict($exception);
+            } catch (QueryException|PDOException $exception) {
+                NoteUidConflict::throwIf($exception);
                 throw $exception;
             }
             $object = $this->findObjectByUid((int) $instance->calendarid, $noteId);
@@ -209,7 +212,12 @@ final class NoteRepository
             ->where('calendar_object_id', (int) $object->id)
             ->exists();
 
-        return $this->converter->fromObject($object, $this->notebooks->apiIdForInstance($instance), $starred);
+        return $this->rememberedNote(
+            $username,
+            $object,
+            $this->notebooks->apiIdForInstance($instance),
+            $starred,
+        );
     }
 
     /**
@@ -314,7 +322,7 @@ final class NoteRepository
             'hasMoreChanges' => false,
             'created' => $this->uidsForUris((int) $instance->calendarid, $changes['added'] ?? []),
             'updated' => $this->uidsForUris((int) $instance->calendarid, $changes['modified'] ?? []),
-            'destroyed' => $this->destroyedUids((int) $instance->calendarid, $changes['deleted'] ?? []),
+            'destroyed' => $this->destroyedUids($changes['deleted'] ?? []),
         ];
     }
 
@@ -415,7 +423,7 @@ final class NoteRepository
             if ($instance === null) {
                 continue;
             }
-            $note = $this->converter->fromObject($object, $this->notebooks->apiIdForInstance($instance), true);
+            $note = $this->rememberedNote($username, $object, $this->notebooks->apiIdForInstance($instance), true);
             if ($status === 'CANCELLED' && ($note['status'] ?? null) !== 'CANCELLED') {
                 continue;
             }
@@ -425,10 +433,41 @@ final class NoteRepository
         return $notes;
     }
 
-    private function assertUidAvailable(int $calendarId, string $uid): void
+    /**
+     * @return array<string, mixed>
+     */
+    private function rememberedNote(
+        string $username,
+        CalendarObject $object,
+        string $notebookUri,
+        bool $starred = false,
+    ): array {
+        $note = $this->converter->fromObject($object, $notebookUri, $starred);
+        $this->noteStates->remember(
+            $username,
+            (string) ($note['id'] ?? $object->uid),
+            $notebookUri,
+            is_string($object->uri) ? (string) $object->uri : null,
+        );
+
+        return $note;
+    }
+
+    /**
+     * UID is the collab room key (Decision 7). Uniqueness is global across
+     * VJOURNAL objects so a minted or colliding id cannot enter another room.
+     * When $exceptCalendarId is set (MOVE), the source calendar is ignored.
+     */
+    private function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
     {
-        if ($this->findObjectByUid($calendarId, $uid) !== null) {
-            throw new ApiHttpException(409, 'A note with this UID already exists in the notebook.', 'alreadyExists');
+        $query = CalendarObject::query()
+            ->where('uid', $uid)
+            ->where('componenttype', 'VJOURNAL');
+        if ($exceptCalendarId !== null) {
+            $query->where('calendarid', '!=', $exceptCalendarId);
+        }
+        if ($query->exists()) {
+            throw new ApiHttpException(409, 'A note with this UID already exists.', 'alreadyExists');
         }
     }
 
@@ -438,14 +477,6 @@ final class NoteRepository
             ->where('calendarid', $calendarId)
             ->where('uid', $uid)
             ->first();
-    }
-
-    private function throwIfUidConflict(QueryException $exception): void
-    {
-        $message = $exception->getMessage();
-        if (str_contains($message, 'calendarid_uid') || str_contains($message, 'UNIQUE constraint failed')) {
-            throw new ApiHttpException(409, 'A note with this UID already exists in the notebook.', 'alreadyExists');
-        }
     }
 
     /**
@@ -476,7 +507,14 @@ final class NoteRepository
      * @param  list<string>  $uris
      * @return list<string>
      */
-    private function destroyedUids(int $calendarId, array $uris): array
+    /**
+     * Deleted objects are gone, so uid is recovered from the `{uid}.ics` href
+     * (WGW create always writes that convenience name; Decision 3).
+     *
+     * @param  list<string>  $uris
+     * @return list<string>
+     */
+    private function destroyedUids(array $uris): array
     {
         $uids = [];
         foreach ($uris as $uri) {
@@ -484,16 +522,13 @@ final class NoteRepository
             if ($uri === '') {
                 continue;
             }
-            $fromStar = NoteStar::query()->where('note_uid', $this->uidFromUri($uri))->value('note_uid');
-            if (is_string($fromStar) && $fromStar !== '') {
-                $uids[] = $fromStar;
-
-                continue;
+            $uid = $this->uidFromUri($uri);
+            if ($uid !== '') {
+                $uids[] = $uid;
             }
-            $uids[] = $this->uidFromUri($uri);
         }
 
-        return array_values(array_unique(array_filter($uids)));
+        return array_values(array_unique($uids));
     }
 
     private function uidFromUri(string $uri): string

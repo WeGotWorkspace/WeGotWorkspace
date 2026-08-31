@@ -8,6 +8,7 @@ use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
 use App\Services\Jmap\Methods\Concerns\ValidatesChangesArguments;
+use App\Services\Notes\JmapNoteStateService;
 use App\Services\Notes\NoteRepository;
 
 /**
@@ -18,7 +19,10 @@ final class NoteChangesMethod implements JmapMethodInterface
 {
     use ValidatesChangesArguments;
 
-    public function __construct(private readonly NoteRepository $notes) {}
+    public function __construct(
+        private readonly NoteRepository $notes,
+        private readonly JmapNoteStateService $states,
+    ) {}
 
     public function name(): string
     {
@@ -65,7 +69,9 @@ final class NoteChangesMethod implements JmapMethodInterface
 
         foreach (array_keys($since) as $uri) {
             if (! array_key_exists($uri, $current)) {
-                array_push($destroyed, ...$this->notes->noteIdsInNotebook($username, $uri));
+                // Notebook gone: live lookup 404s. Recorded ids survive purge
+                // (same as CalendarEventChangesMethod + recordedEventIdsForCalendar).
+                array_push($destroyed, ...$this->states->recordedNoteIdsForNotebook($username, $uri));
             }
         }
 

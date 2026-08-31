@@ -33,7 +33,7 @@ final class NoteJournalConverter
             'DTSTAMP' => (new DateTimeImmutable('now', new DateTimeZone('UTC'))),
         ]);
         $title = $note['title'] ?? null;
-        if (is_string($title) && $title !== '') {
+        if (is_string($title)) {
             $journal->SUMMARY = $title;
         }
         if ($body !== '') {
@@ -84,7 +84,7 @@ final class NoteJournalConverter
 
         if (array_key_exists('title', $patch)) {
             $title = $patch['title'];
-            if (is_string($title) && $title !== '') {
+            if (is_string($title)) {
                 $journal->SUMMARY = $title;
             } else {
                 unset($journal->SUMMARY);
@@ -189,7 +189,7 @@ final class NoteJournalConverter
 
         $note = [
             'id' => $uid !== '' ? $uid : $fallbackUid,
-            'title' => $title !== '' ? $title : null,
+            'title' => $title,
             'body' => $body,
             'categories' => $categories,
             'status' => $status,

@@ -22,6 +22,7 @@ final class NoteCreateRequest extends FormRequest
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string', 'max:255'],
             'status' => ['sometimes', 'nullable', 'in:FINAL,CANCELLED'],
+            // Accepted for back-compat only — NoteRepository always mints (Decision 7).
             'uid' => ['sometimes', 'string', 'max:200'],
         ];
     }
