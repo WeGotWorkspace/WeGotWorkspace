@@ -74,6 +74,8 @@ final class NotesController
                 $noteId,
                 $this->header($request, 'If-Match'),
                 $this->header($request, 'If-Unmodified-Since'),
+                // Match Note/set destroy: If-Match is optional. Field updates still require it.
+                requirePrecondition: false,
             )
         );
     }

@@ -152,6 +152,37 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
             ->assertJsonPath('body', 'hello');
     }
 
+    public function test_delete_succeeds_without_if_match_and_honors_it_when_sent(): void
+    {
+        $first = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Drop me',
+            'body' => 'gone',
+        ])->assertCreated();
+        $firstId = (string) $first->json('id');
+
+        $this->asBob()->deleteJson('/api/v1/notes/items/'.$firstId)->assertOk();
+        $this->asBob()->getJson('/api/v1/notes/items/'.$firstId)->assertNotFound();
+
+        $second = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Guard me',
+            'body' => 'stay',
+        ])->assertCreated();
+        $secondId = (string) $second->json('id');
+        $etag = (string) ($second->headers->get('ETag') ?? $second->json('etag'));
+
+        $this->asBob()->withHeaders(['If-Match' => '"stale-etag"'])
+            ->deleteJson('/api/v1/notes/items/'.$secondId)
+            ->assertStatus(412)
+            ->assertJsonPath('code', 'precondition_failed');
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->deleteJson('/api/v1/notes/items/'.$secondId)
+            ->assertOk();
+        $this->asBob()->getJson('/api/v1/notes/items/'.$secondId)->assertNotFound();
+    }
+
     public function test_oversize_body_is_413(): void
     {
         $body = str_repeat('x', NoteJournalConverter::MAX_MARKDOWN_BYTES + 1);
