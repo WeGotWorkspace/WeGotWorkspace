@@ -1118,7 +1118,9 @@ describe("useNotesController archive persist flags", () => {
     const operations = {
       upsertNote: vi.fn(),
       deleteNote: vi.fn(),
-      archiveNote: vi.fn().mockRejectedValue(Object.assign(new Error("Note not found"), { status: 404 })),
+      archiveNote: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error("Note not found"), { status: 404 })),
       restoreNote: vi.fn(),
       createNotebook: vi.fn(),
       renameNotebook: vi.fn(),
@@ -1155,7 +1157,9 @@ describe("useNotesController archive persist flags", () => {
     const operations = {
       upsertNote: vi.fn(),
       deleteNote: vi.fn(),
-      archiveNote: vi.fn().mockRejectedValue(Object.assign(new Error("precondition"), { status: 412 })),
+      archiveNote: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error("precondition"), { status: 412 })),
       restoreNote: vi.fn(),
       createNotebook: vi.fn(),
       renameNotebook: vi.fn(),
@@ -1190,7 +1194,9 @@ describe("useNotesController archive persist flags", () => {
     const operations = {
       upsertNote: vi.fn(),
       deleteNote: vi.fn(),
-      archiveNote: vi.fn().mockRejectedValue(Object.assign(new Error("forbidden"), { status: 403 })),
+      archiveNote: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error("forbidden"), { status: 403 })),
       restoreNote: vi.fn(),
       createNotebook: vi.fn(),
       renameNotebook: vi.fn(),
@@ -1221,4 +1227,3 @@ describe("useNotesController archive persist flags", () => {
     expect(result.current.selectedIds).toEqual(["note-1"]);
   });
 });
-

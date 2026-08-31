@@ -431,9 +431,9 @@ describe("notes-note-utils", () => {
   });
 
   it("never treats an empty created note as a disposable draft", () => {
-    expect(
-      shouldDiscardEmptyCreatedNote({ title: undefined, body: [""], excerpt: "" }),
-    ).toBe(false);
+    expect(shouldDiscardEmptyCreatedNote({ title: undefined, body: [""], excerpt: "" })).toBe(
+      false,
+    );
     expect(shouldDiscardEmptyCreatedNote({ title: "Event", body: [""], excerpt: "" })).toBe(false);
   });
 
@@ -1112,7 +1112,13 @@ describe("group notebook create targets", () => {
 describe("noteAfterNotebookMove", () => {
   it("clears group scope when moving to a personal notebook", () => {
     const moved = noteAfterNotebookMove(
-      { ...sampleNote, scope: "group", groupSlug: "eng", notebook: "Specs", notebookId: "group-eng" },
+      {
+        ...sampleNote,
+        scope: "group",
+        groupSlug: "eng",
+        notebook: "Specs",
+        notebookId: "group-eng",
+      },
       { id: "notes-work", name: "Work", scope: "personal" },
     );
     expect(moved).toEqual(

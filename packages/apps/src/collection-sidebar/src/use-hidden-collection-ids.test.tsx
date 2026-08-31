@@ -25,11 +25,7 @@ function writePersist(hiddenIds: ReadonlySet<string>, itemIds: ReadonlyArray<str
 
 const persist = { read: readPersist, write: writePersist };
 
-const loadedItems = [
-  { id: "drafts" },
-  { id: "work" },
-  { id: "shared", isVisible: false },
-];
+const loadedItems = [{ id: "drafts" }, { id: "work" }, { id: "shared", isVisible: false }];
 
 describe("useHiddenCollectionIds", () => {
   beforeEach(() => {

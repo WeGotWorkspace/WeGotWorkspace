@@ -169,7 +169,10 @@ export function useDocsCollabSave({
       setDocStatus(formatSavedDocStatus());
     } catch (err) {
       refs.saveFailedRef.current = true;
-      if (urls.onPersistForbidden && /\(403\)/.test(err instanceof Error ? err.message : String(err))) {
+      if (
+        urls.onPersistForbidden &&
+        /\(403\)/.test(err instanceof Error ? err.message : String(err))
+      ) {
         urls.onPersistForbidden();
       }
       if (isServerDivergenceError(err) && getConnectivitySnapshot()) {

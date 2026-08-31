@@ -188,9 +188,7 @@ describe("notes offline store", () => {
     await removeNotebookFromCache(username, "notes-drafts");
 
     const cached = await readNotesBootstrapFromCache(username);
-    expect(cached?.data.notes).toEqual([
-      expect.objectContaining({ id: "note-1", title: "Local" }),
-    ]);
+    expect(cached?.data.notes).toEqual([expect.objectContaining({ id: "note-1", title: "Local" })]);
   });
 
   it("preserves pendingSync notes when bootstrap is rewritten from server", async () => {

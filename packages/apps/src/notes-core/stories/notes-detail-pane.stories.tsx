@@ -172,11 +172,15 @@ export const NotebookTint: Story = {
     workspace!.appendChild(paneBg);
     workspace!.appendChild(detailFg);
     workspace!.appendChild(sidebarFg);
-    expect(getComputedStyle(sheet!).backgroundColor).toBe(getComputedStyle(sheetBg).backgroundColor);
+    expect(getComputedStyle(sheet!).backgroundColor).toBe(
+      getComputedStyle(sheetBg).backgroundColor,
+    );
     expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
       getComputedStyle(tintBg).backgroundColor,
     );
-    expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(paneBg).backgroundColor);
+    expect(getComputedStyle(scroll!).backgroundColor).toBe(
+      getComputedStyle(paneBg).backgroundColor,
+    );
     expect(getComputedStyle(scroll!).backgroundColor).not.toBe(
       getComputedStyle(tintBg).backgroundColor,
     );

@@ -85,9 +85,9 @@ describe("notes-route-search", () => {
       to: "/notes/notebooks/$notebookId",
       params: { notebookId: "Starred" },
     });
-    expect(
-      notesViewFromLocation("/notes/notebooks/starred", { notebookId: "starred" }),
-    ).toBe("nb:starred");
+    expect(notesViewFromLocation("/notes/notebooks/starred", { notebookId: "starred" })).toBe(
+      "nb:starred",
+    );
     expect(notesViewFromLocation("/notes/starred", { notebookId: "starred" })).toBe("starred");
   });
 });

@@ -81,7 +81,11 @@ async function requestNotesJson(
     } catch {
       // Status alone is enough when the body is not JSON.
     }
-    throw new NotesVjournalRequestError(`${method} ${path} failed (${res.status})`, res.status, code);
+    throw new NotesVjournalRequestError(
+      `${method} ${path} failed (${res.status})`,
+      res.status,
+      code,
+    );
   }
   if (res.status === 204) return undefined;
   return wgwReadJson(res);
@@ -102,7 +106,9 @@ export type NotesChangesDelta = {
   hasMoreChanges?: boolean;
 };
 
-export async function listNotebooks(opts?: { signal?: AbortSignal }): Promise<NotesVjournalNotebook[]> {
+export async function listNotebooks(opts?: {
+  signal?: AbortSignal;
+}): Promise<NotesVjournalNotebook[]> {
   const json = await requestNotesJson("/notes/notebooks", "GET", undefined, opts);
   return parseList<NotesVjournalNotebook>(json);
 }
@@ -125,8 +131,12 @@ function parseChanges(json: unknown): NotesChangesDelta {
   return {
     oldState: typeof row.oldState === "string" ? row.oldState : "0",
     newState: typeof row.newState === "string" ? row.newState : "0",
-    created: Array.isArray(row.created) ? row.created.filter((id): id is string => typeof id === "string") : [],
-    updated: Array.isArray(row.updated) ? row.updated.filter((id): id is string => typeof id === "string") : [],
+    created: Array.isArray(row.created)
+      ? row.created.filter((id): id is string => typeof id === "string")
+      : [],
+    updated: Array.isArray(row.updated)
+      ? row.updated.filter((id): id is string => typeof id === "string")
+      : [],
     destroyed: Array.isArray(row.destroyed)
       ? row.destroyed.filter((id): id is string => typeof id === "string")
       : [],
@@ -288,8 +298,7 @@ export async function deleteNotebook(
   notebookId: string,
   opts?: NotesRequestOpts & { onDestroyRemoveContents?: boolean },
 ): Promise<void> {
-  const query =
-    opts?.onDestroyRemoveContents === true ? "?onDestroyRemoveContents=1" : "";
+  const query = opts?.onDestroyRemoveContents === true ? "?onDestroyRemoveContents=1" : "";
   await requestNotesJson(
     `/notes/notebooks/${encodeURIComponent(notebookId)}${query}`,
     "DELETE",
@@ -376,7 +385,9 @@ export async function fetchNotesVjournalBootstrap(): Promise<NotesAppBootstrap> 
     }
   }
   const tags = [...new Set(notes.flatMap((note) => note.tags))];
-  const ownedNames = notebooks.filter((notebook) => !notebook.isSharee).map((notebook) => notebook.name);
+  const ownedNames = notebooks
+    .filter((notebook) => !notebook.isSharee)
+    .map((notebook) => notebook.name);
   return {
     data: {
       notes,

@@ -105,10 +105,7 @@ describe("WorkspaceApp mobile detail", () => {
   });
 
   it("starts the overlay open from a deep-link note path", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
     render(
       <WorkspaceApp
         initialDetailOpenMobile
@@ -128,10 +125,7 @@ describe("WorkspaceApp mobile detail", () => {
   });
 
   it("opens immediately on desktop without startViewTransition", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
     const startViewTransition = vi.fn();
     Object.defineProperty(document, "startViewTransition", {
       configurable: true,

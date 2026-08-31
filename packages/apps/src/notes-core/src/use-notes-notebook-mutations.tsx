@@ -1,6 +1,9 @@
 import { useCallback, useState } from "react";
 import type { CollectionShareWith } from "@/share-ui/collection-share";
-import type { TaskProjectDialogConfirmInput, TaskProjectDialogState } from "@/tasks-core/src/task-project-dialog";
+import type {
+  TaskProjectDialogConfirmInput,
+  TaskProjectDialogState,
+} from "@/tasks-core/src/task-project-dialog";
 import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 import { notesWithRenamedNotebook } from "@/notes-core/src/notes-note-utils";
@@ -109,7 +112,15 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         return undefined;
       }
     },
-    [L.toastSaved, operations, selectView, setNotebookCollections, setNotebooks, show, showMutationError],
+    [
+      L.toastSaved,
+      operations,
+      selectView,
+      setNotebookCollections,
+      setNotebooks,
+      show,
+      showMutationError,
+    ],
   );
 
   const updateNotebook = useCallback(

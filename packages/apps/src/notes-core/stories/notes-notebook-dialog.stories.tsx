@@ -23,20 +23,14 @@ function NotesNotebookDialogHarness({
   );
   return (
     <TaskProjectDialog
-      dialog={
-        dialog?.mode === "edit"
-          ? { ...dialog, shareWith }
-          : dialog
-      }
+      dialog={dialog?.mode === "edit" ? { ...dialog, shareWith } : dialog}
       groups={[{ slug: "eng", displayName: "Engineering" }]}
       personalOwnerLabel="Ada"
       labels={notesNotebookDialogLabelsFrom(defaultNotesLabels)}
       contentClassName="notes-dialog-surface"
       onClose={() => setDialog(null)}
       onConfirm={() => setDialog(null)}
-      onDelete={
-        dialog?.mode === "edit" && dialog.mayDelete ? () => setDialog(null) : undefined
-      }
+      onDelete={dialog?.mode === "edit" && dialog.mayDelete ? () => setDialog(null) : undefined}
       share={
         dialog?.mode === "edit" && dialog.mayShare
           ? {

@@ -14,8 +14,18 @@ vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
   };
 });
 
-import { deleteNotebook as deleteVjournalNotebook, getNote, listNotebooks, patchNote } from "@/lib/api/wgw/notes-vjournal";
-import { archiveNoteItem, deleteNotebook, restoreNoteItem, updateNoteItem } from "@/lib/api/wgw/notes";
+import {
+  deleteNotebook as deleteVjournalNotebook,
+  getNote,
+  listNotebooks,
+  patchNote,
+} from "@/lib/api/wgw/notes-vjournal";
+import {
+  archiveNoteItem,
+  deleteNotebook,
+  restoreNoteItem,
+  updateNoteItem,
+} from "@/lib/api/wgw/notes";
 
 const notebooks = [{ id: "notes-general", name: "General" }];
 
@@ -165,9 +175,7 @@ describe("updateNoteItem archive status", () => {
 describe("deleteNotebook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(listNotebooks).mockResolvedValue([
-      { id: "notes-scratch", name: "Scratch" },
-    ]);
+    vi.mocked(listNotebooks).mockResolvedValue([{ id: "notes-scratch", name: "Scratch" }]);
     vi.mocked(deleteVjournalNotebook).mockResolvedValue(undefined);
   });
 

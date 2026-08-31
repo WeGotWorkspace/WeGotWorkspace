@@ -89,12 +89,7 @@ describe("NotesListPanel refresh vs initial load", () => {
   it("keeps existing rows visible while the refresh button is busy", () => {
     render(
       <TooltipProvider>
-        <ListHarness
-          notes={[baseNote]}
-          listRefreshing
-          onRefreshList={() => {}}
-          slot="both"
-        />
+        <ListHarness notes={[baseNote]} listRefreshing onRefreshList={() => {}} slot="both" />
       </TooltipProvider>,
     );
     expect(
@@ -121,12 +116,7 @@ describe("NotesListPanel header chrome", () => {
   it("does not show edit or delete notebook controls on the view header", () => {
     render(
       <TooltipProvider>
-        <ListHarness
-          notes={[baseNote]}
-          view="nb:notes-drafts"
-          viewLabel="Drafts"
-          slot="header"
-        />
+        <ListHarness notes={[baseNote]} view="nb:notes-drafts" viewLabel="Drafts" slot="header" />
       </TooltipProvider>,
     );
     expect(screen.queryByRole("button", { name: defaultNotesLabels.edit })).toBeNull();

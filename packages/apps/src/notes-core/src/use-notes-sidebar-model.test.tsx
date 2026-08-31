@@ -49,10 +49,14 @@ describe("useNotesSidebarModel", () => {
   });
 
   it("partitions owned vs shared from collection-sidebar only", () => {
-    const collections = collectionsFromNotesData(["Alpha"], [], [
-      { id: "a", name: "Alpha", isSharee: false },
-      { id: "b", name: "Beta", isSharee: true },
-    ]);
+    const collections = collectionsFromNotesData(
+      ["Alpha"],
+      [],
+      [
+        { id: "a", name: "Alpha", isSharee: false },
+        { id: "b", name: "Beta", isSharee: true },
+      ],
+    );
     expect(collections).toHaveLength(2);
   });
 

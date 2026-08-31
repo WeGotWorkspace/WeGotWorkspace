@@ -90,9 +90,7 @@ describe("TagGroup inline add", () => {
     document.head.appendChild(sheet);
 
     try {
-      renderTagGroup(
-        <TagGroup tags={[]} readonly={false} onAddTag={() => {}} size="lg" />,
-      );
+      renderTagGroup(<TagGroup tags={[]} readonly={false} onAddTag={() => {}} size="lg" />);
       const button = screen.getByRole("button", { name: "Add tag" });
       const buttonStyle = getComputedStyle(button);
 

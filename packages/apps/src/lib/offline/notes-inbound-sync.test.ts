@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NOTES_NOTEBOOKS_TOKEN_KEY, syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
+import {
+  NOTES_NOTEBOOKS_TOKEN_KEY,
+  syncNotesInboundFromRest,
+} from "@/lib/offline/notes-inbound-sync";
 
 const listNotebookChanges = vi.fn();
 const listNoteChanges = vi.fn();
@@ -33,7 +36,11 @@ vi.mock("@/lib/api/wgw/notes-vjournal", () => ({
     wordCount: 0,
   }),
   isNotesCannotCalculateChanges: (error: unknown) =>
-    Boolean(error && typeof error === "object" && (error as { code?: string }).code === "cannotCalculateChanges"),
+    Boolean(
+      error &&
+      typeof error === "object" &&
+      (error as { code?: string }).code === "cannotCalculateChanges",
+    ),
   isNotesNotFound: (error: unknown) =>
     Boolean(error && typeof error === "object" && (error as { status?: number }).status === 404),
 }));
@@ -91,7 +98,13 @@ describe("syncNotesInboundFromRest", () => {
       updated: [],
       destroyed: [],
     });
-    getNote.mockResolvedValue({ id: "n-new", notebookId: "notes-general", title: "Hi", body: "", categories: [] });
+    getNote.mockResolvedValue({
+      id: "n-new",
+      notebookId: "notes-general",
+      title: "Hi",
+      body: "",
+      categories: [],
+    });
 
     const result = await syncNotesInboundFromRest("ada");
 
@@ -148,10 +161,7 @@ describe("syncNotesInboundFromRest", () => {
     await syncNotesInboundFromRest("ada", ["notes-work", "notes-general"]);
 
     expect(getNote).toHaveBeenCalledWith("n-moved");
-    expect(ingestNote).toHaveBeenCalledWith(
-      "ada",
-      expect.objectContaining({ id: "n-moved" }),
-    );
+    expect(ingestNote).toHaveBeenCalledWith("ada", expect.objectContaining({ id: "n-moved" }));
     expect(ingestNoteDestroyed).not.toHaveBeenCalledWith("ada", "n-moved");
   });
 

@@ -41,8 +41,14 @@ describe("JmapNotesAdapter", () => {
     getNotes.mockReset();
     notebookChanges.mockReset();
     noteChanges.mockReset();
-    getNotebooks.mockResolvedValue({ list: [{ id: "notes-general", name: "General" }], state: "nb-1" });
-    getNotes.mockResolvedValue({ list: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }], state: "n-1" });
+    getNotebooks.mockResolvedValue({
+      list: [{ id: "notes-general", name: "General" }],
+      state: "nb-1",
+    });
+    getNotes.mockResolvedValue({
+      list: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
+      state: "n-1",
+    });
   });
 
   it("primes envelope state with empty ids so bootstrap is not re-listed", async () => {
@@ -65,7 +71,12 @@ describe("JmapNotesAdapter", () => {
       onRemoteNote,
       onRemoteNoteDestroyed,
     });
-    notebookChanges.mockResolvedValue({ created: [], updated: [], destroyed: [], newState: "nb-2" });
+    notebookChanges.mockResolvedValue({
+      created: [],
+      updated: [],
+      destroyed: [],
+      newState: "nb-2",
+    });
     noteChanges.mockResolvedValue({
       created: ["n-2"],
       updated: [],
@@ -102,7 +113,12 @@ describe("JmapNotesAdapter", () => {
       onRemoteNote,
       onRemoteNoteDestroyed,
     });
-    notebookChanges.mockResolvedValue({ created: [], updated: [], destroyed: [], newState: "nb-2" });
+    notebookChanges.mockResolvedValue({
+      created: [],
+      updated: [],
+      destroyed: [],
+      newState: "nb-2",
+    });
     noteChanges.mockResolvedValue({
       created: ["n-moved"],
       updated: [],

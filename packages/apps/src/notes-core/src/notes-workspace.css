@@ -92,17 +92,9 @@
   --notes-tag-selected-bg: var(--color-ink);
   --notes-tag-selected-fg: var(--notes-accent);
   --notes-tag-selected-border: var(--color-ink);
-  --note-detail-tag-bg: color-mix(
-    in oklab,
-    var(--notes-detail-accent) 16%,
-    transparent
-  );
+  --note-detail-tag-bg: color-mix(in oklab, var(--notes-detail-accent) 16%, transparent);
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
-  --note-detail-tag-border: color-mix(
-    in oklab,
-    var(--notes-detail-accent) 28%,
-    transparent
-  );
+  --note-detail-tag-border: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
   --note-detail-title-font-family: var(--font-serif);
   /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
   --note-detail-sheet-bg: color-mix(
@@ -143,21 +135,9 @@
  * Same family as detail tags: notebook wash, not a full-sat neon square.
  */
 .notes-workspace .note-text-editor-body {
-  --checkbox-border-color: color-mix(
-    in oklab,
-    var(--notes-detail-accent) 28%,
-    transparent
-  );
-  --checkbox-checked-bg: color-mix(
-    in oklab,
-    var(--notes-detail-accent) 16%,
-    transparent
-  );
-  --checkbox-checked-border: color-mix(
-    in oklab,
-    var(--notes-detail-accent) 28%,
-    transparent
-  );
+  --checkbox-border-color: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
+  --checkbox-checked-bg: color-mix(in oklab, var(--notes-detail-accent) 16%, transparent);
+  --checkbox-checked-border: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
   --checkbox-checked-fg: var(--notes-detail-accent-strong);
 }
 

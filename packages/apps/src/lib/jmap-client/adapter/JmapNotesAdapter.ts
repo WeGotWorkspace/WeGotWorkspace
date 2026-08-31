@@ -36,7 +36,8 @@ export class JmapNotesAdapter {
 
   get accountId(): JmapId {
     if (this.#accountId) return this.#accountId;
-    this.#accountId = this.#options.accountId ?? this.#options.client.primaryAccountId(NOTES_CAPABILITY);
+    this.#accountId =
+      this.#options.accountId ?? this.#options.client.primaryAccountId(NOTES_CAPABILITY);
     return this.#accountId;
   }
 

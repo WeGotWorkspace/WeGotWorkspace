@@ -553,7 +553,8 @@ export async function createNoteItem(
 ): Promise<Note> {
   const notebooks = await notebooksForMap();
   const notebook = notebooks.find(
-    (item) => item.name === body.notebook && (body.groupSlug ? item.groupSlug === body.groupSlug : true),
+    (item) =>
+      item.name === body.notebook && (body.groupSlug ? item.groupSlug === body.groupSlug : true),
   );
   if (!notebook) {
     throw new NotesRequestError("Notebook not found", 404);
@@ -583,9 +584,8 @@ export async function updateNoteItem(
 ): Promise<Note> {
   const notebooks = await notebooksForMap();
   const notebook =
-    (body.notebookId
-      ? notebooks.find((item) => item.id === body.notebookId)
-      : undefined) ?? notebooks.find((item) => item.name === body.notebook);
+    (body.notebookId ? notebooks.find((item) => item.id === body.notebookId) : undefined) ??
+    notebooks.find((item) => item.name === body.notebook);
   const apply = async (ifMatch: string | undefined) =>
     patchNote(
       id,

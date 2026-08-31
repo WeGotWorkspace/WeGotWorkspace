@@ -14,7 +14,9 @@ const remove = vi.fn();
 const upsertNotebook = vi.fn();
 const removeNotebook = vi.fn();
 const readCache = vi.fn<
-  () => Promise<{ data: { notes: Note[]; notebookCollections?: { id: string; name: string }[] } } | null>
+  () => Promise<{
+    data: { notes: Note[]; notebookCollections?: { id: string; name: string }[] };
+  } | null>
 >();
 const reportConflicts = vi.fn();
 
@@ -115,11 +117,7 @@ describe("notes-jmap-inbound", () => {
         ],
       },
     });
-    await reconcileNotesSnapshot(
-      "ada",
-      [remote],
-      [{ id: "notes-general", name: "General" }],
-    );
+    await reconcileNotesSnapshot("ada", [remote], [{ id: "notes-general", name: "General" }]);
     expect(upsertNotebook).toHaveBeenCalledWith("ada", { id: "notes-general", name: "General" });
     expect(upsert).toHaveBeenCalledWith("ada", remote, false);
     expect(remove).toHaveBeenCalledWith("ada", "n-stale");

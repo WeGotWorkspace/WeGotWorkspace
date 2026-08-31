@@ -14,7 +14,10 @@ const listPanelCss = readFileSync(join(here, "notes-list-panel.css"), "utf8");
 const notebookSelect = readFileSync(join(here, "notes-notebook-select.tsx"), "utf8");
 const notebookIconCss = readFileSync(join(here, "notes-notebook-color-icon.css"), "utf8");
 const actionBarCss = readFileSync(join(here, "../../action-bar/src/action-bar.css"), "utf8");
-const workspaceAppTsx = readFileSync(join(here, "../../workspace-app/src/workspace-app.tsx"), "utf8");
+const workspaceAppTsx = readFileSync(
+  join(here, "../../workspace-app/src/workspace-app.tsx"),
+  "utf8",
+);
 
 describe("notes workspace sidebar create", () => {
   it("puts create notebook on the shared segmented New menu, not a section +", () => {
@@ -255,10 +258,10 @@ describe("notes workspace detail paper sheet tokens", () => {
     );
     expect(css).toMatch(/--notes-detail-body-bg:\s*var\(--workspace-detail-bg\)/);
     expect(css).not.toMatch(/--notes-detail-body-bg:\s*var\(--note-detail-sheet-bg\)/);
-    expect(css).not.toMatch(/--note-detail-sheet-bg:\s*var\(--notes-detail-tint,\s*var\(--color-cream/);
-    expect(css).toMatch(
-      /\.notes-workspace \.note-detail-sheet \{[\s\S]*min-height:\s*100%/,
+    expect(css).not.toMatch(
+      /--note-detail-sheet-bg:\s*var\(--notes-detail-tint,\s*var\(--color-cream/,
     );
+    expect(css).toMatch(/\.notes-workspace \.note-detail-sheet \{[\s\S]*min-height:\s*100%/);
     expect(css).toMatch(
       /\.notes-workspace \.workspace-detail-pane__scroll:has\(\.note-detail-sheet\) \{[\s\S]*flex-direction:\s*column/,
     );

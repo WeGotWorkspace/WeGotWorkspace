@@ -18,12 +18,8 @@ describe("text editor task-list checkboxes", () => {
     expect(css).toMatch(
       /\.text-editor-prose ul\[data-type="taskList"\] li > label span \{[\s\S]*--checkbox-radius, var\(--radius-sm\)/,
     );
-    expect(css).toMatch(
-      /input:checked \+ span,[\s\S]*--checkbox-checked-bg/,
-    );
-    expect(css).toMatch(
-      /input:focus-visible \+ span \{[\s\S]*--checkbox-ring-color/,
-    );
+    expect(css).toMatch(/input:checked \+ span,[\s\S]*--checkbox-checked-bg/);
+    expect(css).toMatch(/input:focus-visible \+ span \{[\s\S]*--checkbox-ring-color/);
     expect(css).not.toMatch(/border-radius:\s*0\.3rem/);
     expect(css).not.toMatch(/flex:\s*0 0 1\.125rem/);
   });

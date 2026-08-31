@@ -51,10 +51,16 @@ describe("notes persist 404", () => {
   it("rethrows 412/403 so callers keep the local row", async () => {
     const onGone = vi.fn();
     await expect(
-      persistNoteOrDropGone(Promise.reject(Object.assign(new Error("precondition"), { status: 412 })), onGone),
+      persistNoteOrDropGone(
+        Promise.reject(Object.assign(new Error("precondition"), { status: 412 })),
+        onGone,
+      ),
     ).rejects.toMatchObject({ status: 412 });
     await expect(
-      persistNoteOrDropGone(Promise.reject(Object.assign(new Error("forbidden"), { status: 403 })), onGone),
+      persistNoteOrDropGone(
+        Promise.reject(Object.assign(new Error("forbidden"), { status: 403 })),
+        onGone,
+      ),
     ).rejects.toMatchObject({ status: 403 });
     expect(onGone).not.toHaveBeenCalled();
   });

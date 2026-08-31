@@ -71,7 +71,9 @@ function NotesListLocation({
   return (
     <span
       className="notes-list-panel__notebook"
-      style={{ "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties}
+      style={
+        { "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties
+      }
     >
       <NotesNotebookColorIcon className="notes-list-panel__notebook-icon" />
       <span className="notes-list-panel__notebook-name">{location}</span>
@@ -243,7 +245,9 @@ export function NotesListPanel({
                 text={
                   excerpt || tagsRow ? (
                     <>
-                      {excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
+                      {excerpt ? (
+                        <span className="notes-list-panel__excerpt">{excerpt}</span>
+                      ) : null}
                       {tagsRow}
                     </>
                   ) : null

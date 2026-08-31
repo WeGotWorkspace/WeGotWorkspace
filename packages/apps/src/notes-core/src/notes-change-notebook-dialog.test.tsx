@@ -29,9 +29,7 @@ function stubSelectEnv() {
   });
 }
 
-function renderDialog(
-  overrides: Partial<ComponentProps<typeof NotesChangeNotebookDialog>> = {},
-) {
+function renderDialog(overrides: Partial<ComponentProps<typeof NotesChangeNotebookDialog>> = {}) {
   const onNotebookChange = vi.fn();
   const onCreateNotebook = vi.fn();
   const onClose = vi.fn();
@@ -59,12 +57,16 @@ describe("NotesChangeNotebookDialog", () => {
   it("lists the shared picker items, colors, current notebook, and Create notebook", () => {
     renderDialog();
 
-    expect(screen.getByRole("dialog", { name: defaultNotesLabels.selectionMoveToNotebook })).toBeTruthy();
+    expect(
+      screen.getByRole("dialog", { name: defaultNotesLabels.selectionMoveToNotebook }),
+    ).toBeTruthy();
     const confirm = screen.getByRole("button", { name: "Change" });
     expect(confirm.textContent).toBe("Change");
     expect(confirm.getAttribute("aria-label")).toBe("Change");
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
-    const trigger = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
+    const trigger = screen.getByRole("combobox", {
+      name: defaultNotesLabels.toolbarMoveToNotebook,
+    });
     expect(trigger.className).toContain("notes-notebook-select");
     expect(trigger.textContent).toContain("Drafts");
     expect(trigger.querySelectorAll(".notes-notebook-color-icon")).toHaveLength(1);
@@ -78,7 +80,9 @@ describe("NotesChangeNotebookDialog", () => {
       defaultNotesLabels.addNotebook,
     ]);
     expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
-    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-icon')).toHaveLength(3);
+    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-icon')).toHaveLength(
+      3,
+    );
     expect(document.querySelector('[role="listbox"] .collection-sidebar-row__dot')).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(
       "checked",
@@ -96,14 +100,16 @@ describe("NotesChangeNotebookDialog", () => {
   it("keeps the dialog open and does not move until Change", () => {
     const { onNotebookChange, onClose } = renderDialog();
 
-    fireEvent.click(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
+    );
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
     expect(onNotebookChange).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }).textContent).toContain(
-      "The Journal",
-    );
+    expect(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }).textContent,
+    ).toContain("The Journal");
 
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.changeNotebookConfirm }));
     expect(onNotebookChange).toHaveBeenCalledWith(notebooks[0]);
@@ -113,7 +119,9 @@ describe("NotesChangeNotebookDialog", () => {
   it("does not move when Cancel closes a dirty draft", () => {
     const { onNotebookChange, onClose } = renderDialog();
 
-    fireEvent.click(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
+    );
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.dialogCancel }));
     expect(onNotebookChange).not.toHaveBeenCalled();
@@ -123,7 +131,9 @@ describe("NotesChangeNotebookDialog", () => {
   it("opens Create notebook without moving or closing, then Change moves the created draft", () => {
     const { onNotebookChange, onCreateNotebook, onClose, rerender } = renderDialog();
 
-    fireEvent.click(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
+    );
     fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
     expect(onCreateNotebook).toHaveBeenCalledTimes(1);
     expect(onNotebookChange).not.toHaveBeenCalled();
@@ -144,9 +154,9 @@ describe("NotesChangeNotebookDialog", () => {
     );
 
     expect(onNotebookChange).not.toHaveBeenCalled();
-    expect(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }).textContent).toContain(
-      "Ideas",
-    );
+    expect(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }).textContent,
+    ).toContain("Ideas");
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.changeNotebookConfirm }));
     expect(onNotebookChange).toHaveBeenCalledWith(createdNotebook);
     expect(onClose).toHaveBeenCalledTimes(1);

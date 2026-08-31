@@ -70,9 +70,7 @@ const barProps = {
 
 describe("NotesDetailActionBar", () => {
   it("renders nothing when no note is active", () => {
-    const { container } = renderBar(
-      <NotesDetailActionBar active={undefined} {...barProps} />,
-    );
+    const { container } = renderBar(<NotesDetailActionBar active={undefined} {...barProps} />);
     expect(container.querySelector(".action-bar")).toBeNull();
   });
 
@@ -105,7 +103,9 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
+    );
     fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
     expect(onCreateNotebook).toHaveBeenCalledTimes(1);
     expect(onMoveToNotebook).not.toHaveBeenCalled();
@@ -303,14 +303,18 @@ describe("NotesDetailActionBar", () => {
     const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
     expect(move.textContent).toContain("Administratorss");
     expect(move.textContent).not.toContain("group-administrators");
-    expect(move.textContent).not.toMatch(/group-administrators.*Administratorss|Administratorss.*group-administrators/);
+    expect(move.textContent).not.toMatch(
+      /group-administrators.*Administratorss|Administratorss.*group-administrators/,
+    );
     const option = container.querySelector(".notes-notebook-select .notes-notebook-select__option");
     expect(option).toBeTruthy();
     expect((option as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
       "#ea8c72",
     );
     expect(option!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(container.querySelector(".notes-notebook-select .collection-sidebar-row__dot")).toBeNull();
+    expect(
+      container.querySelector(".notes-notebook-select .collection-sidebar-row__dot"),
+    ).toBeNull();
   });
 
   it("disables notebook switch when readOnly (view-only sharee)", () => {

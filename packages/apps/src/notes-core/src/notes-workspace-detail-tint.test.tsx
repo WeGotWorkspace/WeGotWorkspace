@@ -35,9 +35,9 @@ describe("notes workspace detail tint (computed)", () => {
   it("does not force full-ink sheet text; check-mark contrast still follows the fill", () => {
     const light = renderPane("#fde68a");
     const lightRoot = light.container.querySelector(".notes-workspace") as HTMLElement;
-    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).not.toBe(
-      "var(--color-ink)",
-    );
+    expect(
+      getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim(),
+    ).not.toBe("var(--color-ink)");
     expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-ink)",
     );
@@ -45,9 +45,9 @@ describe("notes workspace detail tint (computed)", () => {
 
     const dark = renderPane("#1e3a5f");
     const darkRoot = dark.container.querySelector(".notes-workspace") as HTMLElement;
-    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim()).not.toBe(
-      "var(--color-ink)",
-    );
+    expect(
+      getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim(),
+    ).not.toBe("var(--color-ink)");
     expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-cream)",
     );

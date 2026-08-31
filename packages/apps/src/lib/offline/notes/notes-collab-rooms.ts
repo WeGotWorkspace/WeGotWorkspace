@@ -1,7 +1,10 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
-import { docsCollabRoomKey, migrateCollabPersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import {
+  docsCollabRoomKey,
+  migrateCollabPersistence,
+} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 

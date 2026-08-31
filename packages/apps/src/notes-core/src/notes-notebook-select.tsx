@@ -74,7 +74,10 @@ export function notebooksWithCurrent(
   ) {
     return notebooks;
   }
-  return [{ id: current.id ?? current.name, name: current.name, color: current.color }, ...notebooks];
+  return [
+    { id: current.id ?? current.name, name: current.name, color: current.color },
+    ...notebooks,
+  ];
 }
 
 export function notebookSelectionEquals(

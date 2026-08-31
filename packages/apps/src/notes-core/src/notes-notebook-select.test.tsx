@@ -131,7 +131,9 @@ describe("NotesNotebookSelect", () => {
       />,
     );
 
-    const trigger = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
+    const trigger = screen.getByRole("combobox", {
+      name: defaultNotesLabels.toolbarMoveToNotebook,
+    });
     expect(trigger.textContent).toContain("Drafts");
     fireEvent.click(trigger);
 
@@ -144,7 +146,9 @@ describe("NotesNotebookSelect", () => {
     ]);
     expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
     expect(container.querySelectorAll(".notes-notebook-color-icon")).toHaveLength(1);
-    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-icon')).toHaveLength(3);
+    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-icon')).toHaveLength(
+      3,
+    );
     expect(document.querySelector(".collection-sidebar-row__dot")).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(
       "checked",
@@ -168,7 +172,9 @@ describe("NotesNotebookSelect", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
+    );
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
     expect(onNotebookChange).toHaveBeenCalledWith(notebooks[0]);
   });

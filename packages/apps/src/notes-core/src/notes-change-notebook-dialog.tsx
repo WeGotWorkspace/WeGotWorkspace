@@ -53,7 +53,10 @@ function NotesChangeNotebookDialogForm({
   onClose,
   onNotebookChange,
   onCreateNotebook,
-}: Omit<NotesChangeNotebookDialogProps, "open" | "description" | "contentClassName">): ReactElement {
+}: Omit<
+  NotesChangeNotebookDialogProps,
+  "open" | "description" | "contentClassName"
+>): ReactElement {
   const [draft, setDraft] = useState<NotesNotebookSelectItem>(
     createdNotebook ?? toSelectItem(value),
   );

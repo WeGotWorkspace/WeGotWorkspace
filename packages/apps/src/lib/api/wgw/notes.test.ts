@@ -45,7 +45,11 @@ describe("wgwNoteMetadataFromNote", () => {
   });
 
   it("includes notebookId so a move can resolve dest by collection id", () => {
-    const request = wgwNoteMetadataFromNote({ ...note, notebookId: "notes-work", notebook: "Work" });
+    const request = wgwNoteMetadataFromNote({
+      ...note,
+      notebookId: "notes-work",
+      notebook: "Work",
+    });
     expect(request.notebookId).toBe("notes-work");
     expect(request.notebook).toBe("Work");
   });
@@ -427,10 +431,15 @@ describe("shared notes listing parsers", () => {
     ];
 
     const merged = mergeOwnedAndSharedInboxNotes(owned, sharedWithMe);
-    expect(merged.filter((n) => n.sharedInbox).map((n) => n.apiPath).sort()).toEqual(
-      [sharedPath, `/users/admin/.notes/Test/${sharedId}.md`, serverNotePath].sort(),
+    expect(
+      merged
+        .filter((n) => n.sharedInbox)
+        .map((n) => n.apiPath)
+        .sort(),
+    ).toEqual([sharedPath, `/users/admin/.notes/Test/${sharedId}.md`, serverNotePath].sort());
+    expect(merged.find((n) => n.apiPath === sharedPath)?.id).toBe(
+      sharedInboxFallbackId(sharedPath),
     );
-    expect(merged.find((n) => n.apiPath === sharedPath)?.id).toBe(sharedInboxFallbackId(sharedPath));
     expect(merged.find((n) => n.id === "n1781784157")?.apiPath).toBe(serverNotePath);
 
     const inbox = filterVisibleNotes(merged, {

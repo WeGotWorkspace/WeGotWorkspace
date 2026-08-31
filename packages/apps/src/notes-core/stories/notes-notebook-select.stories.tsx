@@ -59,7 +59,9 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
+    const trigger = canvas.getByRole("combobox", {
+      name: defaultNotesLabels.toolbarMoveToNotebook,
+    });
     await expect(trigger).toHaveTextContent("Drafts");
 
     await userEvent.click(trigger);

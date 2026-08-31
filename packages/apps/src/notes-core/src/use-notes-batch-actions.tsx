@@ -186,7 +186,15 @@ export function useNotesBatchActions({
       },
       undoToastMessage: "Star changes undone.",
     });
-  }, [batchToggleStarForIds, dropGoneNote, notes, operations, queueMutation, selectedIds, setNotes]);
+  }, [
+    batchToggleStarForIds,
+    dropGoneNote,
+    notes,
+    operations,
+    queueMutation,
+    selectedIds,
+    setNotes,
+  ]);
 
   const batchArchive = useCallback(() => {
     const beforeRows = notes.filter((note) => selectedIds.includes(note.id));
@@ -240,7 +248,16 @@ export function useNotesBatchActions({
       },
       undoToastMessage: "Archive changes undone.",
     });
-  }, [archived, dropGoneNote, notes, operations, queueMutation, selectedIds, setArchived, setNotes]);
+  }, [
+    archived,
+    dropGoneNote,
+    notes,
+    operations,
+    queueMutation,
+    selectedIds,
+    setArchived,
+    setNotes,
+  ]);
 
   const requestDeleteSelected = useCallback(() => {
     if (selectedIds.length === 0) return;

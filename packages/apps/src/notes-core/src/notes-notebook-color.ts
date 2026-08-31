@@ -75,9 +75,7 @@ export type NotesDetailTintStyle = {
 };
 
 /** Inline vars for a single open note — live notebook hex + check-mark contrast. */
-export function notesDetailTintStyle(
-  tint: string | undefined,
-): NotesDetailTintStyle | undefined {
+export function notesDetailTintStyle(tint: string | undefined): NotesDetailTintStyle | undefined {
   if (!tint) return undefined;
   return {
     ["--notes-detail-tint"]: tint,

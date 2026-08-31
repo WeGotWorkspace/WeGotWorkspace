@@ -285,7 +285,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           setNotes((prev) =>
             prev.map((note) =>
               note.id === id
-                ? { ...note, archived: archivedFlag, ...(serverRow.etag ? { etag: serverRow.etag } : {}) }
+                ? {
+                    ...note,
+                    archived: archivedFlag,
+                    ...(serverRow.etag ? { etag: serverRow.etag } : {}),
+                  }
                 : note,
             ),
           );
@@ -416,9 +420,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           Promise.all(
             updatedRows.map((row) => {
               const persistId = resolveNoteId(row.id);
-              return persistNoteOrDropGone(
-                operations.upsertNote({ ...row, id: persistId }),
-                () => dropGoneNote(row.id),
+              return persistNoteOrDropGone(operations.upsertNote({ ...row, id: persistId }), () =>
+                dropGoneNote(row.id),
               );
             }),
           ).then(() => {}),
@@ -586,7 +589,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: added ? "Tag assignment undone." : "Tag removal undone.",
       });
     },
-    [dropGoneNote, notes, operations, persistOptimisticNote, queueMutation, resolveNoteId, setNotes],
+    [
+      dropGoneNote,
+      notes,
+      operations,
+      persistOptimisticNote,
+      queueMutation,
+      resolveNoteId,
+      setNotes,
+    ],
   );
 
   const updateNote = useCallback(

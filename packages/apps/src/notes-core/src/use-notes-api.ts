@@ -23,9 +23,7 @@ import {
   reconcileNotesSnapshot,
 } from "@/lib/offline/notes-jmap-inbound";
 import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
-import {
-  readNotesBootstrapFromCache,
-} from "@/lib/offline/notes-offline-store";
+import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,

@@ -12,9 +12,7 @@ import "@/note-detail-view/src/note-detail-view.css";
 
 function focusNoteBodyFromTitle(titleEl: HTMLTextAreaElement): void {
   const root = titleEl.closest(".note-detail-view");
-  const body = root?.querySelector<HTMLElement>(
-    ".note-text-editor-body [contenteditable='true']",
-  );
+  const body = root?.querySelector<HTMLElement>(".note-text-editor-body [contenteditable='true']");
   body?.focus();
 }
 

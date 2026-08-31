@@ -45,9 +45,7 @@ export function nextNotesTagView(view: string, tag: string): string {
 }
 
 /** Same as Tasks `isViewOnlyTaskList`: missing `mayWriteAll` is writable. */
-export function isViewOnlyNotebook(
-  notebook: Pick<NotesNotebookCollection, "myRights">,
-): boolean {
+export function isViewOnlyNotebook(notebook: Pick<NotesNotebookCollection, "myRights">): boolean {
   return notebook.myRights?.mayWriteAll === false;
 }
 
@@ -97,9 +95,7 @@ export function collectionsFromNotesData(
     seen.add(collection.id);
     seen.add(collection.name);
   }
-  const extras = [...owned, ...shared].filter(
-    (item) => !seen.has(item.id) && !seen.has(item.name),
-  );
+  const extras = [...owned, ...shared].filter((item) => !seen.has(item.id) && !seen.has(item.name));
   return [...notebookCollections, ...extras];
 }
 

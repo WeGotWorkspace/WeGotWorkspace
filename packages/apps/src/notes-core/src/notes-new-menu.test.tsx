@@ -18,9 +18,7 @@ describe("NotesNewMenu", () => {
 
   it("creates a note from the main control without opening a menu", () => {
     const onCreateNote = vi.fn();
-    render(
-      <NotesNewMenu labels={L} onCreateNote={onCreateNote} onCreateNotebook={vi.fn()} />,
-    );
+    render(<NotesNewMenu labels={L} onCreateNote={onCreateNote} onCreateNotebook={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: L.newNote }));
 
@@ -31,9 +29,7 @@ describe("NotesNewMenu", () => {
 
   it("opens create notebook from the chevron", () => {
     const onCreateNotebook = vi.fn();
-    render(
-      <NotesNewMenu labels={L} onCreateNote={vi.fn()} onCreateNotebook={onCreateNotebook} />,
-    );
+    render(<NotesNewMenu labels={L} onCreateNote={vi.fn()} onCreateNotebook={onCreateNotebook} />);
 
     const chevron = screen.getByRole("button", { name: L.newNoteMenu });
     fireEvent.pointerDown(chevron);
