@@ -5,6 +5,7 @@ import {
   ingestRemoteNoteDestroyed,
   ingestRemoteNotebook,
   ingestRemoteNotebookDestroyed,
+  reconcileNotesSnapshot,
 } from "@/lib/offline/notes-jmap-inbound";
 
 const listPending = vi.fn<() => Promise<string[]>>();
@@ -12,7 +13,9 @@ const upsert = vi.fn();
 const remove = vi.fn();
 const upsertNotebook = vi.fn();
 const removeNotebook = vi.fn();
-const readCache = vi.fn<() => Promise<{ data: { notes: Note[] } } | null>>();
+const readCache = vi.fn<
+  () => Promise<{ data: { notes: Note[]; notebookCollections?: { id: string; name: string }[] } } | null>
+>();
 const reportConflicts = vi.fn();
 
 vi.mock("@/lib/offline/notes-offline-store", () => ({
@@ -100,5 +103,26 @@ describe("notes-jmap-inbound", () => {
     expect(remove).not.toHaveBeenCalledWith("ada", "n-pending");
     expect(reportConflicts).toHaveBeenCalledWith(["n-pending"]);
     expect(removeNotebook).toHaveBeenCalledWith("ada", "notes-general");
+  });
+
+  it("reconcileNotesSnapshot drops local rows missing from the remote list", async () => {
+    readCache.mockResolvedValue({
+      data: {
+        notes: [remote, { ...remote, id: "n-stale", notebookId: "notes-gone" }],
+        notebookCollections: [
+          { id: "notes-general", name: "General" },
+          { id: "notes-gone", name: "Gone" },
+        ],
+      },
+    });
+    await reconcileNotesSnapshot(
+      "ada",
+      [remote],
+      [{ id: "notes-general", name: "General" }],
+    );
+    expect(upsertNotebook).toHaveBeenCalledWith("ada", { id: "notes-general", name: "General" });
+    expect(upsert).toHaveBeenCalledWith("ada", remote, false);
+    expect(remove).toHaveBeenCalledWith("ada", "n-stale");
+    expect(removeNotebook).toHaveBeenCalledWith("ada", "notes-gone");
   });
 });

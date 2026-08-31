@@ -811,7 +811,7 @@ export function notesWithRenamedNotebook(
  * Group-membership notebooks are My notebooks — never the `group-…` id/slug.
  */
 export function noteListLocationLabel(
-  note: Pick<Note, "notebook" | "notebookId" | "sharedInbox" | "sharedBy">,
+  note: Pick<Note, "notebook" | "notebookId" | "sharedInbox" | "sharedBy" | "scope" | "groupSlug">,
   labels: Pick<NotesUILabels, "sharedBy" | "sidebarSharedWithMe">,
   collections: readonly { id: string; name: string }[] = [],
 ): string | null {

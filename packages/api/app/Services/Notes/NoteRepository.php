@@ -150,6 +150,7 @@ final class NoteRepository
         array $patch,
         ?string $ifMatch,
         ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
     ): array {
         $located = $this->findAccessibleNote($username, $noteId);
         if ($located === null) {
@@ -161,6 +162,7 @@ final class NoteRepository
             $ifUnmodifiedSince,
             (string) $located['object']->etag,
             is_numeric($located['object']->lastmodified) ? (int) $located['object']->lastmodified : null,
+            $requirePrecondition,
         );
 
         $instance = $located['instance'];
@@ -213,8 +215,13 @@ final class NoteRepository
     /**
      * @return array{ok: true}
      */
-    public function delete(string $username, string $noteId, ?string $ifMatch, ?string $ifUnmodifiedSince = null): array
-    {
+    public function delete(
+        string $username,
+        string $noteId,
+        ?string $ifMatch,
+        ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
+    ): array {
         $located = $this->findAccessibleNote($username, $noteId);
         if ($located === null) {
             throw new ApiHttpException(404, 'Note not found.', 'not_found');
@@ -225,6 +232,7 @@ final class NoteRepository
             $ifUnmodifiedSince,
             (string) $located['object']->etag,
             is_numeric($located['object']->lastmodified) ? (int) $located['object']->lastmodified : null,
+            $requirePrecondition,
         );
 
         $this->calBackend()->deleteCalendarObject(

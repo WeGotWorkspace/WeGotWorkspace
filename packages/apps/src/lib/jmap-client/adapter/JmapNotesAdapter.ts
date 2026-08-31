@@ -15,6 +15,7 @@ export type JmapNotesAdapterOptions = {
   onRemoteNoteDestroyed?: (noteId: JmapId) => void;
   onRemoteNotebook?: (notebook: JmapNotebook) => void;
   onRemoteNotebookDestroyed?: (notebookId: JmapId) => void;
+  onRefetchAll?: (snapshot: { notebooks: JmapNotebook[]; notes: JmapNote[] }) => void;
 };
 
 /**
@@ -67,14 +68,19 @@ export class JmapNotesAdapter {
       const noteState = client.getState(this.accountId, NOTE_TYPE);
       if (noteState) {
         const changes = await this.#notes.noteChanges(this.accountId, noteState);
-        const changedIds = [...changes.created, ...changes.updated];
+        const created = new Set(changes.created);
+        const updated = changes.updated.filter((id) => !created.has(id));
+        const changedIds = [...changes.created, ...updated];
+        const destroyed = changes.destroyed.filter(
+          (id) => !created.has(id) && !updated.includes(id),
+        );
         if (changedIds.length) {
           const fetched = await this.#notes.getNotes(this.accountId, changedIds);
           for (const note of fetched.list) {
             this.#options.onRemoteNote?.(note);
           }
         }
-        for (const id of changes.destroyed) {
+        for (const id of destroyed) {
           this.#options.onRemoteNoteDestroyed?.(id);
         }
       }
@@ -106,10 +112,14 @@ export class JmapNotesAdapter {
 
   async #refetchAll(): Promise<void> {
     const notebooks = await this.#notes.getNotebooks(this.accountId);
+    const notes = await this.#notes.getNotes(this.accountId);
+    if (this.#options.onRefetchAll) {
+      this.#options.onRefetchAll({ notebooks: notebooks.list, notes: notes.list });
+      return;
+    }
     for (const notebook of notebooks.list) {
       this.#options.onRemoteNotebook?.(notebook);
     }
-    const notes = await this.#notes.getNotes(this.accountId);
     for (const note of notes.list) {
       this.#options.onRemoteNote?.(note);
     }

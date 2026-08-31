@@ -2,6 +2,7 @@ import {
   getNote,
   getNotebook,
   isNotesCannotCalculateChanges,
+  isNotesNotFound,
   listNoteChanges,
   listNotebookChanges,
   listNotebooks,
@@ -26,62 +27,6 @@ export type NotesInboundSyncResult = {
   changed: boolean;
   usedFullResync: boolean;
 };
-
-async function ingestChangedNotes(
-  username: string,
-  notebookId: string,
-  ids: string[],
-): Promise<boolean> {
-  if (ids.length === 0) return false;
-  const cached = await readNotesBootstrapFromCache(username);
-  const notebooks = cached?.data.notebookCollections ?? [];
-  let changed = false;
-  for (const id of ids) {
-    const row = await getNote(id);
-    const note = noteFromVjournal(row, notebooks);
-    const result = await ingestRemoteNote(username, note);
-    if (result === "upserted") changed = true;
-  }
-  return changed;
-}
-
-async function resyncNotebook(username: string, notebookId: string): Promise<boolean> {
-  const cached = await readNotesBootstrapFromCache(username);
-  const notebooks = cached?.data.notebookCollections ?? [];
-  const items = await listNotes({ notebookId });
-  let changed = false;
-  for (const item of items) {
-    const result = await ingestRemoteNote(username, noteFromVjournal(item, notebooks));
-    if (result === "upserted") changed = true;
-  }
-  return changed;
-}
-
-async function syncOneNotebook(
-  username: string,
-  notebookId: string,
-): Promise<{ changed: boolean; usedFullResync: boolean }> {
-  const since = await readSyncToken(username, notebookId);
-  try {
-    const delta = await listNoteChanges(notebookId, since);
-    let changed = false;
-    changed =
-      (await ingestChangedNotes(username, notebookId, [...delta.created, ...delta.updated])) ||
-      changed;
-    for (const id of delta.destroyed) {
-      const result = await ingestRemoteNoteDestroyed(username, id);
-      if (result === "removed") changed = true;
-    }
-    await writeSyncToken(username, notebookId, delta.newState);
-    return { changed, usedFullResync: false };
-  } catch (error) {
-    if (!isNotesCannotCalculateChanges(error)) throw error;
-    const changed = await resyncNotebook(username, notebookId);
-    const delta = await listNoteChanges(notebookId, null);
-    await writeSyncToken(username, notebookId, delta.newState);
-    return { changed, usedFullResync: true };
-  }
-}
 
 async function syncNotebooks(username: string): Promise<{
   notebookIds: string[];
@@ -132,17 +77,82 @@ export async function syncNotesInboundFromRest(
   if (!username) return { changed: false, usedFullResync: false };
 
   const notebooks = await syncNotebooks(username);
+  const remaining = notebooks.notebookIds;
   const ids =
-    visibleNotebookIds && visibleNotebookIds.length > 0
-      ? [...visibleNotebookIds]
-      : notebooks.notebookIds;
+    remaining.length > 0
+      ? remaining
+      : visibleNotebookIds && visibleNotebookIds.length > 0
+        ? [...visibleNotebookIds]
+        : [];
 
-  let changed = notebooks.changed;
+  const deltas: Array<{
+    notebookId: string;
+    created: string[];
+    updated: string[];
+    destroyed: string[];
+    newState: string;
+    usedFullResync: boolean;
+  }> = [];
+
   let usedFullResync = notebooks.usedFullResync;
+  let changed = notebooks.changed;
   for (const notebookId of ids) {
-    const result = await syncOneNotebook(username, notebookId);
-    changed = changed || result.changed;
-    usedFullResync = usedFullResync || result.usedFullResync;
+    const since = await readSyncToken(username, notebookId);
+    try {
+      const delta = await listNoteChanges(notebookId, since);
+      deltas.push({
+        notebookId,
+        created: delta.created,
+        updated: delta.updated,
+        destroyed: delta.destroyed,
+        newState: delta.newState,
+        usedFullResync: false,
+      });
+    } catch (error) {
+      if (isNotesNotFound(error)) {
+        await ingestRemoteNotebookDestroyed(username, notebookId);
+        changed = true;
+        continue;
+      }
+      if (!isNotesCannotCalculateChanges(error)) throw error;
+      usedFullResync = true;
+      const items = await listNotes({ notebookId });
+      deltas.push({
+        notebookId,
+        created: items.map((item) => item.id),
+        updated: [],
+        destroyed: [],
+        newState: (await listNoteChanges(notebookId, null)).newState,
+        usedFullResync: true,
+      });
+    }
+  }
+
+  const created = new Set<string>();
+  const updated = new Set<string>();
+  const destroyed = new Set<string>();
+  for (const delta of deltas) {
+    for (const id of delta.created) created.add(id);
+    for (const id of delta.updated) updated.add(id);
+    for (const id of delta.destroyed) destroyed.add(id);
+  }
+  const upsertIds = [...created, ...[...updated].filter((id) => !created.has(id))];
+  const destroyIds = [...destroyed].filter((id) => !created.has(id) && !updated.has(id));
+
+  const cached = await readNotesBootstrapFromCache(username);
+  const notebookRows = cached?.data.notebookCollections ?? [];
+  for (const id of upsertIds) {
+    const row = await getNote(id);
+    const result = await ingestRemoteNote(username, noteFromVjournal(row, notebookRows));
+    if (result === "upserted") changed = true;
+  }
+  for (const id of destroyIds) {
+    const result = await ingestRemoteNoteDestroyed(username, id);
+    if (result === "removed") changed = true;
+  }
+  for (const delta of deltas) {
+    await writeSyncToken(username, delta.notebookId, delta.newState);
+    usedFullResync = usedFullResync || delta.usedFullResync;
   }
 
   return { changed, usedFullResync };

@@ -6,7 +6,9 @@ namespace App\Services\Notes;
 
 use App\Models\CalendarObject;
 use App\Models\DriveStarredItem;
+use App\Models\GroupMember;
 use App\Models\NoteStar;
+use App\Models\Principal;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\WgwStorage;
@@ -52,6 +54,7 @@ final class NotesFileMigrator
             if (! $disk->fileExists($key)) {
                 $skipped++;
                 $notices[] = 'missing file: '.$virtualPath;
+
                 continue;
             }
             $markdown = (string) $disk->get($key);
@@ -59,6 +62,7 @@ final class NotesFileMigrator
             if ($parsed === null) {
                 $skipped++;
                 $notices[] = 'unparsed path: '.$virtualPath;
+
                 continue;
             }
 
@@ -70,6 +74,7 @@ final class NotesFileMigrator
             if (strlen($body) > NoteJournalConverter::MAX_MARKDOWN_BYTES) {
                 $skipped++;
                 $notices[] = 'over-limit skipped: '.$virtualPath;
+
                 continue;
             }
 
@@ -83,6 +88,7 @@ final class NotesFileMigrator
             if ($username === null) {
                 $skipped++;
                 $notices[] = 'no owner for: '.$virtualPath;
+
                 continue;
             }
 
@@ -192,11 +198,13 @@ final class NotesFileMigrator
                 if (str_contains($normalized, '/.notes/')) {
                     $notices[] = 'star skip (path not in map): '.$normalized;
                 }
+
                 continue;
             }
             $object = CalendarObject::query()->where('uid', $uid)->first();
             if ($object === null) {
                 $notices[] = 'star skip (object missing): '.$uid;
+
                 continue;
             }
             NoteStar::query()->firstOrCreate([
@@ -258,13 +266,13 @@ final class NotesFileMigrator
 
     private function groupOwnerUsername(string $groupSlug): ?string
     {
-        $group = \App\Models\Principal::query()
+        $group = Principal::query()
             ->where('uri', 'principals/groups/'.$groupSlug)
             ->first();
         if ($group === null) {
             return null;
         }
-        $member = \App\Models\GroupMember::query()
+        $member = GroupMember::query()
             ->where('principal_id', (int) $group->id)
             ->orderBy('id')
             ->first();

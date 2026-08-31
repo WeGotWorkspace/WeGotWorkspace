@@ -287,25 +287,61 @@ export async function upsertNotebookInCache(
   await writeNotesBootstrapToCache(username, cached);
 }
 
+function noteBelongsToNotebook(
+  note: Note,
+  notebookIdOrName: string,
+  matchedIds: Set<string>,
+  matchedNames: Set<string>,
+): boolean {
+  return (
+    matchedIds.has(note.notebookId ?? "") ||
+    matchedNames.has(note.notebook) ||
+    note.notebookId === notebookIdOrName ||
+    note.notebook === notebookIdOrName
+  );
+}
+
 export async function removeNotebookFromCache(
   username: string,
   notebookIdOrName: string,
+  options?: { keepPendingNotes?: boolean },
 ): Promise<void> {
+  const keepPending = options?.keepPendingNotes !== false;
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const books = notesNotebooksTable(db);
+  const notes = notesNotesTable(db);
   const rows = await books.toArray();
+  const matchedIds = new Set<string>([notebookIdOrName]);
+  const matchedNames = new Set<string>([notebookIdOrName]);
   for (const row of rows) {
     const collection = parseNotebookCacheRow(row);
     if (collection.id === notebookIdOrName || collection.name === notebookIdOrName) {
+      matchedIds.add(collection.id);
+      matchedNames.add(collection.name);
       await books.delete(row.id);
     }
+  }
+  const noteRows = await notes.toArray();
+  for (const row of noteRows) {
+    let note: Note;
+    try {
+      note = JSON.parse(row.data) as Note;
+    } catch {
+      continue;
+    }
+    if (!noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)) continue;
+    if (keepPending && row.pendingSync) continue;
+    await notes.delete(row.id);
   }
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) return;
   cached.data.notebookCollections = (cached.data.notebookCollections ?? []).filter(
-    (item) => item.id !== notebookIdOrName && item.name !== notebookIdOrName,
+    (item) => !matchedIds.has(item.id) && !matchedNames.has(item.name),
   );
-  cached.data.notebooks = cached.data.notebooks.filter((name) => name !== notebookIdOrName);
+  cached.data.notebooks = cached.data.notebooks.filter((name) => !matchedNames.has(name));
+  cached.data.notes = cached.data.notes.filter(
+    (note) => !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames),
+  );
   await writeNotesBootstrapToCache(username, cached);
 }
 

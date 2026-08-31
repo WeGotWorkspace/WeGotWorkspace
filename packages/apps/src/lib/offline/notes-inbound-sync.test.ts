@@ -34,6 +34,8 @@ vi.mock("@/lib/api/wgw/notes-vjournal", () => ({
   }),
   isNotesCannotCalculateChanges: (error: unknown) =>
     Boolean(error && typeof error === "object" && (error as { code?: string }).code === "cannotCalculateChanges"),
+  isNotesNotFound: (error: unknown) =>
+    Boolean(error && typeof error === "object" && (error as { status?: number }).status === 404),
 }));
 
 vi.mock("@/lib/offline/notes-offline-store", () => ({
@@ -98,5 +100,120 @@ describe("syncNotesInboundFromRest", () => {
     expect(getNote).toHaveBeenCalledWith("n-new");
     expect(writeToken).toHaveBeenCalledWith("ada", NOTES_NOTEBOOKS_TOKEN_KEY, "tok-2");
     expect(writeToken).toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
+  });
+
+  it("does not destroy a note that moved into another notebook in the same poll", async () => {
+    readCache.mockResolvedValue({
+      data: {
+        notebookCollections: [
+          { id: "notes-general", name: "General" },
+          { id: "notes-work", name: "Work" },
+        ],
+        notes: [],
+      },
+    });
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockImplementation(async (notebookId: string) => {
+      if (notebookId === "notes-general") {
+        return {
+          oldState: "tok-1",
+          newState: "src-2",
+          created: [],
+          updated: [],
+          destroyed: ["n-moved"],
+        };
+      }
+      return {
+        oldState: "tok-1",
+        newState: "dst-2",
+        created: ["n-moved"],
+        updated: [],
+        destroyed: [],
+      };
+    });
+    getNote.mockResolvedValue({
+      id: "n-moved",
+      notebookId: "notes-work",
+      title: "Moved",
+      body: "",
+      categories: [],
+    });
+
+    await syncNotesInboundFromRest("ada", ["notes-work", "notes-general"]);
+
+    expect(getNote).toHaveBeenCalledWith("n-moved");
+    expect(ingestNote).toHaveBeenCalledWith(
+      "ada",
+      expect.objectContaining({ id: "n-moved" }),
+    );
+    expect(ingestNoteDestroyed).not.toHaveBeenCalledWith("ada", "n-moved");
+  });
+
+  it("does not poll note changes for a notebook that was just destroyed", async () => {
+    readCache.mockResolvedValue({
+      data: { notebookCollections: [{ id: "notes-general", name: "General" }], notes: [] },
+    });
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: ["notes-gone"],
+    });
+    listNoteChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "note-tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+
+    await syncNotesInboundFromRest("ada", ["notes-general", "notes-gone"]);
+
+    expect(ingestNotebookDestroyed).toHaveBeenCalledWith("ada", "notes-gone");
+    expect(listNoteChanges).toHaveBeenCalledWith("notes-general", "tok-1");
+    expect(listNoteChanges).not.toHaveBeenCalledWith("notes-gone", expect.anything());
+  });
+
+  it("treats a 404 note-changes poll as a destroyed notebook", async () => {
+    readCache.mockResolvedValue({
+      data: {
+        notebookCollections: [
+          { id: "notes-general", name: "General" },
+          { id: "notes-gone", name: "Gone" },
+        ],
+        notes: [],
+      },
+    });
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockImplementation(async (notebookId: string) => {
+      if (notebookId === "notes-gone") {
+        throw Object.assign(new Error("gone"), { status: 404, code: "not_found" });
+      }
+      return {
+        oldState: "tok-1",
+        newState: "note-tok-2",
+        created: [],
+        updated: [],
+        destroyed: [],
+      };
+    });
+
+    await syncNotesInboundFromRest("ada");
+
+    expect(ingestNotebookDestroyed).toHaveBeenCalledWith("ada", "notes-gone");
+    expect(listNoteChanges).toHaveBeenCalledWith("notes-general", "tok-1");
   });
 });

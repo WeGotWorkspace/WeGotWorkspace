@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Notes;
 
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarRepository;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\SeedsWgwIdentity;
@@ -104,7 +105,7 @@ final class NotesNotebooksShareWithTest extends WgwDatabaseTestCase
             'shareWith' => ['alice' => ['mayWriteAll' => true]],
         ])->assertOk();
 
-        $ids = app(\App\Services\Calendars\CalendarRepository::class)
+        $ids = app(CalendarRepository::class)
             ->accessibleVeventInstances('alice')
             ->pluck('uri')
             ->all();

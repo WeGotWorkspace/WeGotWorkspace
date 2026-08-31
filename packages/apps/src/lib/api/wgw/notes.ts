@@ -586,18 +586,26 @@ export async function updateNoteItem(
     (body.notebookId
       ? notebooks.find((item) => item.id === body.notebookId)
       : undefined) ?? notebooks.find((item) => item.name === body.notebook);
+  const apply = async (ifMatch: string | undefined) =>
+    patchNote(
+      id,
+      {
+        ...(notebook ? { notebookId: notebook.id } : {}),
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        categories: body.tags,
+        // Archive/restore own STATUS. A metadata upsert with stale archived:false
+        // was PATCHing FINAL and un-archiving the note.
+      },
+      { ...opts, ifMatch },
+    );
   const ifMatch = await ifMatchForNote(id, body.etag, opts);
-  const patched = await patchNote(
-    id,
-    {
-      ...(notebook ? { notebookId: notebook.id } : {}),
-      ...(body.title !== undefined ? { title: body.title } : {}),
-      categories: body.tags,
-      // Archive/restore own STATUS. A metadata upsert with stale archived:false
-      // was PATCHing FINAL and un-archiving the note.
-    },
-    { ...opts, ifMatch },
-  );
+  let patched;
+  try {
+    patched = await apply(ifMatch);
+  } catch (error) {
+    if (!isNotePreconditionFailed(error)) throw error;
+    patched = await apply(await ifMatchForNote(id, undefined, opts));
+  }
   if (body.starred === true) await starNote(id, opts);
   if (body.starred === false) await unstarNote(id, opts);
   return noteFromVjournal({ ...patched, starred: body.starred ?? patched.starred }, notebooks);

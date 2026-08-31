@@ -8,7 +8,6 @@ use App\Models\DriveStarredItem;
 use App\Models\NoteStar;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\NoteMarkdownCodec;
-use App\Services\Notes\NotesFileMigrator;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\NotesTestFixtures;

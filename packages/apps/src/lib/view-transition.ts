@@ -34,7 +34,7 @@ export function runViewTransition(update: () => void | Promise<void>): void {
 
   try {
     const transition = document.startViewTransition(async () => {
-      let pending: void | Promise<void>;
+      let pending: void | Promise<void> | undefined;
       flushSync(() => {
         pending = update();
       });

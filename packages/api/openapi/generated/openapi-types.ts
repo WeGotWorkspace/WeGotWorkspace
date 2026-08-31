@@ -6492,7 +6492,10 @@ export interface paths {
         /** Delete a notebook */
         delete: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped. */
+                    onDestroyRemoveContents?: boolean;
+                };
                 header?: never;
                 path: {
                     notebookId: string;

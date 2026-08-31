@@ -21,6 +21,13 @@ export function isNotesCannotCalculateChanges(error: unknown): boolean {
   return error instanceof NotesVjournalRequestError && error.code === "cannotCalculateChanges";
 }
 
+export function isNotesNotFound(error: unknown): boolean {
+  return (
+    error instanceof NotesVjournalRequestError &&
+    (error.status === 404 || error.code === "not_found")
+  );
+}
+
 export type NotesVjournalNotebook = NotesNotebookCollection & {
   id: string;
   name: string;
@@ -281,11 +288,12 @@ export async function deleteNotebook(
   notebookId: string,
   opts?: NotesRequestOpts & { onDestroyRemoveContents?: boolean },
 ): Promise<void> {
-  const body = opts?.onDestroyRemoveContents === true ? { onDestroyRemoveContents: true } : undefined;
+  const query =
+    opts?.onDestroyRemoveContents === true ? "?onDestroyRemoveContents=1" : "";
   await requestNotesJson(
-    `/notes/notebooks/${encodeURIComponent(notebookId)}`,
+    `/notes/notebooks/${encodeURIComponent(notebookId)}${query}`,
     "DELETE",
-    body,
+    undefined,
     opts,
   );
 }

@@ -93,4 +93,48 @@ describe("JmapNotesAdapter", () => {
     expect(getNotebooks).toHaveBeenCalled();
     expect(getNotes).toHaveBeenCalled();
   });
+
+  it("does not destroy a note that is also created or updated in the same delta", async () => {
+    const onRemoteNote = vi.fn();
+    const onRemoteNoteDestroyed = vi.fn();
+    const adapter = new JmapNotesAdapter({
+      client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      onRemoteNote,
+      onRemoteNoteDestroyed,
+    });
+    notebookChanges.mockResolvedValue({ created: [], updated: [], destroyed: [], newState: "nb-2" });
+    noteChanges.mockResolvedValue({
+      created: ["n-moved"],
+      updated: [],
+      destroyed: ["n-moved"],
+      newState: "n-2",
+    });
+    getNotes.mockResolvedValue({
+      list: [{ id: "n-moved", notebookId: "notes-work", title: "Moved" }],
+      state: "n-2",
+    });
+
+    await adapter.sync();
+
+    expect(onRemoteNote).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "n-moved", notebookId: "notes-work" }),
+    );
+    expect(onRemoteNoteDestroyed).not.toHaveBeenCalled();
+  });
+
+  it("hands a full snapshot to onRefetchAll after cannotCalculateChanges", async () => {
+    const onRefetchAll = vi.fn();
+    const adapter = new JmapNotesAdapter({
+      client: clientStub({ Note: "stale" }),
+      onRefetchAll,
+    });
+    noteChanges.mockRejectedValue(
+      new JmapMethodError("Note/changes", "c0", { type: "cannotCalculateChanges" }),
+    );
+    await adapter.sync();
+    expect(onRefetchAll).toHaveBeenCalledWith({
+      notebooks: [{ id: "notes-general", name: "General" }],
+      notes: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
+    });
+  });
 });

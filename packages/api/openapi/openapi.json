@@ -5914,6 +5914,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "onDestroyRemoveContents",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped."
           }
         ],
         "requestBody": {

@@ -458,7 +458,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     deleteNotebook: async (name, action, opts) => {
       if (!readBrowserOnline()) {
-        await removeNotebookFromCache(username, name);
+        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -469,11 +469,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await deleteNotebookApi(name, notebookDeleteBodyForAction(action), opts);
-        await removeNotebookFromCache(username, name);
+        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        await removeNotebookFromCache(username, name);
+        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,

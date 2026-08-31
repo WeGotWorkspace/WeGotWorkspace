@@ -81,3 +81,33 @@ export async function ingestRemoteNotebookDestroyed(
   await removeNotebookFromCache(username, notebookId);
   return "removed";
 }
+
+/**
+ * Full snapshot after cannotCalculateChanges: upsert remote rows, then drop
+ * local notebooks/notes that are gone (pending note writes stay).
+ */
+export async function reconcileNotesSnapshot(
+  username: string,
+  notes: Note[],
+  notebooks: NotesNotebookCollection[],
+): Promise<void> {
+  const pending = await pendingSet(username);
+  const cached = await readNotesBootstrapFromCache(username);
+  const remoteNoteIds = new Set(notes.map((note) => note.id));
+  const remoteNotebookIds = new Set(notebooks.map((notebook) => notebook.id));
+
+  for (const notebook of notebooks) {
+    await ingestRemoteNotebook(username, notebook);
+  }
+  for (const note of notes) {
+    await ingestRemoteNote(username, note);
+  }
+  for (const note of cached?.data.notes ?? []) {
+    if (remoteNoteIds.has(note.id) || pending.has(note.id)) continue;
+    await removeNoteFromCache(username, note.id);
+  }
+  for (const notebook of cached?.data.notebookCollections ?? []) {
+    if (remoteNotebookIds.has(notebook.id)) continue;
+    await removeNotebookFromCache(username, notebook.id);
+  }
+}

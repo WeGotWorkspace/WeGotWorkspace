@@ -10,11 +10,12 @@ vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
     patchNote: vi.fn(),
     starNote: vi.fn(),
     unstarNote: vi.fn(),
+    deleteNotebook: vi.fn(),
   };
 });
 
-import { getNote, listNotebooks, patchNote } from "@/lib/api/wgw/notes-vjournal";
-import { archiveNoteItem, restoreNoteItem, updateNoteItem } from "@/lib/api/wgw/notes";
+import { deleteNotebook as deleteVjournalNotebook, getNote, listNotebooks, patchNote } from "@/lib/api/wgw/notes-vjournal";
+import { archiveNoteItem, deleteNotebook, restoreNoteItem, updateNoteItem } from "@/lib/api/wgw/notes";
 
 const notebooks = [{ id: "notes-general", name: "General" }];
 
@@ -123,5 +124,58 @@ describe("updateNoteItem archive status", () => {
     expect(patch).toBeDefined();
     expect(patch).not.toHaveProperty("status");
     expect(patch).toMatchObject({ title: "Renamed" });
+  });
+
+  it("PATCHes notebookId when moving and retries after 412", async () => {
+    vi.mocked(listNotebooks).mockResolvedValue([
+      { id: "notes-general", name: "General" },
+      { id: "notes-work", name: "Work" },
+    ]);
+    const movedRow = { ...activeRow, notebookId: "notes-work", etag: '"etag-9"' };
+    vi.mocked(getNote).mockResolvedValue({ ...activeRow, etag: '"fresh"' });
+    vi.mocked(patchNote)
+      .mockRejectedValueOnce(new NotesVjournalRequestError("PATCH failed (412)", 412))
+      .mockResolvedValueOnce(movedRow);
+
+    const saved = await updateNoteItem("n-1", {
+      id: "n-1",
+      notebook: "Work",
+      notebookId: "notes-work",
+      tags: [],
+      etag: '"stale"',
+    });
+
+    expect(patchNote).toHaveBeenNthCalledWith(
+      1,
+      "n-1",
+      expect.objectContaining({ notebookId: "notes-work" }),
+      expect.objectContaining({ ifMatch: '"stale"' }),
+    );
+    expect(patchNote).toHaveBeenNthCalledWith(
+      2,
+      "n-1",
+      expect.objectContaining({ notebookId: "notes-work" }),
+      expect.objectContaining({ ifMatch: '"fresh"' }),
+    );
+    expect(saved.notebookId).toBe("notes-work");
+    expect(saved.notebook).toBe("Work");
+  });
+});
+
+describe("deleteNotebook", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listNotebooks).mockResolvedValue([
+      { id: "notes-scratch", name: "Scratch" },
+    ]);
+    vi.mocked(deleteVjournalNotebook).mockResolvedValue(undefined);
+  });
+
+  it("purges via query-param onDestroyRemoveContents", async () => {
+    await deleteNotebook("Scratch", { mode: "purge" });
+    expect(deleteVjournalNotebook).toHaveBeenCalledWith(
+      "notes-scratch",
+      expect.objectContaining({ onDestroyRemoveContents: true }),
+    );
   });
 });

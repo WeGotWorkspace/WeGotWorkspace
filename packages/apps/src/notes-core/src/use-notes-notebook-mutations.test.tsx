@@ -228,7 +228,7 @@ describe("useNotesNotebookMutations", () => {
     );
 
     await act(async () => {
-      await result.current.createNotebook({ name: "Starred" });
+      await result.current.createNotebook({ name: "Starred", color: null });
     });
 
     expect(createNotebook).toHaveBeenCalledWith("Starred", {});

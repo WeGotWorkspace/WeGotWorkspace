@@ -26,7 +26,7 @@ return new class extends WgwMigration
             $report = $duplicates->map(
                 static fn ($row): string => sprintf('calendarid=%s uid=%s count=%s', $row->calendarid, $row->uid, $row->total)
             )->implode('; ');
-            throw new \RuntimeException('Duplicate (calendarid, uid) rows block UNIQUE calendarid_uid: '.$report);
+            throw new RuntimeException('Duplicate (calendarid, uid) rows block UNIQUE calendarid_uid: '.$report);
         }
 
         $this->wgw()->table('calendarobjects', function (Blueprint $table): void {

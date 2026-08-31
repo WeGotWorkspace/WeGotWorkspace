@@ -213,7 +213,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       queueMutation({
         key: `notes:star:${id}`,
         toastMessage: nowStarred ? "Starred" : "Unstarred",
-        execute: () => persistNoteOrDropGone(operations.upsertNote(updated), () => dropGoneNote(id)),
+        execute: async () => {
+          await persistNoteOrDropGone(operations.upsertNote(updated), () => dropGoneNote(id));
+        },
         undo: () => {
           applyStarToggle(id);
           setNotes((prev) =>
@@ -344,6 +346,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const updatedRows = notes
         .filter((note) => ids.includes(note.id))
         .map((note) => noteAfterNotebookMove(note, dest));
+      updatedRows.forEach((row) => persistOptimisticNote(row, true));
       queueMutation({
         key: `notes:move:${dest.id}:${ids.slice().sort().join(",")}`,
         toastMessage: `Moved ${ids.length} item${ids.length === 1 ? "" : "s"} to “${dest.name}”`,
@@ -366,6 +369,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       notebookCollections,
       notes,
       operations,
+      persistOptimisticNote,
       queueMutation,
       selectSingle,
       setActiveId,

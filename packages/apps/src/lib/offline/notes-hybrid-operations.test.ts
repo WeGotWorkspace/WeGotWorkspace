@@ -498,6 +498,34 @@ describe("fetchNotesHybridBootstrap", () => {
     expect((await readNotesBootstrapFromCache(username))?.data.notebooks).toEqual(["Drafts"]);
   });
 
+  it("drops notes in a purged notebook from Dexie after an online delete", async () => {
+    const { deleteNotebook } = await import("@/lib/api/wgw/notes");
+    vi.mocked(deleteNotebook).mockResolvedValue(undefined);
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "gone", notebook: "Scratch", notebookId: "notes-scratch" },
+        ],
+        notebooks: ["Drafts", "Scratch"],
+        tags: [],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts" },
+          { id: "notes-scratch", name: "Scratch" },
+        ],
+      },
+    });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.deleteNotebook("Scratch", { kind: "purge" });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Drafts"]);
+    expect(cached?.data.notes.map((item) => item.id)).toEqual(["keep"]);
+  });
+
   it("createNotebook upserts color without dropping sibling notebooks", async () => {
     const { createNotebook } = await import("@/lib/api/wgw/notes");
     vi.mocked(createNotebook).mockResolvedValue({

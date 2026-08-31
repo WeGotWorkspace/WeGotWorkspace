@@ -81,7 +81,13 @@ final class NoteSetMethod implements JmapMethodInterface
                 unset($fieldPatch['starred'], $fieldPatch['etag']);
                 $ifMatch = isset($patch['etag']) && is_string($patch['etag']) ? $patch['etag'] : null;
                 if ($fieldPatch !== []) {
-                    $this->notes->patch($username, (string) $noteId, $fieldPatch, $ifMatch);
+                    $this->notes->patch(
+                        $username,
+                        (string) $noteId,
+                        $fieldPatch,
+                        $ifMatch,
+                        requirePrecondition: $ifMatch !== null,
+                    );
                 }
                 $this->applyStarred($username, (string) $noteId, $patch);
                 $updated[(string) $noteId] = null;
@@ -99,7 +105,7 @@ final class NoteSetMethod implements JmapMethodInterface
                 continue;
             }
             try {
-                $this->notes->delete($username, $noteId, null);
+                $this->notes->delete($username, $noteId, null, requirePrecondition: false);
                 $destroyed[] = $noteId;
             } catch (ApiHttpException $e) {
                 $notDestroyed[$noteId] = JmapSetErrors::fromApiException($e);

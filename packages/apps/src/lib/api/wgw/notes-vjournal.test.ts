@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { noteFromVjournal, type NotesVjournalNotebook } from "@/lib/api/wgw/notes-vjournal";
+
+const wgwFetch = vi.fn();
+
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwFetch: (...args: unknown[]) => wgwFetch(...args),
+  wgwFetchPrincipal: vi.fn(),
+  wgwReadJson: vi.fn(async () => ({})),
+}));
 
 const notebooks: NotesVjournalNotebook[] = [
   { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
@@ -72,5 +80,23 @@ describe("noteFromVjournal", () => {
     );
     expect(cancelled.archived).toBe(true);
     expect(restored.archived).toBe(false);
+  });
+});
+
+describe("deleteNotebook", () => {
+  beforeEach(() => {
+    wgwFetch.mockReset();
+    wgwFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true }) });
+  });
+
+  it("sends onDestroyRemoveContents as a query param, not a DELETE body", async () => {
+    const { deleteNotebook } = await import("@/lib/api/wgw/notes-vjournal");
+    await deleteNotebook("notes-scratch", { onDestroyRemoveContents: true });
+    expect(wgwFetch).toHaveBeenCalledWith(
+      "/notes/notebooks/notes-scratch?onDestroyRemoveContents=1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    const init = wgwFetch.mock.calls[0]?.[1] as RequestInit;
+    expect(init.body).toBeUndefined();
   });
 });

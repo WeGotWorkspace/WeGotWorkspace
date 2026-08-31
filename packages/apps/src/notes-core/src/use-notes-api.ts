@@ -20,6 +20,7 @@ import {
   ingestRemoteNoteDestroyed,
   ingestRemoteNotebook,
   ingestRemoteNotebookDestroyed,
+  reconcileNotesSnapshot,
 } from "@/lib/offline/notes-jmap-inbound";
 import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
 import {
@@ -32,7 +33,7 @@ import {
 import { setNotesSyncConflictListener } from "@/lib/offline/notes-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
-import type { NotesUIData } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection, NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
 
 /** Inbound `/changes` poll — not a full-body listNotes loop. */
@@ -41,6 +42,20 @@ const ONLINE_CHANGES_POLL_MS = 10_000;
 export type UseNotesAPIOptions = {
   onSyncConflict?: (noteIds: string[]) => void;
 };
+
+function jmapNotebookToCollection(notebook: JmapNotebook): NotesNotebookCollection {
+  return {
+    id: notebook.id,
+    name: notebook.name,
+    color: notebook.color,
+    isDefault: notebook.isDefault,
+    isSharee: notebook.isSharee,
+    groupSlug: notebook.groupSlug,
+    scope: notebook.scope,
+    myRights: notebook.myRights ?? null,
+    shareWith: (notebook.shareWith ?? null) as NotesNotebookCollection["shareWith"],
+  };
+}
 
 function jmapNoteToVjournal(note: JmapNote): NotesVjournalNote {
   return {
@@ -160,21 +175,23 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     void syncNotesBodiesForOffline(offlineUsername, notes).catch(() => undefined);
   }, [data?.data.notes, offlineUsername, phase]);
 
+  const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
+  notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
+
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
     if (typeof window === "undefined") return;
     if (!wgwLiveApiEnabled()) return;
 
     const username = offlineUsername;
+    const mapNote = (note: JmapNote) =>
+      noteFromVjournal(jmapNoteToVjournal(note), notebookCollectionsRef.current);
     const adapter = new JmapNotesAdapter({
       client: createNotesJmapClient(),
       onRemoteNote: (note) => {
-        const collections = data?.data.notebookCollections ?? [];
-        void ingestRemoteNote(username, noteFromVjournal(jmapNoteToVjournal(note), collections)).then(
-          () => {
-            void patchFromCache();
-          },
-        );
+        void ingestRemoteNote(username, mapNote(note)).then(() => {
+          void patchFromCache();
+        });
       },
       onRemoteNoteDestroyed: (noteId) => {
         void ingestRemoteNoteDestroyed(username, noteId).then(() => {
@@ -182,12 +199,21 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
         });
       },
       onRemoteNotebook: (notebook: JmapNotebook) => {
-        void ingestRemoteNotebook(username, notebook).then(() => {
+        void ingestRemoteNotebook(username, jmapNotebookToCollection(notebook)).then(() => {
           void patchFromCache();
         });
       },
       onRemoteNotebookDestroyed: (notebookId) => {
         void ingestRemoteNotebookDestroyed(username, notebookId).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRefetchAll: ({ notebooks, notes }) => {
+        void reconcileNotesSnapshot(
+          username,
+          notes.map(mapNote),
+          notebooks.map(jmapNotebookToCollection),
+        ).then(() => {
           void patchFromCache();
         });
       },
@@ -208,7 +234,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       cancelled = true;
       adapter.stopPolling();
     };
-  }, [data?.data.notebookCollections, offlineUsername, online, patchFromCache, phase]);
+  }, [offlineUsername, online, patchFromCache, phase]);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;

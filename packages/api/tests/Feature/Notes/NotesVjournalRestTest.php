@@ -176,10 +176,32 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->asBob()->postJson('/api/v1/notes/items/'.$secondId.'/star')->assertOk();
         $this->assertSame(1, NoteStar::query()->where('note_uid', $secondId)->count());
 
-        $this->asBob()->deleteJson('/api/v1/notes/notebooks/'.$notebookId, [
-            'onDestroyRemoveContents' => true,
-        ])->assertOk();
+        $this->asBob()->deleteJson(
+            '/api/v1/notes/notebooks/'.$notebookId.'?onDestroyRemoveContents=1',
+        )->assertOk();
         $this->assertSame(0, NoteStar::query()->where('note_uid', $secondId)->count());
+    }
+
+    public function test_delete_nonempty_notebook_requires_on_destroy_query_or_body(): void
+    {
+        $notebookId = (string) $this->asBob()->postJson('/api/v1/notes/notebooks', ['name' => 'Filled'])
+            ->assertCreated()
+            ->json('id');
+        $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => $notebookId,
+            'title' => 'Keep',
+            'body' => 'x',
+        ])->assertCreated();
+
+        $this->asBob()->deleteJson('/api/v1/notes/notebooks/'.$notebookId)
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'notebookHasContents');
+
+        $this->asBob()->deleteJson(
+            '/api/v1/notes/notebooks/'.$notebookId.'?onDestroyRemoveContents=1',
+        )->assertOk();
+
+        $this->asBob()->getJson('/api/v1/notes/notebooks/'.$notebookId)->assertNotFound();
     }
 
     public function test_move_keeps_object_id_and_star_and_writes_dual_changelog(): void

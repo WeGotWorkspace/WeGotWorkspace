@@ -10,6 +10,7 @@ import {
   enqueueOutboxMutation,
   listOutboxMutations,
   readNotesBootstrapFromCache,
+  removeNotebookFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -139,6 +140,57 @@ describe("notes offline store", () => {
         expect.objectContaining({ id: "notes-work", name: "Work" }),
       ]),
     );
+  });
+
+  it("drops a notebook and its synced notes from Dexie", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+        ],
+        notebooks: ["Drafts", "Work"],
+        tags: ["essay"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts" },
+          { id: "notes-work", name: "Work" },
+        ],
+      },
+    });
+
+    await removeNotebookFromCache(username, "notes-drafts", { keepPendingNotes: false });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Work"]);
+    expect(cached?.data.notes.map((item) => item.id)).toEqual(["note-2"]);
+    expect(cached?.data.notebookCollections).toEqual([
+      expect.objectContaining({ id: "notes-work", name: "Work" }),
+    ]);
+  });
+
+  it("keeps pending notes when a remote notebook destroy is ingested", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [{ ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" }],
+        notebooks: ["Drafts"],
+        tags: ["essay"],
+        notebookCollections: [{ id: "notes-drafts", name: "Drafts" }],
+      },
+    });
+    await upsertNoteInCache(
+      username,
+      { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts", title: "Local" },
+      true,
+    );
+
+    await removeNotebookFromCache(username, "notes-drafts");
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notes).toEqual([
+      expect.objectContaining({ id: "note-1", title: "Local" }),
+    ]);
   });
 
   it("preserves pendingSync notes when bootstrap is rewritten from server", async () => {
