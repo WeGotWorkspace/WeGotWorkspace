@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { Archive, ArchiveRestore, BookOpen, Plus, Star, StarOff, Tag, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  BookOpen,
+  Notebook,
+  Plus,
+  Star,
+  StarOff,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
@@ -783,7 +793,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         : []),
       {
         label: L.selectionMoveToNotebook,
-        icon: <BookOpen className="size-4" />,
+        icon: <Notebook className="size-4" />,
         onClick: () => setMoveDialog({ ids: selectedIds }),
       },
       ...(showSelectionDelete

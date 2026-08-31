@@ -259,11 +259,14 @@
 
 /*
  * Selected Star / Archive: Calendar Today chrome remapped to notes tokens.
+ * Same wash on the detail action bar and the batch multi-select actions.
  * Wash stays accent 18%/24% on cream. Icon/label uses the detail strong
  * token (notebook color when a note is open; product yellow when unset).
  * Idle chips keep action-bar muted.
  */
-.notes-workspace .action-bar .button--variant-subtle.icon-button--active {
+.notes-workspace
+  :is(.action-bar, .multi-selection-view__actions)
+  .button--variant-subtle.icon-button--active {
   --button-active-color: var(--notes-detail-accent-strong);
   --button-subtle-background: color-mix(
     in oklab,

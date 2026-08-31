@@ -18,6 +18,10 @@ const workspaceAppTsx = readFileSync(
   join(here, "../../workspace-app/src/workspace-app.tsx"),
   "utf8",
 );
+const selectionPresentation = readFileSync(
+  join(here, "../../hooks/use-workspace-list-controller.tsx"),
+  "utf8",
+);
 
 describe("notes workspace sidebar create", () => {
   it("puts create notebook on the shared segmented New menu, not a section +", () => {
@@ -192,24 +196,26 @@ describe("notes workspace action-bar selected Star/Archive", () => {
       /--notes-detail-accent-strong:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 70%,\s*var\(--color-ink\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--notes-detail-accent-strong\)/,
+      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--notes-detail-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--notes-detail-accent\) 18%/,
+      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--notes-detail-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--notes-detail-accent\) 24%/,
+      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--notes-detail-accent\) 24%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.action-bar[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
+      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.action-bar[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--notes-detail-accent-strong\)/,
+      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--notes-detail-accent-strong\)/,
     );
     expect(css).not.toMatch(/var\(--calendar-accent/);
     expect(css).not.toMatch(
       /\.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/,
     );
+    expect(selectionPresentation).toMatch(/icon:\s*<CheckCircle2 className="size-4" \/>/);
+    expect(selectionPresentation).not.toMatch(/icon:\s*<X /);
   });
 
   it("paints the live detail-pane action bar cream, not a Storybook-only shell", () => {
