@@ -182,10 +182,7 @@ async function queueOfflineDelete(
   });
 }
 
-type NoteDeleteTarget = Pick<
-  Note,
-  "id" | "notebook" | "archived" | "groupSlug" | "scope" | "etag"
->;
+type NoteDeleteTarget = Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope" | "etag">;
 
 async function resolveDeleteTarget(
   username: string,

@@ -207,11 +207,7 @@ describe("createHybridNotesOperations", () => {
   });
 
   it("resolves archived flag and etag from cached note when deleting from archive", async () => {
-    await upsertNoteInCache(
-      username,
-      { ...note, archived: true, etag: '"etag-archived"' },
-      false,
-    );
+    await upsertNoteInCache(username, { ...note, archived: true, etag: '"etag-archived"' }, false);
     vi.mocked(deleteNoteItem).mockResolvedValue(undefined);
 
     const operations = createHybridNotesOperations(username);

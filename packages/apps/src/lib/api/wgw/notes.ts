@@ -310,8 +310,7 @@ export async function deleteNoteItem(
   body: { notebook: string; archived: boolean; groupSlug?: string | null; etag?: string },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const apply = async (ifMatch: string | undefined) =>
-    deleteVjournalNote(id, { ...opts, ifMatch });
+  const apply = async (ifMatch: string | undefined) => deleteVjournalNote(id, { ...opts, ifMatch });
   const ifMatch = await ifMatchForNote(id, body.etag, opts);
   try {
     await apply(ifMatch);
