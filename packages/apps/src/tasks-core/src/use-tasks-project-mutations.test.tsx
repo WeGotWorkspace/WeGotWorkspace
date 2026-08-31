@@ -168,6 +168,7 @@ describe("useTasksProjectMutations", () => {
       mode: "edit",
       listId: "work",
       canChangeOwner: true,
+      mayDelete: false,
     });
 
     await act(async () => {
@@ -308,6 +309,136 @@ describe("useTasksProjectMutations", () => {
     });
 
     expect(patchTaskList).not.toHaveBeenCalled();
+  });
+
+  it("openEditProjectDialog offers owner delete for an owned custom list", () => {
+    const { result } = renderProjectMutations({
+      createTask: vi.fn(),
+      patchTask: vi.fn(),
+      deleteTask: vi.fn(),
+      moveTaskToList: vi.fn(),
+      createTaskList: vi.fn(),
+      patchTaskList: vi.fn(),
+      deleteTaskList: vi.fn(),
+    });
+
+    act(() => {
+      result.current.openEditProjectDialog("work");
+    });
+
+    expect(result.current.projectDialog).toMatchObject({
+      mode: "edit",
+      listId: "work",
+      mayDelete: true,
+      isSharee: false,
+    });
+  });
+
+  it("openEditProjectDialog hides owner delete for inbox and provisioned group lists", () => {
+    const data = {
+      ...bootstrap.data,
+      taskLists: [
+        ...bootstrap.data.taskLists,
+        {
+          ...bootstrap.data.taskLists[1],
+          id: "group-team",
+          name: "Team standup",
+          role: "group",
+          scope: "group",
+          groupSlug: "team",
+          isDefault: false,
+          isSharee: false,
+          myRights: {
+            ...bootstrap.data.taskLists[1].myRights,
+            mayDelete: false,
+            mayShare: true,
+          },
+        },
+      ],
+    };
+    const operations = {
+      createTask: vi.fn(),
+      patchTask: vi.fn(),
+      deleteTask: vi.fn(),
+      moveTaskToList: vi.fn(),
+      createTaskList: vi.fn(),
+      patchTaskList: vi.fn(),
+      deleteTaskList: vi.fn(),
+    };
+    const { result: shellResult } = renderHook(() =>
+      useTasksShell({
+        data,
+        operations,
+      }),
+    );
+    const { result } = renderHook(({ shell }) => useTasksProjectMutations({ shell }), {
+      initialProps: { shell: shellResult.current },
+    });
+
+    act(() => {
+      result.current.openEditProjectDialog("inbox");
+    });
+    expect(result.current.projectDialog).toMatchObject({
+      listId: "inbox",
+      mayDelete: false,
+    });
+
+    act(() => {
+      result.current.openEditProjectDialog("group-team");
+    });
+    expect(result.current.projectDialog).toMatchObject({
+      listId: "group-team",
+      mayDelete: false,
+      canChangeOwner: false,
+    });
+  });
+
+  it("deleteList removes an owned custom list and its tasks", async () => {
+    const deleteTaskList = vi.fn().mockResolvedValue(undefined);
+    const { result, shell } = renderProjectMutations(
+      {
+        createTask: vi.fn(),
+        patchTask: vi.fn(),
+        deleteTask: vi.fn(),
+        moveTaskToList: vi.fn(),
+        createTaskList: vi.fn(),
+        patchTaskList: vi.fn(),
+        deleteTaskList,
+      },
+      "list:work",
+    );
+
+    await act(async () => {
+      await result.current.deleteList("work");
+    });
+
+    expect(deleteTaskList).toHaveBeenCalledWith("work", { onDestroyRemoveContents: true });
+    expect(shell.current.taskLists.some((list) => list.id === "work")).toBe(false);
+    expect(shell.current.tasks.some((task) => task.taskListId === "work")).toBe(false);
+    expect(shell.current.view).toBe("state:all");
+    expect(result.current.projectDialog).toBe(null);
+  });
+
+  it("deleteList does not delete the owned inbox", async () => {
+    const deleteTaskList = vi.fn();
+    const { result } = renderProjectMutations(
+      {
+        createTask: vi.fn(),
+        patchTask: vi.fn(),
+        deleteTask: vi.fn(),
+        moveTaskToList: vi.fn(),
+        createTaskList: vi.fn(),
+        patchTaskList: vi.fn(),
+        deleteTaskList,
+      },
+      "list:inbox",
+    );
+
+    await act(async () => {
+      await result.current.deleteList("inbox");
+    });
+
+    expect(deleteTaskList).not.toHaveBeenCalled();
   });
 
   it("removeSharedList dismisses a sharee list without touching owned inbox", async () => {
