@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   canChangeTaskListOwner,
+  canDeleteTaskList,
   composerDefaultDueForView,
   defaultTaskListId,
+  dueDateTimeToApiValue,
+  dueDateToApiValue,
   filterTasksByHiddenLists,
   filterTasksByView,
   formatComposerDueDateLabel,
+  formatComposerDueLabel,
   INBOX_TASK_LIST_ID,
+  parseDueDateValue,
+  taskDueIsDateOnly,
   isInboxTaskList,
   isProtectedTaskList,
   mergeCreatedTask,
@@ -240,10 +246,47 @@ describe("tasks-task-utils", () => {
   it("returns composer default due dates for time-filter views", () => {
     const now = new Date(2026, 6, 8, 12, 0, 0);
 
-    expect(composerDefaultDueForView("state:today", now)).toBe("2026-07-08T00:00:00");
-    expect(composerDefaultDueForView("state:upcoming", now)).toBe("2026-07-09T00:00:00");
-    expect(composerDefaultDueForView("state:overdue", now)).toBe("2026-07-07T00:00:00");
+    expect(composerDefaultDueForView("state:today", now)).toBe("2026-07-08");
+    expect(composerDefaultDueForView("state:upcoming", now)).toBe("2026-07-09");
+    expect(composerDefaultDueForView("state:overdue", now)).toBe("2026-07-07");
     expect(composerDefaultDueForView("state:all", now)).toBeNull();
+  });
+
+  it("round-trips date-only and timed due values without UTC day shift", () => {
+    expect(dueDateToApiValue(new Date(2026, 6, 8, 15, 45, 0))).toBe("2026-07-08");
+    expect(dueDateTimeToApiValue(new Date(2026, 6, 8, 15, 45, 0))).toBe("2026-07-08T15:45:00");
+
+    const dateOnly = parseDueDateValue("2026-07-08");
+    expect(dateOnly?.getFullYear()).toBe(2026);
+    expect(dateOnly?.getMonth()).toBe(6);
+    expect(dateOnly?.getDate()).toBe(8);
+
+    const timed = parseDueDateValue("2026-07-08T15:45:00");
+    expect(timed?.getHours()).toBe(15);
+    expect(timed?.getMinutes()).toBe(45);
+
+    expect(taskDueIsDateOnly("2026-07-08", true)).toBe(true);
+    expect(taskDueIsDateOnly("2026-07-08T15:45:00", true)).toBe(true);
+    expect(taskDueIsDateOnly("2026-07-08T15:45:00", false)).toBe(false);
+    expect(taskDueIsDateOnly("2026-07-08T15:45:00", undefined)).toBe(false);
+    expect(taskDueIsDateOnly("2026-07-08", undefined)).toBe(true);
+  });
+
+  it("includes time on the composer due label when a time is set", () => {
+    const now = new Date(2026, 6, 8, 12, 0, 0);
+    const labels = {
+      dueToday: defaultTasksLabels.dueToday,
+      dueYesterday: defaultTasksLabels.dueYesterday,
+      dueTomorrow: defaultTasksLabels.dueTomorrow,
+    };
+
+    expect(formatComposerDueLabel("2026-07-08", true, labels, now)).toBe("Today");
+    expect(formatComposerDueLabel("2026-07-15", true, labels, now)).toBe("Jul 15, 2026");
+
+    const timedToday = formatComposerDueLabel("2026-07-08T15:45:00", false, labels, now);
+    expect(timedToday.startsWith("Today")).toBe(true);
+    expect(timedToday).toMatch(/\d{1,2}:\d{2}/);
+    expect(timedToday).not.toBe("Today");
   });
 
   it("canChangeTaskListOwner allows personal owners and user-created group lists", () => {
@@ -261,6 +304,53 @@ describe("tasks-task-utils", () => {
         myRights: { mayShare: true },
       }),
     ).toBe(true);
+  });
+
+  it("canDeleteTaskList allows owned custom lists including home and work roles", () => {
+    expect(canDeleteTaskList({ id: "work", isDefault: false, isSharee: false })).toBe(true);
+    expect(
+      canDeleteTaskList({
+        id: "tasks-home",
+        role: "home",
+        isDefault: false,
+        myRights: { mayDelete: true },
+      }),
+    ).toBe(true);
+    expect(
+      canDeleteTaskList({
+        id: "tasks-work",
+        role: "work",
+        isDefault: false,
+        myRights: { mayDelete: true },
+      }),
+    ).toBe(true);
+  });
+
+  it("canDeleteTaskList hides owner delete for inbox, default, group home, sharee, and mayDelete false", () => {
+    expect(
+      canDeleteTaskList({
+        id: "inbox",
+        role: "inbox",
+        isDefault: true,
+        myRights: { mayDelete: true },
+      }),
+    ).toBe(false);
+    expect(canDeleteTaskList({ id: "tasks-inbox", isDefault: false })).toBe(false);
+    expect(canDeleteTaskList({ id: "work", isDefault: true })).toBe(false);
+    expect(
+      canDeleteTaskList({
+        id: "group-team",
+        role: "group",
+        scope: "group",
+        groupSlug: "team",
+        myRights: { mayDelete: false },
+      }),
+    ).toBe(false);
+    expect(canDeleteTaskList({ id: "shared", isSharee: true, myRights: { mayDelete: true } })).toBe(
+      false,
+    );
+    expect(canDeleteTaskList({ id: "locked", myRights: { mayDelete: false } })).toBe(false);
+    expect(canDeleteTaskList()).toBe(false);
   });
 
   it("canChangeTaskListOwner locks inbox, default, provisioned group, and sharees", () => {

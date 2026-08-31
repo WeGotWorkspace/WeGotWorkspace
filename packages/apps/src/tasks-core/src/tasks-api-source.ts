@@ -71,6 +71,8 @@ function createMockTasksOperations(
         title: body.title,
         description: body.description ?? null,
         due: body.due ?? null,
+        showWithoutTime: body.showWithoutTime,
+        timeZone: body.timeZone,
         workflowStatus: body.workflowStatus ?? "needs-action",
         priority: body.priority ?? null,
         isDraft: false,
