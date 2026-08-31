@@ -1,3 +1,13 @@
+# Conservative shared-host upload cap. Ignored on PHP-FPM; see .user.ini.
+<IfModule mod_php.c>
+    php_value post_max_size 32M
+    php_value upload_max_filesize 32M
+</IfModule>
+<IfModule mod_php8.c>
+    php_value post_max_size 32M
+    php_value upload_max_filesize 32M
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

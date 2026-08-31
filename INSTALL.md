@@ -26,7 +26,7 @@ If that file is missing or empty, re-upload the full deploy ZIP — do not uploa
 
 ### nginx / Plesk
 
-Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. On **nginx** (common on Plesk), ensure requests are routed to `index.php` (Plesk often sets this automatically when PHP is enabled for the domain). Without that, `/install/` may 404 even when files are on disk.
+Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. On **nginx** (common on Plesk), ensure requests are routed to `index.php` (Plesk often sets this automatically when PHP is enabled for the domain). Without that, `/install/` may 404 even when files are on disk. Also set `client_max_body_size 32m;` so uploads are not rejected before PHP (`post_max_size` / `upload_max_filesize` are aligned to 32M).
 
 ## 2) First request bootstrap
 

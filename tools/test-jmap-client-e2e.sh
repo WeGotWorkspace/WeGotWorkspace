@@ -34,7 +34,7 @@ if ! curl -sf -o /dev/null "$BASE/api/v1/health"; then
   fi
   echo "No API on :9080 — starting one (dev install bootstrap) …" >&2
   (cd "$ROOT" && php packages/api/artisan wgw:dev-install) >&2
-  (cd "$ROOT/packages/api" && sh -c 'app_root="../../apps/wegotworkspace"; exec env -u SABRE_BUILD_DIR php -S 127.0.0.1:9080 -t "$app_root" "$app_root/index.php"') >/dev/null 2>&1 &
+  (cd "$ROOT/packages/api" && sh -c 'app_root="../../apps/wegotworkspace"; exec env -u SABRE_BUILD_DIR php -d post_max_size=32M -d upload_max_filesize=32M -S 127.0.0.1:9080 -t "$app_root" "$app_root/index.php"') >/dev/null 2>&1 &
   API_PID=$!
   for _ in $(seq 1 40); do
     curl -sf -o /dev/null "$BASE/api/v1/health" && break

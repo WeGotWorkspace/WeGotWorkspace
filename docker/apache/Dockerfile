@@ -53,6 +53,7 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/install
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
     && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/wgw-uploads.ini
 COPY docker/apache/vhost.conf /etc/apache2/conf-available/wgw-vhost.conf
 COPY docker/apache/http-vhost.conf /etc/apache2/conf-available/wgw-http-vhost.conf
 COPY docker/apache/http-redirect.conf /etc/apache2/conf-available/wgw-http-redirect.conf

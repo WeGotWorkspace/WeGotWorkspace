@@ -79,7 +79,7 @@ run_zip_e2e() {
 
   info "ZIP route: start PHP server on :8091"
   local zip_port=8091
-  php -S "127.0.0.1:${zip_port}" -t "$ZIP_DIR" "$ZIP_DIR/index.php" >/tmp/wgw-e2e-zip-php.log 2>&1 &
+  php -d post_max_size=32M -d upload_max_filesize=32M -S "127.0.0.1:${zip_port}" -t "$ZIP_DIR" "$ZIP_DIR/index.php" >/tmp/wgw-e2e-zip-php.log 2>&1 &
   local zip_pid=$!
   trap 'kill "$zip_pid" 2>/dev/null || true' RETURN
   sleep 1
