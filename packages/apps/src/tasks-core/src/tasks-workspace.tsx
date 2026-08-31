@@ -172,6 +172,7 @@ export function TasksWorkspace({
     updateProject,
     patchShareWith,
     removeSharedList,
+    deleteList,
   } = controller;
 
   const projectGroups = taskProjectGroupsFromBootstrap(data);
@@ -292,12 +293,14 @@ export function TasksWorkspace({
               <div className="tasks-workspace__header-actions flex items-center gap-2">
                 {showCompletedToggle ? (
                   <IconButton
+                    className="tasks-workspace__show-completed"
                     label={showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
                     onClick={toggleShowCompletedTasks}
                     icon={<CheckCircle2 aria-hidden />}
                     size="sm"
                     variant="subtle"
                     active={showCompletedTasks}
+                    aria-pressed={showCompletedTasks}
                   />
                 ) : null}
                 {onRefreshList ? (
@@ -350,6 +353,13 @@ export function TasksWorkspace({
         onSave={(input) => {
           void saveEditedTask(input);
         }}
+        onDelete={
+          editingTaskWritable && editingTask
+            ? () => {
+                requestDeleteTask(editingTask.id);
+              }
+            : undefined
+        }
       />
       <TaskProjectDialog
         dialog={projectDialog}
@@ -378,6 +388,13 @@ export function TasksWorkspace({
           projectDialog?.mode === "edit" && projectDialog.isSharee
             ? () => {
                 void removeSharedList(projectDialog.listId);
+              }
+            : undefined
+        }
+        onDelete={
+          projectDialog?.mode === "edit" && projectDialog.mayDelete
+            ? () => {
+                void deleteList(projectDialog.listId);
               }
             : undefined
         }

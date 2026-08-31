@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from "react";
 import { Bell } from "lucide-react";
-import { Button } from "@/button/src/button";
-import { BUTTON_ICON_SLOT_CLASSNAME } from "@/button/src/button.shared";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
 import { CardPanel } from "@/card/src/card-panel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -49,15 +47,14 @@ export function TasksRemindIndicator({ labels, alerts }: TasksRemindIndicatorPro
   const count = taskAlertCount(alerts);
   if (count === 0) return null;
 
+  const label = remindButtonLabel(labels, alerts);
+
   return (
     <span className="tasks-main-view__meta-item">
-      <TasksRemindVisual
-        count={count}
-        className="tasks-main-view__remind--row"
-        label={remindButtonLabel(labels, alerts)}
-      >
-        <Bell aria-hidden />
+      <TasksRemindVisual count={count} className="tasks-main-view__remind--row">
+        <Bell className="size-3.5" aria-hidden />
       </TasksRemindVisual>
+      <span>{label}</span>
     </span>
   );
 }
@@ -84,21 +81,19 @@ export function TasksRemindPicker({
   return (
     <>
       <TasksRemindVisual count={count} className="tasks-main-view__remind--composer">
-        <Button
+        <button
           type="button"
-          size="sm"
-          variant="outline"
           disabled={disabled}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={`tasks-main-view__remind-button${count > 0 ? " tasks-main-view__remind-button--active" : ""}`}
+          className={`tasks-main-view__composer-select tasks-main-view__remind-button${count > 0 ? " tasks-main-view__remind-button--active" : ""}`}
           onClick={() => setOpen(true)}
         >
-          <span className={BUTTON_ICON_SLOT_CLASSNAME} aria-hidden>
-            <Bell />
+          <span className="tasks-main-view__composer-select-option">
+            <Bell className="size-3.5" aria-hidden />
+            <span>{buttonLabel}</span>
           </span>
-          {buttonLabel}
-        </Button>
+        </button>
       </TasksRemindVisual>
       <Dialog open={disabled ? false : open} onOpenChange={setOpen}>
         <DialogContent

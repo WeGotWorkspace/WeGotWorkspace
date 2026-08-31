@@ -114,19 +114,31 @@
   @apply shrink-0;
 }
 
-/* Active toggle: accent fill + ink glyph (matches primary CTA / app switcher lockup). */
-.tasks-workspace .tasks-workspace__header-actions .button--variant-subtle.icon-button--active {
-  background-color: var(--tasks-accent);
-  color: var(--color-ink);
+/*
+ * Show completed: Calendar Today / Notes Star wash — accent 18%/24% on cream,
+ * not a solid primary fill. Lucide stays stroke-only.
+ */
+.tasks-workspace .tasks-workspace__show-completed.button--variant-subtle.icon-button--active {
+  --button-active-color: var(--color-ink);
+  --button-subtle-color: var(--color-ink);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--tasks-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--tasks-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
-/* Lucide icons are stroke-based; icon-button--active fill would solidify them. */
 .tasks-workspace
-  .tasks-workspace__header-actions
-  .button--variant-subtle.icon-button--active
+  .tasks-workspace__show-completed.button--variant-subtle.icon-button--active
   .button__icon
   > svg {
   fill: none;
+  color: var(--color-ink);
 }
 
 .tasks-workspace .workspace-app-layout__main-content {
@@ -156,15 +168,6 @@
 
 .tasks-story-scope--main {
   min-height: 100dvh;
-}
-
-/* Project dots must render at full color; menu-item icon slots default to reduced opacity. */
-.tasks-workspace .sidebar-section .menu-item__icon-slot .tasks-list-dot {
-  opacity: 1;
-}
-
-.tasks-workspace .sidebar-section .menu-item .menu-item__icon-slot:has(.tasks-list-dot) {
-  opacity: 1;
 }
 
 .tasks-workspace .collection-sidebar-row--drop-target {
