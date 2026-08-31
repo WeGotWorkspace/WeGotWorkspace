@@ -25,7 +25,7 @@ export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   notes: "#f6d176",
   mail: "#ef4444",
   calendar: "#6366F1",
-  contacts: "#8B6F45",
+  contacts: "#39d49b",
   tasks: "#ea8c72",
   drive: "#10b981",
   docs: "#3b82f6",

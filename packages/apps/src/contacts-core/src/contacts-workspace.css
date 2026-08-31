@@ -2,13 +2,14 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
 
 /**
- * Contacts product shell: cream main pane + soft gold / beige accent.
- * Sidebar uses a light beige-gold tint (12% accent on cream), matching tasks/notes.
- * Solid accent keeps white glyphs readable on avatars, CTAs, and app-switch tiles.
+ * Contacts product shell: cream panes + mint accent (`#39d49b`).
+ * Saturated mint, still ink-on-primary like Notes yellow — white on this
+ * fill fails WCAG UI 3:1. Sidebar is 12% accent on cream.
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --contacts-accent: #8b6f45;
+  --contacts-accent: #39d49b;
+  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 70%, var(--color-ink));
   --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 12%, var(--color-cream, #ffffff));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
@@ -30,8 +31,18 @@
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
-  --contacts-list-avatar-bg: var(--contacts-accent);
-  --contacts-list-avatar-color: #ffffff;
+  /* Person + org default mark: a step above toolbar-selected (18%), not solid mint. */
+  --contacts-person-avatar-bg: color-mix(
+    in oklab,
+    var(--contacts-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --contacts-person-avatar-border: color-mix(
+    in oklab,
+    var(--contacts-accent) 55%,
+    var(--color-cream, #ffffff)
+  );
+  --contacts-person-avatar-color: var(--color-ink);
   --contacts-pending-sync-color: #c98a1f;
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--contacts-accent);
@@ -39,31 +50,87 @@
   --loading-spinner-color: color-mix(in oklab, var(--color-ink) 45%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-ink, #042a22);
+  --checkbox-checked-bg: var(--contacts-accent);
+  --checkbox-checked-border: var(--contacts-accent);
+  --checkbox-checked-fg: var(--color-ink);
 }
 
+/*
+ * Primary CTA only — New / Save keep mint + ink. Do not set
+ * `--button-subtle-color` here: action-bar idle chips stay muted ink
+ * (Calendar / Notes / Tasks). Accent on every ghost icon leaked mint
+ * onto trash and toolbar actions.
+ */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: #ffffff;
-  --button-subtle-color: var(--contacts-accent);
+  --button-primary-fg: var(--color-ink, #042a22);
 }
 
 .contacts-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-ink, #042a22);
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
-/** App switcher lockup: solid accent tile + white glyph. */
+/*
+ * Selected Edit (and any other action-bar / batch toggle): Calendar Today
+ * / Notes Star wash — accent 18%/24% on cream, stroke glyph. Generic
+ * `icon-button--active` recolors `--color-emerald` (mint) and fills Lucide.
+ */
+.contacts-workspace
+  :is(.action-bar, .multi-selection-view__actions)
+  .button--variant-subtle.icon-button--active {
+  --button-active-color: var(--contacts-accent-strong);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--contacts-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--contacts-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+.contacts-workspace
+  :is(.action-bar, .multi-selection-view__actions)
+  .button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
+  fill: none;
+  color: var(--contacts-accent-strong);
+}
+
+/**
+ * App switcher lockup: mint tile + cream card. Default invert uses
+ * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the
+ * mark — that reads as muddy teal. Layers stay in the contacts.svg mint family
+ * (`#39d49b` tile / `#26a577` person / `#fef8ea` almost-white sheet).
+ */
 .contacts-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--contacts-accent);
-  --app-switch-icon-fg: #ffffff;
+  --app-switch-icon-fg: color-mix(
+    in oklab,
+    var(--contacts-accent) 14%,
+    var(--color-cream, #ffffff)
+  );
   background-color: var(--app-switch-icon-bg);
+}
+
+.contacts-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: var(--app-switch-icon-fg);
+  --wai-cutout: #26a577;
 }
 
 .contacts-list-panel__loading {
@@ -81,9 +148,16 @@
   z-index: 20;
 }
 
-.contacts-list-panel__avatar .user-avatar__mark {
-  background-color: var(--contacts-list-avatar-bg);
-  color: var(--contacts-list-avatar-color);
+.contacts-workspace .collection-sidebar-row--drop-target {
+  background-color: color-mix(in oklab, var(--contacts-accent) 18%, transparent);
+}
+
+.contacts-list-panel__avatar,
+.contacts-detail-view__avatar {
+  --user-avatar-bg: var(--contacts-person-avatar-bg);
+  --user-avatar-fg: var(--contacts-person-avatar-color);
+  --user-avatar-border: var(--contacts-person-avatar-border);
+  --user-avatar-border-width: 2px;
 }
 
 .contacts-list-panel__pending-dot {
@@ -92,6 +166,10 @@
 }
 
 .contacts-detail-view {
+  --contacts-channel-action-size: var(
+    --control-height-sm,
+    calc(var(--input-height, 2.25rem) - 0.25rem)
+  );
   max-width: 680px;
   margin-inline: auto;
   padding: 1.5rem 1.5rem 2.5rem;
@@ -104,15 +182,30 @@
 }
 
 .contacts-detail-view__header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  @apply mb-8 flex flex-col items-stretch gap-3;
+}
+
+.contacts-detail-view__identity {
+  --contacts-detail-avatar-size: 5rem;
+  @apply flex items-center gap-4;
+}
+
+.contacts-detail-view__avatar {
+  @apply shrink-0;
+}
+
+.contacts-detail-view__identity .user-avatar--xl .user-avatar__mark {
+  width: var(--contacts-detail-avatar-size);
+  height: var(--contacts-detail-avatar-size);
+}
+
+.contacts-detail-view__identity .contacts-group-icon-slot--xl {
+  width: var(--contacts-detail-avatar-size);
+  height: var(--contacts-detail-avatar-size);
 }
 
 .contacts-detail-view__heading {
-  @apply flex flex-col gap-1;
+  @apply flex min-w-0 flex-1 flex-col justify-center gap-1;
 }
 
 .contacts-detail-view__title {
@@ -127,6 +220,10 @@
 .contacts-detail-view__subtitle {
   @apply m-0 text-[0.9375rem] leading-snug;
   color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+}
+
+.contacts-detail-view__tag-group {
+  @apply w-full py-1;
 }
 
 .contacts-detail-view__notes {
@@ -176,14 +273,6 @@
   @apply mb-0;
 }
 
-.contacts-detail-view__add-row.button {
-  @apply self-start gap-1.5 px-2;
-  min-height: 1.75rem;
-  height: 1.75rem;
-  font-size: 0.75rem;
-  --button-icon-size: 0.75rem;
-}
-
 .contacts-detail-view__editable-list {
   display: flex;
   flex-direction: column;
@@ -208,12 +297,16 @@
 }
 
 .contacts-detail-view__channel-row--editable {
-  grid-template-columns: 7rem minmax(0, 1fr) auto;
+  --contacts-channel-action-size: var(
+    --control-height-sm,
+    calc(var(--input-height, 2.25rem) - 0.25rem)
+  );
+  grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   align-items: center;
 }
 
 .contacts-detail-view__channel-row--address {
-  align-items: start;
+  @apply items-end;
 }
 
 .contacts-detail-view__channel-type {
@@ -252,12 +345,16 @@
 }
 
 .contacts-detail-view__channel-row .contacts-detail-view__context-select {
-  width: 100%;
+  @apply w-full;
 }
 
 .contacts-detail-view__address-row {
+  --contacts-channel-action-size: var(
+    --control-height-sm,
+    calc(var(--input-height, 2.25rem) - 0.25rem)
+  );
   display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr) auto;
+  grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   column-gap: 1rem;
   align-items: start;
 }
@@ -277,14 +374,27 @@
   color: var(--color-ink);
 }
 
+.contacts-detail-view__address-entry {
+  @apply flex flex-col gap-2;
+}
+
 .contacts-detail-view__address-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  --contacts-channel-action-size: var(
+    --control-height-sm,
+    calc(var(--input-height, 2.25rem) - 0.25rem)
+  );
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
+  column-gap: 1rem;
+  row-gap: 0.5rem;
   min-width: 0;
 }
 
-.contacts-detail-view__address-fields > .field-label-row,
+.contacts-detail-view__address-fields > * {
+  grid-column: 2;
+}
+
+.contacts-detail-view__address-entry .field-label-row,
 .contacts-detail-view__address-locality-row > .field-label-row {
   @apply mb-0;
 }
@@ -295,8 +405,19 @@
   gap: 0.5rem;
 }
 
+.contacts-detail-view__channel-action {
+  @apply shrink-0;
+  width: var(--contacts-channel-action-size);
+}
+
+.contacts-detail-view__channel-action-spacer {
+  @apply block;
+  width: var(--contacts-channel-action-size);
+  height: var(--contacts-channel-action-size);
+}
+
 .contacts-detail-view__address-remove {
-  margin-top: 0.125rem;
+  @apply self-end;
 }
 
 .contacts-detail-view__address-row .contacts-detail-view__context-select {
@@ -310,8 +431,12 @@
 }
 
 .contacts-detail-view__context-select {
-  width: 7rem;
-  flex-shrink: 0;
+  @apply w-28 shrink-0 text-xs;
+}
+
+.select-trigger.contacts-detail-view__context-select {
+  @apply w-full shrink-0 text-xs;
+  border-radius: var(--control-radius);
 }
 
 .contacts-detail-view__editable-row .input,
@@ -343,7 +468,7 @@
 }
 
 .contacts-detail-view__link {
-  color: var(--contacts-accent, #8b6f45);
+  color: var(--contacts-accent-strong, var(--contacts-accent));
   text-decoration: none;
 }
 
@@ -359,14 +484,24 @@
 }
 
 .contacts-dialog-surface {
-  --contacts-accent: #8b6f45;
+  --contacts-accent: #39d49b;
+  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 70%, var(--color-ink));
   --color-emerald: var(--contacts-accent);
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-ink, #042a22);
   --primary: var(--contacts-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-ink);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
+}
+
+.contacts-workspace .field-label-row:has(input[readonly]) .input,
+.contacts-dialog-surface .field-label-row:has(input[readonly]) .input {
+  @apply cursor-default;
+}
+
+.contacts-workspace .sidebar-section .collection-sidebar-row {
+  @apply mx-0;
 }
 
 .contacts-story-scope {
