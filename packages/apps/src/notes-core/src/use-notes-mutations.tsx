@@ -101,8 +101,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const username = readOfflineNotesUsername();
       if (!username) return Promise.resolve();
       const write = (async () => {
-        // Check at write time so a late Dexie put cannot resurrect a remapped
-        // local-* row after online create already adopted the server uid.
         if (isLocalTempNoteId(note.id) && resolveNoteId(note.id) !== note.id) return;
         await upsertNoteInCache(username, note, pendingSync);
       })();
@@ -198,6 +196,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
                 });
               }),
               () => dropGoneNote(resolveNoteId(note.id)),
+              resolveNoteId(note.id),
             );
           };
           if (online) {
@@ -527,7 +526,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (view === `tag:${oldName}`) setView(`tag:${value}`);
       if (operations) {
         changedRows.forEach((note) =>
-          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id)),
+          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id), note.id),
         );
       }
       show(`Renamed to ${value}`, { icon: <Tag className="size-4" /> });
@@ -598,7 +597,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (view === `tag:${name}`) setView("all");
       if (operations) {
         changedRows.forEach((note) =>
-          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id)),
+          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id), note.id),
         );
       }
       show(`Tag ${name} deleted`, { icon: <Trash2 className="size-4" /> });
@@ -690,9 +689,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         const lookupId = prev.some((note) => note.id === persistId) ? persistId : id;
         const result = mapNotesWithBodyMarkdown(prev, lookupId, markdown, options);
         if (!result.updated) return prev;
-        // Persist from the updater: React 19 defers setState, so capturing
-        // `updated` after setNotes skips the Dexie write. Same-tick title
-        // edits still compose because `prev` is the latest queued list.
+        // Persist inside the updater so a deferred setState cannot skip Dexie.
         const username = readOfflineNotesUsername();
         if (username) {
           persistBestEffort(
@@ -752,14 +749,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
               : current,
           );
         }
-        // Still local-* means create queued or the API echoed the temp id.
-        // Do not stamp pending=false — that drops the only sync signal.
         if (isLocalTempNoteId(saved.id)) {
           showMutationError(L.syncFailedMessage);
           return saved;
         }
-        // Hybrid adopt already writes pending=false; this covers mocks and
-        // any late optimistic put that ran before the remap was recorded.
         persistOptimisticNote(saved, false);
         return saved;
       });

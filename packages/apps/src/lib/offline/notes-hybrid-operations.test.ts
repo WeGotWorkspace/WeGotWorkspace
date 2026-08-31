@@ -479,13 +479,11 @@ describe("fetchNotesHybridBootstrap", () => {
       ...bootstrap,
       data: { ...bootstrap.data, notes: [] },
     });
-    vi.mocked(updateNoteItem).mockRejectedValue(
-      Object.assign(new Error("Note not found"), { status: 404 }),
-    );
     vi.mocked(createNoteItem).mockResolvedValue(serverNote);
 
     const result = await fetchNotesHybridBootstrap();
 
+    expect(updateNoteItem).not.toHaveBeenCalled();
     expect(createNoteItem).toHaveBeenCalledOnce();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     expect(await notesNotesTable(db).get(tempId)).toBeUndefined();

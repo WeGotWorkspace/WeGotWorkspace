@@ -9,10 +9,9 @@ import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
 
-export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void) {
+export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void, noteId?: string) {
   promise.catch((error) => {
-    // 404: collection object is gone — drop the local ghost (see isNotesPersistGone).
-    if (onGone && isNotesPersistGone(error)) onGone();
+    if (onGone && isNotesPersistGone(error, noteId)) onGone();
   });
 }
 

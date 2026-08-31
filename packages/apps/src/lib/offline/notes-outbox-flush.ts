@@ -1,4 +1,5 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
+import type { Note } from "@/lib/models/note";
 import type { DeleteNotebookAction } from "@/notes-core/src/notes-types";
 import {
   archiveNoteItem,
@@ -16,6 +17,7 @@ import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
   dropLocalNoteAfterServerGone,
+  isLocalTempNoteId,
   listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
@@ -27,7 +29,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
-import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
+import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 
 export type OutboxFlushResult = {
   stateMismatches: string[];
@@ -35,7 +37,36 @@ export type OutboxFlushResult = {
 };
 
 function isPreconditionFailed(error: unknown): boolean {
-  return (error as { status?: number } | undefined)?.status === 412;
+  return persistHttpStatus(error) === 412;
+}
+
+async function flushOutboxNoteUpsert(
+  username: string,
+  noteId: string,
+  metadataRequest: WgwNoteUpsertRequest,
+  tempNoteId?: string,
+): Promise<{ saved: Note } | { conflict: true } | { gone: true }> {
+  if (isLocalTempNoteId(noteId)) {
+    return { saved: await createNoteItem({ ...metadataRequest, body: "" }) };
+  }
+  try {
+    return { saved: await updateNoteItem(noteId, metadataRequest) };
+  } catch (error) {
+    if (isPreconditionFailed(error)) {
+      try {
+        return { saved: await updateNoteItem(noteId, { ...metadataRequest, etag: undefined }) };
+      } catch (retryError) {
+        if (isPreconditionFailed(retryError)) return { conflict: true };
+        throw retryError;
+      }
+    }
+    if (persistHttpStatus(error) !== 404) throw error;
+    if (!tempNoteId) {
+      await dropLocalNoteAfterServerGone(username, noteId);
+      return { gone: true };
+    }
+    return { saved: await createNoteItem({ ...metadataRequest, body: "" }) };
+  }
 }
 
 /** Metadata-only REST upsert — no `body`; starred is routed to `/notes/items/{id}/star`. */
@@ -82,44 +113,22 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
         const upsert = payload as NotesUpsertPayload;
         const noteId = upsert.noteId;
         const metadataRequest = noteMetadataUpsertRequest(noteId, upsert.metadata, row.ifInState);
-        let saved;
-        try {
-          saved = await updateNoteItem(noteId, metadataRequest);
-        } catch (error) {
-          if (isPreconditionFailed(error)) {
-            try {
-              // Stale If-Match after our own create/title/body PATCH — refetch etag.
-              saved = await updateNoteItem(noteId, {
-                ...metadataRequest,
-                etag: undefined,
-              });
-            } catch (retryError) {
-              if (isPreconditionFailed(retryError) && upsert.tempNoteId) {
-                // Still our create race: last-writer-wins, do not open Keep mine.
-                saved = await updateNoteItem(noteId, {
-                  ...metadataRequest,
-                  etag: undefined,
-                });
-              } else if (isPreconditionFailed(retryError)) {
-                stateMismatches.push(noteId);
-                await markOutboxError(username, row.id, "stateMismatch");
-                continue;
-              } else {
-                throw retryError;
-              }
-            }
-          } else {
-            const status = (error as { status?: number } | undefined)?.status;
-            if (status !== 404) throw error;
-            // local-* first persist: create. A real UID 404 is gone — drop, don't resurrect.
-            if (!upsert.tempNoteId) {
-              await dropLocalNoteAfterServerGone(username, noteId);
-              await removeOutboxMutation(username, row.id);
-              continue;
-            }
-            saved = await createNoteItem({ ...metadataRequest, body: "" });
-          }
+        const result = await flushOutboxNoteUpsert(
+          username,
+          noteId,
+          metadataRequest,
+          upsert.tempNoteId,
+        );
+        if ("conflict" in result) {
+          stateMismatches.push(noteId);
+          await markOutboxError(username, row.id, "stateMismatch");
+          continue;
         }
+        if ("gone" in result) {
+          await removeOutboxMutation(username, row.id);
+          continue;
+        }
+        const saved = result.saved;
         const tempId = upsert.tempNoteId;
         if (tempId && tempId !== saved.id) {
           await migrateNoteCollabPersistenceAfterIdRemap({

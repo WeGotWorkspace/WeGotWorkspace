@@ -9,8 +9,8 @@ export type NotesLocalDirtyInput = {
 };
 
 /**
- * Body dirty only (editor or pending Yjs save). Dexie metadata pending (tags/
- * title) must not open a Keep-mine dialog — that is our own etag race.
+ * Body dirty only (editor or pending Yjs save). Metadata pending (tags/title)
+ * must not open Keep mine — that is an own-etag race, not two-device conflict.
  */
 export function isNotesLocalDirty(input: NotesLocalDirtyInput): boolean {
   const noteId = input.noteId;

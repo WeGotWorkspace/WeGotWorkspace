@@ -142,13 +142,12 @@ describe("flushNotesOutbox", () => {
 
     await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
 
-    updateNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
     const saved = { ...note, id: "server-note-99", body: ["Created offline"] };
     createNoteItem.mockResolvedValue(saved);
 
     const result = await flushNotesOutbox(username);
 
-    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(updateNoteItem).not.toHaveBeenCalled();
     expect(createNoteItem).toHaveBeenCalledOnce();
     expect(result.bootstrap?.data.notes.some((row) => row.id === "server-note-99")).toBe(true);
     expect(result.bootstrap?.data.notes.some((row) => row.id === tempId)).toBe(false);
@@ -174,7 +173,6 @@ describe("flushNotesOutbox", () => {
     };
     await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
 
-    updateNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
     createNoteItem.mockResolvedValue({ ...offlineNote, id: savedId });
 
     await flushNotesOutbox(username);

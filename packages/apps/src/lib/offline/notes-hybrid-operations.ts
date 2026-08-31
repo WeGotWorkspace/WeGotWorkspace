@@ -45,7 +45,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
-import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
+import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
@@ -57,14 +57,6 @@ import {
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
 
-function persistHttpStatus(error: unknown): number | undefined {
-  if (error && typeof error === "object" && "status" in error) {
-    const status = (error as { status?: unknown }).status;
-    if (typeof status === "number") return status;
-  }
-  return undefined;
-}
-
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -72,8 +64,8 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
 }
 
 /**
- * Queue instead of failing the write. Auth errors stay thrown. A local-* create
- * that 400/422/5xxs must enqueue — otherwise Dexie stays pending with no outbox.
+ * Queue instead of failing the write. Auth stays thrown. local-* creates that
+ * 400/422/5xx must enqueue so Dexie is not pending without an outbox.
  */
 function shouldQueueNotesUpsert(
   error: unknown,
@@ -90,7 +82,6 @@ function shouldQueueNotesUpsert(
 }
 
 async function isNeverSyncedPendingNote(username: string, noteId: string): Promise<boolean> {
-  if (isLocalTempNoteId(noteId)) return true;
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const row = await notesNotesTable(db).get(noteId);
   return row?.pendingSync === true;
@@ -209,7 +200,7 @@ async function queueOfflineUpsert(
   return note;
 }
 
-/** Swallowed online creates left pending local-* rows with no outbox — enqueue so flush can POST. */
+/** Heal pending local-* rows that have no outbox so flush can POST them. */
 async function enqueueOrphanPendingLocalCreates(username: string): Promise<void> {
   const pendingIds = await listPendingNoteIds(username);
   if (pendingIds.length === 0) return;
@@ -333,7 +324,6 @@ async function createLocalTempNoteOnline(
     wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
     opts,
   );
-  // API must mint a UID. If it echoes local-*, remap cannot run — keep queued.
   if (isLocalTempNoteId(saved.id)) {
     return queueOfflineUpsert(username, { ...saved, id: note.id }, note.id);
   }
@@ -351,8 +341,6 @@ async function upsertNoteOnline(
   if (isLocalTempNoteId(note.id)) {
     return createLocalTempNoteOnline(username, note, runner, opts);
   }
-  // Metadata-only PATCH preserves the on-disk body; 404 means the object is gone
-  // unless this UUID was never synced (queue instead of dropping).
   const metadataRequest = wgwNoteMetadataFromNote(note, {
     starred: !!note.starred,
     archived: !!note.archived,
@@ -365,8 +353,6 @@ async function upsertNoteOnline(
   } catch (error) {
     const status = persistHttpStatus(error);
     if (status === 412) {
-      // Title/body PATCH advanced etag between our GET and PATCH. Retry once
-      // with a fresh If-Match — do not treat our own race as a sync conflict.
       const saved = await updateNoteItem(note.id, { ...metadataRequest, etag: undefined }, opts);
       await upsertNoteInCache(username, saved, false);
       await runner.flush();
@@ -626,8 +612,7 @@ export async function fetchNotesHybridBootstrap(): Promise<
   const cached = await readNotesBootstrapFromCache(username);
   if (cached) {
     cached.session = bootstrap.session;
-    // Always take the live personal notebook list — including empty. The previous
-    // `length > 0` guard left Dexie ghosts (emptied / deleted dirs the API omits).
+    // Live notebook list is source of truth, including empty (API omits deleted dirs).
     cached.data.notebooks = bootstrap.data.notebooks;
     cached.data.sharedNotebooks = bootstrap.data.sharedNotebooks ?? [];
     cached.data.notebookCollections = bootstrap.data.notebookCollections ?? [];
