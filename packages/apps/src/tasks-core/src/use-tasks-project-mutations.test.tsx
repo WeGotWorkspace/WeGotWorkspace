@@ -344,7 +344,7 @@ describe("useTasksProjectMutations", () => {
           id: "group-team",
           name: "Team standup",
           role: "group",
-          scope: "group",
+          scope: "group" as const,
           groupSlug: "team",
           isDefault: false,
           isSharee: false,

@@ -284,8 +284,7 @@ describe("tasks-task-utils", () => {
     expect(formatComposerDueLabel("2026-07-15", true, labels, now)).toBe("Jul 15, 2026");
 
     const timedToday = formatComposerDueLabel("2026-07-08T15:45:00", false, labels, now);
-    expect(timedToday.startsWith("Today")).toBe(true);
-    expect(timedToday).toMatch(/\d{1,2}:\d{2}/);
+    expect(timedToday).toEqual(expect.stringMatching(/^Today.+\d{1,2}:\d{2}/));
     expect(timedToday).not.toBe("Today");
   });
 
