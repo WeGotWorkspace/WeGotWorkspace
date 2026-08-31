@@ -63,6 +63,10 @@
   border-radius: 0.125rem;
 }
 
+.collection-sidebar-row__leading {
+  @apply inline-flex shrink-0 items-center justify-center;
+}
+
 .collection-sidebar-row__title {
   @apply inline-flex min-w-0 items-center gap-1;
 }

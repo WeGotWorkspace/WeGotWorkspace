@@ -1,30 +1,33 @@
 import { useMemo } from "react";
-import { Users, UsersRound } from "lucide-react";
-import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
-import { contactsGroupViewKey } from "@/contacts-core/src/contacts-group-utils";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import { Users } from "lucide-react";
+import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+import {
+  isSharedAddressBook,
+  type ContactsAddressBookRow,
+} from "@/contacts-core/src/contacts-addressbook-write";
 
 type UseContactsSidebarModelArgs = {
   labels: ContactsUILabels;
   view: string;
-  contactGroups: ContactCard[];
+  addressBooks: ContactsAddressBookRow[];
   selectView: (view: string) => void;
-  sidebarDropZoneProps: (
-    targetKey: string,
-    onDrop: (ids: string[]) => void,
-  ) => Record<string, unknown>;
-  addMembersToGroup: (groupId: string, cardIds: string[]) => void;
 };
 
 export function useContactsSidebarModel({
   labels,
   view,
-  contactGroups,
+  addressBooks,
   selectView,
-  sidebarDropZoneProps,
-  addMembersToGroup,
 }: UseContactsSidebarModelArgs) {
+  const { owned: ownedAddressBooks, shared: sharedAddressBooks } = useMemo(
+    () =>
+      partitionOwnedAndShared(addressBooks, {
+        isSharee: isSharedAddressBook,
+      }),
+    [addressBooks],
+  );
+
   const primarySidebarItems = useMemo(
     () => [
       {
@@ -37,22 +40,9 @@ export function useContactsSidebarModel({
     [labels.sidebarAllContacts, selectView, view],
   );
 
-  const groupSidebarItems = useMemo(
-    () =>
-      contactGroups.map((group) => ({
-        label: contactDisplayName(group),
-        icon: <UsersRound className="size-3.5" />,
-        selected: view === contactsGroupViewKey(group.id),
-        onClick: () => selectView(contactsGroupViewKey(group.id)),
-        ...sidebarDropZoneProps(contactsGroupViewKey(group.id), (ids) =>
-          addMembersToGroup(group.id, ids),
-        ),
-      })),
-    [addMembersToGroup, contactGroups, selectView, sidebarDropZoneProps, view],
-  );
-
   return {
     primarySidebarItems,
-    groupSidebarItems,
+    ownedAddressBooks,
+    sharedAddressBooks,
   };
 }

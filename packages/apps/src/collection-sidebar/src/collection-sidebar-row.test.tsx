@@ -50,6 +50,22 @@ describe("CollectionSidebarRow", () => {
     );
   });
 
+  it("renders a leading mark inside the select control", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Friends"
+          color="#6366f1"
+          onSelect={vi.fn()}
+          leading={<span data-testid="leading-mark" aria-hidden />}
+        />
+      </ul>,
+    );
+    const select = screen.getByRole("button", { name: "Friends" });
+    expect(select.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
+    expect(screen.getByTestId("leading-mark")).toBeTruthy();
+  });
+
   it("keeps hover-edit when onEdit is provided", () => {
     const onEdit = vi.fn();
     render(

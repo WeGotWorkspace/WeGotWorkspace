@@ -1,0 +1,5 @@
+@import "../../styles.css" reference;
+
+.contacts-address-book-select__option {
+  @apply flex min-w-0 items-center gap-2;
+}

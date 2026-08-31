@@ -16,6 +16,8 @@ export type ShareRowSelectProps<T extends string> = {
   disabled?: boolean;
   title?: string;
   className?: string;
+  /** Compact toolbar/form rows; defaults to the shared md control. */
+  size?: "sm" | "md";
   "aria-label"?: string;
 };
 
@@ -26,11 +28,13 @@ export function ShareRowSelect<T extends string>({
   disabled = false,
   title,
   className,
+  size = "md",
   "aria-label": ariaLabel,
 }: ShareRowSelectProps<T>) {
   return (
     <Select value={value} disabled={disabled} onValueChange={(next) => onChange(next as T)}>
       <SelectTrigger
+        size={size}
         className={className ?? "share-dialog__permission-select"}
         title={title}
         aria-label={ariaLabel}

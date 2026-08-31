@@ -19,6 +19,8 @@ export type CollectionSidebarRowProps = {
   onSelect?: () => void;
   onEdit?: () => void;
   editLabel?: string;
+  /** Leading mark inside the select control (e.g. a group icon). */
+  leading?: ReactNode;
   badges?: ReactNode;
   trailing?: ReactNode;
   showColorDot?: boolean;
@@ -76,6 +78,7 @@ export function CollectionSidebarRow({
   onSelect,
   onEdit,
   editLabel = "Edit",
+  leading,
   badges,
   trailing,
   showColorDot = false,
@@ -113,6 +116,11 @@ export function CollectionSidebarRow({
         <span className={bem(blocks, "__dot")} aria-hidden />
       ) : null}
       <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
+        {leading ? (
+          <span className={bem(blocks, "__leading")} aria-hidden>
+            {leading}
+          </span>
+        ) : null}
         <span className={bem(blocks, "__title")}>
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
