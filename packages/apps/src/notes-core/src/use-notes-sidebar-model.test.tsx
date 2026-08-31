@@ -45,7 +45,41 @@ describe("useNotesSidebarModel", () => {
     ]);
     expect(result.current.ownedNotebooks.map((item) => item.name)).toEqual(["General"]);
     expect(result.current.sharedNotebooks.map((item) => item.name)).toEqual(["Shared Notes"]);
+    expect(result.current.tagSidebarTags).toEqual([]);
+    expect(result.current.showTagsSection).toBe(false);
     expect(notebookViewKey("shared-nb")).toBe("nb:shared-nb");
+  });
+
+  it("shows the Tags section only when at least one tag exists", () => {
+    const empty = renderHook(() =>
+      useNotesSidebarModel({
+        labels: defaultNotesLabels,
+        view: "all",
+        notebooks: ["General"],
+        tags: [],
+        selectView: vi.fn(),
+        sidebarDropZoneProps: () => dropZone(),
+        moveToNotebook: vi.fn(),
+        assignTagToNotes: vi.fn(),
+      }),
+    );
+    expect(empty.result.current.showTagsSection).toBe(false);
+    expect(empty.result.current.tagSidebarTags).toEqual([]);
+
+    const withTags = renderHook(() =>
+      useNotesSidebarModel({
+        labels: defaultNotesLabels,
+        view: "all",
+        notebooks: ["General"],
+        tags: ["focus"],
+        selectView: vi.fn(),
+        sidebarDropZoneProps: () => dropZone(),
+        moveToNotebook: vi.fn(),
+        assignTagToNotes: vi.fn(),
+      }),
+    );
+    expect(withTags.result.current.showTagsSection).toBe(true);
+    expect(withTags.result.current.tagSidebarTags.map((entry) => entry.tag)).toEqual(["focus"]);
   });
 
   it("partitions owned vs shared from collection-sidebar only", () => {
