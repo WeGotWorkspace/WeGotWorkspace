@@ -20,6 +20,7 @@ type TasksEditDialogProps = {
   readOnly?: boolean;
   onClose: () => void;
   onSave: (value: TasksTaskFormValue) => void;
+  onDelete?: () => void;
 };
 
 export function TasksEditDialog({
@@ -30,6 +31,7 @@ export function TasksEditDialog({
   readOnly = false,
   onClose,
   onSave,
+  onDelete,
 }: TasksEditDialogProps) {
   const [form, setForm] = useState(() => emptyTaskForm(task?.taskListId ?? "default"));
 
@@ -66,7 +68,17 @@ export function TasksEditDialog({
               disabled={readOnly}
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="tasks-edit-dialog__footer">
+            {onDelete && !readOnly ? (
+              <Button
+                type="button"
+                variant="destructive"
+                className="tasks-edit-dialog__delete"
+                onClick={onDelete}
+              >
+                {labels.delete}
+              </Button>
+            ) : null}
             <Button type="button" variant="outline" onClick={onClose}>
               {labels.cancel}
             </Button>
