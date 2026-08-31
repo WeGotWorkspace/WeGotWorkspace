@@ -84,6 +84,24 @@ describe("TasksTaskFormFields", () => {
     ]);
   });
 
+  it("marks list options with a tinted list icon, not a color dot", () => {
+    renderFormFields({ mode: "create" });
+
+    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskList));
+
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBeGreaterThan(0);
+    for (const option of options) {
+      expect(option.querySelector(".tasks-list-icon")).toBeTruthy();
+      expect(option.querySelector(".tasks-list-icon")?.tagName.toLowerCase()).toBe("svg");
+      expect(option.querySelector(".tasks-list-dot")).toBeNull();
+    }
+
+    const trigger = screen.getByLabelText(defaultTasksLabels.addTaskList);
+    expect(trigger.querySelector(".tasks-list-icon")).toBeTruthy();
+    expect(trigger.querySelector(".tasks-list-dot")).toBeNull();
+  });
+
   it("renders the remind picker in create and edit modes", () => {
     renderFormFields({ mode: "create" });
     expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
@@ -124,6 +142,8 @@ describe("task form helpers", () => {
       workflowStatus: "in-process",
       priority: 1,
       due: "2026-07-08T00:00:00",
+      showWithoutTime: false,
+      timeZone: null,
       alerts: task.alerts,
     });
   });
