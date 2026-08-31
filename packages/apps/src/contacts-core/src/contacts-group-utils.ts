@@ -1,8 +1,26 @@
+import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   contactDisplayName,
   contactListSortName,
 } from "@/contacts-core/src/contacts-display-utils";
 import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+
+type AddressBookIdSource = {
+  addressBookIds?: Record<string, unknown> | null;
+};
+
+/**
+ * Contact and group share at least one enabled address-book id.
+ * Comparison is exact (`group-admin` ≠ `group-administrators`).
+ */
+export function contactAndGroupShareAddressBook(
+  contact: AddressBookIdSource | null | undefined,
+  group: AddressBookIdSource | null | undefined,
+): boolean {
+  const groupIds = new Set(enabledAddressBookIds(group?.addressBookIds));
+  if (groupIds.size === 0) return false;
+  return enabledAddressBookIds(contact?.addressBookIds).some((id) => groupIds.has(id));
+}
 
 /**
  * JSContact / CardDAV group mapping (RFC 9553 + RFC 9610):
@@ -155,6 +173,16 @@ export function resolveGroupMemberCardIds(
   return resolved;
 }
 
+/** Groups from the sidebar universe that currently include this contact. */
+export function groupsContainingCard(
+  cardId: string,
+  groups: ContactCard[],
+  allCards: ContactCard[],
+): ContactCard[] {
+  if (!cardId) return [];
+  return groups.filter((group) => resolveGroupMemberCardIds(group, allCards).includes(cardId));
+}
+
 /** Resolve group member uids to loaded contact cards (members + memberCardIds). */
 export function resolveGroupMemberCards(
   groupCard: ContactCard,
@@ -164,6 +192,24 @@ export function resolveGroupMemberCards(
   return resolveGroupMemberCardIds(groupCard, allCards)
     .map((id) => cardById.get(id))
     .filter((card): card is ContactCard => card !== undefined);
+}
+
+/**
+ * Rename/delete when the group lives in a writable book. No book ids falls
+ * back to whether card operations exist (offline / story fixtures).
+ */
+export function canWriteContactGroup(
+  group: Pick<ContactCard, "addressBookIds"> | null | undefined,
+  addressBooks: readonly { id: string; myRights?: { mayWrite?: boolean } | null }[],
+  hasOperations = false,
+): boolean {
+  if (!group) return false;
+  const bookIds = Object.keys(group.addressBookIds ?? {});
+  if (bookIds.length === 0) return hasOperations;
+  return bookIds.some((bookId) => {
+    const book = addressBooks.find((row) => row.id === bookId);
+    return book?.myRights?.mayWrite !== false;
+  });
 }
 
 /** PATCH body for renaming a group card (JSContact name.full). */
@@ -196,11 +242,32 @@ export function groupAddMembersPatch(
   for (const card of cardsToAdd) {
     if (!card.uid) continue;
     if (isContactGroupCard(card)) continue;
+    if (!contactAndGroupShareAddressBook(card, groupCard)) continue;
     if (existingNormalizedUids.has(normalizeContactUidForMatch(card.uid))) continue;
     newMembers[memberUidForGroupMap(card.uid)] = true;
   }
   if (Object.keys(newMembers).length === 0) return null;
   return { members: newMembers };
+}
+
+/** Local/optimistic apply of {@link groupAddMembersPatch} onto a group card. */
+export function cardWithAddedGroupMember(group: ContactCard, member: ContactCard): ContactCard {
+  const patch = groupAddMembersPatch(group, [member]);
+  if (!patch) return group;
+  return {
+    ...group,
+    members: { ...group.members, ...patch.members } as ContactCard["members"],
+  };
+}
+
+/** Insert or replace a card and add it to a group's members map when `groupId` is set. */
+export function cardsWithGroupMember(
+  list: ContactCard[],
+  groupId: string | undefined,
+  member: ContactCard,
+): ContactCard[] {
+  if (!groupId) return list;
+  return list.map((card) => (card.id === groupId ? cardWithAddedGroupMember(card, member) : card));
 }
 
 /**
@@ -244,6 +311,21 @@ export function groupRemoveMembersPatch(
 /** Sidebar/list view key for a group card. */
 export function contactsGroupViewKey(groupCardId: string): string {
   return `group:${groupCardId}`;
+}
+
+/** Hide cards whose every address book is unchecked in the sidebar (All Contacts). */
+export function filterCardsByHiddenAddressBooks(
+  cards: ContactCard[],
+  hiddenBookIds: ReadonlySet<string>,
+): ContactCard[] {
+  if (hiddenBookIds.size === 0) return cards;
+  return cards.filter((card) => {
+    const bookIds = Object.entries(card.addressBookIds ?? {})
+      .filter(([, on]) => Boolean(on))
+      .map(([id]) => id);
+    if (bookIds.length === 0) return true;
+    return bookIds.some((id) => !hiddenBookIds.has(id));
+  });
 }
 
 export function filterCardsByView(cards: ContactCard[], view: string): ContactCard[] {
