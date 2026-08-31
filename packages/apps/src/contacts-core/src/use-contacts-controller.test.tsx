@@ -210,9 +210,85 @@ describe("useContactsController", () => {
 
     expect(result.current.viewLabel).toBe("Friends");
     expect(result.current.visibleCards.map((card) => card.id)).toEqual(["card-jane", "card-joe"]);
-    expect(result.current.canCreateContact).toBe(false);
+    expect(result.current.canCreateContact).toBe(true);
+    expect(result.current.canImportVcf).toBe(false);
     expect(result.current.selectedGroup?.id).toBe("card-group-friends");
     expect(result.current.canRenameGroup).toBe(true);
+  });
+
+  it("disables New when the selected group lives in a view-only book", () => {
+    const viewOnlyGroup = {
+      ...bootstrap.data.cards.find((card) => card.id === "card-group-friends")!,
+      id: "card-group-shared",
+      addressBookIds: { "shared-42": true as const },
+    };
+    const { result } = renderHook(() =>
+      useContactsController({
+        data: {
+          addressBooks: [
+            ...bootstrap.data.addressBooks,
+            {
+              id: "shared-42",
+              name: "Alice",
+              description: null,
+              sortOrder: 2,
+              isDefault: false,
+              isSubscribed: true,
+              isSharee: true,
+              shareWith: null,
+              myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
+            },
+          ],
+          cards: [...bootstrap.data.cards, viewOnlyGroup],
+        },
+        listLoading: false,
+      }),
+    );
+
+    act(() => {
+      result.current.selectView(contactsGroupViewKey("card-group-shared"));
+    });
+
+    expect(result.current.canCreateContact).toBe(false);
+    expect(result.current.canImportVcf).toBe(false);
+  });
+
+  it("treats sharee books as shared-N and disables create when mayWrite is false", () => {
+    const sharedCard = {
+      ...bootstrap.data.cards[0],
+      id: "card-shared",
+      addressBookIds: { "shared-42": true as const },
+    };
+    const { result } = renderHook(() =>
+      useContactsController({
+        data: {
+          addressBooks: [
+            ...bootstrap.data.addressBooks,
+            {
+              id: "shared-42",
+              name: "Alice",
+              description: null,
+              sortOrder: 2,
+              isDefault: false,
+              isSubscribed: true,
+              isSharee: true,
+              shareWith: null,
+              myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
+            },
+          ],
+          cards: [...bootstrap.data.cards, sharedCard],
+        },
+        listLoading: false,
+      }),
+    );
+
+    act(() => {
+      result.current.selectView("book:shared-42");
+    });
+
+    expect(result.current.visibleCards.map((card) => card.id)).toEqual(["card-shared"]);
+    expect(result.current.canCreateContact).toBe(false);
+    expect(result.current.canEdit).toBe(false);
   });
 
   it("shows empty member list for group with unresolved members", () => {
@@ -531,13 +607,26 @@ describe("useContactsController group etag refetch", () => {
   });
 });
 
+function fileListOf(...files: File[]): FileList {
+  return {
+    ...files,
+    length: files.length,
+    item(index: number) {
+      return files[index] ?? null;
+    },
+    [Symbol.iterator]() {
+      return files[Symbol.iterator]();
+    },
+  } as FileList;
+}
+
 describe("useContactsController vCard import", () => {
   beforeEach(() => {
     mockShow.mockClear();
     mockShowError.mockClear();
   });
 
-  it("imports multiple vCard files and merges created contacts", async () => {
+  it("imports multiple vCard files into the selected book and merges created contacts", async () => {
     const importVcards = vi
       .fn()
       .mockResolvedValueOnce({
@@ -577,23 +666,29 @@ describe("useContactsController vCard import", () => {
       }),
     );
 
-    const fileList = {
-      0: new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf"),
-      1: new File(["BEGIN:VCARD\nFN:Two\nEND:VCARD"], "two.vcf"),
-      length: 2,
-      item(index: number) {
-        return this[index as 0 | 1];
-      },
-      [Symbol.iterator]() {
-        return [this[0], this[1]][Symbol.iterator]();
-      },
-    } as FileList;
+    const files = [
+      new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf"),
+      new File(["BEGIN:VCARD\nFN:Two\nEND:VCARD"], "two.vcf"),
+    ];
+
+    act(() => {
+      result.current.handleImportVcf(fileListOf(...files));
+    });
+
+    expect(importVcards).not.toHaveBeenCalled();
+    expect(result.current.importDialogOpen).toBe(true);
 
     await act(async () => {
-      await result.current.handleImportVcf(fileList);
+      result.current.submitImportDialog(result.current.importFiles!, "group-eng");
     });
 
     expect(importVcards).toHaveBeenCalledTimes(2);
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nEND:VCARD", {
+      addressBookId: "group-eng",
+    });
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:Two\nEND:VCARD", {
+      addressBookId: "group-eng",
+    });
     expect(result.current.cards.some((card) => card.id === "card-imported-one")).toBe(true);
     expect(result.current.cards.some((card) => card.id === "card-imported-two")).toBe(true);
     expect(mockShow).toHaveBeenCalledWith(
@@ -632,25 +727,23 @@ describe("useContactsController vCard import", () => {
       }),
     );
 
-    const fileList = {
-      0: new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf"),
-      length: 1,
-      item(index: number) {
-        return this[index as 0];
-      },
-      [Symbol.iterator]() {
-        return [this[0]][Symbol.iterator]();
-      },
-    } as FileList;
+    act(() => {
+      result.current.handleImportVcf(
+        fileListOf(new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf")),
+      );
+    });
 
     await act(async () => {
-      await result.current.handleImportVcf(fileList);
+      result.current.submitImportDialog(result.current.importFiles!, "default");
     });
 
     expect(onRefreshList).toHaveBeenCalledTimes(1);
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nEND:VCARD", {
+      addressBookId: "default",
+    });
   });
 
-  it("shows an error when no vCard files are selected", async () => {
+  it("shows an error when no vCard files are selected", () => {
     const { result } = renderHook(() =>
       useContactsController({
         data: bootstrap.data,
@@ -667,24 +760,16 @@ describe("useContactsController vCard import", () => {
       }),
     );
 
-    const fileList = {
-      0: new File(["plain"], "notes.txt", { type: "text/plain" }),
-      length: 1,
-      item() {
-        return this[0];
-      },
-      [Symbol.iterator]() {
-        return [this[0]][Symbol.iterator]();
-      },
-    } as FileList;
-
-    await act(async () => {
-      await result.current.handleImportVcf(fileList);
+    act(() => {
+      result.current.handleImportVcf(
+        fileListOf(new File(["plain"], "notes.txt", { type: "text/plain" })),
+      );
     });
 
     expect(mockShowError).toHaveBeenCalledWith(
       expect.stringContaining("Choose one or more .vcf or .vcard files"),
     );
+    expect(result.current.importDialogOpen).toBe(false);
   });
 });
 
@@ -1065,5 +1150,81 @@ describe("useContactsController keyboard shortcuts", () => {
       expect(onViewChange).toHaveBeenCalledTimes(1);
       expect(onViewChange).toHaveBeenCalledWith("all");
     });
+  });
+
+  it("creates a group card in the picked writable address book", () => {
+    const { result } = renderHook(() =>
+      useContactsController({
+        data: bootstrap.data,
+        listLoading: false,
+      }),
+    );
+
+    expect(result.current.canCreateGroup).toBe(true);
+
+    act(() => {
+      result.current.createGroup("Studio", "default");
+    });
+
+    const created = result.current.contactGroups.find((group) => group.name?.full === "Studio");
+    expect(created?.kind).toBe("group");
+    expect(created?.addressBookIds).toEqual({ default: true });
+  });
+
+  it("does not create a group in an inbound share", () => {
+    const { result } = renderHook(() =>
+      useContactsController({
+        data: {
+          ...bootstrap.data,
+          addressBooks: [
+            ...bootstrap.data.addressBooks,
+            {
+              id: "shared-42",
+              name: "Alice",
+              description: null,
+              sortOrder: 2,
+              isDefault: false,
+              isSubscribed: true,
+              isSharee: true,
+              shareWith: null,
+              myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
+            },
+          ],
+        },
+        listLoading: false,
+      }),
+    );
+
+    const before = result.current.contactGroups.length;
+    act(() => {
+      result.current.createGroup("Nope", "shared-42");
+    });
+    expect(result.current.contactGroups).toHaveLength(before);
+  });
+
+  it("hides create-group when only inbound shares are available", () => {
+    const { result } = renderHook(() =>
+      useContactsController({
+        data: {
+          addressBooks: [
+            {
+              id: "shared-42",
+              name: "Alice",
+              description: null,
+              sortOrder: 0,
+              isDefault: false,
+              isSubscribed: true,
+              isSharee: true,
+              shareWith: null,
+              myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
+            },
+          ],
+          cards: [],
+        },
+        listLoading: false,
+      }),
+    );
+
+    expect(result.current.canCreateGroup).toBe(false);
   });
 });

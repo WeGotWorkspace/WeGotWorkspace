@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, Tag, Trash2, Upload, UserMinus, UserPlus } from "lucide-react";
+import { Check, Download, Tag, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useIsTouch } from "@/hooks/use-is-touch";
@@ -15,16 +15,29 @@ import {
   filterCardsBySearch,
   sortContactCardsForList,
 } from "@/contacts-core/src/contacts-display-utils";
+import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
+  canWriteContactGroup,
+  cardsWithGroupMember,
+  contactAndGroupShareAddressBook,
+  filterCardsByHiddenAddressBooks,
   filterCardsByView,
   groupAddMembersPatch,
   groupRemoveMembersPatch,
   groupRenamePatch,
+  isContactGroupCard,
   listContactGroups,
 } from "@/contacts-core/src/contacts-group-utils";
 import { mergeContactsLabels, type ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import {
+  addressesAfterFieldChange,
+  emailsAfterAddressChange,
+  phonesAfterNumberChange,
+  urlsAfterUriChange,
+} from "@/contacts-core/src/contact-channel-commit";
+import {
   CONTACTS_CREATE_ID,
+  canCreateContactInView,
   contactCardToEditDraft,
   contactEditDraftHasChanges,
   contactEditDraftHasContent,
@@ -47,6 +60,11 @@ import type {
   ContactsUIData,
 } from "@/contacts-core/src/contacts-types";
 import {
+  canCreateGroupInAddressBook,
+  writableGroupAddressBooks,
+} from "@/contacts-core/src/contacts-addressbook-write";
+import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
+import {
   CONTACTS_AUTOSAVE_DEBOUNCE_MS,
   createContactSaveDebouncer,
 } from "@/contacts-core/src/contacts-edit-autosave";
@@ -55,7 +73,7 @@ import {
   downloadMultipleContactsVCard,
   vcardFilename,
 } from "@/contacts-core/src/contacts-vcard-export";
-import { importVcfFilesBatch, partitionVcfFiles } from "@/contacts-core/src/contacts-vcard-import";
+import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
 
 type UseContactsControllerArgs = {
   data: ContactsUIData;
@@ -172,6 +190,18 @@ export function useContactsController({
   const L = useMemo(() => mergeContactsLabels(labels), [labels]);
   const [cards, setCards] = useState<ContactCard[]>(() => data.cards);
   const [addressBooks, setAddressBooks] = useState(() => data.addressBooks);
+  const { hiddenAddressBookIds, setHiddenAddressBookIds } = useContactsHiddenIds(addressBooks);
+  const toggleAddressBookVisibility = useCallback(
+    (bookId: string) => {
+      setHiddenAddressBookIds((current) => {
+        const next = new Set(current);
+        if (next.has(bookId)) next.delete(bookId);
+        else next.add(bookId);
+        return next;
+      });
+    },
+    [setHiddenAddressBookIds],
+  );
   const [view, setView] = useState(
     () => initialView ?? resolveDefaultContactsView(data.addressBooks),
   );
@@ -199,7 +229,7 @@ export function useContactsController({
     (contactId: string, draft: ContactEditDraft) => Promise<void>
   >(async () => {});
 
-  const { show, showError } = useAppToast();
+  const { showError } = useAppToast();
   const showMutationError = useCallback(
     (fallback = "Could not sync this change. Please try again.") => showError(fallback),
     [showError],
@@ -263,8 +293,10 @@ export function useContactsController({
 
   const visibleCards = useMemo(() => {
     const byView = filterCardsByView(cards, view);
-    return filterCardsBySearch(byView, searchQuery);
-  }, [cards, searchQuery, view]);
+    const scoped =
+      view === "all" ? filterCardsByHiddenAddressBooks(byView, hiddenAddressBookIds) : byView;
+    return filterCardsBySearch(scoped, searchQuery);
+  }, [cards, hiddenAddressBookIds, searchQuery, view]);
 
   const visibleIds = useMemo(
     () => sortContactCardsForList(visibleCards).map((card) => card.id),
@@ -369,32 +401,25 @@ export function useContactsController({
     return L.sidebarAllContacts;
   }, [L.sidebarAllContacts, addressBooks, contactGroups, view]);
 
-  const canCreateContact =
-    !view.startsWith("group:") && (view !== "all" || addressBooks.length > 0);
+  const canCreateContact = useMemo(
+    () => canCreateContactInView(view, addressBooks, selectedGroup, Boolean(operations)),
+    [addressBooks, operations, selectedGroup, view],
+  );
 
-  const canImportVcf = canCreateContact;
+  // Import lands in a book only — it does not add members, so stay off group views.
+  const canImportVcf = canCreateContact && !view.startsWith("group:");
 
-  const canCreateGroup = addressBooks.length > 0;
+  const canCreateGroup = writableGroupAddressBooks(addressBooks).length > 0;
 
-  const canRenameGroup = useMemo(() => {
-    if (!selectedGroup) return false;
-    const bookIds = Object.keys(selectedGroup.addressBookIds ?? {});
-    if (bookIds.length === 0) return Boolean(operations);
-    return bookIds.some((bookId) => {
-      const book = addressBooks.find((row) => row.id === bookId);
-      return book?.myRights?.mayWrite !== false;
-    });
-  }, [addressBooks, operations, selectedGroup]);
+  const canRenameGroup = useMemo(
+    () => canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
+    [addressBooks, operations, selectedGroup],
+  );
 
-  const canDeleteGroup = useMemo(() => {
-    if (!selectedGroup) return false;
-    const bookIds = Object.keys(selectedGroup.addressBookIds ?? {});
-    if (bookIds.length === 0) return Boolean(operations);
-    return bookIds.some((bookId) => {
-      const book = addressBooks.find((row) => row.id === bookId);
-      return book?.myRights?.mayWrite !== false;
-    });
-  }, [addressBooks, operations, selectedGroup]);
+  const canDeleteGroup = useMemo(
+    () => canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
+    [addressBooks, operations, selectedGroup],
+  );
 
   const canSaveCreate = useMemo(
     () => createMode && editDraft !== null && contactEditDraftHasContent(editDraft),
@@ -462,137 +487,71 @@ export function useContactsController({
     workspaceLayoutRef.current?.openMobileDetail();
   }, [setSelectedIds, setSelectionMode]);
 
-  const resolveImportAddressBookId = useCallback((): string | null => {
-    if (addressBooks.length === 0) return null;
-    try {
-      const ids = resolveCreateAddressBookIds(view, addressBooks);
-      return Object.keys(ids).find((id) => ids[id]) ?? null;
-    } catch {
-      return null;
-    }
-  }, [addressBooks, view]);
-
-  const handleImportVcf = useCallback(
-    async (fileList: FileList | null) => {
-      const { vcfFiles, skippedCount } = partitionVcfFiles(fileList);
-      if (vcfFiles.length === 0) {
-        showError(L.importInvalidFile);
-        return;
-      }
-      if (!operations?.importVcards) {
-        showError(L.importRequiresApi);
-        return;
-      }
-
-      const addressBookId = resolveImportAddressBookId();
-      if (!addressBookId) {
-        showError(L.importFailed);
-        return;
-      }
-
-      try {
-        const result = await importVcfFilesBatch(vcfFiles, (vcardText) =>
-          operations.importVcards!(vcardText, { addressBookId }),
-        );
-
-        if (result.list.length > 0) {
-          setCards((prev) => {
-            const byId = new Map(prev.map((card) => [card.id, card]));
-            for (const card of result.list) {
-              byId.set(card.id, card);
-            }
-            return [...byId.values()];
-          });
+  const mergeImportedCards = useCallback(
+    (list: ContactCard[]) => {
+      setCards((prev) => {
+        const byId = new Map(prev.map((card) => [card.id, card]));
+        for (const card of list) {
+          byId.set(card.id, card);
         }
-
-        if (result.list.length > 0) {
-          show(L.toastImported(result.list.length), { icon: <Upload className="size-4" /> });
-          onRefreshList?.();
-        }
-        if (skippedCount > 0) {
-          showError(L.importFilesSkipped(skippedCount));
-        }
-        if (result.fileErrors.length > 0) {
-          showError(L.importFilesFailed(result.fileErrors.length));
-        }
-        if (result.blockErrors > 0) {
-          showError(L.importPartialFailure(result.blockErrors));
-        }
-        if (result.list.length === 0 && result.fileErrors.length === 0) {
-          showError(L.importFailed);
-        }
-      } catch {
-        showError(L.importFailed);
-      }
+        return [...byId.values()];
+      });
+      onRefreshList?.();
     },
-    [L, onRefreshList, operations, resolveImportAddressBookId, show, showError],
+    [onRefreshList],
   );
 
-  const addPhone = useCallback(() => {
+  const {
+    importFiles,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    importDialogProgress,
+    beginImport,
+    closeImportDialog,
+    submitImportDialog,
+  } = useContactsVcardImport({
+    operations,
+    labels: L,
+    onImported: mergeImportedCards,
+  });
+
+  const handleImportVcf = beginImport;
+
+  const updatePhone = useCallback((id: string, number: string, phoneType?: ContactPhoneType) => {
     setEditDraft((prev) =>
       prev
         ? {
             ...prev,
-            phones: [...prev.phones, { id: newContactMapId(), number: "", phoneType: "" }],
+            phones: phonesAfterNumberChange({
+              phones: prev.phones,
+              rowId: id,
+              number,
+              phoneType,
+            }),
           }
         : prev,
     );
   }, []);
 
-  const addEmail = useCallback(() => {
-    setEditDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            emails: [...prev.emails, { id: newContactMapId(), address: "", contextType: "" }],
-          }
-        : prev,
-    );
-  }, []);
-
-  const addAddress = useCallback(() => {
-    setEditDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            addresses: [
-              ...prev.addresses,
-              {
-                id: newContactMapId(),
-                street: "",
-                locality: "",
-                region: "",
-                postalCode: "",
-                country: "",
-                contextType: "",
-              },
-            ],
-          }
-        : prev,
-    );
-  }, []);
-
-  const updatePhone = useCallback((id: string, number: string) => {
-    setEditDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            phones: prev.phones.map((row) => (row.id === id ? { ...row, number } : row)),
-          }
-        : prev,
-    );
-  }, []);
-
-  const updateEmail = useCallback((id: string, address: string) => {
-    setEditDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            emails: prev.emails.map((row) => (row.id === id ? { ...row, address } : row)),
-          }
-        : prev,
-    );
-  }, []);
+  const updateEmail = useCallback(
+    (id: string, address: string, contextType?: ContactChannelContext) => {
+      setEditDraft((prev) =>
+        prev
+          ? {
+              ...prev,
+              emails: emailsAfterAddressChange({
+                emails: prev.emails,
+                rowId: id,
+                address,
+                contextType,
+              }),
+            }
+          : prev,
+      );
+    },
+    [],
+  );
 
   const updatePhoneContext = useCallback((id: string, phoneType: ContactPhoneType) => {
     setEditDraft((prev) =>
@@ -621,14 +580,19 @@ export function useContactsController({
       id: string,
       field: "street" | "locality" | "region" | "postalCode" | "country",
       value: string,
+      contextType?: ContactChannelContext,
     ) => {
       setEditDraft((prev) =>
         prev
           ? {
               ...prev,
-              addresses: prev.addresses.map((row) =>
-                row.id === id ? { ...row, [field]: value } : row,
-              ),
+              addresses: addressesAfterFieldChange({
+                addresses: prev.addresses,
+                rowId: id,
+                field,
+                value,
+                contextType,
+              }),
             }
           : prev,
       );
@@ -665,23 +629,17 @@ export function useContactsController({
     );
   }, []);
 
-  const addUrl = useCallback(() => {
+  const updateUrl = useCallback((id: string, uri: string, contextType?: ContactChannelContext) => {
     setEditDraft((prev) =>
       prev
         ? {
             ...prev,
-            urls: [...prev.urls, { id: newContactMapId(), uri: "", contextType: "" }],
-          }
-        : prev,
-    );
-  }, []);
-
-  const updateUrl = useCallback((id: string, uri: string) => {
-    setEditDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            urls: prev.urls.map((row) => (row.id === id ? { ...row, uri } : row)),
+            urls: urlsAfterUriChange({
+              urls: prev.urls,
+              rowId: id,
+              uri,
+              contextType,
+            }),
           }
         : prev,
     );
@@ -1023,18 +981,24 @@ export function useContactsController({
   );
 
   const createGroup = useCallback(
-    (name: string) => {
+    (name: string, addressBookId: string, memberIds: string[] = []) => {
       const value = name.trim();
-      if (!value || addressBooks.length === 0) return;
+      const book = addressBooks.find((row) => row.id === addressBookId);
+      if (!value || !canCreateGroupInAddressBook(book)) return;
 
-      const addressBookIds = resolveCreateAddressBookIds("all", addressBooks) as Record<
-        string,
-        true
-      >;
+      const membersToAdd = memberIds
+        .map((id) => cards.find((card) => card.id === id))
+        .filter((card): card is ContactCard => card !== undefined);
+      const addressBookIds = { [addressBookId]: true as const };
+      const membersPatch = groupAddMembersPatch(
+        { members: {}, addressBookIds } as ContactCard,
+        membersToAdd,
+      );
       const body: ContactCardCreate = {
         addressBookIds,
         kind: "group",
         name: { "@type": "Name", isOrdered: false, full: value },
+        ...(membersPatch?.members ? { members: membersPatch.members } : {}),
       };
       const optimisticId = `card-${newContactMapId()}`;
       const optimisticCard: ContactCard = {
@@ -1059,6 +1023,14 @@ export function useContactsController({
           if (!operations) return;
           const created = await operations.createCard(body, { signal });
           setCards((prev) => prev.map((card) => (card.id === optimisticId ? created : card)));
+          if (membersToAdd.length === 0) return;
+          const saved = await patchGroupWithFreshEtag(
+            operations,
+            created.id,
+            (fresh) => groupAddMembersPatch(fresh, membersToAdd),
+            signal,
+          );
+          setCards((prev) => prev.map((card) => (card.id === created.id ? saved : card)));
         },
         undo: rollback,
         onError: rollback,
@@ -1075,7 +1047,8 @@ export function useContactsController({
 
       const cardsToAdd = cardIds
         .map((id) => cards.find((card) => card.id === id))
-        .filter((card): card is ContactCard => card !== undefined);
+        .filter((card): card is ContactCard => card !== undefined)
+        .filter((card) => contactAndGroupShareAddressBook(card, group));
 
       const patch = groupAddMembersPatch(group, cardsToAdd);
       if (!patch) return;
@@ -1118,6 +1091,87 @@ export function useContactsController({
       });
     },
     [L, cards, operations, queueMutation],
+  );
+
+  const removeContactFromGroup = useCallback(
+    (groupId: string, cardIds: string[]) => {
+      if (cardIds.length === 0) return;
+      const group = cards.find((card) => card.id === groupId);
+      if (!group) return;
+
+      const patch = groupRemoveMembersPatch(group, cardIds, cards);
+      if (!patch) return;
+
+      const removedCount = Object.keys(patch.members ?? {}).length;
+      const previousCard = group;
+      const merged: ContactCard = {
+        ...group,
+        members: { ...group.members, ...patch.members } as ContactCard["members"],
+      };
+
+      setCards((prev) => prev.map((card) => (card.id === groupId ? merged : card)));
+      const rollback = () => {
+        setCards((prev) => prev.map((card) => (card.id === groupId ? previousCard : card)));
+      };
+
+      queueMutation({
+        key: `contacts:remove-members:${groupId}:${cardIds.slice().sort().join(",")}`,
+        toastMessage: L.toastRemovedFromGroup(removedCount),
+        icon: <UserMinus className="size-4" />,
+        execute: async (signal) => {
+          if (!operations) return;
+          const saved = await patchGroupWithFreshEtag(
+            operations,
+            groupId,
+            (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
+            signal,
+          );
+          setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
+        },
+        undo: rollback,
+        onError: rollback,
+        undoToastMessage: "Removal undone.",
+      });
+    },
+    [L.toastRemovedFromGroup, cards, operations, queueMutation],
+  );
+
+  const addActiveGroupTag = useCallback(
+    (idOrLabel: string) => {
+      if (!active || createMode || isContactGroupCard(active)) return;
+      const existing = contactGroups.find((group) => group.id === idOrLabel);
+      if (existing) {
+        if (!canWriteContactGroup(existing, addressBooks, Boolean(operations))) return;
+        if (!contactAndGroupShareAddressBook(active, existing)) return;
+        addMembersToGroup(existing.id, [active.id]);
+        return;
+      }
+      if (!canCreateGroup) return;
+      const bookId = firstEnabledAddressBookId(active.addressBookIds);
+      if (!bookId) return;
+      if (!canCreateGroupInAddressBook(addressBooks.find((row) => row.id === bookId))) return;
+      createGroup(idOrLabel, bookId, [active.id]);
+    },
+    [
+      active,
+      addMembersToGroup,
+      addressBooks,
+      canCreateGroup,
+      contactGroups,
+      createGroup,
+      createMode,
+      operations,
+    ],
+  );
+
+  const removeActiveGroupTag = useCallback(
+    (groupId: string) => {
+      if (!active || createMode) return;
+      const group = contactGroups.find((card) => card.id === groupId);
+      if (!group || !canWriteContactGroup(group, addressBooks, Boolean(operations))) return;
+      removeContactFromGroup(groupId, [active.id]);
+    },
+    [active, addressBooks, contactGroups, createMode, operations, removeContactFromGroup],
   );
 
   const persistContactEdit = useCallback(
@@ -1204,7 +1258,10 @@ export function useContactsController({
     if (!editDraft || !createMode) return;
 
     if (!contactEditDraftHasContent(editDraft)) return;
-    const body = editDraftToCreateBody(editDraft, resolveCreateAddressBookIds(view, addressBooks));
+    const body = editDraftToCreateBody(
+      editDraft,
+      resolveCreateAddressBookIds(view, addressBooks, cards),
+    );
     const optimisticId = `card-${newContactMapId()}`;
     const optimisticCard: ContactCard = {
       "@type": "Card",
@@ -1214,8 +1271,9 @@ export function useContactsController({
       ...body,
     };
     const previousCards = cards;
+    const groupId = selectedGroup?.id;
 
-    setCards((prev) => [optimisticCard, ...prev]);
+    setCards((prev) => cardsWithGroupMember([optimisticCard, ...prev], groupId, optimisticCard));
     setCreateMode(false);
     setEditMode(false);
     setEditDraft(null);
@@ -1232,14 +1290,36 @@ export function useContactsController({
       execute: async (signal) => {
         if (!operations) return;
         const created = await operations.createCard(body, { signal });
-        setCards((prev) => prev.map((card) => (card.id === optimisticId ? created : card)));
+        setCards((prev) => {
+          const replaced = prev.map((card) => (card.id === optimisticId ? created : card));
+          return cardsWithGroupMember(replaced, groupId, created);
+        });
         setActiveId(created.id);
+
+        if (!groupId) return;
+        const saved = await patchGroupWithFreshEtag(
+          operations,
+          groupId,
+          (fresh) => groupAddMembersPatch(fresh, [created]),
+          signal,
+        );
+        setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
       },
       undo: rollback,
       onError: rollback,
       undoToastMessage: "Create undone.",
     });
-  }, [L.toastCreated, addressBooks, cards, createMode, editDraft, operations, queueMutation, view]);
+  }, [
+    L.toastCreated,
+    addressBooks,
+    cards,
+    createMode,
+    editDraft,
+    operations,
+    queueMutation,
+    selectedGroup,
+    view,
+  ]);
 
   useWorkspaceListKeyboardShortcuts({
     searchInputRef,
@@ -1344,6 +1424,13 @@ export function useContactsController({
     setSearchQuery,
     createContact,
     handleImportVcf,
+    importFiles,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    importDialogProgress,
+    closeImportDialog,
+    submitImportDialog,
     dropImportActive,
     setDropImportActive,
     fileInputRef,
@@ -1355,16 +1442,12 @@ export function useContactsController({
     downloadSelected,
     openDeleteConfirm,
     updateEditDraft,
-    addPhone,
-    addEmail,
-    addAddress,
     updatePhone,
     updateEmail,
     updatePhoneContext,
     updateEmailContext,
     updateAddress,
     updateAddressContext,
-    addUrl,
     updateUrl,
     updateUrlContext,
     removeUrl,
@@ -1373,12 +1456,17 @@ export function useContactsController({
     removeAddress,
     requestDeleteSelected,
     removeFromGroup,
+    removeContactFromGroup,
+    addActiveGroupTag,
+    removeActiveGroupTag,
     renameGroup,
     deleteGroup,
     openDeleteGroupConfirm,
     createGroup,
     setGroupRenameDialog,
     addMembersToGroup,
+    hiddenAddressBookIds,
+    toggleAddressBookVisibility,
   };
 }
 

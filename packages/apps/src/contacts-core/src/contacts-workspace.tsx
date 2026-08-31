@@ -1,4 +1,4 @@
-import { EditDialog } from "@/dialogs/src/dialogs";
+import { useCallback, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -8,13 +8,46 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/ui/tooltip";
+import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
+import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
 import { ContactsDetailView } from "@/contacts-core/src/contacts-detail-view";
 import { ContactsListPanel } from "@/contacts-core/src/contacts-list-panel";
 import { ContactsNewMenu } from "@/contacts-core/src/contacts-new-menu";
+import {
+  ContactsAddressBookDialog,
+  contactsAddressBookDialogLabelsFrom,
+} from "@/contacts-core/src/contacts-addressbook-dialog";
+import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+import {
+  ContactsCreateGroupDialog,
+  contactsCreateGroupDialogLabelsFrom,
+} from "@/contacts-core/src/contacts-create-group-dialog";
+import {
+  ContactsEditGroupDialog,
+  contactsEditGroupDialogLabelsFrom,
+} from "@/contacts-core/src/contacts-edit-group-dialog";
+import { ContactsSidebarBookRows } from "@/contacts-core/src/contacts-sidebar-book-rows";
+import { ContactsSidebarGroupRows } from "@/contacts-core/src/contacts-sidebar-group-rows";
+import {
+  ContactsImportDialog,
+  contactsImportDialogLabelsFrom,
+} from "@/contacts-core/src/contacts-import-dialog";
+import {
+  contactsBookViewKey,
+  writableGroupAddressBooks,
+} from "@/contacts-core/src/contacts-addressbook-write";
+import { VCF_FILE_ACCEPT } from "@/contacts-core/src/contacts-vcard-import";
+import { contactDetailGroupTags } from "@/contacts-core/src/contacts-detail-groups";
+import {
+  canWriteContactGroup,
+  contactAndGroupShareAddressBook,
+  contactsGroupViewKey,
+} from "@/contacts-core/src/contacts-group-utils";
 import type { ContactsWorkspaceProps } from "@/contacts-core/src/contacts-workspace-props";
-import { useCallback } from "react";
 import { useContactsController } from "@/contacts-core/src/use-contacts-controller";
+import { useContactsAddressBookMutations } from "@/contacts-core/src/use-contacts-addressbook-mutations";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useContactsFailedSync } from "@/contacts-core/src/use-contacts-failed-sync";
@@ -46,6 +79,7 @@ export function ContactsWorkspace({
 
   const {
     L,
+    cards,
     active,
     activeId,
     view,
@@ -64,8 +98,6 @@ export function ContactsWorkspace({
     canCreateContact,
     canImportVcf,
     canCreateGroup,
-    canRenameGroup,
-    canDeleteGroup,
     canEdit,
     canSaveCreate,
     confirmDialog,
@@ -80,6 +112,10 @@ export function ContactsWorkspace({
     itemDragHandlers,
     sidebarDropZoneProps,
     addMembersToGroup,
+    addActiveGroupTag,
+    removeActiveGroupTag,
+    hiddenAddressBookIds,
+    toggleAddressBookVisibility,
     handleSelect,
     enterSelectionFor,
     closeMobileDetail,
@@ -87,6 +123,13 @@ export function ContactsWorkspace({
     setSearchQuery,
     createContact,
     handleImportVcf,
+    importFiles,
+    importDialogOpen,
+    importDialogBusy,
+    importDialogError,
+    importDialogProgress,
+    closeImportDialog,
+    submitImportDialog,
     dropImportActive,
     setDropImportActive,
     fileInputRef,
@@ -96,9 +139,6 @@ export function ContactsWorkspace({
     deleteActive,
     downloadActive,
     updateEditDraft,
-    addPhone,
-    addEmail,
-    addAddress,
     updatePhone,
     updateEmail,
     updatePhoneContext,
@@ -108,14 +148,14 @@ export function ContactsWorkspace({
     removePhone,
     removeEmail,
     removeAddress,
-    addUrl,
     updateUrl,
     updateUrlContext,
     removeUrl,
     contactGroups,
+    addressBooks,
     renameGroup,
+    deleteGroup,
     openDeleteConfirm,
-    openDeleteGroupConfirm,
     removeFromGroup,
     setGroupRenameDialog,
   } = useContactsController({
@@ -149,14 +189,43 @@ export function ContactsWorkspace({
     onRetry: handleRetrySync,
   });
 
-  const { primarySidebarItems, groupSidebarItems } = useContactsSidebarModel({
+  const bookMutations = useContactsAddressBookMutations({
+    labels: L,
+    operations,
+    addressBooks,
+    view,
+    selectView,
+  });
+  const {
+    books,
+    addressBookDialog,
+    setAddressBookDialog,
+    openEditAddressBookDialog,
+    patchShareWith,
+    hideSharedAddressBook,
+  } = bookMutations;
+
+  const { primarySidebarItems, ownedAddressBooks, sharedAddressBooks } = useContactsSidebarModel({
     labels: L,
     view,
-    contactGroups,
+    addressBooks: books,
     selectView,
-    sidebarDropZoneProps,
-    addMembersToGroup,
   });
+
+  const editingGroup = groupRenameDialog
+    ? contactGroups.find((card) => card.id === groupRenameDialog.groupId)
+    : undefined;
+  const canDeleteEditingGroup = canWriteContactGroup(
+    editingGroup,
+    addressBooks,
+    Boolean(operations),
+  );
+
+  const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
+  const searchSharePrincipals = useCallback(
+    async (query: string) => searchCollectionSharePrincipals(query, session.user.username),
+    [session.user.username],
+  );
 
   const browserTitleContext = active && selectedIds.length <= 1 ? displayName : viewLabel;
   useDocumentTitle(browserTitleContext);
@@ -170,39 +239,103 @@ export function ContactsWorkspace({
           className: cn("contacts-workspace", className),
         }}
         sidebar={(c) => (
-          <AppSidebar
-            open={c.sidebarOpen}
-            onCloseMobile={c.closeSidebar}
-            footer={
-              <WorkspaceUserFooter
-                name={session.user.displayName}
-                initials={workspaceUserInitials(session.user)}
-                detailLine={session.user.username}
-                onLogoutClick={onLogout}
-              />
-            }
-            primaryButton={
-              <ContactsNewMenu
-                labels={L}
-                disabled={!canCreateContact}
-                onCreateContact={() => {
-                  createContact();
-                  closeSidebarOnMobile(c.closeSidebar);
-                }}
-                onImportVcf={() => fileInputRef.current?.click()}
-              />
-            }
-          >
-            <SidebarSection items={primarySidebarItems} />
-            {canCreateGroup || groupSidebarItems.length > 0 ? (
-              <SidebarSection
-                title={L.sectionGroups}
-                items={groupSidebarItems}
-                onAdd={canCreateGroup ? () => setCreateGroupDialog(true) : undefined}
-                addLabel={L.newGroup}
-              />
-            ) : null}
-          </AppSidebar>
+          <TooltipProvider delayDuration={0}>
+            <AppSidebar
+              open={c.sidebarOpen}
+              onCloseMobile={c.closeSidebar}
+              footer={
+                <WorkspaceUserFooter
+                  name={session.user.displayName}
+                  initials={workspaceUserInitials(session.user)}
+                  detailLine={session.user.username}
+                  onLogoutClick={onLogout}
+                />
+              }
+              primaryButton={
+                <ContactsNewMenu
+                  labels={L}
+                  disabled={!canCreateContact}
+                  onCreateContact={() => {
+                    createContact();
+                    closeSidebarOnMobile(c.closeSidebar);
+                  }}
+                  onCreateGroup={canCreateGroup ? () => setCreateGroupDialog(true) : undefined}
+                  onImportVcf={canImportVcf ? () => fileInputRef.current?.click() : undefined}
+                />
+              }
+            >
+              <SidebarSection items={primarySidebarItems} />
+              {ownedAddressBooks.length > 0 ? (
+                <SidebarSection title={L.sectionAddressBooks}>
+                  <ContactsSidebarBookRows
+                    books={ownedAddressBooks}
+                    view={view}
+                    editLabel={L.editAddressBook}
+                    viewOnlyLabel={L.viewOnly}
+                    hiddenAddressBookIds={hiddenAddressBookIds}
+                    onToggleVisibility={toggleAddressBookVisibility}
+                    onSelect={(bookId) => {
+                      selectView(contactsBookViewKey(bookId));
+                      closeSidebarOnMobile(c.closeSidebar);
+                    }}
+                    onEdit={openEditAddressBookDialog}
+                  />
+                </SidebarSection>
+              ) : null}
+              {sharedAddressBooks.length > 0 ? (
+                <SidebarSection title={L.sidebarSharedWithMe}>
+                  <ContactsSidebarBookRows
+                    books={sharedAddressBooks}
+                    view={view}
+                    editLabel={L.editAddressBook}
+                    viewOnlyLabel={L.viewOnly}
+                    hiddenAddressBookIds={hiddenAddressBookIds}
+                    onToggleVisibility={toggleAddressBookVisibility}
+                    onSelect={(bookId) => {
+                      selectView(contactsBookViewKey(bookId));
+                      closeSidebarOnMobile(c.closeSidebar);
+                    }}
+                    onEdit={openEditAddressBookDialog}
+                  />
+                </SidebarSection>
+              ) : null}
+              {contactGroups.length > 0 ? (
+                <SidebarSection title={L.sectionGroups}>
+                  <ContactsSidebarGroupRows
+                    groups={contactGroups}
+                    view={view}
+                    editLabel={L.renameGroup}
+                    canEditGroup={(group) =>
+                      canWriteContactGroup(group, addressBooks, Boolean(operations))
+                    }
+                    onSelect={(groupId) => {
+                      selectView(contactsGroupViewKey(groupId));
+                      closeSidebarOnMobile(c.closeSidebar);
+                    }}
+                    onEdit={(group) =>
+                      setGroupRenameDialog({
+                        groupId: group.id,
+                        name: contactDisplayName(group),
+                      })
+                    }
+                    dropZoneProps={(groupId) => {
+                      const group = contactGroups.find((card) => card.id === groupId);
+                      return sidebarDropZoneProps(
+                        contactsGroupViewKey(groupId),
+                        (ids) => addMembersToGroup(groupId, ids),
+                        (ids) =>
+                          Boolean(group) &&
+                          ids.every((id) => {
+                            const card = cards.find((row) => row.id === id);
+                            return Boolean(card && contactAndGroupShareAddressBook(card, group));
+                          }),
+                      );
+                    }}
+                  />
+                </SidebarSection>
+              ) : null}
+            </AppSidebar>
+          </TooltipProvider>
         )}
         list={(c) => {
           const panel = ContactsListPanel({
@@ -212,10 +345,6 @@ export function ContactsWorkspace({
             viewLabel,
             view,
             selectedGroupId: selectedGroup?.id ?? null,
-            canRenameGroup,
-            openGroupRenameDialog: (groupId, name) => setGroupRenameDialog({ groupId, name }),
-            canDeleteGroup,
-            onDeleteGroup: openDeleteGroupConfirm,
             selectedIds,
             selectionMode: selectionMode || selectedIds.length > 1,
             listLoading,
@@ -292,6 +421,15 @@ export function ContactsWorkspace({
             );
           }
           if (!active && !createMode) return null;
+          const groupTagsModel = contactDetailGroupTags({
+            card: active,
+            createMode,
+            groups: contactGroups,
+            allCards: cards,
+            addressBooks,
+            hasOperations: Boolean(operations),
+            canCreateGroup,
+          });
           return (
             <ContactsDetailView
               labels={L}
@@ -300,17 +438,25 @@ export function ContactsWorkspace({
               editMode={editMode}
               editDraft={editDraft}
               displayName={displayName}
+              groupTags={
+                groupTagsModel.show
+                  ? {
+                      assigned: groupTagsModel.assigned,
+                      suggestions: groupTagsModel.suggestions,
+                      readonly: groupTagsModel.readonly,
+                      allowCreate: groupTagsModel.allowCreate,
+                      onAdd: addActiveGroupTag,
+                      onRemove: removeActiveGroupTag,
+                    }
+                  : undefined
+              }
               onDraftChange={updateEditDraft}
-              onAddPhone={addPhone}
-              onAddEmail={addEmail}
-              onAddAddress={addAddress}
               onUpdatePhone={updatePhone}
               onUpdateEmail={updateEmail}
               onUpdatePhoneContext={updatePhoneContext}
               onUpdateEmailContext={updateEmailContext}
               onUpdateAddress={updateAddress}
               onUpdateAddressContext={updateAddressContext}
-              onAddUrl={addUrl}
               onUpdateUrl={updateUrl}
               onUpdateUrlContext={updateUrlContext}
               onRemoveUrl={removeUrl}
@@ -325,7 +471,7 @@ export function ContactsWorkspace({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".vcf,.vcard,text/vcard,text/x-vcard,application/vcard"
+        accept={VCF_FILE_ACCEPT}
         multiple
         className="hidden"
         aria-label={L.importVcf}
@@ -335,28 +481,80 @@ export function ContactsWorkspace({
         }}
       />
 
+      {importFiles ? (
+        <ContactsImportDialog
+          open={importDialogOpen}
+          files={importFiles}
+          books={addressBooks}
+          view={view}
+          labels={contactsImportDialogLabelsFrom(L)}
+          busy={importDialogBusy}
+          error={importDialogError}
+          progress={importDialogProgress}
+          onClose={closeImportDialog}
+          onImport={submitImportDialog}
+        />
+      ) : null}
+
       {confirmDialog}
 
-      <EditDialog
-        item={groupRenameDialog ? { kind: "group", name: groupRenameDialog.name } : null}
+      <ContactsEditGroupDialog
+        open={groupRenameDialog !== null}
+        name={groupRenameDialog?.name ?? ""}
+        addressBookIds={editingGroup?.addressBookIds}
+        books={addressBooks}
+        labels={contactsEditGroupDialogLabelsFrom(L)}
+        canDelete={canDeleteEditingGroup}
         onClose={() => setGroupRenameDialog(null)}
         onConfirm={(newName) => {
           if (!groupRenameDialog) return;
           renameGroup(groupRenameDialog.groupId, newName);
           setGroupRenameDialog(null);
         }}
-        contentClassName="contacts-dialog-surface"
+        onDelete={
+          canDeleteEditingGroup
+            ? () => {
+                if (!groupRenameDialog) return;
+                const groupId = groupRenameDialog.groupId;
+                setGroupRenameDialog(null);
+                deleteGroup(groupId);
+              }
+            : undefined
+        }
       />
 
-      <EditDialog
-        item={createGroupDialog ? { kind: "group", name: "" } : null}
-        title={L.newGroup}
+      <ContactsCreateGroupDialog
+        open={createGroupDialog}
+        books={writableGroupAddressBooks(addressBooks)}
+        view={view}
+        labels={contactsCreateGroupDialogLabelsFrom(L)}
         onClose={() => setCreateGroupDialog(false)}
-        onConfirm={(name) => {
-          createGroup(name);
+        onConfirm={(name, addressBookId) => {
+          createGroup(name, addressBookId);
           setCreateGroupDialog(false);
         }}
-        contentClassName="contacts-dialog-surface"
+      />
+
+      <ContactsAddressBookDialog
+        dialog={addressBookDialog}
+        labels={contactsAddressBookDialogLabelsFrom(L)}
+        onClose={() => setAddressBookDialog(null)}
+        share={
+          addressBookDialog?.mayShare
+            ? {
+                online,
+                onSearchPrincipals: searchSharePrincipals,
+                onPatchShareWith: patchShareWith,
+              }
+            : undefined
+        }
+        onRemoveShared={
+          addressBookDialog?.isSharee
+            ? () => {
+                void hideSharedAddressBook(addressBookDialog.bookId);
+              }
+            : undefined
+        }
       />
     </>
   );
