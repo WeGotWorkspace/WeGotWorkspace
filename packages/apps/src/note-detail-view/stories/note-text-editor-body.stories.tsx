@@ -10,7 +10,7 @@ First paragraph with **bold** and _italic_ text.
 - [ ] Action item one
 - [x] Action item two
 
-> Pull quote from the meeting notes.
+> Kunnen we nog iets typen?
 `;
 
 const meta: Meta<typeof NoteTextEditorBody> = {
