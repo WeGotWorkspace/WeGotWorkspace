@@ -9,6 +9,7 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -54,6 +55,7 @@ import {
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
+import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -229,11 +231,32 @@ export function NotesWorkspace({
     onNoteChange,
   });
 
+  const [focusTitleAfterCreate, setFocusTitleAfterCreate] = useState(false);
+  const beginCreateNote = useCallback(() => {
+    createNote();
+    setFocusTitleAfterCreate(true);
+  }, [createNote]);
+  const selectViewClearingTitleFocus = useCallback(
+    (nextView: string) => {
+      setFocusTitleAfterCreate(false);
+      selectView(nextView);
+    },
+    [selectView],
+  );
+  const handleSelectClearingTitleFocus = useCallback(
+    (id: string, event: ReactMouseEvent) => {
+      setFocusTitleAfterCreate(false);
+      handleSelect(id, event);
+    },
+    [handleSelect],
+  );
+
   const {
     primarySidebarItems,
     ownedNotebooks,
     sharedNotebooks: sharedNotebookRows,
     tagSidebarTags,
+    showTagsSection,
   } = useNotesSidebarModel({
     labels: L,
     view,
@@ -241,7 +264,7 @@ export function NotesWorkspace({
     sharedNotebooks,
     notebookCollections,
     tags,
-    selectView,
+    selectView: selectViewClearingTitleFocus,
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
@@ -310,8 +333,12 @@ export function NotesWorkspace({
     undefined,
   );
 
+  const activeNoteId = active?.id;
+  const collabEtagRef = useRef(active?.etag ?? "");
+  if (active?.etag) collabEtagRef.current = active.etag;
+
   useEffect(() => {
-    if (!wgwLiveApiEnabled() || !active) {
+    if (!wgwLiveApiEnabled() || !activeNoteId) {
       setNoteCollabUrls(undefined);
       return;
     }
@@ -320,9 +347,13 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
+    if (isLocalTempNoteId(activeNoteId)) {
+      setNoteCollabUrls(undefined);
+      return;
+    }
     setAccessLost(false);
     let cancelled = false;
-    void buildNoteCollabUrls(active.id, active.etag ?? "", {
+    void buildNoteCollabUrls(activeNoteId, collabEtagRef.current, {
       onPersistForbidden: () => {
         setAccessLost(true);
         setNoteCollabUrls(undefined);
@@ -330,6 +361,9 @@ export function NotesWorkspace({
       onReconnectConflict: () => setReconnectConflict(true),
       getLocalDirty,
       onPersistSuccess: markEditorSaved,
+      onEtag: (etag) => {
+        collabEtagRef.current = etag;
+      },
     })
       .then((urls) => {
         if (!cancelled) {
@@ -345,7 +379,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [active, getLocalDirty, markEditorSaved, setReconnectConflict]);
+  }, [activeNoteId, getLocalDirty, markEditorSaved, setReconnectConflict]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).
@@ -455,7 +489,7 @@ export function NotesWorkspace({
                 labels={L}
                 disabled={!canCreateNote}
                 onCreateNote={() => {
-                  createNote();
+                  beginCreateNote();
                   closeSidebarOnMobile(c.closeSidebar);
                 }}
                 onCreateNotebook={canManageNotebooks ? () => openCreateNotebook() : undefined}
@@ -473,7 +507,7 @@ export function NotesWorkspace({
                   hiddenNotebookIds={hiddenNotebookIds}
                   onToggleVisibility={toggleNotebookVisibility}
                   onSelect={(notebookId) => {
-                    selectView(notebookViewKey(notebookId));
+                    selectViewClearingTitleFocus(notebookViewKey(notebookId));
                     closeSidebarOnMobile(c.closeSidebar);
                   }}
                   onEdit={openEditNotebookDialog}
@@ -492,7 +526,7 @@ export function NotesWorkspace({
                   hiddenNotebookIds={hiddenNotebookIds}
                   onToggleVisibility={toggleNotebookVisibility}
                   onSelect={(notebookId) => {
-                    selectView(notebookViewKey(notebookId));
+                    selectViewClearingTitleFocus(notebookViewKey(notebookId));
                     closeSidebarOnMobile(c.closeSidebar);
                   }}
                   onEdit={openEditNotebookDialog}
@@ -501,25 +535,29 @@ export function NotesWorkspace({
                 />
               </SidebarSection>
             ) : null}
-            <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
-              {tagSidebarTags.map(({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
-                <li key={tag}>
-                  <button
-                    type="button"
-                    className={cn(
-                      "notes-sidebar-tags__item",
-                      selected && "notes-sidebar-tags__item--selected",
-                      isDropTarget && "notes-sidebar-tags__item--drop-target",
-                    )}
-                    onClick={onSelect}
-                    aria-pressed={selected}
-                    {...dropHandlers}
-                  >
-                    <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
-                  </button>
-                </li>
-              ))}
-            </SidebarSection>
+            {showTagsSection ? (
+              <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
+                {tagSidebarTags.map(
+                  ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
+                    <li key={tag}>
+                      <button
+                        type="button"
+                        className={cn(
+                          "notes-sidebar-tags__item",
+                          selected && "notes-sidebar-tags__item--selected",
+                          isDropTarget && "notes-sidebar-tags__item--drop-target",
+                        )}
+                        onClick={onSelect}
+                        aria-pressed={selected}
+                        {...dropHandlers}
+                      >
+                        <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
+                      </button>
+                    </li>
+                  ),
+                )}
+              </SidebarSection>
+            ) : null}
           </AppSidebar>
         )}
         list={(c) =>
@@ -542,7 +580,7 @@ export function NotesWorkspace({
             archived,
             activeId,
             isItemDragging,
-            handleSelect,
+            handleSelect: handleSelectClearingTitleFocus,
             enterSelectionFor,
             itemDragHandlers,
             openDeleteConfirmForArchive: openDeleteConfirm,
@@ -612,6 +650,8 @@ export function NotesWorkspace({
                 contentRevision={formatNoteDateForList(active.date)}
                 title={active.title ?? ""}
                 titlePlaceholder={L.titlePlaceholder}
+                autoFocusTitle={focusTitleAfterCreate && !noteReadOnly}
+                onAutoFocusTitleConsumed={() => setFocusTitleAfterCreate(false)}
                 onTitleChange={
                   noteReadOnly ? undefined : (title) => updateNote(active.id, { title })
                 }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import type { Editor } from "@tiptap/react";
+import { useEditor, type Editor, type UseEditorOptions } from "@tiptap/react";
 import { isChangeOrigin } from "@tiptap/extension-collaboration";
-import { useEditor } from "@tiptap/react";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { cn } from "@/lib/utils";
@@ -34,6 +33,11 @@ export type DocsCollabEditorProps = {
   viewSource?: boolean;
   /** When false, the TipTap surface rejects typing (view / comment-only). */
   editable?: boolean;
+  /**
+   * TipTap mount focus. Default focuses the end of an editable doc (existing
+   * notes). Pass `false` when another field (e.g. a new-note title) should keep focus.
+   */
+  autofocus?: UseEditorOptions["autofocus"];
   /**
    * When true, formatting controls on the bar are disabled (comment-only share).
    * Comment control remains independently gated via `commentsDisabled`.
@@ -72,6 +76,7 @@ export function DocsCollabEditor({
   sheetFill = false,
   viewSource = false,
   editable = true,
+  autofocus,
   formattingDisabled = false,
   className,
   onMarkdownChange,
@@ -120,7 +125,7 @@ export function DocsCollabEditor({
     {
       editable,
       enableContentCheck: false,
-      autofocus: editable ? "end" : false,
+      autofocus: autofocus ?? (editable ? "end" : false),
       immediatelyRender: false,
       extensions: createCollaborativeTextEditorExtensions({
         format,
