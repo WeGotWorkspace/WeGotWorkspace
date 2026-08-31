@@ -529,7 +529,7 @@ export function NotesWorkspace({
           })
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}
-        actionBar={(c) =>
+        actionBar={(_c) =>
           !showSingleNoteDetail ? null : (
             <NotesDetailActionBar
               active={active}
