@@ -43,6 +43,10 @@ export type NotesUILabels = {
   fallbackViewTitle: string;
   toastNewNote: string;
   toastSaved: string;
+  toastNotebookCreated: string;
+  toastNotebookUpdated: string;
+  toastNotebookDeleted: (name: string) => string;
+  toastNotebookShareRemoved: string;
   toastSynced: string;
   selectionStar: string;
   selectionArchive: string;
@@ -141,6 +145,10 @@ export const defaultNotesLabels: NotesUILabels = {
   fallbackViewTitle: "Writings",
   toastNewNote: "New note",
   toastSaved: "Note saved",
+  toastNotebookCreated: "Notebook created",
+  toastNotebookUpdated: "Notebook updated",
+  toastNotebookDeleted: (name) => `Notebook “${name}” deleted`,
+  toastNotebookShareRemoved: "Notebook removed",
   toastSynced: "Changes synced",
   selectionStar: "Star",
   selectionArchive: "Archive",
