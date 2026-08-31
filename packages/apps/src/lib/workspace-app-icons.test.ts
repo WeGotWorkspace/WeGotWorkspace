@@ -50,6 +50,19 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
     expect(contacts).toContain('d="M256 280C284.719');
     expect(contacts).not.toContain('d="M337 208H175');
   });
+
+  it("keeps notes artwork in yellow tints, not white paper or ink", () => {
+    const notes = WORKSPACE_APP_ICON_INLINE.notes;
+
+    expect(notes).toContain("#f6d176");
+    expect(notes).toContain("#fef8ea");
+    expect(notes).toContain("#f0bc3a");
+    expect(notes).not.toContain("#fae6b4");
+    expect(notes).not.toContain("#f0c55e");
+    expect(notes).not.toContain("#f9dea0");
+    expect(notes).not.toMatch(/--wai-fg,\s*white/);
+    expect(notes).not.toMatch(/#000|#111|#333|#666|#999|#ccc/i);
+  });
 });
 
 describe("workspaceAppIconUiSrc mapping", () => {

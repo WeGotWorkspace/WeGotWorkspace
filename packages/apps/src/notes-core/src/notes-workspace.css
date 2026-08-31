@@ -206,12 +206,40 @@
 }
 
 .notes-workspace .app-sidebar__scroll {
-  /* New note: ink fill + warm-yellow label (same pair as selected chips). */
-  --button-primary-bg: var(--color-ink, #042a22);
-  --button-primary-fg: var(--notes-accent);
+  /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
+  --button-primary-bg: var(--notes-accent);
+  --button-primary-fg: var(--color-ink);
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
+}
+
+/**
+ * App switcher lockup: yellow tile + yellow-tint notepad. Default invert uses
+ * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the
+ * mark — that reads as muddy olive. Layers stay in the notes.svg yellow family
+ * (`#f6d176` tile / `#f0bc3a` header+lines / `#fef8ea` almost-white sheet).
+ */
+.notes-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--notes-accent);
+  --app-switch-icon-fg: color-mix(
+    in oklab,
+    var(--notes-accent) 14%,
+    var(--color-cream, #ffffff)
+  );
+  background-color: var(--app-switch-icon-bg);
+}
+
+.notes-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: var(--app-switch-icon-fg);
+  --wai-detail: #f0bc3a;
+  --wai-cutout: #f0bc3a;
 }
 
 /**

@@ -187,6 +187,32 @@ describe("notes workspace selected tag chips", () => {
   });
 });
 
+describe("notes workspace app-switch lockup", () => {
+  it("paints the sidebar mark in yellow tints, not ink or gray", () => {
+    expect(css).toMatch(
+      /\.notes-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--notes-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-fg:\s*color-mix\(\s*in oklab,\s*var\(--notes-accent\) 14%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--app-switch-icon-fg\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-detail:\s*#f0bc3a/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-cutout:\s*#f0bc3a/,
+    );
+    const lockup = css.slice(css.indexOf("App switcher lockup"));
+    const lockupEnd = lockup.indexOf(".notes-dialog-surface");
+    const lockupBlock = lockupEnd === -1 ? lockup : lockup.slice(0, lockupEnd);
+    expect(lockupBlock).not.toMatch(/--color-ink/);
+    expect(lockupBlock).not.toMatch(/--notes-accent-strong/);
+    expect(lockupBlock).not.toMatch(/#000\b|#111|#333/);
+  });
+});
+
 describe("notes workspace action-bar selected Star/Archive", () => {
   it("colors selected action-bar icons with --notes-detail-accent, not leftover gold", () => {
     expect(css).toMatch(

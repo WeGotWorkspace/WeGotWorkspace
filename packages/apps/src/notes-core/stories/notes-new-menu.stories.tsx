@@ -33,15 +33,15 @@ export const Default: Story = {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     await expect(workspace).toBeTruthy();
     const main = canvas.getByRole("button", { name: defaultNotesLabels.newNote });
-    const ink = document.createElement("span");
-    ink.style.backgroundColor = "var(--color-ink)";
     const accent = document.createElement("span");
-    accent.style.color = "var(--notes-accent)";
+    accent.style.backgroundColor = "var(--notes-accent)";
+    const ink = document.createElement("span");
+    ink.style.color = "var(--color-ink)";
     workspace!.append(ink, accent);
     await expect(getComputedStyle(main).backgroundColor).toBe(
-      getComputedStyle(ink).backgroundColor,
+      getComputedStyle(accent).backgroundColor,
     );
-    await expect(getComputedStyle(main).color).toBe(getComputedStyle(accent).color);
+    await expect(getComputedStyle(main).color).toBe(getComputedStyle(ink).color);
     ink.remove();
     accent.remove();
 
