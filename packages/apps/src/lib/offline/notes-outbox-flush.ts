@@ -124,6 +124,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             notebook: String(payload.notebook ?? ""),
             archived: Boolean(payload.archived),
             ...(groupSlug ? { groupSlug } : {}),
+            ...(typeof payload.etag === "string" && payload.etag ? { etag: payload.etag } : {}),
           });
         } catch (error) {
           if (isPreconditionFailed(error)) {

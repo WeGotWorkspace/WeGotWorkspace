@@ -307,10 +307,18 @@ export async function updateNoteItem(
 
 export async function deleteNoteItem(
   id: string,
-  _body: { notebook: string; archived: boolean; groupSlug?: string | null },
+  body: { notebook: string; archived: boolean; groupSlug?: string | null; etag?: string },
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  await deleteVjournalNote(id, opts);
+  const apply = async (ifMatch: string | undefined) =>
+    deleteVjournalNote(id, { ...opts, ifMatch });
+  const ifMatch = await ifMatchForNote(id, body.etag, opts);
+  try {
+    await apply(ifMatch);
+  } catch (error) {
+    if (!isNotePreconditionFailed(error)) throw error;
+    await apply(await ifMatchForNote(id, undefined, opts));
+  }
 }
 
 function isNotePreconditionFailed(error: unknown): boolean {

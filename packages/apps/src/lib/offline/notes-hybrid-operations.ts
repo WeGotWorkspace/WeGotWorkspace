@@ -44,6 +44,7 @@ import {
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
+import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes-outbox-flush";
@@ -161,7 +162,7 @@ async function queueOfflineUpsert(
 
 async function queueOfflineDelete(
   username: string,
-  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
+  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope" | "etag">,
 ): Promise<void> {
   await removeOutboxMutationsForNote(username, note.id);
   await removeNoteFromCache(username, note.id);
@@ -173,6 +174,7 @@ async function queueOfflineDelete(
       noteId: note.id,
       notebook: note.notebook,
       archived: !!note.archived,
+      ...(note.etag ? { etag: note.etag } : {}),
       ...(note.scope === "group" && note.groupSlug?.trim()
         ? { groupSlug: note.groupSlug.trim() }
         : {}),
@@ -180,10 +182,15 @@ async function queueOfflineDelete(
   });
 }
 
+type NoteDeleteTarget = Pick<
+  Note,
+  "id" | "notebook" | "archived" | "groupSlug" | "scope" | "etag"
+>;
+
 async function resolveDeleteTarget(
   username: string,
-  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
-): Promise<Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">> {
+  note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope" | "etag">,
+): Promise<NoteDeleteTarget> {
   const cached = note.id ? await resolveCachedNote(username, note.id) : undefined;
   if (cached) {
     return {
@@ -192,6 +199,7 @@ async function resolveDeleteTarget(
       archived: cached.archived ?? note.archived ?? false,
       scope: cached.scope ?? note.scope,
       groupSlug: cached.groupSlug ?? note.groupSlug,
+      ...(cached.etag || note.etag ? { etag: cached.etag ?? note.etag } : {}),
     };
   }
   return {
@@ -200,7 +208,43 @@ async function resolveDeleteTarget(
     archived: !!note.archived,
     scope: note.scope,
     groupSlug: note.groupSlug,
+    ...(note.etag ? { etag: note.etag } : {}),
   };
+}
+
+function deleteNoteItemBody(target: NoteDeleteTarget): {
+  notebook: string;
+  archived: boolean;
+  groupSlug?: string;
+  etag?: string;
+} {
+  return {
+    notebook: target.notebook,
+    archived: !!target.archived,
+    ...(target.scope === "group" && target.groupSlug?.trim()
+      ? { groupSlug: target.groupSlug.trim() }
+      : {}),
+    ...(target.etag ? { etag: target.etag } : {}),
+  };
+}
+
+/** Drop the client temp row and move the UID collab room onto the server-minted id. */
+async function adoptServerCreatedNote(
+  username: string,
+  localId: string,
+  saved: Note,
+): Promise<void> {
+  if (localId && localId !== saved.id) {
+    await migrateNoteCollabPersistenceAfterIdRemap({
+      username,
+      notebook: saved.notebook,
+      tempNoteId: localId,
+      savedNoteId: saved.id,
+      archived: saved.archived,
+    });
+    await removeNoteFromCache(username, localId);
+  }
+  await upsertNoteInCache(username, saved, false);
 }
 
 function groupSlugOpts(
@@ -243,7 +287,7 @@ async function upsertNoteOnline(
         wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
         opts,
       );
-      await upsertNoteInCache(username, saved, false);
+      await adoptServerCreatedNote(username, note.id, saved);
       await runner.flush();
       return saved;
     }
@@ -283,17 +327,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         return;
       }
       try {
-        await deleteNoteItem(
-          target.id,
-          {
-            notebook: target.notebook,
-            archived: !!target.archived,
-            ...(target.scope === "group" && target.groupSlug?.trim()
-              ? { groupSlug: target.groupSlug.trim() }
-              : {}),
-          },
-          opts,
-        );
+        await deleteNoteItem(target.id, deleteNoteItemBody(target), opts);
         await removeNoteFromCache(username, target.id);
         await runner.flush();
       } catch (error) {

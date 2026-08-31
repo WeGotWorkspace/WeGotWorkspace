@@ -203,6 +203,29 @@ describe("flushNotesOutbox", () => {
     expect(result.bootstrap?.data.notes.some((row) => row.id === note.id)).toBe(false);
   });
 
+  it("flushes an archived delete with the cached If-Match etag", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "delete-archived-1",
+      domain: NOTES_DOMAIN,
+      op: "delete",
+      payload: JSON.stringify({
+        noteId: note.id,
+        notebook: note.notebook,
+        archived: true,
+        etag: '"etag-archived"',
+      }),
+    });
+    deleteNoteItem.mockResolvedValue(undefined);
+
+    await flushNotesOutbox(username);
+
+    expect(deleteNoteItem).toHaveBeenCalledWith(note.id, {
+      notebook: note.notebook,
+      archived: true,
+      etag: '"etag-archived"',
+    });
+  });
+
   it("drops Dexie and outbox when a queued archive hits 404", async () => {
     await enqueueOutboxMutation(username, {
       id: "archive-row-1",

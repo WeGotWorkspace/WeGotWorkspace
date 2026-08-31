@@ -10,11 +10,13 @@ vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
     patchNote: vi.fn(),
     starNote: vi.fn(),
     unstarNote: vi.fn(),
+    deleteNote: vi.fn(),
     deleteNotebook: vi.fn(),
   };
 });
 
 import {
+  deleteNote as deleteVjournalNote,
   deleteNotebook as deleteVjournalNotebook,
   getNote,
   listNotebooks,
@@ -23,6 +25,7 @@ import {
 import {
   archiveNoteItem,
   deleteNotebook,
+  deleteNoteItem,
   restoreNoteItem,
   updateNoteItem,
 } from "@/lib/api/wgw/notes";
@@ -109,6 +112,63 @@ describe("archiveNoteItem / restoreNoteItem", () => {
       expect.objectContaining({ ifMatch: '"fresh"' }),
     );
     expect(saved.archived).toBe(true);
+  });
+});
+
+describe("deleteNoteItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listNotebooks).mockResolvedValue(notebooks);
+    vi.mocked(getNote).mockResolvedValue(cancelledRow);
+    vi.mocked(deleteVjournalNote).mockResolvedValue(undefined);
+  });
+
+  it("DELETEs an archived note with If-Match when the client has an etag", async () => {
+    await deleteNoteItem("n-1", {
+      notebook: "General",
+      archived: true,
+      etag: '"etag-2"',
+    });
+
+    expect(deleteVjournalNote).toHaveBeenCalledWith(
+      "n-1",
+      expect.objectContaining({ ifMatch: '"etag-2"' }),
+    );
+    expect(getNote).not.toHaveBeenCalled();
+  });
+
+  it("loads a fresh If-Match when the archived row has no etag", async () => {
+    await deleteNoteItem("n-1", { notebook: "General", archived: true });
+
+    expect(getNote).toHaveBeenCalledWith("n-1", undefined);
+    expect(deleteVjournalNote).toHaveBeenCalledWith(
+      "n-1",
+      expect.objectContaining({ ifMatch: '"etag-2"' }),
+    );
+  });
+
+  it("retries delete once with a fresh If-Match after 412", async () => {
+    vi.mocked(getNote).mockResolvedValue({ ...cancelledRow, etag: '"fresh"' });
+    vi.mocked(deleteVjournalNote)
+      .mockRejectedValueOnce(new NotesVjournalRequestError("DELETE failed (412)", 412))
+      .mockResolvedValueOnce(undefined);
+
+    await deleteNoteItem("n-1", {
+      notebook: "General",
+      archived: true,
+      etag: '"stale"',
+    });
+
+    expect(deleteVjournalNote).toHaveBeenNthCalledWith(
+      1,
+      "n-1",
+      expect.objectContaining({ ifMatch: '"stale"' }),
+    );
+    expect(deleteVjournalNote).toHaveBeenNthCalledWith(
+      2,
+      "n-1",
+      expect.objectContaining({ ifMatch: '"fresh"' }),
+    );
   });
 });
 

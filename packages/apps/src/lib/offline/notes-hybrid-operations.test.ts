@@ -206,8 +206,12 @@ describe("createHybridNotesOperations", () => {
     expect(updateNoteItem).not.toHaveBeenCalled();
   });
 
-  it("resolves archived flag from cached note when deleting from archive", async () => {
-    await upsertNoteInCache(username, { ...note, archived: true }, false);
+  it("resolves archived flag and etag from cached note when deleting from archive", async () => {
+    await upsertNoteInCache(
+      username,
+      { ...note, archived: true, etag: '"etag-archived"' },
+      false,
+    );
     vi.mocked(deleteNoteItem).mockResolvedValue(undefined);
 
     const operations = createHybridNotesOperations(username);
@@ -215,9 +219,36 @@ describe("createHybridNotesOperations", () => {
 
     expect(deleteNoteItem).toHaveBeenCalledWith(
       note.id,
-      { notebook: note.notebook, archived: true },
+      { notebook: note.notebook, archived: true, etag: '"etag-archived"' },
       undefined,
     );
+  });
+
+  it("online create remaps local-* to the server uid and clears pending", async () => {
+    const tempId = "local-abc123";
+    const serverNote = {
+      ...note,
+      id: "11111111-2222-3333-4444-555555555555",
+      etag: '"etag-minted"',
+    };
+    await upsertNoteInCache(username, { ...note, id: tempId }, true);
+    vi.mocked(updateNoteItem).mockRejectedValue(
+      Object.assign(new Error("Note not found"), { status: 404 }),
+    );
+    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.upsertNote({ ...note, id: tempId });
+
+    expect(saved.id).toBe(serverNote.id);
+    expect(saved.etag).toBe('"etag-minted"');
+    expect(createNoteItem).toHaveBeenCalledOnce();
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(tempId)).toBeUndefined();
+    const row = await notesNotesTable(db).get(serverNote.id);
+    expect(row?.pendingSync).toBe(false);
+    expect(JSON.parse(row?.data ?? "{}").id).toBe(serverNote.id);
   });
 
   it("archives online via PATCH STATUS CANCELLED and caches archived", async () => {
