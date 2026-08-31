@@ -1,5 +1,9 @@
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getNote, persistNoteMarkdown } from "@/lib/api/wgw/notes-vjournal";
+import {
+  isNotesPayloadTooLargeError,
+  NOTES_TOO_LARGE_MESSAGE,
+} from "@/notes-core/src/notes-collab-errors";
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
 import {
   isNotesPersistForbidden,
@@ -36,6 +40,12 @@ export async function buildNoteCollabUrls(
     } catch (error) {
       if (resolveNotesPersistAccess(error) === "leave-room") {
         hooks?.onPersistForbidden?.();
+      }
+      if (isNotesPayloadTooLargeError(error)) {
+        throw Object.assign(new Error(NOTES_TOO_LARGE_MESSAGE), {
+          status: 413,
+          cause: error,
+        });
       }
       throw error;
     }

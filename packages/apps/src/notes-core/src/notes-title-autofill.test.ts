@@ -22,17 +22,19 @@ describe("notes title autofill", () => {
     expect(titleFromNoteMarkdown("# Other")).toBeNull();
   });
 
-  it("fills only when SUMMARY is empty; user edits stick", () => {
+  it("fills only when SUMMARY was never set; a user-blanked title sticks", () => {
     expect(shouldAutofillNoteTitle(null)).toBe(true);
-    expect(shouldAutofillNoteTitle("")).toBe(true);
+    expect(shouldAutofillNoteTitle(undefined)).toBe(true);
+    expect(shouldAutofillNoteTitle("")).toBe(false);
     expect(shouldAutofillNoteTitle("Kept")).toBe(false);
     expect(autofillNoteTitle("Kept", "# Other\n\nNotes")).toBe("Kept");
-    expect(autofillNoteTitle("", "# Other\n\nNotes")).toBe("Other");
+    expect(autofillNoteTitle("", "# Other\n\nNotes")).toBe("");
+    expect(autofillNoteTitle(null, "# Other\n\nNotes")).toBe("Other");
     expect(autofillNoteTitle("Event", "Hello\n\nworld")).toBe("Event");
   });
 
   it("autofills a one-character first line only after it is complete", () => {
-    expect(autofillNoteTitle("", "A")).toBeNull();
-    expect(autofillNoteTitle("", "A\n\nrest")).toBe("A");
+    expect(autofillNoteTitle(null, "A")).toBeNull();
+    expect(autofillNoteTitle(null, "A\n\nrest")).toBe("A");
   });
 });

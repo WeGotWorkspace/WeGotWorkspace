@@ -5,7 +5,10 @@ import {
   docsCollabRoomKey,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+import {
+  applyContentSeedToYDoc,
+  readContentFromYDoc,
+} from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 /** y-indexeddb room key = VJOURNAL UID (never a Drive `.notes` path). */
@@ -51,6 +54,20 @@ export async function hasNoteCollabPendingServerSave(uid: string): Promise<boole
     persistence.get(PENDING_SERVER_SAVE_KEY),
   );
   return Boolean(pending);
+}
+
+/** Replace the UID-keyed Y.Doc with server markdown (Decision 6 “Use theirs”). */
+export async function writeNoteCollabOfflineContent(
+  uid: string,
+  markdown: string,
+): Promise<void> {
+  await withRoom(uid, async (ydoc) => {
+    const fragment = ydoc.getXmlFragment("default");
+    ydoc.transact(() => {
+      if (fragment.length > 0) fragment.delete(0, fragment.length);
+    });
+    applyContentSeedToYDoc(ydoc, markdown, "markdown");
+  });
 }
 
 /** Move the UID-keyed crash buffer after an offline create remaps to a server UID. */

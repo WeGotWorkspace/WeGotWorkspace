@@ -15,7 +15,7 @@ import {
 } from "./docs-collab-save-queue";
 import { formatSavedDocStatus } from "./docs-collab-status";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { docSignature, SERVER_ORIGIN } from "./docs-collab-utils";
+import { docSignature, isCollabPayloadTooLarge, SERVER_ORIGIN } from "./docs-collab-utils";
 
 function isServerDivergenceError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
@@ -178,6 +178,13 @@ export function useDocsCollabSave({
       if (isServerDivergenceError(err) && getConnectivitySnapshot()) {
         reportDocsSyncConflicts([room]);
       }
+      if (isCollabPayloadTooLarge(err)) {
+        refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
+        refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
+        await updatePendingState(true, true);
+        setDocStatus("This note is too large to save.");
+        throw err;
+      }
       const failure = saveFailureState(refs.saveRetryMsRef.current);
       refs.saveRetryMsRef.current = failure.saveRetryMs ?? refs.saveRetryMsRef.current;
       refs.nextSaveAttemptAtRef.current =
@@ -194,6 +201,7 @@ export function useDocsCollabSave({
   }, [markPendingWhenUnsaved, refs, room, setDocStatus, updatePendingState, urls]);
 
   const scheduleSave = useCallback(() => {
+    if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
     if (!refs.localDirtySinceLastSaveRef.current && !refs.pendingServerSaveRef.current) return;
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     const delayMs = computeSaveDelayMs(refs.nextSaveAttemptAtRef.current);

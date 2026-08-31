@@ -73,6 +73,7 @@ import {
   type NotesNotebookSelectItem,
 } from "@/notes-core/src/notes-notebook-select";
 import { NotesConflictDialog } from "@/notes-core/src/notes-conflict-dialog";
+import { useNotesReconnectConflict } from "@/notes-core/src/use-notes-reconnect-conflict";
 import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import { Callout } from "@/callout/src/callout";
@@ -248,7 +249,6 @@ export function NotesWorkspace({
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const [accessLost, setAccessLost] = useState(false);
-  const [reconnectConflict, setReconnectConflict] = useState(false);
 
   const activeNotebook = useMemo(() => {
     if (!active) return null;
@@ -290,6 +290,21 @@ export function NotesWorkspace({
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
   const failedSyncCount = useNotesFailedSync(offlineUsername, bootstrapRevision);
+  const {
+    getLocalDirty,
+    markEditorDirty,
+    reconnectConflict,
+    setReconnectConflict,
+    keepMine,
+    useTheirs,
+    resolving: resolvingReconnect,
+    collabEpoch,
+  } = useNotesReconnectConflict({
+    active,
+    pendingNoteIds,
+    applyLocalBodyMarkdown,
+    onRefreshList,
+  });
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
@@ -312,6 +327,7 @@ export function NotesWorkspace({
         setNoteCollabUrls(undefined);
       },
       onReconnectConflict: () => setReconnectConflict(true),
+      getLocalDirty,
     })
       .then((urls) => {
         if (!cancelled) {
@@ -327,7 +343,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [active]);
+  }, [active, getLocalDirty, setReconnectConflict]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).
@@ -361,23 +377,24 @@ export function NotesWorkspace({
       if (!collabSessionActive || !active || !noteBodyCollab) return children;
       return (
         <NoteCollabSession
-          key={noteBodyCollab.urls.room ?? active.id}
+          key={`${noteBodyCollab.urls.room ?? active.id}:${collabEpoch}`}
           initialMarkdown={noteBodyToMarkdown(active.body)}
           userName={noteBodyCollab.userName}
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
-          onBodyMarkdownChange={(markdown, source) =>
+          onBodyMarkdownChange={(markdown, source) => {
+            markEditorDirty(source !== "hydrate");
             applyLocalBodyMarkdown(active.id, markdown, {
               bumpDate: source !== "hydrate",
-            })
-          }
+            });
+          }}
         >
           {children}
         </NoteCollabSession>
       );
     },
-    [active, applyLocalBodyMarkdown, collabSessionActive, noteBodyCollab],
+    [active, applyLocalBodyMarkdown, collabEpoch, collabSessionActive, markEditorDirty, noteBodyCollab],
   );
 
   const handleRetrySync = useCallback(() => {
@@ -696,12 +713,10 @@ export function NotesWorkspace({
       <NotesConflictDialog
         open={reconnectConflict}
         noteTitle={active ? noteListTitle(active) : ""}
+        busy={resolvingReconnect}
         labels={L}
-        onKeepLocal={() => setReconnectConflict(false)}
-        onUseServer={() => {
-          setReconnectConflict(false);
-          onRefreshList?.();
-        }}
+        onKeepLocal={() => void keepMine()}
+        onUseServer={() => void useTheirs()}
       />
 
       {confirmDialog}

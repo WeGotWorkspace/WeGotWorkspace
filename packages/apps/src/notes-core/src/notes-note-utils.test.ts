@@ -85,7 +85,7 @@ describe("notes-note-utils", () => {
     expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("");
   });
 
-  it("never uses FileNode name / local-* id as the list title", () => {
+  it("never uses a local-* id as the list title", () => {
     const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
     expect(isPlaceholderNoteListLabel(localId, localId)).toBe(true);
     expect(isPlaceholderNoteListLabel("Untitled", localId)).toBe(true);
@@ -580,6 +580,11 @@ describe("notes-note-utils", () => {
     const titled = { ...sampleNote, title: "Event", body: [""], excerpt: "" };
     expect(applyNoteBodyMarkdown(titled, "Hello").title).toBe("Event");
     expect(applyNoteBodyMarkdown(titled, "Hello\n\nworld").title).toBe("Event");
+  });
+
+  it("does not refill SUMMARY after the user deliberately blanks the title", () => {
+    const blanked = { ...sampleNote, title: "", body: [""], excerpt: "" };
+    expect(applyNoteBodyMarkdown(blanked, "# Meeting\n\nNotes").title).toBe("");
   });
 
   it("returns the same notes array when hydrate markdown is unchanged", () => {

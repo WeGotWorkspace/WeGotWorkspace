@@ -6,7 +6,7 @@ export type NotesReconnectInput = {
 };
 
 /**
- * Offline / focus reconnect matrix (architecture Decision 8).
+ * Offline / focus reconnect matrix (architecture Decision 6).
  * Dirty + stale etag must never silent-reseed.
  */
 export function resolveNotesReconnect(input: NotesReconnectInput): NotesReconnectAction {

@@ -30,7 +30,7 @@ const BODY_PREVIEW_SYNC_DEBOUNCE_MS = 50;
 
 /**
  * Configures the body as a live + offline Yjs collab document (Docs #230 stack).
- * Room = the note's virtual path on the shared `wgw_files` tree.
+ * Room = VJOURNAL UID (Decision 7), not a Drive path.
  */
 export type NoteCollabConfig = {
   userName: string;

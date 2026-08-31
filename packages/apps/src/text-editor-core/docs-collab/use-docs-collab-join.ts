@@ -30,6 +30,7 @@ import {
   colorForName,
   docSignature,
   isRemoteUpdateOrigin,
+  isCollabPreconditionFailed,
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
@@ -162,6 +163,10 @@ export function useDocsCollabJoin({
           : await loadMarkdown(urls.documentUrl, authToken);
       } catch (error) {
         markRoomServerFailure(room);
+        if (isCollabPreconditionFailed(error)) {
+          urls.onReconnectConflict?.();
+          return;
+        }
         console.warn("[docs-collab] markdown load failed", error);
       }
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
@@ -209,6 +214,7 @@ export function useDocsCollabJoin({
       trySeedFromFile,
       urls.documentUrl,
       urls.loadDocumentMarkdown,
+      urls.onReconnectConflict,
       urls.skipYjsSnapshot,
       urls.yjsUrl,
     ],

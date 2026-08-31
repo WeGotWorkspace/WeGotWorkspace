@@ -22,7 +22,8 @@ export function titleFromNoteMarkdown(markdown: string): string | null {
 }
 
 export function shouldAutofillNoteTitle(current: string | null | undefined): boolean {
-  return current == null || current.trim() === "";
+  // null/undefined = never set. "" = user deliberately blanked (Decision 7).
+  return current == null;
 }
 
 export function autofillNoteTitle(

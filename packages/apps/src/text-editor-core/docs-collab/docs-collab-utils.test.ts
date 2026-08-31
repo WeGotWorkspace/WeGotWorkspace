@@ -5,6 +5,8 @@ import {
   collabDocumentFormat,
   docSignature,
   IDB_ORIGIN,
+  isCollabPayloadTooLarge,
+  isCollabPreconditionFailed,
   isRemoteUpdateOrigin,
   isYDocEmpty,
   MESH_ORIGIN,
@@ -15,6 +17,22 @@ describe("docs-collab-utils", () => {
   it("colorForName is stable for the same input", () => {
     expect(colorForName("Alex")).toBe(colorForName("Alex"));
     expect(colorForName("Alex")).not.toBe(colorForName("Bob"));
+  });
+
+  it("treats 412 as a join abort, not an empty-seed load failure", () => {
+    expect(isCollabPreconditionFailed(new Error("precondition failed (412)"))).toBe(true);
+    expect(isCollabPreconditionFailed(Object.assign(new Error("stale"), { status: 412 }))).toBe(
+      true,
+    );
+    expect(isCollabPreconditionFailed(new Error("network"))).toBe(false);
+  });
+
+  it("treats 413 as a permanent save failure", () => {
+    expect(isCollabPayloadTooLarge(Object.assign(new Error("PATCH failed (413)"), { status: 413 }))).toBe(
+      true,
+    );
+    expect(isCollabPayloadTooLarge(new Error("markdown_too_large"))).toBe(true);
+    expect(isCollabPayloadTooLarge(new Error("PATCH failed (500)"))).toBe(false);
   });
 
   it("isYDocEmpty detects empty and non-empty docs", () => {

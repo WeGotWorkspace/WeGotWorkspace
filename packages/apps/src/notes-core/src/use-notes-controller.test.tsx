@@ -348,6 +348,31 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.visibleNotes.map((note) => note.id)).toContain(createdId);
   });
 
+  it("does not refill SUMMARY after the user blanks the title", () => {
+    const data: NotesUIData = {
+      notes: [],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    act(() => {
+      result.current.createNote();
+    });
+    const createdId = result.current.activeId!;
+
+    act(() => {
+      result.current.applyLocalBodyMarkdown(createdId, "# Meeting\n\nNotes");
+    });
+    expect(result.current.active?.title).toBe("Meeting");
+
+    act(() => {
+      result.current.updateNote(createdId, { title: "" });
+      result.current.applyLocalBodyMarkdown(createdId, "# Meeting\n\nNotes\n\nmore");
+    });
+    expect(result.current.active?.title).toBe("");
+  });
+
   it("does not copy the first body keystrokes of a new note into SUMMARY", () => {
     const data: NotesUIData = {
       notes: [],

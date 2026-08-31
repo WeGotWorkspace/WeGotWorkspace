@@ -356,6 +356,8 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: NotesComponent,
   });
 
+  // Back-compat deep-link. Product path is Decision 16 collection-sidebar
+  // (shared notebooks in the notebooks section), not a per-note inbox.
   const notesSharedWithMeRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/notes/shared-with-me",

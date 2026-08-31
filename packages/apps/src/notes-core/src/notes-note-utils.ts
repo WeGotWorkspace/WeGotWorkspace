@@ -84,13 +84,12 @@ export function plainTextFromBody(body: string[] | undefined): string {
   return markdownToPlainText(noteBodyToMarkdown(body ?? []));
 }
 
-/** Offline-created notes keep `local-*` ids as the `.md` filename / FileNode name. */
+/** Offline-created notes keep `local-*` ids until flush remaps to a VJOURNAL UID. */
 const LOCAL_NOTE_ID_RE = /^local-[0-9a-f-]+$/i;
 
 /**
  * True when a list label is a filename / id placeholder, not a human title.
- * FileNode `parse()` uses the note id as `fallbackTitle` when frontmatter is
- * empty — that must never become the list heading.
+ * Untitled / id-shaped labels must never become the list heading.
  */
 export function isPlaceholderNoteListLabel(text: string, noteId?: string): boolean {
   const trimmed = text.trim();
@@ -482,7 +481,8 @@ export function applyNoteBodyMarkdown(
 ): Note {
   const normalized = normalizeNoteBodyMarkdown(markdown);
   const autofilled = autofillNoteTitle(note.title, normalized);
-  const titleChanged = (autofilled ?? undefined) !== (note.title?.trim() || undefined);
+  const currentTitle = note.title === "" ? "" : (note.title?.trim() || undefined);
+  const titleChanged = (autofilled ?? undefined) !== currentTitle;
   // Compare normalized forms so TipTap trailing newlines do not look like edits
   // (that retriggered hydrate → setNotes → “Maximum update depth exceeded”).
   const bodyUnchanged = normalizeNoteBodyMarkdown(noteBodyToMarkdown(note.body)) === normalized;
