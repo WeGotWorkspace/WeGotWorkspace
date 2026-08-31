@@ -72,11 +72,11 @@ Live inbound is vendor `Note/*` / `Notebook/*` on `POST /jmap` (`urn:wgw:jmap:no
 REST `/notes/*/changes` is reconnect / manual refresh / mock-tier fallback only.
 The workspace must not remount from a full live GET.
 
-| Concern                                                | Path                         | Storage                                 | Transport                                                     | Conflict model                                           |
-| ------------------------------------------------------ | ---------------------------- | --------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------- |
-| **Working set** (title, tags, body, starred, notebook) | Dexie `notes_notes`          | Full note row including DESCRIPTION     | `POST /jmap` `Note/changes` → `Note/get` | Skip pending outbox ids; optional `stateMismatch` dialog |
-| **Collab session** (live mesh while a room is open)    | TipTap + Yjs, room = **UID** | `y-indexeddb` crash buffer keyed by UID | Persist = `PATCH /notes/items/{uid}` + `If-Match`             | CRDT merge in-room; reconnect 412 → conflict dialog      |
-| **Metadata outbox** (offline title/tags/star/notebook) | Dexie outbox                 | Metadata only (no body bytes required)  | REST `PATCH` / create / star                                  | Last-writer-wins with an optional `stateMismatch` dialog |
+| Concern                                                | Path                         | Storage                                 | Transport                                         | Conflict model                                           |
+| ------------------------------------------------------ | ---------------------------- | --------------------------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| **Working set** (title, tags, body, starred, notebook) | Dexie `notes_notes`          | Full note row including DESCRIPTION     | `POST /jmap` `Note/changes` → `Note/get`          | Skip pending outbox ids; optional `stateMismatch` dialog |
+| **Collab session** (live mesh while a room is open)    | TipTap + Yjs, room = **UID** | `y-indexeddb` crash buffer keyed by UID | Persist = `PATCH /notes/items/{uid}` + `If-Match` | CRDT merge in-room; reconnect 412 → conflict dialog      |
+| **Metadata outbox** (offline title/tags/star/notebook) | Dexie outbox                 | Metadata only (no body bytes required)  | REST `PATCH` / create / star                      | Last-writer-wins with an optional `stateMismatch` dialog |
 
 There is **no** `PUT /files/collaboration` and **no** `users/…/.notes/…` path for
 notes. [`note-text-editor-body.tsx`](../src/note-detail-view/src/note-text-editor-body.tsx)
