@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Notes;
 
 use App\Models\JmapNoteState;
+use App\Services\Calendars\JmapCalendarEventStateService;
 
 /**
  * Survives notebook purge so Note/changes can expand destroyed ids
- * (same role as {@see \App\Services\Calendars\JmapCalendarEventStateService}).
+ * (same role as {@see JmapCalendarEventStateService}).
  */
 final class JmapNoteStateService
 {

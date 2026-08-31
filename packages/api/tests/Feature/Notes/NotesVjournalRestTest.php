@@ -11,6 +11,7 @@ use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\SeedsWgwIdentity;
@@ -113,7 +114,7 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $uid = (string) Str::uuid();
         $this->seedJournalViaPdo($uid.'.ics', $this->journalIcs($uid, 'First', 'one'), $uid);
 
-        Str::createUuidsUsing(static fn () => \Ramsey\Uuid\Uuid::fromString($uid));
+        Str::createUuidsUsing(static fn () => Uuid::fromString($uid));
         try {
             $this->asBob()->postJson('/api/v1/notes/items', [
                 'notebookId' => CalendarCollectionUris::NOTE_GENERAL,

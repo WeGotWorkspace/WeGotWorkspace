@@ -8,11 +8,11 @@ use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\Admin\AdminConstants;
-use RuntimeException;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
