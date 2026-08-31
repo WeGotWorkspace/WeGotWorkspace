@@ -10,6 +10,7 @@ use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -358,9 +359,78 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
             ->assertJsonPath('body', 'important');
     }
 
+    public function test_list_notes_survives_missing_jmap_note_states_table(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Keep listing',
+            'body' => 'even without jmap state',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+
+        Schema::connection('wgw')->dropIfExists('jmap_note_states');
+        try {
+            $list = $this->asBob()
+                ->getJson('/api/v1/notes/items?notebookId='.CalendarCollectionUris::NOTE_GENERAL)
+                ->assertOk()
+                ->json('list');
+            $this->assertContains($id, array_column($list, 'id'));
+        } finally {
+            $this->restoreJmapNoteStatesTable();
+        }
+    }
+
+    public function test_create_note_survives_missing_jmap_note_states_table(): void
+    {
+        Schema::connection('wgw')->dropIfExists('jmap_note_states');
+        try {
+            $created = $this->asBob()->postJson('/api/v1/notes/items', [
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'title' => 'Created without state table',
+                'body' => 'ok',
+            ])->assertCreated();
+            $this->assertNotSame('', (string) $created->json('id'));
+        } finally {
+            $this->restoreJmapNoteStatesTable();
+        }
+    }
+
+    public function test_list_notes_survives_missing_note_stars_table(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Keep listing',
+            'body' => 'even without stars',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+
+        Schema::connection('wgw')->dropIfExists('note_stars');
+        try {
+            $list = $this->asBob()
+                ->getJson('/api/v1/notes/items?notebookId='.CalendarCollectionUris::NOTE_GENERAL)
+                ->assertOk()
+                ->json('list');
+            $this->assertContains($id, array_column($list, 'id'));
+        } finally {
+            $this->restoreNoteStarsTable();
+        }
+    }
+
     private function asBob()
     {
         return $this->withBearer($this->issueBearerTokenFor('bob'));
+    }
+
+    private function restoreJmapNoteStatesTable(): void
+    {
+        $migration = require database_path('migrations/wgw/2026_08_31_000320_wgw_create_jmap_note_states.php');
+        $migration->up();
+    }
+
+    private function restoreNoteStarsTable(): void
+    {
+        $migration = require database_path('migrations/wgw/2026_08_28_000310_wgw_notes_uid_unique_and_stars.php');
+        $migration->up();
     }
 
     private function seedJournalViaPdo(string $uri, string $ics, string $uid): void
