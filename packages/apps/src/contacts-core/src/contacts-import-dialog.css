@@ -1,0 +1,23 @@
+@import "../../styles.css" reference;
+
+.contacts-import-dialog__fields {
+  @apply flex flex-col gap-3;
+}
+
+.contacts-import-dialog__footer {
+  @apply mt-4;
+}
+
+.contacts-import-dialog__progress {
+  @apply flex flex-col gap-2 text-sm;
+}
+
+.contacts-import-dialog__progress-track {
+  @apply h-1.5 w-full overflow-hidden rounded-full;
+  background: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.contacts-import-dialog__progress-fill {
+  @apply h-full rounded-full;
+  background: var(--contacts-accent, var(--color-ink));
+}
