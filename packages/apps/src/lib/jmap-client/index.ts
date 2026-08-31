@@ -2,6 +2,8 @@ export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
 export type { JmapNotesAdapterOptions } from "./adapter/JmapNotesAdapter.js";
 export { JmapNotesAdapter } from "./adapter/JmapNotesAdapter.js";
+export type { JmapContactsAdapterOptions } from "./adapter/JmapContactsAdapter.js";
+export { JmapContactsAdapter } from "./adapter/JmapContactsAdapter.js";
 export { NOTES_USING, JmapNotesClient } from "./notes/JmapNotesClient.js";
 export type { JmapNote, JmapNotebook } from "./notes/types.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";

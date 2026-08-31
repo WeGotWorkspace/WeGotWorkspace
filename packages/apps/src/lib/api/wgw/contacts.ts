@@ -3,9 +3,16 @@ import type {
   ContactCard,
   ContactCardImportResponse,
 } from "@wgw-api-generated/contacts-types";
+import type { AddressBookMutationPatch } from "@/contacts-core/src/contacts-types";
 import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwApiBaseUrl,
+  wgwErrorMessageFromBody,
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import {
   CONTACTS_CAPABILITY,
   JmapClient,
@@ -79,6 +86,23 @@ export async function connectedContacts(client: JmapClient = contactsJmapClient(
 
 export function isCannotCalculateChanges(error: unknown): boolean {
   return error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges";
+}
+
+export function isContactsNotFound(error: unknown): boolean {
+  return error instanceof ContactsRequestError && error.status === 404;
+}
+
+export async function patchAddressBook(
+  addressBookId: string,
+  patch: AddressBookMutationPatch,
+  _opts?: { signal?: AbortSignal },
+): Promise<AddressBook> {
+  const { contacts, accountId } = await connectedContacts();
+  await contacts.setAddressBooks({
+    accountId,
+    update: { [addressBookId]: patch },
+  });
+  return getAddressBook(addressBookId);
 }
 
 function toAddressBook(book: JmapAddressBook): AddressBook {
@@ -206,10 +230,8 @@ export async function importVcards(
     signal: opts.signal,
   });
   if (!res.ok) {
-    throw new ContactsRequestError(
-      `POST /contacts/cards/import failed (${res.status})`,
-      res.status,
-    );
+    const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
+    throw new ContactsRequestError(detail, res.status);
   }
   return (await wgwReadJson(res)) as ContactCardImportResponse;
 }
