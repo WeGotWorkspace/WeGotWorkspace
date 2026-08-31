@@ -21,7 +21,7 @@ type Story = StoryObj<typeof ViewHeader>;
 export const Default: Story = {
   args: {
     title: "All Items",
-    subtitle: "24 Files",
+    subtitle: "24 Items",
     sidebarOpen: true,
     onToggleSidebar: () => {},
     actions: (

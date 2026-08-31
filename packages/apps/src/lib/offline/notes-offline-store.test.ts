@@ -10,6 +10,7 @@ import {
   enqueueOutboxMutation,
   listOutboxMutations,
   readNotesBootstrapFromCache,
+  removeNotebookFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -46,6 +47,148 @@ describe("notes offline store", () => {
   it("reads bootstrap written to cache", async () => {
     const cached = await readNotesBootstrapFromCache(username);
     expect(cached?.data.notes[0]?.body).toEqual(["Body text"]);
+  });
+
+  it("persists notebook color and does not drop sibling collections on upsert", async () => {
+    const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["Drafts", "General"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+          { id: "notes-general", name: "General", color: "#0ea5e9" },
+        ],
+      },
+    });
+
+    await upsertNotebookInCache(username, {
+      id: "notes-ideas",
+      name: "Ideas",
+      color: "#ec4899",
+      isSharee: false,
+      scope: "personal",
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(expect.arrayContaining(["Drafts", "General", "Ideas"]));
+    expect(cached?.data.notebookCollections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Drafts", color: "#14b8a6" }),
+        expect.objectContaining({ name: "General", color: "#0ea5e9" }),
+        expect.objectContaining({ name: "Ideas", color: "#ec4899" }),
+      ]),
+    );
+  });
+
+  it("persists notebookCollections and groups for edit/save", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["General"],
+        notebookCollections: [
+          { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+        ],
+        groups: [{ slug: "team", displayName: "Team" }],
+      },
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebookCollections).toEqual([
+      { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+    ]);
+    expect(cached?.data.groups).toEqual([{ slug: "team", displayName: "Team" }]);
+  });
+
+  it("rewrites cached note.notebook when a collection is renamed", async () => {
+    const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+        ],
+        notebooks: ["Drafts", "Work"],
+        tags: ["essay"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+          { id: "notes-work", name: "Work", color: "#0ea5e9" },
+        ],
+      },
+    });
+
+    await upsertNotebookInCache(username, {
+      id: "notes-drafts",
+      name: "Journal",
+      color: "#14b8a6",
+      isSharee: false,
+      scope: "personal",
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Journal", "Work"]);
+    expect(cached?.data.notes.map((item) => ({ id: item.id, notebook: item.notebook }))).toEqual([
+      { id: "note-1", notebook: "Journal" },
+      { id: "note-2", notebook: "Work" },
+    ]);
+    expect(cached?.data.notebookCollections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "notes-drafts", name: "Journal" }),
+        expect.objectContaining({ id: "notes-work", name: "Work" }),
+      ]),
+    );
+  });
+
+  it("drops a notebook and its synced notes from Dexie", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+        ],
+        notebooks: ["Drafts", "Work"],
+        tags: ["essay"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts" },
+          { id: "notes-work", name: "Work" },
+        ],
+      },
+    });
+
+    await removeNotebookFromCache(username, "notes-drafts", { keepPendingNotes: false });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Work"]);
+    expect(cached?.data.notes.map((item) => item.id)).toEqual(["note-2"]);
+    expect(cached?.data.notebookCollections).toEqual([
+      expect.objectContaining({ id: "notes-work", name: "Work" }),
+    ]);
+  });
+
+  it("keeps pending notes when a remote notebook destroy is ingested", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [{ ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" }],
+        notebooks: ["Drafts"],
+        tags: ["essay"],
+        notebookCollections: [{ id: "notes-drafts", name: "Drafts" }],
+      },
+    });
+    await upsertNoteInCache(
+      username,
+      { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts", title: "Local" },
+      true,
+    );
+
+    await removeNotebookFromCache(username, "notes-drafts");
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notes).toEqual([expect.objectContaining({ id: "note-1", title: "Local" })]);
   });
 
   it("preserves pendingSync notes when bootstrap is rewritten from server", async () => {

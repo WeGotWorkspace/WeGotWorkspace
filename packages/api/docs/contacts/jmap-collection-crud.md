@@ -24,7 +24,7 @@
 |-----------|------|---------|
 | List | `GET /calendars/calendars` | `calendarinstances` (VEVENT-capable) |
 | Show | `GET /calendars/calendars/{id}` | same |
-| Create | `POST /calendars/calendars` | Sabre `CalPDO::createCalendar` (VEVENT + VJOURNAL) |
+| Create | `POST /calendars/calendars` | Sabre `CalPDO::createCalendar` (VEVENT only) |
 | Update | `PATCH /calendars/calendars/{id}` | Sabre `updateCalendar` (name, description, color, timeZone) |
 | Delete | `DELETE /calendars/calendars/{id}` | Sabre `deleteCalendar`; `onDestroyRemoveContents` when non-empty |
 

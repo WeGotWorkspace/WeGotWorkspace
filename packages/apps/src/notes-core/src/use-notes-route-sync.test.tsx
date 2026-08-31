@@ -102,6 +102,18 @@ describe("useNotesRouteSync", () => {
     });
   });
 
+  it("skips navigate when the note id is already current", () => {
+    mockPathname = "/notes/all";
+    mockParams = { noteId: "n-1" };
+    const { result } = renderHook(() => useNotesRouteSync());
+
+    act(() => {
+      result.current.handleNoteChange("n-1");
+    });
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("replaces when clearing the note id", () => {
     mockPathname = "/notes/all";
     mockParams = { noteId: "n-1" };
@@ -131,6 +143,47 @@ describe("useNotesRouteSync", () => {
     expect(navigate).toHaveBeenLastCalledWith({
       to: "/notes/starred/$noteId",
       params: { noteId: "n-1" },
+      replace: false,
+    });
+  });
+
+  it("keeps the current note on the destination notebook path when the view follows a move", () => {
+    mockPathname = "/notes/notebooks/notes-drafts/n-1";
+    mockParams = { notebookId: "notes-drafts", noteId: "n-1" };
+    const { result } = renderHook(() => useNotesRouteSync());
+    expect(result.current.initialView).toBe("nb:notes-drafts");
+    expect(result.current.initialNoteId).toBe("n-1");
+
+    act(() => {
+      result.current.handleViewChange("nb:notes-work");
+    });
+
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/notes/notebooks/$notebookId/$noteId",
+      params: { notebookId: "notes-work", noteId: "n-1" },
+      replace: true,
+    });
+  });
+
+  it("lands on All Items after switching from Starred then opening the new note", () => {
+    mockPathname = "/notes/starred";
+    const { result } = renderHook(() => useNotesRouteSync());
+
+    act(() => {
+      result.current.handleViewChange("all");
+    });
+    act(() => {
+      result.current.handleNoteChange("local-new");
+    });
+
+    expect(navigate).toHaveBeenNthCalledWith(1, {
+      to: "/notes/all",
+      params: {},
+      replace: true,
+    });
+    expect(navigate).toHaveBeenLastCalledWith({
+      to: "/notes/all/$noteId",
+      params: { noteId: "local-new" },
       replace: false,
     });
   });

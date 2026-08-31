@@ -3,8 +3,9 @@ import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
 
 /**
- * Live Notes body-collab wire — mirrors {@link createWgwDocsCollabWire}.
- * Note bodies use the same `/files/collaboration` + RTC mesh transport as Docs.
+ * Live Notes body-collab wire — RTC mesh auth, same as Docs.
+ * Persist is `PATCH /notes/items/{uid}` via `buildNoteCollabUrls`, not
+ * `/files/collaboration`.
  */
 export function createWgwNotesCollabWire(): DocsCollabWireOperations {
   return {

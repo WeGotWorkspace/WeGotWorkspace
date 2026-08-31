@@ -41,6 +41,8 @@ use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
+use App\Http\Controllers\Api\V1\Notes\NotebooksController;
+use App\Http\Controllers\Api\V1\Notes\NotesController;
 use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivationController;
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
@@ -241,6 +243,29 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         Route::delete('tasks/items/{taskId}', [TasksController::class, 'destroy'])
             ->where('taskId', '[A-Za-z0-9_.#-]+');
     });
+
+    Route::get('notes/notebooks/changes', [NotebooksController::class, 'changes']);
+    Route::get('notes/notebooks', [NotebooksController::class, 'index']);
+    Route::post('notes/notebooks', [NotebooksController::class, 'store']);
+    Route::get('notes/notebooks/{notebookId}', [NotebooksController::class, 'show'])
+        ->where('notebookId', '[A-Za-z0-9._-]+');
+    Route::patch('notes/notebooks/{notebookId}', [NotebooksController::class, 'update'])
+        ->where('notebookId', '[A-Za-z0-9._-]+');
+    Route::delete('notes/notebooks/{notebookId}', [NotebooksController::class, 'destroy'])
+        ->where('notebookId', '[A-Za-z0-9._-]+');
+    Route::get('notes/items/changes', [NotesController::class, 'changes']);
+    Route::get('notes/items', [NotesController::class, 'index']);
+    Route::post('notes/items', [NotesController::class, 'store']);
+    Route::post('notes/items/{noteId}/star', [NotesController::class, 'star'])
+        ->where('noteId', '[^/]+');
+    Route::delete('notes/items/{noteId}/star', [NotesController::class, 'unstar'])
+        ->where('noteId', '[^/]+');
+    Route::get('notes/items/{noteId}', [NotesController::class, 'show'])
+        ->where('noteId', '[^/]+');
+    Route::patch('notes/items/{noteId}', [NotesController::class, 'patch'])
+        ->where('noteId', '[^/]+');
+    Route::delete('notes/items/{noteId}', [NotesController::class, 'destroy'])
+        ->where('noteId', '[^/]+');
 
     Route::middleware('wgw.contacts')->group(function (): void {
         Route::post('contacts/cards/import', ContactCardImportController::class);

@@ -1,0 +1,95 @@
+@import "../../styles.css" reference;
+
+/**
+ * Paper sheet on the cream desk. Fill is `--note-detail-sheet-bg`
+ * (very light notebook wash from the workspace; cream fallback). Inner
+ * TipTap stays flush (`note-text-editor-body` zeroes nested text-editor
+ * sheet tokens). Square corners — not a rounded card. `min-h-full` fills
+ * the detail scroll content box (pane minus the scroll padding that
+ * insets the card on md+); long notes grow. Below `md` / 48rem the
+ * workspace pane is already full-width — notes-workspace.css flushes
+ * the sheet to the pane edges.
+ */
+.note-detail-sheet {
+  @apply mx-auto min-h-full w-full max-w-[680px] rounded-none px-6 py-8 md:px-10 md:py-10;
+  background-color: var(--note-detail-sheet-bg, var(--color-cream, #ffffff));
+  color: var(--notes-detail-contrast-fg, var(--color-ink));
+  box-shadow: var(
+    --note-detail-sheet-shadow,
+    0 1px 1px color-mix(in oklab, var(--color-ink) 22%, transparent),
+    0 3px 6px color-mix(in oklab, var(--color-ink) 12%, transparent),
+    0 12px 20px -4px color-mix(in oklab, var(--color-ink) 14%, transparent),
+    0 32px 48px -12px color-mix(in oklab, var(--color-ink) 16%, transparent)
+  );
+}
+
+/**
+ * Notes sheet type ramp. Multipliers × `--text-editor-prose-font-size` (16px).
+ * Title is `text-4xl` (2.25rem / 36px) so it stays ≥ body h1. Docs headings
+ * keep the shared `--text-editor-prose-heading-h*` defaults.
+ */
+.note-detail-view {
+  --text-editor-prose-heading-h1-size: 1.875;
+  --text-editor-prose-heading-h2-size: 1.5;
+  --text-editor-prose-heading-h3-size: 1.25;
+  --text-editor-prose-heading-h4-size: 1.125;
+  --text-editor-prose-heading-h5-size: 1.0625;
+  --text-editor-prose-heading-h6-size: 1;
+}
+
+.note-detail-view .text-editor-prose h4 {
+  font-size: calc(
+    var(--text-editor-prose-heading-h4-size) *
+      var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size))
+  );
+}
+
+.note-detail-view .text-editor-prose h5 {
+  font-size: calc(
+    var(--text-editor-prose-heading-h5-size) *
+      var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size))
+  );
+}
+
+.note-detail-view .text-editor-prose h6 {
+  font-size: calc(
+    var(--text-editor-prose-heading-h6-size) *
+      var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size))
+  );
+}
+
+.note-detail-view__title-label {
+  @apply sr-only;
+}
+
+/**
+ * Document title — always text-4xl (2.25rem) so it stays ≥ body h1 (1.875×16px).
+ * Growing textarea: soft-wrap, no line-clamp / ellipsis. Exempted from the
+ * global iOS 1rem input/textarea floor in styles.css. `text-box: auto` compiles
+ * to `trim-both` and clips serif descenders; `normal` + `text-box-trim: none`
+ * keep g/y/p visible.
+ */
+.note-detail-view__title {
+  @apply mb-3.5 h-auto min-h-0 w-full resize-none appearance-none rounded-none border-0 bg-transparent px-0 pt-[0.08em] pb-[0.22em] shadow-none outline-none;
+  @apply whitespace-pre-wrap break-words text-4xl font-semibold leading-[1.3] tracking-tight;
+  font-family: var(--note-detail-title-font-family, var(--font-serif));
+  color: var(--notes-detail-contrast-fg, var(--color-ink));
+  field-sizing: content;
+  text-box: normal;
+  text-box-trim: none;
+  /* Beat TextareaAutosize’s inline overflow-y: hidden so serif descenders paint. */
+  overflow: visible !important;
+}
+
+.note-detail-view__title::placeholder {
+  color: color-mix(in oklab, var(--notes-detail-contrast-fg, var(--color-ink)) 35%, transparent);
+}
+
+.note-detail-view__title:read-only {
+  @apply cursor-default;
+}
+
+/* Title → tags → body: between the original py-6/mb-6 and the too-tight py-4/mb-4. */
+.note-detail-view__tag-group {
+  @apply mb-5 py-5;
+}

@@ -5,14 +5,26 @@
   color: color-mix(in oklab, var(--color-ink) 75%, transparent);
 }
 
+.collection-sidebar-row:hover,
 .collection-sidebar-row--selected {
   background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.collection-sidebar-row--selected {
   color: var(--color-ink);
 }
 
 .collection-sidebar-row__visibility {
   --primary: var(--collection-row-color, var(--color-ink));
   --primary-foreground: #ffffff;
+  /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
+   * primitive paints calendarcolor / list / notebook color, not the app accent.
+   * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
+  --checkbox-size: 1rem;
+  --checkbox-border-color: var(--collection-row-color, var(--color-ink));
+  --checkbox-checked-bg: var(--collection-row-color, var(--color-ink));
+  --checkbox-checked-border: var(--collection-row-color, var(--color-ink));
+  --checkbox-checked-fg: #ffffff;
   flex-shrink: 0;
   border-color: var(--collection-row-color, var(--color-ink));
 }
@@ -45,6 +57,12 @@
   cursor: pointer;
 }
 
+.collection-sidebar-row__select:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
+  outline-offset: 1px;
+  border-radius: 0.125rem;
+}
+
 .collection-sidebar-row__title {
   @apply inline-flex min-w-0 items-center gap-1;
 }
@@ -53,6 +71,29 @@
   @apply min-w-0 truncate;
 }
 
+.collection-sidebar-row__mark {
+  @apply inline-flex size-3.5 shrink-0 items-center justify-center;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
 .collection-sidebar-row__action.button {
   @apply size-6 shrink-0;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
+.collection-sidebar-row__action:hover,
+.collection-sidebar-row__action:focus-visible {
+  color: var(--color-ink);
+}
+
+/* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */
+@media (hover: hover) and (pointer: fine) {
+  .collection-sidebar-row__action.button {
+    opacity: 0;
+  }
+
+  .collection-sidebar-row:hover .collection-sidebar-row__action.button,
+  .collection-sidebar-row:focus-within .collection-sidebar-row__action.button {
+    opacity: 1;
+  }
 }

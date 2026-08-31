@@ -82,6 +82,7 @@ export function ContactsWorkspace({
     addMembersToGroup,
     handleSelect,
     enterSelectionFor,
+    closeMobileDetail,
     selectView,
     setSearchQuery,
     createContact,
@@ -164,6 +165,7 @@ export function ContactsWorkspace({
     <>
       <WorkspaceApp
         ref={workspaceLayoutRef}
+        initialDetailOpenMobile={Boolean(initialContactId)}
         workspaceRoot={{
           className: cn("contacts-workspace", className),
         }}
@@ -260,7 +262,7 @@ export function ContactsWorkspace({
               : undefined,
           };
         }}
-        actionBar={(c) =>
+        actionBar={(_c) =>
           selectedIds.length > 1 ? null : (
             <ContactsDetailActionBar
               labels={L}
@@ -268,7 +270,7 @@ export function ContactsWorkspace({
               editMode={editMode}
               createMode={createMode}
               canSaveCreate={canSaveCreate}
-              closeMobileDetail={c.closeMobileDetail}
+              closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
               onEdit={startEdit}
               onDelete={deleteActive}

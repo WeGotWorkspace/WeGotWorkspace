@@ -4,6 +4,7 @@ import type { NotesUILabels } from "./notes-labels";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
 import { useNotesList } from "./use-notes-list";
 import { useNotesMutations } from "./use-notes-mutations";
+import { useNotesNotebookMutations } from "./use-notes-notebook-mutations";
 import { useNotesShell } from "./use-notes-shell";
 
 type UseNotesControllerArgs = {
@@ -52,6 +53,7 @@ export function useNotesController({
     [list, shell],
   );
   const mutations = useNotesMutations({ shell, list });
+  const notebookMutations = useNotesNotebookMutations({ shell });
 
   useWorkspaceListKeyboardShortcuts({
     searchInputRef: shell.searchInputRef,
@@ -68,6 +70,18 @@ export function useNotesController({
     setNotes: shell.setNotes,
     notebooks: shell.notebooks,
     sharedNotebooks: shell.sharedNotebooks,
+    notebookCollections: shell.notebookCollections,
+    groups: shell.groups,
+    canManageNotebooks: notebookMutations.canManageNotebooks,
+    notebookDialog: notebookMutations.notebookDialog,
+    setNotebookDialog: notebookMutations.setNotebookDialog,
+    openCreateNotebookDialog: notebookMutations.openCreateNotebookDialog,
+    openEditNotebookDialog: notebookMutations.openEditNotebookDialog,
+    createNotebookCollection: notebookMutations.createNotebook,
+    updateNotebookCollection: notebookMutations.updateNotebook,
+    deleteNotebookCollection: notebookMutations.deleteNotebookCollection,
+    patchNotebookShareWith: notebookMutations.patchShareWith,
+    removeSharedNotebook: notebookMutations.removeSharedNotebook,
     tags: shell.tags,
     active: list.active,
     activeId: list.activeId,
@@ -78,9 +92,6 @@ export function useNotesController({
     selectedIds: list.selectedIds,
     selectionMode: list.selectionMode,
     canCreateNote: shell.canCreateNote,
-    selectedNotebook: shell.selectedNotebook,
-    selectedTag: shell.selectedTag,
-    canEditDelete: shell.canEditDelete,
     searchQuery: shell.searchQuery,
     searchInputRef: shell.searchInputRef,
     moveDialog: mutations.moveDialog,
@@ -97,8 +108,11 @@ export function useNotesController({
     selectionBarButtons: mutations.selectionBarButtons,
     selectionBar: mutations.selectionBar,
     handleSelect: list.handleSelect,
+    closeMobileDetail: list.closeMobileDetail,
     enterSelectionFor: list.enterSelectionFor,
     selectView,
+    hiddenNotebookIds: shell.hiddenNotebookIds,
+    toggleNotebookVisibility: shell.toggleNotebookVisibility,
     setSearchQuery: shell.setSearchQuery,
     setMoveDialog: mutations.setMoveDialog,
     setEditDialog: mutations.setEditDialog,

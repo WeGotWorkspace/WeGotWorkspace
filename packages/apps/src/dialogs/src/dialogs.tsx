@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Plus, Tag as TagIcon, Check } from "lucide-react";
+import { Plus, Tag as TagIcon, Check } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -13,117 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-
-export function MoveToDialog({
-  open,
-  notebooks,
-  currentNotebook,
-  onClose,
-  onConfirm,
-  title = "Move to notebook",
-  description = "Choose a notebook for the selected items.",
-  confirmLabel = "Move",
-  allowCreate = false,
-  selectPlaceholder = "Select a notebook",
-  createPlaceholder = "New notebook name",
-  duplicateCreateMessage = "A notebook with this name already exists.",
-  contentClassName,
-}: {
-  open: boolean;
-  notebooks: string[];
-  currentNotebook?: string;
-  onClose: () => void;
-  onConfirm: (nb: string) => void;
-  title?: string;
-  description?: string;
-  confirmLabel?: string;
-  allowCreate?: boolean;
-  selectPlaceholder?: string;
-  createPlaceholder?: string;
-  duplicateCreateMessage?: string;
-  contentClassName?: string;
-}) {
-  const CREATE_NEW_VALUE = "__create_new_notebook__";
-  const [picked, setPicked] = useState<string | null>(null);
-  const [newNotebook, setNewNotebook] = useState("");
-  useEffect(() => {
-    if (open) {
-      setPicked(currentNotebook ?? notebooks[0] ?? null);
-      setNewNotebook("");
-    }
-  }, [open, currentNotebook, notebooks]);
-  const createdNotebook = newNotebook.trim();
-  const canCreateNotebook =
-    allowCreate &&
-    createdNotebook.length > 0 &&
-    !notebooks.some((nb) => nb.toLowerCase() === createdNotebook.toLowerCase());
-  const creatingNewNotebook = allowCreate && picked === CREATE_NEW_VALUE;
-  const confirmedTarget = creatingNewNotebook ? createdNotebook : picked;
-  const canConfirm = creatingNewNotebook ? canCreateNotebook : !!picked;
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className={contentClassName}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <div className="py-2 space-y-3">
-          <Select value={picked ?? ""} onValueChange={setPicked}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={selectPlaceholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {allowCreate ? (
-                <SelectItem value={CREATE_NEW_VALUE}>
-                  <span className="inline-flex items-center gap-2">
-                    <Plus className="size-3.5 text-muted-foreground" />
-                    <span>Create new…</span>
-                  </span>
-                </SelectItem>
-              ) : null}
-              {notebooks.map((nb) => (
-                <SelectItem key={nb} value={nb}>
-                  <span className="inline-flex items-center gap-2">
-                    <BookOpen className="size-3.5 text-muted-foreground" />
-                    <span>{nb}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {creatingNewNotebook ? (
-            <div>
-              <Input
-                placeholder={createPlaceholder}
-                value={newNotebook}
-                onChange={(e) => setNewNotebook(e.target.value)}
-              />
-              {!canCreateNotebook && createdNotebook.length > 0 ? (
-                <p className="mt-2 text-xs text-destructive">{duplicateCreateMessage}</p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              if (!confirmedTarget) return;
-              onConfirm(confirmedTarget);
-            }}
-            disabled={!canConfirm}
-          >
-            {confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export function AddDialog({
   kind,

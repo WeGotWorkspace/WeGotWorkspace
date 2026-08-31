@@ -311,14 +311,35 @@ export function useContactsController({
     onPrimarySelect: (id) => {
       if (createMode) return;
       stashActiveEditDraft();
-      setActiveId(id);
       restoreEditDraftForContact(id);
-      workspaceLayoutRef.current?.openMobileDetail();
+      const during = () => {
+        setActiveId(id);
+      };
+      const handle = workspaceLayoutRef.current;
+      if (handle) {
+        handle.openMobileDetail(during);
+        return;
+      }
+      void during();
     },
     onNavigateToId: () => workspaceLayoutRef.current?.openMobileDetail(),
     onMutationError: showMutationError,
     queueDelayMs: WRITE_QUEUE_DELAY_MS,
   });
+
+  const closeMobileDetail = useCallback(() => {
+    const during = () => {
+      setActiveId("");
+      setSelectedIds([]);
+      setSelectionMode(false);
+    };
+    const handle = workspaceLayoutRef.current;
+    if (handle) {
+      handle.closeMobileDetail(during);
+      return;
+    }
+    void during();
+  }, [setSelectedIds, setSelectionMode]);
 
   useSelectionResetOnKeyChange({
     resetKey: view,
@@ -1318,6 +1339,7 @@ export function useContactsController({
     sidebarDropZoneProps,
     handleSelect,
     enterSelectionFor,
+    closeMobileDetail,
     selectView,
     setSearchQuery,
     createContact,

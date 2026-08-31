@@ -1,0 +1,27 @@
+@import "../../styles.css" reference;
+
+.notes-notebook-select {
+  width: auto;
+  min-width: 7rem;
+  background-color: var(--color-cream, #ffffff);
+}
+
+.notes-notebook-select > span {
+  @apply flex min-w-0 items-center overflow-visible;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.notes-notebook-select__option {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.notes-notebook-select .notes-notebook-select__option {
+  @apply flex items-center gap-2 overflow-visible;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.notes-notebook-select__name {
+  @apply min-w-0 truncate;
+}

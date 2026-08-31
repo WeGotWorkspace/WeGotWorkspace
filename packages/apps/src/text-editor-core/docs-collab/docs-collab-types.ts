@@ -41,7 +41,13 @@ export type DocsCollabUrls = {
   authTokenUrl?: string;
   authUser?: string;
   authPassword?: string;
-  documentSaveMethod?: "POST" | "PUT";
+  documentSaveMethod?: "POST" | "PUT" | "PATCH";
+  /** Notes: persist markdown via REST instead of `/files/collaboration`. */
+  persistMarkdown?: (markdown: string, authToken?: string) => Promise<void>;
+  loadDocumentMarkdown?: (authToken?: string) => Promise<string>;
+  skipYjsSnapshot?: boolean;
+  onPersistForbidden?: () => void;
+  onReconnectConflict?: () => void;
 };
 
 export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {

@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { Archive, BookOpen, Files, Share2, Star, Users } from "lucide-react";
+import { Archive, Files, Star } from "lucide-react";
+import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import type { NotesSharedNotebook } from "@/notes-core/src/notes-types";
-import { sharedNotebookLabel } from "@/notes-core/src/notes-note-utils";
+import type { NotesNotebookCollection, NotesSharedNotebook } from "@/notes-core/src/notes-types";
 
 export type NotesSidebarTagEntry = {
   tag: string;
@@ -12,17 +12,17 @@ export type NotesSidebarTagEntry = {
   onSelect: () => void;
 } & ListDropZoneProps;
 
-export type NotesSharedNotebookSidebarEntry = NotesSharedNotebook & {
-  viewKey: string;
-};
+export type NotesNotebookSidebarEntry = NotesNotebookCollection;
 
 type UseNotesSidebarModelArgs = {
   labels: NotesUILabels;
   view: string;
-  /** Owned personal notebook names. */
+  /** Owned personal notebook names (legacy / mock). */
   notebooks: string[];
-  /** Group-membership notebooks (shown inline under Notebooks with Users icon). */
+  /** Group-membership notebooks (legacy path-shaped). */
   sharedNotebooks?: NotesSharedNotebook[];
+  /** Preferred: REST notebooks for collection-sidebar partition. */
+  notebookCollections?: NotesNotebookCollection[];
   tags: string[];
   selectView: (view: string) => void;
   sidebarDropZoneProps: (target: string, onDrop: (ids: string[]) => void) => ListDropZoneProps;
@@ -30,24 +30,97 @@ type UseNotesSidebarModelArgs = {
   assignTagToNotes: (ids: string[], tag: string) => void;
 };
 
-/** View key for a group-membership notebook path (`shared-nb:/groups/…`). */
-export function sharedNotebookViewKey(path: string): string {
-  return `shared-nb:${path.startsWith("/") ? path : `/${path}`}`;
+export function notebookViewKey(notebookId: string): string {
+  return `nb:${notebookId}`;
 }
 
-export { sharedNotebookLabel };
+export function tagViewKey(tag: string): string {
+  return `tag:${tag}`;
+}
+
+/** Re-clicking the active tag clears the filter and returns to All Items. */
+export function nextNotesTagView(view: string, tag: string): string {
+  const next = tagViewKey(tag);
+  return view === next ? "all" : next;
+}
+
+/** Same as Tasks `isViewOnlyTaskList`: missing `mayWriteAll` is writable. */
+export function isViewOnlyNotebook(notebook: Pick<NotesNotebookCollection, "myRights">): boolean {
+  return notebook.myRights?.mayWriteAll === false;
+}
+
+/** REST ids + display names for leftover `/notes/shared-with-me` (isSharee notebooks only). */
+export function sharedNotebookFilterKeys(
+  collections: readonly NotesNotebookCollection[],
+): Set<string> {
+  const keys = new Set<string>();
+  for (const item of collections) {
+    if (item.isSharee !== true) continue;
+    keys.add(item.id);
+    keys.add(item.name);
+  }
+  return keys;
+}
+
+export function collectionsFromNotesData(
+  notebooks: string[],
+  sharedNotebooks: NotesSharedNotebook[] = [],
+  notebookCollections?: NotesNotebookCollection[],
+): NotesNotebookCollection[] {
+  const owned = notebooks.map(
+    (name): NotesNotebookCollection => ({
+      id: name,
+      name,
+      isSharee: false,
+      scope: "personal",
+    }),
+  );
+  const shared = sharedNotebooks
+    .filter((entry) => entry.scope === "group")
+    .map(
+      (entry): NotesNotebookCollection => ({
+        id: entry.groupSlug ? `group-${entry.groupSlug}` : entry.path,
+        name: entry.notebook,
+        // Group membership is ownership (Tasks/Calendar), not inbound ACL.
+        isSharee: false,
+        scope: "group",
+        groupSlug: entry.groupSlug,
+      }),
+    );
+  if (!notebookCollections || notebookCollections.length === 0) {
+    return [...owned, ...shared];
+  }
+  const seen = new Set<string>();
+  for (const collection of notebookCollections) {
+    seen.add(collection.id);
+    seen.add(collection.name);
+  }
+  const extras = [...owned, ...shared].filter((item) => !seen.has(item.id) && !seen.has(item.name));
+  return [...notebookCollections, ...extras];
+}
 
 export function useNotesSidebarModel({
   labels,
   view,
   notebooks,
   sharedNotebooks = [],
+  notebookCollections,
   tags,
   selectView,
   sidebarDropZoneProps,
   moveToNotebook,
   assignTagToNotes,
 }: UseNotesSidebarModelArgs) {
+  const collections = useMemo(
+    () => collectionsFromNotesData(notebooks, sharedNotebooks, notebookCollections),
+    [notebookCollections, notebooks, sharedNotebooks],
+  );
+
+  const { owned: ownedNotebooks, shared: sharedNotebookRows } = useMemo(
+    () => partitionOwnedAndShared(collections),
+    [collections],
+  );
+
   const primarySidebarItems = useMemo(
     (): MenuItemProps[] => [
       {
@@ -68,49 +141,9 @@ export function useNotesSidebarModel({
         selected: view === "archive",
         onClick: () => selectView("archive"),
       },
-      {
-        label: labels.sidebarSharedWithMe,
-        icon: <Share2 className="size-3.5" />,
-        selected: view === "shared-with-me",
-        onClick: () => selectView("shared-with-me"),
-      },
     ],
-    [
-      labels.sidebarAllItems,
-      labels.sidebarArchive,
-      labels.sidebarSharedWithMe,
-      labels.sidebarStarred,
-      selectView,
-      view,
-    ],
+    [labels.sidebarAllItems, labels.sidebarArchive, labels.sidebarStarred, selectView, view],
   );
-
-  const notebookSidebarItems = useMemo((): MenuItemProps[] => {
-    const personal = [...notebooks]
-      .sort((a, b) => a.localeCompare(b))
-      .map((nb) => ({
-        label: nb,
-        icon: <BookOpen className="size-3.5" />,
-        selected: view === `nb:${nb}`,
-        onClick: () => selectView(`nb:${nb}`),
-        ...sidebarDropZoneProps(`nb:${nb}`, (ids) => moveToNotebook(ids, nb)),
-      }));
-
-    const groupEntries = [...sharedNotebooks]
-      .filter((entry) => entry.scope === "group")
-      .sort((a, b) => sharedNotebookLabel(a).localeCompare(sharedNotebookLabel(b)))
-      .map((entry) => {
-        const viewKey = sharedNotebookViewKey(entry.path);
-        return {
-          label: sharedNotebookLabel(entry),
-          icon: <Users className="size-3.5" />,
-          selected: view === viewKey,
-          onClick: () => selectView(viewKey),
-        };
-      });
-
-    return [...personal, ...groupEntries];
-  }, [moveToNotebook, notebooks, selectView, sharedNotebooks, sidebarDropZoneProps, view]);
 
   const tagSidebarTags = useMemo(
     (): NotesSidebarTagEntry[] =>
@@ -118,16 +151,19 @@ export function useNotesSidebarModel({
         .sort((a, b) => a.localeCompare(b))
         .map((tag) => ({
           tag,
-          selected: view === `tag:${tag}`,
-          onSelect: () => selectView(`tag:${tag}`),
-          ...sidebarDropZoneProps(`tag:${tag}`, (ids) => assignTagToNotes(ids, tag)),
+          selected: view === tagViewKey(tag),
+          onSelect: () => selectView(nextNotesTagView(view, tag)),
+          ...sidebarDropZoneProps(tagViewKey(tag), (ids) => assignTagToNotes(ids, tag)),
         })),
     [assignTagToNotes, selectView, sidebarDropZoneProps, tags, view],
   );
 
   return {
     primarySidebarItems,
-    notebookSidebarItems,
+    ownedNotebooks,
+    sharedNotebooks: sharedNotebookRows,
     tagSidebarTags,
+    notebookViewKey,
+    moveToNotebook,
   };
 }

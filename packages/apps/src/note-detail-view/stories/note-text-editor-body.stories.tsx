@@ -7,8 +7,8 @@ const sampleMarkdown = `# Weekly sync
 
 First paragraph with **bold** and _italic_ text.
 
-- Action item one
-- Action item two
+- [ ] Action item one
+- [x] Action item two
 
 > Pull quote from the meeting notes.
 `;

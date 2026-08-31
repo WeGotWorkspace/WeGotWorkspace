@@ -12,9 +12,10 @@ import {
   normalizeTag,
   notesCanCreateInView,
   noteShowsTags,
-  sharedNotebookLabel,
 } from "./notes-note-utils";
-import type { NotesAPIOperations, NotesUIData } from "./notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection, NotesUIData } from "./notes-types";
+import { useNotesHiddenIds } from "./use-notes-hidden-ids";
+import { collectionsFromNotesData } from "./use-notes-sidebar-model";
 
 /** Debounce bursts of edits before showing a save toast. */
 const AUTO_SAVE_TOAST_DEBOUNCE_MS = 1200;
@@ -89,6 +90,9 @@ export function useNotesShell({
   const [notebooks, setNotebooks] = useState(() =>
     collectPersonalNotebookNames(data.notebooks, data.notes),
   );
+  const [notebookCollections, setNotebookCollections] = useState<NotesNotebookCollection[]>(() =>
+    collectionsFromNotesData(data.notebooks, data.sharedNotebooks, data.notebookCollections),
+  );
 
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -124,7 +128,17 @@ export function useNotesShell({
     // Merge by id so optimistic tags/starred survive a stale bootstrap refresh
     // (tag upserts are write-queue delayed; create/list often returns first).
     setNotes((prev) => mergeBootstrapNotesPreservingOptimistic(data.notes.map(enrichNote), prev));
-    setNotebooks(collectPersonalNotebookNames(data.notebooks, data.notes));
+    const nextNames = collectPersonalNotebookNames(data.notebooks, data.notes);
+    setNotebooks(nextNames);
+    setNotebookCollections((prev) =>
+      collectionsFromNotesData(
+        nextNames,
+        data.sharedNotebooks,
+        data.notebookCollections && data.notebookCollections.length > 0
+          ? data.notebookCollections
+          : prev,
+      ),
+    );
   }, [bootstrapRevision, data]);
 
   useEffect(() => {
@@ -133,6 +147,19 @@ export function useNotesShell({
   }, [initialView]);
 
   const sharedNotebooks = useMemo(() => data.sharedNotebooks ?? [], [data.sharedNotebooks]);
+  const { hiddenNotebookIds, setHiddenNotebookIds } = useNotesHiddenIds(notebookCollections);
+  const toggleNotebookVisibility = useCallback(
+    (notebookId: string) => {
+      setHiddenNotebookIds((current) => {
+        const next = new Set(current);
+        if (next.has(notebookId)) next.delete(notebookId);
+        else next.add(notebookId);
+        return next;
+      });
+    },
+    [setHiddenNotebookIds],
+  );
+  const groups = useMemo(() => data.groups ?? [], [data.groups]);
   const tags = useMemo(
     () => [
       ...new Set(
@@ -166,23 +193,16 @@ export function useNotesShell({
     if (view === "starred") return L.sidebarStarred;
     if (view === "archive") return L.sidebarArchive;
     if (view === "shared-with-me") return L.sidebarSharedWithMe;
-    if (view.startsWith("shared-nb:")) {
-      const path = view.slice("shared-nb:".length);
-      const match = sharedNotebooks.find(
-        (entry) => entry.path === path || entry.path === `/${path.replace(/^\//, "")}`,
-      );
-      if (match) return sharedNotebookLabel(match);
-      return path.split("/").pop() ?? L.sectionSharedNotebooks;
+    if (view.startsWith("nb:")) {
+      const id = view.slice(3);
+      const match = notebookCollections.find((item) => item.id === id || item.name === id);
+      return match?.name ?? id;
     }
-    if (view.startsWith("nb:")) return view.slice(3);
     if (view.startsWith("tag:")) return L.tagViewTitle(view.slice(4));
     return L.fallbackViewTitle;
-  }, [L, sharedNotebooks, view]);
+  }, [L, notebookCollections, view]);
 
   const canCreateNote = notesCanCreateInView(view);
-  const selectedNotebook = view.startsWith("nb:") ? view.slice(3) : null;
-  const selectedTag = view.startsWith("tag:") ? view.slice(4) : null;
-  const canEditDelete = !!(selectedNotebook || selectedTag);
 
   const selectView = useCallback((nextView: string) => {
     setView(nextView);
@@ -220,13 +240,15 @@ export function useNotesShell({
     notebooks,
     setNotebooks,
     sharedNotebooks,
+    notebookCollections,
+    setNotebookCollections,
+    groups,
     tags,
     viewLabel,
     canCreateNote,
-    selectedNotebook,
-    selectedTag,
-    canEditDelete,
     selectView,
+    hiddenNotebookIds,
+    toggleNotebookVisibility,
     listLoading,
     operations,
     show,

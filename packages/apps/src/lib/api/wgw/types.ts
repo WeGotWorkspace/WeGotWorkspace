@@ -189,11 +189,16 @@ export type WgwNoteItem = {
 export type WgwNoteUpsertRequest = {
   id?: string;
   notebook: string;
+  /** REST collection id — preferred over name when looking up the dest notebook. */
+  notebookId?: string;
+  title?: string | null;
   body?: string;
   tags?: string[];
   starred?: boolean;
   archived?: boolean;
   groupSlug?: string | null;
+  /** REST If-Match token (`etag`). Required on live metadata PATCH. */
+  etag?: string;
 };
 
 export type WgwSettingsStateResponse = SettingsStateResponse;

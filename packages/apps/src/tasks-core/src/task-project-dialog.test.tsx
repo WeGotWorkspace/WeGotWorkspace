@@ -378,4 +378,54 @@ describe("TaskProjectDialog", () => {
     );
     expect(onRemoveShared).toHaveBeenCalledTimes(1);
   });
+
+  it("confirms owner delete when mayDelete and onDelete are set", () => {
+    const onDelete = vi.fn();
+
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "work",
+          name: "Work",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+          mayDelete: true,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={onDelete}
+        labels={dialogLabels}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.deleteList }));
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.delete }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides owner delete without mayDelete or onDelete", () => {
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "work",
+          name: "Work",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        labels={dialogLabels}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.deleteList })).toBeNull();
+  });
 });

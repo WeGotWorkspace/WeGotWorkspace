@@ -2,12 +2,19 @@
 
 .workspace-detail-pane {
   @apply flex min-h-0 flex-col overflow-hidden absolute md:relative inset-0 md:inset-auto z-20 md:z-auto md:flex-1;
-  @apply transition-[translate] duration-300 ease-out md:transition-none;
   container: workspace-detail / inline-size;
   background-color: var(
     --workspace-detail-bg,
     color-mix(in oklab, var(--workspace-accent, transparent) 6%, var(--color-cream, #ffffff))
   );
+}
+
+.workspace-detail-pane[data-open="true"] {
+  @apply translate-x-0;
+}
+
+.workspace-detail-pane[data-open="false"] {
+  @apply translate-x-full md:translate-x-0;
 }
 
 .workspace-detail-pane__scroll {
@@ -28,4 +35,39 @@
       display: none;
     }
   }
+}
+
+@media (max-width: 47.999rem) {
+  .workspace-detail-pane {
+    view-transition-name: workspace-detail;
+  }
+}
+
+@media (min-width: 48rem) {
+  .workspace-detail-pane {
+    view-transition-name: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-detail-pane {
+    view-transition-name: none;
+  }
+}
+
+/* Isolate the pane morph; do not crossfade the whole document. */
+html.workspace-vt-detail::view-transition-old(root),
+html.workspace-vt-detail::view-transition-new(root) {
+  animation: none;
+}
+
+html.workspace-vt-detail::view-transition-old(workspace-detail),
+html.workspace-vt-detail::view-transition-new(workspace-detail) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.workspace-vt-detail::view-transition-group(workspace-detail) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }

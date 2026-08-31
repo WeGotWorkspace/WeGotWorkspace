@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { X } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { FloatingActionBar } from "@/floating-action-bar/src/floating-action-bar";
 import { useEntityBatchActions } from "@/hooks/use-entity-batch-actions";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
@@ -104,7 +104,7 @@ export function useWorkspaceSelectionPresentation({
       ...actionButtons,
       {
         label: doneLabel,
-        icon: <X className="size-4" />,
+        icon: <CheckCircle2 className="size-4" />,
         onClick: () => exitSelection(activeId),
       },
     ],

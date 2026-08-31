@@ -28,6 +28,7 @@ final class JmapSetErrors
             'calendarHasContents' => 'calendarHasEvent',
             // RFC 9610 AddressBook/set destroy without onDestroyRemoveContents.
             'addressBookHasContents' => 'addressBookHasContents',
+            'notebookHasContents' => 'notebookHasContents',
             // Unknown/foreign media blobId (ContactMediaBlobResolver) — a
             // client-input problem, not a server failure.
             'invalid_blob' => 'invalidProperties',

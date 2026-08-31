@@ -1,0 +1,6 @@
+@import "../../styles.css" reference;
+
+.notes-notebook-color-icon {
+  @apply size-3.5 shrink-0 block;
+  color: var(--collection-row-color, var(--color-ink));
+}

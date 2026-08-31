@@ -61,9 +61,6 @@ export function NotesListPaneHarness({
     searchQuery: controller.searchQuery,
     setSearchQuery: controller.setSearchQuery,
     searchInputRef: controller.searchInputRef,
-    canEditDelete: controller.canEditDelete,
-    selectedNotebook: controller.selectedNotebook,
-    selectedTag: controller.selectedTag,
     view: controller.view,
     isTouch: controller.isTouch,
     starred: controller.starred,
@@ -73,8 +70,6 @@ export function NotesListPaneHarness({
     handleSelect: controller.handleSelect,
     enterSelectionFor: controller.enterSelectionFor,
     itemDragHandlers: controller.itemDragHandlers,
-    openEditDialog: controller.setEditDialog,
-    openDeleteDialog: controller.setDeleteDialog,
     openDeleteConfirmForArchive: controller.openDeleteConfirm,
     toggleStar: controller.toggleStar,
     toggleArchive: controller.toggleArchive,
@@ -85,7 +80,7 @@ export function NotesListPaneHarness({
 
   return (
     <NotesStoryScope variant="list-column">
-      <CollectionListWorkspace detailOpenMobile={false} {...listProps} />
+      <CollectionListWorkspace {...listProps} />
       {controller.confirmDialog}
     </NotesStoryScope>
   );
@@ -114,9 +109,12 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: /Endless scroll/i })).toBeInTheDocument();
+    await expect(canvas.getByText("3 Items")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Refresh notes" })).toBeInTheDocument();
     await expect(canvas.getByText("architecture")).toBeInTheDocument();
     await expect(canvas.getByText("essay")).toBeInTheDocument();
+    await expect(canvasElement.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    await expect(canvasElement.querySelector(".collection-sidebar-row__dot")).toBeNull();
     const input = canvas.getByPlaceholderText("Search notes...");
     await userEvent.type(input, "Nordic");
     await expect(input).toHaveValue("Nordic");
@@ -151,5 +149,12 @@ export const Loading: Story = {
 };
 
 export const ActiveNotebook: Story = {
+  tags: ["vitest-ci"],
   args: { preset: "inNotebook" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: "Edit" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Remove" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Delete notebook" })).toBeNull();
+  },
 };

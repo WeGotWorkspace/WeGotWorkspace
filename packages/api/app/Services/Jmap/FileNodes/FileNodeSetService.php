@@ -30,9 +30,9 @@ final class FileNodeSetService
     // `modified` is accepted on create solely for onExists=newest
     // comparisons (draft-14); it is not persisted — mtime is the write time
     // (documented deviation: no client-controlled timestamps).
-    private const SUPPORTED_CREATE_PROPS = ['parentId', 'name', 'nodeType', 'blobId', 'size', 'type', 'modified', 'note'];
+    private const SUPPORTED_CREATE_PROPS = ['parentId', 'name', 'nodeType', 'blobId', 'size', 'type', 'modified'];
 
-    private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size', 'note'];
+    private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size'];
 
     /** @var array<string, array<string, mixed>> */
     private array $created = [];

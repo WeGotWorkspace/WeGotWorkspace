@@ -4,6 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { Note } from "@/lib/models/note";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
   cleanup();
@@ -24,27 +26,41 @@ function ListHarness({
   notes,
   selectedIds = [],
   activeId = "",
+  view = "all",
+  viewLabel = "All Items",
+  notebookCollections,
+  listLoading = false,
+  listRefreshing = false,
+  onRefreshList,
+  slot = "list",
 }: {
   notes: Note[];
   selectedIds?: string[];
   activeId?: string;
+  view?: string;
+  viewLabel?: string;
+  notebookCollections?: NotesNotebookCollection[];
+  listLoading?: boolean;
+  listRefreshing?: boolean;
+  onRefreshList?: () => void;
+  slot?: "list" | "header" | "both";
 }) {
   const panel = NotesListPanel({
     L: defaultNotesLabels,
     sidebarOpen: true,
     onToggleSidebar: () => {},
-    viewLabel: "All Items",
+    viewLabel,
     selectedIds,
     selectionMode: false,
-    listLoading: false,
+    listLoading,
+    listRefreshing,
+    onRefreshList,
     visibleNotes: notes,
+    notebookCollections,
     searchQuery: "",
     setSearchQuery: () => {},
     searchInputRef: createRef<HTMLInputElement>(),
-    canEditDelete: false,
-    selectedNotebook: null,
-    selectedTag: null,
-    view: "all",
+    view,
     isTouch: false,
     starred: {},
     archived: {},
@@ -53,15 +69,119 @@ function ListHarness({
     handleSelect: () => {},
     enterSelectionFor: () => {},
     itemDragHandlers: () => ({}),
-    openEditDialog: () => {},
-    openDeleteDialog: () => {},
     openDeleteConfirmForArchive: () => {},
     toggleStar: () => {},
     toggleArchive: () => {},
     selectionBar: null,
   });
-  return <>{panel.listContent}</>;
+  if (slot === "both") {
+    return (
+      <>
+        {panel.header}
+        {panel.listContent}
+      </>
+    );
+  }
+  return <>{slot === "header" ? panel.header : panel.listContent}</>;
 }
+
+describe("NotesListPanel refresh vs initial load", () => {
+  it("keeps existing rows visible while the refresh button is busy", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness notes={[baseNote]} listRefreshing onRefreshList={() => {}} slot="both" />
+      </TooltipProvider>,
+    );
+    expect(
+      (screen.getByRole("button", { name: defaultNotesLabels.refreshList }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.queryByText(defaultNotesLabels.listLoading)).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByText("Hello")).toBeTruthy();
+  });
+
+  it("shows the list loading spinner only on initial load", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness notes={[baseNote]} listLoading slot="both" />
+      </TooltipProvider>,
+    );
+    expect(screen.getByText(defaultNotesLabels.listLoading)).toBeTruthy();
+    expect(screen.queryByText("Hello")).toBeNull();
+  });
+});
+
+describe("NotesListPanel header chrome", () => {
+  it("does not show edit or delete notebook controls on the view header", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness notes={[baseNote]} view="nb:notes-drafts" viewLabel="Drafts" slot="header" />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.edit })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.remove })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.deleteNotebook })).toBeNull();
+  });
+});
+
+describe("NotesListPanel notebook labels", () => {
+  it("shows the live collection name when the note still has the old name", () => {
+    render(
+      <ListHarness
+        notes={[
+          { ...baseNote, id: "n-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...baseNote, id: "n-2", notebook: "Work", notebookId: "notes-work" },
+        ]}
+        notebookCollections={[
+          { id: "notes-drafts", name: "Journal" },
+          { id: "notes-work", name: "Work" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Journal")).toBeTruthy();
+    expect(screen.getByText("Work")).toBeTruthy();
+    expect(screen.queryByText("Drafts")).toBeNull();
+  });
+
+  it("shows the group collection display name and color, not the group-… slug", () => {
+    const { container } = render(
+      <ListHarness
+        notes={[
+          {
+            ...baseNote,
+            id: "n-group",
+            notebook: "group-administrators",
+            notebookId: "group-administrators",
+            scope: "group",
+            groupSlug: "administrators",
+          },
+        ]}
+        notebookCollections={[
+          {
+            id: "group-administrators",
+            name: "Administratorss",
+            color: "#ea8c72",
+            scope: "group",
+            groupSlug: "administrators",
+            isSharee: false,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Administratorss")).toBeTruthy();
+    expect(screen.queryByText("group-administrators")).toBeNull();
+    expect(screen.queryByText("administrators")).toBeNull();
+    const location = container.querySelector(".notes-list-panel__notebook");
+    expect(location).toBeTruthy();
+    expect((location as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
+      "#ea8c72",
+    );
+    expect(location!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(location!.querySelector(".collection-sidebar-row__dot")).toBeNull();
+    expect(location!.querySelector(".notes-list-panel__notebook-dot")).toBeNull();
+  });
+});
 
 describe("NotesListPanel selection paint", () => {
   it("does not paint active/selected when selectedIds is empty but activeId is stale", () => {
@@ -140,7 +260,8 @@ describe("NotesListPanel access chips", () => {
     );
     const meta = container.querySelector(".notes-list-panel__notebook");
     expect(meta).toBeTruthy();
-    expect(meta!.querySelector(".notes-list-panel__notebook-icon")).toBeTruthy();
+    expect(meta!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(meta!.querySelector(".collection-sidebar-row__dot")).toBeNull();
     expect(meta!.querySelector(".notes-list-panel__notebook-name")?.textContent).toBe("bob");
     expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
     expect(container.querySelector(".tag")).toBeNull();

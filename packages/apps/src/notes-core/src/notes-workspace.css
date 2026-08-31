@@ -2,23 +2,53 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream panes + gold sidebar.
- * Chip/button accent (`--notes-accent`) stays soft `#f6d176`. Full-bleed
- * `--notes-sidebar` is a richer gold — soft accent reads washed on large
- * surfaces (no cream frame), so the sidebar token is stepped up toward former
- * `#f0b422`. Detail body (scroll only) uses a toned wash slightly heavier than
- * list-item selected (`18%` accent) — no paper sheet.
+ * Notes product shell: cream panes + a light yellow sidebar tint (Calendar /
+ * Tasks chrome: accent mixed onto cream, not a full-bleed wash).
+ * `--notes-accent` is the brand warm yellow (`#f6d176` — same hex as the
+ * Notes icon / webmanifest). Sidebar selected chips stay that yellow on ink
+ * (WCAG AA). Detail pane / desk is the same cream as the footer and action
+ * bar (`--workspace-chrome-footer-bg`), so the open-note paper card can
+ * read as a tinted sheet. `--note-detail-sheet-bg` is cream mixed with
+ * `--notes-detail-tint` at 11% (same wash as Calendar event cards) — a
+ * very light notebook tint, never the full collection color.
+ * `--notes-detail-accent` still binds to that tint so selected
+ * Star/Archive, tags, and editor checks use the live notebook hue.
+ * Title/body use `--notes-detail-contrast-fg` (ink mixed onto the sheet,
+ * not full ink). Detail task-list checks share the tag wash (16% fill,
+ * 28% border, accent-strong mark) — not a full-sat fill.
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
   --notes-accent: #f6d176;
-  --notes-sidebar: #f3c450;
-  /* List selected ≈ 18% accent; body sits a step heavier on cream. */
-  --notes-detail-body-bg: color-mix(in oklab, var(--notes-accent) 26%, var(--color-cream, #ffffff));
+  --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #ffffff));
+  /*
+   * Calendar: `--calendar-accent-strong` (#5558e8) is a darker step of
+   * `--calendar-accent` (#6366f1) — selected Today icon/label (`--button-active-color`).
+   * Notes has no standalone strong hex; do not invent one. Same derivation:
+   * mix the product accent toward `--color-ink` (the existing yellow contrast pair).
+   */
+  --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 70%, var(--color-ink));
+  /*
+   * Detail-pane accent: live notebook color when `--notes-detail-tint` is set
+   * (single open note); product yellow when unset (empty / multi-select).
+   */
+  --notes-detail-accent: var(--notes-detail-tint, var(--notes-accent));
+  --notes-detail-accent-strong: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 70%,
+    var(--color-ink)
+  );
+  --workspace-chrome-footer-bg: var(--color-cream, #ffffff);
+  --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  /*
+   * Detail desk: same cream as footer / action bar. The paper card is the
+   * notebook-tinted sheet — not this pane.
+   */
+  --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  --notes-detail-body-bg: var(--workspace-detail-bg);
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
-  --workspace-detail-bg: var(--color-cream, #ffffff);
   --app-sidebar-bg: var(--notes-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -36,19 +66,112 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --notes-list-star-color: var(--notes-accent);
-  /* Soft gold fill needs ink check (white on #f6d176 fails WCAG UI 3:1). */
+  /*
+   * Open / selected list row: same fill as `.app-sidebar` (`--app-sidebar-bg` →
+   * `--notes-sidebar`). Not a second accent wash, not `--notes-accent`, not
+   * the notebook sheet tint.
+   */
+  --list-item-selected-bg: var(--app-sidebar-bg);
+  --list-item-active-bg: var(--app-sidebar-bg);
+  /* Soft yellow fill needs ink check (white on yellow fails WCAG UI 3:1). */
   --list-item-checkbox-icon-color: var(--color-ink);
-  --note-detail-tag-bg: var(--notes-accent);
-  --note-detail-tag-fg: var(--color-ink);
+  --checkbox-border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
+  /* Workspace-level yellow — sidebar collection rows override with row color.
+   * Detail editor task-lists use the tag wash on `.note-text-editor-body`. */
+  --checkbox-checked-bg: var(--notes-accent);
+  --checkbox-checked-border: var(--notes-accent);
+  --checkbox-checked-fg: var(--color-ink);
+  /* Idle tag chips — sidebar filters + list-row pills share this family.
+   * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
+   * use `--note-detail-tag-*` (notebook wash on the paper sheet). */
+  --notes-tag-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --notes-tag-fg: var(--color-ink);
+  --notes-tag-border: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  /* Selected sidebar tag chip — ink + product yellow. Nested `.notes-workspace`
+   * inherits the tokens so stories do not reset chip text. */
+  --notes-tag-selected-bg: var(--color-ink);
+  --notes-tag-selected-fg: var(--notes-accent);
+  --notes-tag-selected-border: var(--color-ink);
+  --note-detail-tag-bg: color-mix(in oklab, var(--notes-detail-accent) 16%, transparent);
+  --note-detail-tag-fg: var(--notes-detail-accent-strong);
+  --note-detail-tag-border: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
   --note-detail-title-font-family: var(--font-serif);
+  /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
+  --note-detail-sheet-bg: color-mix(
+    in oklab,
+    var(--notes-detail-tint, var(--color-cream, #ffffff)) 11%,
+    var(--color-cream, #ffffff)
+  );
+  /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
+  --notes-detail-contrast-fg: color-mix(
+    in oklab,
+    var(--color-ink) 85%,
+    var(--note-detail-sheet-bg, var(--color-cream, #ffffff))
+  );
+  /*
+   * Top-lit paper (reference sheet): tight contact at the edge, a short mid
+   * occlusion, then a broad ambient falloff below. All y-offsets downward —
+   * almost no shadow on the top edge. Ink at low alpha reads as warm charcoal
+   * on the cream desk (not a cool black blob).
+   */
+  --note-detail-sheet-shadow:
+    0 1px 1px color-mix(in oklab, var(--color-ink) 22%, transparent),
+    0 3px 6px color-mix(in oklab, var(--color-ink) 12%, transparent),
+    0 12px 20px -4px color-mix(in oklab, var(--color-ink) 14%, transparent),
+    0 32px 48px -12px color-mix(in oklab, var(--color-ink) 16%, transparent);
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
 }
 
-/* Yellow only on the detail scroll body — action bar + footer stay cream. */
+/* Detail scroll shares the cream desk (card is the notebook sheet). */
 .notes-workspace .workspace-detail-pane__scroll {
   background-color: var(--notes-detail-body-bg);
+}
+
+/*
+ * Notes detail editor task-list only — not Docs, not sidebar 16px collection
+ * checkboxes (those set `--checkbox-checked-*` from `--collection-row-color`).
+ * Same family as detail tags: notebook wash, not a full-sat neon square.
+ */
+.notes-workspace .note-text-editor-body {
+  --checkbox-border-color: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
+  --checkbox-checked-bg: color-mix(in oklab, var(--notes-detail-accent) 16%, transparent);
+  --checkbox-checked-border: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
+  --checkbox-checked-fg: var(--notes-detail-accent-strong);
+}
+
+/*
+ * Short notes still look like a full-height sticky sheet: the scroll host
+ * is a column so the card can grow. `min-height: 100%` is the content box
+ * (pane minus the scroll padding that insets the card). Long notes grow.
+ */
+.notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-workspace .note-detail-sheet {
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+
+/*
+ * Same split as `.workspace-detail-pane` (`absolute` → `md:relative`,
+ * `@media (max-width: 47.999rem)` in workspace-app.css): below 48rem the
+ * detail pane is already full-width. Flush the paper sheet to the pane —
+ * no scroll inset, no max-width column, no floating shadow.
+ */
+@media (max-width: 47.999rem) {
+  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+    @apply px-0 pt-0 pb-0;
+  }
+
+  .notes-workspace .note-detail-sheet {
+    @apply mx-0 max-w-none;
+    min-height: 100%;
+    box-shadow: none;
+  }
 }
 
 /*
@@ -83,55 +206,117 @@
 }
 
 .notes-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--color-ink);
-  --button-primary-fg: var(--notes-accent);
+  /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
+  --button-primary-bg: var(--notes-accent);
+  --button-primary-fg: var(--color-ink, #042a22);
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
 /**
+ * App switcher lockup: yellow tile + yellow-tint notepad. Default invert uses
+ * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the
+ * mark — that reads as muddy olive. Layers stay in the notes.svg yellow family
+ * (`#f6d176` tile / `#f0bc3a` header+lines / `#fef8ea` almost-white sheet).
+ */
+.notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--notes-accent);
+  --app-switch-icon-fg: color-mix(in oklab, var(--notes-accent) 14%, var(--color-cream, #ffffff));
+  background-color: var(--app-switch-icon-bg);
+}
+
+.notes-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: var(--app-switch-icon-fg);
+  --wai-detail: #f0bc3a;
+  --wai-cutout: #f0bc3a;
+}
+
+/**
  * Portaled notes dialogs/alerts sit outside `.notes-workspace`; repeat accent tokens so
  * {@link Button} and {@link buttonVariants} match the notes shell.
  */
+.notes-dialog-surface .field-label-row + .field-label-row {
+  @apply mt-3;
+}
+
 .notes-dialog-surface {
   --notes-accent: #f6d176;
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: var(--color-ink);
+  --button-primary-fg: var(--color-ink, #042a22);
   --primary: var(--notes-accent);
   --primary-foreground: var(--color-ink);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
 }
 
-.notes-workspace .note-detail-view__title {
-  font-family: var(--note-detail-title-font-family);
-  color: var(--color-ink);
+/* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
+.notes-workspace .notes-detail-footer__meta-tag--edited {
+  @apply shrink-0;
+  --tag-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --tag-fg: color-mix(in oklab, var(--color-ink) 58%, transparent);
 }
 
 .notes-workspace .notes-detail-footer__meta-tag--edited .tag {
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  color: color-mix(in oklab, var(--color-ink) 58%, transparent);
+  background-color: var(--tag-bg);
+  color: var(--tag-fg);
+}
+
+/* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
+.notes-workspace .workspace-detail-pane > .action-bar {
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+}
+
+/* Calendar view-select pattern: compact cream trigger in the detail header. */
+.notes-workspace .action-bar .notes-notebook-select {
+  width: auto;
+  min-width: 7rem;
+  background-color: var(--color-cream, #ffffff);
 }
 
 /*
- * Labeled move-notebook only (showLabel + active): filled soft-gold chip, dark text/icon.
- * Star/archive keep generic icon-button--active (accent-colored glyphs, no fill bg).
- * Parent sets button tokens; Button/IconButton consume them.
+ * Selected Star / Archive: Calendar Today chrome remapped to notes tokens.
+ * Same wash on the detail action bar and the batch multi-select actions.
+ * Wash stays accent 18%/24% on cream. Icon/label uses the detail strong
+ * token (notebook color when a note is open; product yellow when unset).
+ * Idle chips keep action-bar muted.
  */
-.notes-workspace .action-bar__action--labeled.button.icon-button--active {
-  --button-active-color: var(--color-ink);
-  --button-subtle-background: var(--notes-accent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--notes-accent) 86%, var(--color-ink));
+.notes-workspace
+  :is(.action-bar, .multi-selection-view__actions)
+  .button--variant-subtle.icon-button--active {
+  --button-active-color: var(--notes-detail-accent-strong);
+  --button-subtle-background: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-subtle-hover-background: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
-.notes-workspace .action-bar__action--labeled.button.icon-button--active .button__icon > svg {
+/* Lucide icons are stroke-based; generic icon-button--active fill blobs them. */
+.notes-workspace
+  :is(.action-bar, .multi-selection-view__actions)
+  .button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
   fill: none;
+  color: var(--notes-detail-accent-strong);
 }
 
 .notes-workspace .note-detail-view__tag-group {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --tag-bg: var(--note-detail-tag-bg);
+  --tag-fg: var(--note-detail-tag-fg);
+  --tag-remove-fg: var(--note-detail-tag-fg);
   --tag-group-input-border: color-mix(in oklab, var(--color-ink) 16%, transparent);
   --tag-group-input-bg: color-mix(in oklab, var(--color-ink) 4%, transparent);
   --tag-group-input-bg-focus: #ffffff;
@@ -142,6 +327,8 @@
 }
 
 .notes-workspace .note-detail-view__tag-group .tag {
+  @apply border;
+  border-color: var(--note-detail-tag-border);
   background-color: var(--note-detail-tag-bg);
   color: var(--note-detail-tag-fg);
 }
@@ -161,11 +348,17 @@
   --tw-ring-color: color-mix(in oklab, var(--color-ink) 35%, transparent);
 }
 
+/* Idle chips: sidebar filters and list-row pills share one family. */
+.notes-workspace .notes-sidebar-tags__item .tag,
+.notes-workspace .list-item__tags .tag {
+  @apply border;
+  border-color: var(--notes-tag-border);
+  background-color: var(--notes-tag-bg);
+  color: var(--notes-tag-fg);
+}
+
 .notes-workspace .notes-sidebar-tags__item .tag {
-  @apply border max-w-full;
-  border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  background-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  color: var(--color-ink);
+  @apply max-w-full;
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {
@@ -174,9 +367,9 @@
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
 .notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
-  background-color: var(--color-ink);
-  border-color: var(--color-ink);
-  color: var(--notes-accent);
+  background-color: var(--notes-tag-selected-bg);
+  border-color: var(--notes-tag-selected-border);
+  color: var(--notes-tag-selected-fg);
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {
@@ -184,9 +377,13 @@
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 35%, transparent);
 }
 
+.notes-workspace .collection-sidebar-row--drop-target {
+  background-color: color-mix(in oklab, var(--notes-accent) 28%, transparent);
+}
+
 .notes-workspace .note-detail-view__pull-quote {
   font-family: var(--font-sans);
-  color: color-mix(in oklab, var(--color-ink) 85%, transparent);
+  color: color-mix(in oklab, var(--notes-detail-contrast-fg, var(--color-ink)) 85%, transparent);
 }
 
 /* Storybook scopes — mirror workspace chrome without inline presets */
@@ -213,25 +410,5 @@
 
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: var(--workspace-detail-bg, var(--color-cream, #ffffff));
-}
-
-/* Owner outgoing-share pip on personal notebook rows (not a count badge). */
-.notes-workspace .notes-sidebar-notebook--shared .menu-item__badge {
-  @apply h-auto min-w-0 px-0;
-  background-color: transparent;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-}
-
-.notes-workspace .notes-sidebar-notebook--shared.menu-item--selected .menu-item__badge {
-  background-color: transparent;
-  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-}
-
-.notes-workspace .notes-sidebar-notebook__shared-pip {
-  @apply inline-flex size-3 shrink-0 items-center justify-center;
-}
-
-.notes-workspace .notes-sidebar-notebook__shared-icon {
-  @apply size-3 shrink-0 block;
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
 }

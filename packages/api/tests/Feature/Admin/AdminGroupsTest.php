@@ -34,9 +34,10 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             ])
             ->assertOk();
 
-        $groupNotes = $this->adminDataDirectory().'/files/groups/support-team/.notes';
-        $this->assertTrue(is_dir($groupNotes));
-        $this->assertTrue(is_dir($groupNotes.'/General'));
+        $this->assertDatabaseHas('calendarinstances', [
+            'principaluri' => 'principals/groups/support-team',
+            'uri' => 'notes-support-team',
+        ], 'wgw');
 
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/groups/support-team', [

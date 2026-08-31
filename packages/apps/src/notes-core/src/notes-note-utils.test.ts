@@ -7,6 +7,7 @@ import {
   computeWordCount,
   createNoteSaveDebouncer,
   enrichNote,
+  filterNotesByHiddenNotebooks,
   filterVisibleNotes,
   dedupeNotesById,
   mapNotesWithBodyMarkdown,
@@ -17,15 +18,22 @@ import {
   noteAllowsTagAssignment,
   isPlaceholderNoteListLabel,
   noteHasListableBody,
+  shouldDiscardEmptyCreatedNote,
+  noteListExcerpt,
   noteListTagOverflow,
   noteListTitle,
   usableNoteListPreview,
   noteListLocationLabel,
+  notebookDisplayName,
+  notesWithRenamedNotebook,
   noteShowsStarControls,
   noteShowsTags,
   noteShowsSharedBadge,
   noteShowsViewOnlyBadge,
   notesCanCreateInView,
+  noteAfterNotebookMove,
+  notesViewAfterNotebookMove,
+  notesViewForCreate,
   parseGroupNotebookPath,
   resolveNotesCreateTarget,
   sharedNotebookLabel,
@@ -65,9 +73,19 @@ describe("notes-note-utils", () => {
     expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
     expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
     expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
+    expect(noteListTitle({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
+      "SUMMARY",
+    );
   });
 
-  it("never uses FileNode name / local-* id as the list title", () => {
+  it("shows excerpt only when a title is already set", () => {
+    expect(noteListExcerpt({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
+      "Preview line",
+    );
+    expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("");
+  });
+
+  it("never uses a local-* id as the list title", () => {
     const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
     expect(isPlaceholderNoteListLabel(localId, localId)).toBe(true);
     expect(isPlaceholderNoteListLabel("Untitled", localId)).toBe(true);
@@ -281,6 +299,39 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.tags).toEqual(["focus"]);
   });
 
+  it("keeps optimistic archived when merging a stale bootstrap row", () => {
+    const local: Note = {
+      ...sampleNote,
+      archived: true,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      archived: false,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.archived).toBe(true);
+  });
+
+  it("keeps optimistic notebook when merging a stale bootstrap row", () => {
+    const local: Note = {
+      ...sampleNote,
+      notebook: "Ideas",
+      notebookId: "nb-ideas",
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      notebook: "Drafts",
+      notebookId: "nb-drafts",
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.notebook).toBe("Ideas");
+    expect(merged[0]?.notebookId).toBe("nb-ideas");
+  });
+
   it("keeps local tags when create response remaps before the tag upsert lands", () => {
     const local: Note = {
       ...sampleNote,
@@ -299,6 +350,154 @@ describe("notes-note-utils", () => {
     expect(merged.id).toBe("n-server");
     expect(merged.tags).toEqual(["focus"]);
     expect(merged.date).toBe(saved.date);
+  });
+
+  it("keeps a typed SUMMARY when create remaps with an empty server title", () => {
+    const local: Note = {
+      ...sampleNote,
+      id: "local-temp",
+      title: "Meeting notes",
+      excerpt: "",
+      body: [""],
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      id: "n-server",
+      title: undefined,
+      excerpt: "",
+      body: [""],
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.id).toBe("n-server");
+    expect(merged.title).toBe("Meeting notes");
+    expect(noteListTitle(merged)).toBe("Meeting notes");
+  });
+
+  it("keeps a local listable body when the metadata response still has the old DESCRIPTION", () => {
+    const local: Note = {
+      ...sampleNote,
+      title: "Event",
+      excerpt: "Typed in collab",
+      body: ["Typed in collab"],
+      wordCount: 3,
+      date: "2026-08-10T12:00:06.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      title: "Event",
+      excerpt: "Old on-disk body",
+      body: ["Old on-disk body"],
+      wordCount: 3,
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.body).toEqual(["Typed in collab"]);
+    expect(noteListTitle(merged)).toBe("Event");
+  });
+
+  it("keeps optimistic archived when the metadata response still has FINAL", () => {
+    const local: Note = {
+      ...sampleNote,
+      archived: true,
+      date: "2026-08-10T12:00:06.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      archived: false,
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.archived).toBe(true);
+  });
+
+  it("keeps an optimistic notebook move when the metadata response is still the old collection", () => {
+    const local: Note = {
+      ...sampleNote,
+      notebook: "Ideas",
+      notebookId: "nb-ideas",
+      date: "2026-08-10T12:00:06.000Z",
+    };
+    const saved: Note = {
+      ...sampleNote,
+      notebook: "Drafts",
+      notebookId: "nb-drafts",
+      date: "2026-08-10T12:00:05.000Z",
+    };
+    const merged = mergeCreatedNotePreservingLocalOptimistic(saved, local);
+    expect(merged.notebook).toBe("Ideas");
+    expect(merged.notebookId).toBe("nb-ideas");
+  });
+
+  it("never treats an empty created note as a disposable draft", () => {
+    expect(shouldDiscardEmptyCreatedNote({ title: undefined, body: [""], excerpt: "" })).toBe(
+      false,
+    );
+    expect(shouldDiscardEmptyCreatedNote({ title: "Event", body: [""], excerpt: "" })).toBe(false);
+  });
+
+  it("keeps an empty untitled create when bootstrap omits the new note", () => {
+    const created: Note = {
+      ...sampleNote,
+      id: "local-abc0de",
+      title: undefined,
+      excerpt: "",
+      body: [""],
+      wordCount: 0,
+      date: "2026-08-29T09:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([sampleNote], [created, sampleNote]);
+    expect(merged.map((note) => note.id)).toEqual(["n-1", "local-abc0de"]);
+    expect(merged.find((note) => note.id === "local-abc0de")?.body).toEqual([""]);
+  });
+
+  it("keeps an optimistic create (and its title) when bootstrap omits the new note", () => {
+    const created: Note = {
+      ...sampleNote,
+      id: "local-abc123",
+      title: "Event",
+      excerpt: "",
+      body: [""],
+      date: "2026-08-29T09:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([sampleNote], [created, sampleNote]);
+    expect(merged.map((note) => note.id)).toEqual(["n-1", "local-abc123"]);
+    expect(merged.find((note) => note.id === "local-abc123")?.title).toBe("Event");
+  });
+
+  it("keeps a typed title when bootstrap still has an empty SUMMARY", () => {
+    const local: Note = {
+      ...sampleNote,
+      title: "Event",
+      date: "2026-08-29T09:00:01.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      title: undefined,
+      date: "2026-08-29T09:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.title).toBe("Event");
+  });
+
+  it("keeps a newer local body when the server row still has stale DESCRIPTION", () => {
+    const local: Note = {
+      ...sampleNote,
+      body: ["Typed offline"],
+      excerpt: "Typed offline",
+      date: "2026-08-10T12:00:01.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      body: ["Old server"],
+      excerpt: "Old server",
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.body).toEqual(["Typed offline"]);
+    expect(merged[0]?.excerpt).toBe("Typed offline");
   });
 
   it("prefers non-empty server body over cached body on refresh merge", () => {
@@ -349,14 +548,49 @@ describe("notes-note-utils", () => {
   });
 
   it("treats TipTap trailing newlines as unchanged (avoids hydrate setState loops)", () => {
-    const note = { ...sampleNote, body: ["Hello world"], excerpt: "Hello world" };
+    const note = {
+      ...sampleNote,
+      title: "Hello world",
+      body: ["Hello world"],
+      excerpt: "Hello world",
+    };
     expect(normalizeNoteBodyMarkdown("Hello world\n\n")).toBe("Hello world");
     expect(applyNoteBodyMarkdown(note, "Hello world\n")).toBe(note);
     expect(applyNoteBodyMarkdown(note, "Hello world\r\n")).toBe(note);
   });
 
+  it("autofills empty SUMMARY from the first heading; later edits stick", () => {
+    const untitled = { ...sampleNote, title: undefined, body: [""], excerpt: "" };
+    const filled = applyNoteBodyMarkdown(untitled, "# Meeting\n\nNotes");
+    expect(filled.title).toBe("Meeting");
+    const stuck = applyNoteBodyMarkdown({ ...filled, title: "Kept" }, "# Other\n\nNotes");
+    expect(stuck.title).toBe("Kept");
+  });
+
+  it("does not copy an in-progress body line into SUMMARY", () => {
+    const untitled = { ...sampleNote, title: undefined, body: [""], excerpt: "" };
+    expect(applyNoteBodyMarkdown(untitled, "H").title).toBeUndefined();
+    expect(applyNoteBodyMarkdown(untitled, "Hello").title).toBeUndefined();
+    expect(applyNoteBodyMarkdown(untitled, "Hello\n").title).toBeUndefined();
+    expect(applyNoteBodyMarkdown(untitled, "Hello").title).not.toBe("H");
+    expect(applyNoteBodyMarkdown(untitled, "Hello\n\nworld").title).toBe("Hello");
+  });
+
+  it("does not overwrite a user-typed title when the body changes", () => {
+    const titled = { ...sampleNote, title: "Event", body: [""], excerpt: "" };
+    expect(applyNoteBodyMarkdown(titled, "Hello").title).toBe("Event");
+    expect(applyNoteBodyMarkdown(titled, "Hello\n\nworld").title).toBe("Event");
+  });
+
+  it("does not refill SUMMARY after the user deliberately blanks the title", () => {
+    const blanked = { ...sampleNote, title: "", body: [""], excerpt: "" };
+    expect(applyNoteBodyMarkdown(blanked, "# Meeting\n\nNotes").title).toBe("");
+  });
+
   it("returns the same notes array when hydrate markdown is unchanged", () => {
-    const notes = [{ ...sampleNote, body: ["Stable body"], excerpt: "Stable body" }];
+    const notes = [
+      { ...sampleNote, title: "Stable body", body: ["Stable body"], excerpt: "Stable body" },
+    ];
     const first = mapNotesWithBodyMarkdown(notes, "n-1", "Stable body\n", { bumpDate: false });
     expect(first.notes).toBe(notes);
     expect(first.updated).toBeUndefined();
@@ -367,7 +601,7 @@ describe("notes-note-utils", () => {
   });
 
   it("returns the same note reference when collab markdown is unchanged", () => {
-    const note = { ...sampleNote, body: ["Same body"] };
+    const note = { ...sampleNote, title: "Same body", body: ["Same body"] };
     expect(applyNoteBodyMarkdown(note, "Same body")).toBe(note);
   });
 
@@ -423,13 +657,30 @@ describe("notes-note-utils", () => {
     });
     expect(searchMatch).toHaveLength(0);
 
-    const sharedWithMe = filterVisibleNotes(notes, {
+    const sharedWithMeEmpty = filterVisibleNotes(notes, {
       view: "shared-with-me",
       archived: {},
       starred: {},
       searchQuery: "",
     });
-    expect(sharedWithMe.map((note) => note.id)).toEqual(["shared-1"]);
+    expect(sharedWithMeEmpty).toEqual([]);
+
+    const inboundShared: Note = {
+      ...sampleNote,
+      id: "inbound-1",
+      notebook: "Shared Notes",
+      notebookId: "shared-nb",
+      excerpt: "Inbound shared note",
+      body: ["Inbound shared note"],
+    };
+    const sharedWithMe = filterVisibleNotes([...notes, inboundShared], {
+      view: "shared-with-me",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+      sharedNotebookKeys: new Set(["shared-nb", "Shared Notes"]),
+    });
+    expect(sharedWithMe.map((note) => note.id)).toEqual(["inbound-1"]);
 
     const personalNb = filterVisibleNotes(notes, {
       view: "nb:Drafts",
@@ -438,6 +689,14 @@ describe("notes-note-utils", () => {
       searchQuery: "",
     });
     expect(personalNb.map((note) => note.id)).toEqual(["n-1"]);
+
+    const sharedNotebookView = filterVisibleNotes([...notes, inboundShared], {
+      view: "nb:shared-nb",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(sharedNotebookView.map((note) => note.id)).toEqual(["inbound-1"]);
 
     const sharedNb = filterVisibleNotes(notes, {
       view: "shared-nb:/groups/eng/.notes/Specs",
@@ -524,6 +783,46 @@ describe("notes-note-utils", () => {
     });
     expect(after.map((note) => note.id)).toEqual(["n-old", "n-new"]);
   });
+
+  it("search matches a title-only note", () => {
+    const notes: Note[] = [{ ...sampleNote, id: "n-1", title: "Event", excerpt: "", body: [""] }];
+    const match = filterVisibleNotes(notes, {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "event",
+    });
+    expect(match.map((note) => note.id)).toEqual(["n-1"]);
+  });
+
+  it("search matches the live collection name after a rename", () => {
+    const notes: Note[] = [
+      { ...sampleNote, id: "n-1", notebook: "Drafts", notebookId: "notes-drafts" },
+    ];
+    const match = filterVisibleNotes(notes, {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "journal",
+      notebookCollections: [{ id: "notes-drafts", name: "Journal" }],
+    });
+    expect(match.map((note) => note.id)).toEqual(["n-1"]);
+  });
+
+  it("filterNotesByHiddenNotebooks drops hidden notebooks except on a notebook view", () => {
+    const notes: Note[] = [
+      { ...sampleNote, id: "a", notebook: "Drafts", notebookId: "drafts" },
+      { ...sampleNote, id: "b", notebook: "Work", notebookId: "work" },
+    ];
+    const hidden = new Set(["work"]);
+    expect(filterNotesByHiddenNotebooks(notes, "all", hidden).map((note) => note.id)).toEqual([
+      "a",
+    ]);
+    expect(filterNotesByHiddenNotebooks(notes, "nb:work", hidden).map((note) => note.id)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
 });
 
 describe("createNoteSaveDebouncer", () => {
@@ -609,11 +908,85 @@ describe("createNoteSaveDebouncer", () => {
     flushAll(persist);
     expect(persist).not.toHaveBeenCalled();
   });
+
+  it("remapId moves a pending save onto the server id", () => {
+    vi.useFakeTimers();
+    const persist = vi.fn();
+    const { schedule, remapId } = createNoteSaveDebouncer(500);
+    const titled = { ...sampleNote, id: "local-temp", title: "Event" };
+    schedule("local-temp", titled, persist);
+    remapId("local-temp", "n-server");
+    vi.advanceTimersByTime(500);
+    expect(persist).toHaveBeenCalledOnce();
+    expect(persist).toHaveBeenCalledWith({ ...titled, id: "n-server" });
+  });
+});
+
+describe("notebookDisplayName", () => {
+  it("prefers the live collection name by id over a stale denormalized string", () => {
+    expect(
+      notebookDisplayName({ ...sampleNote, notebook: "Drafts", notebookId: "notes-drafts" }, [
+        { id: "notes-drafts", name: "Journal" },
+      ]),
+    ).toBe("Journal");
+  });
+
+  it("leaves other notebooks unchanged", () => {
+    expect(
+      notebookDisplayName({ ...sampleNote, notebook: "Work", notebookId: "notes-work" }, [
+        { id: "notes-drafts", name: "Journal" },
+        { id: "notes-work", name: "Work" },
+      ]),
+    ).toBe("Work");
+  });
+
+  it("resolves a group collection when the note still stores the collection id as the name", () => {
+    expect(
+      notebookDisplayName(
+        { notebook: "group-administrators", notebookId: "group-administrators" },
+        [{ id: "group-administrators", name: "Administratorss" }],
+      ),
+    ).toBe("Administratorss");
+    expect(
+      notebookDisplayName({ notebook: "group-administrators" }, [
+        { id: "group-administrators", name: "Administratorss" },
+      ]),
+    ).toBe("Administratorss");
+  });
+});
+
+describe("notesWithRenamedNotebook", () => {
+  it("rewrites notes that match the renamed collection id", () => {
+    const notes = [
+      { ...sampleNote, id: "a", notebook: "Drafts", notebookId: "notes-drafts" },
+      { ...sampleNote, id: "b", notebook: "Work", notebookId: "notes-work" },
+    ];
+    expect(
+      notesWithRenamedNotebook(notes, {
+        notebookId: "notes-drafts",
+        fromName: "Drafts",
+        toName: "Journal",
+      }).map((note) => ({ id: note.id, notebook: note.notebook })),
+    ).toEqual([
+      { id: "a", notebook: "Journal" },
+      { id: "b", notebook: "Work" },
+    ]);
+  });
 });
 
 describe("noteListLocationLabel", () => {
   it("returns notebook name for owned notes", () => {
     expect(noteListLocationLabel(sampleNote, defaultNotesLabels)).toBe("Drafts");
+  });
+
+  it("resolves the live collection name after a rename", () => {
+    expect(
+      noteListLocationLabel(
+        { ...sampleNote, notebook: "Drafts", notebookId: "notes-drafts" },
+        defaultNotesLabels,
+        [{ id: "notes-drafts", name: "Journal" }],
+      ),
+    ).toBe("Journal");
   });
 
   it("returns grantor username for shared-inbox notes", () => {
@@ -639,18 +1012,36 @@ describe("noteListLocationLabel", () => {
     ).toBe("Shared with me");
   });
 
-  it("returns group slug for group-scoped notes (single notebook per group)", () => {
+  it("returns the collection display name for group notebooks, not the group slug", () => {
     expect(
       noteListLocationLabel(
         {
           ...sampleNote,
-          notebook: "General",
+          notebook: "group-administrators",
+          notebookId: "group-administrators",
           scope: "group",
           groupSlug: "administrators",
         },
         defaultNotesLabels,
+        [{ id: "group-administrators", name: "Administratorss" }],
       ),
-    ).toBe("administrators");
+    ).toBe("Administratorss");
+  });
+
+  it("does not fall back to a group-… slug when the collection display name exists", () => {
+    expect(
+      noteListLocationLabel(
+        {
+          ...sampleNote,
+          notebook: "group-administrators",
+          notebookId: "group-administrators",
+          scope: "group",
+          groupSlug: "administrators",
+        },
+        defaultNotesLabels,
+        [{ id: "group-administrators", name: "Administratorss" }],
+      ),
+    ).not.toMatch(/^group-/);
   });
 
   it("sharedNotebookLabel uses group name for membership notebooks", () => {
@@ -692,10 +1083,24 @@ describe("group notebook create targets", () => {
   it("allows New note in group membership notebooks only", () => {
     expect(notesCanCreateInView("all")).toBe(true);
     expect(notesCanCreateInView("nb:Drafts")).toBe(true);
+    expect(notesCanCreateInView("starred")).toBe(true);
+    expect(notesCanCreateInView("archive")).toBe(true);
     expect(notesCanCreateInView("shared-nb:/groups/eng/.notes/General")).toBe(true);
     expect(notesCanCreateInView("shared-nb:/users/bob/.notes/TeamPad")).toBe(false);
     expect(notesCanCreateInView("shared-with-me")).toBe(false);
-    expect(notesCanCreateInView("archive")).toBe(false);
+  });
+
+  it("switches Starred and Archive create to All Items", () => {
+    expect(notesViewForCreate("starred")).toBe("all");
+    expect(notesViewForCreate("archive")).toBe("all");
+    expect(notesViewForCreate("nb:Drafts")).toBe("nb:Drafts");
+    expect(notesViewForCreate("tag:focus")).toBe("tag:focus");
+    expect(resolveNotesCreateTarget(notesViewForCreate("starred"), ["Drafts"])).toEqual({
+      notebook: "Drafts",
+    });
+    expect(resolveNotesCreateTarget(notesViewForCreate("archive"), ["Drafts"])).toEqual({
+      notebook: "Drafts",
+    });
   });
 
   it("resolves create target notebook + groupSlug from shared-nb view", () => {
@@ -706,5 +1111,97 @@ describe("group notebook create targets", () => {
     });
     expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({ notebook: "Ideas" });
     expect(resolveNotesCreateTarget("all", ["Drafts"])).toEqual({ notebook: "Drafts" });
+  });
+});
+
+describe("noteAfterNotebookMove", () => {
+  it("clears group scope when moving to a personal notebook", () => {
+    const moved = noteAfterNotebookMove(
+      {
+        ...sampleNote,
+        scope: "group",
+        groupSlug: "eng",
+        notebook: "Specs",
+        notebookId: "group-eng",
+      },
+      { id: "notes-work", name: "Work", scope: "personal" },
+    );
+    expect(moved).toEqual(
+      expect.objectContaining({
+        notebook: "Work",
+        notebookId: "notes-work",
+        scope: "personal",
+        groupSlug: undefined,
+      }),
+    );
+  });
+
+  it("stamps dest group scope when moving into a group notebook", () => {
+    const moved = noteAfterNotebookMove(sampleNote, {
+      id: "group-eng",
+      name: "Specs",
+      scope: "group",
+      groupSlug: "eng",
+    });
+    expect(moved).toEqual(
+      expect.objectContaining({
+        notebook: "Specs",
+        notebookId: "group-eng",
+        scope: "group",
+        groupSlug: "eng",
+      }),
+    );
+  });
+});
+
+describe("notesViewAfterNotebookMove", () => {
+  const dest = { id: "notes-work", name: "Work" };
+  const moved = {
+    ...sampleNote,
+    notebook: dest.name,
+    notebookId: dest.id,
+  };
+
+  it("follows the destination notebook when the current notebook view no longer contains the note", () => {
+    const filter = { archived: {}, starred: {} };
+    expect(notesViewAfterNotebookMove("nb:notes-drafts", dest, moved, filter)).toBe(
+      "nb:notes-work",
+    );
+    expect(notesViewAfterNotebookMove("nb:Drafts", dest, moved, filter)).toBe("nb:notes-work");
+  });
+
+  it("stays on All, Starred, Archive, and Tags when the moved note still belongs", () => {
+    const tagged = { ...moved, tags: ["focus"], starred: true };
+    expect(
+      notesViewAfterNotebookMove("all", dest, tagged, {
+        archived: {},
+        starred: { [tagged.id]: true },
+      }),
+    ).toBe("all");
+    expect(
+      notesViewAfterNotebookMove("starred", dest, tagged, {
+        archived: {},
+        starred: { [tagged.id]: true },
+      }),
+    ).toBe("starred");
+    expect(
+      notesViewAfterNotebookMove("archive", dest, tagged, {
+        archived: { [tagged.id]: true },
+        starred: {},
+      }),
+    ).toBe("archive");
+    expect(
+      notesViewAfterNotebookMove("tag:focus", dest, tagged, { archived: {}, starred: {} }),
+    ).toBe("tag:focus");
+  });
+
+  it("leaves Starred or Tags for the destination when the note no longer belongs", () => {
+    const otherTag = { ...moved, tags: ["other"] };
+    expect(
+      notesViewAfterNotebookMove("starred", dest, otherTag, { archived: {}, starred: {} }),
+    ).toBe("nb:notes-work");
+    expect(
+      notesViewAfterNotebookMove("tag:focus", dest, otherTag, { archived: {}, starred: {} }),
+    ).toBe("nb:notes-work");
   });
 });

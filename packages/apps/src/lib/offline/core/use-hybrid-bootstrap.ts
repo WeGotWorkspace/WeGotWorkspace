@@ -43,7 +43,12 @@ export function useHybridBootstrap<T>({
         if (readBrowserOnline()) {
           void load()
             .then((next) => {
-              if (!cancelled) applySuccess(next);
+              if (cancelled) return;
+              // Cache already mounted the workspace — do not bump successVersion
+              // (that remounts *App trees keyed on it and drops optimistic UI).
+              setData(next);
+              setPhase("ready");
+              setError(null);
             })
             .catch(() => undefined);
         }

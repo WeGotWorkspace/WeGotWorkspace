@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
 
 const meta: Meta<typeof NotesWorkspace> = {
@@ -16,10 +15,25 @@ type Story = StoryObj<typeof NotesWorkspace>;
 
 const bootstrap = createNotesAppBootstrap();
 
+const storyOperations = {
+  upsertNote: async (note: (typeof bootstrap.data.notes)[number]) => note,
+  deleteNote: async () => {},
+  archiveNote: async (id: string) => bootstrap.data.notes.find((note) => note.id === id)!,
+  restoreNote: async (id: string) => bootstrap.data.notes.find((note) => note.id === id)!,
+  createNotebook: async (name: string) => ({ id: name, name }),
+  patchNotebook: async (id: string, patch: { name?: string; color?: string | null }) => ({
+    id,
+    name: patch.name ?? id,
+    color: patch.color,
+  }),
+  renameNotebook: async () => {},
+  deleteNotebook: async () => {},
+};
+
 export const Default: Story = {
   args: {
     ...bootstrap,
-    shareOperations: createMockDriveShareOperations(),
+    operations: storyOperations,
   },
 };
 
@@ -31,45 +45,37 @@ export const WithSharedSections: Story = {
         notes: [
           ...bootstrap.data.notes,
           {
-            id: "shared-note-1",
-            category: "Note",
-            date: "—",
-            excerpt: "Shared from bob",
-            body: ["Shared from bob"],
-            notebook: "TeamPad",
-            tags: [],
-            wordCount: 3,
-            scope: "personal",
-            groupSlug: null,
-            apiPath: "/users/bob/.notes/TeamPad/shared-note-1.md",
-            sharedInbox: true,
-            sharedBy: "bob",
-          },
-          {
             id: "group-note-1",
             category: "Note",
             date: "2026-08-01T12:00:00.000Z",
             excerpt: "Eng specs note",
             body: ["Eng specs note"],
             notebook: "Specs",
+            notebookId: "group-eng",
             tags: ["planning"],
             wordCount: 3,
             scope: "group",
             groupSlug: "eng",
           },
         ],
-        sharedNotebooks: [
+        notebookCollections: [
+          ...(bootstrap.data.notebookCollections ?? []).map((notebook) => ({
+            ...notebook,
+            isSharee: false,
+            scope: "personal" as const,
+          })),
           {
-            path: "/groups/eng/.notes/Specs",
-            notebook: "Specs",
-            owner: "eng",
+            id: "group-eng",
+            name: "Specs",
+            color: "#ec4899",
+            isSharee: true,
             scope: "group",
             groupSlug: "eng",
           },
         ],
       },
     }),
-    shareOperations: createMockDriveShareOperations(),
-    initialView: "shared-with-me",
+    operations: storyOperations,
+    initialView: "nb:group-eng",
   },
 };

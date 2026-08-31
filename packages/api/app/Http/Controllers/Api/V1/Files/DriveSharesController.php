@@ -69,7 +69,7 @@ final class DriveSharesController
         return response()->json([
             'data' => $this->shares->sharedWithMe(
                 $principal['username'],
-                $request->boolean('includeNotes'),
+                false,
             ),
         ]);
     }

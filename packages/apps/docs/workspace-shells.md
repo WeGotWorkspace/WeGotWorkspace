@@ -7,7 +7,7 @@ The frontend has **three coexisting workspace shell patterns**. Pick one before 
 | Pattern        | Entry components                                       | Typical UX                                                              |
 | -------------- | ------------------------------------------------------ | ----------------------------------------------------------------------- |
 | **Split**      | `WorkspaceAppLayout` (`sidebar`, `mainHeader`, `main`) | Fixed sidebar + main column with optional pinned header and scroll body |
-| **Collection** | `WorkspaceApp` → `CollectionListWorkspace`             | Sidebar + list column + detail pane (mobile slide-over)                 |
+| **Collection** | `WorkspaceApp` → `CollectionListWorkspace`             | Sidebar + list column + detail pane (mobile view-transition overlay)    |
 | **Custom**     | `WorkspaceShellHeader` + bespoke layout                | Product-owned full-page chrome (lobby, room, auth)                      |
 
 Shared layout CSS for split and collection lives under `packages/apps/src/workspace-shell/` and `packages/apps/src/workspace-app/`.
@@ -153,7 +153,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 
 - **Hand-rolling** split chrome (`<section>`, scroll wrappers, mobile detail translate) when `WorkspaceAppLayout` split props or `WorkspaceApp` already provide it.
 - **Mounting `CollectionListWorkspace` directly** in `*Workspace` instead of going through `WorkspaceApp` (loses sidebar/detail mobile orchestration).
-- **Using split layout for mail/notes-style** list+detail — you lose shared back button, empty states, and mobile slide behavior.
+- **Using split layout for mail/notes-style** list+detail — you lose shared back button, empty states, and mobile view-transition overlay.
 - **Forcing `WorkspaceAppLayout` on meet-style** fullscreen RTC — lobby/room layout is intentionally bespoke.
 - **Second mobile scrim** beside `AppSidebar` — scrim is rendered inside `AppSidebar` when open.
 - **Navigation in `*-core`** — no `window.location` or router calls; expose `onLogout` / callbacks from `*App` (see workspace skill).

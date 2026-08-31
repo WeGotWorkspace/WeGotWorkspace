@@ -35,6 +35,30 @@ export function colorForName(name: string): string {
   return COLORS[Math.abs(hash) % COLORS.length]!;
 }
 
+export function collabErrorStatus(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "status" in error) {
+    const status = (error as { status?: unknown }).status;
+    if (typeof status === "number") return status;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  const match = /\((\d{3})\)/.exec(message);
+  return match ? Number(match[1]) : undefined;
+}
+
+/** 412 / If-Match — do not silent-seed an empty Y.Doc (Notes Decision 6). */
+export function isCollabPreconditionFailed(error: unknown): boolean {
+  if (collabErrorStatus(error) === 412) return true;
+  const message = error instanceof Error ? error.message : String(error);
+  return /precondition failed/i.test(message);
+}
+
+/** 413 / markdown cap — permanent; do not exponential-backoff. */
+export function isCollabPayloadTooLarge(error: unknown): boolean {
+  if (collabErrorStatus(error) === 413) return true;
+  const message = error instanceof Error ? error.message : String(error);
+  return /markdown_too_large/i.test(message);
+}
+
 export function isYDocEmpty(doc: Y.Doc): boolean {
   return doc.getXmlFragment("default").length === 0;
 }

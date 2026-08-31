@@ -1,16 +1,19 @@
-import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
+import {
+  useRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   Archive,
-  BookOpen,
   Circle,
   Eye,
-  Pencil,
   RefreshCw,
   Share2,
   Star,
   Tag as TagIcon,
   Trash2,
-  Users,
 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
@@ -20,6 +23,7 @@ import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import {
+  noteListExcerpt,
   noteListTagOverflow,
   noteListTitle,
   noteListLocationLabel,
@@ -28,7 +32,10 @@ import {
   noteShowsTags,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
+import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
@@ -48,13 +55,27 @@ function notesListItemTags(tags: string[]): ReactNode {
   );
 }
 
-function NotesListLocation({ note, labels }: { note: Note; labels: NotesUILabels }) {
-  const location = noteListLocationLabel(note, labels);
+function NotesListLocation({
+  note,
+  labels,
+  notebookColor,
+  notebookCollections,
+}: {
+  note: Note;
+  labels: NotesUILabels;
+  notebookColor?: string | null;
+  notebookCollections: NotesNotebookCollection[];
+}) {
+  const location = noteListLocationLabel(note, labels, notebookCollections);
   if (!location) return null;
-  const Icon = note.sharedInbox ? Share2 : note.scope === "group" ? Users : BookOpen;
   return (
-    <span className="notes-list-panel__notebook">
-      <Icon className="notes-list-panel__notebook-icon" aria-hidden />
+    <span
+      className="notes-list-panel__notebook"
+      style={
+        { "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties
+      }
+    >
+      <NotesNotebookColorIcon className="notes-list-panel__notebook-icon" />
       <span className="notes-list-panel__notebook-name">{location}</span>
     </span>
   );
@@ -68,13 +89,12 @@ type NotesListPanelProps = {
   selectedIds: string[];
   selectionMode: boolean;
   listLoading: boolean;
+  listRefreshing?: boolean;
   visibleNotes: Note[];
+  notebookCollections?: NotesNotebookCollection[];
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
-  canEditDelete: boolean;
-  selectedNotebook: string | null;
-  selectedTag: string | null;
   view: string;
   isTouch: boolean;
   starred: Record<string, boolean>;
@@ -84,8 +104,6 @@ type NotesListPanelProps = {
   handleSelect: (id: string, e: ReactMouseEvent) => void;
   enterSelectionFor: (id: string) => void;
   itemDragHandlers: (id: string) => Record<string, unknown>;
-  openEditDialog: (item: { kind: "notebook" | "tag"; name: string }) => void;
-  openDeleteDialog: (item: { kind: "notebook" | "tag"; name: string }) => void;
   openDeleteConfirmForArchive: (ids: string[], mode: "selected" | "all") => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
@@ -102,13 +120,12 @@ export function NotesListPanel({
   selectedIds,
   selectionMode,
   listLoading,
+  listRefreshing = false,
   visibleNotes,
+  notebookCollections = [],
   searchQuery,
   setSearchQuery,
   searchInputRef,
-  canEditDelete,
-  selectedNotebook,
-  selectedTag,
   view,
   isTouch,
   starred,
@@ -118,8 +135,6 @@ export function NotesListPanel({
   handleSelect,
   enterSelectionFor,
   itemDragHandlers,
-  openEditDialog,
-  openDeleteDialog,
   openDeleteConfirmForArchive,
   toggleStar,
   toggleArchive,
@@ -142,7 +157,7 @@ export function NotesListPanel({
         subtitle={
           selectionMode || selectedIds.length > 1
             ? L.listSelected(selectedIds.length)
-            : L.listFiles(visibleNotes.length)
+            : L.listItems(visibleNotes.length)
         }
         actions={
           <div className="notes-list-panel__header-actions flex items-center gap-2">
@@ -150,43 +165,16 @@ export function NotesListPanel({
               <IconButton
                 label={L.refreshList}
                 onClick={onRefreshList}
-                disabled={listLoading}
+                disabled={listLoading || listRefreshing}
                 icon={
-                  <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
+                  <RefreshCw
+                    className={cn("size-4", listRefreshing && "animate-spin")}
+                    aria-hidden
+                  />
                 }
                 size="sm"
                 variant="subtle"
               />
-            ) : null}
-            {canEditDelete ? (
-              <>
-                <IconButton
-                  label={L.edit}
-                  onClick={() =>
-                    openEditDialog(
-                      selectedNotebook
-                        ? { kind: "notebook", name: selectedNotebook }
-                        : { kind: "tag", name: selectedTag! },
-                    )
-                  }
-                  icon={<Pencil />}
-                  size="sm"
-                  variant="subtle"
-                />
-                <IconButton
-                  label={L.remove}
-                  onClick={() =>
-                    openDeleteDialog(
-                      selectedNotebook
-                        ? { kind: "notebook", name: selectedNotebook }
-                        : { kind: "tag", name: selectedTag! },
-                    )
-                  }
-                  icon={<Trash2 />}
-                  size="sm"
-                  variant="subtle"
-                />
-              </>
             ) : null}
             {view === "archive" && visibleNotes.length > 0 ? (
               <IconButton
@@ -237,14 +225,33 @@ export function NotesListPanel({
             const showShared = noteShowsSharedBadge(note);
             const showViewOnly = noteShowsViewOnlyBadge(note);
             const canArchive = noteAllowsStructureManage(note);
+            const notebookColor = notebookDisplayColor(note, notebookCollections);
+            const excerpt = noteListExcerpt(note);
+            const tagsRow = showTags ? notesListItemTags(note.tags) : null;
             return (
               <ListItem
                 key={note.id}
                 id={note.id}
                 title={noteListTitle(note)}
-                subtitle={<NotesListLocation note={note} labels={L} />}
+                subtitle={
+                  <NotesListLocation
+                    note={note}
+                    labels={L}
+                    notebookColor={notebookColor}
+                    notebookCollections={notebookCollections}
+                  />
+                }
                 date={formatNoteDateForList(note.date)}
-                text={showTags ? notesListItemTags(note.tags) : null}
+                text={
+                  excerpt || tagsRow ? (
+                    <>
+                      {excerpt ? (
+                        <span className="notes-list-panel__excerpt">{excerpt}</span>
+                      ) : null}
+                      {tagsRow}
+                    </>
+                  ) : null
+                }
                 icons={[
                   isPendingSync ? (
                     <span

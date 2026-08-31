@@ -2,24 +2,15 @@ import type { DragEvent, ReactNode } from "react";
 import "./collection-layout.css";
 
 type CollectionPaneProps = {
-  children: React.ReactNode;
-  detailOpenMobile: boolean;
+  children: ReactNode;
 };
 
-export function CollectionListPane({ children, detailOpenMobile }: CollectionPaneProps) {
-  return (
-    <section
-      className={`collection-list-pane flex-1 md:flex-none md:w-96 shrink-0 flex flex-col border-r min-w-0 relative transition-transform duration-300 ease-out md:transition-none ${
-        detailOpenMobile ? "-translate-x-1/4 md:translate-x-0" : "translate-x-0"
-      }`}
-    >
-      {children}
-    </section>
-  );
+export function CollectionListPane({ children }: CollectionPaneProps) {
+  return <section className="collection-list-pane">{children}</section>;
 }
 
 type CollectionHeaderProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function CollectionHeader({ children }: CollectionHeaderProps) {
@@ -27,9 +18,8 @@ export function CollectionHeader({ children }: CollectionHeaderProps) {
 }
 
 type CollectionListWorkspaceProps = {
-  detailOpenMobile: boolean;
-  header: React.ReactNode;
-  listContent: React.ReactNode;
+  header: ReactNode;
+  listContent: ReactNode;
   hasItems: boolean;
   emptyLabel: string;
   floatingActionBar?: React.ReactNode;
@@ -43,7 +33,6 @@ type CollectionListWorkspaceProps = {
 };
 
 export function CollectionListWorkspace({
-  detailOpenMobile,
   header,
   listContent,
   hasItems,
@@ -67,7 +56,7 @@ export function CollectionListWorkspace({
   );
 
   return (
-    <CollectionListPane detailOpenMobile={detailOpenMobile}>
+    <CollectionListPane>
       <CollectionHeader>{header}</CollectionHeader>
 
       {dropZone ? (

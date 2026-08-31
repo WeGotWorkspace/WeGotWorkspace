@@ -12,7 +12,7 @@ A domain is **not done** until feature tests pass for its routes without calling
 - Factories in `database/factories/` (`UserFactory`, `PrincipalFactory`, `GroupMemberFactory`, `AppSettingFactory`)
 - `SeedsWgwIdentity` on `WgwDatabaseTestCase` (`seedWgwUser()`, `seedWgwGroup()`, `addPrincipalToGroup()`) — avoid hardcoded IDs
 - `ConfiguresAppSettings` on `WgwDatabaseTestCase` (`setAppSetting()`, `setAppSettings()`)
-- File features: `Storage::fake('wgw_files')` / `wgw_notes` — no manual `$tmpDir` unless configuring fake disk root
+- File features: `Storage::fake('wgw_files')` (and `wgw_notes` only if a test still touches leftover `.notes` trees) — no manual `$tmpDir` unless configuring fake disk root
 
 ## `WgwDatabaseTestCase`
 

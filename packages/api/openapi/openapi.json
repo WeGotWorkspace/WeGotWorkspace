@@ -1773,7 +1773,7 @@
       },
       "JmapAccount": {
         "type": "object",
-        "description": "JMAP Account object (RFC 8620 §2).",
+        "description": "JMAP Account object (RFC 8620 \u00a72).",
         "required": [
           "name",
           "isPersonal",
@@ -1800,7 +1800,7 @@
       },
       "JmapSession": {
         "type": "object",
-        "description": "JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
+        "description": "JMAP Session resource (RFC 8620 \u00a72). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
         "required": [
           "capabilities",
           "accounts",
@@ -1815,7 +1815,7 @@
         "properties": {
           "capabilities": {
             "type": "object",
-            "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent.",
+            "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 \u00a71.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 \u00a71.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 \u00a72.1) are empty objects \u2014 their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent.",
             "additionalProperties": {
               "type": "object"
             }
@@ -1854,7 +1854,7 @@
       },
       "JmapBlobUploadResponse": {
         "type": "object",
-        "description": "JMAP blob upload response (RFC 8620 §6.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
+        "description": "JMAP blob upload response (RFC 8620 \u00a76.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
         "required": [
           "accountId",
           "blobId",
@@ -1878,7 +1878,7 @@
       },
       "JmapMethodInvocation": {
         "type": "array",
-        "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 §3.2).",
+        "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 \u00a73.2).",
         "prefixItems": [
           {
             "type": "string"
@@ -1895,7 +1895,7 @@
       },
       "JmapApiRequest": {
         "type": "object",
-        "description": "JMAP Request object (RFC 8620 §3.3).",
+        "description": "JMAP Request object (RFC 8620 \u00a73.3).",
         "required": [
           "using",
           "methodCalls"
@@ -1924,7 +1924,7 @@
       },
       "JmapApiResponse": {
         "type": "object",
-        "description": "JMAP Response object (RFC 8620 §3.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
+        "description": "JMAP Response object (RFC 8620 \u00a73.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
         "required": [
           "methodResponses",
           "sessionState"
@@ -1943,7 +1943,7 @@
       },
       "JmapProblemDetails": {
         "type": "object",
-        "description": "Request-level error as RFC 7807 problem details (RFC 8620 §3.6.1).",
+        "description": "Request-level error as RFC 7807 problem details (RFC 8620 \u00a73.6.1).",
         "required": [
           "type",
           "status",
@@ -1961,6 +1961,347 @@
           },
           "limit": {
             "type": "string"
+          }
+        }
+      },
+      "Notebook": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "isDefault",
+          "scope",
+          "groupSlug",
+          "myRights",
+          "isSharee"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "group"
+            ]
+          },
+          "groupSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shareWith": {
+            "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+            "oneOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/components/schemas/JmapId"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/CalendarRights"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isSharee": {
+            "type": "boolean"
+          },
+          "myRights": {
+            "$ref": "#/components/schemas/TaskListRights"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isSubscribed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NotebookListResponse": {
+        "type": "object",
+        "required": [
+          "list"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notebook"
+            }
+          }
+        }
+      },
+      "NotebookCreate": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groupSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "$ref": "#/components/schemas/JmapId"
+          }
+        }
+      },
+      "NotebookPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groupSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shareWith": {
+            "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+            "oneOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/components/schemas/JmapId"
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CalendarRights"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "NotebookDeleteOptions": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "onDestroyRemoveContents": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Note": {
+        "type": "object",
+        "required": [
+          "id",
+          "notebookId",
+          "title",
+          "body",
+          "categories",
+          "status",
+          "etag"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "VJOURNAL UID"
+          },
+          "notebookId": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "FINAL",
+              "CANCELLED",
+              null
+            ]
+          },
+          "etag": {
+            "type": "string"
+          },
+          "starred": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NoteListResponse": {
+        "type": "object",
+        "required": [
+          "list"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Note"
+            }
+          }
+        }
+      },
+      "NoteCreate": {
+        "type": "object",
+        "required": [
+          "notebookId"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "notebookId": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "FINAL",
+              "CANCELLED",
+              null
+            ]
+          },
+          "uid": {
+            "type": "string"
+          }
+        }
+      },
+      "NotePatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "notebookId": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "FINAL",
+              "CANCELLED",
+              null
+            ]
           }
         }
       }
@@ -3252,7 +3593,7 @@
           "Files"
         ],
         "summary": "List paths shared with current user",
-        "description": "Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).",
+        "description": "Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.",
         "security": [
           {
             "bearerAuth": []
@@ -3267,7 +3608,7 @@
               "type": "boolean",
               "default": false
             },
-            "description": "When true, include file grants under `.notes`. Default is false."
+            "description": "When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks)."
           }
         ],
         "responses": {
@@ -3398,7 +3739,7 @@
           "Files"
         ],
         "summary": "Search share principals",
-        "description": "Principal picker for the share panel — searchable users and grantable groups with display names.",
+        "description": "Principal picker for the share panel \u2014 searchable users and grantable groups with display names.",
         "security": [
           {
             "bearerAuth": []
@@ -4212,7 +4553,7 @@
           "Meetings"
         ],
         "summary": "Reserve a meeting room",
-        "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).",
+        "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create \u2014 membership or a write share).",
         "security": [
           {
             "bearerAuth": []
@@ -5347,6 +5688,664 @@
         "x-wgw-access": "user"
       }
     },
+    "/notes/notebooks/changes": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Notebook collection changes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notebook changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JmapChangesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      }
+    },
+    "/notes/notebooks": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "List notebooks",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "responses": {
+          "200": {
+            "description": "Notebooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotebookListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Create a notebook",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotebookCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created notebook",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notebook"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
+    "/notes/notebooks/{notebookId}": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Fetch a notebook",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "notebookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notebook",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notebook"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Update a notebook",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "notebookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotebookPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated notebook",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notebook"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Delete a notebook",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "notebookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "onDestroyRemoveContents",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped."
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotebookDeleteOptions"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
+    "/notes/items/changes": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Note item changes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "notebookId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JmapChangesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/notes/items": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "List notes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "notebookId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "starred",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Create a note",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/notes/items/{noteId}": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Fetch a note by VJOURNAL UID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Patch a note (If-Match required)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/JmapPreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Delete a note",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/JmapPreconditionFailed"
+          }
+        }
+      }
+    },
+    "/notes/items/{noteId}/star": {
+      "post": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Star a note for the current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Starred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "Unstar a note",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unstarred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
     "/contacts/cards/import": {
       "post": {
         "tags": [
@@ -5405,7 +6404,7 @@
           "JMAP"
         ],
         "summary": "JMAP Session resource",
-        "description": "RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
+        "description": "RFC 8620 \u00a72 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 \u00a71.5.1, RFC 9610 \u00a71.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
         "security": [
           {
             "bearerAuth": []
@@ -5435,7 +6434,7 @@
           "JMAP"
         ],
         "summary": "JMAP blob download",
-        "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
+        "description": "Streams a blob (RFC 8620 \u00a76.2). Serves ids from the envelope blob store (jb-\u2026, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) \u2014 every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
         "security": [
           {
             "bearerAuth": []
@@ -5511,7 +6510,7 @@
           "JMAP"
         ],
         "summary": "JMAP blob upload",
-        "description": "Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
+        "description": "Stores the raw request body as a blob (RFC 8620 \u00a76.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
         "security": [
           {
             "bearerAuth": []
@@ -5530,7 +6529,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Upload response (RFC 8620 §6.1)",
+            "description": "Upload response (RFC 8620 \u00a76.1)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5582,7 +6581,7 @@
           "JMAP"
         ],
         "summary": "JMAP event source / push (not implemented)",
-        "description": "Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.",
+        "description": "Structurally required by the Session resource (RFC 8620 \u00a77.3) but push is a non-goal; the shipped client polls. Returns 501.",
         "security": [
           {
             "bearerAuth": []
@@ -6298,7 +7297,7 @@
           "JMAP"
         ],
         "summary": "JMAP batch API endpoint",
-        "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
+        "description": "RFC 8620 \u00a73 batched method calls with ResultReference resolution (\u00a73.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, \u00a73.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
         "security": [
           {
             "bearerAuth": []

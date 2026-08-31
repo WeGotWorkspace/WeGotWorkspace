@@ -17,7 +17,7 @@ WeGotWorkspace assigns each datatype the most suitable **open protocol**, not on
 | Calendar | CalDAV | VEVENT (RFC 5545) | JMAP-shaped `Calendar` / `CalendarEvent` ([#133](https://github.com/WeGotWorkspace/wegotworkspace/issues/133)) |
 | **Tasks** | **CalDAV** | **VTODO (RFC 5545)** | JMAP-shaped `TaskList` / `Task` ([#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134)) |
 | Contacts | CardDAV | vCard (+ `vCardProps` passthrough) | JMAP-shaped JSContact ([#131](https://github.com/WeGotWorkspace/wegotworkspace/issues/131)) |
-| Notes | WebDAV | YAML-frontmatter Markdown | FileNode query/get/set + `PUT /files/collaboration`; stars via Drive `/files/star` (per-user, no YAML backfill). Dedicated `/notes/*` REST is gone; shared note grants use `GET /files/shared-with-me?includeNotes=true`. |
+| **Notes** | **CalDAV** | **VJOURNAL (RFC 5545)** | JMAP-shaped `Notebook` / `Note` (`id` = `UID`). VJOURNAL-only collections; stars are a per-user table with FK cascade. Live collab is an ephemeral Yjs session that commits with `If-Match`. Notes leave Drive. Canonical: [`notes.md`](notes.md) ([#661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661) / [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662)). |
 
 **Product (v0.9):** Single **Tasks** app at `/tasks` — unified to-do surface ([#296](https://github.com/WeGotWorkspace/wegotworkspace/issues/296)). Optional “Remind me” alerts ([#299](https://github.com/WeGotWorkspace/wegotworkspace/issues/299)) persist as VTODO VALARM ([#147](https://github.com/WeGotWorkspace/wegotworkspace/issues/147)). **No** standalone Reminders app ([#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313)). In-app alert **delivery** is v1.0 ([#300](https://github.com/WeGotWorkspace/wegotworkspace/issues/300)–[#303](https://github.com/WeGotWorkspace/wegotworkspace/issues/303)).
 
@@ -339,7 +339,7 @@ Tracked in [#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331). 
 
 ### Tier 2 — Yjs / RTC mesh (optional)
 
-Notes/Docs collab ([collab-hooks.md](../../.agents/skills/workspace/collab-hooks.md)) is Yjs + TipTap + `/files/collaboration` + RTC mesh for **continuous text editing**. Reuse **only** for rich-text fields — do not mount `useDocsCollab` for the whole task record.
+Docs collab ([collab-hooks.md](../../.agents/skills/workspace/collab-hooks.md)) is Yjs + TipTap + `/files/collaboration` + RTC mesh. Notes reuse the mesh but persist with `PATCH /notes/items/{uid}` (room = VJOURNAL UID) — not `/files/collaboration`. Reuse **only** for rich-text fields — do not mount `useDocsCollab` for the whole task record.
 
 | Field | Tier 1 (REST + offline) | Tier 2 (Yjs) |
 |-------|-------------------------|--------------|

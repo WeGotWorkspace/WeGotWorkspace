@@ -2,8 +2,11 @@ import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Checkbox } from "@/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./collection-sidebar-row.css";
+
+export const COLLECTION_SIDEBAR_ROW_BLOCK = "collection-sidebar-row";
 
 export type CollectionSidebarRowProps = {
   name: string;
@@ -19,11 +22,50 @@ export type CollectionSidebarRowProps = {
   badges?: ReactNode;
   trailing?: ReactNode;
   showColorDot?: boolean;
-  /** BEM block. Calendar passes `calendar-sidebar-row` to keep existing CSS. */
+  /**
+   * Extra BEM block applied alongside {@link COLLECTION_SIDEBAR_ROW_BLOCK}.
+   * Calendar keeps `calendar-sidebar-row` so existing selectors still match.
+   */
   blockName?: string;
   className?: string;
   rootProps?: HTMLAttributes<HTMLLIElement>;
 };
+
+function rowBlocks(blockName: string): string[] {
+  return blockName === COLLECTION_SIDEBAR_ROW_BLOCK
+    ? [COLLECTION_SIDEBAR_ROW_BLOCK]
+    : [COLLECTION_SIDEBAR_ROW_BLOCK, blockName];
+}
+
+function bem(blocks: string[], suffix = ""): string {
+  return blocks.map((block) => `${block}${suffix}`).join(" ");
+}
+
+/** Shared view-only / subscription mark. Hover-edit lives on the row, not here. */
+export function CollectionSidebarMark({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(`${COLLECTION_SIDEBAR_ROW_BLOCK}__mark`, className)}
+          role="img"
+          aria-label={label}
+        >
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function CollectionSidebarRow({
   name,
@@ -37,16 +79,17 @@ export function CollectionSidebarRow({
   badges,
   trailing,
   showColorDot = false,
-  blockName = "collection-sidebar-row",
+  blockName = COLLECTION_SIDEBAR_ROW_BLOCK,
   className,
   rootProps,
 }: CollectionSidebarRowProps) {
+  const blocks = rowBlocks(blockName);
   return (
     <li
       {...rootProps}
       className={cn(
-        blockName,
-        selected && `${blockName}--selected`,
+        bem(blocks),
+        selected && bem(blocks, "--selected"),
         className,
         rootProps?.className,
       )}
@@ -62,16 +105,16 @@ export function CollectionSidebarRow({
         <Checkbox
           checked={visible}
           aria-label={`${visible ? "Hide" : "Show"} ${name}`}
-          className={`${blockName}__visibility`}
+          className={bem(blocks, "__visibility")}
           onCheckedChange={() => onToggleVisibility()}
           onClick={(event) => event.stopPropagation()}
         />
       ) : showColorDot ? (
-        <span className={`${blockName}__dot`} aria-hidden />
+        <span className={bem(blocks, "__dot")} aria-hidden />
       ) : null}
-      <button type="button" className={`${blockName}__select`} onClick={() => onSelect?.()}>
-        <span className={`${blockName}__title`}>
-          <span className={`${blockName}__name`}>{name}</span>
+      <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
+        <span className={bem(blocks, "__title")}>
+          <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
         </span>
         {trailing}
@@ -82,7 +125,7 @@ export function CollectionSidebarRow({
           icon={<Pencil className="size-3.5" aria-hidden />}
           size="sm"
           variant="ghost"
-          className={`${blockName}__action ${blockName}__edit`}
+          className={`${bem(blocks, "__action")} ${bem(blocks, "__edit")}`}
           onClick={() => onEdit()}
         />
       ) : null}

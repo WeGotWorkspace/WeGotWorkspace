@@ -1,0 +1,9 @@
+@import "../../styles.css" reference;
+
+.notes-change-notebook-dialog__picker {
+  @apply py-2;
+}
+
+.notes-change-notebook-dialog .notes-notebook-select {
+  @apply w-full;
+}

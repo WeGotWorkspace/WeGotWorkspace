@@ -43,6 +43,7 @@ final class CalendarColorPalette
         CalendarCollectionUris::TASK_INBOX => '#f59e0b',
         CalendarCollectionUris::TASK_HOME => '#ec4899',
         CalendarCollectionUris::TASK_WORK => '#8b5cf6',
+        CalendarCollectionUris::NOTE_GENERAL => '#14b8a6',
     ];
 
     public static function forUri(string $uri): string

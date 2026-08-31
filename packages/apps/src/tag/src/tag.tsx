@@ -59,7 +59,11 @@ export function Tag({
           <TooltipTrigger asChild>
             <button
               type="button"
-              onClick={onRemove}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onRemove();
+              }}
               aria-label={removeAriaLabel ?? `Remove ${label}`}
               className="tag__remove"
             >

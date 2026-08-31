@@ -75,7 +75,13 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));
 
-import { deleteNoteItem, updateNoteItem } from "@/lib/api/wgw/notes";
+import {
+  archiveNoteItem,
+  createNoteItem,
+  deleteNoteItem,
+  restoreNoteItem,
+  updateNoteItem,
+} from "@/lib/api/wgw/notes";
 import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 
@@ -113,14 +119,14 @@ describe("createHybridNotesOperations", () => {
     expect(outbox[0]?.op).toBe("upsert");
   });
 
-  it("caches Drive star paths offline so flush can replay POST|DELETE /files/star", async () => {
+  it("caches starred flag offline so flush can replay POST /notes/items/{id}/star", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
 
     const operations = createHybridNotesOperations(username);
     await operations.upsertNote({ ...note, starred: true });
 
-    const { readDocsStarredPaths } = await import("@/lib/offline/docs/docs-stars-store");
-    expect(await readDocsStarredPaths(username)).toEqual(["/users/alice/.notes/Drafts/note-1.md"]);
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notes[0]?.starred).toBe(true);
   });
 
   it("queues upsert when live API fails with a network error", async () => {
@@ -200,8 +206,8 @@ describe("createHybridNotesOperations", () => {
     expect(updateNoteItem).not.toHaveBeenCalled();
   });
 
-  it("resolves archived flag from cached note when deleting from archive", async () => {
-    await upsertNoteInCache(username, { ...note, archived: true }, false);
+  it("resolves archived flag and etag from cached note when deleting from archive", async () => {
+    await upsertNoteInCache(username, { ...note, archived: true, etag: '"etag-archived"' }, false);
     vi.mocked(deleteNoteItem).mockResolvedValue(undefined);
 
     const operations = createHybridNotesOperations(username);
@@ -209,9 +215,104 @@ describe("createHybridNotesOperations", () => {
 
     expect(deleteNoteItem).toHaveBeenCalledWith(
       note.id,
-      { notebook: note.notebook, archived: true },
+      { notebook: note.notebook, archived: true, etag: '"etag-archived"' },
       undefined,
     );
+  });
+
+  it("online create remaps local-* to the server uid and clears pending", async () => {
+    const tempId = "local-abc123";
+    const serverNote = {
+      ...note,
+      id: "11111111-2222-3333-4444-555555555555",
+      etag: '"etag-minted"',
+    };
+    await upsertNoteInCache(username, { ...note, id: tempId }, true);
+    vi.mocked(updateNoteItem).mockRejectedValue(
+      Object.assign(new Error("Note not found"), { status: 404 }),
+    );
+    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.upsertNote({ ...note, id: tempId });
+
+    expect(saved.id).toBe(serverNote.id);
+    expect(saved.etag).toBe('"etag-minted"');
+    expect(createNoteItem).toHaveBeenCalledOnce();
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(tempId)).toBeUndefined();
+    const row = await notesNotesTable(db).get(serverNote.id);
+    expect(row?.pendingSync).toBe(false);
+    expect(JSON.parse(row?.data ?? "{}").id).toBe(serverNote.id);
+  });
+
+  it("archives online via PATCH STATUS CANCELLED and caches archived", async () => {
+    vi.mocked(archiveNoteItem).mockResolvedValue({ ...note, archived: true });
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.archiveNote(note.id);
+
+    expect(archiveNoteItem).toHaveBeenCalledWith(note.id, undefined);
+    expect(saved.archived).toBe(true);
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.archived).toBe(true);
+  });
+
+  it("restores online via PATCH STATUS FINAL and clears archived", async () => {
+    await upsertNoteInCache(username, { ...note, archived: true }, false);
+    vi.mocked(restoreNoteItem).mockResolvedValue({ ...note, archived: false });
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.restoreNote(note.id);
+
+    expect(restoreNoteItem).toHaveBeenCalledWith(note.id, undefined);
+    expect(saved.archived).toBe(false);
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.archived).toBeFalsy();
+  });
+
+  it("drops Dexie and outbox when archive persist returns 404", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, { ...note, starred: true }, note.date);
+    vi.mocked(archiveNoteItem).mockRejectedValue(
+      Object.assign(new Error("Note not found"), { status: 404 }),
+    );
+
+    const operations = createHybridNotesOperations(username);
+    await expect(operations.archiveNote(note.id)).rejects.toMatchObject({ status: 404 });
+
+    expect(await listOutboxMutations(username)).toHaveLength(0);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(note.id)).toBeUndefined();
+    expect((await readNotesBootstrapFromCache(username))?.data.notes ?? []).toEqual([]);
+  });
+
+  it("keeps the Dexie row when archive persist returns 412 or 403", async () => {
+    const operations = createHybridNotesOperations(username);
+    vi.mocked(archiveNoteItem).mockRejectedValueOnce(
+      Object.assign(new Error("precondition"), { status: 412 }),
+    );
+    await expect(operations.archiveNote(note.id)).rejects.toMatchObject({ status: 412 });
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
+
+    vi.mocked(archiveNoteItem).mockRejectedValueOnce(
+      Object.assign(new Error("forbidden"), { status: 403 }),
+    );
+    await expect(operations.archiveNote(note.id)).rejects.toMatchObject({ status: 403 });
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
+  });
+
+  it("drops a real-UID upsert 404 instead of creating a ghost", async () => {
+    vi.mocked(updateNoteItem).mockRejectedValue(
+      Object.assign(new Error("Note not found"), { status: 404 }),
+    );
+
+    const operations = createHybridNotesOperations(username);
+    await expect(operations.upsertNote({ ...note, title: "Gone" })).rejects.toMatchObject({
+      status: 404,
+    });
+
+    expect(createNoteItem).not.toHaveBeenCalled();
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await notesNotesTable(db).get(note.id)).toBeUndefined();
   });
 
   it("queues delete offline and removes note from cache", async () => {
@@ -348,6 +449,34 @@ describe("fetchNotesHybridBootstrap", () => {
     expect(result.data.notes[0]?.body[0]).toContain("Typed preview still in Dexie");
   });
 
+  it("keeps live notebookCollections after a Dexie cache merge", async () => {
+    const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
+
+    await writeNotesBootstrapToCache(username, bootstrap);
+
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["General"],
+        notebookCollections: [
+          { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+        ],
+        groups: [{ slug: "team", displayName: "Team" }],
+      },
+    });
+
+    const result = await fetchNotesHybridBootstrap();
+
+    expect(result.data.notebookCollections).toEqual([
+      { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+    ]);
+    expect(result.data.groups).toEqual([{ slug: "team", displayName: "Team" }]);
+    expect((await readNotesBootstrapFromCache(username))?.data.notebookCollections).toEqual([
+      { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+    ]);
+  });
+
   it("replaces Dexie ghost notebooks when the live list is empty", async () => {
     const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
 
@@ -394,5 +523,71 @@ describe("fetchNotesHybridBootstrap", () => {
 
     expect(deleteNotebook).toHaveBeenCalledWith("EmptyGhost", { mode: "purge" }, undefined);
     expect((await readNotesBootstrapFromCache(username))?.data.notebooks).toEqual(["Drafts"]);
+  });
+
+  it("drops notes in a purged notebook from Dexie after an online delete", async () => {
+    const { deleteNotebook } = await import("@/lib/api/wgw/notes");
+    vi.mocked(deleteNotebook).mockResolvedValue(undefined);
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "gone", notebook: "Scratch", notebookId: "notes-scratch" },
+        ],
+        notebooks: ["Drafts", "Scratch"],
+        tags: [],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts" },
+          { id: "notes-scratch", name: "Scratch" },
+        ],
+      },
+    });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.deleteNotebook("Scratch", { kind: "purge" });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Drafts"]);
+    expect(cached?.data.notes.map((item) => item.id)).toEqual(["keep"]);
+  });
+
+  it("createNotebook upserts color without dropping sibling notebooks", async () => {
+    const { createNotebook } = await import("@/lib/api/wgw/notes");
+    vi.mocked(createNotebook).mockResolvedValue({
+      id: "notes-ideas",
+      name: "Ideas",
+      color: "#ec4899",
+      isSharee: false,
+      scope: "personal",
+    });
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        ...bootstrap.data,
+        notebooks: ["Drafts", "General"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+          { id: "notes-general", name: "General", color: "#0ea5e9" },
+        ],
+      },
+    });
+
+    const operations = createHybridNotesOperations(username);
+    const created = await operations.createNotebook("Ideas", { color: "#ec4899" });
+
+    expect(createNotebook).toHaveBeenCalledWith("Ideas", { color: "#ec4899" });
+    expect(created.color).toBe("#ec4899");
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(expect.arrayContaining(["Drafts", "General", "Ideas"]));
+    expect(cached?.data.notebookCollections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Drafts" }),
+        expect.objectContaining({ name: "General" }),
+        expect.objectContaining({ name: "Ideas", color: "#ec4899" }),
+      ]),
+    );
   });
 });

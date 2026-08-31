@@ -3,6 +3,7 @@ import {
   useCallback,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
   type DragEvent,
   type ReactNode,
@@ -10,24 +11,29 @@ import {
 
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { TooltipProvider } from "@/ui/tooltip";
+import { runViewTransition } from "@/lib/view-transition";
 import { cn } from "@/lib/utils";
 
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { isCollectionDetailOverlayViewport } from "@/workspace-app/src/collection-detail-breakpoint";
 import "@/workspace-app/src/workspace-app.css";
+
+/** Runs inside the same View Transition as opening/closing the mobile detail overlay. */
+export type MobileDetailDuring = () => void | Promise<void>;
 
 export type WorkspaceAppChrome = {
   sidebarOpen: boolean;
   detailOpenMobile: boolean;
   toggleSidebar: () => void;
   closeSidebar: () => void;
-  openMobileDetail: () => void;
-  closeMobileDetail: () => void;
+  openMobileDetail: (during?: MobileDetailDuring) => void;
+  closeMobileDetail: (during?: MobileDetailDuring) => void;
 };
 
 export type WorkspaceAppHandle = {
-  openMobileDetail: () => void;
-  closeMobileDetail: () => void;
+  openMobileDetail: (during?: MobileDetailDuring) => void;
+  closeMobileDetail: (during?: MobileDetailDuring) => void;
   closeSidebar: () => void;
 };
 
@@ -65,6 +71,12 @@ export type WorkspaceAppProps = {
   detailClassName?: string;
   /** Applied to the scroll container around `detail` (padding, overflow). */
   detailScrollClassName?: string;
+  /**
+   * First paint of the mobile overlay (e.g. deep-link `/notes/all/:noteId`).
+   * Remounts after a route change must start open/closed from the URL so the
+   * View Transition captures the right new snapshot.
+   */
+  initialDetailOpenMobile?: boolean;
 };
 
 /**
@@ -84,14 +96,41 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
     detailWrapper,
     detailClassName,
     detailScrollClassName,
+    initialDetailOpenMobile = false,
   },
   ref,
 ) {
   const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
-  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
+  const [detailOpenMobile, setDetailOpenMobile] = useState(initialDetailOpenMobile);
+  const detailOpenMobileRef = useRef(detailOpenMobile);
+  detailOpenMobileRef.current = detailOpenMobile;
 
-  const openMobileDetail = useCallback(() => setDetailOpenMobile(true), []);
-  const closeMobileDetail = useCallback(() => setDetailOpenMobile(false), []);
+  const setMobileDetailOpen = useCallback((open: boolean, during?: MobileDetailDuring) => {
+    const already = detailOpenMobileRef.current === open;
+    const apply = () => {
+      if (!already) setDetailOpenMobile(open);
+      return during?.();
+    };
+    if (already && !during) return;
+    if (!isCollectionDetailOverlayViewport()) {
+      void Promise.resolve(apply());
+      return;
+    }
+    if (already) {
+      void Promise.resolve(during?.());
+      return;
+    }
+    runViewTransition(apply);
+  }, []);
+
+  const openMobileDetail = useCallback(
+    (during?: MobileDetailDuring) => setMobileDetailOpen(true, during),
+    [setMobileDetailOpen],
+  );
+  const closeMobileDetail = useCallback(
+    (during?: MobileDetailDuring) => setMobileDetailOpen(false, during),
+    [setMobileDetailOpen],
+  );
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
 
@@ -141,7 +180,6 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
       <WorkspaceAppLayout style={workspaceRoot.style} className={workspaceRoot.className}>
         {sidebar(chrome)}
         <CollectionListWorkspace
-          detailOpenMobile={detailOpenMobile}
           header={listProps.header}
           listContent={listProps.listContent}
           hasItems={listProps.hasItems}
@@ -150,11 +188,8 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
           dropZone={listProps.dropZone}
         />
         <main
-          className={cn(
-            "workspace-detail-pane",
-            detailOpenMobile ? "translate-x-0" : "translate-x-full md:translate-x-0",
-            detailClassName,
-          )}
+          className={cn("workspace-detail-pane", detailClassName)}
+          data-open={detailOpenMobile ? "true" : "false"}
         >
           {detailWrapper ? detailWrapper(detailChrome, chrome) : detailChrome}
         </main>

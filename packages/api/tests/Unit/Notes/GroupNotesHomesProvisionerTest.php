@@ -106,7 +106,6 @@ final class GroupNotesHomesProvisionerTest extends WgwDatabaseTestCase
             false,
         );
 
-        $this->assertTrue(is_dir($this->dataDir.'/files/groups/administrators/.notes'));
-        $this->assertTrue(is_dir($this->dataDir.'/files/groups/administrators/.notes/General'));
+        $this->assertFalse(is_dir($this->dataDir.'/files/groups/administrators/.notes'));
     }
 }

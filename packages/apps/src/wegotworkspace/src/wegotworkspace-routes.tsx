@@ -38,7 +38,6 @@ import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
@@ -138,14 +137,12 @@ function MockDocsRoute() {
 function MockNotesRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createNotesAppBootstrap(), []);
-  const shareOperations = useMemo(() => createMockDriveShareOperations(), []);
   const { initialView, initialNoteId, handleViewChange, handleNoteChange } = useNotesRouteSync();
   return (
     <NotesWorkspace
       data={bootstrap.data}
       session={bootstrap.session}
       listLoading={false}
-      shareOperations={shareOperations}
       onLogout={onLogout}
       initialView={initialView}
       initialNoteId={initialNoteId}
@@ -307,7 +304,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
   const NotesComponent = isLive ? withWeGotWorkspaceAuth(NotesApp) : MockNotesRoute;
 
   // Each notes path is a root-level route with its own component so `useParams` in
-  // NotesApp resolves leaf params (noteId, notebookSlug, tagSlug) on direct page loads.
+  // NotesApp resolves leaf params (noteId, notebookId, tagSlug) on direct page loads.
   const notesIndexRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/notes",
@@ -359,6 +356,8 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: NotesComponent,
   });
 
+  // Back-compat deep-link. Product path is Decision 16 collection-sidebar
+  // (shared notebooks in the notebooks section), not a per-note inbox.
   const notesSharedWithMeRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/notes/shared-with-me",
@@ -403,14 +402,14 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
 
   const notesNotebookRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
-    path: "/notes/$notebookSlug",
+    path: "/notes/notebooks/$notebookId",
     head: notesPwaHead,
     component: NotesComponent,
   });
 
   const notesNotebookNoteRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
-    path: "/notes/$notebookSlug/$noteId",
+    path: "/notes/notebooks/$notebookId/$noteId",
     head: notesPwaHead,
     component: NotesComponent,
   });

@@ -1,64 +1,93 @@
-import { describe, expect, it } from "vitest";
-import { noteCollabPath, resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { encodeFileRoomId } from "@/lib/rtc/room-id";
+import { NOTES_TOO_LARGE_MESSAGE } from "@/notes-core/src/notes-collab-errors";
+import { encodeNoteRoomId } from "@/notes-core/src/note-collab-path";
 
-describe("noteCollabPath", () => {
-  it("maps a personal note to users/{username}/.notes/{notebook}/{id}.md", () => {
-    expect(
-      noteCollabPath({
-        scope: { kind: "personal", username: "alice" },
-        notebook: "Drafts",
-        noteId: "note-1",
-      }),
-    ).toBe("users/alice/.notes/Drafts/note-1.md");
-  });
+const getNote = vi.fn();
+const persistNoteMarkdown = vi.fn();
+const wgwEnsureFreshAccessToken = vi.fn();
 
-  it("maps a shared group note to groups/{slug}/.notes/{notebook}/{id}.md", () => {
-    expect(
-      noteCollabPath({
-        scope: { kind: "group", slug: "design" },
-        notebook: "Specs",
-        noteId: "n42",
-      }),
-    ).toBe("groups/design/.notes/Specs/n42.md");
-  });
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwApiBaseUrl: () => "https://api.test",
+  wgwEnsureFreshAccessToken: () => wgwEnsureFreshAccessToken(),
+}));
 
-  it("routes archived notes under the .archive subtree", () => {
-    expect(
-      noteCollabPath({
-        scope: { kind: "personal", username: "alice" },
-        notebook: "Drafts",
-        noteId: "note-1",
-        archived: true,
-      }),
-    ).toBe("users/alice/.notes/.archive/Drafts/note-1.md");
+vi.mock("@/lib/api/wgw/notes-vjournal", () => ({
+  getNote: (...args: unknown[]) => getNote(...args),
+  persistNoteMarkdown: (...args: unknown[]) => persistNoteMarkdown(...args),
+}));
+
+describe("encodeNoteRoomId", () => {
+  it("encodes the VJOURNAL UID, not a Drive .notes path", () => {
+    const uid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+    expect(encodeNoteRoomId(uid)).toBe(encodeFileRoomId(uid));
+    expect(encodeNoteRoomId(uid)).not.toContain(".notes");
   });
 });
 
-describe("resolveNoteSharePath", () => {
-  it("prefers apiPath when present", () => {
-    expect(
-      resolveNoteSharePath(
-        {
-          id: "n1",
-          notebook: "Drafts",
-          apiPath: "/users/bob/.notes/Drafts/n1.md",
-        },
-        "alice",
-      ),
-    ).toBe("/users/bob/.notes/Drafts/n1.md");
+describe("buildNoteCollabUrls reconnect + persist", () => {
+  beforeEach(() => {
+    getNote.mockReset();
+    persistNoteMarkdown.mockReset();
+    wgwEnsureFreshAccessToken.mockResolvedValue("token");
   });
 
-  it("builds a group path from scope metadata", () => {
-    expect(
-      resolveNoteSharePath(
-        {
-          id: "n1",
-          notebook: "Specs",
-          scope: "group",
-          groupSlug: "eng",
-        },
-        "alice",
-      ),
-    ).toBe("/groups/eng/.notes/Specs/n1.md");
+  it("uses the workspace getLocalDirty getter and opens conflict when dirty + stale", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    getNote.mockResolvedValue({ id: "n1", body: "theirs", etag: '"new"' });
+    const getLocalDirty = vi.fn(() => true);
+    const onReconnectConflict = vi.fn();
+
+    const urls = await buildNoteCollabUrls("n1", '"old"', {
+      getLocalDirty,
+      onReconnectConflict,
+    });
+
+    await expect(urls.loadDocumentMarkdown?.()).rejects.toThrow(/precondition failed \(412\)/);
+    expect(getLocalDirty).toHaveBeenCalled();
+    expect(onReconnectConflict).toHaveBeenCalledOnce();
+  });
+
+  it("notifies persist success only when the server accepts the body", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    persistNoteMarkdown.mockResolvedValueOnce({ id: "n1", etag: '"saved"' });
+    const onPersistSuccess = vi.fn();
+
+    const urls = await buildNoteCollabUrls("n1", '"etag"', { onPersistSuccess });
+    await urls.persistMarkdown?.("saved body");
+
+    expect(onPersistSuccess).toHaveBeenCalledOnce();
+    expect(onPersistSuccess).toHaveBeenCalledWith("saved body");
+  });
+
+  it("does not notify persist success on 412 or 413", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    const onPersistSuccess = vi.fn();
+    const urls = await buildNoteCollabUrls("n1", '"etag"', { onPersistSuccess });
+
+    persistNoteMarkdown.mockRejectedValueOnce(
+      Object.assign(new Error("PATCH failed (412)"), { status: 412 }),
+    );
+    await expect(urls.persistMarkdown?.("conflict body")).rejects.toThrow(/412/);
+
+    persistNoteMarkdown.mockRejectedValueOnce(
+      Object.assign(new Error("PATCH failed (413)"), { status: 413, code: "markdown_too_large" }),
+    );
+    await expect(urls.persistMarkdown?.("huge body")).rejects.toMatchObject({ status: 413 });
+
+    expect(onPersistSuccess).not.toHaveBeenCalled();
+  });
+
+  it("maps 413 persist to a permanent too-large error", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    persistNoteMarkdown.mockRejectedValue(
+      Object.assign(new Error("PATCH failed (413)"), { status: 413, code: "markdown_too_large" }),
+    );
+
+    const urls = await buildNoteCollabUrls("n1", '"etag"');
+    await expect(urls.persistMarkdown?.("x".repeat(10))).rejects.toMatchObject({
+      message: NOTES_TOO_LARGE_MESSAGE,
+      status: 413,
+    });
   });
 });

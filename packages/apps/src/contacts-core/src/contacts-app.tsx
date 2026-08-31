@@ -270,35 +270,33 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
 
   const handleContactChange = useCallback(
     (contactId: string) => {
+      if (currentContactRef.current === contactId) return;
       currentContactRef.current = contactId;
       const view = currentViewRef.current;
       if (!contactId) {
         if (view.startsWith("group:")) {
           const groupId = view.slice("group:".length);
-          void navigate({
+          return navigate({
             to: "/contacts/groups/$groupCardId",
             params: { groupCardId: groupId },
             replace: true,
           });
-        } else {
-          void navigate({ to: "/contacts/all", replace: true });
         }
-      } else {
-        if (view.startsWith("group:")) {
-          const groupId = view.slice("group:".length);
-          void navigate({
-            to: "/contacts/groups/$groupCardId/$contactId",
-            params: { groupCardId: groupId, contactId },
-            replace: true,
-          });
-        } else {
-          void navigate({
-            to: "/contacts/all/$contactId",
-            params: { contactId },
-            replace: true,
-          });
-        }
+        return navigate({ to: "/contacts/all", replace: true });
       }
+      if (view.startsWith("group:")) {
+        const groupId = view.slice("group:".length);
+        return navigate({
+          to: "/contacts/groups/$groupCardId/$contactId",
+          params: { groupCardId: groupId, contactId },
+          replace: true,
+        });
+      }
+      return navigate({
+        to: "/contacts/all/$contactId",
+        params: { contactId },
+        replace: true,
+      });
     },
     [navigate],
   );

@@ -7,14 +7,10 @@ import {
 import {
   emptyProgressiveSyncProgress,
   readProgressiveSyncProgress,
-  runProgressiveSync,
   type ProgressiveSyncProgress,
 } from "@/lib/offline/core/progressive-sync-runner";
-import { noteCollabPath } from "@/notes-core/src/note-collab-path";
-import { hydrateDocsCollabForOffline } from "@/lib/offline/docs/docs-pin-hydrate";
 
 const NOTES_BODY_SYNC_META_KEY = "notes:auto-sync:body-progress";
-const NOTES_BODY_SYNC_CONCURRENCY = 4;
 
 export type NotesBodySyncProgress = ProgressiveSyncProgress;
 
@@ -26,7 +22,10 @@ export async function readNotesBodySyncProgress(username: string): Promise<Notes
   return readProgressiveSyncProgress(username, NOTES_BODY_SYNC_META_KEY);
 }
 
-/** Auto-hydrate note collab bodies for personal notes from the cached bootstrap list. */
+/**
+ * Bodies already live on the Dexie note row (inbound GET / Note/get).
+ * Do not hydrate via Drive `/files/collaboration`.
+ */
 export async function syncNotesBodiesForOffline(
   username: string,
   notes: readonly Note[],
@@ -39,19 +38,9 @@ export async function syncNotesBodiesForOffline(
     isEligibleForAutoContentSync(note.body?.length ?? 0, settings),
   );
 
-  return runProgressiveSync({
-    username,
-    metaKey: NOTES_BODY_SYNC_META_KEY,
-    items: eligible,
-    concurrency: NOTES_BODY_SYNC_CONCURRENCY,
-    syncOne: async (note) => {
-      const apiPath = noteCollabPath({
-        scope: { kind: "personal", username },
-        notebook: note.notebook,
-        noteId: note.id,
-        archived: note.archived,
-      });
-      await hydrateDocsCollabForOffline({ apiPath });
-    },
-  });
+  return {
+    ...emptyProgress(),
+    total: eligible.length,
+    synced: eligible.length,
+  };
 }

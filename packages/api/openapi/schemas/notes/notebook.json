@@ -1,0 +1,161 @@
+{
+  "Notebook": {
+    "type": "object",
+    "required": [
+      "id",
+      "name",
+      "isDefault",
+      "scope",
+      "groupSlug",
+      "myRights",
+      "isSharee"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "description": {
+        "type": ["string", "null"]
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "isDefault": {
+        "type": "boolean"
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["personal", "group"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"]
+      },
+      "shareWith": {
+        "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/JmapId"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CalendarRights"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "isSharee": {
+        "type": "boolean"
+      },
+      "myRights": {
+        "$ref": "#/components/schemas/TaskListRights"
+      },
+      "role": {
+        "type": ["string", "null"]
+      },
+      "sortOrder": {
+        "type": "integer"
+      },
+      "isSubscribed": {
+        "type": "boolean"
+      }
+    }
+  },
+  "NotebookListResponse": {
+    "type": "object",
+    "required": ["list"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Notebook"
+        }
+      }
+    }
+  },
+  "NotebookCreate": {
+    "type": "object",
+    "required": ["name"],
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "description": {
+        "type": ["string", "null"]
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"]
+      },
+      "id": {
+        "$ref": "#/components/schemas/JmapId"
+      }
+    }
+  },
+  "NotebookPatch": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "description": {
+        "type": ["string", "null"]
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"]
+      },
+      "shareWith": {
+        "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/JmapId"
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CalendarRights"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  },
+  "NotebookDeleteOptions": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "onDestroyRemoveContents": {
+        "type": "boolean"
+      }
+    }
+  }
+}

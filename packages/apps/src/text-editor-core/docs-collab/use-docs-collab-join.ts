@@ -30,6 +30,7 @@ import {
   colorForName,
   docSignature,
   isRemoteUpdateOrigin,
+  isCollabPreconditionFailed,
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
@@ -157,17 +158,25 @@ export function useDocsCollabJoin({
       let markdown = "";
       let hadSnapshot = false;
       try {
-        markdown = await loadMarkdown(urls.documentUrl, authToken);
+        markdown = urls.loadDocumentMarkdown
+          ? await urls.loadDocumentMarkdown(authToken)
+          : await loadMarkdown(urls.documentUrl, authToken);
       } catch (error) {
         markRoomServerFailure(room);
+        if (isCollabPreconditionFailed(error)) {
+          urls.onReconnectConflict?.();
+          return;
+        }
         console.warn("[docs-collab] markdown load failed", error);
       }
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      try {
-        hadSnapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
-      } catch (error) {
-        markRoomServerFailure(room);
-        console.warn("[docs-collab] yjs load failed", error);
+      if (!urls.skipYjsSnapshot) {
+        try {
+          hadSnapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
+        } catch (error) {
+          markRoomServerFailure(room);
+          console.warn("[docs-collab] yjs load failed", error);
+        }
       }
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
       if (hadSnapshot) refs.seedDoneRef.current = true;
@@ -204,6 +213,9 @@ export function useDocsCollabJoin({
       setDocStatus,
       trySeedFromFile,
       urls.documentUrl,
+      urls.loadDocumentMarkdown,
+      urls.onReconnectConflict,
+      urls.skipYjsSnapshot,
       urls.yjsUrl,
     ],
   );

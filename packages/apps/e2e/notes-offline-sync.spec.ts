@@ -1,19 +1,17 @@
-// Notes dual-path offline e2e (live, cross-service — NOT run in this chunk).
+// Notes offline e2e (live, cross-service — NOT run in this chunk).
 //
-// Contract after the Notes collab alignment (#234/#237/#238):
-// - Note BODY edits persist via the Docs Yjs collab stack
-//   (`PUT /api/v1/files/collaboration`, room = note virtual path) with
-//   y-indexeddb offline + deferred REST save. The metadata API
-//   (`/api/v1/notes/items`) is metadata-only and must never carry the body.
-// - The body pending indicator is the *collab* pending-sync dot (deferred
-//   collab save), distinct from the metadata outbox pending dot.
+// Contract after VJOURNAL + Dexie inbound (#671):
+// - Note BODY edits persist via PATCH /notes/items/{uid} + If-Match
+//   (collab room = VJOURNAL UID). y-indexeddb is a UID-keyed crash buffer.
+//   There is no PUT /files/collaboration for notes.
+// - List pending = metadata outbox OR unsaved/collab-pending body.
 //
 // Remaining live-validation TODOs flagged for the next e2e pass (need a running
 // stack to confirm the collab pending-dot/toast wiring and group fixtures):
 //   1. Confirm `expectPendingDotVisible` / `expectSyncCompleted` resolve against
 //      the collab pending-sync indicator for body-only edits (the helpers may
 //      need a collab-specific selector vs. the metadata dot).
-//   2. Add a shared-note scenario under `groups/{slug}/.notes/...` (#236):
+//   2. Add a shared-notebook scenario (group principal / CalendarShareInvites):
 //      two members edit the same shared note body over the mesh + reconnect.
 import { expect, test } from "@playwright/test";
 import {

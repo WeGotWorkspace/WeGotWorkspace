@@ -1,5 +1,11 @@
 export type Note = {
   id: string;
+  /** VJOURNAL SUMMARY when known. List title prefers this over excerpt. */
+  title?: string;
+  /** REST notebook id (CalDAV collection uri / group- API id). */
+  notebookId?: string;
+  /** If-Match token from REST `etag`. */
+  etag?: string;
   category: string;
   /**
    * Display timestamp for list + “Edited” footer. Prefer API `contentUpdatedAt`
@@ -21,20 +27,20 @@ export type Note = {
   notebook: string;
   tags: string[];
   wordCount: number;
-  /** From FileNode `note.starred` (Drive star for the caller). YAML stars are ignored. */
+  /** From REST `note.starred` (`note_stars` for the caller). */
   starred?: boolean;
-  /** From FileNode `note.archived` (path under `.notes/.archive/`). */
+  /** From REST `status === CANCELLED`. */
   archived?: boolean;
   /** Personal vs group home; from Notes API / shared listings. */
   scope?: "personal" | "group";
   /** Present when {@link scope} is `group`. */
   groupSlug?: string | null;
   /**
-   * Virtual drive path when known (collab / share). Shared-with-me stubs set this
-   * from the listing `path`; owned notes may omit it and rebuild via `noteCollabPath`.
+   * Optional leftover Drive path. Live Notes identity is the VJOURNAL UID;
+   * collab rooms are UID-keyed, not a `.notes` path.
    */
   apiPath?: string;
-  /** True for Shared-with-me file-grant stubs (excluded from All / personal notebooks). */
+  /** Leftover Shared-with-me file-grant stub flag (per-note inbox is gone). */
   sharedInbox?: boolean;
   /**
    * @deprecated Personal ACL notebook-directory grants were removed. Unused.

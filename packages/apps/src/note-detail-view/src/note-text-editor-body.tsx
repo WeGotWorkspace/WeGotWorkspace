@@ -9,9 +9,6 @@ import {
 } from "react";
 import type { Editor } from "@tiptap/react";
 import { cn } from "@/lib/utils";
-import { docsLabels } from "@/docs-core/src/docs-labels";
-import { useConnectivity } from "@/hooks/use-connectivity";
-import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
@@ -33,7 +30,7 @@ const BODY_PREVIEW_SYNC_DEBOUNCE_MS = 50;
 
 /**
  * Configures the body as a live + offline Yjs collab document (Docs #230 stack).
- * Room = the note's virtual path on the shared `wgw_files` tree.
+ * Room = VJOURNAL UID (Decision 7), not a Drive path.
  */
 export type NoteCollabConfig = {
   userName: string;
@@ -180,45 +177,28 @@ export function NoteCollabSession({
   return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;
 }
 
-/** Docs-style peer avatars + pending-sync spinner for the notes detail action bar. */
+/** Docs-style peer avatars for the notes detail action bar. */
 export function NoteCollabChrome({ className }: { className?: string }) {
-  const { session, peers, connectingPeers, warningPeers, pendingSync, failedSync } =
-    useNoteCollabContext();
+  const { session, peers, connectingPeers, warningPeers } = useNoteCollabContext();
   const awarenessPresencePeers = useDocsCollabAwarenessPresence(session?.awareness);
   const presencePeers = useMemo(
     () =>
       session ? mergeCollabPresencePeers(awarenessPresencePeers, peers, session.user.name) : [],
     [awarenessPresencePeers, peers, session],
   );
-  const { online } = useConnectivity();
-  const labels = docsLabels;
-  const showPendingSyncIndicator = pendingSync && (!online || failedSync);
-  const pendingSyncLabel = failedSync ? labels.pendingSyncFailed : labels.pendingSync;
 
-  if (!session && !showPendingSyncIndicator) {
+  if (!session) {
     return null;
   }
 
   return (
     <div className={cn("note-detail-view__collab-chrome", className)}>
-      {showPendingSyncIndicator ? (
-        <span
-          className="note-detail-view__pending-sync"
-          role="status"
-          aria-live="polite"
-          aria-label={pendingSyncLabel}
-        >
-          <LoadingSpinner size="sm" />
-        </span>
-      ) : null}
-      {session ? (
-        <DocsCollabPresence
-          localUser={{ displayName: session.user.name }}
-          peers={presencePeers}
-          connectingPeers={connectingPeers}
-          warningPeers={warningPeers}
-        />
-      ) : null}
+      <DocsCollabPresence
+        localUser={{ displayName: session.user.name }}
+        peers={presencePeers}
+        connectingPeers={connectingPeers}
+        warningPeers={warningPeers}
+      />
     </div>
   );
 }
