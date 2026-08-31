@@ -24,7 +24,10 @@ function NotesNotebookDialogHarness({
   return (
     <TaskProjectDialog
       dialog={dialog?.mode === "edit" ? { ...dialog, shareWith } : dialog}
-      groups={[{ slug: "eng", displayName: "Engineering" }]}
+      groups={[
+        { slug: "eng", displayName: "Engineering" },
+        { slug: "administrators", displayName: "Administrators" },
+      ]}
       personalOwnerLabel="Ada"
       labels={notesNotebookDialogLabelsFrom(defaultNotesLabels)}
       contentClassName="notes-dialog-surface"
@@ -64,8 +67,8 @@ export const Edit: Story = {
   args: {
     initial: {
       mode: "edit",
-      listId: "notes-general",
-      name: "General",
+      listId: "notes-drafts",
+      name: "Drafts",
       color: "#14b8a6",
       scope: "personal",
       groupSlug: null,
@@ -80,5 +83,28 @@ export const Edit: Story = {
     await expect(
       screen.getByRole("button", { name: defaultNotesLabels.deleteNotebook }),
     ).toBeInTheDocument();
+  },
+};
+
+export const EditAdministrators: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    initial: {
+      mode: "edit",
+      listId: "group-administrators",
+      name: "Administrators",
+      color: "#ea8c72",
+      scope: "group",
+      groupSlug: "administrators",
+      mayShare: true,
+      isSharee: false,
+      mayDelete: false,
+      canChangeOwner: false,
+    },
+  },
+  play: async () => {
+    await expect(
+      screen.queryByRole("button", { name: defaultNotesLabels.deleteNotebook }),
+    ).toBeNull();
   },
 };

@@ -6,10 +6,11 @@ export type JmapNotebook = {
   color?: string | null;
   isDefault?: boolean;
   isSharee?: boolean;
+  role?: string | null;
   groupSlug?: string | null;
   scope?: "personal" | "group";
   shareWith?: Record<string, unknown> | null;
-  myRights?: { mayWriteAll?: boolean; mayReadItems?: boolean };
+  myRights?: { mayWriteAll?: boolean; mayReadItems?: boolean; mayDelete?: boolean };
   [key: string]: unknown;
 };
 

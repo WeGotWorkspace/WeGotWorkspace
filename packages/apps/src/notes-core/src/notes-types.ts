@@ -18,10 +18,17 @@ export type NotesNotebookCollection = {
   color?: string | null;
   isSharee?: boolean;
   isDefault?: boolean;
+  /** API role — `"general"` is the personal default; `"group"` is the provisioned group home. */
+  role?: string | null;
   scope?: "personal" | "group";
   groupSlug?: string | null;
   shareWith?: CollectionShareWith | null;
-  myRights?: { mayWriteAll?: boolean; mayShare?: boolean; mayReadItems?: boolean } | null;
+  myRights?: {
+    mayWriteAll?: boolean;
+    mayShare?: boolean;
+    mayReadItems?: boolean;
+    mayDelete?: boolean;
+  } | null;
 };
 
 export type NotesDirectoryGroup = {

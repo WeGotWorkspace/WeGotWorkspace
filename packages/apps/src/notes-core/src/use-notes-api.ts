@@ -48,6 +48,7 @@ function jmapNotebookToCollection(notebook: JmapNotebook): NotesNotebookCollecti
     color: notebook.color,
     isDefault: notebook.isDefault,
     isSharee: notebook.isSharee,
+    role: notebook.role,
     groupSlug: notebook.groupSlug,
     scope: notebook.scope,
     myRights: notebook.myRights ?? null,

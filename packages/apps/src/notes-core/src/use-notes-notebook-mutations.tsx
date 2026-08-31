@@ -7,6 +7,7 @@ import type {
 import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 import { notesWithRenamedNotebook } from "@/notes-core/src/notes-note-utils";
+import { canChangeNotebookOwner, canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 
@@ -42,7 +43,7 @@ function notebookPatchFromDialog(
   }
   const nextGroupSlug = groupSlug !== undefined ? groupSlug?.trim() || null : undefined;
   const currentGroupSlug = current.groupSlug?.trim() || null;
-  const canChangeOwner = current.isSharee !== true && current.isDefault !== true;
+  const canChangeOwner = canChangeNotebookOwner(current);
   if (canChangeOwner && nextGroupSlug !== undefined && nextGroupSlug !== currentGroupSlug) {
     patch.groupSlug = nextGroupSlug;
   }
@@ -239,7 +240,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     async (notebookId: string) => {
       if (!operations?.deleteNotebook) return;
       const current = findNotebookCollection(notebookCollections, notebookId);
-      if (!current || current.isSharee === true || current.isDefault === true) return;
+      if (!current || !canDeleteNotebook(current)) return;
       try {
         await operations.deleteNotebook(current.name, { kind: "purge" });
         const targetId = current.id;
@@ -282,24 +283,22 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
 
   const openEditNotebookDialog = useCallback(
     (notebook: NotesNotebookCollection) => {
+      const current = findNotebookCollection(notebookCollections, notebook.id) ?? notebook;
       setNotebookDialog({
         mode: "edit",
-        listId: notebook.id,
-        name: notebook.name,
-        color: notebook.color ?? null,
-        scope: notebook.scope === "group" ? "group" : "personal",
-        groupSlug: notebook.groupSlug ?? null,
-        mayShare: notebook.myRights?.mayShare === true || notebook.isSharee !== true,
-        isSharee: notebook.isSharee === true,
-        shareWith: notebook.shareWith ?? null,
-        canChangeOwner: notebook.isSharee !== true && notebook.isDefault !== true,
-        mayDelete:
-          notebook.isSharee !== true &&
-          notebook.isDefault !== true &&
-          Boolean(operations?.deleteNotebook),
+        listId: current.id,
+        name: current.name,
+        color: current.color ?? null,
+        scope: current.scope === "group" ? "group" : "personal",
+        groupSlug: current.groupSlug ?? null,
+        mayShare: current.myRights?.mayShare === true || current.isSharee !== true,
+        isSharee: current.isSharee === true,
+        shareWith: current.shareWith ?? null,
+        canChangeOwner: canChangeNotebookOwner(current),
+        mayDelete: canDeleteNotebook(current) && Boolean(operations?.deleteNotebook),
       });
     },
-    [operations?.deleteNotebook],
+    [notebookCollections, operations?.deleteNotebook],
   );
 
   return {

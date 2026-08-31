@@ -108,12 +108,96 @@ describe("useNotesNotebookMutations", () => {
     expect(result.current.notebookDialog).toMatchObject({ mayDelete: false, isSharee: true });
     act(() => {
       result.current.openEditNotebookDialog({
-        id: "notes-general",
-        name: "General",
+        id: "notes-journal",
+        name: "Journal",
         isDefault: true,
       });
     });
     expect(result.current.notebookDialog).toMatchObject({ mayDelete: false });
+  });
+
+  it("does not offer owner delete for the Administrators group home", () => {
+    const { result } = renderHook(() =>
+      useNotesNotebookMutations({
+        shell: shellStub({
+          notebookCollections: [
+            {
+              id: "group-administrators",
+              name: "Administrators",
+              role: "group",
+              scope: "group",
+              groupSlug: "administrators",
+              isSharee: false,
+              isDefault: false,
+              myRights: { mayDelete: false, mayShare: true, mayWriteAll: true },
+            },
+          ],
+        }),
+      }),
+    );
+    act(() => {
+      result.current.openEditNotebookDialog({
+        id: "group-administrators",
+        name: "Administrators",
+      });
+    });
+    expect(result.current.notebookDialog).toMatchObject({
+      mayDelete: false,
+      canChangeOwner: false,
+    });
+
+    render(
+      <TaskProjectDialog
+        dialog={result.current.notebookDialog}
+        groups={[{ slug: "administrators", displayName: "Administrators" }]}
+        personalOwnerLabel="Ada"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={
+          result.current.notebookDialog?.mode === "edit" && result.current.notebookDialog.mayDelete
+            ? () => undefined
+            : undefined
+        }
+        labels={notesNotebookDialogLabelsFrom(defaultNotesLabels)}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.deleteNotebook })).toBeNull();
+  });
+
+  it("still offers owner delete for a non-default personal notebook", () => {
+    const { result } = renderHook(() =>
+      useNotesNotebookMutations({
+        shell: shellStub({
+          notebookCollections: [
+            {
+              id: "notes-drafts",
+              name: "Drafts",
+              isSharee: false,
+              isDefault: false,
+              scope: "personal",
+              myRights: { mayDelete: true },
+            },
+          ],
+        }),
+      }),
+    );
+    act(() => {
+      result.current.openEditNotebookDialog({ id: "notes-drafts", name: "Drafts" });
+    });
+    expect(result.current.notebookDialog).toMatchObject({ mayDelete: true, canChangeOwner: true });
+
+    render(
+      <TaskProjectDialog
+        dialog={result.current.notebookDialog}
+        groups={[{ slug: "team", displayName: "Team" }]}
+        personalOwnerLabel="Ada"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={() => undefined}
+        labels={notesNotebookDialogLabelsFrom(defaultNotesLabels)}
+      />,
+    );
+    expect(screen.getByRole("button", { name: defaultNotesLabels.deleteNotebook })).toBeTruthy();
   });
 
   it("createNotebook forwards name, color, and owner", async () => {
@@ -468,5 +552,37 @@ describe("useNotesNotebookMutations", () => {
     await waitFor(() => {
       expect(deleteNotebook).toHaveBeenCalledWith("General", { kind: "purge" });
     });
+  });
+
+  it("deleteNotebookCollection no-ops for the Administrators group home", async () => {
+    const deleteNotebook = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useNotesNotebookMutations({
+        shell: shellStub({
+          notebookCollections: [
+            {
+              id: "group-administrators",
+              name: "Administrators",
+              role: "group",
+              scope: "group",
+              groupSlug: "administrators",
+              isSharee: false,
+              isDefault: false,
+              myRights: { mayDelete: false },
+            },
+          ],
+          operations: {
+            ...shellStub().operations!,
+            deleteNotebook,
+          },
+        }),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.deleteNotebookCollection("group-administrators");
+    });
+
+    expect(deleteNotebook).not.toHaveBeenCalled();
   });
 });
