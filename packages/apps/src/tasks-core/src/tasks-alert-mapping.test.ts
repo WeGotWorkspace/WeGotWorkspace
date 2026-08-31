@@ -84,31 +84,12 @@ describe("task alert mapping", () => {
     expect(taskAlertsToFormValues(null)).toEqual([]);
   });
 
-  it("labels the remind control from relative alarm state", () => {
+  it("labels the remind control as none / one specific / N count", () => {
     expect(remindButtonLabel(defaultTasksLabels, undefined)).toBe("No reminders");
     expect(remindButtonLabel(defaultTasksLabels, {})).toBe("No reminders");
     expect(remindButtonLabel(defaultTasksLabels, { alert1: offsetReminderAlert("-PT5M") })).toBe(
       "Reminding 5 mins before",
     );
-    expect(
-      remindButtonLabel(defaultTasksLabels, {
-        alert1: offsetReminderAlert("-PT5M"),
-        alert2: offsetReminderAlert("-P1D"),
-      }),
-    ).toBe("Reminding 1 day and 5 mins before");
-    expect(
-      remindButtonLabel(defaultTasksLabels, {
-        alert1: offsetReminderAlert("-PT30M"),
-        alert2: offsetReminderAlert("-PT1H"),
-      }),
-    ).toBe("Reminding 1 hour and 30 mins before");
-    expect(
-      remindButtonLabel(defaultTasksLabels, {
-        alert1: offsetReminderAlert("-PT5M"),
-        alert2: offsetReminderAlert("-PT1H"),
-        alert3: offsetReminderAlert("-P1D"),
-      }),
-    ).toBe("Reminding 1 day, 1 hour and 5 mins before");
     expect(remindButtonLabel(defaultTasksLabels, { leftover: offsetReminderAlert("-PT45M") })).toBe(
       "Reminding 45 mins before",
     );
@@ -137,10 +118,29 @@ describe("task alert mapping", () => {
     ).toBe(defaultTasksLabels.remindMe);
     expect(
       remindButtonLabel(defaultTasksLabels, {
+        alert1: offsetReminderAlert("-PT5M"),
+        alert2: offsetReminderAlert("-P1D"),
+      }),
+    ).toBe("2 reminders");
+    expect(
+      remindButtonLabel(defaultTasksLabels, {
+        alert1: offsetReminderAlert("-PT30M"),
+        alert2: offsetReminderAlert("-PT1H"),
+      }),
+    ).toBe("2 reminders");
+    expect(
+      remindButtonLabel(defaultTasksLabels, {
+        alert1: offsetReminderAlert("-PT5M"),
+        alert2: offsetReminderAlert("-PT1H"),
+        alert3: offsetReminderAlert("-P1D"),
+      }),
+    ).toBe("3 reminders");
+    expect(
+      remindButtonLabel(defaultTasksLabels, {
         alert1: offsetReminderAlert("-PT30M"),
         alert2: offsetReminderAlert("PT5M"),
       }),
-    ).toBe("Reminding 30 mins before and 5 mins after");
+    ).toBe("2 reminders");
   });
 
   it("adapts Tasks dialog copy and keeps shared calendar offset presets", () => {

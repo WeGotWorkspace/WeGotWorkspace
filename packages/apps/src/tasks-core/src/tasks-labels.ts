@@ -27,6 +27,7 @@ export type TasksUILabels = {
   deleteListConfirmTitle: string;
   deleteListConfirmDescription: string;
   toastListShareRemoved: string;
+  toastListDeleted: string;
   stateToday: string;
   stateUpcoming: string;
   stateOverdue: string;
@@ -59,9 +60,13 @@ export type TasksUILabels = {
   descriptionLabel: string;
   remindMe: string;
   noReminders: string;
+  remindersCount: (count: number) => string;
   remindingBefore: (durations: string) => string;
   remindingAfter: (durations: string) => string;
   remindingAfterClause: (durations: string) => string;
+  dueAddTime: string;
+  dueDateOnly: string;
+  dueTimeLabel: string;
   remindAtTimeOfTask: string;
   kanbanToggle: string;
   listView: string;
@@ -158,6 +163,7 @@ export const defaultTasksLabels: TasksUILabels = {
   deleteListConfirmDescription:
     "Tasks on this list will be permanently deleted. This cannot be undone.",
   toastListShareRemoved: "List removed",
+  toastListDeleted: "List deleted",
   stateToday: "Today",
   stateUpcoming: "Upcoming",
   stateOverdue: "Overdue",
@@ -190,9 +196,13 @@ export const defaultTasksLabels: TasksUILabels = {
   descriptionLabel: "Notes",
   remindMe: "Remind me",
   noReminders: "No reminders",
+  remindersCount: (count) => (count === 1 ? "1 reminder" : `${count} reminders`),
   remindingBefore: (durations) => `Reminding ${durations} before`,
   remindingAfter: (durations) => `Reminding ${durations} after`,
   remindingAfterClause: (durations) => `${durations} after`,
+  dueAddTime: "Add time",
+  dueDateOnly: "Date only",
+  dueTimeLabel: "Time",
   remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
   listView: "List",
