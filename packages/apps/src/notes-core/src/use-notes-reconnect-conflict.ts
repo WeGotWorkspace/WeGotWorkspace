@@ -41,6 +41,14 @@ export function useNotesReconnectConflict(options: {
     editorDirtyRef.current = dirty;
   }, []);
 
+  /** Server accepted this body — dirty means unsaved local edits, not "ever typed". */
+  const markEditorSaved = useCallback((savedMarkdown: string) => {
+    const note = activeRef.current;
+    if (!note) return;
+    if (noteBodyToMarkdown(note.body) !== savedMarkdown) return;
+    editorDirtyRef.current = false;
+  }, []);
+
   const getLocalDirty = useCallback(() => {
     return isNotesLocalDirty({
       noteId: activeRef.current?.id,
@@ -92,6 +100,7 @@ export function useNotesReconnectConflict(options: {
   return {
     getLocalDirty,
     markEditorDirty,
+    markEditorSaved,
     reconnectConflict,
     setReconnectConflict,
     keepMine,

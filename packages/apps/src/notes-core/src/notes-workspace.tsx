@@ -293,6 +293,7 @@ export function NotesWorkspace({
   const {
     getLocalDirty,
     markEditorDirty,
+    markEditorSaved,
     reconnectConflict,
     setReconnectConflict,
     keepMine,
@@ -328,6 +329,7 @@ export function NotesWorkspace({
       },
       onReconnectConflict: () => setReconnectConflict(true),
       getLocalDirty,
+      onPersistSuccess: markEditorSaved,
     })
       .then((urls) => {
         if (!cancelled) {
@@ -343,7 +345,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [active, getLocalDirty, setReconnectConflict]);
+  }, [active, getLocalDirty, markEditorSaved, setReconnectConflict]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).

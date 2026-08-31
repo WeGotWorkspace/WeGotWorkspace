@@ -25,6 +25,8 @@ export async function buildNoteCollabUrls(
     onReconnectConflict?: () => void;
     getLocalDirty?: () => boolean;
     onEtag?: (etag: string) => void;
+    /** PATCH accepted and etag advanced — not 412/413/offline-queue. */
+    onPersistSuccess?: (markdown: string) => void;
   },
 ): Promise<DocsCollabUrls> {
   const baseUrl = wgwApiBaseUrl();
@@ -37,6 +39,7 @@ export async function buildNoteCollabUrls(
       const updated = await persistNoteMarkdown(noteId, markdown, etag);
       etag = updated.etag;
       hooks?.onEtag?.(etag);
+      hooks?.onPersistSuccess?.(markdown);
     } catch (error) {
       if (resolveNotesPersistAccess(error) === "leave-room") {
         hooks?.onPersistForbidden?.();

@@ -48,6 +48,36 @@ describe("buildNoteCollabUrls reconnect + persist", () => {
     expect(onReconnectConflict).toHaveBeenCalledOnce();
   });
 
+  it("notifies persist success only when the server accepts the body", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    persistNoteMarkdown.mockResolvedValueOnce({ id: "n1", etag: '"saved"' });
+    const onPersistSuccess = vi.fn();
+
+    const urls = await buildNoteCollabUrls("n1", '"etag"', { onPersistSuccess });
+    await urls.persistMarkdown?.("saved body");
+
+    expect(onPersistSuccess).toHaveBeenCalledOnce();
+    expect(onPersistSuccess).toHaveBeenCalledWith("saved body");
+  });
+
+  it("does not notify persist success on 412 or 413", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    const onPersistSuccess = vi.fn();
+    const urls = await buildNoteCollabUrls("n1", '"etag"', { onPersistSuccess });
+
+    persistNoteMarkdown.mockRejectedValueOnce(
+      Object.assign(new Error("PATCH failed (412)"), { status: 412 }),
+    );
+    await expect(urls.persistMarkdown?.("conflict body")).rejects.toThrow(/412/);
+
+    persistNoteMarkdown.mockRejectedValueOnce(
+      Object.assign(new Error("PATCH failed (413)"), { status: 413, code: "markdown_too_large" }),
+    );
+    await expect(urls.persistMarkdown?.("huge body")).rejects.toMatchObject({ status: 413 });
+
+    expect(onPersistSuccess).not.toHaveBeenCalled();
+  });
+
   it("maps 413 persist to a permanent too-large error", async () => {
     const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
     persistNoteMarkdown.mockRejectedValue(

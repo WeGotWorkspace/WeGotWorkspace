@@ -7,6 +7,7 @@ import type { Note } from "@/lib/models/note";
 import { setDocsCollabSyncState } from "@/text-editor-core/docs-collab/docs-collab-sync-registry";
 import { useNotesReconnectConflict } from "@/notes-core/src/use-notes-reconnect-conflict";
 import { isNotesLocalDirty } from "@/notes-core/src/notes-reconnect-actions";
+import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 
 const workspaceSource = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "notes-workspace.tsx"),
@@ -16,6 +17,11 @@ const workspaceSource = readFileSync(
 const getNote = vi.fn();
 const persistNoteMarkdown = vi.fn();
 const writeNoteCollabOfflineContent = vi.fn();
+
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwApiBaseUrl: () => "https://api.test",
+  wgwEnsureFreshAccessToken: () => Promise.resolve("token"),
+}));
 
 vi.mock("@/lib/api/wgw/notes-vjournal", () => ({
   getNote: (...args: unknown[]) => getNote(...args),
@@ -45,6 +51,8 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     expect(workspaceSource).toContain("void keepMine()");
     expect(workspaceSource).toContain("void applyTheirs()");
     expect(workspaceSource).toContain("useNotesReconnectConflict");
+    expect(workspaceSource).toContain("onPersistSuccess");
+    expect(workspaceSource).toContain("markEditorSaved");
   });
 
   beforeEach(() => {
@@ -119,6 +127,66 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     expect(onRefreshList).not.toHaveBeenCalled();
     expect(result.current.getLocalDirty()).toBe(false);
     expect(result.current.reconnectConflict).toBe(false);
+  });
+
+  it("clears editor dirty after a successful save, not after a failed save", () => {
+    const { result } = renderHook(() =>
+      useNotesReconnectConflict({
+        active: note,
+        pendingNoteIds: new Set(),
+        applyLocalBodyMarkdown: vi.fn(),
+        onRefreshList: vi.fn(),
+      }),
+    );
+
+    act(() => {
+      result.current.markEditorDirty(true);
+    });
+    expect(result.current.getLocalDirty()).toBe(true);
+
+    act(() => {
+      result.current.markEditorSaved("Local body");
+    });
+    expect(result.current.getLocalDirty()).toBe(false);
+
+    act(() => {
+      result.current.markEditorDirty(true);
+    });
+    act(() => {
+      result.current.markEditorSaved("stale body the server never accepted");
+    });
+    expect(result.current.getLocalDirty()).toBe(true);
+  });
+
+  it("successful persistMarkdown clears dirty; 412 leaves it set", async () => {
+    const { result } = renderHook(() =>
+      useNotesReconnectConflict({
+        active: note,
+        pendingNoteIds: new Set(),
+        applyLocalBodyMarkdown: vi.fn(),
+        onRefreshList: vi.fn(),
+      }),
+    );
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    const urls = await buildNoteCollabUrls(note.id, note.etag ?? "", {
+      onPersistSuccess: result.current.markEditorSaved,
+    });
+
+    act(() => {
+      result.current.markEditorDirty(true);
+    });
+    persistNoteMarkdown.mockResolvedValueOnce({ id: note.id, etag: '"saved"' });
+    await urls.persistMarkdown?.(noteBodyToMarkdown(note.body));
+    expect(result.current.getLocalDirty()).toBe(false);
+
+    act(() => {
+      result.current.markEditorDirty(true);
+    });
+    persistNoteMarkdown.mockRejectedValueOnce(
+      Object.assign(new Error("PATCH failed (412)"), { status: 412 }),
+    );
+    await expect(urls.persistMarkdown?.("unsaved")).rejects.toThrow(/412/);
+    expect(result.current.getLocalDirty()).toBe(true);
   });
 
   it("Use theirs reseeds the open editor and refreshes the list", async () => {
