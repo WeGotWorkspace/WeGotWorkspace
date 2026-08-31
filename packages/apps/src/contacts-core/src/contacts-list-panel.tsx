@@ -1,5 +1,5 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
-import { Circle, Pencil, RefreshCw, Trash2, UserMinus } from "lucide-react";
+import { Circle, RefreshCw, Trash2, UserMinus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { ViewHeader } from "@/view-header/src/view-header";
@@ -23,10 +23,6 @@ type ContactsListPanelProps = {
   viewLabel: string;
   view: string;
   selectedGroupId: string | null;
-  canRenameGroup: boolean;
-  openGroupRenameDialog: (groupId: string, name: string) => void;
-  canDeleteGroup: boolean;
-  onDeleteGroup: (groupId: string) => void;
   selectedIds: string[];
   selectionMode: boolean;
   listLoading: boolean;
@@ -55,10 +51,6 @@ export function ContactsListPanel({
   viewLabel,
   view,
   selectedGroupId,
-  canRenameGroup,
-  openGroupRenameDialog,
-  canDeleteGroup,
-  onDeleteGroup,
   selectedIds,
   selectionMode,
   listLoading,
@@ -90,42 +82,18 @@ export function ContactsListPanel({
             : L.listContacts(visibleCards.length)
         }
         actions={
-          <>
-            {onRefreshList ? (
-              <IconButton
-                label={L.refreshList}
-                onClick={onRefreshList}
-                disabled={listLoading}
-                icon={
-                  <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
-                }
-                size="sm"
-                variant="subtle"
-              />
-            ) : null}
-            {selectedGroupId ? (
-              <>
-                {canRenameGroup ? (
-                  <IconButton
-                    label={L.renameGroup}
-                    onClick={() => openGroupRenameDialog(selectedGroupId, viewLabel)}
-                    icon={<Pencil />}
-                    size="sm"
-                    variant="subtle"
-                  />
-                ) : null}
-                {canDeleteGroup ? (
-                  <IconButton
-                    label={L.deleteGroup}
-                    onClick={() => onDeleteGroup(selectedGroupId)}
-                    icon={<Trash2 />}
-                    size="sm"
-                    variant="subtle"
-                  />
-                ) : null}
-              </>
-            ) : null}
-          </>
+          onRefreshList ? (
+            <IconButton
+              label={L.refreshList}
+              onClick={onRefreshList}
+              disabled={listLoading}
+              icon={
+                <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
+              }
+              size="sm"
+              variant="subtle"
+            />
+          ) : null
         }
         searchPlaceholder={L.searchPlaceholder}
         searchValue={searchQuery}

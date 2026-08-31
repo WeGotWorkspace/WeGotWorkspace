@@ -122,6 +122,53 @@ function firstMapValue<T>(map: Record<string, T> | undefined): T | undefined {
   return entry?.[1];
 }
 
+/** RFC 9553 `pref`: 1–100, lower is higher preference. */
+function channelPref(entry: { pref?: number }): number | undefined {
+  const pref = entry.pref;
+  if (typeof pref === "number" && pref >= 1 && pref <= 100) return pref;
+  return undefined;
+}
+
+function pickPreferredMapValue<T extends { pref?: number }>(
+  map: Record<string, T> | undefined,
+  readValue: (entry: T) => string,
+): string {
+  const candidates = mapEntriesSorted(map)
+    .map(([, entry]) => ({ value: readValue(entry), pref: channelPref(entry) }))
+    .filter((row) => row.value);
+  if (candidates.length === 0) return "";
+
+  const preferred = candidates.filter((row) => row.pref !== undefined);
+  if (preferred.length === 0) return candidates[0]?.value ?? "";
+
+  return preferred.reduce((best, row) => ((row.pref ?? 100) < (best.pref ?? 100) ? row : best))
+    .value;
+}
+
+function contactEmailAddress(email: NonNullable<ContactCard["emails"]>[string]): string {
+  return email.address?.trim() ?? "";
+}
+
+/** Same display string as the detail pane: trimmed `number`, then `uri`. */
+export function contactPhoneDisplayValue(
+  phone: NonNullable<ContactCard["phones"]>[string],
+): string {
+  if (typeof phone.number === "string") {
+    const number = phone.number.trim();
+    if (number) return number;
+  }
+  if (typeof phone.uri === "string") return phone.uri.trim();
+  return "";
+}
+
+export function contactPrimaryEmail(card: ContactCard): string {
+  return pickPreferredMapValue(card.emails, contactEmailAddress);
+}
+
+export function contactPrimaryPhone(card: ContactCard): string {
+  return pickPreferredMapValue(card.phones, contactPhoneDisplayValue);
+}
+
 type NameComponentLike = { kind: string; value: string };
 
 /** Derive display / `name.full` from JSContact name components (given before surname). */
@@ -204,6 +251,11 @@ function formatPersonListSortName(given: string, surname: string): string {
   return "";
 }
 
+/** JSContact organization card (`kind: "org"` / vCard KIND:org). */
+export function isContactOrgCard(card: Pick<ContactCard, "kind"> | null | undefined): boolean {
+  return card?.kind === "org";
+}
+
 /** Person name from `name.full` or name components — not organization. */
 export function contactPersonName(card: ContactCard): string {
   const full = card.name?.full?.trim();
@@ -265,9 +317,14 @@ export function contactListSubtitle(card: ContactCard): string {
   return "";
 }
 
-/** Secondary list line — always empty; email/phone are not shown in the list view. */
-export function contactListDetail(_card: ContactCard): string {
-  return "";
+/**
+ * ListItem `text` slot — primary email, else primary phone.
+ * Empty when `contactListSubtitle` already fills the secondary line
+ * (company > email > phone), or when neither channel exists.
+ */
+export function contactListDetail(card: ContactCard): string {
+  if (contactListSubtitle(card)) return "";
+  return contactPrimaryEmail(card) || contactPrimaryPhone(card);
 }
 
 export function contactInitials(name: string): string {
@@ -390,7 +447,7 @@ function collectEmails(card: ContactCard): string[] {
 
 function collectPhones(card: ContactCard): string[] {
   return mapEntriesSorted(card.phones)
-    .map(([, phone]) => (typeof phone.number === "string" ? phone.number.trim() : ""))
+    .map(([, phone]) => contactPhoneDisplayValue(phone))
     .filter(Boolean);
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
+  canCreateContactInView,
   contactCardToEditDraft,
   contactEditDraftHasContent,
   editDraftToCreateBody,
@@ -51,7 +52,32 @@ describe("contacts-edit-utils", () => {
       { id: "work", name: "Work", isDefault: false } as never,
     ];
     expect(resolveCreateAddressBookIds("book:work", books)).toEqual({ work: true });
+    expect(resolveCreateAddressBookIds("book:shared-42", books)).toEqual({ "shared-42": true });
     expect(resolveCreateAddressBookIds("all", books)).toEqual({ default: true });
+    expect(
+      resolveCreateAddressBookIds("group:card-group-friends", books, [
+        { id: "card-group-friends", addressBookIds: { work: true as const } },
+      ]),
+    ).toEqual({ work: true });
+    expect(resolveCreateAddressBookIds("group:missing", books, [])).toEqual({ default: true });
+  });
+
+  it("enables New on writable group views and disables it on view-only books", () => {
+    const writable = [{ id: "default", myRights: { mayWrite: true } }];
+    const viewOnly = [{ id: "shared-42", myRights: { mayWrite: false } }];
+    expect(
+      canCreateContactInView("group:card-group-friends", writable, {
+        addressBookIds: { default: true },
+      }),
+    ).toBe(true);
+    expect(
+      canCreateContactInView("group:card-group-shared", viewOnly, {
+        addressBookIds: { "shared-42": true },
+      }),
+    ).toBe(false);
+    expect(canCreateContactInView("book:shared-42", viewOnly)).toBe(false);
+    expect(canCreateContactInView("book:default", writable)).toBe(true);
+    expect(canCreateContactInView("all", [])).toBe(false);
   });
 
   it("builds create body with JSContact name components", () => {
@@ -358,6 +384,32 @@ describe("contacts-edit-utils", () => {
     });
     expect(body).not.toHaveProperty("phones");
     expect(body).not.toHaveProperty("emails");
+  });
+
+  it("omits empty channel rows from create body", () => {
+    const draft = {
+      ...emptyContactEditDraft(),
+      nameSurname: "Vendrik",
+      phones: [{ id: "empty-phone", number: "", phoneType: "work" as const }],
+      emails: [{ id: "empty-email", address: "  ", contextType: "" as const }],
+      urls: [{ id: "empty-url", uri: "", contextType: "home" as const }],
+      addresses: [
+        {
+          id: "empty-addr",
+          street: "",
+          locality: "",
+          region: "",
+          postalCode: "",
+          country: "",
+          contextType: "work" as const,
+        },
+      ],
+    };
+    const body = editDraftToCreateBody(draft, { default: true });
+    expect(body).not.toHaveProperty("phones");
+    expect(body).not.toHaveProperty("emails");
+    expect(body).not.toHaveProperty("links");
+    expect(body).not.toHaveProperty("addresses");
   });
 
   it("builds sparse create body with phone only", () => {

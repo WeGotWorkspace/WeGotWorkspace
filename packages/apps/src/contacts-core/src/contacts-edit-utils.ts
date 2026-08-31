@@ -1,7 +1,9 @@
+import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   mapEntriesSorted,
   synthesizeNameFromComponents,
 } from "@/contacts-core/src/contacts-display-utils";
+import { canWriteContactGroup } from "@/contacts-core/src/contacts-group-utils";
 import type {
   AddressBook,
   ContactCard,
@@ -86,16 +88,45 @@ export function resolveDefaultContactsView(_addressBooks: AddressBook[]): string
 export function resolveCreateAddressBookIds(
   view: string,
   addressBooks: AddressBook[],
+  cards: readonly Pick<ContactCard, "id" | "addressBookIds">[] = [],
 ): Record<string, true> {
   if (view.startsWith("book:")) {
     const bookId = view.slice(5);
     return { [bookId]: true };
+  }
+  if (view.startsWith("group:")) {
+    const groupId = view.slice("group:".length);
+    const group = cards.find((card) => card.id === groupId);
+    const bookIds = enabledAddressBookIds(group?.addressBookIds);
+    const preferred =
+      bookIds.find((id) => {
+        const book = addressBooks.find((row) => row.id === id);
+        return book != null && book.myRights?.mayWrite !== false;
+      }) ?? bookIds[0];
+    if (preferred) return { [preferred]: true };
   }
   const defaultBook = addressBooks.find((book) => book.isDefault) ?? addressBooks[0];
   if (!defaultBook) {
     throw new Error("No address book available for create");
   }
   return { [defaultBook.id]: true };
+}
+
+/** New contact is allowed on writable books and writable group views. */
+export function canCreateContactInView(
+  view: string,
+  addressBooks: readonly Pick<AddressBook, "id" | "myRights">[],
+  selectedGroup?: Pick<ContactCard, "addressBookIds"> | null,
+  hasOperations = false,
+): boolean {
+  if (view.startsWith("group:")) {
+    return canWriteContactGroup(selectedGroup, addressBooks, hasOperations);
+  }
+  if (view.startsWith("book:")) {
+    const book = addressBooks.find((row) => row.id === view.slice("book:".length));
+    return book != null && book.myRights?.mayWrite !== false;
+  }
+  return addressBooks.length > 0;
 }
 
 export function emptyContactEditDraft(): ContactEditDraft {
