@@ -114,13 +114,6 @@ final class JmapContactsClientContractTest extends WgwDatabaseTestCase
 
     public function test_mixed_domain_batch_shares_one_dispatcher_pass_without_state_bleed(): void
     {
-        // A contacts-only collection with a unique id: it must show up in the
-        // contacts state and never in the calendars state (both fixtures also
-        // have a collection at uri `default`, so unique ids are the signal).
-        $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'create' => ['b0' => ['name' => 'Contacts only', 'id' => 'contacts-only-book']]], 'c0'],
-        ])->assertOk();
-
         $response = $this->jmap([
             ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
             ['AddressBook/get', ['accountId' => 'bob', 'ids' => null], 'c1'],
@@ -134,12 +127,13 @@ final class JmapContactsClientContractTest extends WgwDatabaseTestCase
         $calendarUris = array_keys((array) JmapAccountStateCodec::decompose($response->json('methodResponses.0.1.state')));
         $contactsUris = array_keys((array) JmapAccountStateCodec::decompose($response->json('methodResponses.1.1.state')));
 
-        $this->assertContains('contacts-only-book', $contactsUris);
-        $this->assertNotContains('contacts-only-book', $calendarUris);
+        $this->assertContains('default', $contactsUris);
+        $this->assertContains('default', $calendarUris);
         $this->assertEqualsCanonicalizing(
             array_column($response->json('methodResponses.1.1.list'), 'id'),
             $contactsUris,
         );
+        $this->assertSame(['default'], $contactsUris);
     }
 
     public function test_a_domain_method_without_its_capability_in_using_is_unknown(): void

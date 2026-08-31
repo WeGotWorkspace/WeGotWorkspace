@@ -37,6 +37,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'calendar_subscriptions',
             'calendar_feed_tokens',
             'calendar_share_dismissals',
+            'addressbook_shares',
+            'addressbook_share_dismissals',
             'note_stars',
         ] as $table) {
             $this->assertTrue(
