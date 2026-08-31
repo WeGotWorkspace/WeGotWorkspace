@@ -193,6 +193,7 @@ export function DocsCommentsFloatingLayer({
       className="docs-comments-floating-layer"
       data-visible="true"
       data-visibility-mode={visibilityMode}
+      role="region"
       aria-label={labels.commentsSidebarTitle}
       style={{
         top: `${containerLayout.top}px`,
