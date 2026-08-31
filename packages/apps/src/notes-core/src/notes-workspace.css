@@ -207,7 +207,7 @@
 
 .notes-workspace .app-sidebar__scroll {
   /* New note: ink fill + warm-yellow label (same pair as selected chips). */
-  --button-primary-bg: var(--color-ink);
+  --button-primary-bg: var(--color-ink, #042a22);
   --button-primary-fg: var(--notes-accent);
   --button-subtle-color: var(--color-ink);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
@@ -278,7 +278,11 @@
 }
 
 /* Lucide icons are stroke-based; generic icon-button--active fill blobs them. */
-.notes-workspace .action-bar .button--variant-subtle.icon-button--active .button__icon > svg {
+.notes-workspace
+  :is(.action-bar, .multi-selection-view__actions)
+  .button--variant-subtle.icon-button--active
+  .button__icon
+  > svg {
   fill: none;
   color: var(--notes-detail-accent-strong);
 }

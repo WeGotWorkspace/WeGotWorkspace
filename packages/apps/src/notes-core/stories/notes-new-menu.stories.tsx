@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, within } from "storybook/test";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
+import "@/styles.css";
 import "@/notes-core/src/notes-workspace.css";
 
 const meta: Meta<typeof NotesNewMenu> = {

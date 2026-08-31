@@ -59,6 +59,11 @@ export const Default: Story = {
     });
     await expect(trigger).toHaveTextContent("Drafts");
 
+    const confirm = screen.getByRole("button", { name: "Change" });
+    await expect(confirm).toHaveTextContent("Change");
+    await expect(confirm).toHaveAttribute("aria-label", "Change");
+    await expect(confirm).toBeDisabled();
+
     await userEvent.click(trigger);
     const options = await screen.findAllByRole("option");
     await expect(options.map((option) => option.textContent?.trim())).toEqual([
@@ -73,11 +78,6 @@ export const Default: Story = {
       "data-state",
       "checked",
     );
-
-    const confirm = screen.getByRole("button", { name: "Change" });
-    await expect(confirm).toHaveTextContent("Change");
-    await expect(confirm).toHaveAttribute("aria-label", "Change");
-    await expect(confirm).toBeDisabled();
 
     await userEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
     await expect(args.onCreateNotebook).toHaveBeenCalledOnce();

@@ -65,7 +65,7 @@ describe("NotesNewMenu", () => {
 describe("NotesNewMenu primary tokens", () => {
   it("paints sidebar New note ink fill + gold label (same pair as selected chips)", () => {
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink,\s*#042a22\)/,
     );
     expect(workspaceCss).toMatch(
       /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--notes-accent\)/,

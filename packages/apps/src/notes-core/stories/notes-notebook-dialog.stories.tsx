@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, screen } from "storybook/test";
 import { notesNotebookDialogLabelsFrom, defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
 import {
@@ -76,10 +76,9 @@ export const Edit: Story = {
       canChangeOwner: true,
     },
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
     await expect(
-      canvas.getByRole("button", { name: defaultNotesLabels.deleteNotebook }),
+      screen.getByRole("button", { name: defaultNotesLabels.deleteNotebook }),
     ).toBeInTheDocument();
   },
 };

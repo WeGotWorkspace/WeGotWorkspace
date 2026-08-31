@@ -130,7 +130,7 @@ export const Editable: Story = {
     const accentProbe = document.createElement("span");
     accentProbe.style.color = "var(--notes-accent)";
     workspace!.appendChild(accentProbe);
-    expect(getComputedStyle(accentProbe).color).not.toBe("rgb(246, 209, 118)");
+    expect(getComputedStyle(accentProbe).color).toBe("rgb(246, 209, 118)");
     accentProbe.remove();
   },
 };
@@ -251,7 +251,8 @@ export const NotebookTintDark: Story = {
   tags: ["vitest-ci"],
   args: { detailTint: "#1e3a5f", withTasks: true },
   play: async ({ canvasElement }) => {
-    const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
+    const workspace = (canvasElement.querySelector(".notes-story-scope--detail") ??
+      canvasElement.querySelector(".notes-workspace")) as HTMLElement | null;
     expect(workspace).toBeTruthy();
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
       "var(--color-cream)",
