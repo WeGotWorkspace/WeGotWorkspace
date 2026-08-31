@@ -57,10 +57,7 @@ export async function hasNoteCollabPendingServerSave(uid: string): Promise<boole
 }
 
 /** Replace the UID-keyed Y.Doc with server markdown (Decision 6 “Use theirs”). */
-export async function writeNoteCollabOfflineContent(
-  uid: string,
-  markdown: string,
-): Promise<void> {
+export async function writeNoteCollabOfflineContent(uid: string, markdown: string): Promise<void> {
   await withRoom(uid, async (ydoc) => {
     const fragment = ydoc.getXmlFragment("default");
     ydoc.transact(() => {

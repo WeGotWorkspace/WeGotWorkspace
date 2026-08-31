@@ -28,9 +28,9 @@ describe("docs-collab-utils", () => {
   });
 
   it("treats 413 as a permanent save failure", () => {
-    expect(isCollabPayloadTooLarge(Object.assign(new Error("PATCH failed (413)"), { status: 413 }))).toBe(
-      true,
-    );
+    expect(
+      isCollabPayloadTooLarge(Object.assign(new Error("PATCH failed (413)"), { status: 413 })),
+    ).toBe(true);
     expect(isCollabPayloadTooLarge(new Error("markdown_too_large"))).toBe(true);
     expect(isCollabPayloadTooLarge(new Error("PATCH failed (500)"))).toBe(false);
   });

@@ -139,7 +139,9 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     });
 
     expect(writeNoteCollabOfflineContent).toHaveBeenCalledWith(note.id, "Server body");
-    expect(applyLocalBodyMarkdown).toHaveBeenCalledWith(note.id, "Server body", { bumpDate: false });
+    expect(applyLocalBodyMarkdown).toHaveBeenCalledWith(note.id, "Server body", {
+      bumpDate: false,
+    });
     expect(onRefreshList).toHaveBeenCalledOnce();
     expect(persistNoteMarkdown).not.toHaveBeenCalled();
     expect(result.current.collabEpoch).toBe(epochBefore + 1);

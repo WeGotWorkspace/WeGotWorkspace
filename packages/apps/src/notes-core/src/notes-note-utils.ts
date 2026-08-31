@@ -481,7 +481,7 @@ export function applyNoteBodyMarkdown(
 ): Note {
   const normalized = normalizeNoteBodyMarkdown(markdown);
   const autofilled = autofillNoteTitle(note.title, normalized);
-  const currentTitle = note.title === "" ? "" : (note.title?.trim() || undefined);
+  const currentTitle = note.title === "" ? "" : note.title?.trim() || undefined;
   const titleChanged = (autofilled ?? undefined) !== currentTitle;
   // Compare normalized forms so TipTap trailing newlines do not look like edits
   // (that retriggered hydrate → setNotes → “Maximum update depth exceeded”).

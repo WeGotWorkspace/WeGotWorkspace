@@ -394,7 +394,14 @@ export function NotesWorkspace({
         </NoteCollabSession>
       );
     },
-    [active, applyLocalBodyMarkdown, collabEpoch, collabSessionActive, markEditorDirty, noteBodyCollab],
+    [
+      active,
+      applyLocalBodyMarkdown,
+      collabEpoch,
+      collabSessionActive,
+      markEditorDirty,
+      noteBodyCollab,
+    ],
   );
 
   const handleRetrySync = useCallback(() => {

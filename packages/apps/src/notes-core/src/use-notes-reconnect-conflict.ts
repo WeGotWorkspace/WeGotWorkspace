@@ -78,8 +78,7 @@ export function useNotesReconnectConflict(options: {
     try {
       await useTheirsNotesReconnect({
         noteId: note.id,
-        applyServerBody: (markdown) =>
-          applyBodyRef.current(note.id, markdown, { bumpDate: false }),
+        applyServerBody: (markdown) => applyBodyRef.current(note.id, markdown, { bumpDate: false }),
         refreshList: refreshRef.current,
       });
       editorDirtyRef.current = false;
