@@ -115,4 +115,28 @@ describe("TasksEditDialog", () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("shows Delete and calls onDelete when clicked", () => {
+    const onDelete = vi.fn();
+    const { onClose } = renderEditDialog({ onDelete });
+
+    const deleteButton = screen.getByRole("button", { name: defaultTasksLabels.delete });
+    expect(deleteButton.className).toMatch(/button--variant-destructive/);
+    fireEvent.click(deleteButton);
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("hides Delete when the task is read-only", () => {
+    renderEditDialog({ onDelete: vi.fn(), readOnly: true });
+
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.delete })).toBeNull();
+  });
+
+  it("hides Delete when onDelete is omitted", () => {
+    renderEditDialog();
+
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.delete })).toBeNull();
+  });
 });

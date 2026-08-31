@@ -6,6 +6,7 @@ import type { TaskProjectDialogState } from "@/tasks-core/src/task-project-dialo
 import { DEFAULT_TASKS_VIEW } from "@/tasks-core/src/tasks-route-search";
 import {
   canChangeTaskListOwner,
+  canDeleteTaskList,
   canShareTaskList,
   isProtectedTaskList,
   taskListDotColor,
@@ -18,8 +19,17 @@ type UseTasksProjectMutationsArgs = {
 };
 
 export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs) {
-  const { L, operations, taskLists, setTaskLists, selectView, view, show, showMutationError } =
-    shell;
+  const {
+    L,
+    operations,
+    taskLists,
+    setTaskLists,
+    setTasks,
+    selectView,
+    view,
+    show,
+    showMutationError,
+  } = shell;
   const [projectDialog, setProjectDialog] = useState<TaskProjectDialogState>(null);
 
   const canManageProjects = Boolean(operations?.createTaskList && operations?.patchTaskList);
@@ -129,6 +139,25 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
     [L, operations, selectView, setTaskLists, show, showMutationError, taskLists, view],
   );
 
+  const deleteList = useCallback(
+    async (listId: string) => {
+      if (!operations?.deleteTaskList) return;
+      const list = taskLists.find((entry) => entry.id === listId);
+      if (!list || !canDeleteTaskList(list)) return;
+      try {
+        await operations.deleteTaskList(listId, { onDestroyRemoveContents: true });
+        setTaskLists((prev) => prev.filter((entry) => entry.id !== listId));
+        setTasks((prev) => prev.filter((task) => task.taskListId !== listId));
+        if (view === `list:${listId}`) selectView(DEFAULT_TASKS_VIEW);
+        show(L.toastListDeleted);
+        setProjectDialog(null);
+      } catch {
+        showMutationError(L.toastProjectSaveFailed);
+      }
+    },
+    [L, operations, selectView, setTaskLists, setTasks, show, showMutationError, taskLists, view],
+  );
+
   const openCreateProjectDialog = useCallback(() => {
     setProjectDialog({ mode: "create" });
   }, []);
@@ -148,9 +177,10 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
         isSharee: list.isSharee === true,
         shareWith: list.shareWith ?? null,
         canChangeOwner: canChangeTaskListOwner(list),
+        mayDelete: canDeleteTaskList(list) && Boolean(operations?.deleteTaskList),
       });
     },
-    [taskLists],
+    [operations?.deleteTaskList, taskLists],
   );
 
   return {
@@ -163,5 +193,6 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
     updateProject,
     patchShareWith,
     removeSharedList,
+    deleteList,
   };
 }

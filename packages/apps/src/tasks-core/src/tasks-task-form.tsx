@@ -9,8 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
-import { TASK_WORKFLOW_STATUSES, type TaskWorkflowStatus } from "@/tasks-core/src/tasks-task-utils";
+import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
+import {
+  TASK_WORKFLOW_STATUSES,
+  taskDueIsDateOnly,
+  type TaskWorkflowStatus,
+} from "@/tasks-core/src/tasks-task-utils";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
 import {
   COMPOSER_PRIORITY_VALUES,
@@ -30,6 +34,8 @@ export type TasksTaskFormValue = {
   workflowStatus: TaskWorkflowStatus;
   priority: TaskPriorityValue;
   due: string | null;
+  showWithoutTime?: boolean;
+  timeZone?: string | null;
   alerts?: Task["alerts"];
 };
 
@@ -68,6 +74,8 @@ export function emptyTaskForm(listId: string): TasksTaskFormValue {
     workflowStatus: DEFAULT_WORKFLOW_STATUS,
     priority: TASK_PRIORITY_NONE,
     due: null,
+    showWithoutTime: true,
+    timeZone: null,
     alerts: undefined,
   };
 }
@@ -80,6 +88,8 @@ export function taskToFormValue(task: Task, fallbackListId: string): TasksTaskFo
     workflowStatus: (task.workflowStatus ?? DEFAULT_WORKFLOW_STATUS) as TaskWorkflowStatus,
     priority: (normalizeTaskPriority(task.priority) ?? TASK_PRIORITY_NONE) as TaskPriorityValue,
     due: task.due ?? null,
+    showWithoutTime: taskDueIsDateOnly(task.due, task.showWithoutTime),
+    timeZone: task.timeZone ?? null,
     alerts: task.alerts,
   };
 }
@@ -159,8 +169,17 @@ export function TasksTaskFormFields({
           due: (
             <TasksComposerDuePicker
               labels={L}
-              value={value.due}
-              onChange={(due) => setField("due", due)}
+              due={value.due}
+              showWithoutTime={value.showWithoutTime}
+              timeZone={value.timeZone}
+              onChange={(next) =>
+                onChange((previous) => ({
+                  ...previous,
+                  due: next.due,
+                  showWithoutTime: next.showWithoutTime,
+                  timeZone: next.timeZone,
+                }))
+              }
               disabled={disabled}
               triggerClassName={COMPOSER_SELECT_TRIGGER_CLASS}
             />
@@ -177,7 +196,7 @@ export function TasksTaskFormFields({
               <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
                 {taskLists.map((list) => (
                   <SelectItem key={list.id} value={list.id} className={COMPOSER_SELECT_ITEM_CLASS}>
-                    <ComposerSelectOption icon={<TaskListDot list={list} />} label={list.name} />
+                    <ComposerSelectOption icon={<TaskListIcon list={list} />} label={list.name} />
                   </SelectItem>
                 ))}
               </SelectContent>

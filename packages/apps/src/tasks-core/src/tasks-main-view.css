@@ -184,6 +184,12 @@
 }
 
 .tasks-main-view__composer-meta {
+  --input-height: 2rem;
+  --control-height-sm: 2rem;
+  --control-height-md: 2rem;
+  --input-font-size: 0.75rem;
+  --input-padding-x: 0.5rem;
+  --control-radius-button-pill: var(--control-radius);
   @apply mt-2 flex flex-wrap items-center gap-2;
 }
 
@@ -192,11 +198,13 @@
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   background-color: transparent;
   --input-height: 2rem;
+  --control-height-sm: 2rem;
   --control-height-md: 2rem;
   --input-font-size: 0.75rem;
   --input-padding-x: 0.5rem;
   min-height: 2rem;
   height: 2rem;
+  border-radius: var(--control-radius);
 }
 
 /* `.select-trigger` tokens (w-full, 1rem type, 0.75rem padding) land in a later
@@ -213,6 +221,7 @@
   justify-content: flex-start;
   gap: 0.375rem;
   background-color: transparent;
+  border-radius: var(--control-radius);
 }
 
 .select-trigger.tasks-main-view__composer-select > span {
@@ -276,6 +285,23 @@
   flex-shrink: 0;
 }
 
+.tasks-main-view__composer-due-extras {
+  @apply flex flex-col gap-2 border-t p-2;
+  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+}
+
+.tasks-main-view__composer-due-time-row {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.tasks-main-view__composer-due-time {
+  @apply w-auto min-w-28;
+}
+
+.tasks-main-view__composer-due-timezone {
+  @apply min-w-0 flex-1;
+}
+
 .tasks-main-view__composer-due-clear {
   @apply border-t p-2;
   border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
@@ -288,41 +314,37 @@
 .tasks-main-view__remind {
   --tasks-remind-badge-size: 1rem;
   --tasks-remind-badge-font-size: 0.625rem;
-  --tasks-remind-pad: 0.375rem;
 
   @apply relative inline-flex shrink-0 items-center overflow-visible;
-  padding-block-start: var(--tasks-remind-pad);
-  padding-inline-end: var(--tasks-remind-pad);
 }
 
 .tasks-main-view__remind--composer {
   --input-height: 2rem;
+  --control-height-sm: 2rem;
   --control-height-md: 2rem;
-  --button-outline-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   @apply max-w-full min-w-0;
-  margin-block-start: calc(-1 * var(--tasks-remind-pad));
-  margin-inline-end: calc(-1 * var(--tasks-remind-pad));
 }
 
-.tasks-main-view__remind-button {
-  @apply inline-flex h-8 max-w-full min-w-0 shrink items-center gap-1.5 overflow-hidden px-2 text-xs font-normal shadow-none;
-  --input-height: 2rem;
-  --control-height-md: 2rem;
+.tasks-main-view__composer-select.tasks-main-view__remind-button {
+  @apply max-w-full min-w-0 overflow-visible font-normal;
   min-height: 2rem;
   height: 2rem;
-  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  background-color: transparent;
+  padding-inline: 0.5rem;
+  padding-block: 0;
+  font-size: 0.75rem;
+  border-radius: var(--control-radius);
 }
 
-.tasks-main-view__remind-button .button__icon {
-  @apply size-3.5 shrink-0;
+.tasks-main-view__remind-button .tasks-main-view__composer-select-option {
+  @apply items-center gap-2;
 }
 
-.tasks-main-view__remind-button .button__icon svg {
-  @apply size-3.5;
+.tasks-main-view__remind-button .tasks-main-view__composer-select-option > svg {
+  @apply m-0 shrink-0;
+  display: block;
 }
 
-.tasks-main-view__remind-button > span:last-child {
+.tasks-main-view__remind-button .tasks-main-view__composer-select-option > span:last-child {
   @apply min-w-0 truncate;
 }
 
@@ -331,10 +353,16 @@
   background-color: color-mix(in oklab, var(--tasks-accent, #ea8c72) 14%, transparent);
 }
 
+.tasks-main-view__remind-button--active svg {
+  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  fill: currentColor;
+}
+
 .tasks-main-view__remind-badge {
   @apply pointer-events-none absolute z-10 flex items-center justify-center rounded-full font-semibold leading-none;
   inset-block-start: 0;
   inset-inline-end: 0;
+  transform: translate(35%, -35%);
   inline-size: var(--tasks-remind-badge-size);
   block-size: var(--tasks-remind-badge-size);
   font-size: var(--tasks-remind-badge-font-size);
@@ -345,16 +373,13 @@
 .tasks-main-view__remind--row {
   --tasks-remind-badge-size: 0.625rem;
   --tasks-remind-badge-font-size: 0.5rem;
-  --tasks-remind-pad: 0.5rem;
 
-  @apply pointer-events-none;
-  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
-  margin-block-start: calc(-1 * var(--tasks-remind-pad));
-  margin-inline-end: calc(-1 * var(--tasks-remind-pad));
+  @apply pointer-events-none items-center;
 }
 
 .tasks-main-view__remind--row svg {
   @apply size-3.5 shrink-0;
+  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
   fill: currentColor;
 }
 
@@ -415,4 +440,12 @@
 
 .tasks-edit-dialog__fields {
   @apply flex flex-col gap-2;
+}
+
+.tasks-dialog-surface .tasks-edit-dialog__footer {
+  @apply gap-2 sm:gap-0;
+}
+
+.tasks-dialog-surface .tasks-edit-dialog__footer .tasks-edit-dialog__delete {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
 }
