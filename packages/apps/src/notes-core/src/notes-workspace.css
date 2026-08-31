@@ -220,15 +220,9 @@
  * mark — that reads as muddy olive. Layers stay in the notes.svg yellow family
  * (`#f6d176` tile / `#f0bc3a` header+lines / `#fef8ea` almost-white sheet).
  */
-.notes-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger {
+.notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--notes-accent);
-  --app-switch-icon-fg: color-mix(
-    in oklab,
-    var(--notes-accent) 14%,
-    var(--color-cream, #ffffff)
-  );
+  --app-switch-icon-fg: color-mix(in oklab, var(--notes-accent) 14%, var(--color-cream, #ffffff));
   background-color: var(--app-switch-icon-bg);
 }
 
