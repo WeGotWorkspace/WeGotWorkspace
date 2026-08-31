@@ -64,11 +64,10 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     writeNoteCollabOfflineContent.mockResolvedValue(undefined);
   });
 
-  it("supplies a live dirty getter from pending Dexie / Yjs / editor", () => {
+  it("treats only editor or pending Yjs save as local dirty", () => {
     expect(
       isNotesLocalDirty({
         noteId: note.id,
-        pendingNoteIds: new Set(),
         editorDirty: false,
       }),
     ).toBe(false);
@@ -76,15 +75,6 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     expect(
       isNotesLocalDirty({
         noteId: note.id,
-        pendingNoteIds: new Set([note.id]),
-        editorDirty: false,
-      }),
-    ).toBe(false);
-
-    expect(
-      isNotesLocalDirty({
-        noteId: note.id,
-        pendingNoteIds: new Set(),
         editorDirty: true,
       }),
     ).toBe(true);
@@ -93,7 +83,6 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     expect(
       isNotesLocalDirty({
         noteId: note.id,
-        pendingNoteIds: new Set(),
         editorDirty: false,
       }),
     ).toBe(true);
@@ -106,7 +95,6 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     const { result } = renderHook(() =>
       useNotesReconnectConflict({
         active: note,
-        pendingNoteIds: new Set(),
         applyLocalBodyMarkdown,
         onRefreshList,
       }),
@@ -133,7 +121,6 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     const { result } = renderHook(() =>
       useNotesReconnectConflict({
         active: note,
-        pendingNoteIds: new Set(),
         applyLocalBodyMarkdown: vi.fn(),
         onRefreshList: vi.fn(),
       }),
@@ -162,7 +149,6 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     const { result } = renderHook(() =>
       useNotesReconnectConflict({
         active: note,
-        pendingNoteIds: new Set(),
         applyLocalBodyMarkdown: vi.fn(),
         onRefreshList: vi.fn(),
       }),
@@ -195,7 +181,6 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     const { result } = renderHook(() =>
       useNotesReconnectConflict({
         active: note,
-        pendingNoteIds: new Set(),
         applyLocalBodyMarkdown,
         onRefreshList,
       }),

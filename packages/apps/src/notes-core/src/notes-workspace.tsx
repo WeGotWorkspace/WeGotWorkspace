@@ -325,7 +325,6 @@ export function NotesWorkspace({
     collabEpoch,
   } = useNotesReconnectConflict({
     active: active ?? null,
-    pendingNoteIds,
     applyLocalBodyMarkdown,
     onRefreshList,
   });

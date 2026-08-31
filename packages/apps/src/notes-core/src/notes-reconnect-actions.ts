@@ -4,7 +4,6 @@ import { getDocsCollabSyncState } from "@/text-editor-core/docs-collab/docs-coll
 
 export type NotesLocalDirtyInput = {
   noteId: string | null | undefined;
-  pendingNoteIds: ReadonlySet<string>;
   editorDirty: boolean;
 };
 
