@@ -79,7 +79,7 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
         pendingNoteIds: new Set([note.id]),
         editorDirty: false,
       }),
-    ).toBe(true);
+    ).toBe(false);
 
     expect(
       isNotesLocalDirty({
@@ -182,7 +182,7 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     act(() => {
       result.current.markEditorDirty(true);
     });
-    persistNoteMarkdown.mockRejectedValueOnce(
+    persistNoteMarkdown.mockRejectedValue(
       Object.assign(new Error("PATCH failed (412)"), { status: 412 }),
     );
     await expect(urls.persistMarkdown?.("unsaved")).rejects.toThrow(/412/);

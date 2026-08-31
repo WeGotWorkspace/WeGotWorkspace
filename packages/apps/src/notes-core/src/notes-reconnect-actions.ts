@@ -8,12 +8,14 @@ export type NotesLocalDirtyInput = {
   editorDirty: boolean;
 };
 
-/** Open-editor dirty, pending Yjs save, or Dexie pending — Decision 6. */
+/**
+ * Body dirty only (editor or pending Yjs save). Dexie metadata pending (tags/
+ * title) must not open a Keep-mine dialog — that is our own etag race.
+ */
 export function isNotesLocalDirty(input: NotesLocalDirtyInput): boolean {
   const noteId = input.noteId;
   if (!noteId) return false;
   if (input.editorDirty) return true;
-  if (input.pendingNoteIds.has(noteId)) return true;
   return getDocsCollabSyncState(noteId).pendingServerSave;
 }
 

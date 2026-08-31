@@ -87,19 +87,38 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           saved = await updateNoteItem(noteId, metadataRequest);
         } catch (error) {
           if (isPreconditionFailed(error)) {
-            stateMismatches.push(noteId);
-            await markOutboxError(username, row.id, "stateMismatch");
-            continue;
+            try {
+              // Stale If-Match after our own create/title/body PATCH — refetch etag.
+              saved = await updateNoteItem(noteId, {
+                ...metadataRequest,
+                etag: undefined,
+              });
+            } catch (retryError) {
+              if (isPreconditionFailed(retryError) && upsert.tempNoteId) {
+                // Still our create race: last-writer-wins, do not open Keep mine.
+                saved = await updateNoteItem(noteId, {
+                  ...metadataRequest,
+                  etag: undefined,
+                });
+              } else if (isPreconditionFailed(retryError)) {
+                stateMismatches.push(noteId);
+                await markOutboxError(username, row.id, "stateMismatch");
+                continue;
+              } else {
+                throw retryError;
+              }
+            }
+          } else {
+            const status = (error as { status?: number } | undefined)?.status;
+            if (status !== 404) throw error;
+            // local-* first persist: create. A real UID 404 is gone — drop, don't resurrect.
+            if (!upsert.tempNoteId) {
+              await dropLocalNoteAfterServerGone(username, noteId);
+              await removeOutboxMutation(username, row.id);
+              continue;
+            }
+            saved = await createNoteItem({ ...metadataRequest, body: "" });
           }
-          const status = (error as { status?: number } | undefined)?.status;
-          if (status !== 404) throw error;
-          // local-* first persist: create. A real UID 404 is gone — drop, don't resurrect.
-          if (!upsert.tempNoteId) {
-            await dropLocalNoteAfterServerGone(username, noteId);
-            await removeOutboxMutation(username, row.id);
-            continue;
-          }
-          saved = await createNoteItem({ ...metadataRequest, body: "" });
         }
         const tempId = upsert.tempNoteId;
         if (tempId && tempId !== saved.id) {

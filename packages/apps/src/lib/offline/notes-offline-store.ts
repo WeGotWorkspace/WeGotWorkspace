@@ -250,6 +250,19 @@ export async function upsertNoteInCache(
   await notesNotesTable(db).put(noteRow(note, pendingSync));
 }
 
+/**
+ * Update the Dexie list-preview body without touching metadata `pendingSync`.
+ * Body is owned by the collab document — this must not stamp unsynced metadata.
+ * Does not insert a missing row so remapped `local-*` ids stay deleted.
+ */
+export async function upsertNoteBodyPreviewInCache(username: string, note: Note): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = notesNotesTable(db);
+  const existing = await table.get(note.id);
+  if (!existing) return;
+  await table.put(noteRow(note, existing.pendingSync));
+}
+
 export async function upsertNotebookInCache(
   username: string,
   notebook: NotesNotebookCollection,

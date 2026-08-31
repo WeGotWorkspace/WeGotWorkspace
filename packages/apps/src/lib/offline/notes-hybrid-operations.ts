@@ -35,6 +35,8 @@ import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
+  listPendingNoteIds,
+  notesOutboxNoteId,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
   removeNotebookFromCache,
@@ -55,10 +57,43 @@ import {
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
 
+function persistHttpStatus(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "status" in error) {
+    const status = (error as { status?: unknown }).status;
+    if (typeof status === "number") return status;
+  }
+  return undefined;
+}
+
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
   if (!isFetchNetworkError(error)) throw error;
+}
+
+/**
+ * Queue instead of failing the write. Auth errors stay thrown. A local-* create
+ * that 400/422/5xxs must enqueue — otherwise Dexie stays pending with no outbox.
+ */
+function shouldQueueNotesUpsert(
+  error: unknown,
+  note: Pick<Note, "id">,
+  signal?: AbortSignal,
+): boolean {
+  if (signal?.aborted) return false;
+  if (error instanceof DOMException && error.name === "AbortError") return false;
+  const status = persistHttpStatus(error);
+  if (status === 401 || status === 403) return false;
+  if (isLocalTempNoteId(note.id)) return true;
+  if (status === 412) return true;
+  return status != null && status >= 500;
+}
+
+async function isNeverSyncedPendingNote(username: string, noteId: string): Promise<boolean> {
+  if (isLocalTempNoteId(noteId)) return true;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await notesNotesTable(db).get(noteId);
+  return row?.pendingSync === true;
 }
 
 /**
@@ -104,7 +139,21 @@ function baseUpdatedAt(note: Note): string | undefined {
 }
 
 function applyNoteUpdate(existing: Note, patch: Note): Note {
-  return { ...existing, ...patch };
+  const { etag: patchEtag, ...rest } = patch;
+  return {
+    ...existing,
+    ...rest,
+    ...(patchEtag ? { etag: patchEtag } : {}),
+  };
+}
+
+const noteMetadataWriteChains = new Map<string, Promise<unknown>>();
+
+function enqueueNoteMetadataWrite<T>(noteId: string, write: () => Promise<T>): Promise<T> {
+  const previous = noteMetadataWriteChains.get(noteId) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(write);
+  noteMetadataWriteChains.set(noteId, next);
+  return next;
 }
 
 function tempNoteIdForCreate(existing: Note | undefined, note: Note): string | undefined {
@@ -158,6 +207,23 @@ async function queueOfflineUpsert(
   await upsertNoteInCache(username, note, true);
   await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), tempNoteId);
   return note;
+}
+
+/** Swallowed online creates left pending local-* rows with no outbox — enqueue so flush can POST. */
+async function enqueueOrphanPendingLocalCreates(username: string): Promise<void> {
+  const pendingIds = await listPendingNoteIds(username);
+  if (pendingIds.length === 0) return;
+  const queued = new Set(
+    (await listOutboxMutations(username))
+      .map((row) => notesOutboxNoteId(row))
+      .filter((id): id is string => !!id),
+  );
+  for (const id of pendingIds) {
+    if (!isLocalTempNoteId(id) || queued.has(id)) continue;
+    const note = await resolveCachedNote(username, id);
+    if (!note) continue;
+    await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), note.id);
+  }
 }
 
 async function queueOfflineDelete(
@@ -257,14 +323,36 @@ function groupSlugOpts(
   };
 }
 
+async function createLocalTempNoteOnline(
+  username: string,
+  note: Note,
+  runner: ConnectivitySyncRunner<OutboxFlushResult>,
+  opts?: { signal?: AbortSignal },
+): Promise<Note> {
+  const saved = await createNoteItem(
+    wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
+    opts,
+  );
+  // API must mint a UID. If it echoes local-*, remap cannot run — keep queued.
+  if (isLocalTempNoteId(saved.id)) {
+    return queueOfflineUpsert(username, { ...saved, id: note.id }, note.id);
+  }
+  await adoptServerCreatedNote(username, note.id, saved);
+  await runner.flush();
+  return saved;
+}
+
 async function upsertNoteOnline(
   username: string,
   note: Note,
   runner: ConnectivitySyncRunner<OutboxFlushResult>,
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
-  // Metadata-only PUT preserves the on-disk body; the 404 create fallback sends
-  // the full note so a brand-new note's (empty) body is initialised once.
+  if (isLocalTempNoteId(note.id)) {
+    return createLocalTempNoteOnline(username, note, runner, opts);
+  }
+  // Metadata-only PATCH preserves the on-disk body; 404 means the object is gone
+  // unless this UUID was never synced (queue instead of dropping).
   const metadataRequest = wgwNoteMetadataFromNote(note, {
     starred: !!note.starred,
     archived: !!note.archived,
@@ -275,18 +363,18 @@ async function upsertNoteOnline(
     await runner.flush();
     return saved;
   } catch (error) {
-    const status = (error as { status?: number } | undefined)?.status;
-    if (status !== 404) throw error;
-    // local-* first persist: 404 on PUT means "never created" → POST create.
-    // A real UID 404 means the object is gone — do not resurrect a ghost.
-    if (isLocalTempNoteId(note.id)) {
-      const saved = await createNoteItem(
-        wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
-        opts,
-      );
-      await adoptServerCreatedNote(username, note.id, saved);
+    const status = persistHttpStatus(error);
+    if (status === 412) {
+      // Title/body PATCH advanced etag between our GET and PATCH. Retry once
+      // with a fresh If-Match — do not treat our own race as a sync conflict.
+      const saved = await updateNoteItem(note.id, { ...metadataRequest, etag: undefined }, opts);
+      await upsertNoteInCache(username, saved, false);
       await runner.flush();
       return saved;
+    }
+    if (status !== 404) throw error;
+    if (await isNeverSyncedPendingNote(username, note.id)) {
+      return queueOfflineUpsert(username, note, tempNoteIdForCreate(undefined, note));
     }
     await dropLocalNoteAfterServerGone(username, note.id);
     throw error;
@@ -308,9 +396,13 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         return queueOfflineUpsert(username, optimistic, tempId);
       }
       try {
-        return await upsertNoteOnline(username, merged, runner, opts);
+        return await enqueueNoteMetadataWrite(merged.id, () =>
+          upsertNoteOnline(username, merged, runner, opts),
+        );
       } catch (error) {
-        rethrowUnlessOfflineQueue(error, opts?.signal);
+        if (!shouldQueueNotesUpsert(error, merged, opts?.signal)) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
         return queueOfflineUpsert(username, optimistic, tempId);
@@ -523,6 +615,9 @@ export async function fetchNotesHybridBootstrap(): Promise<
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Notes bootstrap missing username");
+  }
+  if (readBrowserOnline()) {
+    await enqueueOrphanPendingLocalCreates(username);
   }
   const hadOutbox = readBrowserOnline() && (await listOutboxMutations(username)).length > 0;
   if (readBrowserOnline()) {
