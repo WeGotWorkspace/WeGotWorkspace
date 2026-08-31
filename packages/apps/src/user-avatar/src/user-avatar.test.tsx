@@ -32,4 +32,17 @@ describe("UserAvatar", () => {
 
     expect(screen.getByRole("img", { name: "Unknown avatar" }).textContent).toBe("U");
   });
+
+  it("renders a custom fallback instead of initials", () => {
+    render(
+      <UserAvatar
+        displayName="Acme Corp"
+        compact
+        fallback={<span data-testid="fallback-icon" />}
+      />,
+    );
+
+    expect(screen.getByTestId("fallback-icon")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Acme Corp avatar" }).textContent).not.toMatch(/A/);
+  });
 });

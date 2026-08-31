@@ -11,6 +11,8 @@ export type UserAvatarProps = {
   subtitle?: ReactNode;
   /** When set, show profile photo; falls back to initials on load error or when omitted. */
   imageSrc?: string;
+  /** Replaces initials when there is no photo (e.g. a company building icon). */
+  fallback?: ReactNode;
   /** Avatar + label only; no text column. */
   compact?: boolean;
   /** `sm` = sidebar/footer chip; `md` = mail sender row; `lg` / `xl` = meet tiles and lobby preview. */
@@ -33,6 +35,7 @@ export function UserAvatar({
   displayName,
   subtitle,
   imageSrc,
+  fallback,
   compact = false,
   size = "sm",
   onClick,
@@ -64,7 +67,7 @@ export function UserAvatar({
       onError={() => setImageFailed(true)}
     />
   ) : (
-    initials
+    (fallback ?? initials)
   );
 
   const circle = onClick ? (

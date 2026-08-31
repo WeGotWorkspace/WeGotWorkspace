@@ -41,6 +41,11 @@
   --tag-gap: 0.375rem;
 }
 
+.tag--collection-tint {
+  --tag-bg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 18%, transparent);
+  --tag-fg: var(--collection-row-color, var(--color-ink));
+}
+
 .tag__icon {
   @apply shrink-0 opacity-70;
 }

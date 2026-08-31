@@ -25,6 +25,15 @@ describe("tag add control type scale", () => {
   });
 });
 
+describe("tag collection tint", () => {
+  it("washes the chip from --collection-row-color", () => {
+    expect(css).toMatch(
+      /\.tag--collection-tint \{[\s\S]*--tag-bg:\s*color-mix\(in oklab,\s*var\(--collection-row-color/,
+    );
+    expect(css).toMatch(/\.tag--collection-tint \{[\s\S]*--tag-fg:\s*var\(--collection-row-color/);
+  });
+});
+
 describe("tag remove control contrast", () => {
   it("paints the X with the chip foreground token, not UA button ink", () => {
     expect(css).toMatch(

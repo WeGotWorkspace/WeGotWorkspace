@@ -13,10 +13,14 @@
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
+  box-sizing: border-box;
   border-radius: 9999px;
   font-weight: 500;
   background-color: var(--user-avatar-bg, color-mix(in oklab, var(--color-ink) 12%, transparent));
   color: var(--user-avatar-fg, var(--color-ink));
+  border-width: var(--user-avatar-border-width, 0);
+  border-style: solid;
+  border-color: var(--user-avatar-border, transparent);
 }
 
 .user-avatar__image {
@@ -27,7 +31,6 @@
 
 button.user-avatar__mark {
   margin: 0;
-  border: 0;
   padding: 0;
   cursor: pointer;
   font: inherit;

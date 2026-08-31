@@ -36,6 +36,48 @@ describe("TagGroup inline add", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
   });
 
+  it("commits an existing suggestion by item id, not label", () => {
+    const onAddTag = vi.fn();
+    renderTagGroup(
+      <TagGroup
+        tags={[]}
+        readonly={false}
+        suggestions={[{ id: "group-friends", label: "Friends" }]}
+        allowCreate={false}
+        onAddTag={onAddTag}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Add tag" }), {
+      target: { value: "Fri" },
+    });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Friends" }));
+
+    expect(onAddTag).toHaveBeenCalledWith("group-friends");
+  });
+
+  it("omits create-on-type when allowCreate is false", () => {
+    const onAddTag = vi.fn();
+    renderTagGroup(
+      <TagGroup
+        tags={[]}
+        readonly={false}
+        suggestions={["ideas"]}
+        allowCreate={false}
+        onAddTag={onAddTag}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    const input = screen.getByRole("combobox", { name: "Add tag" });
+    fireEvent.change(input, { target: { value: "brand-new" } });
+
+    expect(screen.queryByRole("option", { name: "Create “brand-new”" })).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAddTag).not.toHaveBeenCalled();
+  });
+
   it("creates a new tag from the typed string", () => {
     const onAddTag = vi.fn();
     renderTagGroup(
@@ -141,5 +183,23 @@ describe("TagGroup inline add", () => {
     fireEvent.click(remove);
 
     expect(onRemoveTag).toHaveBeenCalledWith("ideas");
+  });
+
+  it("removes by item id and tints from --collection-row-color", () => {
+    const onRemoveTag = vi.fn();
+    const { container } = renderTagGroup(
+      <TagGroup
+        tags={[{ id: "group-friends", label: "Friends", collectionTint: "#6366f1" }]}
+        readonly={false}
+        onRemoveTag={onRemoveTag}
+        removeAriaLabelFor={(label) => `Remove group ${label}`}
+      />,
+    );
+
+    const chip = container.querySelector(".tag--collection-tint") as HTMLElement | null;
+    expect(chip).toBeTruthy();
+    expect(chip?.style.getPropertyValue("--collection-row-color")).toBe("#6366f1");
+    fireEvent.click(screen.getByRole("button", { name: "Remove group Friends" }));
+    expect(onRemoveTag).toHaveBeenCalledWith("group-friends");
   });
 });
