@@ -97,14 +97,16 @@ final class NotesFileMigrator
             $notebook = $this->notebooks->findOrCreateNamed($username, $notebookName, $groupSlug);
 
             try {
-                $this->notes->create($username, [
+                $created = $this->notes->create($username, [
                     'notebookId' => $notebook['id'],
-                    'uid' => $uid,
                     'title' => $title !== '' ? $title : null,
                     'body' => $body,
                     'categories' => $tags,
                     'status' => $parsed['archived'] ? 'CANCELLED' : null,
                 ]);
+                $pathToUid[$virtualPath] = is_string($created['id'] ?? null)
+                    ? (string) $created['id']
+                    : $uid;
                 $imported++;
             } catch (\Throwable $exception) {
                 $skipped++;
