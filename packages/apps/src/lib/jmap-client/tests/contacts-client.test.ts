@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { JmapContactsClient } from "../contacts/JmapContactsClient.js";
+import {
+  CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  JmapContactsClient,
+} from "../contacts/JmapContactsClient.js";
 import { CONTACTS_CAPABILITY, CORE_CAPABILITY, type JmapInvocation } from "../core/types.js";
 import { JmapClient } from "../core/JmapClient.js";
 
@@ -117,11 +120,48 @@ describe("JmapContactsClient contract batches", () => {
 
     expect(got.cards.list.map((card) => card.id)).toEqual(ids);
     const getBatches = recorded.slice(1);
-    expect(getBatches).toHaveLength(1);
-    expect(getBatches[0]?.map(([name, args]) => [name, args.ids])).toEqual([
-      ["ContactCard/get", ["card-1", "card-2"]],
-      ["ContactCard/get", ["card-3"]],
+    expect(getBatches.map((batch) => batch.map(([name, args]) => [name, args.ids]))).toEqual([
+      [["ContactCard/get", ["card-1", "card-2"]]],
+      [["ContactCard/get", ["card-3"]]],
     ]);
+  });
+
+  it("caps ContactCard/get to one small page per HTTP request even when maxObjectsInGet is 500", async () => {
+    const ids = Array.from(
+      { length: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST + 3 },
+      (_, index) => `card-${index}`,
+    );
+    const { contacts, recorded } = await makeClient(
+      (calls) => {
+        return calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          const pageIds = (args.ids as string[]) ?? [];
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: "1:",
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        });
+      },
+      { maxObjectsInGet: 500, maxCallsInRequest: 32 },
+    );
+
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT);
+    expect(got.cards.list).toHaveLength(ids.length);
+    const getBatches = recorded.slice(1);
+    expect(getBatches).toHaveLength(2);
+    expect(getBatches[0]).toHaveLength(1);
+    expect((getBatches[0]?.[0]?.[1].ids as string[]).length).toBe(
+      CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+    );
+    expect((getBatches[1]?.[0]?.[1].ids as string[]).length).toBe(3);
   });
 
   it("query+get uses the #ids ResultReference", async () => {
@@ -187,7 +227,10 @@ describe("JmapContactsClient contract batches", () => {
 
     const got = await contacts.getContactCardsByQuery(ACCOUNT);
     expect(got.list.map((card) => card.id)).toEqual(ids);
-    expect(recorded[1]?.map(([, args]) => args.ids)).toEqual([["card-1", "card-2"], ["card-3"]]);
+    expect(recorded.slice(1).map((batch) => batch.map(([, args]) => args.ids))).toEqual([
+      [["card-1", "card-2"]],
+      [["card-3"]],
+    ]);
   });
 
   it("per-book list only sends the inAddressBook filter", async () => {

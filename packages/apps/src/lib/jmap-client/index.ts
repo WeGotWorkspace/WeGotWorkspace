@@ -25,7 +25,11 @@ export type {
   JmapCalendarEventFilterCondition,
   JmapCalendarRights,
 } from "./calendars/types.js";
-export { CONTACTS_USING, JmapContactsClient } from "./contacts/JmapContactsClient.js";
+export {
+  CONTACTS_USING,
+  CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  JmapContactsClient,
+} from "./contacts/JmapContactsClient.js";
 export type {
   JmapAddressBook,
   JmapAddressBookRights,

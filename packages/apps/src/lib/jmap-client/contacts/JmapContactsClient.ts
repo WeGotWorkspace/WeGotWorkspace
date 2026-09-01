@@ -1,11 +1,10 @@
-import { JmapMethodError, JmapSetItemError } from "../core/errors.js";
+import { JmapSetItemError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { CONTACTS_CAPABILITY, CORE_CAPABILITY } from "../core/types.js";
 import type {
   ChangesResponse,
   GetResponse,
   JmapId,
-  JmapInvocation,
   JmapMethodErrorArgs,
   JmapState,
   QueryResponse,
@@ -17,7 +16,13 @@ import type { JmapAddressBook, JmapContactCard, JmapContactCardFilterCondition }
 const ADDRESS_BOOK_TYPE = "AddressBook";
 const CONTACT_CARD_TYPE = "ContactCard";
 const DEFAULT_MAX_OBJECTS_IN_GET = 500;
-const DEFAULT_MAX_CALLS_IN_REQUEST = 32;
+/**
+ * ContactCard/get maps each id through vCard conversion (and inlined photo
+ * bytes). A single php -S request of `maxObjectsInGet` (500) cards exceeds
+ * the 30s limit and queues every other connection behind it — the
+ * Accepted/Closing storm on :9080. Keep one small page per HTTP request.
+ */
+export const CONTACT_CARD_GET_MAX_IDS_PER_REQUEST = 40;
 
 export const CONTACTS_USING = [CORE_CAPABILITY, CONTACTS_CAPABILITY];
 
@@ -203,8 +208,9 @@ export class JmapContactsClient {
 
   /**
    * Initial sync: AddressBook/get plus ContactCard/query, then ContactCard/get
-   * in maxObjectsInGet pages. A get-all (`ids: null`) is rejected once the
-   * account has more cards than that limit.
+   * in {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST} pages (one HTTP request
+   * each). A get-all (`ids: null`) is rejected once the account has more
+   * cards than maxObjectsInGet.
    */
   async getAddressBooksAndCards(accountId: JmapId): Promise<{
     books: GetResponse<JmapAddressBook>;
@@ -237,7 +243,7 @@ export class JmapContactsClient {
     return { books, cards };
   }
 
-  #coreLimit(name: "maxObjectsInGet" | "maxCallsInRequest", fallback: number): number {
+  #coreLimit(name: "maxObjectsInGet", fallback: number): number {
     const core = this.client.session.capabilities[CORE_CAPABILITY];
     if (!core || typeof core !== "object") return fallback;
     const value = Number((core as Record<string, unknown>)[name]);
@@ -248,16 +254,12 @@ export class JmapContactsClient {
     return this.#coreLimit("maxObjectsInGet", DEFAULT_MAX_OBJECTS_IN_GET);
   }
 
-  #maxCallsInRequest(): number {
-    return this.#coreLimit("maxCallsInRequest", DEFAULT_MAX_CALLS_IN_REQUEST);
-  }
-
   async #getContactCardsByIds(
     accountId: JmapId,
     ids: JmapId[],
     properties?: string[] | null,
   ): Promise<GetResponse<JmapContactCard>> {
-    const pageSize = this.#maxObjectsInGet();
+    const pageSize = Math.min(this.#maxObjectsInGet(), CONTACT_CARD_GET_MAX_IDS_PER_REQUEST);
     if (ids.length <= pageSize) {
       return this.#getContactCardsPage(accountId, ids, properties);
     }
@@ -265,35 +267,13 @@ export class JmapContactsClient {
     const notFound: JmapId[] = [];
     let state: JmapState = "";
     let responseAccountId = accountId;
-    const pages: JmapId[][] = [];
     for (let index = 0; index < ids.length; index += pageSize) {
-      pages.push(ids.slice(index, index + pageSize));
-    }
-    const callsPerRequest = Math.max(1, this.#maxCallsInRequest());
-    for (let index = 0; index < pages.length; index += callsPerRequest) {
-      const batch = pages.slice(index, index + callsPerRequest);
-      const methodCalls: JmapInvocation[] = batch.map((pageIds) => [
-        "ContactCard/get",
-        {
-          accountId,
-          ids: pageIds,
-          ...(properties !== undefined ? { properties } : {}),
-        },
-        this.client.nextCallId(),
-      ]);
-      const response = await this.client.request(methodCalls, CONTACTS_USING);
-      for (const invocation of response.methodResponses) {
-        const [name, args, callId] = invocation;
-        if (name === "error") {
-          throw new JmapMethodError("ContactCard/get", callId, args as JmapMethodErrorArgs);
-        }
-        if (name !== "ContactCard/get") continue;
-        const page = args as unknown as GetResponse<JmapContactCard>;
-        responseAccountId = page.accountId;
-        state = page.state;
-        list.push(...page.list);
-        notFound.push(...(page.notFound ?? []));
-      }
+      const pageIds = ids.slice(index, index + pageSize);
+      const page = await this.#getContactCardsPage(accountId, pageIds, properties);
+      responseAccountId = page.accountId;
+      state = page.state;
+      list.push(...page.list);
+      notFound.push(...(page.notFound ?? []));
     }
     this.client.setState(accountId, CONTACT_CARD_TYPE, state);
     return { accountId: responseAccountId, state, list, notFound };
