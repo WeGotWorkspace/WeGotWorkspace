@@ -43,7 +43,6 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
   const params = useParams({ strict: false }) as { groupCardId?: string; contactId?: string };
   const rawSearch = useSearch({ strict: false }) as Record<string, unknown>;
 
-  const handleContactChangeRef = useRef<(contactId: string) => void>(() => undefined);
   const cardsRef = useRef<ContactCard[]>([]);
 
   const [conflictQueue, setConflictQueue] = useState<string[]>([]);
@@ -306,8 +305,6 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
     },
     [navigate],
   );
-
-  handleContactChangeRef.current = handleContactChange;
 
   return (
     <>

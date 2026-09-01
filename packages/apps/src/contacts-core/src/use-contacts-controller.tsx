@@ -411,15 +411,12 @@ export function useContactsController({
 
   const canCreateGroup = writableGroupAddressBooks(addressBooks).length > 0;
 
-  const canRenameGroup = useMemo(
+  const canWriteSelectedGroup = useMemo(
     () => canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
     [addressBooks, operations, selectedGroup],
   );
-
-  const canDeleteGroup = useMemo(
-    () => canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
-    [addressBooks, operations, selectedGroup],
-  );
+  const canRenameGroup = canWriteSelectedGroup;
+  const canDeleteGroup = canWriteSelectedGroup;
 
   const canSaveCreate = useMemo(
     () => createMode && editDraft !== null && contactEditDraftHasContent(editDraft),

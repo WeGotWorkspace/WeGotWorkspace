@@ -20,7 +20,7 @@ use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * Chunk A: one book per principal, eager+lazy provision, join/leave,
+ * One book per principal, eager+lazy provision, join/leave,
  * create/rename/delete lock, and group-delete DAV cascade.
  */
 final class JmapContactsProvisionTest extends WgwDatabaseTestCase

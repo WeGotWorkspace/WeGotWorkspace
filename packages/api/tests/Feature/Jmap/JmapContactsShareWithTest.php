@@ -16,7 +16,7 @@ use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * JMAP AddressBook/set shareWith + card ACL on shared books (Epic #681 / Chunk B).
+ * JMAP AddressBook/set shareWith + card ACL on shared books (Epic #681).
  *
  * CardDAV has no calendarinstances analog — grants live in addressbook_shares.
  * Sharee ids are shared-{addressbookId}. Hide is a per-user dismissal.

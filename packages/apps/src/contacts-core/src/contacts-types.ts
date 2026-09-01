@@ -59,7 +59,7 @@ export type ContactsAPIOperations = {
     opts?: { addressBookId: string; signal?: AbortSignal },
   ) => Promise<ContactCardImportResponse>;
   /**
-   * Patch shareWith / isSubscribed only. Optional so mock-tier / Chunk D can omit it.
+   * Patch shareWith / isSubscribed only. Optional so mock-tier clients can omit it.
    */
   patchAddressBook?: (
     addressBookId: string,
