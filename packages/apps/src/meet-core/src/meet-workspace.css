@@ -700,12 +700,12 @@
 }
 
 .meet-workspace .workspace-app-layout__main-header {
-  @apply relative z-30;
   background-color: var(--meet-surface);
 }
 
 .meet-workspace .workspace-app-layout__main {
-  @apply min-h-0;
+  /* Isolate so pane stacking cannot paint over the AppSidebar overlay scrim. */
+  @apply isolate min-h-0;
 }
 
 .meet-workspace .workspace-app-layout__main-scroll {

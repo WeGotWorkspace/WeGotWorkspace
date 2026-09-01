@@ -74,6 +74,11 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/<header/);
     expect(css).toMatch(/--workspace-main-header-border-color:/);
     expect(css).not.toMatch(/\.meet-workspace \.view-header__subtitle/);
+    expect(css).not.toMatch(
+      /\.meet-workspace \.workspace-app-layout__main-header\s*\{[^}]*@apply[^}]*z-30/,
+    );
+    expect(css).toMatch(/\.meet-workspace \.workspace-app-layout__main\s*\{[\s\S]*?isolate/);
+    expect(tsx).not.toMatch(/WorkspaceSidebarScrim/);
   });
 
   it("styles unread counts as trailing accent pills, not red coins", () => {
