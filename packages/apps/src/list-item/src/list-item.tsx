@@ -7,6 +7,7 @@ import {
   LeadingActions,
 } from "react-swipeable-list";
 import { useListItemEventDelegation } from "@/list-item/src/list-item-delegation";
+import { useListItemHighlight } from "@/list-item/src/list-item-selection";
 import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
 import "./list-item.css";
 
@@ -114,6 +115,7 @@ export function ListItem({
   leading,
 }: ListItemProps) {
   const delegated = useListItemEventDelegation();
+  const highlight = useListItemHighlight(id, { isActive, isSelected, selectionMode });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
   const bodyContent = text || (!title ? emptyText : null);
@@ -155,9 +157,9 @@ export function ListItem({
     <button
       type="button"
       data-list-item-id={id}
-      data-active={isActive ? "true" : "false"}
-      data-selected={isSelected ? "true" : "false"}
-      data-selection-mode={selectionMode ? "true" : "false"}
+      data-active={highlight.isActive ? "true" : "false"}
+      data-selected={highlight.isSelected ? "true" : "false"}
+      data-selection-mode={highlight.selectionMode ? "true" : "false"}
       data-dragging={isDragging ? "true" : "false"}
       onClick={
         delegated
@@ -205,7 +207,9 @@ export function ListItem({
     >
       <span aria-hidden className="list-item__checkbox-wrap">
         <span className="list-item__checkbox">
-          {isSelected ? <Check className="list-item__checkbox-icon" strokeWidth={2.75} /> : null}
+          {highlight.isSelected ? (
+            <Check className="list-item__checkbox-icon" strokeWidth={2.75} />
+          ) : null}
         </span>
       </span>
 

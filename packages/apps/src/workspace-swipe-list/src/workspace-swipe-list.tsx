@@ -1,6 +1,7 @@
 import { Children, isValidElement, type ReactNode } from "react";
 import { SwipeableList, Type as SwipeListType } from "react-swipeable-list";
 import { ListItemEventDelegationContext } from "@/list-item/src/list-item-delegation";
+import { ListSelectionProvider } from "@/list-item/src/list-item-selection";
 import {
   hasDelegatedListItemEvents,
   useDelegatedListItemEvents,
@@ -10,6 +11,9 @@ import {
 export type WorkspaceSwipeListProps = DelegatedListItemEvents & {
   isTouch: boolean;
   children: ReactNode;
+  activeId?: string;
+  selectedIds?: readonly string[];
+  selectionMode?: boolean;
 };
 
 /** Wraps children in `SwipeableList` on touch; owns list-level item events when provided. */
@@ -21,6 +25,9 @@ export function WorkspaceSwipeList({
   onItemLongPress,
   onItemDragStart,
   onItemDragEnd,
+  activeId = "",
+  selectedIds = [],
+  selectionMode = false,
 }: WorkspaceSwipeListProps) {
   const events = {
     onItemClick,
@@ -40,15 +47,23 @@ export function WorkspaceSwipeList({
     children
   );
 
-  if (!delegate) {
-    return <>{body}</>;
-  }
-
-  return (
+  const framed = delegate ? (
     <ListItemEventDelegationContext.Provider value>
       <div className="workspace-swipe-list" {...listProps}>
         {body}
       </div>
     </ListItemEventDelegationContext.Provider>
+  ) : (
+    body
+  );
+
+  return (
+    <ListSelectionProvider
+      activeId={activeId}
+      selectedIds={selectedIds}
+      selectionMode={selectionMode}
+    >
+      {framed}
+    </ListSelectionProvider>
   );
 }

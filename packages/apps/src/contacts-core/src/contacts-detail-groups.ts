@@ -6,7 +6,7 @@ import {
 import {
   canWriteContactGroup,
   contactAndGroupShareAddressBook,
-  groupsContainingCard,
+  indexGroupMembershipByCardId,
   isContactGroupCard,
 } from "@/contacts-core/src/contacts-group-utils";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
@@ -50,7 +50,7 @@ export function contactDetailGroupTags(args: {
   }
 
   const eligibleGroups = groups.filter((group) => contactAndGroupShareAddressBook(card, group));
-  const assignedGroups = groupsContainingCard(card.id, eligibleGroups, allCards);
+  const assignedGroups = indexGroupMembershipByCardId(eligibleGroups, allCards).get(card.id) ?? [];
   const assignedIds = new Set(assignedGroups.map((group) => group.id));
   const suggestions = eligibleGroups.filter((group) => !assignedIds.has(group.id));
   const assigned = assignedGroups.map((group) => ({

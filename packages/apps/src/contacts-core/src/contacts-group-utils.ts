@@ -137,18 +137,30 @@ function indexCardsByNormalizedUid(cards: ContactCard[]): Map<string, ContactCar
   return byUid;
 }
 
+type GroupMemberCardIndexes = {
+  cardById: Map<string, ContactCard>;
+  cardByNormalizedUid: Map<string, ContactCard>;
+};
+
+function cardIndexesFor(allCards: ContactCard[]): GroupMemberCardIndexes {
+  return {
+    cardById: new Map(allCards.map((card) => [card.id, card])),
+    cardByNormalizedUid: indexCardsByNormalizedUid(allCards),
+  };
+}
+
 /** Resolve group member uids to loaded card ids (API memberCardIds first, then uid scan). */
 export function resolveGroupMemberCardIds(
   groupCard: ContactCard,
   allCards: ContactCard[],
+  indexes?: GroupMemberCardIndexes,
 ): string[] {
   const memberUids = enabledMemberUids(groupCard.members);
   if (memberUids.length === 0) {
     return resolvedMemberCardIdsFromApiOnly(groupCard, allCards);
   }
 
-  const cardById = new Map(allCards.map((card) => [card.id, card]));
-  const cardByNormalizedUid = indexCardsByNormalizedUid(allCards);
+  const { cardById, cardByNormalizedUid } = indexes ?? cardIndexesFor(allCards);
   const memberCardIds = (groupCard as ContactCardWithResolvedMembers).memberCardIds;
 
   const resolved: string[] = [];
@@ -180,7 +192,24 @@ export function groupsContainingCard(
   allCards: ContactCard[],
 ): ContactCard[] {
   if (!cardId) return [];
-  return groups.filter((group) => resolveGroupMemberCardIds(group, allCards).includes(cardId));
+  return indexGroupMembershipByCardId(groups, allCards).get(cardId) ?? [];
+}
+
+/** One card-index pass, then membership lists keyed by contact id. */
+export function indexGroupMembershipByCardId(
+  groups: ContactCard[],
+  allCards: ContactCard[],
+): Map<string, ContactCard[]> {
+  const indexes = cardIndexesFor(allCards);
+  const byMember = new Map<string, ContactCard[]>();
+  for (const group of groups) {
+    for (const memberId of resolveGroupMemberCardIds(group, allCards, indexes)) {
+      const existing = byMember.get(memberId);
+      if (existing) existing.push(group);
+      else byMember.set(memberId, [group]);
+    }
+  }
+  return byMember;
 }
 
 /** Resolve group member uids to loaded contact cards (members + memberCardIds). */
