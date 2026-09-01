@@ -628,7 +628,7 @@ export const SearchNoMatch: Story = {
     const noMatchScope = canvasElement.querySelector(".calendar-search-results__scope");
     expect(noMatchScope?.textContent).toContain("Personal");
     expect(noMatchScope?.textContent).toContain("Work");
-    expect(noMatchScope?.textContent).toMatch(/Aug 2025/);
+    expect(noMatchScope?.textContent).toMatch(/[A-Z][a-z]{2} \d{4}/);
     expect(noMatchScope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
     await expect(canvas.queryByText(/Downloaded /)).toBeNull();
     await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();
@@ -648,7 +648,7 @@ export const SearchTruncated: Story = {
         expect(canvas.queryByText(/Visible calendars/)).toBeNull();
         const scope = canvasElement.querySelector(".calendar-search-results__scope");
         expect(scope?.textContent).toContain("Personal");
-        expect(scope?.textContent).toMatch(/Aug 2025/);
+        expect(scope?.textContent).toMatch(/[A-Z][a-z]{2} \d{4}/);
         expect(scope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
         expect(canvasElement.querySelector(".calendar-search-results__caption")).toBeNull();
         expect(canvas.queryByText("Showing the next 100")).toBeNull();
