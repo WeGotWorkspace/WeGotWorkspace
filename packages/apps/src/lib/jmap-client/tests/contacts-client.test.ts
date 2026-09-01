@@ -7,10 +7,10 @@ const ACCOUNT = "bob";
 const SESSION_URL = "https://mock.example/jmap/session";
 const API_URL = "https://mock.example/jmap/api";
 
-function sessionJson() {
+function sessionJson(core: Record<string, unknown> = {}) {
   return {
     capabilities: {
-      [CORE_CAPABILITY]: {},
+      [CORE_CAPABILITY]: core,
       [CONTACTS_CAPABILITY]: {},
     },
     accounts: {
@@ -35,11 +35,14 @@ function methodResponse(name: string, args: Record<string, unknown>, id: string)
   return [name, args, id];
 }
 
-async function makeClient(handler: (calls: JmapInvocation[]) => JmapInvocation[]) {
+async function makeClient(
+  handler: (calls: JmapInvocation[]) => JmapInvocation[],
+  core: Record<string, unknown> = {},
+) {
   const recorded: JmapInvocation[][] = [];
   const fetchImpl = async (input: string, init?: RequestInit) => {
     if (input === SESSION_URL) {
-      return new Response(JSON.stringify(sessionJson()), { status: 200 });
+      return new Response(JSON.stringify(sessionJson(core)), { status: 200 });
     }
     const body = JSON.parse(String(init?.body)) as {
       using: string[];
@@ -58,19 +61,67 @@ async function makeClient(handler: (calls: JmapInvocation[]) => JmapInvocation[]
 }
 
 describe("JmapContactsClient contract batches", () => {
-  it("initial sync is AddressBook/get + ContactCard/get with ids null", async () => {
+  it("initial sync queries card ids then gets those ids", async () => {
     const { contacts, recorded } = await makeClient((calls) =>
-      calls.map(([name, , id]) =>
-        methodResponse(name, { accountId: ACCOUNT, state: "0:", list: [], notFound: [] }, id),
-      ),
+      calls.map(([name, , id]) => {
+        if (name === "ContactCard/query") {
+          return methodResponse(name, { accountId: ACCOUNT, ids: ["card-1"] }, id);
+        }
+        return methodResponse(
+          name,
+          { accountId: ACCOUNT, state: "0:", list: [{ id: "card-1" }], notFound: [] },
+          id,
+        );
+      }),
     );
 
-    await contacts.getAddressBooksAndCards(ACCOUNT);
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT);
 
-    expect(recorded).toHaveLength(1);
-    expect(recorded[0]?.map(([name]) => name)).toEqual(["AddressBook/get", "ContactCard/get"]);
+    expect(got.cards.list).toEqual([{ id: "card-1" }]);
+    expect(recorded).toHaveLength(2);
+    expect(recorded[0]?.map(([name]) => name)).toEqual(["AddressBook/get", "ContactCard/query"]);
     expect(recorded[0]?.[0]?.[1]).toEqual({ accountId: ACCOUNT, ids: null });
-    expect(recorded[0]?.[1]?.[1]).toEqual({ accountId: ACCOUNT, ids: null });
+    expect(recorded[0]?.[1]?.[1]).toEqual({ accountId: ACCOUNT });
+    expect(recorded[1]?.[0]).toEqual([
+      "ContactCard/get",
+      { accountId: ACCOUNT, ids: ["card-1"] },
+      expect.any(String),
+    ]);
+  });
+
+  it("pages ContactCard/get when the query exceeds maxObjectsInGet", async () => {
+    const ids = ["card-1", "card-2", "card-3"];
+    const { contacts, recorded } = await makeClient(
+      (calls) => {
+        return calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          const pageIds = (args.ids as string[]) ?? [];
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: "1:",
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        });
+      },
+      { maxObjectsInGet: 2, maxCallsInRequest: 8 },
+    );
+
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT);
+
+    expect(got.cards.list.map((card) => card.id)).toEqual(ids);
+    const getBatches = recorded.slice(1);
+    expect(getBatches).toHaveLength(1);
+    expect(getBatches[0]?.map(([name, args]) => [name, args.ids])).toEqual([
+      ["ContactCard/get", ["card-1", "card-2"]],
+      ["ContactCard/get", ["card-3"]],
+    ]);
   });
 
   it("query+get uses the #ids ResultReference", async () => {
@@ -101,6 +152,42 @@ describe("JmapContactsClient contract batches", () => {
         path: "/ids",
       },
     });
+  });
+
+  it("retries query+get with explicit id pages after requestTooLarge", async () => {
+    const ids = ["card-1", "card-2", "card-3"];
+    const { contacts, recorded } = await makeClient(
+      (calls) => {
+        return calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          if (name === "ContactCard/get" && "#ids" in args) {
+            return methodResponse(
+              "error",
+              { type: "requestTooLarge", description: "request explicit ids." },
+              id,
+            );
+          }
+          const pageIds = (args.ids as string[]) ?? [];
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: "1:",
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        });
+      },
+      { maxObjectsInGet: 2 },
+    );
+
+    const got = await contacts.getContactCardsByQuery(ACCOUNT);
+    expect(got.list.map((card) => card.id)).toEqual(ids);
+    expect(recorded[1]?.map(([, args]) => args.ids)).toEqual([["card-1", "card-2"], ["card-3"]]);
   });
 
   it("per-book list only sends the inAddressBook filter", async () => {
