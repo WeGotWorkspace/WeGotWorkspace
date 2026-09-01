@@ -151,6 +151,12 @@ export type ContactsUILabels = {
   removeSharedAddressBookConfirmTitle: string;
   removeSharedAddressBookConfirmDescription: string;
   toastAddressBookShareRemoved: string;
+  toolbarMoveToAddressBook: string;
+  moveContactTitle: string;
+  moveContactDescription: (bookName: string) => string;
+  moveContactDescriptionWithGroups: (bookName: string) => string;
+  moveContactConfirm: string;
+  toastMovedToAddressBook: (name: string) => string;
 };
 
 export const defaultContactsLabels: ContactsUILabels = {
@@ -300,6 +306,13 @@ export const defaultContactsLabels: ContactsUILabels = {
   removeSharedAddressBookConfirmTitle: "Remove this shared address book?",
   removeSharedAddressBookConfirmDescription: "You will no longer see this address book.",
   toastAddressBookShareRemoved: "Address book removed",
+  toolbarMoveToAddressBook: "Change address book",
+  moveContactTitle: "Move contact?",
+  moveContactDescription: (bookName) => `Move this contact to “${bookName}”?`,
+  moveContactDescriptionWithGroups: (bookName) =>
+    `Move this contact to “${bookName}”? They will be removed from groups in the current address book.`,
+  moveContactConfirm: "Move",
+  toastMovedToAddressBook: (name) => `Moved to “${name}”`,
 };
 
 export function mergeContactsLabels(overrides?: Partial<ContactsUILabels>): ContactsUILabels {

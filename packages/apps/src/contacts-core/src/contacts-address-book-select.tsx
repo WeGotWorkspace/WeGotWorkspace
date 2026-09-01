@@ -1,8 +1,11 @@
-import type { KeyboardEvent, KeyboardEventHandler } from "react";
+import type { CSSProperties, KeyboardEvent, KeyboardEventHandler } from "react";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
-import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
+import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
+import { cn } from "@/lib/utils";
 import "@/contacts-core/src/contacts-address-book-select.css";
 
 /** Closed Radix Select typeahead prefix-matches labels ("Admin" vs "Administrators"). */
@@ -20,12 +23,15 @@ export type ContactsAddressBookSelectBook = {
 };
 
 export type ContactsAddressBookSelectProps = {
-  id: string;
+  id?: string;
   label: string;
   personalLabel?: string;
   books: readonly ContactsAddressBookSelectBook[];
   value: string;
   disabled?: boolean;
+  /** Field = labeled dialog row. Toolbar = Notes notebook switcher chrome. */
+  variant?: "field" | "toolbar";
+  className?: string;
   onValueChange?: (bookId: string) => void;
   onTriggerKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
   onCloseAutoFocus?: (event: Event) => void;
@@ -42,6 +48,26 @@ export function booksForAddressBookSelect(
   return [...books, { id: selectedId, name: selectedId }];
 }
 
+function AddressBookSelectOption({
+  book,
+  personalLabel,
+}: {
+  book: ContactsAddressBookSelectBook;
+  personalLabel: string;
+}) {
+  const overrides = useAddressBookColorOverrides();
+  const name = contactsAddressBookDisplayName(book, personalLabel);
+  return (
+    <span
+      className="contacts-address-book-select__option"
+      style={{ "--collection-row-color": addressBookDotColor(book, overrides) } as CSSProperties}
+    >
+      <NotesNotebookColorIcon />
+      <span className="contacts-address-book-select__name">{name}</span>
+    </span>
+  );
+}
+
 export function ContactsAddressBookSelect({
   id,
   label,
@@ -49,32 +75,52 @@ export function ContactsAddressBookSelect({
   books,
   value,
   disabled = false,
+  variant = "field",
+  className,
   onValueChange,
   onTriggerKeyDown,
   onCloseAutoFocus,
 }: ContactsAddressBookSelectProps) {
   const options = booksForAddressBookSelect(books, value);
+  const toolbar = variant === "toolbar";
+
+  const select = (
+    <Select
+      value={value}
+      onValueChange={(next) => {
+        if (!next || next === value) return;
+        onValueChange?.(next);
+      }}
+      disabled={disabled}
+    >
+      <SelectTrigger
+        id={id}
+        size={toolbar ? "sm" : undefined}
+        className={cn(toolbar && "contacts-address-book-select", className)}
+        aria-label={label}
+        disabled={disabled}
+        onKeyDown={onTriggerKeyDown}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent onCloseAutoFocus={onCloseAutoFocus}>
+        {options.map((book) => {
+          const name = contactsAddressBookDisplayName(book, personalLabel);
+          return (
+            <SelectItem key={book.id} value={book.id} textValue={name}>
+              <AddressBookSelectOption book={book} personalLabel={personalLabel} />
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+
+  if (toolbar) return select;
 
   return (
     <FieldLabelRow label={label} htmlFor={id}>
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger id={id} aria-label={label} disabled={disabled} onKeyDown={onTriggerKeyDown}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent onCloseAutoFocus={onCloseAutoFocus}>
-          {options.map((book) => {
-            const name = contactsAddressBookDisplayName(book, personalLabel);
-            return (
-              <SelectItem key={book.id} value={book.id} textValue={name}>
-                <span className="contacts-address-book-select__option">
-                  <ContactsGroupIcon book={book.id} />
-                  {name}
-                </span>
-              </SelectItem>
-            );
-          })}
-        </SelectContent>
-      </Select>
+      {select}
     </FieldLabelRow>
   );
 }

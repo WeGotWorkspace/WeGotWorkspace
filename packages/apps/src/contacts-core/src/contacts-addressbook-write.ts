@@ -92,6 +92,17 @@ export function writableOwnedAddressBooks(
   return books.filter((book) => canWriteOwnedAddressBook(book));
 }
 
+/** Destinations for moving a card — owned or sharee, using existing `mayWrite`. */
+export function canMoveIntoAddressBook(book?: ContactsAddressBookRow): boolean {
+  return Boolean(book) && !isViewOnlyAddressBook(book);
+}
+
+export function writableMoveAddressBooks(
+  books: readonly ContactsAddressBookRow[],
+): ContactsAddressBookRow[] {
+  return books.filter((book) => canMoveIntoAddressBook(book));
+}
+
 /** Same list as {@link writableOwnedAddressBooks} — create-group destinations. */
 export function writableGroupAddressBooks(
   books: readonly ContactsAddressBookRow[],

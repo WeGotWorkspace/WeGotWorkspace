@@ -15,4 +15,19 @@ describe("contacts create-collection labels", () => {
     expect(defaultContactsLabels.sidebarSharedWithMe).toBe("Shared with me");
     expect(defaultContactsLabels.personalAddressBook).toBe("Personal");
   });
+
+  it("matches Notes move-collection copy for the address-book switcher", () => {
+    expect(defaultContactsLabels.toolbarMoveToAddressBook).toBe("Change address book");
+    expect(defaultContactsLabels.toastMovedToAddressBook("Engineering")).toBe(
+      "Moved to “Engineering”",
+    );
+    expect(defaultContactsLabels.moveContactTitle).toBe("Move contact?");
+    expect(defaultContactsLabels.moveContactConfirm).toBe("Move");
+    expect(defaultContactsLabels.moveContactDescription("Engineering")).toBe(
+      "Move this contact to “Engineering”?",
+    );
+    expect(defaultContactsLabels.moveContactDescriptionWithGroups("Engineering")).toBe(
+      "Move this contact to “Engineering”? They will be removed from groups in the current address book.",
+    );
+  });
 });

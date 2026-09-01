@@ -1,9 +1,31 @@
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsDetailActionBar } from "./contacts-detail-action-bar";
 import { defaultContactsLabels } from "./contacts-labels";
+
+const twoBooks = [
+  { id: "default", name: "Ada", isDefault: true },
+  { id: "group-eng", name: "Engineering" },
+];
+
+function stubSelectEnv() {
+  Element.prototype.scrollIntoView = vi.fn();
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
 
 afterEach(() => {
   cleanup();
@@ -96,5 +118,52 @@ describe("ContactsDetailActionBar", () => {
     renderActionBar({ createMode: true, editMode: false });
     expect(screen.getByRole("button", { name: defaultContactsLabels.save })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultContactsLabels.cancel })).toBeTruthy();
+  });
+
+  it("hides the address-book switcher without two destinations", () => {
+    renderActionBar({
+      moveAddressBook: {
+        books: [{ id: "default", name: "Ada", isDefault: true }],
+        value: "default",
+        onMove: vi.fn(),
+      },
+    });
+    expect(
+      screen.queryByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
+    ).toBeNull();
+  });
+});
+
+describe("ContactsDetailActionBar address-book move", () => {
+  beforeEach(stubSelectEnv);
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("moves when choosing another writable address book and never offers create", () => {
+    const onMove = vi.fn();
+    renderActionBar({
+      moveAddressBook: {
+        books: twoBooks,
+        value: "default",
+        onMove,
+      },
+    });
+
+    const trigger = screen.getByRole("combobox", {
+      name: defaultContactsLabels.toolbarMoveToAddressBook,
+    });
+    expect(trigger.textContent).toContain(defaultContactsLabels.personalAddressBook);
+    fireEvent.click(trigger);
+
+    const options = screen.getAllByRole("option");
+    expect(options.map((option) => option.textContent?.trim())).toEqual([
+      defaultContactsLabels.personalAddressBook,
+      "Engineering",
+    ]);
+    expect(screen.queryByRole("option", { name: /create|new address book/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("option", { name: "Engineering" }));
+    expect(onMove).toHaveBeenCalledWith("group-eng");
   });
 });

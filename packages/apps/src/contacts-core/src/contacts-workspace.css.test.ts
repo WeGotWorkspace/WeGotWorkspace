@@ -10,6 +10,8 @@ const avatarCss = readFileSync(join(here, "contact-user-avatar.css"), "utf8");
 const groupIconCss = readFileSync(join(here, "contacts-group-icon.css"), "utf8");
 const orgIconCss = readFileSync(join(here, "contacts-org-icon.css"), "utf8");
 const groupRows = readFileSync(join(here, "contacts-sidebar-group-rows.tsx"), "utf8");
+const actionBar = readFileSync(join(here, "contacts-detail-action-bar.tsx"), "utf8");
+const addressBookSelect = readFileSync(join(here, "contacts-address-book-select.tsx"), "utf8");
 
 describe("contacts workspace sidebar chrome", () => {
   it("puts New group on the shared segmented New menu, not a section +", () => {
@@ -274,6 +276,17 @@ describe("contacts workspace sidebar chrome", () => {
     );
     expect(css).toMatch(/\.contacts-detail-view__heading \{\s*@apply flex min-w-0 flex-1 flex-col/);
     expect(groupIconCss).toMatch(/\.contacts-group-icon-slot--xl \{\s*@apply size-20;/);
+  });
+
+  it("reuses ContactsAddressBookSelect from the detail action bar without create", () => {
+    expect(tsx).toMatch(/moveAddressBook=/);
+    expect(tsx).toMatch(/onMove: moveActiveContactToAddressBook/);
+    expect(actionBar).toMatch(/<ContactsAddressBookSelect/);
+    expect(actionBar).toMatch(/variant="toolbar"/);
+    expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
+    expect(css).toMatch(
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
   });
 
   it("hosts group delete in the edit dialog, not the list header or create dialog", () => {

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, Tag, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookUser, Check, Download, Tag, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useIsTouch } from "@/hooks/use-is-touch";
@@ -63,9 +63,17 @@ import type {
   ContactsUIData,
 } from "@/contacts-core/src/contacts-types";
 import {
+  applyContactAddressBookMoveToCards,
+  canShowContactAddressBookMove,
+  contactMoveAddressBookPatch,
+  contactsViewAfterAddressBookMove,
+  groupsToDropOnAddressBookMove,
+} from "@/contacts-core/src/contacts-address-book-move";
+import {
   canCreateGroupInAddressBook,
   contactsAddressBookDisplayName,
   writableGroupAddressBooks,
+  writableMoveAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
 import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
@@ -302,11 +310,13 @@ export function useContactsController({
     const stashed = contactDraftsRef.current.get(contactId);
     if (stashed) {
       setEditMode(true);
-      setEditDraft(stashed);
-    } else {
-      setEditMode(false);
-      setEditDraft(null);
+      startTransition(() => {
+        setEditDraft(stashed);
+      });
+      return;
     }
+    setEditMode(false);
+    setEditDraft(null);
   }, []);
 
   const {
@@ -427,6 +437,19 @@ export function useContactsController({
     });
   }, [active, addressBooks, createMode, operations]);
 
+  const writableMoveBooks = useMemo(() => writableMoveAddressBooks(addressBooks), [addressBooks]);
+
+  const canMoveActiveContact = useMemo(
+    () =>
+      canShowContactAddressBookMove({
+        createMode,
+        canEdit,
+        card: active,
+        writableBookCount: writableMoveBooks.length,
+      }),
+    [active, canEdit, createMode, writableMoveBooks.length],
+  );
+
   const displayName = useMemo(() => {
     if (editDraft && (editMode || createMode)) return draftDisplayName(editDraft, L.unknownContact);
     if (active) return contactDisplayName(active);
@@ -453,7 +476,9 @@ export function useContactsController({
   const startEdit = useCallback(() => {
     if (!active || createMode) return;
     setEditMode(true);
-    setEditDraft(contactDraftsRef.current.get(active.id) ?? contactCardToEditDraft(active));
+    startTransition(() => {
+      setEditDraft(contactDraftsRef.current.get(active.id) ?? contactCardToEditDraft(active));
+    });
   }, [active, createMode]);
 
   const cancelEdit = useCallback(() => {
@@ -464,7 +489,9 @@ export function useContactsController({
       contactDraftsRef.current.delete(activeId);
     }
     setEditMode(false);
-    setEditDraft(null);
+    startTransition(() => {
+      setEditDraft(null);
+    });
   }, [activeId, createMode]);
 
   const createContact = useCallback(() => {
@@ -1161,6 +1188,87 @@ export function useContactsController({
     [active, addressBooks, contactGroups, createMode, operations, removeContactFromGroup],
   );
 
+  const moveActiveContactToAddressBook = useCallback(
+    (destBookId: string) => {
+      if (!active || createMode || !canEdit || isContactGroupCard(active)) return;
+      const sourceBookId = firstEnabledAddressBookId(active.addressBookIds);
+      if (!sourceBookId || sourceBookId === destBookId) return;
+      if (!writableMoveBooks.some((book) => book.id === destBookId)) return;
+
+      const groupsToDrop = groupsToDropOnAddressBookMove(active, contactGroups, cards, destBookId);
+      const destBook = addressBooks.find((book) => book.id === destBookId);
+      const destName = destBook
+        ? contactsAddressBookDisplayName(destBook, L.personalAddressBook)
+        : destBookId;
+
+      requestConfirm({
+        title: L.moveContactTitle,
+        description:
+          groupsToDrop.length > 0
+            ? L.moveContactDescriptionWithGroups(destName)
+            : L.moveContactDescription(destName),
+        confirmLabel: L.moveContactConfirm,
+        cancelLabel: L.cancel,
+        onConfirm: () => {
+          const previousCards = cards;
+          const previousView = view;
+          const nextView = contactsViewAfterAddressBookMove(view, destBookId);
+
+          setCards((prev) =>
+            applyContactAddressBookMoveToCards(prev, active.id, destBookId, groupsToDrop),
+          );
+          if (nextView !== view) setView(nextView);
+
+          const rollback = () => {
+            setCards(previousCards);
+            setView(previousView);
+          };
+
+          queueMutation({
+            key: `contacts:move:${active.id}:${destBookId}`,
+            toastMessage: L.toastMovedToAddressBook(destName),
+            icon: <BookUser className="size-4" />,
+            execute: async (signal) => {
+              if (!operations) return;
+              for (const group of groupsToDrop) {
+                const savedGroup = await patchGroupWithFreshEtag(
+                  operations,
+                  group.id,
+                  (fresh) => groupRemoveMembersPatch(fresh, [active.id], cardsRef.current),
+                  signal,
+                );
+                setCards((prev) => replaceCardPreservingGroupMembers(prev, group.id, savedGroup));
+              }
+              const saved = await operations.patchCard(
+                active.id,
+                contactMoveAddressBookPatch(sourceBookId, destBookId),
+                contactMutationOpts(active, signal),
+              );
+              setCards((prev) => prev.map((card) => (card.id === active.id ? saved : card)));
+            },
+            undo: rollback,
+            onError: rollback,
+            undoToastMessage: "Move undone.",
+          });
+        },
+      });
+    },
+    [
+      L,
+      active,
+      addressBooks,
+      canEdit,
+      cards,
+      contactGroups,
+      createMode,
+      operations,
+      queueMutation,
+      requestConfirm,
+      view,
+      writableMoveBooks,
+    ],
+  );
+
   const persistContactEdit = useCallback(
     async (contactId: string, draft: ContactEditDraft) => {
       const card = cardsRef.current.find((row) => row.id === contactId);
@@ -1394,7 +1502,9 @@ export function useContactsController({
     canRenameGroup,
     canDeleteGroup,
     canEdit,
+    canMoveActiveContact,
     canSaveCreate,
+    writableMoveBooks,
     confirmDialog,
     groupRenameDialog,
     createGroupDialog,
@@ -1447,6 +1557,7 @@ export function useContactsController({
     removeContactFromGroup,
     addActiveGroupTag,
     removeActiveGroupTag,
+    moveActiveContactToAddressBook,
     renameGroup,
     deleteGroup,
     openDeleteGroupConfirm,

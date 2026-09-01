@@ -9,10 +9,12 @@ import {
   canOpenAddressBookSettings,
   canRenameAddressBook,
   canShareAddressBook,
+  canMoveIntoAddressBook,
   canWriteOwnedAddressBook,
   defaultCreateGroupAddressBookId,
   defaultWritableAddressBookId,
   writableGroupAddressBooks,
+  writableMoveAddressBooks,
   writableOwnedAddressBooks,
   contactsBookViewKey,
   isPersonalAddressBook,
@@ -179,6 +181,18 @@ describe("contacts-addressbook-write", () => {
     expect(isViewOnlyAddressBook(viewOnlySharee)).toBe(true);
     expect(isViewOnlyAddressBook(editSharee)).toBe(false);
     expect(isViewOnlyAddressBook(ownerBook)).toBe(false);
+  });
+
+  it("lists move destinations as any book with write rights, including edit sharees", () => {
+    expect(canMoveIntoAddressBook(ownerBook)).toBe(true);
+    expect(canMoveIntoAddressBook(teamBook)).toBe(true);
+    expect(canMoveIntoAddressBook(editSharee)).toBe(true);
+    expect(canMoveIntoAddressBook(viewOnlySharee)).toBe(false);
+    expect(
+      writableMoveAddressBooks([ownerBook, teamBook, viewOnlySharee, editSharee]).map(
+        (book) => book.id,
+      ),
+    ).toEqual(["default", "group-eng", "shared-99"]);
   });
 
   it("builds a share-only dialog state from the row", () => {

@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -33,6 +33,7 @@ import {
   ContactsImportDialog,
   contactsImportDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-import-dialog";
+import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   contactsBookViewKey,
   writableGroupAddressBooks,
@@ -101,7 +102,9 @@ export function ContactsWorkspace({
     canImportVcf,
     canCreateGroup,
     canEdit,
+    canMoveActiveContact,
     canSaveCreate,
+    writableMoveBooks,
     confirmDialog,
     groupRenameDialog,
     createGroupDialog,
@@ -116,6 +119,7 @@ export function ContactsWorkspace({
     addMembersToGroup,
     addActiveGroupTag,
     removeActiveGroupTag,
+    moveActiveContactToAddressBook,
     hiddenAddressBookIds,
     toggleAddressBookVisibility,
     handleSelect,
@@ -259,6 +263,31 @@ export function ContactsWorkspace({
 
   const browserTitleContext = active && selectedIds.length <= 1 ? displayName : viewLabel;
   useDocumentTitle(browserTitleContext);
+
+  const groupTagsModel = useMemo(
+    () =>
+      contactDetailGroupTags({
+        card: active,
+        createMode,
+        groups: contactGroups,
+        allCards: cards,
+        addressBooks,
+        hasOperations: Boolean(operations),
+        canCreateGroup,
+      }),
+    [active, addressBooks, canCreateGroup, cards, contactGroups, createMode, operations],
+  );
+  const groupTags = useMemo(() => {
+    if (!groupTagsModel.show) return undefined;
+    return {
+      assigned: groupTagsModel.assigned,
+      suggestions: groupTagsModel.suggestions,
+      readonly: groupTagsModel.readonly,
+      allowCreate: groupTagsModel.allowCreate,
+      onAdd: addActiveGroupTag,
+      onRemove: removeActiveGroupTag,
+    };
+  }, [addActiveGroupTag, groupTagsModel, removeActiveGroupTag]);
 
   return (
     <>
@@ -409,6 +438,16 @@ export function ContactsWorkspace({
               canSaveCreate={canSaveCreate}
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
+              moveAddressBook={
+                canMoveActiveContact && active
+                  ? {
+                      books: writableMoveBooks,
+                      value: firstEnabledAddressBookId(active.addressBookIds) ?? "",
+                      personalLabel: L.personalAddressBook,
+                      onMove: moveActiveContactToAddressBook,
+                    }
+                  : undefined
+              }
               onEdit={startEdit}
               onDelete={deleteActive}
               onDownload={downloadActive}
@@ -429,15 +468,6 @@ export function ContactsWorkspace({
             );
           }
           if (!active && !createMode) return null;
-          const groupTagsModel = contactDetailGroupTags({
-            card: active,
-            createMode,
-            groups: contactGroups,
-            allCards: cards,
-            addressBooks,
-            hasOperations: Boolean(operations),
-            canCreateGroup,
-          });
           return (
             <ContactsDetailView
               labels={L}
@@ -446,18 +476,7 @@ export function ContactsWorkspace({
               editMode={editMode}
               editDraft={editDraft}
               displayName={displayName}
-              groupTags={
-                groupTagsModel.show
-                  ? {
-                      assigned: groupTagsModel.assigned,
-                      suggestions: groupTagsModel.suggestions,
-                      readonly: groupTagsModel.readonly,
-                      allowCreate: groupTagsModel.allowCreate,
-                      onAdd: addActiveGroupTag,
-                      onRemove: removeActiveGroupTag,
-                    }
-                  : undefined
-              }
+              groupTags={groupTags}
               onDraftChange={updateEditDraft}
               onUpdatePhone={updatePhone}
               onUpdateEmail={updateEmail}

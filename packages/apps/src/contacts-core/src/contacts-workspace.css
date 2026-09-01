@@ -57,6 +57,14 @@
   --button-primary-fg: var(--color-ink, #042a22);
 }
 
+/* Calendar / Notes view-select pattern: compact cream trigger in the detail header. */
+.contacts-workspace .action-bar .contacts-address-book-select {
+  --control-radius: var(--control-radius-button-pill);
+  width: auto;
+  min-width: 7rem;
+  background-color: var(--color-cream, #ffffff);
+}
+
 .contacts-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: var(--color-ink, #042a22);

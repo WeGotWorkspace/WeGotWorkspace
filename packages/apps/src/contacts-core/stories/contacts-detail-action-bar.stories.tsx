@@ -1,18 +1,26 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, within } from "storybook/test";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
+const seedBooks = [
+  { id: "default", name: "Ada", isDefault: true as const },
+  { id: "group-eng", name: "Engineering" },
+];
+
 function ContactsDetailActionBarHarness({
   editMode: initialEditMode = false,
   createMode = false,
+  onMove = () => {},
 }: {
   editMode?: boolean;
   createMode?: boolean;
+  onMove?: (bookId: string) => void;
 }) {
   const [editMode, setEditMode] = useState(initialEditMode);
+  const [bookId, setBookId] = useState("default");
 
   return (
     <ContactsStoryScope variant="detail">
@@ -24,6 +32,18 @@ function ContactsDetailActionBarHarness({
           createMode={createMode}
           closeMobileDetail={() => {}}
           backLabel="All Contacts"
+          moveAddressBook={
+            createMode
+              ? undefined
+              : {
+                  books: seedBooks,
+                  value: bookId,
+                  onMove: (next) => {
+                    setBookId(next);
+                    onMove(next);
+                  },
+                }
+          }
           onEdit={() => setEditMode(true)}
           onDelete={() => {}}
           onDownload={() => {}}
@@ -40,6 +60,9 @@ const meta = {
   component: ContactsDetailActionBarHarness,
   parameters: {
     layout: "fullscreen",
+  },
+  args: {
+    onMove: fn(),
   },
 } satisfies Meta<typeof ContactsDetailActionBarHarness>;
 
@@ -63,6 +86,9 @@ export const ReadMode: Story = {
     await expect(
       canvas.getByRole("button", { name: defaultContactsLabels.edit }).className,
     ).toContain("action-bar__action--labeled");
+    await expect(
+      canvas.getByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
+    ).toHaveTextContent(defaultContactsLabels.personalAddressBook);
   },
 };
 
@@ -78,4 +104,22 @@ export const EditMode: Story = {
 
 export const CreateMode: Story = {
   args: { createMode: true, editMode: true },
+};
+
+export const ChangeAddressBook: Story = {
+  tags: ["vitest-ci"],
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("combobox", {
+      name: defaultContactsLabels.toolbarMoveToAddressBook,
+    });
+    await userEvent.click(trigger);
+    const options = await screen.findAllByRole("option");
+    await expect(options.map((option) => option.textContent?.trim())).toEqual([
+      defaultContactsLabels.personalAddressBook,
+      "Engineering",
+    ]);
+    await userEvent.click(screen.getByRole("option", { name: "Engineering" }));
+    await expect(args.onMove).toHaveBeenCalledWith("group-eng");
+  },
 };
