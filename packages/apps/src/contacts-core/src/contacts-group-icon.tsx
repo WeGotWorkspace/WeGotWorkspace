@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from "react";
 import { UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-color";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import "@/contacts-core/src/contacts-group-icon.css";
 
 export type ContactsGroupIconBook = {
@@ -16,7 +17,8 @@ export type ContactsGroupIconProps = {
 
 /** Lucide group glyph tinted with `--collection-row-color` (same token as Tasks lists). */
 export function ContactsGroupIcon({ book, className }: ContactsGroupIconProps): ReactElement {
-  const color = groupAddressBookColor(book);
+  const colorOverrides = useAddressBookColorOverrides();
+  const color = groupAddressBookColor(book, colorOverrides);
   return (
     <UsersRound
       className={cn("contacts-group-icon", className)}

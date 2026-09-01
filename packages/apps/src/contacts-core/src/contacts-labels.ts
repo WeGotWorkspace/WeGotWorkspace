@@ -134,6 +134,7 @@ export type ContactsUILabels = {
   deleteCancel: string;
   addressBookSettingsTitle: string;
   addressBookNameLabel: string;
+  addressBookColorLabel: string;
   addressBookDialogDone: string;
   shareAddressBookTitle: string;
   shareAddressBookHint: string;
@@ -279,6 +280,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   deleteCancel: workspaceDestructiveDialogLabels.dialogCancel,
   addressBookSettingsTitle: "Address book",
   addressBookNameLabel: "Name",
+  addressBookColorLabel: "Color",
   addressBookDialogDone: "Done",
   shareAddressBookTitle: "Share address book",
   shareAddressBookHint: "People you add can open this address book in Contacts.",

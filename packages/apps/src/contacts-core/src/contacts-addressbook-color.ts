@@ -1,7 +1,13 @@
+import {
+  getAddressBookColorOverrides,
+  isStoredAddressBookColor,
+} from "@/contacts-core/src/contacts-view-prefs";
+
 /**
  * Sidebar collection swatches. RFC 9610 AddressBook has no `color` — this is a
  * client-only hash onto the same palette Tasks uses (`TASK_LIST_DOT_COLORS`).
- * Not persisted; not a vendor JMAP field.
+ * Device-local overrides live in `wgw.ui.contacts.viewPrefs` (`addressBookColors`).
+ * Not a vendor JMAP field.
  */
 export const ADDRESS_BOOK_DOT_COLORS = [
   "#ea8c72",
@@ -22,7 +28,12 @@ function hashAddressBookColor(seed: string): string {
   );
 }
 
-export function addressBookDotColor(book: { id: string }): string {
+export function addressBookDotColor(
+  book: { id: string },
+  overrides?: Record<string, string> | null,
+): string {
+  const override = (overrides ?? getAddressBookColorOverrides())[book.id];
+  if (isStoredAddressBookColor(override)) return override;
   return hashAddressBookColor(book.id);
 }
 
@@ -49,11 +60,12 @@ export function firstEnabledAddressBookId(
  */
 export function groupAddressBookColor(
   source: string | { addressBookIds?: Record<string, unknown> | null } | null | undefined,
+  overrides?: Record<string, string> | null,
 ): string | undefined {
   const bookId =
     typeof source === "string"
       ? source.trim() || undefined
       : firstEnabledAddressBookId(source?.addressBookIds);
   if (!bookId) return undefined;
-  return addressBookDotColor({ id: bookId });
+  return addressBookDotColor({ id: bookId }, overrides);
 }

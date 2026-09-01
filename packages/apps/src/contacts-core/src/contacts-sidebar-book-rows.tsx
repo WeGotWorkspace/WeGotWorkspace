@@ -4,6 +4,7 @@ import {
   CollectionSidebarRow,
 } from "@/collection-sidebar/src/collection-sidebar-row";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import {
   canOpenAddressBookSettings,
   contactsBookViewKey,
@@ -32,6 +33,7 @@ export function ContactsSidebarBookRows({
   onSelect,
   onEdit,
 }: ContactsSidebarBookRowsProps) {
+  const colorOverrides = useAddressBookColorOverrides();
   return (
     <>
       {books.map((book) => {
@@ -40,7 +42,7 @@ export function ContactsSidebarBookRows({
           <CollectionSidebarRow
             key={book.id}
             name={book.name}
-            color={addressBookDotColor(book)}
+            color={addressBookDotColor(book, colorOverrides)}
             selected={view === contactsBookViewKey(book.id)}
             visible={!hiddenAddressBookIds.has(book.id)}
             onToggleVisibility={() => onToggleVisibility(book.id)}

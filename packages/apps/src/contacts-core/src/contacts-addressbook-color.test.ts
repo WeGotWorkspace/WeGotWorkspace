@@ -16,6 +16,16 @@ describe("addressBookDotColor", () => {
       addressBookDotColor({ id: "group-eng" }),
     );
   });
+
+  it("uses an override map and falls back to the hash", () => {
+    const hashed = addressBookDotColor({ id: "default" }, {});
+    const override = ADDRESS_BOOK_DOT_COLORS.find((color) => color !== hashed) ?? "#111111";
+    expect(addressBookDotColor({ id: "default" }, { default: override })).toBe(override);
+    expect(addressBookDotColor({ id: "default" }, {})).toBe(hashed);
+    expect(addressBookDotColor({ id: "group-eng" }, { default: override })).toBe(
+      addressBookDotColor({ id: "group-eng" }, {}),
+    );
+  });
 });
 
 describe("enabledAddressBookIds", () => {
@@ -50,5 +60,11 @@ describe("groupAddressBookColor", () => {
     );
     expect(groupAddressBookColor(undefined)).toBeUndefined();
     expect(groupAddressBookColor({ addressBookIds: {} })).toBeUndefined();
+  });
+
+  it("uses the address-book color override", () => {
+    expect(
+      groupAddressBookColor({ addressBookIds: { default: true } }, { default: "#22c55e" }),
+    ).toBe("#22c55e");
   });
 });

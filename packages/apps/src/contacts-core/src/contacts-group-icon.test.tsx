@@ -2,10 +2,15 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
+import {
+  CONTACTS_VIEW_PREFS_STORAGE_KEY,
+  persistAddressBookColor,
+} from "@/contacts-core/src/contacts-view-prefs";
 
 describe("ContactsGroupIcon", () => {
   afterEach(() => {
     cleanup();
+    window.localStorage.removeItem(CONTACTS_VIEW_PREFS_STORAGE_KEY);
   });
 
   it("renders a decorative group glyph, not a rounded swatch", () => {
@@ -36,6 +41,13 @@ describe("ContactsGroupIcon", () => {
     expect(icon?.style.getPropertyValue("--collection-row-color")).toBe(
       addressBookDotColor({ id: "default" }),
     );
+  });
+
+  it("tints from a device-local address-book color override", () => {
+    persistAddressBookColor("default", "#ec4899");
+    const { container } = render(<ContactsGroupIcon book="default" />);
+    const icon = container.querySelector(".contacts-group-icon") as HTMLElement | null;
+    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("#ec4899");
   });
 
   it("leaves --collection-row-color unset when the book cannot be resolved", () => {

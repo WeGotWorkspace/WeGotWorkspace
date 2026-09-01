@@ -1,10 +1,18 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  ADDRESS_BOOK_DOT_COLORS,
+  addressBookDotColor,
+} from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsAddressBookDialog,
   contactsAddressBookDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-addressbook-dialog";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
+import {
+  CONTACTS_VIEW_PREFS_STORAGE_KEY,
+  readContactsViewPrefs,
+} from "@/contacts-core/src/contacts-view-prefs";
 
 const labels = contactsAddressBookDialogLabelsFrom(defaultContactsLabels);
 
@@ -28,6 +36,7 @@ describe("ContactsAddressBookDialog", () => {
   beforeEach(() => {
     cleanup();
     stubMatchMedia();
+    window.localStorage.removeItem(CONTACTS_VIEW_PREFS_STORAGE_KEY);
   });
 
   it("keeps the name read-only and has no delete control", () => {
@@ -59,6 +68,38 @@ describe("ContactsAddressBookDialog", () => {
     expect(
       screen.getByRole("button", { name: defaultContactsLabels.addressBookDialogDone }),
     ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: defaultContactsLabels.addressBookColorLabel }),
+    ).toBeTruthy();
+  });
+
+  it("persists a chosen color to viewPrefs and addressBookDotColor", () => {
+    const hashed = addressBookDotColor({ id: "default" });
+    const override = ADDRESS_BOOK_DOT_COLORS.find((color) => color !== hashed) ?? "#ec4899";
+
+    render(
+      <ContactsAddressBookDialog
+        dialog={{
+          bookId: "default",
+          name: "Ada",
+          mayShare: false,
+          isSharee: false,
+          shareWith: null,
+        }}
+        labels={labels}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultContactsLabels.addressBookColorLabel }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: override }));
+
+    expect(readContactsViewPrefs()?.addressBookColors?.default).toBe(override);
+    expect(addressBookDotColor({ id: "default" })).toBe(override);
+    expect(addressBookDotColor({ id: "default" })).not.toBe(hashed);
+    expect(addressBookDotColor({ id: "group-eng" })).not.toBe(override);
   });
 
   it("hides share UI for a sharee and offers remove", () => {
