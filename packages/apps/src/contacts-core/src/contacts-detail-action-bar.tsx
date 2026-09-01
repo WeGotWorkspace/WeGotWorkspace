@@ -57,13 +57,6 @@ export function ContactsDetailActionBar({
   }
 
   const rightActions = [
-    {
-      id: "download",
-      label: labels.downloadVCard,
-      onClick: onDownload,
-      icon: <Download className="size-4" />,
-      disabled: editMode,
-    },
     ...(canEdit
       ? [
           {
@@ -72,9 +65,17 @@ export function ContactsDetailActionBar({
             onClick: editMode ? onCancel : onEdit,
             icon: <Pencil className="size-4" />,
             active: editMode,
+            showLabel: true,
           },
         ]
       : []),
+    {
+      id: "download",
+      label: labels.downloadVCard,
+      onClick: onDownload,
+      icon: <Download className="size-4" />,
+      disabled: editMode,
+    },
     {
       id: "delete",
       label: labels.delete,

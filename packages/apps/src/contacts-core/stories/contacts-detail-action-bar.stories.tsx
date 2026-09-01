@@ -48,6 +48,22 @@ type Story = StoryObj<typeof ContactsDetailActionBarHarness>;
 
 export const ReadMode: Story = {
   args: {},
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = canvasElement.querySelector(".action-bar__row");
+    await expect(row).toBeTruthy();
+    const actions = within(row as HTMLElement);
+    const buttons = actions.getAllByRole("button");
+    await expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      defaultContactsLabels.edit,
+      defaultContactsLabels.downloadVCard,
+      defaultContactsLabels.delete,
+    ]);
+    await expect(buttons[0].textContent).toContain(defaultContactsLabels.edit);
+    await expect(
+      canvas.getByRole("button", { name: defaultContactsLabels.edit }).className,
+    ).toContain("action-bar__action--labeled");
+  },
 };
 
 export const EditMode: Story = {

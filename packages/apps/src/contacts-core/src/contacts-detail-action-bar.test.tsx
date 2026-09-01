@@ -37,10 +37,24 @@ describe("ContactsDetailActionBar", () => {
     expect(back.className).toContain("action-bar__back");
   });
 
-  it("shows edit and delete actions in read mode", () => {
-    renderActionBar();
-    expect(screen.getByRole("button", { name: defaultContactsLabels.edit })).toBeTruthy();
-    expect(screen.getByRole("button", { name: defaultContactsLabels.delete })).toBeTruthy();
+  it("shows a labeled edit action first in read mode", () => {
+    const { container } = renderActionBar();
+    const row = container.querySelector(".action-bar__row");
+    expect(row).toBeTruthy();
+
+    const actions = within(row as HTMLElement);
+    const buttons = actions.getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      defaultContactsLabels.edit,
+      defaultContactsLabels.downloadVCard,
+      defaultContactsLabels.delete,
+    ]);
+
+    const edit = buttons[0];
+    expect(edit.textContent).toContain(defaultContactsLabels.edit);
+    expect(edit.className).toContain("action-bar__action--labeled");
+    expect(buttons[1].textContent).not.toContain(defaultContactsLabels.downloadVCard);
+    expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
   });
 
   it("keeps read actions visible while editing with correct disabled states", () => {
