@@ -151,6 +151,30 @@ describe("ContactsDetailView empty trailing rows", () => {
     expect(document.querySelectorAll(".contacts-detail-view__channel-action")).toHaveLength(4);
   });
 
+  it("defaults trailing empty channel types to Home", () => {
+    render(<EditableDetailHarness />);
+    expect(
+      screen.getByRole("combobox", {
+        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
+      }).textContent,
+    ).toBe(defaultContactsLabels.channelTypeHome);
+    expect(
+      screen.getByRole("combobox", {
+        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.emailAddress}`,
+      }).textContent,
+    ).toBe(defaultContactsLabels.channelTypeHome);
+    expect(
+      screen.getByRole("combobox", {
+        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.urlAddress}`,
+      }).textContent,
+    ).toBe(defaultContactsLabels.channelTypeHome);
+    expect(
+      screen.getByRole("combobox", {
+        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.sectionAddresses}`,
+      }).textContent,
+    ).toBe(defaultContactsLabels.channelTypeHome);
+  });
+
   it("commits a phone on type and keeps another empty trailing row", () => {
     render(<EditableDetailHarness />);
     const phone = screen.getByLabelText(defaultContactsLabels.phoneNumber);
@@ -166,6 +190,13 @@ describe("ContactsDetailView empty trailing rows", () => {
       4,
     );
     expect(document.querySelectorAll(".contacts-detail-view__channel-action")).toHaveLength(5);
+    const phoneTypes = screen.getAllByRole("combobox", {
+      name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
+    });
+    expect(phoneTypes.map((control) => control.textContent)).toEqual([
+      defaultContactsLabels.channelTypeHome,
+      defaultContactsLabels.channelTypeHome,
+    ]);
   });
 
   it("commits email, url, and address the same way", () => {
@@ -191,10 +222,13 @@ describe("ContactsDetailView empty trailing rows", () => {
     render(<EditableDetailHarness />);
     const street = screen.getByLabelText(defaultContactsLabels.addressStreet);
     const postal = screen.getByLabelText(defaultContactsLabels.addressPostalCode);
+    const city = screen.getByLabelText(defaultContactsLabels.addressLocality);
     expect(street.closest(".contacts-detail-view__channel-row--address")).toBeTruthy();
     expect(street.closest(".contacts-detail-view__address-fields")).toBeNull();
     expect(postal.closest(".contacts-detail-view__address-fields")).toBeTruthy();
     expect(postal.closest(".contacts-detail-view__channel-row--address")).toBeNull();
+    expect(postal.closest(".contacts-detail-view__address-locality-row")).toBeTruthy();
+    expect(city.closest(".contacts-detail-view__address-locality-row")).toBeTruthy();
   });
 });
 

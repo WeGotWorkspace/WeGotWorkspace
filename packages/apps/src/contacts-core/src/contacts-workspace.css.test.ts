@@ -65,6 +65,7 @@ describe("contacts workspace sidebar chrome", () => {
       /\.contacts-workspace \.workspace-detail-pane \.action-bar,[\s\S]*?\.contacts-workspace \.workspace-detail-pane \{[\s\S]*?\}/,
     )?.[0];
     expect(detailPane).toBeDefined();
+    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*--switch-on-bg:\s*var\(--contacts-accent\)/);
     expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--contacts-accent\)/);
     expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--contacts-accent/);
     expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--contacts-accent/);
@@ -98,9 +99,46 @@ describe("contacts workspace sidebar chrome", () => {
     expect(dialogBlock).not.toMatch(/onDelete=/);
   });
 
+  it("reuses the shared collection color row in the address book dialog", () => {
+    const dialogTsx = readFileSync(join(here, "contacts-addressbook-dialog.tsx"), "utf8");
+    expect(dialogTsx).toMatch(/NameColorRow/);
+    expect(dialogTsx).toMatch(/SwatchColorPicker/);
+    expect(dialogTsx).toMatch(/persistAddressBookColor/);
+    expect(dialogTsx).not.toMatch(/onDelete=/);
+  });
+
   it("end-aligns the address top row so type and remove sit with the street input", () => {
     expect(css).toMatch(/\.contacts-detail-view__channel-row--address \{\s*@apply items-end;/);
-    expect(css).toMatch(/\.contacts-detail-view__address-entry \{\s*@apply flex flex-col gap-2;/);
+    expect(css).toMatch(
+      /\.contacts-detail-view__address-entry \{\s*@apply flex flex-col;\s*gap:\s*var\(--contacts-field-stack-gap\);/,
+    );
+  });
+
+  it("groups FieldLabelRow tighter than the field stack so labels stick to their input", () => {
+    expect(css).toMatch(/--contacts-field-gap:\s*0\.375rem;/);
+    expect(css).toMatch(/--contacts-field-stack-gap:\s*1rem;/);
+    expect(css).toMatch(
+      /\.contacts-detail-view \.field-label-row \{[\s\S]*?@apply mb-0 flex flex-col space-y-0;[\s\S]*?gap:\s*var\(--contacts-field-gap\);/,
+    );
+    expect(css).toMatch(
+      /\.contacts-detail-view__field-stack \{[\s\S]*?gap:\s*var\(--contacts-field-stack-gap\);/,
+    );
+    expect(css).toMatch(
+      /\.contacts-detail-view__name-row,[\s\S]*?\.contacts-detail-view__job-row \{[\s\S]*?gap:\s*var\(--contacts-field-stack-gap\);/,
+    );
+    expect(css).toMatch(
+      /\.contacts-detail-view__address-fields \{[\s\S]*?row-gap:\s*var\(--contacts-field-stack-gap\);/,
+    );
+    expect(css).toMatch(
+      /\.contacts-detail-view__address-locality-row \{[\s\S]*?row-gap:\s*var\(--contacts-field-stack-gap\);/,
+    );
+    expect(css).toMatch(
+      /\.contacts-detail-view__channel-list,[\s\S]*?\.contacts-detail-view__address-list \{[\s\S]*?gap:\s*0\.75rem;/,
+    );
+    expect(css).not.toMatch(
+      /\.contacts-detail-view__address-entry \{\s*@apply flex flex-col gap-2;/,
+    );
+    expect(css).not.toMatch(/\.contacts-detail-view__address-fields \{[\s\S]*?row-gap:\s*0\.5rem;/);
   });
 
   it("reserves the same action-column width on editable rows and address fields", () => {
@@ -110,6 +148,15 @@ describe("contacts workspace sidebar chrome", () => {
     );
     expect(css).toMatch(
       /\.contacts-detail-view__address-fields \{[\s\S]*?grid-template-columns:\s*7rem minmax\(0, 1fr\) var\(--contacts-channel-action-size\)/,
+    );
+  });
+
+  it("stacks postal and city full-width below the md overlay breakpoint", () => {
+    expect(css).toMatch(
+      /\.contacts-detail-view__address-locality-row \{[\s\S]*?grid-template-columns:\s*minmax\(5\.5rem, 7rem\) minmax\(0, 1fr\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 47\.999rem\) \{[\s\S]*\.contacts-detail-view__address-locality-row \{[\s\S]*@apply grid-cols-1/,
     );
   });
 
@@ -126,7 +173,7 @@ describe("contacts workspace sidebar chrome", () => {
     const detailView = readFileSync(join(here, "contacts-detail-view.tsx"), "utf8");
     expect(detailView).toMatch(/from "@\/tag\/src\/tag"/);
     expect(detailView).toMatch(/<TagGroup/);
-    expect(detailView).toMatch(/collectionTint: groupAddressBookColor\(group\)/);
+    expect(detailView).toMatch(/collectionTint: groupAddressBookColor\(group, colorOverrides\)/);
     expect(css).toMatch(/\.contacts-detail-view__tag-group/);
   });
 
@@ -185,6 +232,22 @@ describe("contacts workspace sidebar chrome", () => {
     expect(groupRows).toMatch(/<ContactsGroupIcon book=\{group\}/);
     expect(tsx).toMatch(/addressBookIds=\{editingGroup\?\.addressBookIds\}/);
     expect(tsx).toMatch(/books=\{addressBooks\}/);
+  });
+
+  it("aligns small-screen detail gutters with the action-bar px-4, not the stacked pane px-6", () => {
+    expect(css).toMatch(/\.contacts-detail-view \{[\s\S]*?@apply px-4 pt-6 pb-10 md:px-6;/);
+    expect(css).toMatch(
+      /\.workspace-detail-pane__scroll:has\(\.contacts-detail-view\) \{[\s\S]*px-0/,
+    );
+    expect(css).not.toMatch(/\.contacts-detail-view \{[\s\S]*?padding:\s*1\.5rem 1\.5rem 2\.5rem;/);
+  });
+
+  it("keeps a single modest gutter in the md split, not stacked 3rem + md:px-12", () => {
+    expect(css).toMatch(/\.contacts-detail-view \{[\s\S]*?md:px-6;/);
+    expect(css).toMatch(
+      /\.workspace-detail-pane__scroll:has\(\.contacts-detail-view\) \{[\s\S]*md:px-0[\s\S]*md:pt-0[\s\S]*md:pb-0/,
+    );
+    expect(css).not.toMatch(/padding:\s*2\.5rem 3rem 3rem/);
   });
 
   it("lays out the detail identity as a row so tags sit below the avatar stack", () => {

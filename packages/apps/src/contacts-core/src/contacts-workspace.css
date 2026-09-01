@@ -54,6 +54,7 @@
   --checkbox-checked-bg: var(--contacts-accent);
   --checkbox-checked-border: var(--contacts-accent);
   --checkbox-checked-fg: var(--color-ink);
+  --switch-on-bg: var(--contacts-accent);
 }
 
 /*
@@ -170,15 +171,21 @@
     --control-height-sm,
     calc(var(--input-height, 2.25rem) - 0.25rem)
   );
+  /* Label ↔ control: FieldLabelRow `space-y-1.5`. Groups: Calendar `gap-4` / `mb-4`. */
+  --contacts-field-gap: 0.375rem;
+  --contacts-field-stack-gap: 1rem;
   max-width: 680px;
   margin-inline: auto;
-  padding: 1.5rem 1.5rem 2.5rem;
+  /* Overlay: 1rem = action-bar. Split: 1.5rem — list shares the viewport. */
+  @apply px-4 pt-6 pb-10 md:px-6;
 }
 
-@media (min-width: 768px) {
-  .contacts-detail-view {
-    padding: 2.5rem 3rem 3rem;
-  }
+/*
+ * Pane scroll defaults to `px-6` / `md:px-12 md:pt-12`. Flush so it does not
+ * stack with the form (mobile overlay and md+ split).
+ */
+.contacts-workspace .workspace-detail-pane__scroll:has(.contacts-detail-view) {
+  @apply px-0 md:px-0 md:pt-0 md:pb-0;
 }
 
 .contacts-detail-view__header {
@@ -251,26 +258,26 @@
   gap: 0.75rem;
 }
 
+.contacts-detail-view .field-label-row {
+  @apply mb-0 flex flex-col space-y-0;
+  gap: var(--contacts-field-gap);
+}
+
 .contacts-detail-view__field-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  @apply flex flex-col;
+  gap: var(--contacts-field-stack-gap);
 }
 
 .contacts-detail-view__name-row,
 .contacts-detail-view__job-row {
-  @apply grid grid-cols-1 gap-3 md:grid-cols-2;
+  @apply grid grid-cols-1 md:grid-cols-2;
+  gap: var(--contacts-field-stack-gap);
   min-width: 0;
 }
 
 .contacts-detail-view__name-row > *,
 .contacts-detail-view__job-row > * {
   min-width: 0;
-}
-
-.contacts-detail-view__name-row > .field-label-row,
-.contacts-detail-view__job-row > .field-label-row {
-  @apply mb-0;
 }
 
 .contacts-detail-view__editable-list {
@@ -375,7 +382,8 @@
 }
 
 .contacts-detail-view__address-entry {
-  @apply flex flex-col gap-2;
+  @apply flex flex-col;
+  gap: var(--contacts-field-stack-gap);
 }
 
 .contacts-detail-view__address-fields {
@@ -386,7 +394,7 @@
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   column-gap: 1rem;
-  row-gap: 0.5rem;
+  row-gap: var(--contacts-field-stack-gap);
   min-width: 0;
 }
 
@@ -394,15 +402,17 @@
   grid-column: 2;
 }
 
-.contacts-detail-view__address-entry .field-label-row,
-.contacts-detail-view__address-locality-row > .field-label-row {
-  @apply mb-0;
+.contacts-detail-view__address-locality-row {
+  @apply grid gap-x-2;
+  row-gap: var(--contacts-field-stack-gap);
+  grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr);
 }
 
-.contacts-detail-view__address-locality-row {
-  display: grid;
-  grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr);
-  gap: 0.5rem;
+/* Same overlay split as workspace-app (`md` / 48rem): stack postal + city. */
+@media (max-width: 47.999rem) {
+  .contacts-detail-view__address-locality-row {
+    @apply grid-cols-1;
+  }
 }
 
 .contacts-detail-view__channel-action {
