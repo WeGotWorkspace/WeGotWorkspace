@@ -128,9 +128,11 @@ describe("TasksComposerDuePicker", () => {
     expect(trigger.textContent).toMatch(/\d{1,2}:\d{2}/);
 
     fireEvent.click(trigger);
-    expect((screen.getByLabelText(defaultTasksLabels.dueTimeLabel) as HTMLInputElement).value).toBe(
-      "15:45",
-    );
+    const timeInput = screen.getByLabelText(defaultTasksLabels.dueTimeLabel);
+    const timeZoneSelect = screen.getByLabelText(defaultCalendarLabels.eventTimeZoneLabel);
+    expect((timeInput as HTMLInputElement).value).toBe("15:45");
+    expect(timeInput.classList.contains("input--size-sm")).toBe(true);
+    expect(timeZoneSelect.classList.contains("select-trigger--size-sm")).toBe(true);
 
     fireEvent.click(screen.getByLabelText(defaultCalendarLabels.eventTimeZoneLabel));
     fireEvent.click(
