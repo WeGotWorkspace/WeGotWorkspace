@@ -15,6 +15,7 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PDOException;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -390,16 +391,22 @@ final class NoteRepository
             return [];
         }
 
-        $map = [];
-        NoteStar::query()
-            ->where('username', $username)
-            ->whereIn('calendar_object_id', $objectIds)
-            ->pluck('calendar_object_id')
-            ->each(function (mixed $id) use (&$map): void {
-                $map[(int) $id] = true;
-            });
+        try {
+            $map = [];
+            NoteStar::query()
+                ->where('username', $username)
+                ->whereIn('calendar_object_id', $objectIds)
+                ->pluck('calendar_object_id')
+                ->each(function (mixed $id) use (&$map): void {
+                    $map[(int) $id] = true;
+                });
 
-        return $map;
+            return $map;
+        } catch (QueryException $exception) {
+            $this->logAuxiliaryTableFailure('note_stars', $username, $exception);
+
+            return [];
+        }
     }
 
     /**
@@ -407,11 +414,17 @@ final class NoteRepository
      */
     private function starredNotes(string $username, ?string $status): array
     {
-        $stars = NoteStar::query()
-            ->where('username', $username)
-            ->with('calendarObject')
-            ->orderBy('id')
-            ->get();
+        try {
+            $stars = NoteStar::query()
+                ->where('username', $username)
+                ->with('calendarObject')
+                ->orderBy('id')
+                ->get();
+        } catch (QueryException $exception) {
+            $this->logAuxiliaryTableFailure('note_stars', $username, $exception);
+
+            return [];
+        }
 
         $notes = [];
         foreach ($stars as $star) {
@@ -565,6 +578,19 @@ final class NoteRepository
         $home = str_starts_with($principal, 'principals/') ? substr($principal, strlen('principals/')) : $username;
 
         return 'calendars/'.$home.'/'.$instance->uri.'/'.$objectUri;
+    }
+
+    private function logAuxiliaryTableFailure(string $table, string $username, QueryException $exception): void
+    {
+        try {
+            Log::warning('notes_auxiliary_table_failed', [
+                'table' => $table,
+                'username' => $username,
+                'message' => $exception->getMessage(),
+            ]);
+        } catch (\Throwable) {
+            // Logging is optional outside the Laravel container (e.g. unit tests).
+        }
     }
 
     private function calBackend(): CalPDO
