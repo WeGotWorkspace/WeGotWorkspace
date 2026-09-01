@@ -6,7 +6,6 @@ namespace App\Services\Contacts;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\Addressbook;
-use App\Services\Admin\AdminConstants;
 use Illuminate\Support\Facades\DB;
 use Sabre\CardDAV\Backend\PDO as CardPDO;
 use Sabre\CardDAV\Plugin as CardDAVPlugin;
@@ -225,17 +224,6 @@ final class AddressBookRepository
         $listing = $this->collectionAccess->listingFor($username, $addressBookId);
         if ($listing !== null) {
             return $listing;
-        }
-
-        $slug = AddressBookCollectionUris::parseGroupApiId($addressBookId);
-        if ($slug !== null) {
-            $exists = Addressbook::query()
-                ->where('principaluri', AdminConstants::GROUP_PREFIX.$slug)
-                ->where('uri', AddressBookCollectionUris::CALDAV_URI)
-                ->exists();
-            if ($exists) {
-                throw new ApiHttpException(403, 'Not a member of this address book.', 'forbidden');
-            }
         }
 
         throw new ApiHttpException(404, 'Address book not found.', 'not_found');

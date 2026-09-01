@@ -320,10 +320,20 @@ final class ContactCardRepository
         $merged = ConversionSupport::deepMergeContactCardPatch($existingContact, $patch);
         $cardPayload = $this->normalizeCardPayload($merged, $existingContact);
         $cardPayload['id'] = ContactCardMapper::cardIdFromUri($cardUri);
-        if (! isset($cardPayload['addressBookIds']) || ! is_array($cardPayload['addressBookIds'])) {
-            $cardPayload['addressBookIds'] = [$bookApiId => true];
+
+        $destination = $this->resolvePatchDestinationBook($username, $cardPayload, $bookApiId, $book);
+        if ($destination !== null) {
+            return $this->moveCardToAddressBook(
+                $username,
+                $card,
+                $book,
+                $destination,
+                $cardPayload,
+                $existingContact,
+            );
         }
 
+        $cardPayload['addressBookIds'] = [$bookApiId => true];
         $vcard = $this->mapper->toVCard($username, $cardPayload);
         $addressBookId = (int) $card->addressbookid;
         $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
@@ -418,6 +428,180 @@ final class ContactCardRepository
         $this->contactStates->deleteForCard($username, $cardId);
 
         return ['ok' => true];
+    }
+
+    /**
+     * @param  array<string, mixed>  $cardPayload
+     * @param  array<string, mixed>  $existingContact
+     * @return array<string, mixed>
+     */
+    private function moveCardToAddressBook(
+        string $username,
+        Card $card,
+        Addressbook $sourceBook,
+        Addressbook $destinationBook,
+        array $cardPayload,
+        array $existingContact,
+    ): array {
+        $this->books->assertWritable($username, $destinationBook);
+        if (ContactCardVcfImportSupport::isGroupCard($existingContact)) {
+            throw new ApiHttpException(400, 'Contact groups cannot be moved between address books.', 'bad_request');
+        }
+
+        $destApiId = $this->books->viewerApiId($username, $destinationBook);
+        $cardPayload['addressBookIds'] = [$destApiId => true];
+        $cardUri = (string) $card->uri;
+        $sourceId = (int) $sourceBook->id;
+        $destId = (int) $destinationBook->id;
+        if ($this->findCardInBook($destId, $cardUri) !== null) {
+            throw new ApiHttpException(
+                409,
+                'A contact with this URI already exists in the destination address book.',
+                'alreadyExists',
+            );
+        }
+
+        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        DB::connection('wgw')->transaction(function () use (
+            $username,
+            $sourceBook,
+            $existingContact,
+            $cardUri,
+            $sourceId,
+            $destId,
+            $vcard,
+        ): void {
+            $this->dropSourceBookGroupMemberships($username, $sourceBook, $existingContact, $cardUri);
+            $this->cardBackend()->createCard($destId, $cardUri, $vcard);
+            $this->cardBackend()->deleteCard($sourceId, $cardUri);
+        });
+
+        $oldPath = $this->cardDavPathFor($sourceBook, $cardUri);
+        $newPath = $this->cardDavPathFor($destinationBook, $cardUri);
+        $this->searchIndexSync->sync(
+            'contacts',
+            fn () => $this->searchIndexer->deleteDavPath($oldPath),
+            $oldPath,
+            $username,
+        );
+        $this->searchIndexSync->sync(
+            'contacts',
+            fn () => $this->searchIndexer->indexCardObjectFromPath($newPath),
+            $newPath,
+            $username,
+        );
+
+        $moved = $this->findCardInBook($destId, $cardUri);
+        if ($moved === null) {
+            throw new ApiHttpException(500, 'Could not load moved contact card.', 'server_error');
+        }
+
+        return $this->mapper->toContactCard($moved, $destApiId, $username);
+    }
+
+    /**
+     * @param  array<string, mixed>  $cardPayload
+     */
+    private function resolvePatchDestinationBook(
+        string $username,
+        array $cardPayload,
+        string $sourceApiId,
+        Addressbook $sourceBook,
+    ): ?Addressbook {
+        $ids = $cardPayload['addressBookIds'] ?? null;
+        if (! is_array($ids)) {
+            return null;
+        }
+
+        $enabled = [];
+        foreach ($ids as $id => $flag) {
+            if ($flag === true) {
+                $enabled[] = (string) $id;
+            }
+        }
+
+        if ($enabled === []) {
+            throw new ApiHttpException(400, 'addressBookIds must include one address book.', 'bad_request');
+        }
+
+        $destIds = array_values(array_filter(
+            $enabled,
+            static fn (string $id): bool => $id !== $sourceApiId,
+        ));
+        if (count($destIds) > 1) {
+            throw new ApiHttpException(400, 'A contact can belong to only one address book.', 'bad_request');
+        }
+        if ($destIds === []) {
+            return null;
+        }
+
+        $destination = $this->books->requireAccessibleBook($username, $destIds[0]);
+        if ((int) $destination->id === (int) $sourceBook->id) {
+            return null;
+        }
+
+        return $destination;
+    }
+
+    /**
+     * @param  array<string, mixed>  $movingContact
+     */
+    private function dropSourceBookGroupMemberships(
+        string $username,
+        Addressbook $sourceBook,
+        array $movingContact,
+        string $movingCardUri,
+    ): void {
+        $uid = $movingContact['uid'] ?? null;
+        if (! is_string($uid) || $uid === '') {
+            return;
+        }
+
+        $normalizedUid = ConversionSupport::normalizeContactUidForMatch($uid);
+        $groups = Card::query()
+            ->where('addressbookid', (int) $sourceBook->id)
+            ->where('uri', '!=', $movingCardUri)
+            ->get();
+
+        foreach ($groups as $groupCard) {
+            $raw = is_string($groupCard->carddata) ? $groupCard->carddata : (string) $groupCard->carddata;
+            if ($raw === '') {
+                continue;
+            }
+
+            try {
+                $parsed = $this->vcardConverter->cardFromVCard($raw);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if (! ContactCardVcfImportSupport::isGroupCard($parsed)) {
+                continue;
+            }
+
+            $members = $parsed['members'] ?? null;
+            if (! is_array($members)) {
+                continue;
+            }
+
+            $changed = false;
+            foreach (array_keys($members) as $memberUid) {
+                if (ConversionSupport::normalizeContactUidForMatch((string) $memberUid) !== $normalizedUid) {
+                    continue;
+                }
+                unset($members[$memberUid]);
+                $changed = true;
+            }
+
+            if (! $changed) {
+                continue;
+            }
+
+            $parsed['members'] = $members;
+            $parsed['id'] = ContactCardMapper::cardIdFromUri((string) $groupCard->uri);
+            $vcard = $this->mapper->toVCard($username, $this->normalizeCardPayload($parsed, $parsed));
+            $this->cardBackend()->updateCard((int) $sourceBook->id, (string) $groupCard->uri, $vcard);
+        }
     }
 
     /**

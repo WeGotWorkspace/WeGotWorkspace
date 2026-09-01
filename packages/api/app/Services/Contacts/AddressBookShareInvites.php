@@ -91,6 +91,16 @@ final class AddressBookShareInvites
                 continue;
             }
 
+            $unsupported = $this->unsupportedGrantRights($id, $grant);
+            if ($unsupported !== []) {
+                throw new ApiHttpException(
+                    400,
+                    'Address book share grants only persist mayRead and mayWrite.',
+                    'invalidProperties',
+                    $unsupported,
+                );
+            }
+
             AddressBookShare::query()->updateOrCreate(
                 [
                     'addressbookid' => $bookId,
@@ -165,6 +175,22 @@ final class AddressBookShareInvites
         }
 
         return $best;
+    }
+
+    /**
+     * @param  array<string, mixed>  $grant
+     * @return list<string>
+     */
+    private function unsupportedGrantRights(string $principalId, array $grant): array
+    {
+        $invalid = [];
+        foreach (['mayShare', 'mayDelete'] as $flag) {
+            if (($grant[$flag] ?? false) === true) {
+                $invalid[] = 'shareWith/'.$principalId.'/'.$flag;
+            }
+        }
+
+        return $invalid;
     }
 
     /**

@@ -88,6 +88,31 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $this->assertFalse($shared['isDefault']);
     }
 
+    public function test_share_grant_rejects_may_share_and_may_delete(): void
+    {
+        $rejected = $this->jmapAs('bob', [
+            ['AddressBook/set', ['accountId' => 'bob', 'update' => ['default' => [
+                'shareWith' => ['alice' => ['mayRead' => true, 'mayShare' => true]],
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame('invalidProperties', $rejected['notUpdated']['default']['type']);
+        $this->assertContains('shareWith/alice/mayShare', $rejected['notUpdated']['default']['properties']);
+        $this->assertNull(
+            AddressBookShare::query()
+                ->where('principaluri', 'principals/alice')
+                ->first(),
+        );
+
+        $rejectedDelete = $this->jmapAs('bob', [
+            ['AddressBook/set', ['accountId' => 'bob', 'update' => ['default' => [
+                'shareWith' => ['alice' => ['mayWrite' => true, 'mayDelete' => true]],
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame('invalidProperties', $rejectedDelete['notUpdated']['default']['type']);
+        $this->assertContains('shareWith/alice/mayDelete', $rejectedDelete['notUpdated']['default']['properties']);
+    }
+
     public function test_read_share_denies_card_create_update_and_delete(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: false);

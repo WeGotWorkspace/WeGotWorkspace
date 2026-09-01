@@ -222,7 +222,7 @@ final class JmapContactsProvisionTest extends WgwDatabaseTestCase
         $create = $this->jmapAs('carol', [
             ['ContactCard/set', ['accountId' => 'carol', 'create' => ['k0' => $this->sampleContactCardPayload($groupId)]], 'c2'],
         ])->assertOk();
-        $create->assertJsonPath('methodResponses.0.1.notCreated.k0.type', 'forbidden');
+        $create->assertJsonPath('methodResponses.0.1.notCreated.k0.type', 'notFound');
     }
 
     public function test_member_can_create_card_in_group_book(): void
