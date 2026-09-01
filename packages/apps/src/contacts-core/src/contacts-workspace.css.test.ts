@@ -107,10 +107,24 @@ describe("contacts workspace sidebar chrome", () => {
     expect(dialogTsx).not.toMatch(/onDelete=/);
   });
 
-  it("end-aligns the address top row so type and remove sit with the street input", () => {
-    expect(css).toMatch(/\.contacts-detail-view__channel-row--address \{\s*@apply items-end;/);
+  it("lets reserved FieldLabelRow align address type with street, trash at the control", () => {
+    expect(css).not.toMatch(/\.contacts-detail-view__channel-row--address \{\s*@apply items-end;/);
+    expect(css).toMatch(/\.contacts-detail-view__address-remove \{\s*@apply self-end;/);
+    expect(css).toMatch(
+      /\.contacts-detail-view__channel-type \.field-label-row \{\s*@apply w-full min-w-0;/,
+    );
     expect(css).toMatch(
       /\.contacts-detail-view__address-entry \{\s*@apply flex flex-col;\s*gap:\s*var\(--contacts-field-stack-gap\);/,
+    );
+  });
+
+  it("does not override context-select radius or force a compact type face", () => {
+    expect(css).not.toMatch(
+      /\.select-trigger\.contacts-detail-view__context-select \{[\s\S]*border-radius:/,
+    );
+    expect(css).not.toMatch(/\.contacts-detail-view__context-select \{[\s\S]*?text-xs/);
+    expect(css).toMatch(
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size, 1rem\)/,
     );
   });
 

@@ -314,7 +314,7 @@ function AddressEditor({
     <div className="contacts-detail-view__address-entry">
       <ContactChannelRow
         variant="address"
-        typeControl={typeControl}
+        typeControl={<FieldLabelRow reserveLabel>{typeControl}</FieldLabelRow>}
         removeLabel={removeLabel}
         onRemove={onRemove}
       >

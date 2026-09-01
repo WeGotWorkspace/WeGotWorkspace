@@ -41,7 +41,7 @@ describe("ContactChannelRow", () => {
     expect(onRemove).toHaveBeenCalledOnce();
   });
 
-  it("marks address rows for end-aligned top-row layout", () => {
+  it("marks address rows so trash can sit with the street control", () => {
     const { container } = renderRow({
       variant: "address",
       children: <div>Street fields</div>,

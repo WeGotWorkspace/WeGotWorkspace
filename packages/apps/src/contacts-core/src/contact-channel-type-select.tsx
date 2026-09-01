@@ -13,6 +13,7 @@ import {
 } from "@/contacts-core/src/contacts-channel-select";
 
 const CONTEXT_SELECT_CLASS = "contacts-detail-view__context-select";
+const CONTEXT_SELECT_ITEM_CLASS = "contacts-detail-view__context-select-item";
 
 type ContactChannelTypeSelectProps<T extends string> = {
   value: T | "";
@@ -31,8 +32,8 @@ function ContactChannelTypeSelect<T extends string>({
     <ShareRowSelect
       value={channelSelectValue(value)}
       options={options}
-      size="sm"
       className={CONTEXT_SELECT_CLASS}
+      itemClassName={CONTEXT_SELECT_ITEM_CLASS}
       aria-label={ariaLabel}
       onChange={(next) => onChange(channelValueFromSelect<T>(next))}
     />

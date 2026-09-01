@@ -230,6 +230,34 @@ describe("ContactsDetailView empty trailing rows", () => {
     expect(postal.closest(".contacts-detail-view__address-locality-row")).toBeTruthy();
     expect(city.closest(".contacts-detail-view__address-locality-row")).toBeTruthy();
   });
+
+  it("reserves the address type label band and keeps channel selects at md", () => {
+    render(<EditableDetailHarness />);
+    const addressType = screen.getByRole("combobox", {
+      name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.sectionAddresses}`,
+    });
+    const reserved = addressType
+      .closest(".field-label-row")
+      ?.querySelector(".field-label-row__label--reserved");
+    expect(reserved).toBeTruthy();
+    expect(reserved?.getAttribute("aria-hidden")).toBe("true");
+    expect(addressType.classList.contains("select-trigger--size-sm")).toBe(false);
+
+    const streetRow = screen
+      .getByLabelText(defaultContactsLabels.addressStreet)
+      .closest(".field-label-row");
+    expect(streetRow?.querySelector(".field-label-row__label--reserved")).toBeNull();
+    expect(streetRow?.textContent).toContain(defaultContactsLabels.addressStreet);
+
+    const phoneType = screen.getByRole("combobox", {
+      name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
+    });
+    expect(phoneType.closest(".field-label-row")).toBeNull();
+    expect(phoneType.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(
+      screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-sm"),
+    ).toBe(false);
+  });
 });
 
 const noop = () => undefined;

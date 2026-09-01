@@ -312,10 +312,6 @@
   align-items: center;
 }
 
-.contacts-detail-view__channel-row--address {
-  @apply items-end;
-}
-
 .contacts-detail-view__channel-type {
   display: flex;
   flex-wrap: wrap;
@@ -323,6 +319,10 @@
   gap: 0.375rem;
   flex-shrink: 0;
   min-height: calc(0.9375rem * 1.35);
+}
+
+.contacts-detail-view__channel-type .field-label-row {
+  @apply w-full min-w-0;
 }
 
 .contacts-detail-view__channel-type .tag {
@@ -441,12 +441,16 @@
 }
 
 .contacts-detail-view__context-select {
-  @apply w-28 shrink-0 text-xs;
+  @apply w-28 shrink-0;
 }
 
 .select-trigger.contacts-detail-view__context-select {
-  @apply w-full shrink-0 text-xs;
-  border-radius: var(--control-radius);
+  @apply w-full shrink-0;
+}
+
+/* Same face as Inputs — not the compact share-dialog permission label. */
+.contacts-detail-view__context-select-item {
+  font-size: var(--input-font-size, 1rem);
 }
 
 .contacts-detail-view__editable-row .input,
