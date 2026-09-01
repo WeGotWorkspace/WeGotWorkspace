@@ -27,6 +27,7 @@ import {
   meetChannelHashName,
   meetChannelMemberCount,
   meetChannelTitle,
+  meetChannelTopicSubtitle,
 } from "@/meet-core/src/meet-channel-label";
 import { partitionMeetChannels } from "@/meet-core/src/meet-channel-partition";
 import {
@@ -524,7 +525,7 @@ export function MeetWorkspace({
                 <Video className="meet-workspace__header-kind-icon" aria-hidden />
               ) : null
             }
-            subtitle={selected?.topic ?? undefined}
+            subtitle={meetChannelTopicSubtitle(selected?.topic)}
             actions={
               conversationOpen ? (
                 <div className="meet-workspace__header-actions">
@@ -541,6 +542,7 @@ export function MeetWorkspace({
                     label={callButtonLabel}
                     icon={<Video />}
                     size="sm"
+                    variant="subtle"
                     onClick={callToggle}
                   />
                 </div>

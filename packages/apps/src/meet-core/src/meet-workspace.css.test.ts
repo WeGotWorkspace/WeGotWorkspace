@@ -62,6 +62,20 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/\.meet-workspace__sidebar-kind-icon[\s\S]*size-3\.5/);
   });
 
+  it("uses ViewHeader for the channel main header, not a custom title bar", () => {
+    expect(tsx).toMatch(/import \{ ViewHeader \} from "@\/view-header\/src\/view-header"/);
+    expect(tsx).toMatch(/<ViewHeader/);
+    expect(tsx).toMatch(/title=\{headerTitle\}/);
+    expect(tsx).toMatch(/titleSize="sm"/);
+    expect(tsx).toMatch(/meetChannelTopicSubtitle\(selected\?\.topic\)/);
+    expect(tsx).toMatch(/sidebarOpen=\{sidebarOpen\}/);
+    expect(tsx).toMatch(/onToggleSidebar=/);
+    expect(tsx).not.toMatch(/meet-workspace__main-header/);
+    expect(tsx).not.toMatch(/<header/);
+    expect(css).toMatch(/--workspace-main-header-border-color:/);
+    expect(css).not.toMatch(/\.meet-workspace \.view-header__subtitle/);
+  });
+
   it("styles unread counts as trailing accent pills, not red coins", () => {
     expect(tsx).toMatch(/trailing=\{/);
     expect(css).toMatch(/\.meet-workspace \.collection-sidebar-row__title/);

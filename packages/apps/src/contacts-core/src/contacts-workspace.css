@@ -70,13 +70,6 @@
   @apply flex min-h-48 items-center justify-center;
 }
 
-.contacts-list-panel__section-header {
-  @apply sticky top-0 z-[5] border-b px-4 py-1.5 text-[0.8125rem] font-semibold tracking-[0.04em] md:px-6;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-}
-
 .contacts-workspace .collection-list-drop-zone .file-drop-overlay {
   z-index: 20;
 }

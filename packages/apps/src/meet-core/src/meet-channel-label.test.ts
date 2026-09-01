@@ -5,6 +5,7 @@ import {
   meetChannelMatchesQuery,
   meetChannelMemberCount,
   meetChannelTitle,
+  meetChannelTopicSubtitle,
 } from "@/meet-core/src/meet-channel-label";
 
 describe("meetChannelHashName", () => {
@@ -17,6 +18,16 @@ describe("meetChannelHashName", () => {
 describe("meetChannelTitle", () => {
   it("uses a compact hash title for the main header", () => {
     expect(meetChannelTitle({ name: "Design", kind: "channel" })).toBe("#design");
+  });
+});
+
+describe("meetChannelTopicSubtitle", () => {
+  it("prefixes a topic with an em dash for ViewHeader", () => {
+    expect(meetChannelTopicSubtitle("Pixels, prototypes and critiques")).toBe(
+      "— Pixels, prototypes and critiques",
+    );
+    expect(meetChannelTopicSubtitle("  ")).toBeUndefined();
+    expect(meetChannelTopicSubtitle(null)).toBeUndefined();
   });
 });
 

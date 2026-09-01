@@ -54,6 +54,37 @@ export function chatMessageDayKey(timestamp: number): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+export type ChatDaySection = {
+  key: string;
+  label: string;
+  timestamp: number;
+  groups: ChatMessageGroup[];
+};
+
+/** Fold author groups into calendar-day sections for sticky day separators. */
+export function groupChatMessagesByDay(
+  groups: readonly ChatMessageGroup[],
+  now = Date.now(),
+): ChatDaySection[] {
+  const sections: ChatDaySection[] = [];
+  for (const group of groups) {
+    const timestamp = group.messages[0]!.createdAt;
+    const key = chatMessageDayKey(timestamp);
+    const last = sections[sections.length - 1];
+    if (last?.key === key) {
+      last.groups.push(group);
+      continue;
+    }
+    sections.push({
+      key,
+      label: formatChatDayLabel(timestamp, now),
+      timestamp,
+      groups: [group],
+    });
+  }
+  return sections;
+}
+
 export function formatChatDayLabel(timestamp: number, now = Date.now()): string {
   const day = startOfLocalDay(timestamp);
   const today = startOfLocalDay(now);

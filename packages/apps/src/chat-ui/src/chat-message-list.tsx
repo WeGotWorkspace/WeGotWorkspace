@@ -1,15 +1,12 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
-import {
-  chatMessageDayKey,
-  formatChatDayLabel,
-  groupChatMessages,
-} from "@/chat-ui/src/chat-message-group";
+import { groupChatMessages, groupChatMessagesByDay } from "@/chat-ui/src/chat-message-group";
 import type {
   ChatAuthorPresenceMap,
   ChatMessage as ChatMessageModel,
 } from "@/chat-ui/src/chat-types";
+import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-ui.css";
 import "@/chat-ui/src/chat-message-list.css";
@@ -45,6 +42,7 @@ export function ChatMessageList({
   const stickRef = useRef(true);
   const ignoreScrollRef = useRef(false);
   const groups = groupChatMessages(messages);
+  const daySections = groupChatMessagesByDay(groups);
 
   function onScroll(): void {
     if (ignoreScrollRef.current) return;
@@ -90,43 +88,39 @@ export function ChatMessageList({
           aria-live="polite"
           aria-relevant="additions"
         >
-          {groups.map((group, groupIndex) => {
-            const previous = groups[groupIndex - 1];
-            const dayKey = chatMessageDayKey(group.messages[0]!.createdAt);
-            const previousDay = previous
-              ? chatMessageDayKey(previous.messages[0]!.createdAt)
-              : null;
-            const showDay = dayKey !== previousDay;
-            return (
-              <div key={group.id} className="chat-message-list__group">
-                {showDay ? (
-                  <div className="chat-message-list__day">
-                    <span className="chat-message-list__day-label">
-                      {formatChatDayLabel(group.messages[0]!.createdAt)}
-                    </span>
-                  </div>
-                ) : null}
-                {group.messages.map((message, index) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                    currentUserId={currentUserId}
-                    continuation={index > 0}
-                    editing={editingMessageId === message.id}
-                    editComposer={
-                      editingMessageId === message.id ? editComposer?.(message) : undefined
-                    }
-                    actions={actionsForMessage?.(message)}
-                    presence={authorPresence?.[message.authorId]}
-                    onOpenThread={onOpenThread ? () => onOpenThread(message) : undefined}
-                    onToggleReaction={
-                      onToggleReaction ? (emoji) => onToggleReaction(message.id, emoji) : undefined
-                    }
-                  />
-                ))}
-              </div>
-            );
-          })}
+          {daySections.map((day) => (
+            <section
+              key={day.key}
+              className="chat-message-list__day-section"
+              aria-labelledby={`chat-day-${day.key}`}
+            >
+              <ListStickyHeader id={`chat-day-${day.key}`}>{day.label}</ListStickyHeader>
+              {day.groups.map((group) => (
+                <div key={group.id} className="chat-message-list__group">
+                  {group.messages.map((message, index) => (
+                    <ChatMessage
+                      key={message.id}
+                      message={message}
+                      currentUserId={currentUserId}
+                      continuation={index > 0}
+                      editing={editingMessageId === message.id}
+                      editComposer={
+                        editingMessageId === message.id ? editComposer?.(message) : undefined
+                      }
+                      actions={actionsForMessage?.(message)}
+                      presence={authorPresence?.[message.authorId]}
+                      onOpenThread={onOpenThread ? () => onOpenThread(message) : undefined}
+                      onToggleReaction={
+                        onToggleReaction
+                          ? (emoji) => onToggleReaction(message.id, emoji)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              ))}
+            </section>
+          ))}
         </div>
       )}
     </div>

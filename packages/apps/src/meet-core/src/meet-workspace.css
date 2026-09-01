@@ -687,6 +687,7 @@
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --workspace-main-bg: var(--meet-surface);
+  --workspace-main-header-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --chat-list-surface: var(--color-cream, #ffffff);
   --chat-hover: color-mix(in oklab, var(--meet-accent) 8%, transparent);
   --chat-accent: var(--meet-accent-strong);
@@ -699,19 +700,8 @@
 }
 
 .meet-workspace .workspace-app-layout__main-header {
-  @apply relative z-30 px-4 py-3 md:px-5 md:py-3;
+  @apply relative z-30;
   background-color: var(--meet-surface);
-}
-
-.meet-workspace .view-header__subtitle {
-  @apply mt-0.5 max-w-full truncate font-normal normal-case tracking-normal;
-  font-family: var(--font-sans);
-  font-size: 0.875rem;
-  color: color-mix(in oklab, var(--color-ink) 48%, transparent);
-}
-
-.meet-workspace .view-header__subtitle::before {
-  content: "— ";
 }
 
 .meet-workspace .workspace-app-layout__main {

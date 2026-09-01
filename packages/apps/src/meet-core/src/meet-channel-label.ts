@@ -10,6 +10,11 @@ export function meetChannelTitle(channel: Pick<MeetChannel, "name" | "kind">): s
   return `#${channel.name.toLowerCase()}`;
 }
 
+export function meetChannelTopicSubtitle(topic: string | null | undefined): string | undefined {
+  const value = topic?.trim();
+  return value ? `— ${value}` : undefined;
+}
+
 export function meetChannelComposerPlaceholder(
   channel: Pick<MeetChannel, "name" | "kind">,
 ): string {

@@ -1,0 +1,17 @@
+@import "../../../styles.css" reference;
+
+.list-sticky-header-story-scroll {
+  @apply h-80 max-w-md overflow-y-auto border;
+  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  background-color: var(--color-cream, #ffffff);
+}
+
+.list-sticky-header-story-row {
+  @apply border-b px-4 py-3 text-sm md:px-6;
+  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+}
+
+.list-sticky-header-story-scroll--chat {
+  --list-sticky-header-font-size: 0.9375rem;
+  --list-sticky-header-bg: #ffffff;
+}

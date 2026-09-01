@@ -1,0 +1,15 @@
+@import "../../styles.css" reference;
+
+.list-sticky-header {
+  @apply sticky top-0 z-[5] border-b px-4 py-1.5 font-semibold tracking-[0.04em] md:px-6;
+  font-size: var(--list-sticky-header-font-size, 0.8125rem);
+  color: var(--list-sticky-header-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  background-color: var(
+    --list-sticky-header-bg,
+    var(--workspace-root-bg, var(--color-cream, #ffffff))
+  );
+  border-color: var(
+    --list-sticky-header-border,
+    color-mix(in oklab, var(--color-ink) 10%, transparent)
+  );
+}

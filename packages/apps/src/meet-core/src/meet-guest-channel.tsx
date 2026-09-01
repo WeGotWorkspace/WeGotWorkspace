@@ -47,6 +47,7 @@ export function MeetGuestChannel({
           <ViewHeader
             hideSidebarToggle
             title={channelName}
+            titleSize="sm"
             titlePrefix={<Video className="meet-workspace__header-kind-icon" aria-hidden />}
           />
         }
