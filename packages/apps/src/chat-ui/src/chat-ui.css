@@ -1,0 +1,27 @@
+@import "../../styles.css" reference;
+
+.chat-ui {
+  --chat-text: var(--color-ink, inherit);
+  --chat-author: var(--color-ink, inherit);
+  --chat-body: color-mix(in oklab, var(--color-ink) 88%, transparent);
+  --chat-muted: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  --chat-replies: color-mix(in oklab, var(--color-ink) 68%, transparent);
+  --chat-surface: var(--color-cream, #fff);
+  --chat-list-surface: var(--color-cream, #fff);
+  --chat-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --chat-rule: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --chat-accent: #0e7490;
+  --chat-hover: color-mix(in oklab, #06b6d4 8%, transparent);
+  --chat-day-bg: var(--chat-list-surface);
+  --chat-action-surface: #fff;
+  --chat-reaction-bg: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
+  --user-avatar-presence-ring: var(--chat-list-surface);
+  color: var(--chat-text);
+}
+
+.chat-ui__log {
+  @apply text-xs;
+  color: var(--chat-muted);
+}

@@ -102,7 +102,7 @@ export function MeetCallToolbar({
           <AlertDialogTrigger asChild>
             <IconButton icon={<PhoneOff />} label={callExitLabel} size="lg" variant="destructive" />
           </AlertDialogTrigger>
-          <AlertDialogContent className="meet-dialog-surface">
+          <AlertDialogContent className="meet-call-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>{callExitTitle}</AlertDialogTitle>
               <AlertDialogDescription>{callExitDescription}</AlertDialogDescription>

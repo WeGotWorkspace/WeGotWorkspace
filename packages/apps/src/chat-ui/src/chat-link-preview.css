@@ -1,0 +1,50 @@
+@import "../../styles.css" reference;
+
+.chat-link-preview {
+  @apply flex max-w-md overflow-hidden rounded-lg border;
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  background-color: var(--chat-surface, var(--color-cream, #fff));
+}
+
+.chat-link-preview--missing {
+  @apply items-center;
+}
+
+.chat-link-preview__thumb {
+  @apply relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden;
+  background-color: var(--chat-hover, color-mix(in oklab, var(--color-ink) 4%, transparent));
+}
+
+.chat-link-preview__thumb .file-preview__fallback,
+.chat-link-preview__thumb .file-preview__fallback svg {
+  @apply size-10;
+}
+
+.chat-link-preview__thumb .docs-file-preview--tile,
+.chat-link-preview__thumb .file-preview__tile-docs-lazy {
+  @apply absolute inset-0 h-full w-full;
+}
+
+.chat-link-preview__body {
+  @apply flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2;
+}
+
+.chat-link-preview__site {
+  @apply truncate text-[11px] uppercase tracking-wide;
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+}
+
+.chat-link-preview__title {
+  @apply truncate text-sm font-semibold;
+}
+
+.chat-link-preview__description,
+.chat-link-preview__missing {
+  @apply line-clamp-2 text-xs;
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+}
+
+.chat-link-preview__link {
+  @apply truncate text-xs underline-offset-2 hover:underline;
+  color: var(--chat-accent, #1d4ed8);
+}

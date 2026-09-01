@@ -1,4 +1,5 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 .meet-workspace {
   @apply flex h-dvh w-full flex-col;
@@ -67,8 +68,13 @@
   overflow: hidden;
 }
 
-.meet-workspace:not(.meet-workspace--in-call) {
+.meet-workspace:not(.meet-workspace--in-call):not(.workspace-columns) {
   overflow-y: auto;
+}
+
+/* Lobby is a column; split shells share this class on `workspace-columns` (a row). */
+.workspace-columns.meet-workspace {
+  @apply flex-row overflow-hidden;
 }
 
 .meet-workspace__lobby {
@@ -345,7 +351,12 @@
   background-color: var(--meet-border-strong);
 }
 
+/*
+ * Lobby / in-call portaled surfaces stay dark. Product Create/Edit channel
+ * uses `.meet-channel-dialog` (light paper) in meet-channel-dialog.css.
+ */
 .meet-dialog-surface,
+.meet-call-dialog,
 .meet-popover-surface {
   --meet-accent: #06b6d4;
   --meet-accent-strong: #0e7490;
@@ -380,7 +391,8 @@
   --foreground: var(--meet-text);
 }
 
-.meet-dialog-surface {
+.meet-dialog-surface,
+.meet-call-dialog {
   background-color: var(--meet-panel) !important;
   color: var(--meet-text) !important;
   border-color: var(--meet-border-strong) !important;
@@ -389,7 +401,8 @@
   --muted-foreground: var(--meet-muted);
 }
 
-.meet-dialog-surface .ui-modal-title {
+.meet-dialog-surface .ui-modal-title,
+.meet-call-dialog .ui-modal-title {
   color: var(--meet-text);
 }
 
@@ -631,4 +644,261 @@
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-chat__link {
   @apply underline underline-offset-2 hover:opacity-80;
   color: var(--meet-link);
+}
+
+.meet-workspace--split {
+  --meet-thread-panel-width: 20rem;
+  --workspace-panel-width: var(--meet-thread-panel-width);
+  /*
+   * Product workspace chrome matches Notes / Tasks / Calendar: cream paper
+   * with a light accent wash — not the dark lobby/call slab.
+   */
+  --meet-sidebar: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --meet-surface: var(--color-cream, #ffffff);
+  --workspace-accent: var(--meet-accent);
+  --workspace-root-bg: var(--meet-surface);
+  --workspace-main-content-max-width: none;
+  --app-sidebar-bg: var(--meet-sidebar);
+  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --app-sidebar-color: var(--color-ink);
+  --app-switch-label-color: var(--color-ink);
+  --app-switch-lockup-bg: var(--meet-sidebar);
+  --sidebar-logo-close-button-color: var(--color-ink);
+  --sidebar-badge-fg: var(--meet-accent);
+  --meet-unread-bg: color-mix(in oklab, var(--meet-accent) 22%, var(--color-cream, #ffffff));
+  --meet-unread-fg: var(--meet-accent-strong);
+  --workspace-sidebar-toggle-color: var(--color-ink);
+  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --workspace-user-footer-avatar-color: var(--color-ink);
+  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  /*
+   * SidebarSection titles use `field-label-row__label` → `--field-label-color`.
+   * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
+   */
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --button-primary-bg: var(--meet-accent-strong);
+  --button-primary-fg: #ffffff;
+  --foreground: var(--color-ink);
+  --color-foreground: var(--color-ink);
+  --workspace-main-bg: var(--meet-surface);
+  --chat-list-surface: var(--color-cream, #ffffff);
+  --chat-hover: color-mix(in oklab, var(--meet-accent) 8%, transparent);
+  --chat-accent: var(--meet-accent-strong);
+  --chat-muted: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  --chat-day-bg: var(--chat-list-surface);
+  --chat-action-surface: #ffffff;
+  --user-avatar-presence-ring: var(--chat-list-surface);
+  background-color: var(--meet-surface);
+  color: var(--color-ink);
+}
+
+.meet-workspace .workspace-app-layout__main-header {
+  @apply relative z-30 px-4 py-3 md:px-5 md:py-3;
+  background-color: var(--meet-surface);
+}
+
+.meet-workspace .view-header__subtitle {
+  @apply mt-0.5 max-w-full truncate font-normal normal-case tracking-normal;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: color-mix(in oklab, var(--color-ink) 48%, transparent);
+}
+
+.meet-workspace .view-header__subtitle::before {
+  content: "— ";
+}
+
+.meet-workspace .workspace-app-layout__main {
+  @apply min-h-0;
+}
+
+.meet-workspace .workspace-app-layout__main-scroll {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+
+.meet-workspace .workspace-app-layout__main-content {
+  @apply mx-0 flex h-full min-h-0 min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
+}
+
+.meet-workspace--split .app-sidebar {
+  @apply h-full min-h-0 self-stretch;
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --user-avatar-presence-ring: var(--meet-sidebar);
+  color: var(--app-sidebar-color, var(--color-ink));
+}
+
+.meet-workspace--split .app-sidebar__footer {
+  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --workspace-user-footer-avatar-color: var(--color-ink);
+  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+}
+
+.meet-workspace--split .app-sidebar__scroll {
+  --button-primary-bg: var(--meet-accent-strong);
+  --button-primary-fg: #ffffff;
+  --button-subtle-color: var(--color-ink);
+  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
+}
+
+/** App switcher lockup: Meet cyan tile + ink camera (white-on-cyan washes out). */
+.meet-workspace--split
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--meet-accent);
+  --app-switch-icon-fg: var(--color-ink);
+  background-color: var(--app-switch-icon-bg);
+}
+
+.meet-workspace--split
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: var(--app-switch-icon-fg);
+}
+
+.meet-workspace__sidebar-kind-icon {
+  @apply size-3.5 shrink-0;
+}
+
+.meet-workspace__header-kind-icon {
+  @apply size-4 shrink-0;
+}
+
+.meet-workspace__header-actions {
+  @apply flex items-center gap-2;
+}
+
+.meet-workspace__members {
+  @apply inline-flex items-center gap-1 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.meet-workspace__members-icon {
+  @apply size-4;
+}
+
+.meet-workspace .collection-sidebar-row__title {
+  @apply min-w-0 flex-1;
+}
+
+.meet-workspace__unread {
+  @apply inline-flex h-5 min-w-6 shrink-0 items-center justify-center rounded-full px-2 text-[11px] font-semibold;
+  background-color: var(--meet-unread-bg);
+  color: var(--meet-unread-fg);
+}
+
+.meet-workspace__chat-empty {
+  @apply flex flex-1 items-center justify-center px-6 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.meet-workspace__chat-main,
+.meet-workspace__call-main {
+  @apply flex h-full min-h-0 flex-1 flex-col;
+}
+
+.meet-workspace__chat-column {
+  @apply flex h-full min-h-0 flex-1 flex-col;
+}
+
+.meet-workspace__chat-composer {
+  @apply shrink-0 px-4 pb-3 pt-1;
+}
+
+.meet-workspace__thread-panel {
+  @apply flex h-full min-h-0 flex-col border-l;
+  width: var(--meet-thread-panel-width);
+  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  background-color: var(--meet-surface);
+}
+
+.meet-workspace__thread-drawer {
+  --side-drawer-width: var(--meet-thread-panel-width, 20rem);
+}
+
+.meet-workspace__thread-drawer-body {
+  @apply min-h-0 flex-1;
+}
+
+.meet-call-stage {
+  @apply flex h-full min-h-0 w-full flex-1 flex-col;
+}
+
+.meet-call-stage__chat {
+  @apply flex h-full min-h-0 flex-1 flex-col;
+}
+
+.meet-call-stage__chat-placeholder {
+  @apply flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
+.meet-call-stage__stage {
+  @apply flex h-full min-h-0 flex-1 flex-col overflow-hidden;
+  background-color: var(--workspace-home-bg, #1b1d3a);
+  color: var(--meet-text);
+  --field-label-color: var(--meet-muted);
+}
+
+.meet-call-stage__stage .meet-workspace__room {
+  @apply h-full min-h-0;
+}
+
+.meet-call-stage__stage .meet-workspace__room-main {
+  @apply h-full min-h-0;
+}
+
+.meet-call-split__group {
+  @apply flex h-full min-h-0 w-full;
+}
+
+.meet-call-split__group[data-panel-group-direction="vertical"] {
+  @apply flex-col;
+}
+
+.meet-call-split__chat,
+.meet-call-split__stage {
+  @apply min-h-0 min-w-0;
+}
+
+.meet-call-split__handle {
+  @apply relative flex w-px shrink-0 items-center justify-center;
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.meet-call-split__handle::after {
+  @apply absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 content-[''];
+}
+
+.meet-call-split__handle:focus-visible {
+  @apply outline-none ring-1 ring-offset-1;
+  --tw-ring-color: var(--meet-accent);
+}
+
+.meet-call-split__handle > div {
+  @apply z-10 flex h-4 w-3 items-center justify-center rounded-sm border;
+  background-color: color-mix(in oklab, var(--color-ink) 10%, var(--meet-surface));
+  border-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
+}
+
+.meet-guest-channel__lobby {
+  @apply flex flex-1 items-center justify-center px-6 py-12;
+  background-color: var(--workspace-home-bg, #1b1d3a);
+  color: #ffffff;
+  --field-label-color: var(--meet-muted);
+}
+
+.meet-guest-channel__lobby .meet-workspace__title {
+  color: #ffffff;
 }

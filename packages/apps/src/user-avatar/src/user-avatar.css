@@ -1,10 +1,114 @@
 @import "../../styles.css" reference;
 
 .user-avatar {
+  --user-avatar-amber: #f59e0b;
+  --user-avatar-amber-bg: color-mix(
+    in oklab,
+    var(--user-avatar-amber) 32%,
+    var(--color-cream, #fff)
+  );
+  --user-avatar-amber-border: var(--user-avatar-amber);
+  --user-avatar-amber-fg: color-mix(in oklab, var(--user-avatar-amber) 72%, var(--color-ink));
+  --user-avatar-cyan: #06b6d4;
+  --user-avatar-cyan-bg: color-mix(in oklab, var(--user-avatar-cyan) 32%, var(--color-cream, #fff));
+  --user-avatar-cyan-border: var(--user-avatar-cyan);
+  --user-avatar-cyan-fg: color-mix(in oklab, var(--user-avatar-cyan) 72%, var(--color-ink));
+  --user-avatar-orange: #f97316;
+  --user-avatar-orange-bg: color-mix(
+    in oklab,
+    var(--user-avatar-orange) 32%,
+    var(--color-cream, #fff)
+  );
+  --user-avatar-orange-border: var(--user-avatar-orange);
+  --user-avatar-orange-fg: color-mix(in oklab, var(--user-avatar-orange) 72%, var(--color-ink));
+  --user-avatar-violet: #8b5cf6;
+  --user-avatar-violet-bg: color-mix(
+    in oklab,
+    var(--user-avatar-violet) 32%,
+    var(--color-cream, #fff)
+  );
+  --user-avatar-violet-border: var(--user-avatar-violet);
+  --user-avatar-violet-fg: color-mix(in oklab, var(--user-avatar-violet) 72%, var(--color-ink));
+  --user-avatar-rose: #f43f5e;
+  --user-avatar-rose-bg: color-mix(in oklab, var(--user-avatar-rose) 32%, var(--color-cream, #fff));
+  --user-avatar-rose-border: var(--user-avatar-rose);
+  --user-avatar-rose-fg: color-mix(in oklab, var(--user-avatar-rose) 72%, var(--color-ink));
+  --user-avatar-lime: #84cc16;
+  --user-avatar-lime-bg: color-mix(in oklab, var(--user-avatar-lime) 32%, var(--color-cream, #fff));
+  --user-avatar-lime-border: var(--user-avatar-lime);
+  --user-avatar-lime-fg: color-mix(in oklab, var(--user-avatar-lime) 72%, var(--color-ink));
+  --user-avatar-teal: #14b8a6;
+  --user-avatar-teal-bg: color-mix(in oklab, var(--user-avatar-teal) 32%, var(--color-cream, #fff));
+  --user-avatar-teal-border: var(--user-avatar-teal);
+  --user-avatar-teal-fg: color-mix(in oklab, var(--user-avatar-teal) 72%, var(--color-ink));
+  --user-avatar-sky: #0ea5e9;
+  --user-avatar-sky-bg: color-mix(in oklab, var(--user-avatar-sky) 32%, var(--color-cream, #fff));
+  --user-avatar-sky-border: var(--user-avatar-sky);
+  --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 72%, var(--color-ink));
   display: flex;
   align-items: center;
   gap: var(--user-avatar-gap, 0.5rem);
   min-width: 0;
+}
+
+.user-avatar--color-amber {
+  --user-avatar-tile-bg: var(--user-avatar-amber-bg);
+  --user-avatar-tile-border: var(--user-avatar-amber-border);
+  --user-avatar-tile-fg: var(--user-avatar-amber-fg);
+}
+
+.user-avatar--color-cyan {
+  --user-avatar-tile-bg: var(--user-avatar-cyan-bg);
+  --user-avatar-tile-border: var(--user-avatar-cyan-border);
+  --user-avatar-tile-fg: var(--user-avatar-cyan-fg);
+}
+
+.user-avatar--color-orange {
+  --user-avatar-tile-bg: var(--user-avatar-orange-bg);
+  --user-avatar-tile-border: var(--user-avatar-orange-border);
+  --user-avatar-tile-fg: var(--user-avatar-orange-fg);
+}
+
+.user-avatar--color-violet {
+  --user-avatar-tile-bg: var(--user-avatar-violet-bg);
+  --user-avatar-tile-border: var(--user-avatar-violet-border);
+  --user-avatar-tile-fg: var(--user-avatar-violet-fg);
+}
+
+.user-avatar--color-rose {
+  --user-avatar-tile-bg: var(--user-avatar-rose-bg);
+  --user-avatar-tile-border: var(--user-avatar-rose-border);
+  --user-avatar-tile-fg: var(--user-avatar-rose-fg);
+}
+
+.user-avatar--color-lime {
+  --user-avatar-tile-bg: var(--user-avatar-lime-bg);
+  --user-avatar-tile-border: var(--user-avatar-lime-border);
+  --user-avatar-tile-fg: var(--user-avatar-lime-fg);
+}
+
+.user-avatar--color-teal {
+  --user-avatar-tile-bg: var(--user-avatar-teal-bg);
+  --user-avatar-tile-border: var(--user-avatar-teal-border);
+  --user-avatar-tile-fg: var(--user-avatar-teal-fg);
+}
+
+.user-avatar--color-sky {
+  --user-avatar-tile-bg: var(--user-avatar-sky-bg);
+  --user-avatar-tile-border: var(--user-avatar-sky-border);
+  --user-avatar-tile-fg: var(--user-avatar-sky-fg);
+}
+
+.user-avatar--colored .user-avatar__mark {
+  box-sizing: border-box;
+  background-color: var(--user-avatar-tile-bg);
+  border: 2px solid var(--user-avatar-tile-border);
+  color: var(--user-avatar-tile-fg);
+}
+
+.user-avatar__mark-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .user-avatar__mark {
@@ -17,6 +121,49 @@
   font-weight: 500;
   background-color: var(--user-avatar-bg, color-mix(in oklab, var(--color-ink) 12%, transparent));
   color: var(--user-avatar-fg, var(--color-ink));
+}
+
+.user-avatar__presence {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px var(--user-avatar-presence-ring, var(--color-cream, #fff));
+}
+
+.user-avatar__presence--online {
+  background-color: var(--user-avatar-presence-online, #22c55e);
+}
+
+.user-avatar__presence--away {
+  background-color: var(--user-avatar-presence-away, #eab308);
+}
+
+.user-avatar__presence--offline {
+  background-color: transparent;
+  box-shadow:
+    0 0 0 1.5px
+      var(
+        --user-avatar-presence-offline-border,
+        color-mix(in oklab, var(--color-ink) 40%, transparent)
+      ),
+    0 0 0 2px var(--user-avatar-presence-ring, var(--color-cream, #fff));
+}
+
+.user-avatar__presence--standalone {
+  @apply static right-auto bottom-auto size-2.5 shrink-0;
+  box-shadow: none;
+}
+
+.user-avatar__presence--standalone.user-avatar__presence--offline {
+  box-shadow: none;
+  border: 1.5px solid
+    var(
+      --user-avatar-presence-offline-border,
+      color-mix(in oklab, var(--color-ink) 40%, transparent)
+    );
 }
 
 .user-avatar__image {

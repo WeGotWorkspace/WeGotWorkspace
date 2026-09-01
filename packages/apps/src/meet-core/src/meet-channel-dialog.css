@@ -1,0 +1,65 @@
+@import "../../styles.css" reference;
+
+/**
+ * Product Create/Edit channel dialog — cream/paper surface like Notes/Tasks.
+ * Lobby / in-call alerts keep `.meet-dialog-surface` / `.meet-call-dialog` (dark).
+ */
+.meet-channel-dialog {
+  --meet-accent: #06b6d4;
+  --meet-accent-strong: #0e7490;
+  --color-emerald: var(--meet-accent);
+  --button-primary-bg: var(--meet-accent-strong);
+  --button-primary-fg: #ffffff;
+  --button-outline-color: var(--color-ink);
+  --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --primary: var(--meet-accent-strong);
+  --primary-foreground: #ffffff;
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --foreground: var(--color-ink);
+  --color-foreground: var(--color-ink);
+  --muted-foreground: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --background: var(--color-cream, #ffffff);
+  --input-background: #ffffff;
+  --input-background-focus: #ffffff;
+  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --accent-foreground: var(--color-ink);
+  --popover: var(--color-cream, #ffffff);
+  --popover-foreground: var(--color-ink);
+  --modal-title-foreground: var(--color-ink);
+  --card-title-icon-color: var(--meet-accent);
+  --card-title-color: var(--color-ink);
+  --card-description-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --card-panel-bg: color-mix(in oklab, var(--color-ink) 3%, transparent);
+  --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
+  background-color: var(--color-cream, #ffffff);
+  color: var(--color-ink);
+  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.meet-channel-dialog .share-access-card {
+  --share-dialog-accent: var(--meet-accent);
+  --share-dialog-muted: var(--muted-foreground);
+  --share-dialog-tag-fg: var(--color-ink);
+}
+
+.meet-channel-dialog .field-label-row + .field-label-row {
+  @apply mt-3;
+}
+
+.meet-channel-dialog__share,
+.meet-channel-dialog__guest {
+  @apply mt-4;
+}
+
+.meet-channel-dialog__guest-hint {
+  @apply mb-2 text-sm;
+  color: var(--field-label-color);
+}
+
+.meet-channel-dialog__footer {
+  @apply mt-4 gap-2 sm:gap-0;
+}

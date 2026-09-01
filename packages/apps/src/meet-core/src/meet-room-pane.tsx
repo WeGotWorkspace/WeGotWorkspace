@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { MonitorUp } from "lucide-react";
 import { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
@@ -32,6 +33,8 @@ export type MeetRoomPaneProps = {
   onMuteSoon: (name: string) => void;
   onToastInfo: (message: string) => void;
   onToastError: (message: string) => void;
+  hideChatToggle?: boolean;
+  statusEndActions?: ReactNode;
 };
 
 function peerGridClass(count: number) {
@@ -61,6 +64,8 @@ export function MeetRoomPane({
   onMuteSoon,
   onToastInfo,
   onToastError,
+  hideChatToggle = false,
+  statusEndActions,
 }: MeetRoomPaneProps) {
   const sharing = controller.screenOn;
 
@@ -77,6 +82,8 @@ export function MeetRoomPane({
         onCopyLink={onCopyLink}
         onAdmitKnocker={(peerId) => void controller.admitKnocker(peerId)}
         onDenyKnocker={(peerId) => void controller.denyKnocker(peerId)}
+        hideChatToggle={hideChatToggle}
+        endActions={statusEndActions}
       />
 
       <div className="meet-workspace__stage">

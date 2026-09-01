@@ -1,0 +1,57 @@
+@import "../../styles.css" reference;
+
+.chat-reaction-bar {
+  @apply flex flex-wrap items-center gap-1.5;
+}
+
+.chat-reaction-bar__reaction {
+  @apply inline-flex h-6 items-center gap-1 rounded-full border px-1.5 text-xs transition-colors;
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 10%, transparent));
+  background-color: var(--chat-reaction-bg, color-mix(in oklab, var(--color-ink) 4%, transparent));
+  color: var(--chat-text, var(--color-ink));
+}
+
+.chat-reaction-bar__reaction:hover {
+  background-color: var(--chat-hover, color-mix(in oklab, var(--color-ink) 4%, transparent));
+}
+
+.chat-reaction-bar__reaction[data-reacted="true"] {
+  border-color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 35%, transparent);
+  background-color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 10%, transparent);
+  color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 88%, var(--color-ink));
+}
+
+.chat-reaction-bar__reaction--add {
+  @apply justify-center px-2;
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+}
+
+.chat-reaction-bar__reaction-add-icon {
+  @apply size-3.5;
+}
+
+.chat-reaction-bar__reaction-emoji {
+  @apply text-sm leading-none;
+}
+
+.chat-reaction-bar__reaction-count {
+  @apply text-[11px] font-medium tabular-nums;
+}
+
+.chat-reaction-bar__picker {
+  @apply w-auto p-1.5;
+}
+
+.chat-reaction-bar__picker-grid {
+  @apply flex flex-wrap gap-0.5;
+}
+
+.chat-reaction-bar__picker-item {
+  @apply flex size-8 items-center justify-center rounded-md text-base transition-colors;
+}
+
+.chat-reaction-bar__picker-item:hover {
+  background-color: var(--chat-hover, color-mix(in oklab, var(--color-ink) 6%, transparent));
+}

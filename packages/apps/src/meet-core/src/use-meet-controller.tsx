@@ -16,7 +16,7 @@ type UseMeetControllerArgs = {
 
 /**
  * Meet workspace controller: composes room state, RTC/media session, and mutation slices.
- * UI shell state lives in useMeetWorkspaceShell (custom lobby/room layout).
+ * UI shell state lives in useMeetWorkspaceShell (MeetCallWorkspace lobby/room).
  */
 export function useMeetController({
   session,

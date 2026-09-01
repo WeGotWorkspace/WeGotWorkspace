@@ -47,7 +47,7 @@ import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { InstallWorkspace } from "@/install-core/src/install-workspace";
 import { MailWorkspace } from "@/mail-core/src/mail-workspace";
 import { mailStoryLabels } from "@/mail-core/src/mail-app.stories.fixtures";
-import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
+import { MeetCallWorkspace } from "@/meet-core/src/meet-call-workspace";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
 import { useNotesRouteSync } from "@/notes-core/src/use-notes-route-sync";
@@ -175,7 +175,7 @@ function MockMeetRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
   return (
-    <MeetWorkspace
+    <MeetCallWorkspace
       data={bootstrap.data}
       session={bootstrap.session}
       listLoading={false}

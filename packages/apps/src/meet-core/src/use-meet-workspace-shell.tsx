@@ -10,11 +10,11 @@ import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
 import { playMeetKnockSound } from "@/meet-core/src/meet-chat-utils";
-import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
+import type { MeetCallWorkspaceProps } from "@/meet-core/src/meet-call-workspace-props";
 import { useMeetController } from "@/meet-core/src/use-meet-controller";
 
 type MeetWorkspaceShellInput = Pick<
-  MeetWorkspaceProps,
+  MeetCallWorkspaceProps,
   | "data"
   | "session"
   | "operations"

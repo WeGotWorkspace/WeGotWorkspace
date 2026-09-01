@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { MessageSquare, Users } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -18,6 +19,10 @@ type MeetRoomStatusBarProps = {
   onCopyLink: () => void;
   onAdmitKnocker: (peerId: string) => void;
   onDenyKnocker: (peerId: string) => void;
+  /** Hide the in-call chat drawer toggle (chat lives in the main column). */
+  hideChatToggle?: boolean;
+  /** Extra status-bar actions (e.g. expand / collapse the call stage). */
+  endActions?: ReactNode;
 };
 
 export function MeetRoomStatusBar({
@@ -31,6 +36,8 @@ export function MeetRoomStatusBar({
   onCopyLink,
   onAdmitKnocker,
   onDenyKnocker,
+  hideChatToggle = false,
+  endActions,
 }: MeetRoomStatusBarProps) {
   return (
     <div className="meet-workspace__status-bar">
@@ -52,14 +59,17 @@ export function MeetRoomStatusBar({
           <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
         ) : null}
         <MeetShareButton link={callLink} onCopy={onCopyLink} />
-        <IconButton
-          onClick={onToggleChat}
-          icon={<MessageSquare />}
-          label={chatOpen ? meetLabels.toggleChatHide : meetLabels.toggleChatShow}
-          variant="subtle"
-          active={chatOpen}
-          className="hidden lg:inline-flex"
-        />
+        {hideChatToggle ? null : (
+          <IconButton
+            onClick={onToggleChat}
+            icon={<MessageSquare />}
+            label={chatOpen ? meetLabels.toggleChatHide : meetLabels.toggleChatShow}
+            variant="subtle"
+            active={chatOpen}
+            className="hidden lg:inline-flex"
+          />
+        )}
+        {endActions}
       </div>
     </div>
   );

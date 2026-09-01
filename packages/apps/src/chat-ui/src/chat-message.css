@@ -1,0 +1,115 @@
+@import "../../styles.css" reference;
+
+.chat-message {
+  @apply relative flex gap-2.5 px-5 py-2.5;
+}
+
+.chat-message:hover,
+.chat-message:focus-within {
+  background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
+}
+
+.chat-message--continuation {
+  @apply pt-0;
+}
+
+.chat-message__avatar {
+  @apply shrink-0 pt-0.5;
+}
+
+.chat-message__avatar-spacer {
+  @apply size-9 shrink-0;
+}
+
+.chat-message__main {
+  @apply min-w-0 flex-1;
+}
+
+.chat-message__header {
+  @apply flex flex-wrap items-baseline gap-1.5;
+}
+
+.chat-message__author {
+  @apply text-sm font-medium;
+  color: var(--chat-author, var(--color-ink));
+}
+
+.chat-message__time,
+.chat-message__edited {
+  @apply text-[11px] font-normal;
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+}
+
+.chat-message--continuation .chat-message__time {
+  @apply invisible;
+}
+
+.chat-message--continuation:hover .chat-message__time,
+.chat-message--continuation:focus-within .chat-message__time {
+  @apply visible;
+}
+
+.chat-message__body {
+  @apply mt-0.5 text-sm leading-snug;
+  color: var(--chat-body, color-mix(in oklab, var(--color-ink) 88%, transparent));
+}
+
+.chat-message__body mark {
+  @apply rounded-sm px-0.5;
+  background-color: var(--chat-mention-bg, color-mix(in oklab, #eab308 32%, transparent));
+  color: inherit;
+}
+
+.chat-message__body .text-editor,
+.chat-message__body .text-editor-sheet--inline {
+  @apply min-h-0 leading-snug;
+  --text-editor-prose-font-size: 0.875rem;
+  --text-editor-prose-line-height: 1.375;
+}
+
+.chat-message__body .text-editor-prose > :first-child {
+  @apply mt-0;
+}
+
+.chat-message__body .text-editor-prose > :last-child {
+  @apply mb-0;
+}
+
+.chat-message__deleted {
+  @apply mt-0.5 text-sm italic;
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+}
+
+.chat-message__previews {
+  @apply mt-2 flex flex-col gap-2;
+}
+
+.chat-message__replies {
+  @apply mt-1 border-0 bg-transparent p-0 text-left text-xs font-medium;
+  color: var(--chat-replies, color-mix(in oklab, var(--color-ink) 68%, transparent));
+}
+
+.chat-message__replies:hover,
+.chat-message__replies:focus-visible {
+  color: var(--chat-accent, #0e7490);
+  text-decoration: underline;
+}
+
+.chat-message__reactions {
+  @apply mt-1;
+}
+
+.chat-message .chat-reaction-bar__reaction--add {
+  @apply hidden;
+}
+
+.chat-message__actions {
+  @apply absolute top-1 right-3 hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 10%, transparent));
+  background-color: var(--chat-action-surface, #fff);
+}
+
+.chat-message:hover .chat-message__actions,
+.chat-message:focus-within .chat-message__actions {
+  @apply flex;
+}

@@ -14,14 +14,15 @@ Shared layout CSS for split and collection lives under `packages/apps/src/worksp
 
 ## Decision matrix
 
-| You are building…                                          | Use                      | Why                                                                |
-| ---------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
-| Multi-section settings, admin, or config                   | **Split**                | Section nav in sidebar; one pane at a time in scrollable main      |
-| Installer / wizard with sidebar steps                      | **Split**                | Same chrome as settings; wizard panes swap in `main`               |
-| File browser or document library (folder tree + main)      | **Split**                | Tree/nav in sidebar; browser or editor in main                     |
-| Mailbox, notes, or any **list + detail** collection        | **Collection**           | Shared list/detail/mobile back behavior via `WorkspaceApp`         |
-| Video call, lobby + room, or other **non-standard** layout | **Custom**               | Split/collection assumptions (section nav, list column) do not fit |
-| Auth / marketing screen with app header only               | **Custom** (header only) | No workspace body chrome — see `login-core`                        |
+| You are building…                                                                  | Use                      | Why                                                                                                                                       |
+| ---------------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Multi-section settings, admin, or config                                           | **Split**                | Section nav in sidebar; one pane at a time in scrollable main                                                                             |
+| Installer / wizard with sidebar steps                                              | **Split**                | Same chrome as settings; wizard panes swap in `main`                                                                                      |
+| File browser or document library (folder tree + main)                              | **Split**                | Tree/nav in sidebar; browser or editor in main                                                                                            |
+| Meet **product** workspace (named channels + chat + optional call)                 | **Split**                | Same sidebar + main as Tasks/Docs; the call stage is a resizable rail inside `main`, not a reason to stay Custom                          |
+| Mailbox, notes, or any **list + detail** collection                                | **Collection**           | Shared list/detail/mobile back behavior via `WorkspaceApp`                                                                                |
+| Live `/meet` lobby + in-call room, or other **non-standard** fullscreen RTC chrome | **Custom**               | Today's routed `MeetCallWorkspace` until a later API chunk remounts `MeetWorkspace`; do **not** keep the new Meet product shell on Custom |
+| Auth / marketing screen with app header only                                       | **Custom** (header only) | No workspace body chrome — see `login-core`                                                                                               |
 
 When unsure: if the primary interaction is **pick an item from a list, show detail beside it**, use **Collection**. If it is **pick a section, show one full pane**, use **Split**.
 
@@ -30,20 +31,22 @@ When unsure: if the primary interaction is **pick an item from a list, show deta
 Agent-readable routing — read this before scaffolding a new `*-core` package:
 
 ```
-IF product = multi-section config OR admin OR install wizard OR drive browser OR docs library
+IF product = multi-section config OR admin OR install wizard OR drive browser OR docs library OR Meet channel workspace
   THEN shell = split
   THEN entry = WorkspaceAppLayout(sidebar, mainHeader?, main)
   THEN blueprint = feature-blueprint.md
+  THEN Meet guest stripped view = MeetGuestChannel (no channel sidebar; hideSidebarToggle)
 
 IF product = list + detail collection (mail, notes, similar)
   THEN shell = collection
   THEN entry = WorkspaceApp with list/detail render props
   THEN inner layout = CollectionListWorkspace (via WorkspaceApp; do not mount alone in *Workspace)
 
-IF product = realtime / fullscreen / lobby-room OR layout cannot map to sidebar + main OR list + detail
+IF product = live /meet lobby-room (MeetCallWorkspace) OR other fullscreen RTC chrome that cannot map to sidebar + main OR list + detail
   THEN shell = custom
   THEN entry = WorkspaceShellHeader + product root layout
   THEN do NOT force WorkspaceAppLayout or WorkspaceApp
+  NOTE: do not keep new Meet product work on Custom — that shell is Split (MeetWorkspace) above
 
 IF product = login or standalone screen with global header only
   THEN shell = custom (header only)
@@ -54,19 +57,21 @@ IF product = login or standalone screen with global header only
 
 Verified against current `*-workspace.tsx` (or equivalent) sources:
 
-| Package            | Shell                    | Entry file                                                                                                       |
-| ------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `admin-core`       | Split                    | `admin-core/src/admin-workspace.tsx`                                                                             |
-| `calendar-core`    | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                       |
-| `docs-core`        | Split                    | `docs-core/src/docs-workspace.tsx`                                                                               |
-| `drive-core`       | Split                    | `drive-core/src/drive-workspace.tsx`                                                                             |
-| `install-core`     | Split                    | `install-core/src/install-workspace.tsx`                                                                         |
-| `settings-core`    | Split                    | `settings-core/src/settings-workspace.tsx`                                                                       |
-| `mail-core`        | Collection               | `mail-core/src/mail-workspace.tsx`                                                                               |
-| `notes-core`       | Collection               | `notes-core/src/notes-workspace.tsx`                                                                             |
-| `meet-core`        | Custom                   | `meet-core/src/meet-workspace.tsx`                                                                               |
-| `login-core`       | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                      |
-| `text-editor-core` | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app |
+| Package                    | Shell                    | Entry file                                                                                                       |
+| -------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `admin-core`               | Split                    | `admin-core/src/admin-workspace.tsx`                                                                             |
+| `calendar-core`            | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                       |
+| `docs-core`                | Split                    | `docs-core/src/docs-workspace.tsx`                                                                               |
+| `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                             |
+| `install-core`             | Split                    | `install-core/src/install-workspace.tsx`                                                                         |
+| `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                       |
+| `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                               |
+| `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                             |
+| `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                  |
+| `meet-core` (live `/meet`) | Custom                   | `meet-core/src/meet-call-workspace.tsx` — lobby/room until a later API chunk remounts `MeetWorkspace`            |
+| `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)  |
+| `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                      |
+| `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app |
 
 ## Required imports and CSS
 
@@ -145,16 +150,17 @@ import "@/<product>-core/src/<product>-workspace.css";
 }
 ```
 
-**Storybook** — scope component with layout variants (see `meet-story-scope.tsx`: `root`, `in-call`, `chat-column`, …).
+**Storybook** — scope component with layout variants (see `meet-story-scope.tsx`: `root`, `in-call`, `chat-column`, …). Live `/meet` stories mount `MeetCallWorkspace`.
 
-**Reference:** `packages/apps/src/meet-core/src/meet-workspace.tsx`
+**Reference:** `packages/apps/src/meet-core/src/meet-call-workspace.tsx`
 
 ## Anti-patterns
 
 - **Hand-rolling** split chrome (`<section>`, scroll wrappers, mobile detail translate) when `WorkspaceAppLayout` split props or `WorkspaceApp` already provide it.
 - **Mounting `CollectionListWorkspace` directly** in `*Workspace` instead of going through `WorkspaceApp` (loses sidebar/detail mobile orchestration).
 - **Using split layout for mail/notes-style** list+detail — you lose shared back button, empty states, and mobile view-transition overlay.
-- **Forcing `WorkspaceAppLayout` on meet-style** fullscreen RTC — lobby/room layout is intentionally bespoke.
+- **Keeping the new Meet product shell on Custom** — `MeetWorkspace` is Split (channels + chat + optional call). Custom is only for live `MeetCallWorkspace` (lobby/room) until the `/meet` route flips.
+- **Forcing `WorkspaceAppLayout` on live lobby/room RTC** (`MeetCallWorkspace`) — that chrome stays bespoke until a later API chunk.
 - **Second mobile scrim** beside `AppSidebar` — scrim is rendered inside `AppSidebar` when open.
 - **Navigation in `*-core`** — no `window.location` or router calls; expose `onLogout` / callbacks from `*App` (see workspace skill).
 - **Duplicating `workspace-split-app.css` variables** per product — import the shared sheet and override only on `.<product>-workspace`.
@@ -165,9 +171,9 @@ import "@/<product>-core/src/<product>-workspace.css";
 | ---------- | ------------------------------------------------------------ |
 | Split      | `packages/apps/src/settings-core/src/settings-workspace.tsx` |
 | Collection | `packages/apps/src/mail-core/src/mail-workspace.tsx`         |
-| Custom     | `packages/apps/src/meet-core/src/meet-workspace.tsx`         |
+| Custom     | `packages/apps/src/meet-core/src/meet-call-workspace.tsx`    |
 
-Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `install-workspace.tsx`, `docs-workspace.tsx`.
+Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `install-workspace.tsx`, `docs-workspace.tsx`, `meet-workspace.tsx`.
 
 ### Install-specific deviations
 

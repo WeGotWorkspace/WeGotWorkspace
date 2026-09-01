@@ -69,6 +69,22 @@ describe("CollectionSidebarRow", () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
+  it("renders a leading mark inside the select control", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Ada Lovelace"
+          color="#06b6d4"
+          onSelect={vi.fn()}
+          leading={<span data-testid="dm-avatar">AL</span>}
+        />
+      </ul>,
+    );
+    const select = screen.getByRole("button", { name: "Ada Lovelace" });
+    expect(select.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
+    expect(select.querySelector("[data-testid='dm-avatar']")?.textContent).toBe("AL");
+  });
+
   it("omits the checkbox when onToggleVisibility is not provided", () => {
     render(
       <ul>

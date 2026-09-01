@@ -1,11 +1,11 @@
-const URL_SPLIT_PATTERN = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+import { CHAT_URL_SPLIT_PATTERN } from "@/meet-core/src/meet-chat-urls";
 
 export function formatMeetChatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export function renderMeetChatBody(text: string) {
-  const parts = text.split(URL_SPLIT_PATTERN);
+  const parts = text.split(CHAT_URL_SPLIT_PATTERN);
   return parts.map((part, index) => {
     if (!part) return null;
     const isUrl = /^(?:https?:\/\/|www\.)/i.test(part);

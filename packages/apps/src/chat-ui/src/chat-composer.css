@@ -1,0 +1,42 @@
+@import "../../styles.css" reference;
+
+.chat-composer {
+  @apply flex flex-col;
+}
+
+.chat-composer__card {
+  @apply flex flex-col rounded-xl border;
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 14%, transparent));
+  background-color: var(--chat-surface, var(--color-cream, #fff));
+}
+
+.chat-composer__bar.text-editor-format-bar,
+.chat-composer .text-editor-format-bar {
+  position: static;
+  z-index: auto;
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: 1px solid
+    var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+}
+
+.chat-composer__sheet {
+  @apply min-h-16 px-3 py-2;
+}
+
+.chat-composer__sheet .text-editor-sheet--inline {
+  @apply min-h-12;
+}
+
+.chat-composer__footer {
+  @apply flex items-center justify-end gap-1 px-2 pb-2;
+}
+
+.chat-composer__mentions {
+  @apply px-2 pb-2;
+}
+
+.chat-composer__hint {
+  @apply mt-1.5 text-center text-[11px];
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 48%, transparent));
+}

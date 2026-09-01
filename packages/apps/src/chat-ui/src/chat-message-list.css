@@ -1,0 +1,36 @@
+@import "../../styles.css" reference;
+
+.chat-message-list {
+  @apply flex min-h-0 flex-1 flex-col;
+  background-color: var(--chat-list-surface, transparent);
+}
+
+.chat-message-list__scroll {
+  @apply min-h-0 flex-1 overflow-y-auto py-3;
+}
+
+.chat-message-list__day {
+  @apply relative flex items-center justify-center px-5 py-3;
+}
+
+.chat-message-list__day::before {
+  content: "";
+  @apply pointer-events-none absolute inset-x-5 top-1/2 h-px -translate-y-px;
+  background-color: var(--chat-rule, color-mix(in oklab, var(--color-ink) 12%, transparent));
+}
+
+.chat-message-list__day-label {
+  @apply relative z-10 rounded-full border px-3.5 py-1 text-sm font-medium;
+  background-color: var(--chat-day-bg, var(--chat-list-surface, var(--color-cream, #fff)));
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+}
+
+.chat-message-list__empty {
+  @apply flex flex-1 items-center justify-center px-4 py-12 text-sm;
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+}
+
+.chat-message-list__group {
+  @apply flex flex-col;
+}

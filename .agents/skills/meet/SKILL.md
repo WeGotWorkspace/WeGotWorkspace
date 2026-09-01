@@ -3,6 +3,7 @@ name: meet
 description: Meet video calls and room signaling — Laravel MeetSignalingService, HTTP room session API, meet-core UI, and lib/rtc WebRTC stack. Use when working on meet, rooms, RTC, or collab signaling.
 paths:
   - "packages/apps/src/meet-core/**"
+  - "packages/apps/src/chat-ui/**"
   - "packages/apps/src/lib/rtc/**"
   - "packages/api/app/Services/Meet/**"
   - "packages/api/app/Http/Controllers/Api/V1/Rooms/**"
@@ -46,7 +47,8 @@ pnpm test:meet-api
 
 | Layer | Path |
 |-------|------|
-| App / workspace / panes | `meet-core/src/*-app.tsx`, `meet-workspace`, `meet-*-pane.tsx` |
+| App / workspace / panes | `meet-core/src/*-app.tsx`, `meet-workspace` (Split product), `meet-call-workspace` (live `/meet`), `meet-guest-channel`, `meet-*-pane.tsx` |
+| Shared chat UI | `packages/apps/src/chat-ui/` — `Shared/Chat/*` stories (no RTC) |
 | RTC session wrapper | `meet-core/src/meet-rtc-session.ts`, `use-meet-rtc.ts` |
 | Shared RTC kernel | `lib/rtc/` — `createRtcSession`, `RtcPeerMesh`, `signaling/http-client.ts` |
 
@@ -69,7 +71,14 @@ Debug: `?rtcDebug=1` on URL. Relay-only dev: `?rtcForceRelay=1` or `VITE_WGW_RTC
 
 ## Storybook (mock-tier required)
 
-Use `@/lib/api/mock/meet-bootstrap` — no live signaling in default stories:
+`createMeetAppBootstrap` now includes `channels`, `messages`, `directory` principals, and a static `unfurl` map. Interactive harnesses use stub `createMeetChatOperations` (local state only — no live signaling).
+
+| Surface | What to use |
+|---------|-------------|
+| New product shell | `Apps/Meet` — `MeetWorkspaceStoryHarness` (`meet-workspace.stories.harness.tsx`, stories in `meet-app.stories.tsx`): channels + chat + optional call |
+| Shared chat primitives | `Shared/Chat/*` — message, list, composer, mentions, reactions, link previews, threads (product-agnostic; no RTC, no Meet CSS) |
+| Guest stripped channel | `Apps/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`) |
+| Live `/meet` | `MeetApp` still mounts `MeetCallWorkspace`; boot with `createMeetAppBootstrap` (`meet-app.stories.tsx` / `meet-call-workspace.stories.tsx`) |
 
 ```tsx
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
@@ -79,7 +88,7 @@ export const Default: Story = {
 };
 ```
 
-Reference: `meet-core/stories/meet-app.stories.tsx`. **`Live …`** stories need API + Docker — optional only ([storybook/offline-first.md](../storybook/offline-first.md)).
+Do not call `useMeetRtc` from chat primitives. **`Live …`** stories need API + Docker — optional only ([storybook/offline-first.md](../storybook/offline-first.md)).
 
 ## Operations DI (tech debt)
 

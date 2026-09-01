@@ -21,6 +21,8 @@ export type CollectionSidebarRowProps = {
   editLabel?: string;
   badges?: ReactNode;
   trailing?: ReactNode;
+  /** Optional mark before the name (e.g. kind icon or presence pip). Independent of the color dot. */
+  leading?: ReactNode;
   showColorDot?: boolean;
   /**
    * Extra BEM block applied alongside {@link COLLECTION_SIDEBAR_ROW_BLOCK}.
@@ -78,6 +80,7 @@ export function CollectionSidebarRow({
   editLabel = "Edit",
   badges,
   trailing,
+  leading,
   showColorDot = false,
   blockName = COLLECTION_SIDEBAR_ROW_BLOCK,
   className,
@@ -113,6 +116,11 @@ export function CollectionSidebarRow({
         <span className={bem(blocks, "__dot")} aria-hidden />
       ) : null}
       <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
+        {leading ? (
+          <span className={bem(blocks, "__leading")} aria-hidden>
+            {leading}
+          </span>
+        ) : null}
         <span className={bem(blocks, "__title")}>
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
