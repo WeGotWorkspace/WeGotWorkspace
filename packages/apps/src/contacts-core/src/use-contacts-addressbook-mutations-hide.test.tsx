@@ -48,66 +48,43 @@ describe("useContactsAddressBookMutations", () => {
     mockShowError.mockReset();
   });
 
-  it("opens a share-only dialog for owners and sharees", () => {
+  it("hides a sharee book via isSubscribed false", async () => {
+    const patchAddressBook = vi.fn().mockResolvedValue({ ...sharedBook, isSubscribed: false });
+    const selectView = vi.fn();
     const { result } = renderHook(() =>
       useContactsAddressBookMutations({
         labels: defaultContactsLabels,
         addressBooks: [ownerBook, sharedBook],
-        view: "all",
-        selectView: vi.fn(),
-        operations: { patchAddressBook: vi.fn() },
+        view: "book:shared-42",
+        selectView,
+        operations: { patchAddressBook },
       }),
     );
 
-    act(() => {
-      result.current.openEditAddressBookDialog(ownerBook);
-    });
-    expect(result.current.addressBookDialog).toMatchObject({
-      bookId: "default",
-      name: "Personal",
-      mayShare: true,
-      isSharee: false,
+    await act(async () => {
+      await result.current.hideSharedAddressBook("shared-42");
     });
 
-    act(() => {
-      result.current.openEditAddressBookDialog(sharedBook);
-    });
-    expect(result.current.addressBookDialog).toMatchObject({
-      bookId: "shared-42",
-      mayShare: false,
-      isSharee: true,
-    });
+    expect(patchAddressBook).toHaveBeenCalledWith("shared-42", { isSubscribed: false });
+    expect(result.current.books.map((book) => book.id)).toEqual(["default"]);
+    expect(selectView).toHaveBeenCalledWith("all");
+    expect(mockShow).toHaveBeenCalledWith(defaultContactsLabels.toastAddressBookShareRemoved);
   });
 
-  it("patches shareWith through optional patchAddressBook", async () => {
-    const patchAddressBook = vi.fn().mockResolvedValue({
-      ...ownerBook,
-      shareWith: { alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false } },
-    });
+  it("throws the offline label when patchAddressBook is missing", async () => {
     const { result } = renderHook(() =>
       useContactsAddressBookMutations({
         labels: defaultContactsLabels,
         addressBooks: [ownerBook],
         view: "all",
         selectView: vi.fn(),
-        operations: { patchAddressBook },
       }),
     );
 
-    act(() => {
-      result.current.openEditAddressBookDialog(ownerBook);
-    });
-    await act(async () => {
-      await result.current.patchShareWith("default", {
-        alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
-      });
-    });
-
-    expect(patchAddressBook).toHaveBeenCalledWith("default", {
-      shareWith: { alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false } },
-    });
-    expect(result.current.addressBookDialog?.shareWith).toEqual({
-      alice: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
-    });
+    await expect(
+      result.current.patchShareWith("default", {
+        alice: { mayRead: true, mayWrite: false },
+      }),
+    ).rejects.toThrow(defaultContactsLabels.shareAddressBookOffline);
   });
 });
