@@ -5,6 +5,7 @@ import { ListItem } from "@/list-item/src/list-item";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
@@ -110,7 +111,12 @@ export function ContactsListPanel({
             <LoadingSpinner size="lg" label={L.listLoading} />
           </div>
         ) : (
-          <WorkspaceSwipeList isTouch={isTouch}>
+          <WorkspaceSwipeList
+            isTouch={isTouch}
+            onItemClick={handleSelect}
+            onItemLongPress={enterSelectionFor}
+            {...bindItemDragHandlers(itemDragHandlers)}
+          >
             {groupContactCardsBySection(visibleCards).map((section) => (
               <section key={section.letter} aria-labelledby={`contacts-section-${section.letter}`}>
                 <div
@@ -120,10 +126,6 @@ export function ContactsListPanel({
                   {section.letter}
                 </div>
                 {section.cards.map((card) => {
-                  const dragHandlers = itemDragHandlers(card.id) as {
-                    onDragStart?: () => void;
-                    onDragEnd?: () => void;
-                  };
                   const name = contactDisplayName(card);
                   const isPendingSync = pendingCardIds?.has(card.id) ?? false;
                   return (
@@ -161,11 +163,6 @@ export function ContactsListPanel({
                       selectionMode={selectionMode}
                       isTouch={isTouch}
                       isDragging={isItemDragging(card.id)}
-                      onClick={(e: ReactMouseEvent) => handleSelect(card.id, e)}
-                      onLongPress={() => enterSelectionFor(card.id)}
-                      {...dragHandlers}
-                      onDragStart={dragHandlers.onDragStart ?? (() => {})}
-                      onDragEnd={dragHandlers.onDragEnd ?? (() => {})}
                       emptyTitle={L.unknownContact}
                       {...(isTouch
                         ? selectedGroupId

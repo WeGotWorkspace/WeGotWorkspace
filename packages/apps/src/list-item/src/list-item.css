@@ -8,6 +8,11 @@
     color-mix(in oklab, var(--color-ink) 10%, transparent)
   );
   outline-color: var(--list-item-accent-color, var(--color-emerald));
+  /* Skip layout/paint for off-screen rows. `auto` keeps the last painted size;
+     the fallback only matters before first render. Parents override via
+     `--list-item-intrinsic-block-size`. */
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto var(--list-item-intrinsic-block-size, 5.5rem);
   transition:
     padding 180ms ease,
     background-color 150ms ease;

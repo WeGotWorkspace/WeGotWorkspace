@@ -38,6 +38,7 @@ import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-righ
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-list-panel.css";
@@ -204,12 +205,13 @@ export function NotesListPanel({
       </div>
     ) : (
       <div ref={listRef} className="notes-list-panel__list">
-        <WorkspaceSwipeList isTouch={isTouch}>
+        <WorkspaceSwipeList
+          isTouch={isTouch}
+          onItemClick={handleSelect}
+          onItemLongPress={enterSelectionFor}
+          {...bindItemDragHandlers(itemDragHandlers)}
+        >
           {visibleNotes.map((note) => {
-            const dragHandlers = itemDragHandlers(note.id) as {
-              onDragStart?: () => void;
-              onDragEnd?: () => void;
-            };
             const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
             const multiSelect = selectionMode || selectedIds.length > 1;
             // Single-select UI: open row = activeId ∩ selectedIds (stale activeId
@@ -302,11 +304,6 @@ export function NotesListPanel({
                 selectionMode={selectionMode}
                 isTouch={isTouch}
                 isDragging={isItemDragging(note.id)}
-                onClick={(e: ReactMouseEvent) => handleSelect(note.id, e)}
-                onLongPress={() => enterSelectionFor(note.id)}
-                {...dragHandlers}
-                onDragStart={dragHandlers.onDragStart ?? (() => {})}
-                onDragEnd={dragHandlers.onDragEnd ?? (() => {})}
                 {...(isTouch
                   ? {
                       ...(showStar

@@ -53,6 +53,13 @@ describe("ListItem metaPosition", () => {
     expect(container.querySelector(".list-item__body")).toBeNull();
   });
 
+  it("keeps standalone click handlers when the list parent does not delegate", () => {
+    const onClick = vi.fn();
+    const { getByRole } = render(<ListItem {...baseProps} onClick={onClick} />);
+    getByRole("button").click();
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
   it("renders ReactNode body content such as tags", () => {
     const { container } = render(
       <ListItem

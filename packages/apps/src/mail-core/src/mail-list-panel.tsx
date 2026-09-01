@@ -4,6 +4,7 @@ import { Archive, Circle, Star } from "lucide-react";
 import { CollectionListEnd } from "@/collection-layout/src/collection-list-end";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ListItem } from "@/list-item/src/list-item";
+import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import type { Mail } from "@/types/mail";
@@ -83,12 +84,14 @@ export function MailListPanel({
       </div>
     ) : (
       <>
-        <WorkspaceSwipeList isTouch={isTouch}>
+        <WorkspaceSwipeList
+          isTouch={isTouch}
+          onItemClick={handleSelect}
+          onItemDoubleClick={handleDoubleClick}
+          onItemLongPress={enterSelectionFor}
+          {...bindItemDragHandlers(itemDragHandlers)}
+        >
           {visibleMail.map((m) => {
-            const dragHandlers = itemDragHandlers(m.id) as {
-              onDragStart?: () => void;
-              onDragEnd?: () => void;
-            };
             return (
               <ListItem
                 key={m.id}
@@ -114,12 +117,6 @@ export function MailListPanel({
                 selectionMode={selectionMode}
                 isTouch={isTouch}
                 isDragging={isItemDragging(m.id)}
-                onClick={(e: ReactMouseEvent) => handleSelect(m.id, e)}
-                onDoubleClick={(e: ReactMouseEvent) => handleDoubleClick(m.id, e)}
-                onLongPress={() => enterSelectionFor(m.id)}
-                {...dragHandlers}
-                onDragStart={dragHandlers.onDragStart ?? (() => {})}
-                onDragEnd={dragHandlers.onDragEnd ?? (() => {})}
                 {...(isTouch
                   ? {
                       swipeLeftAction: {

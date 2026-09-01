@@ -6,6 +6,8 @@ import {
   TrailingActions,
   LeadingActions,
 } from "react-swipeable-list";
+import { useListItemEventDelegation } from "@/list-item/src/list-item-delegation";
+import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
 import "./list-item.css";
 
 export type SwipeAction = {
@@ -45,11 +47,11 @@ type ListItemProps = {
   selectionMode: boolean;
   isTouch: boolean;
   isDragging: boolean;
-  onClick: (e: React.MouseEvent) => void;
+  onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
-  onLongPress: () => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
+  onLongPress?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   swipeLeftAction?: SwipeAction;
   swipeRightAction?: SwipeAction;
   emptyTitle?: string;
@@ -70,7 +72,6 @@ const defaultTheme: ListItemTheme = {
   bodyColor: "color-mix(in oklab, var(--color-ink) 60%, transparent)",
 };
 
-const LONG_PRESS_DELAY_MS = 450;
 const TOUCH_MOVE_CANCEL_PX = 8;
 const DESTRUCTIVE_CALLBACK_DELAY_MS = 380;
 
@@ -112,6 +113,7 @@ export function ListItem({
   theme,
   leading,
 }: ListItemProps) {
+  const delegated = useListItemEventDelegation();
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
   const bodyContent = text || (!title ? emptyText : null);
@@ -127,9 +129,9 @@ export function ListItem({
     longPressTimer.current = setTimeout(() => {
       if (longPressBlockedBySwipeRef.current) return;
       longPressFired.current = true;
-      onLongPress();
+      onLongPress?.();
       if ("vibrate" in navigator) navigator.vibrate?.(15);
-    }, LONG_PRESS_DELAY_MS);
+    }, LIST_ITEM_LONG_PRESS_DELAY_MS);
   };
 
   const cancelLongPress = () => {
@@ -157,33 +159,47 @@ export function ListItem({
       data-selected={isSelected ? "true" : "false"}
       data-selection-mode={selectionMode ? "true" : "false"}
       data-dragging={isDragging ? "true" : "false"}
-      onClick={(e) => {
-        if (longPressFired.current || longPressBlockedBySwipeRef.current) {
-          e.preventDefault();
-          return;
-        }
-        onClick(e);
-      }}
-      onDoubleClick={(e) => {
-        onDoubleClick?.(e);
-      }}
-      onMouseDown={(e) => {
-        if (e.shiftKey) e.preventDefault();
-      }}
-      onTouchStart={isTouch ? startLongPress : undefined}
-      onTouchEnd={resetTouchIntent}
-      onTouchCancel={resetTouchIntent}
-      onTouchMove={handleTouchMove}
-      onContextMenu={(e) => {
-        if (isTouch) e.preventDefault();
-      }}
+      onClick={
+        delegated
+          ? undefined
+          : (e) => {
+              if (longPressFired.current || longPressBlockedBySwipeRef.current) {
+                e.preventDefault();
+                return;
+              }
+              onClick?.(e);
+            }
+      }
+      onDoubleClick={delegated ? undefined : onDoubleClick}
+      onMouseDown={
+        delegated
+          ? undefined
+          : (e) => {
+              if (e.shiftKey) e.preventDefault();
+            }
+      }
+      onTouchStart={!delegated && isTouch ? startLongPress : undefined}
+      onTouchEnd={!delegated ? resetTouchIntent : undefined}
+      onTouchCancel={!delegated ? resetTouchIntent : undefined}
+      onTouchMove={!delegated ? handleTouchMove : undefined}
+      onContextMenu={
+        delegated
+          ? undefined
+          : (e) => {
+              if (isTouch) e.preventDefault();
+            }
+      }
       draggable={!isTouch}
-      onDragStart={(e) => {
-        onDragStart();
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", id);
-      }}
-      onDragEnd={onDragEnd}
+      onDragStart={
+        delegated
+          ? undefined
+          : (e) => {
+              onDragStart?.();
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", id);
+            }
+      }
+      onDragEnd={delegated ? undefined : onDragEnd}
       className={`list-item__button${leading ? " list-item__button--with-leading" : ""}`}
       style={themeVars}
     >
