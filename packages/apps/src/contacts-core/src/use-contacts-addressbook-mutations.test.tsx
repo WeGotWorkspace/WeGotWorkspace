@@ -42,6 +42,9 @@ const sharedBook: ContactsAddressBookRow = {
   myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
 };
 
+const ownerAndShared = [ownerBook, sharedBook];
+const ownerOnly = [ownerBook];
+
 describe("useContactsAddressBookMutations", () => {
   beforeEach(() => {
     mockShow.mockReset();
@@ -52,7 +55,7 @@ describe("useContactsAddressBookMutations", () => {
     const { result } = renderHook(() =>
       useContactsAddressBookMutations({
         labels: defaultContactsLabels,
-        addressBooks: [ownerBook, sharedBook],
+        addressBooks: ownerAndShared,
         view: "all",
         selectView: vi.fn(),
         operations: { patchAddressBook: vi.fn() },
@@ -87,7 +90,7 @@ describe("useContactsAddressBookMutations", () => {
     const { result } = renderHook(() =>
       useContactsAddressBookMutations({
         labels: defaultContactsLabels,
-        addressBooks: [ownerBook],
+        addressBooks: ownerOnly,
         view: "all",
         selectView: vi.fn(),
         operations: { patchAddressBook },

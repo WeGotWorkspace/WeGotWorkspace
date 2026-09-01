@@ -33,6 +33,40 @@ vi.mock("@/hooks/use-is-touch", () => ({
 
 const bootstrap = createContactsAppBootstrap();
 
+const sharedViewOnlyBook = {
+  id: "shared-42",
+  name: "Alice",
+  description: null,
+  sortOrder: 2,
+  isDefault: false,
+  isSubscribed: true,
+  isSharee: true,
+  shareWith: null,
+  myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
+};
+
+const viewOnlyGroup = {
+  ...bootstrap.data.cards.find((card) => card.id === "card-group-friends")!,
+  id: "card-group-shared",
+  addressBookIds: { "shared-42": true as const },
+};
+
+const sharedCard = {
+  ...bootstrap.data.cards[0],
+  id: "card-shared",
+  addressBookIds: { "shared-42": true as const },
+};
+
+const viewOnlyGroupData = {
+  addressBooks: [...bootstrap.data.addressBooks, sharedViewOnlyBook],
+  cards: [...bootstrap.data.cards, viewOnlyGroup],
+};
+
+const shareeBookData = {
+  addressBooks: [...bootstrap.data.addressBooks, sharedViewOnlyBook],
+  cards: [...bootstrap.data.cards, sharedCard],
+};
+
 describe("useContactsController groups", () => {
   it("hides group cards from the default address book list", () => {
     const { result } = renderHook(() =>
@@ -71,30 +105,9 @@ describe("useContactsController groups", () => {
   });
 
   it("disables New when the selected group lives in a view-only book", () => {
-    const viewOnlyGroup = {
-      ...bootstrap.data.cards.find((card) => card.id === "card-group-friends")!,
-      id: "card-group-shared",
-      addressBookIds: { "shared-42": true as const },
-    };
     const { result } = renderHook(() =>
       useContactsController({
-        data: {
-          addressBooks: [
-            ...bootstrap.data.addressBooks,
-            {
-              id: "shared-42",
-              name: "Alice",
-              description: null,
-              sortOrder: 2,
-              isDefault: false,
-              isSubscribed: true,
-              isSharee: true,
-              shareWith: null,
-              myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
-            },
-          ],
-          cards: [...bootstrap.data.cards, viewOnlyGroup],
-        },
+        data: viewOnlyGroupData,
         listLoading: false,
       }),
     );
@@ -108,30 +121,9 @@ describe("useContactsController groups", () => {
   });
 
   it("treats sharee books as shared-N and disables create when mayWrite is false", () => {
-    const sharedCard = {
-      ...bootstrap.data.cards[0],
-      id: "card-shared",
-      addressBookIds: { "shared-42": true as const },
-    };
     const { result } = renderHook(() =>
       useContactsController({
-        data: {
-          addressBooks: [
-            ...bootstrap.data.addressBooks,
-            {
-              id: "shared-42",
-              name: "Alice",
-              description: null,
-              sortOrder: 2,
-              isDefault: false,
-              isSubscribed: true,
-              isSharee: true,
-              shareWith: null,
-              myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
-            },
-          ],
-          cards: [...bootstrap.data.cards, sharedCard],
-        },
+        data: shareeBookData,
         listLoading: false,
       }),
     );

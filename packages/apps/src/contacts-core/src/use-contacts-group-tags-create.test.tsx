@@ -49,6 +49,43 @@ const administratorsBook = {
   sortOrder: 3,
 };
 
+const sameBookAdminUid = "urn:uuid:550e8400-e29b-41d4-a716-446655440301";
+const sameBookAdministratorsUid = "urn:uuid:550e8400-e29b-41d4-a716-446655440302";
+const sameBookMembersData = {
+  addressBooks: [...bootstrap.data.addressBooks, adminBook, administratorsBook],
+  cards: [
+    ...bootstrap.data.cards,
+    {
+      "@type": "Card" as const,
+      version: "1.0",
+      id: "card-group-admin",
+      uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440300",
+      kind: "group" as const,
+      addressBookIds: { "group-admin": true as const },
+      name: { "@type": "Name" as const, isOrdered: false, full: "Admin leads" },
+      members: {},
+    },
+    {
+      "@type": "Card" as const,
+      version: "1.0",
+      id: "card-admin-lead",
+      uid: sameBookAdminUid,
+      kind: "individual" as const,
+      addressBookIds: { "group-admin": true as const },
+      name: { "@type": "Name" as const, isOrdered: false, full: "Pat Admin" },
+    },
+    {
+      "@type": "Card" as const,
+      version: "1.0",
+      id: "card-admins-lead",
+      uid: sameBookAdministratorsUid,
+      kind: "individual" as const,
+      addressBookIds: { "group-administrators": true as const },
+      name: { "@type": "Name" as const, isOrdered: false, full: "Ada Administrators" },
+    },
+  ],
+} as ContactsUIData;
+
 function selectContact(
   result: { current: ReturnType<typeof useContactsController> },
   id: string,
@@ -160,44 +197,9 @@ describe("useContactsController group tag create", () => {
   });
 
   it("addMembersToGroup allows same-book and ignores a cross-book Administrators contact", () => {
-    const adminUid = "urn:uuid:550e8400-e29b-41d4-a716-446655440301";
-    const administratorsUid = "urn:uuid:550e8400-e29b-41d4-a716-446655440302";
     const { result } = renderHook(() =>
       useContactsController({
-        data: {
-          addressBooks: [...bootstrap.data.addressBooks, adminBook, administratorsBook],
-          cards: [
-            ...bootstrap.data.cards,
-            {
-              "@type": "Card" as const,
-              version: "1.0",
-              id: "card-group-admin",
-              uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440300",
-              kind: "group" as const,
-              addressBookIds: { "group-admin": true as const },
-              name: { "@type": "Name" as const, isOrdered: false, full: "Admin leads" },
-              members: {},
-            },
-            {
-              "@type": "Card" as const,
-              version: "1.0",
-              id: "card-admin-lead",
-              uid: adminUid,
-              kind: "individual" as const,
-              addressBookIds: { "group-admin": true as const },
-              name: { "@type": "Name" as const, isOrdered: false, full: "Pat Admin" },
-            },
-            {
-              "@type": "Card" as const,
-              version: "1.0",
-              id: "card-admins-lead",
-              uid: administratorsUid,
-              kind: "individual" as const,
-              addressBookIds: { "group-administrators": true as const },
-              name: { "@type": "Name" as const, isOrdered: false, full: "Ada Administrators" },
-            },
-          ],
-        },
+        data: sameBookMembersData,
         listLoading: false,
       }),
     );
@@ -206,7 +208,9 @@ describe("useContactsController group tag create", () => {
       result.current.addMembersToGroup("card-group-admin", ["card-admin-lead"]);
     });
     expect(
-      result.current.cards.find((card) => card.id === "card-group-admin")?.members?.[adminUid],
+      result.current.cards.find((card) => card.id === "card-group-admin")?.members?.[
+        sameBookAdminUid
+      ],
     ).toBe(true);
 
     act(() => {
@@ -214,7 +218,7 @@ describe("useContactsController group tag create", () => {
     });
     expect(
       result.current.cards.find((card) => card.id === "card-group-admin")?.members?.[
-        administratorsUid
+        sameBookAdministratorsUid
       ],
     ).toBeUndefined();
   });

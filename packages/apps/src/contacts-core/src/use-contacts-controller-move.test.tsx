@@ -32,6 +32,34 @@ vi.mock("@/hooks/use-is-touch", () => ({
 
 const bootstrap = createContactsAppBootstrap();
 
+const inboundShareBook = {
+  id: "shared-42",
+  name: "Alice",
+  description: null,
+  sortOrder: 2,
+  isDefault: false,
+  isSubscribed: true,
+  isSharee: true,
+  shareWith: null,
+  myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
+};
+
+const dataWithInboundShare = {
+  ...bootstrap.data,
+  addressBooks: [...bootstrap.data.addressBooks, inboundShareBook],
+};
+
+const inboundShareOnlyData = {
+  addressBooks: [
+    {
+      ...inboundShareBook,
+      sortOrder: 0,
+      myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
+    },
+  ],
+  cards: [],
+};
+
 describe("useContactsController create and move", () => {
   it("creates a group card in the picked writable address book", () => {
     const { result } = renderHook(() =>
@@ -55,23 +83,7 @@ describe("useContactsController create and move", () => {
   it("does not create a group in an inbound share", () => {
     const { result } = renderHook(() =>
       useContactsController({
-        data: {
-          ...bootstrap.data,
-          addressBooks: [
-            ...bootstrap.data.addressBooks,
-            {
-              id: "shared-42",
-              name: "Alice",
-              description: null,
-              sortOrder: 2,
-              isDefault: false,
-              isSubscribed: true,
-              isSharee: true,
-              shareWith: null,
-              myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
-            },
-          ],
-        },
+        data: dataWithInboundShare,
         listLoading: false,
       }),
     );
@@ -86,22 +98,7 @@ describe("useContactsController create and move", () => {
   it("hides create-group when only inbound shares are available", () => {
     const { result } = renderHook(() =>
       useContactsController({
-        data: {
-          addressBooks: [
-            {
-              id: "shared-42",
-              name: "Alice",
-              description: null,
-              sortOrder: 0,
-              isDefault: false,
-              isSubscribed: true,
-              isSharee: true,
-              shareWith: null,
-              myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
-            },
-          ],
-          cards: [],
-        },
+        data: inboundShareOnlyData,
         listLoading: false,
       }),
     );
