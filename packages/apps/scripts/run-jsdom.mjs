@@ -6,7 +6,7 @@
  * Files are grouped by `src/<pkg>/` (sorted keys, sorted files). Package `p`
  * starts at shard `p % N`; its files go to `(p + idx) % N`. That spreads
  * one-file packages instead of pinning every singleton on shard 1.
- * Heap-heavy RTL files (`use-calendar-controller*`, `use-contacts-controller*`,
+ * Heap-heavy RTL files (`use-calendar-controller*`, `use-contacts-*`,
  * `contacts-detail-view`, `workspace-live-app-shell`) each get a dedicated
  * process after the packed shards.
  * `JSDOM_SHARDS` (default 24) is the growth lever — do not raise the heap.
@@ -82,7 +82,7 @@ function packageKey(relFile) {
  * @returns {boolean}
  */
 function isSoloFile(relFile) {
-  return /(?:^|\/)(?:use-calendar-controller[^/]*|use-contacts-controller[^/]*|contacts-detail-view|workspace-live-app-shell)\.test\.tsx$/.test(
+  return /(?:^|\/)(?:use-calendar-controller[^/]*|use-contacts-[^/]*|contacts-detail-view|workspace-live-app-shell)\.test\.tsx$/.test(
     relFile,
   );
 }
