@@ -69,6 +69,7 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
     retry,
     successVersion,
     listLoading,
+    listRefreshing,
     refreshList,
     data,
     session,
@@ -318,6 +319,7 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
             session={session}
             operations={operations}
             listLoading={listLoading}
+            listRefreshing={listRefreshing}
             onRefreshList={refreshList}
             initialView={initialView}
             initialContactId={initialContactId}

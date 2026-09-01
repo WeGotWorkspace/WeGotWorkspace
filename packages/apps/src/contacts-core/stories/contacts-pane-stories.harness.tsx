@@ -27,6 +27,7 @@ export function resetContactsStorySpies() {
 
 export type ContactsPaneStoryHarnessOptions = {
   listLoading?: boolean;
+  listRefreshing?: boolean;
   cardsOverride?: ContactCard[];
   data?: ContactsUIData;
   operations?: ContactsAPIOperations;
@@ -108,6 +109,7 @@ export function useContactsPaneStoryController(options?: ContactsPaneStoryHarnes
   return useContactsController({
     data: bootstrap.data,
     listLoading: options?.listLoading ?? false,
+    listRefreshing: options?.listRefreshing ?? false,
     operations,
   });
 }

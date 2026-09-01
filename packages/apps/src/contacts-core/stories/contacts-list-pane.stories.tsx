@@ -90,7 +90,7 @@ function ContactsListPaneHarness({
     preset === "empty"
       ? { cardsOverride: [] }
       : preset === "loading"
-        ? { listLoading: true }
+        ? { listLoading: true, cardsOverride: [] }
         : visibleCards
           ? { cardsOverride: visibleCards }
           : undefined,
@@ -122,6 +122,7 @@ function ContactsListPaneHarness({
     selectedIds: controller.selectedIds,
     selectionMode: controller.selectionMode || controller.selectedIds.length > 1,
     listLoading: controller.listLoading,
+    listRefreshing: controller.listRefreshing,
     visibleCards: visibleCards ?? controller.visibleCards,
     searchQuery: controller.searchQuery,
     setSearchQuery: controller.setSearchQuery,

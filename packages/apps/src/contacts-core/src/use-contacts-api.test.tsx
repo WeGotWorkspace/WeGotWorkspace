@@ -36,8 +36,10 @@ vi.mock("@/lib/offline/contacts-hybrid-operations", () => ({
   getContactsSyncRunner: () => ({ flush: mockFlush }),
 }));
 
+let mockReconnectSyncing = false;
+
 vi.mock("@/lib/offline/use-offline-reconnect-flush", () => ({
-  useOfflineReconnectFlush: () => false,
+  useOfflineReconnectFlush: () => mockReconnectSyncing,
 }));
 
 vi.mock("@/hooks/use-connectivity", () => ({
@@ -93,9 +95,10 @@ describe("useContactsAPI", () => {
     stopPolling.mockReset();
     initialize.mockResolvedValue(undefined);
     mockLiveApi = false;
+    mockReconnectSyncing = false;
   });
 
-  it("refreshList reloads bootstrap and patches workspace data", async () => {
+  it("refreshList reloads bootstrap without flipping list loading", async () => {
     const source: ContactsApiSource = {
       loadBootstrap: mockLoadBootstrap,
       createOperations: () => undefined,
@@ -107,15 +110,31 @@ describe("useContactsAPI", () => {
       result.current.refreshList();
     });
 
-    expect(result.current.listLoading).toBe(true);
+    expect(result.current.listLoading).toBe(false);
+    expect(result.current.listRefreshing).toBe(true);
 
     await waitFor(() => {
-      expect(result.current.listLoading).toBe(false);
+      expect(result.current.listRefreshing).toBe(false);
     });
 
     expect(mockLoadBootstrap).toHaveBeenCalledTimes(1);
     expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
     expect(mockPatchBootstrap.mock.calls[0]?.[0]()).toEqual(bootstrap);
+    expect(result.current.listLoading).toBe(false);
+  });
+
+  it("reconnect with cached cards keeps listLoading false", () => {
+    mockReconnectSyncing = true;
+    const source: ContactsApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useContactsAPI(source));
+
+    expect(result.current.data.cards.length).toBeGreaterThan(0);
+    expect(result.current.listLoading).toBe(false);
+    expect(result.current.listRefreshing).toBe(true);
   });
 
   it("starts one inbound JMAP poll loop after initialize", async () => {

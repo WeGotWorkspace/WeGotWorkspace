@@ -26,6 +26,7 @@ type ContactsListPanelProps = {
   selectedIds: string[];
   selectionMode: boolean;
   listLoading: boolean;
+  listRefreshing?: boolean;
   visibleCards: ContactCard[];
   searchQuery: string;
   setSearchQuery: (value: string) => void;
@@ -54,6 +55,7 @@ export function ContactsListPanel({
   selectedIds,
   selectionMode,
   listLoading,
+  listRefreshing = false,
   visibleCards,
   searchQuery,
   setSearchQuery,
@@ -86,9 +88,9 @@ export function ContactsListPanel({
             <IconButton
               label={L.refreshList}
               onClick={onRefreshList}
-              disabled={listLoading}
+              disabled={listLoading || listRefreshing}
               icon={
-                <RefreshCw className={cn("size-4", listLoading && "animate-spin")} aria-hidden />
+                <RefreshCw className={cn("size-4", listRefreshing && "animate-spin")} aria-hidden />
               }
               size="sm"
               variant="subtle"
@@ -150,6 +152,8 @@ export function ContactsListPanel({
                           compact
                           size="sm"
                           className="contacts-list-panel__avatar"
+                          loading="lazy"
+                          decoding="async"
                         />
                       }
                       isActive={card.id === activeId}

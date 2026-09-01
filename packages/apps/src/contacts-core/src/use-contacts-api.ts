@@ -167,7 +167,10 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     error,
     retry: load,
     successVersion,
-    listLoading: phase === "loading" || listRefreshing || reconnectSyncing,
+    // First paint only. Refresh / reconnect keep cached cards and use listRefreshing
+    // (header icon) — same split as Notes.
+    listLoading: phase === "loading",
+    listRefreshing: listRefreshing || reconnectSyncing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

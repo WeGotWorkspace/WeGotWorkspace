@@ -79,6 +79,8 @@ type UseContactsControllerArgs = {
   data: ContactsUIData;
   labels?: Partial<ContactsUILabels>;
   listLoading?: boolean;
+  /** Header refresh busy — does not empty the list when cards are already shown. */
+  listRefreshing?: boolean;
   operations?: ContactsAPIOperations;
   /** Refetch cards after vCard import so group membership resolves against the full list. */
   onRefreshList?: () => void;
@@ -180,6 +182,7 @@ export function useContactsController({
   data,
   labels,
   listLoading = false,
+  listRefreshing = false,
   operations,
   onRefreshList,
   initialView,
@@ -1394,7 +1397,8 @@ export function useContactsController({
     searchQuery,
     searchInputRef,
     workspaceLayoutRef,
-    listLoading,
+    listLoading: listLoading && cards.length === 0,
+    listRefreshing,
     isTouch,
     editMode,
     createMode,
