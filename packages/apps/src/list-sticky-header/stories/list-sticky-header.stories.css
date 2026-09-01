@@ -1,4 +1,4 @@
-@import "../../../styles.css" reference;
+@import "../../styles.css" reference;
 
 .list-sticky-header-story-scroll {
   @apply h-80 max-w-md overflow-y-auto border;
