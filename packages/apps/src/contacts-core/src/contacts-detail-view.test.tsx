@@ -8,9 +8,16 @@ import {
   phonesAfterNumberChange,
   urlsAfterUriChange,
 } from "./contact-channel-commit";
+import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsDetailView } from "./contacts-detail-view";
 import { defaultContactsLabels } from "./contacts-labels";
-import { emptyContactEditDraft, type ContactEditDraft } from "./contacts-edit-utils";
+import {
+  contactCardToEditDraft,
+  editDraftToPatch,
+  emptyContactEditDraft,
+  type ContactEditDraft,
+} from "./contacts-edit-utils";
+import { mergeContactFromPatch } from "./contacts-patch-merge";
 import type { ContactCard } from "./contacts-types";
 
 afterEach(() => {
@@ -121,6 +128,7 @@ function EditableDetailHarness({
           }))
         }
       />
+      <output data-testid="draft-birthday">{editDraft.birthday}</output>
       <output data-testid="draft-phones">{String(editDraft.phones.length)}</output>
       <output data-testid="draft-emails">{String(editDraft.emails.length)}</output>
       <output data-testid="draft-addresses">{String(editDraft.addresses.length)}</output>
@@ -285,6 +293,7 @@ const personWithIdentity = {
   uid: "urn:uuid:ada",
   kind: "individual",
   name: { full: "Ada Lovelace" },
+  addressBookIds: { default: true },
   titles: {
     "title-1": { "@type": "Title", kind: "title", name: "Mathematician" },
   },
@@ -324,6 +333,11 @@ describe("ContactsDetailView identity header", () => {
     const identity = container.querySelector(".contacts-detail-view__identity");
     expect(identity).toBeTruthy();
     expect(identity?.querySelector(".user-avatar--xl")).toBeTruthy();
+    expect(
+      (
+        identity?.querySelector(".contacts-user-avatar") as HTMLElement | null
+      )?.style.getPropertyValue("--contacts-book-color"),
+    ).toBe(addressBookDotColor({ id: "default" }));
     expect(identity?.querySelector(".contacts-detail-view__heading")).toBeTruthy();
     expect(identity?.querySelector(".contacts-detail-view__title")?.textContent).toBe(
       "Ada Lovelace",
@@ -512,5 +526,147 @@ describe("ContactsDetailView group tags", () => {
 
     expect(container.querySelector(".contacts-detail-view__tag-group")).toBeNull();
     expect(container.querySelector(".tag-group")).toBeNull();
+  });
+});
+
+const janeWithBirthday = {
+  "@type": "Card",
+  version: "1.0",
+  id: "card-jane-bday",
+  uid: "urn:uuid:jane-bday",
+  kind: "individual",
+  name: { full: "Jane Doe" },
+  addressBookIds: { default: true },
+  anniversaries: {
+    "bday-1": {
+      "@type": "Anniversary",
+      kind: "birth",
+      date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
+    },
+  },
+} as unknown as ContactCard;
+
+describe("ContactsDetailView birthday field", () => {
+  it("renders a date picker in edit mode and writes the draft", () => {
+    function BirthdayEditHarness() {
+      const [editDraft, setEditDraft] = useState(() => contactCardToEditDraft(janeWithBirthday));
+      return (
+        <TooltipProvider delayDuration={0}>
+          <ContactsDetailView
+            labels={defaultContactsLabels}
+            card={janeWithBirthday}
+            createMode={false}
+            editMode
+            editDraft={editDraft}
+            displayName="Jane Doe"
+            {...viewModeHandlers}
+            onDraftChange={(patch) => setEditDraft((prev) => ({ ...prev, ...patch }))}
+          />
+          <output data-testid="draft-birthday">{editDraft.birthday}</output>
+        </TooltipProvider>
+      );
+    }
+
+    render(<BirthdayEditHarness />);
+    const field = screen.getByLabelText(defaultContactsLabels.sectionBirthday);
+    expect((field as HTMLInputElement).type).toBe("date");
+    expect((field as HTMLInputElement).value).toBe("1985-04-23");
+    fireEvent.change(field, { target: { value: "1991-07-04" } });
+    expect((field as HTMLInputElement).value).toBe("1991-07-04");
+    expect(screen.getByTestId("draft-birthday").textContent).toBe("1991-07-04");
+  });
+
+  it("shows a formatted birthday in read mode without a date input", () => {
+    render(
+      <ContactsDetailView
+        labels={defaultContactsLabels}
+        card={janeWithBirthday}
+        createMode={false}
+        editMode={false}
+        editDraft={null}
+        displayName="Jane Doe"
+        {...viewModeHandlers}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(screen.getByText(/1985/)).toBeTruthy();
+  });
+
+  it("clears birthday then survives toggling edit off and on", () => {
+    function BirthdayToggleHarness() {
+      const [card, setCard] = useState(janeWithBirthday);
+      const [editMode, setEditMode] = useState(true);
+      const [editDraft, setEditDraft] = useState(() => contactCardToEditDraft(janeWithBirthday));
+
+      return (
+        <TooltipProvider delayDuration={0}>
+          <ContactsDetailView
+            labels={defaultContactsLabels}
+            card={card}
+            createMode={false}
+            editMode={editMode}
+            editDraft={editDraft}
+            displayName="Jane Doe"
+            {...viewModeHandlers}
+            onDraftChange={(patch) => setEditDraft((prev) => (prev ? { ...prev, ...patch } : prev))}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (editMode && editDraft) {
+                const merged = mergeContactFromPatch(card, editDraftToPatch(editDraft, card));
+                setCard(merged);
+                setEditDraft(null);
+                setEditMode(false);
+                return;
+              }
+              setEditDraft(contactCardToEditDraft(card));
+              setEditMode(true);
+            }}
+          >
+            Toggle edit
+          </button>
+        </TooltipProvider>
+      );
+    }
+
+    render(<BirthdayToggleHarness />);
+    const field = screen.getByLabelText(defaultContactsLabels.sectionBirthday);
+    expect((field as HTMLInputElement).value).toBe("1985-04-23");
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Toggle edit" }));
+    expect(screen.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Toggle edit" }));
+    const again = screen.getByLabelText(defaultContactsLabels.sectionBirthday);
+    expect((again as HTMLInputElement).type).toBe("date");
+    expect((again as HTMLInputElement).value).toBe("");
+    fireEvent.change(again, { target: { value: "2000-01-02" } });
+    expect((again as HTMLInputElement).value).toBe("2000-01-02");
+  });
+
+  it("hides the birthday editor for group cards", () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <ContactsDetailView
+          labels={defaultContactsLabels}
+          card={groupCard}
+          createMode={false}
+          editMode
+          editDraft={contactCardToEditDraft(groupCard)}
+          displayName="Friends"
+          {...viewModeHandlers}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
+    ).toBeNull();
   });
 });

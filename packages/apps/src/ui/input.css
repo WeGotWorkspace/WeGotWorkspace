@@ -39,6 +39,15 @@
   @apply file:border-0 file:bg-transparent file:font-medium file:text-foreground;
 }
 
+.input[type="date"] {
+  @apply cursor-pointer;
+}
+
+.input[type="date"]::-webkit-calendar-picker-indicator {
+  @apply cursor-pointer;
+  opacity: 1;
+}
+
 .input::file-selector-button {
   font-size: var(--input-font-size, 1rem);
 }

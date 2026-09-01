@@ -404,10 +404,27 @@ export function contactPhotoUrl(
   return undefined;
 }
 
+export type ContactAnniversary = NonNullable<NonNullable<ContactCard["anniversaries"]>[string]>;
+
+export function isContactAnniversary(
+  value: ContactAnniversary | null | undefined,
+): value is ContactAnniversary {
+  return value != null && typeof value === "object" && typeof value.kind === "string";
+}
+
+/** First JSContact `anniversaries` entry with `kind: "birth"`, skipping null/cleared slots. */
+export function findBirthAnniversary(card: ContactCard): [string, ContactAnniversary] | undefined {
+  return mapEntriesSorted(card.anniversaries).find(
+    (entry): entry is [string, ContactAnniversary] =>
+      isContactAnniversary(entry[1]) && entry[1].kind === "birth",
+  );
+}
+
 function formatAnniversaryDate(
-  date: NonNullable<NonNullable<ContactCard["anniversaries"]>[string]>["date"],
+  date: ContactAnniversary["date"] | null | undefined,
   locale: string | undefined,
 ): string {
+  if (!date || typeof date !== "object") return "";
   if (date["@type"] === "Timestamp") {
     const d = new Date(date.utc);
     if (isNaN(d.getTime())) return "";
@@ -433,8 +450,7 @@ function formatAnniversaryDate(
 
 /** Birthday string from the card's first `birth` anniversary, or empty string when not set. */
 export function contactBirthdayDisplay(card: ContactCard, locale?: string): string {
-  const entries = mapEntriesSorted(card.anniversaries);
-  const birth = entries.find(([, ann]) => ann.kind === "birth")?.[1];
+  const birth = findBirthAnniversary(card)?.[1];
   if (!birth) return "";
   return formatAnniversaryDate(birth.date, locale);
 }

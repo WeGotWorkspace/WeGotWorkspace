@@ -346,6 +346,8 @@ export function ContactsDetailView({
       })();
 
   const showAsCompany = !!editDraft?.showAsCompany;
+  const showBirthdayEditor = isEditing && !!editDraft && card?.kind !== "group";
+  const birthdayDisplay = !isEditing && card ? contactBirthdayDisplay(card) : "";
 
   const nameFields =
     isEditing && editDraft ? (
@@ -407,6 +409,20 @@ export function ContactsDetailView({
           />
         </FieldLabelRow>
       </div>
+    ) : null;
+
+  const birthdayField =
+    showBirthdayEditor && editDraft ? (
+      <FieldLabelRow label={labels.sectionBirthday} htmlFor="contact-birthday">
+        <Input
+          id="contact-birthday"
+          type="date"
+          size="md"
+          autoComplete="bday"
+          value={editDraft.birthday}
+          onChange={(event) => onDraftChange({ birthday: event.target.value })}
+        />
+      </FieldLabelRow>
     ) : null;
 
   const companyToggle =
@@ -479,6 +495,7 @@ export function ContactsDetailView({
                 {nameFields}
                 {jobFields}
                 {companyToggle}
+                {birthdayField}
               </>
             ) : (
               <>
@@ -486,6 +503,7 @@ export function ContactsDetailView({
                 {jobFields}
                 {organizationField}
                 {companyToggle}
+                {birthdayField}
               </>
             )}
           </div>
@@ -494,16 +512,11 @@ export function ContactsDetailView({
         )}
       </DetailSection>
 
-      {!isEditing && card
-        ? (() => {
-            const birthday = contactBirthdayDisplay(card);
-            return birthday ? (
-              <DetailSection title={labels.sectionBirthday}>
-                <p className="contacts-detail-view__text">{birthday}</p>
-              </DetailSection>
-            ) : null;
-          })()
-        : null}
+      {!isEditing && birthdayDisplay ? (
+        <DetailSection title={labels.sectionBirthday}>
+          <p className="contacts-detail-view__text">{birthdayDisplay}</p>
+        </DetailSection>
+      ) : null}
 
       <DetailSection title={labels.sectionPhones} hidden={!isEditing && readPhones.length === 0}>
         {isEditing && editDraft ? (

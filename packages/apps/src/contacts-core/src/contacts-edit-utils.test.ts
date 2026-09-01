@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import { contactBirthdayDisplay } from "./contacts-display-utils";
+import { mergeContactFromPatch } from "./contacts-patch-merge";
 import {
   canCreateContactInView,
   contactCardToEditDraft,
@@ -427,5 +429,101 @@ describe("contacts-edit-utils", () => {
     const body = editDraftToCreateBody(draft, { default: true });
     expect(body).not.toHaveProperty("name");
     expect(Object.values(body.notes ?? {})[0]).toEqual({ note: "Met at conference" });
+  });
+
+  it("round-trips a birth anniversary through draft create and patch", () => {
+    const card = {
+      ...janeCard,
+      anniversaries: {
+        "bday-1": {
+          "@type": "Anniversary" as const,
+          kind: "birth" as const,
+          date: { "@type": "PartialDate" as const, year: 1985, month: 4, day: 23 },
+        },
+        "ann-1": {
+          "@type": "Anniversary" as const,
+          kind: "wedding" as const,
+          date: { "@type": "PartialDate" as const, year: 2010, month: 6, day: 15 },
+        },
+      },
+    } as unknown as ContactCard;
+    const draft = contactCardToEditDraft(card);
+    expect(draft.birthday).toBe("1985-04-23");
+    expect(draft.birthdayId).toBe("bday-1");
+    expect(editDraftToPatch(draft, card)).not.toHaveProperty("anniversaries");
+
+    draft.birthday = "1991-07-04";
+    expect(editDraftToPatch(draft, card).anniversaries).toEqual({
+      "bday-1": {
+        kind: "birth",
+        date: { "@type": "PartialDate", year: 1991, month: 7, day: 4 },
+      },
+    });
+
+    draft.birthday = "";
+    expect(editDraftToPatch(draft, card).anniversaries).toEqual({ "bday-1": null });
+
+    const merged = mergeContactFromPatch(card, editDraftToPatch(draft, card));
+    expect(merged.anniversaries).toEqual({
+      "ann-1": {
+        "@type": "Anniversary",
+        kind: "wedding",
+        date: { "@type": "PartialDate", year: 2010, month: 6, day: 15 },
+      },
+    });
+    expect(merged.anniversaries).not.toHaveProperty("bday-1");
+    expect(contactCardToEditDraft(merged).birthday).toBe("");
+    expect(contactBirthdayDisplay(merged)).toBe("");
+  });
+
+  it("does not throw when a persisted card still has a null birth slot", () => {
+    const card = {
+      ...janeCard,
+      anniversaries: { "bday-1": null },
+    } as unknown as ContactCard;
+    expect(() => contactCardToEditDraft(card)).not.toThrow();
+    expect(contactCardToEditDraft(card).birthday).toBe("");
+  });
+
+  it("does not treat a yearless birth anniversary as a delete", () => {
+    const card = {
+      ...janeCard,
+      anniversaries: {
+        "bday-1": {
+          "@type": "Anniversary" as const,
+          kind: "birth" as const,
+          date: { "@type": "PartialDate" as const, month: 3, day: 15 },
+        },
+      },
+    } as unknown as ContactCard;
+    const draft = contactCardToEditDraft(card);
+    expect(draft.birthday).toBe("");
+    expect(draft.birthdayId).toBe("bday-1");
+    expect(editDraftToPatch(draft, card)).not.toHaveProperty("anniversaries");
+  });
+
+  it("patches in a birth anniversary when the card had none", () => {
+    const draft = contactCardToEditDraft(janeCard);
+    expect(draft.birthday).toBe("");
+    draft.birthday = "1985-04-23";
+    const patch = editDraftToPatch(draft, janeCard);
+    const entries = Object.values(patch.anniversaries ?? {});
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({
+      kind: "birth",
+      date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
+    });
+  });
+
+  it("builds create body with a birth anniversary", () => {
+    const draft = { ...emptyContactEditDraft(), birthday: "1985-04-23" };
+    expect(contactEditDraftHasContent(draft)).toBe(true);
+    const body = editDraftToCreateBody(draft, { default: true });
+    const entries = Object.values(body.anniversaries ?? {});
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({
+      kind: "birth",
+      date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
+    });
   });
 });

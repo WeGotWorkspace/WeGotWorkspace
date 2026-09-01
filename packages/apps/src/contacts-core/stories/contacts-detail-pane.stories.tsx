@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fireEvent } from "storybook/test";
 import { expect, userEvent, within } from "storybook/test";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
@@ -182,6 +183,11 @@ export const Editable: Story = {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Jane Updated");
     await expect(nameInput).toHaveValue("Jane Updated");
+    const birthday = canvas.getByLabelText(defaultContactsLabels.sectionBirthday);
+    await expect(birthday).toHaveAttribute("type", "date");
+    await expect(birthday).toHaveValue("1985-04-23");
+    fireEvent.change(birthday, { target: { value: "1991-07-04" } });
+    await expect(birthday).toHaveValue("1991-07-04");
     await expect(
       canvas.getAllByRole("combobox", {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
@@ -206,7 +212,7 @@ export const Create: Story = {
     ).toBeNull();
     await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addUrl })).toBeNull();
     const phone = canvas.getByLabelText(defaultContactsLabels.phoneNumber);
-    await userEvent.type(phone, "555");
+    fireEvent.change(phone, { target: { value: "555" } });
     await expect(phone).toHaveValue("555");
     await expect(canvas.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(2);
     await expect(
@@ -214,6 +220,9 @@ export const Create: Story = {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
       }),
     ).toHaveLength(2);
+    const birthday = canvas.getByLabelText(defaultContactsLabels.sectionBirthday);
+    await expect(birthday).toHaveAttribute("type", "date");
+    await expect(birthday).toHaveValue("");
   },
 };
 
@@ -232,5 +241,10 @@ export const ReadOnly: Story = {
     await expect(canvas.getByText("Acme Corp")).toBeInTheDocument();
     expect(identity?.contains(canvas.getByRole("heading", { name: "Jane Doe" }))).toBe(true);
     expect(identity?.contains(canvas.getByText("Acme Corp"))).toBe(true);
+    await expect(
+      canvas.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
+    ).toBeInTheDocument();
+    expect(canvas.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    await expect(canvas.getByText(/1985/)).toBeInTheDocument();
   },
 };

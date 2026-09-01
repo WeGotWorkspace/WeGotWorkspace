@@ -466,6 +466,15 @@ describe("contacts-display-utils", () => {
       expect(contactBirthdayDisplay(janeCard)).toBe("");
     });
 
+    it("returns empty string when a cleared birth slot is null", () => {
+      const card = {
+        ...janeCard,
+        anniversaries: { "bday-1": null },
+      } as unknown as ContactCard;
+      expect(() => contactBirthdayDisplay(card)).not.toThrow();
+      expect(contactBirthdayDisplay(card)).toBe("");
+    });
+
     it("returns empty string when no birth kind anniversary", () => {
       const card: ContactCard = {
         ...janeCard,
