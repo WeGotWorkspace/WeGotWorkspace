@@ -7,9 +7,16 @@ namespace App\Http\Support;
 use Illuminate\Http\Request;
 
 /**
- * Reject requests that already exceeded PHP's post_max_size before Laravel
- * renders a response. The SAPI emits a line-0 warning (often HTML, status 200)
- * when display_errors=On; callers must also start PHP with display_errors=0.
+ * Best-effort oversized-POST detector — not a hard guarantee.
+ *
+ * PHP empties the body when post_max_size is exceeded and may emit a line-0
+ * warning before any script runs. `exceedsLimit()` only sees Content-Length;
+ * chunked requests without that header return false here. Callers that see an
+ * empty body must also use {@see emptyBodyLooksDiscarded()}.
+ *
+ * `display_errors=0` in `.user.ini` / `.htaccess` / `docker/php/uploads.ini`
+ * is what stops the line-0 warning from leaking HTML. `ini_set` in index.php
+ * is too late for that warning (shared hosts often ship display_errors=On).
  */
 final class WgwOversizedPost
 {
@@ -52,19 +59,29 @@ final class WgwOversizedPost
         return (int) round((float) $number * $factor);
     }
 
-    public static function contentLength(?Request $request = null): int
+    /**
+     * Declared Content-Length, or null when the header is missing / not numeric
+     * (chunked transfer, HTTP/2 without a length).
+     */
+    public static function declaredContentLength(?Request $request = null): ?int
     {
-        if ($request instanceof Request) {
-            $raw = $request->server->get('CONTENT_LENGTH', $request->header('Content-Length', 0));
-
-            return is_numeric($raw) ? (int) $raw : 0;
+        $raw = self::rawContentLength($request);
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return null;
         }
 
-        $raw = $_SERVER['CONTENT_LENGTH'] ?? $_SERVER['HTTP_CONTENT_LENGTH'] ?? 0;
-
-        return is_numeric($raw) ? (int) $raw : 0;
+        return (int) $raw;
     }
 
+    public static function contentLength(?Request $request = null): int
+    {
+        return self::declaredContentLength($request) ?? 0;
+    }
+
+    /**
+     * True only when a declared Content-Length is greater than post_max_size.
+     * Missing / non-numeric length is unknown — returns false.
+     */
     public static function exceedsLimit(?Request $request = null, ?int $contentLength = null): bool
     {
         $max = self::iniBytes((string) ini_get('post_max_size'));
@@ -72,11 +89,57 @@ final class WgwOversizedPost
             return false;
         }
 
-        $length = $contentLength ?? self::contentLength($request);
+        $length = $contentLength ?? self::declaredContentLength($request);
+        if ($length === null) {
+            return false;
+        }
 
         return $length > $max;
     }
 
+    public static function isChunkedTransfer(?Request $request = null): bool
+    {
+        $raw = $request instanceof Request
+            ? (string) ($request->headers->get('Transfer-Encoding') ?? $request->server->get('HTTP_TRANSFER_ENCODING', ''))
+            : (string) ($_SERVER['HTTP_TRANSFER_ENCODING'] ?? '');
+
+        return str_contains(strtolower($raw), 'chunked');
+    }
+
+    public static function phpWarnedPostTooLarge(): bool
+    {
+        $last = error_get_last();
+        if (! is_array($last)) {
+            return false;
+        }
+        $message = (string) ($last['message'] ?? '');
+
+        return str_contains($message, 'post_max_size')
+            || (str_contains($message, 'POST Content-Length') && str_contains($message, 'exceeds'));
+    }
+
+    /**
+     * Empty parsed body after PHP may have discarded an oversized POST:
+     * declared Content-Length oversize, a PHP warning, or chunked transfer
+     * (no trustworthy length).
+     */
+    public static function emptyBodyLooksDiscarded(?Request $request = null): bool
+    {
+        if (self::exceedsLimit($request)) {
+            return true;
+        }
+        if (self::phpWarnedPostTooLarge()) {
+            return true;
+        }
+
+        return self::isChunkedTransfer($request);
+    }
+
+    /**
+     * Front controller only (`public/index.php` after autoload, before
+     * Laravel). Safe to `exit` here because the kernel has not started.
+     * Content-Length only — chunked oversize is handled later in Laravel.
+     */
     public static function abortIfExceeded(): void
     {
         if (! self::exceedsLimit()) {
@@ -91,5 +154,26 @@ final class WgwOversizedPost
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(self::payload(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         exit;
+    }
+
+    private static function rawContentLength(?Request $request): mixed
+    {
+        if ($request instanceof Request) {
+            $fromServer = $request->server->get('CONTENT_LENGTH');
+            if ($fromServer !== null && $fromServer !== '') {
+                return $fromServer;
+            }
+
+            return $request->headers->get('Content-Length');
+        }
+
+        if (array_key_exists('CONTENT_LENGTH', $_SERVER)) {
+            return $_SERVER['CONTENT_LENGTH'];
+        }
+        if (array_key_exists('HTTP_CONTENT_LENGTH', $_SERVER)) {
+            return $_SERVER['HTTP_CONTENT_LENGTH'];
+        }
+
+        return null;
     }
 }

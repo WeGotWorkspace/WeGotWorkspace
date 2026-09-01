@@ -2,10 +2,12 @@
 <IfModule mod_php.c>
     php_value post_max_size 32M
     php_value upload_max_filesize 32M
+    php_value display_errors 0
 </IfModule>
 <IfModule mod_php8.c>
     php_value post_max_size 32M
     php_value upload_max_filesize 32M
+    php_value display_errors 0
 </IfModule>
 
 <IfModule mod_rewrite.c>

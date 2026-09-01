@@ -294,6 +294,27 @@ VCARD;
             ->assertJsonPath('error', 'vCard body is required.');
     }
 
+    public function test_import_empty_chunked_body_returns_json_post_too_large(): void
+    {
+        $this->call(
+            'POST',
+            '/api/v1/contacts/cards/import?addressBookId=default',
+            [],
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->userBearerToken(),
+                'CONTENT_TYPE' => 'text/vcard',
+                'HTTP_ACCEPT' => 'application/json',
+                'HTTP_TRANSFER_ENCODING' => 'chunked',
+            ],
+            '',
+        )
+            ->assertStatus(413)
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonPath('code', 'post_too_large');
+    }
+
     public function test_import_oversize_content_length_returns_json_post_too_large(): void
     {
         $this->call(

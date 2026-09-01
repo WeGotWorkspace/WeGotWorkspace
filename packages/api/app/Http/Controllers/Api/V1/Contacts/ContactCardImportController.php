@@ -28,7 +28,7 @@ final class ContactCardImportController
 
         $body = $request->getContent();
         if (! is_string($body) || trim($body) === '') {
-            if (WgwOversizedPost::exceedsLimit($request)) {
+            if (WgwOversizedPost::emptyBodyLooksDiscarded($request)) {
                 throw new PostTooLargeException;
             }
             throw new ApiHttpException(400, 'vCard body is required.', 'bad_request');
