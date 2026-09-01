@@ -2,6 +2,7 @@ import * as React from "react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { Switch } from "@/ui/switch";
 
 import "./segmented-control.css";
 
@@ -76,7 +77,7 @@ export type BooleanSegmentedControlProps = {
 };
 
 export const BooleanSegmentedControl = React.forwardRef<
-  HTMLDivElement,
+  HTMLButtonElement,
   BooleanSegmentedControlProps
 >(function BooleanSegmentedControl(
   {
@@ -84,50 +85,23 @@ export const BooleanSegmentedControl = React.forwardRef<
     onChange,
     offLabel = "Off",
     onLabel = "On",
-    size: _size = "sm",
+    size = "sm",
     disabled = false,
     className,
     "aria-label": ariaLabel,
   },
   ref,
 ) {
-  const state = value ? "on" : "off";
-
   return (
-    <div
+    <Switch
       ref={ref}
-      className={cn("segmented-control", "segmented-control--boolean", className)}
-      role="group"
-      aria-label={ariaLabel}
-      aria-disabled={disabled || undefined}
-      data-state={state}
-      data-disabled={disabled ? "" : undefined}
-    >
-      <button
-        type="button"
-        className="segmented-control__thumb"
-        data-state={state}
-        disabled={disabled}
-        aria-label={value ? onLabel : offLabel}
-        onClick={() => onChange(!value)}
-      />
-      <button
-        type="button"
-        aria-label={offLabel}
-        aria-pressed={!value}
-        disabled={disabled}
-        onClick={() => onChange(false)}
-        className="segmented-control__button segmented-control__button--boolean"
-      />
-      <button
-        type="button"
-        aria-label={onLabel}
-        aria-pressed={value}
-        disabled={disabled}
-        onClick={() => onChange(true)}
-        className="segmented-control__button segmented-control__button--boolean"
-      />
-    </div>
+      checked={value}
+      onCheckedChange={onChange}
+      disabled={disabled}
+      size={size}
+      className={className}
+      aria-label={ariaLabel ?? (value ? onLabel : offLabel)}
+    />
   );
 });
 BooleanSegmentedControl.displayName = "BooleanSegmentedControl";

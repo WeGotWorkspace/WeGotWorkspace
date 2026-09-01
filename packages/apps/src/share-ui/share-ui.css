@@ -48,7 +48,7 @@
  * Touch padding lives on the wrapper only — switch geometry stays default.
  */
 .share-dialog {
-  --share-switch-track-height: calc(1rem + 0.25rem);
+  --share-switch-track-height: 1.5rem;
   --share-switch-touch-pad: calc((var(--input-height) - var(--share-switch-track-height)) / 2);
 }
 
@@ -59,12 +59,10 @@
 }
 
 /* Invisible hit-area into wrapper padding; switch layout/visual unchanged. */
-.share-dialog__switch-touch .segmented-control--boolean .segmented-control__button--boolean::before,
-.share-dialog__switch-touch .segmented-control--boolean .segmented-control__thumb::before {
+.share-dialog__switch-touch .switch::before {
   content: "";
   position: absolute;
-  left: -0.125rem;
-  right: -0.125rem;
+  inset-inline: -0.125rem;
   top: calc(-1 * var(--share-switch-touch-pad));
   bottom: calc(-1 * var(--share-switch-touch-pad));
 }

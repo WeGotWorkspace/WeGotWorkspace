@@ -1,0 +1,77 @@
+@import "../styles.css" reference;
+
+/**
+ * Conventional compact toggle. Parents override `--switch-*`.
+ * On-fill follows `--button-primary-bg` / `--primary` so app accents apply.
+ * Never stretch: width is the track, not 100%.
+ */
+.switch {
+  --switch-track-width: 2.75rem;
+  --switch-track-height: 1.5rem;
+  --switch-thumb-size: 1.25rem;
+  --switch-pad: 0.125rem;
+  --switch-travel: calc(
+    var(--switch-track-width) - var(--switch-thumb-size) - (2 * var(--switch-pad))
+  );
+  @apply relative inline-flex shrink-0 items-center border-0 p-0;
+  @apply focus-visible:outline-none;
+  box-sizing: border-box;
+  /* Do not use flex-basis: width — in a column stack that becomes height and the track turns into a circle. */
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: auto;
+  align-self: flex-start;
+  aspect-ratio: auto;
+  width: var(--switch-track-width);
+  min-width: var(--switch-track-width);
+  max-width: var(--switch-track-width);
+  height: var(--switch-track-height);
+  min-height: var(--switch-track-height);
+  max-height: var(--switch-track-height);
+  overflow: hidden;
+  border-radius: var(--switch-track-radius, 999px);
+  background-color: var(
+    --switch-off-bg,
+    color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #ffffff))
+  );
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  --tw-ring-color: var(--switch-ring-color, var(--ring));
+}
+
+.switch--size-md {
+  --switch-track-width: 3.25rem;
+  --switch-track-height: 1.75rem;
+  --switch-thumb-size: 1.5rem;
+}
+
+.switch:focus-visible {
+  @apply ring-1;
+  box-shadow:
+    0 0 0 2px var(--background, #ffffff),
+    0 0 0 4px var(--switch-ring-color, var(--ring, var(--color-ink)));
+}
+
+.switch[data-state="on"] {
+  background-color: var(--switch-on-bg, var(--button-primary-bg, var(--primary)));
+}
+
+.switch:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.switch__thumb {
+  @apply pointer-events-none block;
+  width: var(--switch-thumb-size);
+  height: var(--switch-thumb-size);
+  margin-inline-start: var(--switch-pad);
+  border-radius: var(--switch-thumb-radius, 999px);
+  background-color: var(--switch-thumb-bg, var(--color-cream, #ffffff));
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--color-ink) 22%, transparent);
+  transform: translateX(0);
+  transition: transform 150ms ease;
+}
+
+.switch[data-state="on"] .switch__thumb {
+  transform: translateX(var(--switch-travel));
+}
