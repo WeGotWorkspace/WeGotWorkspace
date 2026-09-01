@@ -43,7 +43,7 @@
 
 .tag--collection-tint {
   --tag-bg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 18%, transparent);
-  --tag-fg: var(--collection-row-color, var(--color-ink));
+  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 62%, #042a22);
 }
 
 .tag__icon {

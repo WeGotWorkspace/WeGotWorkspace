@@ -298,7 +298,7 @@ function NotesListRows({
                 note={note}
                 labels={L}
                 notebookColor={notebookColor}
-                notebookCollections={notebookCollections}
+                notebookCollections={notebookCollections ?? []}
               />
             }
             date={formatNoteDateForList(note.date)}

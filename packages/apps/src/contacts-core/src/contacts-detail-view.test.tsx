@@ -599,7 +599,9 @@ describe("ContactsDetailView birthday field", () => {
     function BirthdayToggleHarness() {
       const [card, setCard] = useState(janeWithBirthday);
       const [editMode, setEditMode] = useState(true);
-      const [editDraft, setEditDraft] = useState(() => contactCardToEditDraft(janeWithBirthday));
+      const [editDraft, setEditDraft] = useState<ContactEditDraft | null>(() =>
+        contactCardToEditDraft(janeWithBirthday),
+      );
 
       return (
         <TooltipProvider delayDuration={0}>

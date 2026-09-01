@@ -455,6 +455,7 @@ describe("contacts-edit-utils", () => {
     draft.birthday = "1991-07-04";
     expect(editDraftToPatch(draft, card).anniversaries).toEqual({
       "bday-1": {
+        "@type": "Anniversary",
         kind: "birth",
         date: { "@type": "PartialDate", year: 1991, month: 7, day: 4 },
       },
@@ -510,6 +511,7 @@ describe("contacts-edit-utils", () => {
     const entries = Object.values(patch.anniversaries ?? {});
     expect(entries).toHaveLength(1);
     expect(entries[0]).toEqual({
+      "@type": "Anniversary",
       kind: "birth",
       date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
     });
@@ -522,6 +524,7 @@ describe("contacts-edit-utils", () => {
     const entries = Object.values(body.anniversaries ?? {});
     expect(entries).toHaveLength(1);
     expect(entries[0]).toEqual({
+      "@type": "Anniversary",
       kind: "birth",
       date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
     });

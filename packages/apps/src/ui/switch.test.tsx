@@ -28,7 +28,7 @@ describe("Switch", () => {
     const onCheckedChange = vi.fn();
     render(<Switch aria-label="Offline" checked disabled onCheckedChange={onCheckedChange} />);
     const control = screen.getByRole("switch", { name: "Offline" });
-    expect(control.disabled).toBe(true);
+    expect((control as HTMLButtonElement).disabled).toBe(true);
     expect(control.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(control);
     expect(onCheckedChange).not.toHaveBeenCalled();

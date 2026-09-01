@@ -10,45 +10,57 @@ import {
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 
 const jane = {
+  "@type": "Card",
+  version: "1.0",
   id: "card-jane",
   uid: "urn:uuid:jane",
+  kind: "individual",
   addressBookIds: { default: true },
   name: { full: "Jane" },
-} as ContactCard;
+} as unknown as ContactCard;
 
 const joe = {
+  "@type": "Card",
+  version: "1.0",
   id: "card-joe",
   uid: "urn:uuid:joe",
+  kind: "individual",
   addressBookIds: { work: true },
   name: { full: "Joe" },
-} as ContactCard;
+} as unknown as ContactCard;
 
 const friends = {
+  "@type": "Card",
+  version: "1.0",
   id: "card-group-friends",
   uid: "urn:uuid:friends",
   kind: "group",
   addressBookIds: { default: true },
   name: { full: "Friends" },
   members: { "urn:uuid:jane": true, "urn:uuid:joe": true },
-} as ContactCard;
+} as unknown as ContactCard;
 
 const family = {
+  "@type": "Card",
+  version: "1.0",
   id: "card-group-family",
   uid: "urn:uuid:family",
   kind: "group",
   addressBookIds: { default: true },
   name: { full: "Family" },
   members: { "urn:uuid:jane": true },
-} as ContactCard;
+} as unknown as ContactCard;
 
 const workLeads = {
+  "@type": "Card",
+  version: "1.0",
   id: "card-group-work",
   uid: "urn:uuid:work-leads",
   kind: "group",
   addressBookIds: { work: true },
   name: { full: "Leads" },
   members: { "urn:uuid:joe": true },
-} as ContactCard;
+} as unknown as ContactCard;
 
 const cards = [jane, joe, friends, family, workLeads];
 const groups = [friends, family, workLeads];

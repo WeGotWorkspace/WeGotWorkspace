@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
+import type { ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
 import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
 
 const toastApi = {
@@ -43,7 +44,7 @@ describe("useContactsVcardImport", () => {
       useContactsVcardImport({
         labels: defaultContactsLabels,
         onImported,
-        operations: { importVcards },
+        operations: { importVcards } as unknown as ContactsAPIOperations,
       }),
     );
 
@@ -71,7 +72,7 @@ describe("useContactsVcardImport", () => {
     const { result } = renderHook(() =>
       useContactsVcardImport({
         labels: defaultContactsLabels,
-        operations: { importVcards: vi.fn() },
+        operations: { importVcards: vi.fn() } as unknown as ContactsAPIOperations,
       }),
     );
 
@@ -95,7 +96,7 @@ describe("useContactsVcardImport", () => {
     const { result } = renderHook(() =>
       useContactsVcardImport({
         labels: defaultContactsLabels,
-        operations: { importVcards },
+        operations: { importVcards } as unknown as ContactsAPIOperations,
         maxBatchBytes: 40,
       }),
     );
@@ -121,7 +122,7 @@ describe("useContactsVcardImport", () => {
     const { result } = renderHook(() =>
       useContactsVcardImport({
         labels: defaultContactsLabels,
-        operations: { importVcards },
+        operations: { importVcards } as unknown as ContactsAPIOperations,
         maxBatchBytes: 40,
       }),
     );
@@ -148,7 +149,7 @@ describe("useContactsVcardImport", () => {
     const { result } = renderHook(() =>
       useContactsVcardImport({
         labels: defaultContactsLabels,
-        operations: { importVcards },
+        operations: { importVcards } as unknown as ContactsAPIOperations,
       }),
     );
 
@@ -192,7 +193,7 @@ describe("useContactsVcardImport", () => {
     const { result } = renderHook(() =>
       useContactsVcardImport({
         labels: defaultContactsLabels,
-        operations: { importVcards },
+        operations: { importVcards } as unknown as ContactsAPIOperations,
         maxBatchBytes: 40,
       }),
     );
@@ -237,7 +238,7 @@ describe("useContactsVcardImport", () => {
     const { result } = renderHook(() =>
       useContactsVcardImport({
         labels: defaultContactsLabels,
-        operations: { importVcards },
+        operations: { importVcards } as unknown as ContactsAPIOperations,
         maxBatchBytes: 40,
       }),
     );

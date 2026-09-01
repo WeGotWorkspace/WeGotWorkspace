@@ -573,7 +573,7 @@ describe("mergeBootstrapCardsPreservingOptimistic", () => {
     const local = {
       ...friendsGroup,
       members: { ...friendsGroup.members, [janeUid]: false },
-    } as ContactCard;
+    } as unknown as ContactCard;
     const [merged] = mergeBootstrapCardsPreservingOptimistic([friendsGroup], [local]);
     expect(merged.members?.[janeUid]).toBe(false);
     expect(groupsContainingCard(jane.id, [merged], cards)).toEqual([]);
@@ -585,7 +585,7 @@ describe("mergeBootstrapCardsPreservingOptimistic", () => {
       id: "card-group-studio",
       name: { full: "Studio" },
       members: { [janeUid]: true },
-    } as ContactCard;
+    } as unknown as ContactCard;
     const merged = mergeBootstrapCardsPreservingOptimistic([jane], [jane, created]);
     expect(merged.map((card) => card.id)).toEqual(["card-jane", "card-group-studio"]);
   });

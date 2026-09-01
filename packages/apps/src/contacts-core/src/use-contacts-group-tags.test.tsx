@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
+import type { ContactsUIData } from "./contacts-types";
 import { useContactsController } from "./use-contacts-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -161,6 +162,7 @@ describe("useContactsController group tags", () => {
           version: "1.0",
           id: "card-admins-lead",
           uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440210",
+          kind: "individual" as const,
           addressBookIds: { "group-administrators": true as const },
           name: { "@type": "Name" as const, isOrdered: false, full: "Ada Admin" },
         },
@@ -175,7 +177,7 @@ describe("useContactsController group tags", () => {
           members: {},
         },
       ],
-    };
+    } as ContactsUIData;
     const { result } = renderHook(() =>
       useContactsController({
         data,
@@ -202,11 +204,12 @@ describe("useContactsController group tags", () => {
           version: "1.0",
           id: "card-admins-lead",
           uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440211",
+          kind: "individual" as const,
           addressBookIds: { "group-administrators": true as const },
           name: { "@type": "Name" as const, isOrdered: false, full: "Ada Admin" },
         },
       ],
-    };
+    } as ContactsUIData;
     const { result } = renderHook(() =>
       useContactsController({
         data,
@@ -248,6 +251,7 @@ describe("useContactsController group tags", () => {
               version: "1.0",
               id: "card-admin-lead",
               uid: adminUid,
+              kind: "individual" as const,
               addressBookIds: { "group-admin": true as const },
               name: { "@type": "Name" as const, isOrdered: false, full: "Pat Admin" },
             },
@@ -256,6 +260,7 @@ describe("useContactsController group tags", () => {
               version: "1.0",
               id: "card-admins-lead",
               uid: administratorsUid,
+              kind: "individual" as const,
               addressBookIds: { "group-administrators": true as const },
               name: { "@type": "Name" as const, isOrdered: false, full: "Ada Administrators" },
             },

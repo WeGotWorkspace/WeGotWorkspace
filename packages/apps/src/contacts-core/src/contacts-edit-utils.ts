@@ -122,7 +122,7 @@ export function resolveCreateAddressBookIds(
 /** New contact is allowed on writable books and writable group views. */
 export function canCreateContactInView(
   view: string,
-  addressBooks: readonly Pick<AddressBook, "id" | "myRights">[],
+  addressBooks: readonly { id: string; myRights?: { mayWrite?: boolean } | null }[],
   selectedGroup?: Pick<ContactCard, "addressBookIds"> | null,
   hasOperations = false,
 ): boolean {
@@ -368,7 +368,7 @@ function birthdayEntryFromIso(
 ): NonNullable<ContactCardCreate["anniversaries"]>[string] | undefined {
   const date = isoToPartialDate(iso);
   if (!date) return undefined;
-  return { kind: "birth", date };
+  return { "@type": "Anniversary", kind: "birth", date };
 }
 
 function addressValue(card: ContactCard, id: string): ContactAddressDraft {
@@ -862,7 +862,7 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
   }
 
   const currentBirthday = birthdayValue(active);
-  const nextBirthday = draft.birthday.trim();
+  const nextBirthday = (draft.birthday ?? "").trim();
   if (nextBirthday !== currentBirthday.birthday) {
     const birthId = draft.birthdayId ?? currentBirthday.birthdayId;
     if (!nextBirthday && birthId) {

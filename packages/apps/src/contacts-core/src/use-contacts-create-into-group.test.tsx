@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
+import type { ContactCard } from "./contacts-types";
 import { contactsGroupViewKey } from "./contacts-group-utils";
 import { useContactsController } from "./use-contacts-controller";
 
@@ -43,17 +44,21 @@ describe("useContactsController create into group", () => {
     const createdUid = "urn:uuid:created-new";
     const created = {
       "@type": "Card" as const,
-      version: "1.0",
+      version: "1.0" as const,
       id: "card-created",
       uid: createdUid,
+      kind: "individual" as const,
       addressBookIds: { default: true as const },
       name: { isOrdered: false, components: [{ kind: "given", value: "Pat" }], full: "Pat" },
     };
     const friends = bootstrap.data.cards.find((card) => card.id === "card-group-friends")!;
-    const createCard = vi.fn(() => Promise.resolve(created));
+    const createCard = vi.fn(() => Promise.resolve(created as unknown as ContactCard));
     const getCard = vi.fn(() => Promise.resolve(friends));
     const patchCard = vi.fn((_id: string, patch: { members?: Record<string, boolean> }) =>
-      Promise.resolve({ ...friends, members: { ...friends.members, ...patch.members } }),
+      Promise.resolve({
+        ...friends,
+        members: { ...friends.members, ...patch.members },
+      } as ContactCard),
     );
 
     const { result } = renderHook(() =>

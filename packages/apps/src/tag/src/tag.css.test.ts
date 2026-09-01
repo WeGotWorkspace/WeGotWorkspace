@@ -30,7 +30,9 @@ describe("tag collection tint", () => {
     expect(css).toMatch(
       /\.tag--collection-tint \{[\s\S]*--tag-bg:\s*color-mix\(in oklab,\s*var\(--collection-row-color/,
     );
-    expect(css).toMatch(/\.tag--collection-tint \{[\s\S]*--tag-fg:\s*var\(--collection-row-color/);
+    expect(css).toMatch(
+      /\.tag--collection-tint \{[\s\S]*--tag-fg:\s*color-mix\(in oklab,\s*var\(--collection-row-color/,
+    );
   });
 });
 
