@@ -38,6 +38,39 @@ VCARD;
         $this->assertSame([], $blocks);
     }
 
+    public function test_split_vcards_skips_prelude_and_leftover_tail(): void
+    {
+        $input = <<<'VCARD'
+# exported from Apple Contacts
+BEGIN:VCARD
+VERSION:4.0
+FN:Jane Doe
+END:VCARD
+END:VCARD
+BEGIN:VCARD
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//Apple Inc.//AddressBook
+END:VCARD
+# footer
+BEGIN:VCARD
+FN:Truncated
+VCARD;
+
+        $blocks = ContactCardVcfImportSupport::splitVcards($input);
+
+        $this->assertCount(1, $blocks);
+        $this->assertStringContainsString('FN:Jane Doe', $blocks[0]);
+    }
+
+    public function test_split_vcards_empty_body_is_not_an_invalid_block(): void
+    {
+        $this->assertSame([], ContactCardVcfImportSupport::splitVcards(''));
+        $this->assertSame([], ContactCardVcfImportSupport::splitVcards("   \n"));
+        $this->assertSame([], ContactCardVcfImportSupport::splitVcards("# prelude only\nEND:VCARD\n"));
+    }
+
     public function test_is_group_card_detects_kind_and_members(): void
     {
         $this->assertTrue(ContactCardVcfImportSupport::isGroupCard([

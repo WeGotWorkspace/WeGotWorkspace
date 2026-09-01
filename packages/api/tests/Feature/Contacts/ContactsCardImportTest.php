@@ -289,7 +289,31 @@ VCARD;
             ],
             '',
         )
-            ->assertStatus(400);
+            ->assertStatus(400)
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonPath('error', 'vCard body is required.');
+    }
+
+    public function test_import_oversize_content_length_returns_json_post_too_large(): void
+    {
+        $this->call(
+            'POST',
+            '/api/v1/contacts/cards/import?addressBookId=default',
+            [],
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->userBearerToken(),
+                'CONTENT_TYPE' => 'text/vcard',
+                'HTTP_ACCEPT' => 'application/json',
+                'CONTENT_LENGTH' => (string) (64 * 1024 * 1024),
+            ],
+            '',
+        )
+            ->assertStatus(413)
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonPath('code', 'post_too_large')
+            ->assertJsonFragment(['code' => 'post_too_large']);
     }
 
     public function test_import_apple_vcard3_binary_photo_persists_media_and_blob(): void

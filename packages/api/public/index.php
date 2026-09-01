@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Support\WgwOversizedPost;
 use Illuminate\Http\Request;
 
 // Keep JSON API responses clean when display_errors=On (e.g. php -S on PHP 8.5).
+// Line-0 post_max_size warnings still need `php -S -d display_errors=0`.
 ini_set('display_errors', '0');
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+if (ob_get_level() === 0) {
+    ob_start();
+}
 
 define('LARAVEL_START', microtime(true));
 
@@ -15,6 +20,8 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
+
+WgwOversizedPost::abortIfExceeded();
 
 // Apache Alias "/api" sets SCRIPT_NAME to "/api/index.php", which makes Laravel treat "/api"
 // as the app base and match routes on "v1/health" instead of "api/v1/health".

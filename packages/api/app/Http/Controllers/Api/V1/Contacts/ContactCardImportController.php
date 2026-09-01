@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Api\V1\Contacts;
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Http\Support\WgwOversizedPost;
 use App\Services\Contacts\ContactCardRepository;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,6 +28,9 @@ final class ContactCardImportController
 
         $body = $request->getContent();
         if (! is_string($body) || trim($body) === '') {
+            if (WgwOversizedPost::exceedsLimit($request)) {
+                throw new PostTooLargeException;
+            }
             throw new ApiHttpException(400, 'vCard body is required.', 'bad_request');
         }
 
