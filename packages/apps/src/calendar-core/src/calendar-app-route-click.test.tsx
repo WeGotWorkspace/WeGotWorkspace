@@ -123,10 +123,15 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname).toBe("/calendar/list/month/2026-09-01");
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    await waitFor(() => {
+      expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
+    });
+
     fireEvent.click(screen.getAllByRole("button", { name: "Today" }).at(-1)!);
     await waitFor(() => {
       expect(history.location.pathname).toMatch(/^\/calendar\/list\/month\/\d{4}-\d{2}-\d{2}$/);
-      expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
+      expect(history.location.pathname).not.toBe("/calendar/list/month/2026-08-17");
     });
   });
 

@@ -9,7 +9,7 @@
  */
 .contacts-workspace {
   --contacts-accent: #39d49b;
-  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 70%, var(--color-ink));
+  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
   --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 12%, var(--color-cream, #ffffff));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
@@ -470,7 +470,7 @@
 }
 
 .contacts-detail-view__link {
-  color: var(--contacts-accent-strong, var(--contacts-accent));
+  color: var(--contacts-accent-strong, #0f6b52);
   text-decoration: none;
 }
 
@@ -487,7 +487,7 @@
 
 .contacts-dialog-surface {
   --contacts-accent: #39d49b;
-  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 70%, var(--color-ink));
+  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
   --color-emerald: var(--contacts-accent);
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: var(--color-ink, #042a22);
