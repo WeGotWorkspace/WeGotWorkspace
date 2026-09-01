@@ -29,7 +29,6 @@ import {
   contactsEditGroupDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-edit-group-dialog";
 import { ContactsSidebarBookRows } from "@/contacts-core/src/contacts-sidebar-book-rows";
-import { ContactsSidebarGroupRows } from "@/contacts-core/src/contacts-sidebar-group-rows";
 import {
   ContactsImportDialog,
   contactsImportDialogLabelsFrom,
@@ -216,6 +215,33 @@ export function ContactsWorkspace({
     selectView,
   });
 
+  const bookGroupRows = {
+    groups: contactGroups,
+    groupEditLabel: L.renameGroup,
+    expandGroupsLabel: L.expandAddressBookGroups,
+    collapseGroupsLabel: L.collapseAddressBookGroups,
+    canEditGroup: (group: (typeof contactGroups)[number]) =>
+      canWriteContactGroup(group, addressBooks, Boolean(operations)),
+    onEditGroup: (group: (typeof contactGroups)[number]) =>
+      setGroupRenameDialog({
+        groupId: group.id,
+        name: contactDisplayName(group),
+      }),
+    groupDropZoneProps: (groupId: string) => {
+      const group = contactGroups.find((card) => card.id === groupId);
+      return sidebarDropZoneProps(
+        contactsGroupViewKey(groupId),
+        (ids) => addMembersToGroup(groupId, ids),
+        (ids) =>
+          Boolean(group) &&
+          ids.every((id) => {
+            const card = cards.find((row) => row.id === id);
+            return Boolean(card && contactAndGroupShareAddressBook(card, group));
+          }),
+      );
+    },
+  };
+
   const editingGroup = groupRenameDialog
     ? contactGroups.find((card) => card.id === groupRenameDialog.groupId)
     : undefined;
@@ -284,6 +310,11 @@ export function ContactsWorkspace({
                       closeSidebarOnMobile(c.closeSidebar);
                     }}
                     onEdit={openEditAddressBookDialog}
+                    onSelectGroup={(groupId) => {
+                      selectView(contactsGroupViewKey(groupId));
+                      closeSidebarOnMobile(c.closeSidebar);
+                    }}
+                    {...bookGroupRows}
                   />
                 </SidebarSection>
               ) : null}
@@ -302,41 +333,11 @@ export function ContactsWorkspace({
                       closeSidebarOnMobile(c.closeSidebar);
                     }}
                     onEdit={openEditAddressBookDialog}
-                  />
-                </SidebarSection>
-              ) : null}
-              {contactGroups.length > 0 ? (
-                <SidebarSection title={L.sectionGroups}>
-                  <ContactsSidebarGroupRows
-                    groups={contactGroups}
-                    view={view}
-                    editLabel={L.renameGroup}
-                    canEditGroup={(group) =>
-                      canWriteContactGroup(group, addressBooks, Boolean(operations))
-                    }
-                    onSelect={(groupId) => {
+                    onSelectGroup={(groupId) => {
                       selectView(contactsGroupViewKey(groupId));
                       closeSidebarOnMobile(c.closeSidebar);
                     }}
-                    onEdit={(group) =>
-                      setGroupRenameDialog({
-                        groupId: group.id,
-                        name: contactDisplayName(group),
-                      })
-                    }
-                    dropZoneProps={(groupId) => {
-                      const group = contactGroups.find((card) => card.id === groupId);
-                      return sidebarDropZoneProps(
-                        contactsGroupViewKey(groupId),
-                        (ids) => addMembersToGroup(groupId, ids),
-                        (ids) =>
-                          Boolean(group) &&
-                          ids.every((id) => {
-                            const card = cards.find((row) => row.id === id);
-                            return Boolean(card && contactAndGroupShareAddressBook(card, group));
-                          }),
-                      );
-                    }}
+                    {...bookGroupRows}
                   />
                 </SidebarSection>
               ) : null}

@@ -9,11 +9,16 @@ export type ContactsViewPrefs = {
   knownAddressBookIds?: string[];
   /** Device-local address-book color overrides. RFC 9610 has no `color`. */
   addressBookColors?: Record<string, string>;
+  /** Books whose sidebar groups are folded. Missing / empty = all expanded. */
+  collapsedAddressBookIds?: string[];
 };
 
 const viewPrefsListeners = new Set<() => void>();
 let colorOverridesRaw: string | null | undefined;
 let colorOverridesSnapshot: Record<string, string> = EMPTY_ADDRESS_BOOK_COLORS;
+const EMPTY_COLLAPSED_IDS: readonly string[] = [];
+let collapsedIdsRaw: string | null | undefined;
+let collapsedIdsSnapshot: readonly string[] = EMPTY_COLLAPSED_IDS;
 
 function hasWindowStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -54,6 +59,10 @@ export function parseContactsViewPrefs(raw: string | null): ContactsViewPrefs | 
     if (knownAddressBookIds !== undefined) prefs.knownAddressBookIds = knownAddressBookIds;
     const addressBookColors = parseStoredColorMap(record.addressBookColors);
     if (addressBookColors !== undefined) prefs.addressBookColors = addressBookColors;
+    const collapsedAddressBookIds = parseStoredIdList(record.collapsedAddressBookIds);
+    if (collapsedAddressBookIds !== undefined) {
+      prefs.collapsedAddressBookIds = collapsedAddressBookIds;
+    }
     return Object.keys(prefs).length > 0 ? prefs : null;
   } catch {
     return null;
@@ -74,6 +83,7 @@ export function writeContactsViewPrefs(prefs: ContactsViewPrefs): void {
   try {
     window.localStorage.setItem(CONTACTS_VIEW_PREFS_STORAGE_KEY, JSON.stringify(prefs));
     colorOverridesRaw = undefined;
+    collapsedIdsRaw = undefined;
     emitContactsViewPrefs();
   } catch {
     // Ignore storage failures (private mode, quota).
@@ -114,6 +124,9 @@ export function patchContactsViewPrefs(partial: ContactsViewPrefs): ContactsView
   if (partial.addressBookColors !== undefined) {
     next.addressBookColors = partial.addressBookColors;
   }
+  if (partial.collapsedAddressBookIds !== undefined) {
+    next.collapsedAddressBookIds = partial.collapsedAddressBookIds;
+  }
   writeContactsViewPrefs(next);
   return next;
 }
@@ -128,6 +141,44 @@ export function persistAddressBookColor(bookId: string, color: string): void {
       [id]: color,
     },
   });
+}
+
+export function getCollapsedAddressBookIds(): readonly string[] {
+  if (!hasWindowStorage()) return EMPTY_COLLAPSED_IDS;
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(CONTACTS_VIEW_PREFS_STORAGE_KEY);
+  } catch {
+    return EMPTY_COLLAPSED_IDS;
+  }
+  if (raw === collapsedIdsRaw) return collapsedIdsSnapshot;
+  collapsedIdsRaw = raw;
+  collapsedIdsSnapshot =
+    parseContactsViewPrefs(raw)?.collapsedAddressBookIds ?? EMPTY_COLLAPSED_IDS;
+  return collapsedIdsSnapshot;
+}
+
+export function persistCollapsedAddressBookIds(ids: ReadonlySet<string>): void {
+  patchContactsViewPrefs({
+    collapsedAddressBookIds: [...ids],
+  });
+}
+
+export function toggleCollapsedAddressBookId(bookId: string): void {
+  const id = bookId.trim();
+  if (!id) return;
+  const next = new Set(readContactsViewPrefs()?.collapsedAddressBookIds ?? []);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  persistCollapsedAddressBookIds(next);
+}
+
+export function expandCollapsedAddressBookId(bookId: string): void {
+  const id = bookId.trim();
+  if (!id) return;
+  const current = readContactsViewPrefs()?.collapsedAddressBookIds ?? [];
+  if (!current.includes(id)) return;
+  persistCollapsedAddressBookIds(new Set(current.filter((item) => item !== id)));
 }
 
 export function persistHiddenAddressBookIds(

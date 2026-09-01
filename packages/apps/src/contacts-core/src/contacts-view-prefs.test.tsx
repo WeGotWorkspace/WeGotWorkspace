@@ -4,8 +4,10 @@ import {
   CONTACTS_VIEW_PREFS_STORAGE_KEY,
   parseContactsViewPrefs,
   persistAddressBookColor,
+  persistCollapsedAddressBookIds,
   persistHiddenAddressBookIds,
   readContactsViewPrefs,
+  toggleCollapsedAddressBookId,
 } from "./contacts-view-prefs";
 
 function clearStorage() {
@@ -18,9 +20,30 @@ describe("parseContactsViewPrefs", () => {
       parseContactsViewPrefs(
         JSON.stringify({
           addressBookColors: { default: "#ec4899", work: "red", "": "#22c55e" },
+          collapsedAddressBookIds: ["default", ""],
         }),
       ),
-    ).toEqual({ addressBookColors: { default: "#ec4899" } });
+    ).toEqual({
+      addressBookColors: { default: "#ec4899" },
+      collapsedAddressBookIds: ["default"],
+    });
+  });
+});
+
+describe("persistCollapsedAddressBookIds", () => {
+  afterEach(() => {
+    clearStorage();
+  });
+
+  it("writes folded books without wiping colors", () => {
+    persistAddressBookColor("default", "#ec4899");
+    persistCollapsedAddressBookIds(new Set(["default"]));
+    expect(readContactsViewPrefs()).toEqual({
+      addressBookColors: { default: "#ec4899" },
+      collapsedAddressBookIds: ["default"],
+    });
+    toggleCollapsedAddressBookId("default");
+    expect(readContactsViewPrefs()?.collapsedAddressBookIds).toEqual([]);
   });
 });
 

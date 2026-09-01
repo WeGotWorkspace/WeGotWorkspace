@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAddressBookRow } from "@/contacts-core/src/contacts-addressbook-write";
-import { useContactsSidebarModel } from "@/contacts-core/src/use-contacts-sidebar-model";
+import {
+  sortOwnedSidebarAddressBooks,
+  useContactsSidebarModel,
+} from "@/contacts-core/src/use-contacts-sidebar-model";
 
 const ownerBook: ContactsAddressBookRow = {
   id: "default",
@@ -77,5 +80,37 @@ describe("useContactsSidebarModel", () => {
     );
     expect(result.current.ownedAddressBooks.map((item) => item.id)).toEqual(["default", "work"]);
     expect(result.current.sharedAddressBooks).toEqual([]);
+  });
+
+  it("pins the personal default book first even when its server name sorts last", () => {
+    const zoePersonal: ContactsAddressBookRow = { ...ownerBook, name: "Zoe" };
+    const alphaTeam: ContactsAddressBookRow = {
+      ...teamBook,
+      id: "group-alpha",
+      name: "Alpha",
+    };
+    const zebraTeam: ContactsAddressBookRow = {
+      ...teamBook,
+      id: "group-zebra",
+      name: "Zebra",
+    };
+    expect(
+      sortOwnedSidebarAddressBooks([zebraTeam, zoePersonal, alphaTeam]).map((book) => book.id),
+    ).toEqual(["default", "group-alpha", "group-zebra"]);
+
+    const { result } = renderHook(() =>
+      useContactsSidebarModel({
+        labels: defaultContactsLabels,
+        view: "all",
+        addressBooks: [sharedBook, zebraTeam, zoePersonal, alphaTeam],
+        selectView: vi.fn(),
+      }),
+    );
+    expect(result.current.ownedAddressBooks.map((item) => item.id)).toEqual([
+      "default",
+      "group-alpha",
+      "group-zebra",
+    ]);
+    expect(result.current.sharedAddressBooks.map((item) => item.id)).toEqual(["shared-42"]);
   });
 });

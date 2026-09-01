@@ -1,13 +1,20 @@
 import type { AddressBook, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
 import type { CollectionShareWith } from "@/share-ui/collection-share";
 
+/** Owned personal book — `default` / `isDefault`, never an inbound sharee. */
+export function isPersonalAddressBook(
+  book: Pick<AddressBook, "id"> & Partial<Pick<AddressBook, "isSharee" | "isDefault">>,
+): boolean {
+  if (book.isSharee === true) return false;
+  return book.id === "default" || book.isDefault === true;
+}
+
 /** Server-set names; the owned personal book is always Personal. */
 export function contactsAddressBookDisplayName(
   book: Pick<AddressBook, "id" | "name"> & Partial<Pick<AddressBook, "isSharee" | "isDefault">>,
   personalLabel = "Personal",
 ): string {
-  if (book.isSharee === true) return book.name;
-  if (book.id === "default" || book.isDefault === true) return personalLabel;
+  if (isPersonalAddressBook(book)) return personalLabel;
   return book.name;
 }
 

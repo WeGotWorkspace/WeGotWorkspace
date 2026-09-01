@@ -15,6 +15,8 @@ export type ContactsUILabels = {
   /** Owned/team collections heading — same pattern as Tasks “My lists” / Notes “My notebooks”. */
   sectionAddressBooks: string;
   sectionGroups: string;
+  expandAddressBookGroups: (name: string) => string;
+  collapseAddressBookGroups: (name: string) => string;
   viewOnly: string;
   editAddressBook: string;
   newContactMenu: string;
@@ -160,6 +162,8 @@ export const defaultContactsLabels: ContactsUILabels = {
   personalAddressBook: "Personal",
   sectionAddressBooks: "My address books",
   sectionGroups: "Groups",
+  expandAddressBookGroups: (name) => `Expand ${name}`,
+  collapseAddressBookGroups: (name) => `Collapse ${name}`,
   viewOnly: "View only",
   editAddressBook: "Address book settings",
   newContactMenu: "More create options",

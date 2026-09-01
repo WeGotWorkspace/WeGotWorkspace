@@ -14,6 +14,14 @@
   color: var(--color-ink);
 }
 
+.collection-sidebar-row--related:not(.collection-sidebar-row--selected) {
+  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.collection-sidebar-row--nested {
+  @apply pl-10;
+}
+
 .collection-sidebar-row__visibility {
   --primary: var(--collection-row-color, var(--color-ink));
   --primary-foreground: #ffffff;
@@ -80,13 +88,16 @@
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
 }
 
-.collection-sidebar-row__action.button {
+.collection-sidebar-row__action.button,
+.collection-sidebar-row__expand.button {
   @apply size-6 shrink-0;
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
 }
 
 .collection-sidebar-row__action:hover,
-.collection-sidebar-row__action:focus-visible {
+.collection-sidebar-row__action:focus-visible,
+.collection-sidebar-row__expand:hover,
+.collection-sidebar-row__expand:focus-visible {
   color: var(--color-ink);
 }
 

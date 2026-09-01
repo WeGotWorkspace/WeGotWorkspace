@@ -15,6 +15,7 @@ import {
   writableGroupAddressBooks,
   writableOwnedAddressBooks,
   contactsBookViewKey,
+  isPersonalAddressBook,
   isSharedAddressBook,
   isViewOnlyAddressBook,
   type ContactsAddressBookRow,
@@ -69,6 +70,9 @@ describe("contacts-addressbook-write", () => {
     expect(contactsAddressBookDisplayName(ownerBook, "Persoonlijk")).toBe("Persoonlijk");
     expect(contactsAddressBookDisplayName(viewOnlySharee)).toBe("Alice");
     expect(contactsAddressBookDisplayName(teamBook)).toBe("Engineering");
+    expect(isPersonalAddressBook(ownerBook)).toBe(true);
+    expect(isPersonalAddressBook(teamBook)).toBe(false);
+    expect(isPersonalAddressBook(viewOnlySharee)).toBe(false);
   });
 
   it("locks rename and delete for every book", () => {

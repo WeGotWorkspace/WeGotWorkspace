@@ -36,9 +36,11 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).toMatch(/<ContactsSidebarBookRows/);
     expect(tsx).toMatch(/ownedAddressBooks/);
     expect(tsx).toMatch(/sharedAddressBooks/);
+    expect(tsx).toMatch(/title=\{L\.sidebarSharedWithMe\}/);
     expect(tsx).toMatch(/L\.sidebarSharedWithMe/);
-    expect(tsx).toMatch(/L\.sectionGroups/);
-    expect(tsx).toMatch(/<ContactsSidebarGroupRows/);
+    expect(tsx).not.toMatch(/title=\{L\.sectionGroups\}/);
+    expect(tsx).toMatch(/groups: contactGroups/);
+    expect(tsx).toMatch(/onSelectGroup=/);
     expect(tsx).toMatch(/onToggleVisibility=\{toggleAddressBookVisibility\}/);
     expect(tsx).toMatch(/hiddenAddressBookIds=\{hiddenAddressBookIds\}/);
     expect(tsx).not.toMatch(/items=\{groupSidebarItems\}/);
@@ -244,6 +246,7 @@ describe("contacts workspace sidebar chrome", () => {
     expect(orgIconCss).toMatch(/color:\s*var\(--user-avatar-fg,\s*var\(--color-ink\)\)/);
     expect(orgIconCss).not.toMatch(/--collection-row-color/);
     expect(groupRows).toMatch(/<ContactsGroupIcon book=\{group\}/);
+    expect(groupRows).toMatch(/nested=\{nested\}/);
     expect(tsx).toMatch(/addressBookIds=\{editingGroup\?\.addressBookIds\}/);
     expect(tsx).toMatch(/books=\{addressBooks\}/);
   });

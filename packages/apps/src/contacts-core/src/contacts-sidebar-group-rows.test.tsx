@@ -75,4 +75,23 @@ describe("ContactsSidebarGroupRows", () => {
     expect(icon).toBeTruthy();
     expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("");
   });
+
+  it("indents nested group rows under a book", () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <ContactsSidebarGroupRows
+          nested
+          groups={[friendsGroup]}
+          view="all"
+          editLabel="Rename group"
+          canEditGroup={() => false}
+          onSelect={vi.fn()}
+          onEdit={vi.fn()}
+          dropZoneProps={() => ({ isDropTarget: false })}
+        />
+      </TooltipProvider>,
+    );
+    const row = screen.getByText("Friends").closest(".collection-sidebar-row");
+    expect(row?.className).toMatch(/collection-sidebar-row--nested/);
+  });
 });

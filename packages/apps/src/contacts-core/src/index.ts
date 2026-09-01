@@ -26,7 +26,10 @@ export {
   mergeContactsLabels,
   type ContactsUILabels,
 } from "./contacts-labels";
-export { contactsAddressBookDisplayName } from "./contacts-addressbook-write";
+export {
+  contactsAddressBookDisplayName,
+  isPersonalAddressBook,
+} from "./contacts-addressbook-write";
 export {
   channelDisplayLabels,
   contactDisplayName,
@@ -56,6 +59,7 @@ export {
   filterCardsByView,
   filterCardsByHiddenAddressBooks,
   groupsContainingCard,
+  groupsInAddressBook,
   isContactGroupCard,
   listContactGroups,
   resolveGroupMemberCardIds,

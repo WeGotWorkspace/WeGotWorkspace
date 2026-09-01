@@ -13,6 +13,7 @@ import {
   groupRenamePatch,
   isContactGroupCard,
   groupsContainingCard,
+  groupsInAddressBook,
   listContactGroups,
   resolveGroupMemberCardIds,
   resolveGroupMemberCards,
@@ -110,6 +111,27 @@ describe("contacts-group-utils", () => {
       "card-group-family",
       "card-group-friends",
     ]);
+  });
+
+  it("keeps groups under their first enabled address book only", () => {
+    const teamGroup = {
+      ...friendsGroup,
+      id: "card-group-eng",
+      name: { full: "Standups" },
+      addressBookIds: { "group-eng": true },
+    } as unknown as ContactCard;
+    const orphan = {
+      ...friendsGroup,
+      id: "card-group-orphan",
+      name: { full: "Orphan" },
+      addressBookIds: {},
+    } as unknown as ContactCard;
+    expect(
+      groupsInAddressBook([friendsGroup, teamGroup, orphan], "default").map((g) => g.id),
+    ).toEqual(["card-group-friends"]);
+    expect(
+      groupsInAddressBook([friendsGroup, teamGroup, orphan], "group-eng").map((g) => g.id),
+    ).toEqual(["card-group-eng"]);
   });
 
   it("resolves member uids to card ids", () => {

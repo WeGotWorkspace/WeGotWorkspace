@@ -1,4 +1,7 @@
-import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
+import {
+  enabledAddressBookIds,
+  firstEnabledAddressBookId,
+} from "@/contacts-core/src/contacts-addressbook-color";
 import {
   contactDisplayName,
   contactListSortName,
@@ -66,6 +69,11 @@ export function listContactGroups(cards: ContactCard[]): ContactCard[] {
       sensitivity: "base",
     }),
   );
+}
+
+/** Groups stored in `bookId` (first enabled `addressBookIds` key). Orphans omitted. */
+export function groupsInAddressBook(groups: readonly ContactCard[], bookId: string): ContactCard[] {
+  return groups.filter((group) => firstEnabledAddressBookId(group.addressBookIds) === bookId);
 }
 
 function enabledMemberUids(members: ContactCard["members"]): string[] {
