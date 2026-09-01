@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "contacts-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "contacts-workspace.css"), "utf8");
+const avatarCss = readFileSync(join(here, "contact-user-avatar.css"), "utf8");
 const groupIconCss = readFileSync(join(here, "contacts-group-icon.css"), "utf8");
 const orgIconCss = readFileSync(join(here, "contacts-org-icon.css"), "utf8");
 const groupRows = readFileSync(join(here, "contacts-sidebar-group-rows.tsx"), "utf8");
@@ -193,28 +194,25 @@ describe("contacts workspace sidebar chrome", () => {
     expect(css).toMatch(/\.contacts-detail-view__tag-group/);
   });
 
-  it("uses one soft accent wash for person avatars in list and detail", () => {
-    expect(css).toMatch(
-      /--contacts-person-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-accent\) 24%,\s*var\(--color-cream/,
+  it("washes person avatars from the card's address-book color, not mint-only", () => {
+    expect(avatarCss).toMatch(
+      /--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 24%,\s*var\(--color-cream/,
     );
-    expect(css).toMatch(
-      /\.contacts-list-panel__avatar,\s*\.contacts-detail-view__avatar \{[\s\S]*--user-avatar-bg:\s*var\(--contacts-person-avatar-bg\);[\s\S]*--user-avatar-fg:\s*var\(--contacts-person-avatar-color\);/,
-    );
+    expect(avatarCss).toMatch(/--user-avatar-fg:\s*var\(--color-ink\)/);
+    expect(css).not.toMatch(/--contacts-person-avatar-bg/);
     expect(css).not.toMatch(/--contacts-list-avatar-bg:\s*var\(--contacts-accent\)/);
     expect(css).not.toMatch(
       /\.contacts-list-panel__avatar \.user-avatar__mark \{[\s\S]*background-color:\s*var\(--contacts-list-avatar-bg\)/,
     );
   });
 
-  it("rings person and org avatars with a 2px saturated accent tint", () => {
-    expect(css).toMatch(
-      /--contacts-person-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-accent\) 55%,\s*var\(--color-cream/,
+  it("rings person and org avatars with a 2px book-color tint", () => {
+    expect(avatarCss).toMatch(
+      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 55%,\s*var\(--color-cream/,
     );
-    expect(css).toMatch(
-      /\.contacts-list-panel__avatar,\s*\.contacts-detail-view__avatar \{[\s\S]*--user-avatar-border:\s*var\(--contacts-person-avatar-border\);[\s\S]*--user-avatar-border-width:\s*2px;/,
-    );
-    expect(css).not.toMatch(/--contacts-person-avatar-border:\s*#39d49b/);
-    expect(css).not.toMatch(/--contacts-person-avatar-border:\s*var\(--color-ink/);
+    expect(avatarCss).toMatch(/--user-avatar-border-width:\s*2px;/);
+    expect(avatarCss).not.toMatch(/--contacts-person-avatar-border/);
+    expect(css).not.toMatch(/--contacts-person-avatar-border/);
     expect(groupIconCss).not.toMatch(/--user-avatar-border/);
     expect(groupIconCss).not.toMatch(/border-width:\s*2px/);
   });

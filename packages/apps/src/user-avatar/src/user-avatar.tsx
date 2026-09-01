@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import "@/user-avatar/src/user-avatar.css";
@@ -23,6 +23,8 @@ export type UserAvatarProps = {
   decoding?: "async" | "auto" | "sync";
   onClick?: () => void;
   className?: string;
+  /** Runtime CSS variables (e.g. a per-collection `--contacts-book-color`). */
+  style?: CSSProperties;
 };
 
 export function initialsFromDisplayName(displayName: string | null | undefined): string {
@@ -46,6 +48,7 @@ export function UserAvatar({
   decoding,
   onClick,
   className,
+  style,
 }: UserAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const resolvedName = displayName?.trim() || "Unknown";
@@ -94,7 +97,7 @@ export function UserAvatar({
   );
 
   return (
-    <div className={cn("user-avatar", sizeClass, className)}>
+    <div className={cn("user-avatar", sizeClass, className)} style={style}>
       {circle}
       {!compact ? (
         <div className="user-avatar__text">

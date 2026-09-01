@@ -1,0 +1,21 @@
+@import "../../styles.css" reference;
+
+/**
+ * Person / org fallback swatch. `--contacts-book-color` is the sidebar
+ * address-book hex (`addressBookDotColor`). Unset → mint app accent.
+ * Photo imgs cover the mark; do not tint `.user-avatar__image`.
+ */
+.contacts-user-avatar {
+  --user-avatar-bg: color-mix(
+    in oklab,
+    var(--contacts-book-color, var(--contacts-accent)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --user-avatar-fg: var(--color-ink);
+  --user-avatar-border: color-mix(
+    in oklab,
+    var(--contacts-book-color, var(--contacts-accent)) 55%,
+    var(--color-cream, #ffffff)
+  );
+  --user-avatar-border-width: 2px;
+}

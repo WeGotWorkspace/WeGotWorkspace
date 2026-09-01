@@ -2,6 +2,7 @@ import { createRef } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
+import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsListPanel } from "./contacts-list-panel";
 import { defaultContactsLabels } from "./contacts-labels";
 import type { ContactCard } from "./contacts-types";
@@ -159,6 +160,35 @@ describe("ContactsListPanel avatars", () => {
     expect(personRow?.querySelector(".contacts-org-icon")).toBeNull();
     expect(personRow?.querySelector(".user-avatar__mark")?.textContent).toMatch(/J/);
     expect(personRow?.querySelector("img")).toBeNull();
+    expect(
+      (
+        personRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
+      )?.style.getPropertyValue("--contacts-book-color"),
+    ).toBe(addressBookDotColor({ id: "default" }));
+  });
+
+  it("tints list initials from each row's address book", () => {
+    const workCard = {
+      ...personCard,
+      id: "card-joe",
+      uid: "urn:uuid:joe",
+      name: { full: "Joe Example" },
+      addressBookIds: { work: true },
+    } as unknown as ContactCard;
+    const { container } = renderListAvatars([personCard, workCard]);
+    const defaultRow = container.querySelector('[data-list-item-id="card-jane"]');
+    const workRow = container.querySelector('[data-list-item-id="card-joe"]');
+    expect(
+      (
+        defaultRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
+      )?.style.getPropertyValue("--contacts-book-color"),
+    ).toBe(addressBookDotColor({ id: "default" }));
+    expect(
+      (
+        workRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
+      )?.style.getPropertyValue("--contacts-book-color"),
+    ).toBe(addressBookDotColor({ id: "work" }));
+    expect(addressBookDotColor({ id: "work" })).not.toBe(addressBookDotColor({ id: "default" }));
   });
 
   it("lazy-loads list photo imgs with native loading and decoding", () => {

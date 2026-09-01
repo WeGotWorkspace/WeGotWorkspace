@@ -31,18 +31,6 @@
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
-  /* Person + org default mark: a step above toolbar-selected (18%), not solid mint. */
-  --contacts-person-avatar-bg: color-mix(
-    in oklab,
-    var(--contacts-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
-  --contacts-person-avatar-border: color-mix(
-    in oklab,
-    var(--contacts-accent) 55%,
-    var(--color-cream, #ffffff)
-  );
-  --contacts-person-avatar-color: var(--color-ink);
   --contacts-pending-sync-color: #c98a1f;
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--contacts-accent);
@@ -151,14 +139,6 @@
 
 .contacts-workspace .collection-sidebar-row--drop-target {
   background-color: color-mix(in oklab, var(--contacts-accent) 18%, transparent);
-}
-
-.contacts-list-panel__avatar,
-.contacts-detail-view__avatar {
-  --user-avatar-bg: var(--contacts-person-avatar-bg);
-  --user-avatar-fg: var(--contacts-person-avatar-color);
-  --user-avatar-border: var(--contacts-person-avatar-border);
-  --user-avatar-border-width: 2px;
 }
 
 .contacts-list-panel__pending-dot {

@@ -1,8 +1,12 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { ContactUserAvatar } from "@/contacts-core/src/contact-user-avatar";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import {
+  CONTACTS_VIEW_PREFS_STORAGE_KEY,
+  persistAddressBookColor,
+} from "@/contacts-core/src/contacts-view-prefs";
 
 const groupCard = {
   "@type": "Card",
@@ -48,9 +52,18 @@ const orgCard = {
   addressBookIds: { default: true },
 } as unknown as ContactCard;
 
+function bookColorOn(container: HTMLElement): string {
+  return (
+    (
+      container.querySelector(".contacts-user-avatar") as HTMLElement | null
+    )?.style.getPropertyValue("--contacts-book-color") ?? ""
+  );
+}
+
 describe("ContactUserAvatar", () => {
   afterEach(() => {
     cleanup();
+    window.localStorage.removeItem(CONTACTS_VIEW_PREFS_STORAGE_KEY);
   });
 
   it("renders a book-tinted group icon for kind: group cards", () => {
@@ -67,6 +80,51 @@ describe("ContactUserAvatar", () => {
     const { container } = render(<ContactUserAvatar card={personCard} size="sm" compact />);
     expect(container.querySelector(".user-avatar")).toBeTruthy();
     expect(container.querySelector(".contacts-group-icon")).toBeNull();
+  });
+
+  it("tints the initials swatch from the card's address book", () => {
+    const { container } = render(<ContactUserAvatar card={personCard} size="sm" compact />);
+    expect(bookColorOn(container)).toBe(addressBookDotColor({ id: "default" }));
+    expect(container.querySelector(".user-avatar__mark")?.textContent).toMatch(/J/);
+  });
+
+  it("uses a different book hex for a different addressBookIds key", () => {
+    const workCard = {
+      ...personCard,
+      addressBookIds: { work: true },
+    } as unknown as ContactCard;
+    const { container } = render(<ContactUserAvatar card={workCard} size="sm" compact />);
+    expect(bookColorOn(container)).toBe(addressBookDotColor({ id: "work" }));
+    expect(bookColorOn(container)).not.toBe(addressBookDotColor({ id: "default" }));
+  });
+
+  it("updates the initials swatch when the book color override changes", async () => {
+    const { container } = render(<ContactUserAvatar card={personCard} size="sm" compact />);
+    expect(bookColorOn(container)).toBe(addressBookDotColor({ id: "default" }));
+    persistAddressBookColor("default", "#22c55e");
+    await waitFor(() => {
+      expect(bookColorOn(container)).toBe("#22c55e");
+    });
+  });
+
+  it("leaves --contacts-book-color unset when there is no card book", () => {
+    const { container } = render(<ContactUserAvatar displayName="Pat Example" size="sm" compact />);
+    expect(container.querySelector(".contacts-user-avatar")).toBeTruthy();
+    expect(bookColorOn(container)).toBe("");
+  });
+
+  it("tints org fallback chrome from the book and does not hash the org name", () => {
+    const { container } = render(<ContactUserAvatar card={orgCard} size="sm" compact />);
+    expect(bookColorOn(container)).toBe(addressBookDotColor({ id: "default" }));
+    expect(container.querySelector(".contacts-org-icon")).toBeTruthy();
+  });
+
+  it("keeps a photo img uncolored while still storing the book hex for fallback", () => {
+    const { container } = render(<ContactUserAvatar card={personWithPhoto} size="sm" compact />);
+    const img = container.querySelector("img.user-avatar__image");
+    expect(img?.getAttribute("src")).toBe("https://example.com/photos/jane.jpg");
+    expect(img?.getAttribute("style") ?? "").toBe("");
+    expect(bookColorOn(container)).toBe(addressBookDotColor({ id: "default" }));
   });
 
   it("uses the xl group-icon slot for detail-sized avatars", () => {
