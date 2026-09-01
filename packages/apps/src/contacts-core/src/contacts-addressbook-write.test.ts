@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addressBookDialogFromRow,
   addressBookPatchOp,
+  contactsAddressBookDisplayName,
   canCreateGroupInAddressBook,
   canDeleteAddressBook,
   canHideSharedAddressBook,
@@ -63,6 +64,13 @@ const editSharee: ContactsAddressBookRow = {
 };
 
 describe("contacts-addressbook-write", () => {
+  it("forces Personal on the owned default book and keeps sharee and group names", () => {
+    expect(contactsAddressBookDisplayName(ownerBook)).toBe("Personal");
+    expect(contactsAddressBookDisplayName(ownerBook, "Persoonlijk")).toBe("Persoonlijk");
+    expect(contactsAddressBookDisplayName(viewOnlySharee)).toBe("Alice");
+    expect(contactsAddressBookDisplayName(teamBook)).toBe("Engineering");
+  });
+
   it("locks rename and delete for every book", () => {
     expect(canRenameAddressBook(ownerBook)).toBe(false);
     expect(canRenameAddressBook(teamBook)).toBe(false);
@@ -172,7 +180,7 @@ describe("contacts-addressbook-write", () => {
   it("builds a share-only dialog state from the row", () => {
     expect(addressBookDialogFromRow(ownerBook)).toEqual({
       bookId: "default",
-      name: "Ada",
+      name: "Personal",
       mayShare: true,
       isSharee: false,
       shareWith: null,

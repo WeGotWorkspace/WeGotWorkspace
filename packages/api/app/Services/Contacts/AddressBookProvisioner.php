@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts;
 
+use App\Models\Addressbook;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
@@ -63,16 +64,24 @@ final class AddressBookProvisioner
             return ['created' => 0];
         }
 
-        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
-        foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
-            if (($book['uri'] ?? '') === AddressBookCollectionUris::CALDAV_URI) {
-                return ['created' => 0];
-            }
-        }
-
-        $name = trim($displayName);
+        $isUserPrincipal = ! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX);
+        $name = $isUserPrincipal
+            ? AddressBookCollectionUris::PERSONAL_DISPLAY_NAME
+            : trim($displayName);
         if ($name === '') {
             $name = basename(str_replace('\\', '/', $principalUri));
+        }
+
+        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
+        foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
+            if (($book['uri'] ?? '') !== AddressBookCollectionUris::CALDAV_URI) {
+                continue;
+            }
+            if ($isUserPrincipal) {
+                $this->rewriteUserDisplayName($principalUri);
+            }
+
+            return ['created' => 0];
         }
 
         $carddav->createAddressBook($principalUri, AddressBookCollectionUris::CALDAV_URI, [
@@ -80,6 +89,23 @@ final class AddressBookProvisioner
         ]);
 
         return ['created' => 1];
+    }
+
+    private function rewriteUserDisplayName(string $principalUri): void
+    {
+        $book = Addressbook::query()
+            ->where('principaluri', $principalUri)
+            ->where('uri', AddressBookCollectionUris::CALDAV_URI)
+            ->first();
+        if ($book === null) {
+            return;
+        }
+        if ((string) $book->displayname === AddressBookCollectionUris::PERSONAL_DISPLAY_NAME) {
+            return;
+        }
+
+        $book->displayname = AddressBookCollectionUris::PERSONAL_DISPLAY_NAME;
+        $book->save();
     }
 
     /**

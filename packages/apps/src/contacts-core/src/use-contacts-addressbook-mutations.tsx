@@ -49,9 +49,9 @@ export function useContactsAddressBookMutations({
   const openEditAddressBookDialog = useCallback(
     (book: ContactsAddressBookRow) => {
       const current = books.find((item) => item.id === book.id) ?? book;
-      setAddressBookDialog(addressBookDialogFromRow(current));
+      setAddressBookDialog(addressBookDialogFromRow(current, labels.personalAddressBook));
     },
-    [books],
+    [books, labels.personalAddressBook],
   );
 
   const patchShareWith = useCallback(

@@ -64,7 +64,7 @@ describe("useContactsAddressBookMutations", () => {
     });
     expect(result.current.addressBookDialog).toMatchObject({
       bookId: "default",
-      name: "Ada",
+      name: "Personal",
       mayShare: true,
       isSharee: false,
     });

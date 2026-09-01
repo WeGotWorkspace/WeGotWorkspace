@@ -28,6 +28,7 @@ export type ContactsCreateGroupDialogLabels = Pick<
   | "createGroupAddressBookHint"
   | "createGroupButton"
   | "cancel"
+  | "personalAddressBook"
 >;
 
 export function contactsCreateGroupDialogLabelsFrom(
@@ -40,6 +41,7 @@ export function contactsCreateGroupDialogLabelsFrom(
     createGroupAddressBookHint: labels.createGroupAddressBookHint,
     createGroupButton: labels.createGroupButton,
     cancel: labels.cancel,
+    personalAddressBook: labels.personalAddressBook,
   };
 }
 
@@ -121,6 +123,7 @@ export function ContactsCreateGroupDialog({
             <ContactsAddressBookSelect
               id="contacts-create-group-book"
               label={labels.createGroupAddressBookLabel}
+              personalLabel={labels.personalAddressBook}
               books={books}
               value={addressBookId}
               onValueChange={selectAddressBookById}

@@ -1,6 +1,16 @@
 import type { AddressBook, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
 import type { CollectionShareWith } from "@/share-ui/collection-share";
 
+/** Server-set names; the owned personal book is always Personal. */
+export function contactsAddressBookDisplayName(
+  book: Pick<AddressBook, "id" | "name"> & Partial<Pick<AddressBook, "isSharee" | "isDefault">>,
+  personalLabel = "Personal",
+): string {
+  if (book.isSharee === true) return book.name;
+  if (book.id === "default" || book.isDefault === true) return personalLabel;
+  return book.name;
+}
+
 export type ContactsAddressBookOperations = Pick<ContactsAPIOperations, "patchAddressBook">;
 
 /** Live AddressBook row — ids are `default` / `group-{slug}` / `shared-{n}`. */
@@ -22,7 +32,7 @@ export function isSharedAddressBook(book?: ContactsAddressBookRow): boolean {
   return book?.isSharee === true;
 }
 
-/** Names are server-set from the principal display name. */
+/** Names are server-set; the personal book is always Personal. */
 export function canRenameAddressBook(_book?: ContactsAddressBookRow): boolean {
   return false;
 }
@@ -112,10 +122,11 @@ export function addressBookPatchOp(
 
 export function addressBookDialogFromRow(
   book: ContactsAddressBookRow,
+  personalLabel = "Personal",
 ): Exclude<ContactsAddressBookDialogState, null> {
   return {
     bookId: book.id,
-    name: book.name,
+    name: contactsAddressBookDisplayName(book, personalLabel),
     mayShare: canShareAddressBook(book),
     isSharee: isSharedAddressBook(book),
     shareWith: book.shareWith ?? null,

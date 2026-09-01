@@ -13,6 +13,9 @@ final class AddressBookCollectionUris
 {
     public const PERSONAL_DEFAULT = 'default';
 
+    /** Fixed product name for the user's owned personal book. */
+    public const PERSONAL_DISPLAY_NAME = 'Personal';
+
     /** CalDAV uri on both user and group principals. */
     public const CALDAV_URI = 'default';
 

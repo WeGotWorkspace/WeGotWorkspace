@@ -57,7 +57,7 @@ describe("ContactsSidebarBookRows", () => {
     expect(row?.style.getPropertyValue("--collection-row-color")).toBe(
       addressBookDotColor(ownerBook),
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: "Hide Ada" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Hide Personal" }));
     expect(onToggleVisibility).toHaveBeenCalledWith("default");
     expect(screen.getByRole("img", { name: "View only" })).toBeTruthy();
   });

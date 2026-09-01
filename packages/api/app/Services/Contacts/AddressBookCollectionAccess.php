@@ -174,10 +174,9 @@ final class AddressBookCollectionAccess
 
     private function ensureVisible(string $username): void
     {
-        $principal = Principal::forUsername($username);
         $this->provisioner->ensureForPrincipal(
             $this->principalUri($username),
-            (string) ($principal?->displayname ?? $username),
+            AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
         );
 
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {

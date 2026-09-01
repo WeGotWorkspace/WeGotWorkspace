@@ -276,6 +276,7 @@ export function ContactsWorkspace({
                     view={view}
                     editLabel={L.editAddressBook}
                     viewOnlyLabel={L.viewOnly}
+                    personalLabel={L.personalAddressBook}
                     hiddenAddressBookIds={hiddenAddressBookIds}
                     onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => {
@@ -293,6 +294,7 @@ export function ContactsWorkspace({
                     view={view}
                     editLabel={L.editAddressBook}
                     viewOnlyLabel={L.viewOnly}
+                    personalLabel={L.personalAddressBook}
                     hiddenAddressBookIds={hiddenAddressBookIds}
                     onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => {

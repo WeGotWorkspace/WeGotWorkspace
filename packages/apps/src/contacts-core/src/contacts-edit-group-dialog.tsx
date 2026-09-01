@@ -41,6 +41,7 @@ export type ContactsEditGroupDialogLabels = Pick<
   | "save"
   | "cancel"
   | "delete"
+  | "personalAddressBook"
 >;
 
 export function contactsEditGroupDialogLabelsFrom(
@@ -57,6 +58,7 @@ export function contactsEditGroupDialogLabelsFrom(
     save: labels.save,
     cancel: labels.cancel,
     delete: labels.delete,
+    personalAddressBook: labels.personalAddressBook,
   };
 }
 
@@ -142,6 +144,7 @@ export function ContactsEditGroupDialog({
               <ContactsAddressBookSelect
                 id="contacts-edit-group-book"
                 label={labels.createGroupAddressBookLabel}
+                personalLabel={labels.personalAddressBook}
                 books={books}
                 value={addressBookId}
                 disabled

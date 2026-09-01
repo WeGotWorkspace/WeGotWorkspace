@@ -17,7 +17,12 @@ import "@/contacts-core/src/contacts-import-dialog.css";
 
 export type ContactsImportDialogLabels = Pick<
   ContactsUILabels,
-  "importDialogTitle" | "importDestinationLegend" | "importSubmit" | "cancel" | "importProgress"
+  | "importDialogTitle"
+  | "importDestinationLegend"
+  | "importSubmit"
+  | "cancel"
+  | "importProgress"
+  | "personalAddressBook"
 >;
 
 export function contactsImportDialogLabelsFrom(
@@ -29,6 +34,7 @@ export function contactsImportDialogLabelsFrom(
     importSubmit: labels.importSubmit,
     cancel: labels.cancel,
     importProgress: labels.importProgress,
+    personalAddressBook: labels.personalAddressBook,
   };
 }
 
@@ -136,6 +142,7 @@ export function ContactsImportDialog({
             <ContactsAddressBookSelect
               id="contacts-import-book"
               label={labels.importDestinationLegend}
+              personalLabel={labels.personalAddressBook}
               books={writable}
               value={addressBookId}
               disabled={busy}

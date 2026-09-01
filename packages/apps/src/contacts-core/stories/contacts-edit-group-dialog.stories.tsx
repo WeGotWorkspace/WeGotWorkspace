@@ -79,7 +79,7 @@ export const Default: Story = {
     ).toBeInTheDocument();
     const book = bookTrigger();
     await expect(book).toBeDisabled();
-    await expect(book).toHaveTextContent("Ada");
+    await expect(book).toHaveTextContent("Personal");
     const name = screen.getByLabelText(defaultContactsLabels.createGroupNameLabel);
     await userEvent.clear(name);
     await userEvent.type(name, "Close Friends");

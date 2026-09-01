@@ -7,6 +7,7 @@ import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-co
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import {
   canOpenAddressBookSettings,
+  contactsAddressBookDisplayName,
   contactsBookViewKey,
   isViewOnlyAddressBook,
   type ContactsAddressBookRow,
@@ -17,6 +18,7 @@ export type ContactsSidebarBookRowsProps = {
   view: string;
   editLabel: string;
   viewOnlyLabel: string;
+  personalLabel?: string;
   hiddenAddressBookIds: ReadonlySet<string>;
   onToggleVisibility: (bookId: string) => void;
   onSelect: (bookId: string) => void;
@@ -28,6 +30,7 @@ export function ContactsSidebarBookRows({
   view,
   editLabel,
   viewOnlyLabel,
+  personalLabel = "Personal",
   hiddenAddressBookIds,
   onToggleVisibility,
   onSelect,
@@ -41,7 +44,7 @@ export function ContactsSidebarBookRows({
         return (
           <CollectionSidebarRow
             key={book.id}
-            name={book.name}
+            name={contactsAddressBookDisplayName(book, personalLabel)}
             color={addressBookDotColor(book, colorOverrides)}
             selected={view === contactsBookViewKey(book.id)}
             visible={!hiddenAddressBookIds.has(book.id)}

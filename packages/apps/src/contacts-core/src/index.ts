@@ -26,6 +26,7 @@ export {
   mergeContactsLabels,
   type ContactsUILabels,
 } from "./contacts-labels";
+export { contactsAddressBookDisplayName } from "./contacts-addressbook-write";
 export {
   channelDisplayLabels,
   contactDisplayName,

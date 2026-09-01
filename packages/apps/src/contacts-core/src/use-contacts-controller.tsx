@@ -61,6 +61,7 @@ import type {
 } from "@/contacts-core/src/contacts-types";
 import {
   canCreateGroupInAddressBook,
+  contactsAddressBookDisplayName,
   writableGroupAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
@@ -394,7 +395,8 @@ export function useContactsController({
     if (view === "all") return L.sidebarAllContacts;
     if (view.startsWith("book:")) {
       const bookId = view.slice(5);
-      return addressBooks.find((book) => book.id === bookId)?.name ?? bookId;
+      const book = addressBooks.find((row) => row.id === bookId);
+      return book ? contactsAddressBookDisplayName(book, L.personalAddressBook) : bookId;
     }
     if (view.startsWith("group:")) {
       const groupId = view.slice("group:".length);
@@ -402,7 +404,7 @@ export function useContactsController({
       return group ? contactDisplayName(group) : L.sidebarAllContacts;
     }
     return L.sidebarAllContacts;
-  }, [L.sidebarAllContacts, addressBooks, contactGroups, view]);
+  }, [L.personalAddressBook, L.sidebarAllContacts, addressBooks, contactGroups, view]);
 
   const canCreateContact = useMemo(
     () => canCreateContactInView(view, addressBooks, selectedGroup, Boolean(operations)),

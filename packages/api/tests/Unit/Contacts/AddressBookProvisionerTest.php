@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Contacts;
 
+use App\Models\Addressbook;
 use App\Services\Contacts\AddressBookCollectionUris;
 use App\Services\Contacts\AddressBookProvisioner;
 use Tests\Support\SeedsWgwIdentity;
@@ -13,7 +14,7 @@ final class AddressBookProvisionerTest extends WgwDatabaseTestCase
 {
     use SeedsWgwIdentity;
 
-    public function test_ensure_for_principal_is_idempotent_and_uses_display_name(): void
+    public function test_ensure_for_principal_is_idempotent_and_uses_personal_name(): void
     {
         $this->seedWgwUser('provision-bob', displayName: 'Provision Bob');
         $provisioner = app(AddressBookProvisioner::class);
@@ -26,7 +27,25 @@ final class AddressBookProvisionerTest extends WgwDatabaseTestCase
         $this->assertDatabaseHas('addressbooks', [
             'principaluri' => 'principals/provision-bob',
             'uri' => AddressBookCollectionUris::CALDAV_URI,
-            'displayname' => 'Provision Bob',
+            'displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
+        ], 'wgw');
+    }
+
+    public function test_ensure_rewrites_existing_user_book_displayname_to_personal(): void
+    {
+        $this->seedWgwUser('provision-bob', displayName: 'Provision Bob');
+        $provisioner = app(AddressBookProvisioner::class);
+        $provisioner->ensureForPrincipal('principals/provision-bob', 'Provision Bob');
+
+        Addressbook::query()
+            ->where('principaluri', 'principals/provision-bob')
+            ->update(['displayname' => 'Provision Bob']);
+
+        $this->assertSame(0, $provisioner->ensureForPrincipal('principals/provision-bob', 'Provision Bob')['created']);
+        $this->assertDatabaseHas('addressbooks', [
+            'principaluri' => 'principals/provision-bob',
+            'uri' => AddressBookCollectionUris::CALDAV_URI,
+            'displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
         ], 'wgw');
     }
 

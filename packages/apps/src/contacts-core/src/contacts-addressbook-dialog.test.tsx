@@ -62,7 +62,7 @@ describe("ContactsAddressBookDialog", () => {
     const name = screen.getByLabelText(defaultContactsLabels.addressBookNameLabel);
     expect(name).toBeInstanceOf(HTMLInputElement);
     expect((name as HTMLInputElement).readOnly).toBe(true);
-    expect((name as HTMLInputElement).value).toBe("Ada");
+    expect((name as HTMLInputElement).value).toBe("Personal");
     expect(screen.getByText(defaultContactsLabels.shareAddressBookTitle)).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultContactsLabels.delete })).toBeNull();
     expect(

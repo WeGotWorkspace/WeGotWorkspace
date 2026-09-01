@@ -1,6 +1,7 @@
 import type { KeyboardEvent, KeyboardEventHandler } from "react";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import "@/contacts-core/src/contacts-address-book-select.css";
 
@@ -14,11 +15,14 @@ export function suppressClosedSelectTypeahead(event: KeyboardEvent<HTMLButtonEle
 export type ContactsAddressBookSelectBook = {
   id: string;
   name: string;
+  isSharee?: boolean;
+  isDefault?: boolean;
 };
 
 export type ContactsAddressBookSelectProps = {
   id: string;
   label: string;
+  personalLabel?: string;
   books: readonly ContactsAddressBookSelectBook[];
   value: string;
   disabled?: boolean;
@@ -41,6 +45,7 @@ export function booksForAddressBookSelect(
 export function ContactsAddressBookSelect({
   id,
   label,
+  personalLabel = "Personal",
   books,
   value,
   disabled = false,
@@ -57,14 +62,17 @@ export function ContactsAddressBookSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent onCloseAutoFocus={onCloseAutoFocus}>
-          {options.map((book) => (
-            <SelectItem key={book.id} value={book.id} textValue={book.name}>
-              <span className="contacts-address-book-select__option">
-                <ContactsGroupIcon book={book.id} />
-                {book.name}
-              </span>
-            </SelectItem>
-          ))}
+          {options.map((book) => {
+            const name = contactsAddressBookDisplayName(book, personalLabel);
+            return (
+              <SelectItem key={book.id} value={book.id} textValue={name}>
+                <span className="contacts-address-book-select__option">
+                  <ContactsGroupIcon book={book.id} />
+                  {name}
+                </span>
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
     </FieldLabelRow>

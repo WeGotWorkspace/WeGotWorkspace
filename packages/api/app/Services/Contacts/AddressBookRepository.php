@@ -334,11 +334,13 @@ final class AddressBookRepository
     {
         $book = $listing->book;
         $id = $this->collectionAccess->apiIdForListing($listing);
+        $isDefault = ! $listing->isSharee && $id === AddressBookCollectionUris::PERSONAL_DEFAULT;
         $name = trim((string) ($book->displayname ?? ''));
-        if ($name === '') {
+        if ($isDefault) {
+            $name = AddressBookCollectionUris::PERSONAL_DISPLAY_NAME;
+        } elseif ($name === '') {
             $name = $id;
         }
-        $isDefault = ! $listing->isSharee && $id === AddressBookCollectionUris::PERSONAL_DEFAULT;
 
         return [
             'id' => $id,

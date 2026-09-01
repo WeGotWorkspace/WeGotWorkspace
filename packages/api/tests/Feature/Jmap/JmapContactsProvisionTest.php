@@ -74,7 +74,7 @@ final class JmapContactsProvisionTest extends WgwDatabaseTestCase
         $this->assertDatabaseHas('addressbooks', [
             'principaluri' => 'principals/dave',
             'uri' => AddressBookCollectionUris::CALDAV_URI,
-            'displayname' => 'Dave',
+            'displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
         ], 'wgw');
 
         $daveToken = $this->issueBearerTokenFor('dave', 'dave-secret12');
@@ -87,7 +87,7 @@ final class JmapContactsProvisionTest extends WgwDatabaseTestCase
 
         $default = collect($args['list'])->firstWhere('id', 'default');
         $this->assertIsArray($default);
-        $this->assertSame('Dave', $default['name']);
+        $this->assertSame(AddressBookCollectionUris::PERSONAL_DISPLAY_NAME, $default['name']);
         $this->assertFalse($default['myRights']['mayDelete']);
     }
 
@@ -121,10 +121,37 @@ final class JmapContactsProvisionTest extends WgwDatabaseTestCase
 
         $default = collect($args['list'])->firstWhere('id', 'default');
         $this->assertIsArray($default);
-        $this->assertSame('Erin', $default['name']);
+        $this->assertSame(AddressBookCollectionUris::PERSONAL_DISPLAY_NAME, $default['name']);
         $this->assertDatabaseHas('addressbooks', [
             'principaluri' => 'principals/erin',
             'uri' => AddressBookCollectionUris::CALDAV_URI,
+            'displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
+        ], 'wgw');
+    }
+
+    public function test_list_rewrites_existing_user_book_displayname_to_personal(): void
+    {
+        $this->seedWgwUser('erin', displayName: 'Erin');
+        $this->seedDefaultAddressBookFor('erin');
+        Addressbook::query()->where('principaluri', 'principals/erin')->update(['displayname' => 'Erin']);
+
+        $this->assertDatabaseHas('addressbooks', [
+            'principaluri' => 'principals/erin',
+            'uri' => AddressBookCollectionUris::CALDAV_URI,
+            'displayname' => 'Erin',
+        ], 'wgw');
+
+        $args = $this->jmapAs('erin', [
+            ['AddressBook/get', ['accountId' => 'erin', 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $default = collect($args['list'])->firstWhere('id', 'default');
+        $this->assertIsArray($default);
+        $this->assertSame(AddressBookCollectionUris::PERSONAL_DISPLAY_NAME, $default['name']);
+        $this->assertDatabaseHas('addressbooks', [
+            'principaluri' => 'principals/erin',
+            'uri' => AddressBookCollectionUris::CALDAV_URI,
+            'displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
         ], 'wgw');
     }
 

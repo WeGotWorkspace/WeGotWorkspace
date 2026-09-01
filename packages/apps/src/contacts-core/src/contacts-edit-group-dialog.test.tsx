@@ -86,7 +86,7 @@ describe("ContactsEditGroupDialog", () => {
     );
 
     expect((bookTrigger() as HTMLButtonElement).disabled).toBe(true);
-    expect(selectedBookLabel()).toBe("Ada");
+    expect(selectedBookLabel()).toBe("Personal");
   });
 
   it("displays Administrators when the group lives in that book", () => {

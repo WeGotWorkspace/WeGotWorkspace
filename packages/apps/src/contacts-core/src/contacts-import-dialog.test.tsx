@@ -124,7 +124,7 @@ describe("ContactsImportDialog", () => {
 
     expect(screen.getByText(defaultContactsLabels.importDialogTitle)).toBeTruthy();
     expect(bookTrigger()).toBeTruthy();
-    expect(selectedBookLabel()).toBe("Ada");
+    expect(selectedBookLabel()).toBe("Personal");
 
     fireEvent.click(screen.getByRole("button", { name: defaultContactsLabels.importSubmit }));
 
@@ -188,7 +188,7 @@ describe("ContactsImportDialog", () => {
     );
 
     fireEvent.click(bookTrigger());
-    expect(screen.getByRole("option", { name: /Ada/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Personal/ })).toBeTruthy();
     expect(screen.getByRole("option", { name: /Engineering/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Alice/ })).toBeNull();
     expect(screen.queryByRole("option", { name: /Bob/ })).toBeNull();

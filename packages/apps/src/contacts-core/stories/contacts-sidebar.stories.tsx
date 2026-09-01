@@ -82,6 +82,7 @@ function ContactsSidebarHarness({
               view={view}
               editLabel={defaultContactsLabels.editAddressBook}
               viewOnlyLabel={defaultContactsLabels.viewOnly}
+              personalLabel={defaultContactsLabels.personalAddressBook}
               hiddenAddressBookIds={new Set(hiddenAddressBookIds)}
               onToggleVisibility={onToggleVisibility}
               onSelect={onSelect}
@@ -94,6 +95,7 @@ function ContactsSidebarHarness({
               view={view}
               editLabel={defaultContactsLabels.editAddressBook}
               viewOnlyLabel={defaultContactsLabels.viewOnly}
+              personalLabel={defaultContactsLabels.personalAddressBook}
               hiddenAddressBookIds={new Set(hiddenAddressBookIds)}
               onToggleVisibility={onToggleVisibility}
               onSelect={onSelect}
@@ -140,12 +142,12 @@ export const OwnedAndShared: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(defaultContactsLabels.sectionAddressBooks)).toBeInTheDocument();
     await expect(canvas.getByText(defaultContactsLabels.sidebarSharedWithMe)).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Ada" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Personal" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Engineering" })).toBeInTheDocument();
-    await expect(canvas.getByRole("checkbox", { name: "Hide Ada" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("checkbox", { name: "Hide Ada" }));
+    await expect(canvas.getByRole("checkbox", { name: "Hide Personal" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("checkbox", { name: "Hide Personal" }));
     await expect(args.onToggleVisibility).toHaveBeenCalledWith("default");
-    await userEvent.click(canvas.getByRole("button", { name: "Ada" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Personal" }));
     await expect(args.onSelect).toHaveBeenCalledWith("default");
     await expect(
       canvas.getByRole("img", { name: defaultContactsLabels.viewOnly }),

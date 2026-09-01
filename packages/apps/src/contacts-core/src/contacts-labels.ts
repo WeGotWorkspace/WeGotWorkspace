@@ -10,6 +10,8 @@ export type ContactsUILabels = {
   searchPlaceholder: string;
   sidebarAllContacts: string;
   sidebarSharedWithMe: string;
+  /** Fixed product name for the user's owned personal book. */
+  personalAddressBook: string;
   /** Owned/team collections heading — same pattern as Tasks “My lists” / Notes “My notebooks”. */
   sectionAddressBooks: string;
   sectionGroups: string;
@@ -155,6 +157,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   searchPlaceholder: "Search contacts...",
   sidebarAllContacts: "All contacts",
   sidebarSharedWithMe: "Shared with me",
+  personalAddressBook: "Personal",
   sectionAddressBooks: "My address books",
   sectionGroups: "Groups",
   viewOnly: "View only",

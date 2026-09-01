@@ -22,7 +22,10 @@ import {
   ADDRESS_BOOK_DOT_COLORS,
   addressBookDotColor,
 } from "@/contacts-core/src/contacts-addressbook-color";
-import type { ContactsAddressBookDialogState } from "@/contacts-core/src/contacts-addressbook-write";
+import {
+  contactsAddressBookDisplayName,
+  type ContactsAddressBookDialogState,
+} from "@/contacts-core/src/contacts-addressbook-write";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import { persistAddressBookColor } from "@/contacts-core/src/contacts-view-prefs";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
@@ -41,6 +44,7 @@ export type ContactsAddressBookDialogShare = {
 export type ContactsAddressBookDialogLabels = Pick<
   ContactsUILabels,
   | "addressBookSettingsTitle"
+  | "personalAddressBook"
   | "addressBookNameLabel"
   | "addressBookColorLabel"
   | "addressBookDialogDone"
@@ -62,6 +66,7 @@ export function contactsAddressBookDialogLabelsFrom(
 ): ContactsAddressBookDialogLabels {
   return {
     addressBookSettingsTitle: labels.addressBookSettingsTitle,
+    personalAddressBook: labels.personalAddressBook,
     addressBookNameLabel: labels.addressBookNameLabel,
     addressBookColorLabel: labels.addressBookColorLabel,
     addressBookDialogDone: labels.addressBookDialogDone,
@@ -131,7 +136,15 @@ export function ContactsAddressBookDialog({
                   <Input
                     id="contacts-addressbook-name"
                     className={NAME_COLOR_ROW_INPUT_CLASS}
-                    value={dialog.name}
+                    value={contactsAddressBookDisplayName(
+                      {
+                        id: dialog.bookId,
+                        name: dialog.name,
+                        isSharee: dialog.isSharee,
+                        isDefault: dialog.bookId === "default",
+                      },
+                      labels.personalAddressBook,
+                    )}
                     readOnly
                   />
                   <SwatchColorPicker

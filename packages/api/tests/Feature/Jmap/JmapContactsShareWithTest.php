@@ -73,7 +73,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $this->assertTrue($response->json('methodResponses.1.1.list.0.myRights.mayShare'));
         $this->assertFalse($response->json('methodResponses.1.1.list.0.isSharee'));
 
-        $shared = $this->bookNamed('alice', 'Bob');
+        $shared = $this->shareeBook('alice');
         $this->assertSame(
             AddressBookCollectionUris::sharedApiId($this->personalBookId('bob')),
             $shared['id'],
@@ -91,7 +91,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
     public function test_read_share_denies_card_create_update_and_delete(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: false);
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
+        $sharedId = (string) $this->shareeBook('alice')['id'];
 
         $ownerCardId = (string) $this->jmapAs('bob', [
             ['ContactCard/set', ['accountId' => 'bob', 'create' => ['e' => $this->sampleContactCardPayload('default')]], 'c0'],
@@ -122,7 +122,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
     public function test_write_share_allows_card_create_update_and_delete(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: true);
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
+        $sharedId = (string) $this->shareeBook('alice')['id'];
 
         $created = $this->jmapAs('alice', [
             ['ContactCard/set', ['accountId' => 'alice', 'create' => ['e' => $this->sampleContactCardPayload($sharedId)]], 'c0'],
@@ -160,7 +160,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
             ['AddressBook/get', ['accountId' => 'bob', 'ids' => ['default']], 'c1'],
         ])->assertOk();
         $this->assertTrue($promoted->json('methodResponses.1.1.list.0.shareWith.alice.mayWrite'));
-        $this->assertTrue($this->bookNamed('alice', 'Bob')['myRights']['mayWrite']);
+        $this->assertTrue($this->shareeBook('alice')['myRights']['mayWrite']);
 
         $revoked = $this->jmapAs('bob', [
             ['AddressBook/set', ['accountId' => 'bob', 'update' => ['default' => [
@@ -183,7 +183,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         ])->assertOk()->json('methodResponses.0.1.state');
 
         $this->shareBook('bob', 'default', 'alice', write: false);
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
+        $sharedId = (string) $this->shareeBook('alice')['id'];
         $afterShare = $this->jmapAs('alice', [
             ['AddressBook/changes', ['accountId' => 'alice', 'sinceState' => $before], 'c0'],
         ])->assertOk()->json('methodResponses.0.1');
@@ -204,7 +204,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
     public function test_sharee_can_dismiss_shared_book_without_revoking_owner_grant(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: false);
-        $shared = $this->bookNamed('alice', 'Bob');
+        $shared = $this->shareeBook('alice');
         $sharedId = (string) $shared['id'];
         $this->assertTrue($shared['myRights']['mayDelete']);
         $bookPk = $this->personalBookId('bob');
@@ -226,17 +226,17 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $owner = $this->jmapAs('bob', [
             ['AddressBook/get', ['accountId' => 'bob', 'ids' => ['default']], 'c0'],
         ])->assertOk()->json('methodResponses.0.1.list.0');
-        $this->assertSame('Bob', $owner['name']);
+        $this->assertSame(AddressBookCollectionUris::PERSONAL_DISPLAY_NAME, $owner['name']);
         $this->assertIsArray($owner['shareWith']['alice']);
 
         app(AddressBookShareVisibility::class)->restore('alice', $bookPk);
-        $this->assertSame('Bob', $this->bookNamed('alice', 'Bob')['name']);
+        $this->assertSame(AddressBookCollectionUris::PERSONAL_DISPLAY_NAME, $this->shareeBook('alice')['name']);
     }
 
     public function test_sharee_is_subscribed_false_dismisses_without_revoking_owner_grant(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: false);
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
+        $sharedId = (string) $this->shareeBook('alice')['id'];
 
         $this->jmapAs('alice', [
             ['AddressBook/set', ['accountId' => 'alice', 'update' => [$sharedId => [
@@ -261,7 +261,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
     public function test_sharee_cannot_change_owner_fields(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: true);
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
+        $sharedId = (string) $this->shareeBook('alice')['id'];
 
         $patched = $this->jmapAs('alice', [
             ['AddressBook/set', ['accountId' => 'alice', 'update' => [$sharedId => [
@@ -295,8 +295,8 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $bobNames = array_column($this->jmapAs('bob', [
             ['AddressBook/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
         ])->assertOk()->json('methodResponses.0.1.list'), 'name');
-        $this->assertSame(1, count(array_filter($bobNames, static fn (string $name): bool => $name === 'Bob')));
-        $owned = $this->bookNamed('bob', 'Bob');
+        $this->assertSame(1, count(array_filter($bobNames, static fn (string $name): bool => $name === AddressBookCollectionUris::PERSONAL_DISPLAY_NAME)));
+        $owned = $this->bookNamed('bob', AddressBookCollectionUris::PERSONAL_DISPLAY_NAME);
         $this->assertSame('default', $owned['id']);
         $this->assertTrue($owned['myRights']['mayShare']);
         $this->assertFalse($owned['isSharee']);
@@ -306,7 +306,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $this->assertNotNull($alice);
         $this->assertNotNull($team);
         $this->addPrincipalToGroup($team, $alice);
-        $shared = $this->bookNamed('alice', 'Bob');
+        $shared = $this->shareeBook('alice');
         $this->assertNotSame('default', $shared['id']);
         $this->assertTrue($shared['isSharee']);
         $this->assertTrue($shared['myRights']['mayWrite']);
@@ -326,7 +326,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
             $this->jmapAs('bob', [
                 ['AddressBook/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
             ])->assertOk()->json('methodResponses.0.1.list'),
-            static fn (array $row): bool => $row['name'] === 'Bob',
+            static fn (array $row): bool => $row['name'] === AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
         ));
         $this->assertCount(1, $homes);
         $this->assertSame('default', $homes[0]['id']);
@@ -338,7 +338,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
     public function test_non_owner_cannot_share(): void
     {
         $this->shareBook('bob', 'default', 'alice', write: true);
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
+        $sharedId = (string) $this->shareeBook('alice')['id'];
 
         $sharee = $this->jmapAs('alice', [
             ['AddressBook/set', ['accountId' => 'alice', 'update' => [$sharedId => [
@@ -393,7 +393,7 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $this->assertNotNull($alice);
         $this->assertNotNull($team);
         $this->addPrincipalToGroup($team, $alice);
-        $this->assertTrue($this->bookNamed('alice', 'Bob')['isSharee']);
+        $this->assertTrue($this->shareeBook('alice')['isSharee']);
 
         $this->withBearer($this->adminBearerToken())
             ->deleteJson('/api/v1/admin/groups/'.self::TEAM.'/members/alice')
@@ -468,8 +468,8 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $this->assertNotNull($team);
         $this->addPrincipalToGroup($team, $alice);
 
-        $sharedId = (string) $this->bookNamed('alice', 'Bob')['id'];
-        $this->assertFalse($this->bookNamed('alice', 'Bob')['myRights']['mayWrite']);
+        $sharedId = (string) $this->shareeBook('alice')['id'];
+        $this->assertFalse($this->shareeBook('alice')['myRights']['mayWrite']);
 
         $denied = $this->jmapAs('alice', [
             ['ContactCard/set', ['accountId' => 'alice', 'create' => ['new' => $this->sampleContactCardPayload($sharedId)]], 'c0'],
@@ -505,6 +505,23 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
             static fn (array $row): bool => $row['name'] === $name
         );
         $this->assertIsArray($book, "Expected {$username} to see address book {$name}");
+
+        return $book;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function shareeBook(string $username): array
+    {
+        $list = $this->jmapAs($username, [
+            ['AddressBook/get', ['accountId' => $username, 'ids' => null], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list');
+
+        $book = collect($list)->first(
+            static fn (array $row): bool => ($row['isSharee'] ?? false) === true
+        );
+        $this->assertIsArray($book, "Expected {$username} to see a shared address book");
 
         return $book;
     }
