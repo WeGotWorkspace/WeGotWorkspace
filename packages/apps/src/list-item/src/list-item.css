@@ -33,16 +33,17 @@
 }
 
 .list-item__button[data-active="true"]:not([data-selected="true"]) {
+  /* Same surface as `.app-sidebar` when the workspace publishes it. */
   background-color: var(
     --list-item-active-bg,
-    color-mix(in oklab, var(--color-emerald) 10%, transparent)
+    var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))
   );
 }
 
 .list-item__button[data-selected="true"] {
   background-color: var(
     --list-item-selected-bg,
-    color-mix(in oklab, var(--color-emerald) 18%, transparent)
+    var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))
   );
 }
 

@@ -13,3 +13,14 @@ describe("ListItem skip-paint CSS", () => {
     );
   });
 });
+
+describe("ListItem selected/active paint", () => {
+  it("falls back to the sidebar surface token, not a standalone accent wash", () => {
+    expect(css).toMatch(
+      /\[data-active="true"\]:not\(\[data-selected="true"\]\)\s*\{[\s\S]*?--list-item-active-bg,\s*var\(--app-sidebar-bg,/,
+    );
+    expect(css).toMatch(
+      /\[data-selected="true"\]\s*\{[\s\S]*?--list-item-selected-bg,\s*var\(--app-sidebar-bg,/,
+    );
+  });
+});
