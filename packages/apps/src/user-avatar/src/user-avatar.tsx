@@ -17,6 +17,10 @@ export type UserAvatarProps = {
   compact?: boolean;
   /** `sm` = sidebar/footer chip; `md` = mail sender row; `lg` / `xl` = meet tiles and lobby preview. */
   size?: UserAvatarSize;
+  /** Native `<img>` loading hint. List rows pass `lazy`; omit (eager) for the open card. */
+  loading?: "eager" | "lazy";
+  /** Native `<img>` decoding hint. List rows pass `async`. */
+  decoding?: "async" | "auto" | "sync";
   onClick?: () => void;
   className?: string;
 };
@@ -38,6 +42,8 @@ export function UserAvatar({
   fallback,
   compact = false,
   size = "sm",
+  loading,
+  decoding,
   onClick,
   className,
 }: UserAvatarProps) {
@@ -64,6 +70,8 @@ export function UserAvatar({
       src={imageSrc}
       alt=""
       className="user-avatar__image"
+      loading={loading}
+      decoding={decoding}
       onError={() => setImageFailed(true)}
     />
   ) : (

@@ -45,4 +45,35 @@ describe("UserAvatar", () => {
     expect(screen.getByTestId("fallback-icon")).toBeTruthy();
     expect(screen.getByRole("img", { name: "Acme Corp avatar" }).textContent).not.toMatch(/A/);
   });
+
+  it("applies native lazy-load attributes on photo imgs when requested", () => {
+    const { container } = render(
+      <UserAvatar
+        displayName="Jane Doe"
+        imageSrc="https://example.com/photos/jane.jpg"
+        compact
+        loading="lazy"
+        decoding="async"
+      />,
+    );
+    const img = container.querySelector("img.user-avatar__image");
+    expect(img?.getAttribute("src")).toBe("https://example.com/photos/jane.jpg");
+    expect(img?.getAttribute("loading")).toBe("lazy");
+    expect(img?.getAttribute("decoding")).toBe("async");
+  });
+
+  it("keeps photo imgs eager when loading is omitted", () => {
+    const { container } = render(
+      <UserAvatar
+        displayName="Jane Doe"
+        imageSrc="https://example.com/photos/jane.jpg"
+        compact
+        size="xl"
+      />,
+    );
+    const img = container.querySelector("img.user-avatar__image");
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute("loading")).toBeNull();
+    expect(img?.getAttribute("decoding")).toBeNull();
+  });
 });

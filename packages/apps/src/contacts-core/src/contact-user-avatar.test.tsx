@@ -24,6 +24,17 @@ const personCard = {
   addressBookIds: { default: true },
 } as unknown as ContactCard;
 
+const personWithPhoto = {
+  ...personCard,
+  media: {
+    "media-1": {
+      "@type": "Media" as const,
+      kind: "photo" as const,
+      uri: "https://example.com/photos/jane.jpg",
+    },
+  },
+} as unknown as ContactCard;
+
 const orgCard = {
   "@type": "Card",
   version: "1.0",
@@ -90,5 +101,37 @@ describe("ContactUserAvatar", () => {
     );
     expect(container.querySelector(".user-avatar--xl .contacts-org-icon")).toBeTruthy();
     expect(container.querySelector(".user-avatar__mark")?.textContent).not.toMatch(/A/);
+  });
+
+  it("applies native lazy-load attributes on list photo imgs", () => {
+    const { container } = render(
+      <ContactUserAvatar
+        card={personWithPhoto}
+        size="sm"
+        compact
+        className="contacts-list-panel__avatar"
+        loading="lazy"
+        decoding="async"
+      />,
+    );
+    const img = container.querySelector("img.user-avatar__image");
+    expect(img?.getAttribute("src")).toBe("https://example.com/photos/jane.jpg");
+    expect(img?.getAttribute("loading")).toBe("lazy");
+    expect(img?.getAttribute("decoding")).toBe("async");
+  });
+
+  it("keeps detail-header photo imgs eager", () => {
+    const { container } = render(
+      <ContactUserAvatar
+        card={personWithPhoto}
+        size="xl"
+        compact
+        className="contacts-detail-view__avatar"
+      />,
+    );
+    const img = container.querySelector("img.user-avatar__image");
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute("loading")).toBeNull();
+    expect(img?.getAttribute("decoding")).toBeNull();
   });
 });
