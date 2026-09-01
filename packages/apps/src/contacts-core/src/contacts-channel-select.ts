@@ -44,20 +44,30 @@ export function phoneTypeLabel(
   return channelTypeLabel(phoneType, labels);
 }
 
+function sortChannelSelectOptions(
+  options: ShareRowSelectOption<string>[],
+): ShareRowSelectOption<string>[] {
+  return [...options].sort((left, right) => left.label.localeCompare(right.label, "en"));
+}
+
 export function contactChannelContextSelectOptions(
   labels: ContactChannelTypeLabels,
 ): ShareRowSelectOption<string>[] {
-  return CONTACT_CHANNEL_CONTEXTS.map((contextType) => ({
-    value: channelSelectValue(contextType),
-    label: channelTypeLabel(contextType, labels),
-  }));
+  return sortChannelSelectOptions(
+    CONTACT_CHANNEL_CONTEXTS.map((contextType) => ({
+      value: channelSelectValue(contextType),
+      label: channelTypeLabel(contextType, labels),
+    })),
+  );
 }
 
 export function contactPhoneTypeSelectOptions(
   labels: ContactPhoneTypeLabels,
 ): ShareRowSelectOption<string>[] {
-  return CONTACT_PHONE_TYPES.map((phoneType) => ({
-    value: channelSelectValue(phoneType),
-    label: phoneTypeLabel(phoneType, labels),
-  }));
+  return sortChannelSelectOptions(
+    CONTACT_PHONE_TYPES.map((phoneType) => ({
+      value: channelSelectValue(phoneType),
+      label: phoneTypeLabel(phoneType, labels),
+    })),
+  );
 }

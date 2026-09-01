@@ -59,23 +59,39 @@ describe("phoneTypeLabel", () => {
 });
 
 describe("contactChannelContextSelectOptions", () => {
-  it("builds compact-select options with a none sentinel", () => {
+  it("orders options alphabetically by displayed label (en)", () => {
     const options = contactChannelContextSelectOptions(defaultContactsLabels);
-    expect(options.map((option) => option.value)).toEqual(["none", "home", "work", "school"]);
-    expect(options[0]?.label).toBe(defaultContactsLabels.channelTypeNone);
+    expect(options.map((option) => option.label)).toEqual(["Home", "Other", "School", "Work"]);
+    expect(options.map((option) => option.value)).toEqual(["home", "none", "school", "work"]);
+  });
+
+  it("sorts by displayed label, not catalog order", () => {
+    const options = contactChannelContextSelectOptions({
+      channelTypeNone: "Alpha",
+      channelTypeHome: "Zebra",
+      channelTypeWork: "Work",
+      channelTypeSchool: "School",
+    });
+    expect(options.map((option) => option.label)).toEqual(["Alpha", "School", "Work", "Zebra"]);
   });
 });
 
 describe("contactPhoneTypeSelectOptions", () => {
-  it("includes mobile ahead of channel contexts", () => {
+  it("orders phone types alphabetically by displayed label (en)", () => {
     const options = contactPhoneTypeSelectOptions(defaultContactsLabels);
-    expect(options.map((option) => option.value)).toEqual([
-      "none",
-      "mobile",
-      "home",
-      "work",
-      "school",
+    expect(options.map((option) => option.label)).toEqual([
+      "Home",
+      "Mobile",
+      "Other",
+      "School",
+      "Work",
     ]);
-    expect(options[1]?.label).toBe(defaultContactsLabels.channelTypeMobile);
+    expect(options.map((option) => option.value)).toEqual([
+      "home",
+      "mobile",
+      "none",
+      "school",
+      "work",
+    ]);
   });
 });

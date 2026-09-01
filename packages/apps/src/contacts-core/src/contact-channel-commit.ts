@@ -1,8 +1,9 @@
-import type {
-  ContactAddressDraft,
-  ContactChannelContext,
-  ContactEditDraft,
-  ContactPhoneType,
+import {
+  CONTACT_CHANNEL_DEFAULT_CONTEXT,
+  type ContactAddressDraft,
+  type ContactChannelContext,
+  type ContactEditDraft,
+  type ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
 
 type PhoneDraft = ContactEditDraft["phones"][number];
@@ -25,7 +26,14 @@ export function phonesAfterNumberChange(args: {
     );
   }
   if (!args.number.trim()) return args.phones;
-  return [...args.phones, { id: args.rowId, number: args.number, phoneType: args.phoneType ?? "" }];
+  return [
+    ...args.phones,
+    {
+      id: args.rowId,
+      number: args.number,
+      phoneType: args.phoneType ?? CONTACT_CHANNEL_DEFAULT_CONTEXT,
+    },
+  ];
 }
 
 export function emailsAfterAddressChange(args: {
@@ -42,7 +50,11 @@ export function emailsAfterAddressChange(args: {
   if (!args.address.trim()) return args.emails;
   return [
     ...args.emails,
-    { id: args.rowId, address: args.address, contextType: args.contextType ?? "" },
+    {
+      id: args.rowId,
+      address: args.address,
+      contextType: args.contextType ?? CONTACT_CHANNEL_DEFAULT_CONTEXT,
+    },
   ];
 }
 
@@ -56,7 +68,14 @@ export function urlsAfterUriChange(args: {
     return args.urls.map((row) => (row.id === args.rowId ? { ...row, uri: args.uri } : row));
   }
   if (!args.uri.trim()) return args.urls;
-  return [...args.urls, { id: args.rowId, uri: args.uri, contextType: args.contextType ?? "" }];
+  return [
+    ...args.urls,
+    {
+      id: args.rowId,
+      uri: args.uri,
+      contextType: args.contextType ?? CONTACT_CHANNEL_DEFAULT_CONTEXT,
+    },
+  ];
 }
 
 export function addressesAfterFieldChange(args: {
@@ -81,7 +100,7 @@ export function addressesAfterFieldChange(args: {
       region: "",
       postalCode: "",
       country: "",
-      contextType: args.contextType ?? "",
+      contextType: args.contextType ?? CONTACT_CHANNEL_DEFAULT_CONTEXT,
       [args.field]: args.value,
     },
   ];

@@ -3,12 +3,13 @@ import { ContactChannelRow } from "./contact-channel-row";
 import { ContactContextTypeSelect, ContactPhoneTypeSelect } from "./contact-channel-type-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import type {
-  ContactAddressDraft,
-  ContactChannelContext,
-  ContactPhoneType,
+import {
+  CONTACT_CHANNEL_DEFAULT_CONTEXT,
+  newContactMapId,
+  type ContactAddressDraft,
+  type ContactChannelContext,
+  type ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
-import { newContactMapId } from "@/contacts-core/src/contacts-edit-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 
 function useTrailingChannelSlot<T extends string>(
@@ -129,7 +130,7 @@ export function ContactPhoneRows({
   return (
     <SimpleChannelRows
       rows={phones.map((row) => ({ id: row.id, value: row.number, type: row.phoneType }))}
-      emptyType=""
+      emptyType={CONTACT_CHANNEL_DEFAULT_CONTEXT}
       valueAriaLabel={labels.phoneNumber}
       placeholder={labels.addPhone}
       typeAriaLabel={typeAriaLabel}
@@ -166,7 +167,7 @@ export function ContactEmailRows({
   return (
     <SimpleChannelRows
       rows={emails.map((row) => ({ id: row.id, value: row.address, type: row.contextType }))}
-      emptyType=""
+      emptyType={CONTACT_CHANNEL_DEFAULT_CONTEXT}
       valueAriaLabel={labels.emailAddress}
       placeholder={labels.addEmail}
       typeAriaLabel={typeAriaLabel}
@@ -203,7 +204,7 @@ export function ContactUrlRows({
   return (
     <SimpleChannelRows
       rows={urls.map((row) => ({ id: row.id, value: row.uri, type: row.contextType }))}
-      emptyType=""
+      emptyType={CONTACT_CHANNEL_DEFAULT_CONTEXT}
       valueAriaLabel={labels.urlAddress}
       placeholder={labels.addUrl}
       typeAriaLabel={typeAriaLabel}
@@ -357,7 +358,7 @@ export function ContactAddressRows({
   onUpdateAddressContext: (id: string, contextType: ContactChannelContext) => void;
   onRemoveAddress: (id: string) => void;
 }) {
-  const slot = useTrailingChannelSlot<ContactChannelContext>("");
+  const slot = useTrailingChannelSlot<ContactChannelContext>(CONTACT_CHANNEL_DEFAULT_CONTEXT);
   const typeAriaLabel = `${labels.channelType} ${labels.sectionAddresses}`;
 
   return (

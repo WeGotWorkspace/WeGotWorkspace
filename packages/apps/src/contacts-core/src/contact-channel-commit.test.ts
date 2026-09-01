@@ -20,6 +20,12 @@ describe("phonesAfterNumberChange", () => {
     ).toEqual([{ id: "phone-new", number: "555", phoneType: "mobile" }]);
   });
 
+  it("defaults an omitted type on a newly committed row to home", () => {
+    expect(phonesAfterNumberChange({ phones: [], rowId: "phone-new", number: "555" })).toEqual([
+      { id: "phone-new", number: "555", phoneType: "home" },
+    ]);
+  });
+
   it("does not store a blank trailing slot", () => {
     expect(
       phonesAfterNumberChange({ phones: existing, rowId: "phone-new", number: "   " }),
