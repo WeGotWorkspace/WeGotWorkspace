@@ -91,6 +91,23 @@ export const TeamBookInView: Story = {
   },
 };
 
+export const ErrorOverflow: Story = {
+  render: () => (
+    <ContactsStoryScope>
+      <ContactsImportDialog
+        open
+        files={sampleFiles}
+        books={[ownerBook, teamBook]}
+        view="all"
+        labels={contactsImportDialogLabelsFrom(defaultContactsLabels)}
+        error="Upload too large. Current server post_max_size is 8M. http://localhost:5174/api/v1/contacts/cards/import?addressBookId=group-administrators"
+        onClose={() => undefined}
+        onImport={() => undefined}
+      />
+    </ContactsStoryScope>
+  ),
+};
+
 export const Importing: Story = {
   render: () => (
     <ContactsStoryScope>

@@ -194,6 +194,27 @@ describe("ContactsImportDialog", () => {
     expect(screen.queryByRole("option", { name: /Bob/ })).toBeNull();
   });
 
+  it("keeps a long import error inside the dialog", () => {
+    const longError =
+      "Upload too large. Current server post_max_size is 8M. Expected JSON from http://localhost:5174/api/v1/contacts/cards/import?addressBookId=group-administrators (200)";
+    render(
+      <ContactsImportDialog
+        open
+        files={sampleFiles}
+        books={[ownerBook, teamBook]}
+        view="all"
+        labels={labels}
+        error={longError}
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(longError)).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultContactsLabels.cancel })).toBeTruthy();
+    expect(document.querySelector(".contacts-import-dialog__error")).toBeTruthy();
+  });
+
   it("shows import progress while a batch is uploading", () => {
     render(
       <ContactsImportDialog

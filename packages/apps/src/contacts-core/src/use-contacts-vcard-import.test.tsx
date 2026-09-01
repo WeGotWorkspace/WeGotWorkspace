@@ -171,4 +171,90 @@ describe("useContactsVcardImport", () => {
     );
     expect(toastApi.showError).not.toHaveBeenCalledWith(defaultContactsLabels.importFailed);
   });
+
+  it("shows one success toast and no Invalid vCard block error after leftover tail", async () => {
+    const importVcards = vi.fn().mockImplementation((vcardText: string) => {
+      const cards = (vcardText.match(/^BEGIN:VCARD\s*$/gim) ?? []).length;
+      if (cards === 0) {
+        return Promise.resolve({
+          list: [],
+          errors: [{ index: 0, message: "Invalid vCard block." }],
+        });
+      }
+      return Promise.resolve({
+        list: Array.from({ length: cards }, (_, index) => ({
+          id: `card-${index}`,
+          name: { full: `N${index}` },
+        })),
+        errors: [],
+      });
+    });
+    const { result } = renderHook(() =>
+      useContactsVcardImport({
+        labels: defaultContactsLabels,
+        operations: { importVcards },
+        maxBatchBytes: 40,
+      }),
+    );
+
+    const text = [
+      "BEGIN:VCARD\nFN:One\nEND:VCARD",
+      "BEGIN:VCARD\nFN:Two\nEND:VCARD",
+      "END:VCARD",
+      "# footer",
+      "BEGIN:VCARD",
+    ].join("\n");
+    act(() => {
+      result.current.beginImport(fileListOf(new File([text], "contacts.vcf")));
+    });
+
+    await act(async () => {
+      result.current.submitImportDialog(result.current.importFiles!, "group-admin");
+    });
+
+    expect(importVcards.mock.calls.length).toBeGreaterThan(0);
+    for (const [payload] of importVcards.mock.calls) {
+      expect(payload).toMatch(/BEGIN:VCARD/i);
+      expect(payload).toMatch(/END:VCARD/i);
+      expect(payload).not.toContain("# footer");
+    }
+    expect(toastApi.show).toHaveBeenCalledTimes(1);
+    expect(toastApi.show).toHaveBeenCalledWith(
+      defaultContactsLabels.toastImported(2),
+      expect.anything(),
+    );
+    expect(toastApi.showError).not.toHaveBeenCalled();
+  });
+
+  it("uses one combined toast when a later real batch fails after imports", async () => {
+    const importVcards = vi
+      .fn()
+      .mockResolvedValueOnce({
+        list: [{ id: "card-one", name: { full: "One" } }],
+        errors: [],
+      })
+      .mockRejectedValueOnce(new Error("Forbidden."));
+    const { result } = renderHook(() =>
+      useContactsVcardImport({
+        labels: defaultContactsLabels,
+        operations: { importVcards },
+        maxBatchBytes: 40,
+      }),
+    );
+
+    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Two\nEND:VCARD"].join("\n");
+    act(() => {
+      result.current.beginImport(fileListOf(new File([text], "contacts.vcf")));
+    });
+
+    await act(async () => {
+      result.current.submitImportDialog(result.current.importFiles!, "default");
+    });
+
+    expect(toastApi.show).not.toHaveBeenCalled();
+    expect(toastApi.showError).toHaveBeenCalledTimes(1);
+    expect(toastApi.showError.mock.calls[0]?.[0]).toMatch(/Imported 1 contact/);
+    expect(toastApi.showError.mock.calls[0]?.[0]).toMatch(/Forbidden\./);
+    expect(toastApi.showError).not.toHaveBeenCalledWith("Invalid vCard block.");
+  });
 });

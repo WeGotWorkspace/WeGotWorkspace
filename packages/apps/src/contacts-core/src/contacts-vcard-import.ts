@@ -1,10 +1,11 @@
 export const VCF_FILE_ACCEPT = ".vcf,.vcard,text/vcard,text/x-vcard,application/vcard";
 
 /**
- * Stay under the aligned 32M PHP `post_max_size` (see `docker/php/uploads.ini`).
- * Raw `text/vcard` POST body — leave headroom for headers / encoding.
+ * Conservative live cap: PHP's historic 8M `post_max_size` minus headroom.
+ * Intended Docker/php -S limit is 32M, but the running `:9080` process often
+ * still has 8M until that PHP is restarted with `-d post_max_size=32M`.
  */
-export const VCARD_IMPORT_BATCH_MAX_BYTES = 28 * 1024 * 1024;
+export const VCARD_IMPORT_BATCH_MAX_BYTES = 6 * 1024 * 1024;
 
 const CARD_SEPARATOR = "\n";
 
@@ -88,20 +89,73 @@ export function utf8ByteLength(text: string): number {
   return new TextEncoder().encode(text).length;
 }
 
+const CARD_BEGIN = /^BEGIN:VCARD\s*$/i;
+const CARD_END = /^END:VCARD\s*$/i;
+const STUB_CARD_PROP = /^(VERSION|PRODID)[:;]/i;
+
+const LEFTOVER_IMPORT_ERROR_MESSAGES = new Set(["invalid vcard block.", "no vcard data found."]);
+
+/** True when the API reported leftover/junk text rather than a real card failure. */
+export function isLeftoverImportErrorMessage(message: string): boolean {
+  return LEFTOVER_IMPORT_ERROR_MESSAGES.has(message.trim().toLowerCase());
+}
+
+function isImportableVcardBlock(lines: string[]): boolean {
+  if (lines.length < 2) return false;
+  if (!CARD_BEGIN.test(lines[0] ?? "") || !CARD_END.test(lines[lines.length - 1] ?? "")) {
+    return false;
+  }
+  const interior = lines
+    .slice(1, -1)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (interior.length === 0) return false;
+  return !interior.every((line) => STUB_CARD_PROP.test(line));
+}
+
+/** True when the payload is at least one complete, importable `BEGIN:VCARD` … `END:VCARD`. */
+export function isCompleteVcardDocument(text: string): boolean {
+  if (splitVcardBlocks(text).length === 0) return false;
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return CARD_BEGIN.test(lines[0] ?? "") && CARD_END.test(lines[lines.length - 1] ?? "");
+}
+
 /**
  * Split a vCard file into individual `BEGIN:VCARD` … `END:VCARD` blocks.
- * Mirrors server-side ContactCardVcfImportSupport::splitVcards.
+ * Only treats `BEGIN:VCARD` / `END:VCARD` at line start so folded PHOTO,
+ * quoted-printable `=` continuations, and a NOTE mentioning BEGIN:VCARD
+ * stay inside the current card. File-level prelude (Apple/Google headers),
+ * orphan `END:VCARD`, empty/stub tail cards, and a truncated last card
+ * are omitted so every packed batch is a complete vCard document.
  */
 export function splitVcardBlocks(input: string): string[] {
-  const normalized = input.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const parts = normalized.split(/(?=BEGIN:VCARD)/i).filter((part) => part.trim() !== "");
+  const normalized = input
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
   const blocks: string[] = [];
+  let current: string[] | null = null;
 
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    if (!trimmed.toUpperCase().includes("END:VCARD")) continue;
-    blocks.push(trimmed);
+  for (const line of normalized.split("\n")) {
+    if (current === null) {
+      if (CARD_BEGIN.test(line)) {
+        current = [line];
+      }
+      continue;
+    }
+    current.push(line);
+    if (CARD_END.test(line)) {
+      if (isImportableVcardBlock(current)) {
+        blocks.push(current.join("\n"));
+      }
+      current = null;
+    }
   }
 
   return blocks;
@@ -143,7 +197,7 @@ export function packVcardBlocks(
   return { batches, oversizedCount };
 }
 
-/** Plan POST payloads for one vCard file. Small files stay a single original-text request. */
+/** Plan POST payloads for one vCard file. Only complete cards are sent — never prelude or leftover tail. */
 export function planVcardFileBatches(
   text: string,
   maxBytes: number = VCARD_IMPORT_BATCH_MAX_BYTES,
@@ -151,9 +205,6 @@ export function planVcardFileBatches(
   const blocks = splitVcardBlocks(text);
   if (blocks.length === 0) {
     return { batches: [], oversizedCount: 0 };
-  }
-  if (utf8ByteLength(text) <= maxBytes) {
-    return { batches: [{ text, cardCount: blocks.length }], oversizedCount: 0 };
   }
   return packVcardBlocks(blocks, maxBytes);
 }
@@ -186,6 +237,24 @@ export function summarizeVcfImportErrors(
     parts.push(uniqueBlocks.join(" "));
   }
   return parts.join(" ").trim() || fallback;
+}
+
+/** Single import outcome: success, leftover-ignored success, or one combined failure message. */
+export function summarizeVcfImportOutcome(
+  importedCount: number,
+  fileErrors: VcfFileImportError[],
+  blockMessages: string[],
+  fallback: string,
+): { failed: boolean; message: string | null } {
+  if (fileErrors.length === 0 && blockMessages.length === 0) {
+    return { failed: false, message: null };
+  }
+  const summary = summarizeVcfImportErrors(fileErrors, blockMessages, fallback);
+  if (importedCount > 0) {
+    const noun = importedCount === 1 ? "contact" : "contacts";
+    return { failed: true, message: `Imported ${importedCount} ${noun}. ${summary}` };
+  }
+  return { failed: true, message: summary };
 }
 
 /**
@@ -268,26 +337,41 @@ export async function importVcfFilesBatch<TCard>(
     let fileApiBlockErrors = 0;
 
     for (const batch of item.batches) {
+      if (batch.cardCount === 0 || !isCompleteVcardDocument(batch.text)) {
+        continue;
+      }
       const batchIndex = completedBatches + 1;
       report(batchIndex);
       try {
         const result = await importOne(batch.text);
         const batchBlockErrors = result.errors ?? [];
-        fileApiBlockErrors += batchBlockErrors.length;
-        for (const block of batchBlockErrors) {
-          if (block.message.trim()) {
-            blockErrorMessages.push(block.message.trim());
+        const leftoverOnly =
+          batchBlockErrors.length > 0 &&
+          batchBlockErrors.every((block) => isLeftoverImportErrorMessage(block.message));
+        const ignoreLeftover = leftoverOnly && result.list.length >= batch.cardCount;
+        if (!ignoreLeftover) {
+          fileApiBlockErrors += batchBlockErrors.length;
+          for (const block of batchBlockErrors) {
+            if (block.message.trim()) {
+              blockErrorMessages.push(block.message.trim());
+            }
           }
         }
         if (result.list.length > 0) {
           fileImported = true;
           list.push(...result.list);
           importedCards += result.list.length;
+        } else if (batchBlockErrors.length === 0) {
+          // 2xx empty / non-JSON text: request was accepted; don't abort later batches.
+          fileImported = true;
         }
       } catch (error) {
         const reason = importErrorMessageFromUnknown(error, VCARD_IMPORT_FAILED_FALLBACK);
-        const labeled = batchCount > 1 ? `Batch ${batchIndex} of ${batchCount}: ${reason}` : reason;
-        fileThrowReason = fileThrowReason ? `${fileThrowReason} ${labeled}` : labeled;
+        if (!(importedCards > 0 && isLeftoverImportErrorMessage(reason))) {
+          const labeled =
+            batchCount > 1 ? `Batch ${batchIndex} of ${batchCount}: ${reason}` : reason;
+          fileThrowReason = fileThrowReason ? `${fileThrowReason} ${labeled}` : labeled;
+        }
       }
       completedBatches += 1;
       report(Math.min(completedBatches + 1, batchCount));

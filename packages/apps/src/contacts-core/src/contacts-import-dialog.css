@@ -1,11 +1,19 @@
 @import "../../styles.css" reference;
 
+.contacts-import-dialog__form {
+  @apply min-w-0 max-w-full;
+}
+
 .contacts-import-dialog__fields {
-  @apply flex flex-col gap-3;
+  @apply flex min-w-0 max-w-full flex-col gap-3;
+}
+
+.contacts-import-dialog__error {
+  @apply min-w-0 max-w-full;
 }
 
 .contacts-import-dialog__footer {
-  @apply mt-4;
+  @apply mt-4 min-w-0 max-w-full;
 }
 
 .contacts-import-dialog__progress {

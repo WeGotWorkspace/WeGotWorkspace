@@ -92,6 +92,7 @@ export function ContactsImportDialog({
           <DialogTitle>{labels.importDialogTitle}</DialogTitle>
         </DialogHeader>
         <form
+          className="contacts-import-dialog__form"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
@@ -99,7 +100,9 @@ export function ContactsImportDialog({
           }}
         >
           <div className="contacts-import-dialog__fields">
-            {error ? <Callout severity="error" title={error} /> : null}
+            {error ? (
+              <Callout className="contacts-import-dialog__error" severity="error" title={error} />
+            ) : null}
             {busy && progress ? (
               <div className="contacts-import-dialog__progress" aria-live="polite" aria-busy="true">
                 <p>

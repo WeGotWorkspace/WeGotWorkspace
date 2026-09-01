@@ -7,7 +7,7 @@ import {
   importErrorMessageFromUnknown,
   importVcfFilesBatch,
   partitionVcfFiles,
-  summarizeVcfImportErrors,
+  summarizeVcfImportOutcome,
   type VcardImportProgress,
 } from "@/contacts-core/src/contacts-vcard-import";
 
@@ -103,28 +103,31 @@ export function useContactsVcardImport({
             { maxBatchBytes, onProgress: setImportDialogProgress },
           );
 
-          if (result.list.length > 0) {
-            onImported?.(result.list);
-            show(L.toastImported(result.list.length), {
-              icon: createElement(Upload, { className: "size-4" }),
-            });
-            setImportFiles(null);
-            setImportSkippedCount(0);
-            setImportDialogProgress(null);
-          }
-          const failureSummary = summarizeVcfImportErrors(
+          const outcome = summarizeVcfImportOutcome(
+            result.list.length,
             result.fileErrors,
             result.blockErrorMessages,
             L.importFailed,
           );
+          if (result.list.length > 0 || (result.importedFileCount > 0 && !outcome.failed)) {
+            onImported?.(result.list);
+            if (result.list.length > 0 && !outcome.failed) {
+              show(L.toastImported(result.list.length), {
+                icon: createElement(Upload, { className: "size-4" }),
+              });
+            }
+            setImportFiles(null);
+            setImportSkippedCount(0);
+            setImportDialogProgress(null);
+          }
           if (importSkippedCount > 0) {
             showError(L.importFilesSkipped(importSkippedCount));
           }
-          if (result.fileErrors.length > 0 || result.blockErrors > 0) {
-            showError(failureSummary);
+          if (outcome.failed) {
+            showError(outcome.message ?? L.importFailed);
           }
-          if (result.list.length === 0) {
-            setImportDialogError(failureSummary);
+          if (outcome.failed && result.list.length === 0) {
+            setImportDialogError(outcome.message ?? L.importFailed);
           }
         } catch (error) {
           const reason = importErrorMessageFromUnknown(error, L.importFailed);
