@@ -287,14 +287,92 @@ export function groupAddMembersPatch(
   return { members: newMembers };
 }
 
+function memberCardIdsOf(card: ContactCard): Record<string, string> {
+  return { ...((card as ContactCardWithResolvedMembers).memberCardIds ?? {}) };
+}
+
+function stampMemberCardIds(group: ContactCard, members: ContactCard[]): Record<string, string> {
+  const next = memberCardIdsOf(group);
+  for (const member of members) {
+    if (!member.uid) continue;
+    next[memberUidForGroupMap(member.uid)] = member.id;
+  }
+  return next;
+}
+
+function enabledMemberUidSet(members: ContactCard["members"]): Set<string> {
+  return new Set(enabledMemberUids(members).map((uid) => normalizeContactUidForMatch(uid)));
+}
+
+function memberSetsEqual(left: ContactCard["members"], right: ContactCard["members"]): boolean {
+  const leftSet = enabledMemberUidSet(left);
+  const rightSet = enabledMemberUidSet(right);
+  if (leftSet.size !== rightSet.size) return false;
+  for (const uid of leftSet) {
+    if (!rightSet.has(uid)) return false;
+  }
+  return true;
+}
+
+/**
+ * Keep local group membership when an incoming card (bootstrap get, patch
+ * response) is still behind an optimistic add/remove.
+ */
+export function mergeGroupCardPreservingOptimisticMembers(
+  incoming: ContactCard,
+  local: ContactCard,
+): ContactCard {
+  if (!isContactGroupCard(local)) return incoming;
+  if (memberSetsEqual(incoming.members, local.members)) {
+    const incomingIds = (incoming as ContactCardWithResolvedMembers).memberCardIds;
+    const localIds = (local as ContactCardWithResolvedMembers).memberCardIds;
+    if (!incomingIds && !localIds) return incoming;
+    return {
+      ...incoming,
+      members: incoming.members ?? local.members,
+      memberCardIds: { ...localIds, ...incomingIds },
+    } as ContactCard;
+  }
+  return {
+    ...incoming,
+    members: { ...incoming.members, ...local.members } as ContactCard["members"],
+    memberCardIds: { ...memberCardIdsOf(incoming), ...memberCardIdsOf(local) },
+  } as ContactCard;
+}
+
+/** Merge a bootstrap/list payload without dropping optimistic group members. */
+export function mergeBootstrapCardsPreservingOptimistic(
+  serverCards: ContactCard[],
+  localCards: ContactCard[],
+): ContactCard[] {
+  if (serverCards === localCards) return localCards;
+  const localById = new Map(localCards.map((card) => [card.id, card]));
+  const merged = serverCards.map((server) => {
+    const local = localById.get(server.id);
+    return local ? mergeGroupCardPreservingOptimisticMembers(server, local) : server;
+  });
+  const serverIds = new Set(serverCards.map((card) => card.id));
+  for (const local of localCards) {
+    if (serverIds.has(local.id) || local.etag) continue;
+    merged.push(local);
+  }
+  return merged;
+}
+
 /** Local/optimistic apply of {@link groupAddMembersPatch} onto a group card. */
 export function cardWithAddedGroupMember(group: ContactCard, member: ContactCard): ContactCard {
-  const patch = groupAddMembersPatch(group, [member]);
+  return cardWithAddedGroupMembers(group, [member]);
+}
+
+/** Local/optimistic apply of {@link groupAddMembersPatch} for one or more contacts. */
+export function cardWithAddedGroupMembers(group: ContactCard, members: ContactCard[]): ContactCard {
+  const patch = groupAddMembersPatch(group, members);
   if (!patch) return group;
   return {
     ...group,
     members: { ...group.members, ...patch.members } as ContactCard["members"],
-  };
+    memberCardIds: stampMemberCardIds(group, members),
+  } as ContactCard;
 }
 
 /** Insert or replace a card and add it to a group's members map when `groupId` is set. */

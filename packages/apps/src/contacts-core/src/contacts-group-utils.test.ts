@@ -8,6 +8,8 @@ import {
   filterCardsByView,
   cardWithAddedGroupMember,
   cardsWithGroupMember,
+  mergeBootstrapCardsPreservingOptimistic,
+  mergeGroupCardPreservingOptimisticMembers,
   groupAddMembersPatch,
   groupRemoveMembersPatch,
   groupRenamePatch,
@@ -416,6 +418,9 @@ describe("groupAddMembersPatch", () => {
   it("applies a new member onto a group card and card list", () => {
     const merged = cardWithAddedGroupMember(familyGroup, joe);
     expect(merged.members).toEqual({ [janeUid]: true, [joeUid]: true });
+    expect((merged as { memberCardIds?: Record<string, string> }).memberCardIds?.[joeUid]).toBe(
+      joe.id,
+    );
     const list = cardsWithGroupMember([jane, familyGroup], familyGroup.id, joe);
     expect(list.find((card) => card.id === familyGroup.id)?.members?.[joeUid]).toBe(true);
     expect(cardsWithGroupMember([jane], undefined, joe)).toEqual([jane]);
@@ -547,6 +552,57 @@ describe("groupRemoveMembersPatch", () => {
     } as unknown as ContactCard;
     const patch = groupRemoveMembersPatch(groupWithApiIds, ["card-jane"], cards);
     expect(patch).toEqual({ members: { [janeUid]: false } });
+  });
+});
+
+describe("mergeBootstrapCardsPreservingOptimistic", () => {
+  it("returns the same list when bootstrap and local cards are the same reference", () => {
+    expect(mergeBootstrapCardsPreservingOptimistic(cards, cards)).toBe(cards);
+  });
+
+  it("keeps an optimistic add when the list payload is still stale", () => {
+    const local = cardWithAddedGroupMember(familyGroup, joe);
+    const [merged] = mergeBootstrapCardsPreservingOptimistic([familyGroup], [local]);
+    expect(merged.members?.[joeUid]).toBe(true);
+    expect(groupsContainingCard(joe.id, [merged], [jane, joe, merged]).map((g) => g.id)).toEqual([
+      familyGroup.id,
+    ]);
+  });
+
+  it("keeps an optimistic remove when the list payload still lists the member", () => {
+    const local = {
+      ...friendsGroup,
+      members: { ...friendsGroup.members, [janeUid]: false },
+    } as ContactCard;
+    const [merged] = mergeBootstrapCardsPreservingOptimistic([friendsGroup], [local]);
+    expect(merged.members?.[janeUid]).toBe(false);
+    expect(groupsContainingCard(jane.id, [merged], cards)).toEqual([]);
+  });
+
+  it("keeps a local-only group that the list payload has not seen yet", () => {
+    const created = {
+      ...familyGroup,
+      id: "card-group-studio",
+      name: { full: "Studio" },
+      members: { [janeUid]: true },
+    } as ContactCard;
+    const merged = mergeBootstrapCardsPreservingOptimistic([jane], [jane, created]);
+    expect(merged.map((card) => card.id)).toEqual(["card-jane", "card-group-studio"]);
+  });
+
+  it("takes the incoming members once they match the optimistic set", () => {
+    const local = cardWithAddedGroupMember(familyGroup, joe);
+    const incoming = {
+      ...local,
+      etag: "etag-2",
+      memberCardIds: { [janeUid]: jane.id, [joeUid]: joe.id },
+    } as ContactCard;
+    const merged = mergeGroupCardPreservingOptimisticMembers(incoming, local);
+    expect(merged.etag).toBe("etag-2");
+    expect((merged as { memberCardIds?: Record<string, string> }).memberCardIds).toEqual({
+      [janeUid]: jane.id,
+      [joeUid]: joe.id,
+    });
   });
 });
 

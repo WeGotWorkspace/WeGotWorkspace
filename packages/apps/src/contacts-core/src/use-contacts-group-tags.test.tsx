@@ -81,6 +81,37 @@ describe("useContactsController group tags", () => {
     expect(friends?.members?.[acmeUid!]).toBe(true);
   });
 
+  it("keeps an optimistic group member when a stale bootstrap refresh arrives", () => {
+    const { result, rerender } = renderHook(
+      ({ data }: { data: typeof bootstrap.data }) =>
+        useContactsController({
+          data,
+          listLoading: false,
+        }),
+      { initialProps: { data: bootstrap.data } },
+    );
+
+    selectContact(result, "card-acme");
+    act(() => {
+      result.current.addActiveGroupTag("card-group-friends");
+    });
+    const acmeUid = bootstrap.data.cards.find((card) => card.id === "card-acme")?.uid;
+    expect(
+      result.current.cards.find((card) => card.id === "card-group-friends")?.members?.[acmeUid!],
+    ).toBe(true);
+
+    rerender({
+      data: {
+        ...bootstrap.data,
+        cards: bootstrap.data.cards.map((card) => ({ ...card })),
+      },
+    });
+
+    expect(
+      result.current.cards.find((card) => card.id === "card-group-friends")?.members?.[acmeUid!],
+    ).toBe(true);
+  });
+
   it("removes the selected contact from a group without leaving the card", () => {
     const { result } = renderHook(() =>
       useContactsController({

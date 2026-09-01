@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { contactDetailGroupTags } from "./contacts-detail-groups";
+import {
+  cardWithAddedGroupMember,
+  mergeBootstrapCardsPreservingOptimistic,
+} from "./contacts-group-utils";
 
 const writableBooks = [{ id: "default", myRights: { mayWrite: true } }];
 const viewOnlyBooks = [{ id: "shared-1", myRights: { mayWrite: false } }];
@@ -137,5 +141,24 @@ describe("contactDetailGroupTags", () => {
     expect(model.show).toBe(true);
     expect(model.readonly).toBe(true);
     expect(model.allowCreate).toBe(false);
+  });
+
+  it("keeps the assigned chip after an optimistic add that a stale list payload omits", () => {
+    const localFamily = cardWithAddedGroupMember(family, jane);
+    const [familyAfterRefresh] = mergeBootstrapCardsPreservingOptimistic([family], [localFamily]);
+    const model = contactDetailGroupTags({
+      card: jane,
+      createMode: false,
+      groups: [friends, familyAfterRefresh],
+      allCards: [jane, friends, familyAfterRefresh],
+      addressBooks: writableBooks,
+      hasOperations: true,
+      canCreateGroup: true,
+    });
+
+    expect(model.assigned.map((chip) => chip.group.id)).toEqual([
+      "card-group-friends",
+      "card-group-family",
+    ]);
   });
 });

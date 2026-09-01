@@ -18,6 +18,7 @@ import {
 import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   canWriteContactGroup,
+  cardWithAddedGroupMembers,
   cardsWithGroupMember,
   contactAndGroupShareAddressBook,
   filterCardsByHiddenAddressBooks,
@@ -27,6 +28,8 @@ import {
   groupRenamePatch,
   isContactGroupCard,
   listContactGroups,
+  mergeBootstrapCardsPreservingOptimistic,
+  mergeGroupCardPreservingOptimisticMembers,
 } from "@/contacts-core/src/contacts-group-utils";
 import { mergeContactsLabels, type ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import {
@@ -65,6 +68,7 @@ import {
   writableGroupAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
+import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
 import {
   CONTACTS_AUTOSAVE_DEBOUNCE_MS,
   createContactSaveDebouncer,
@@ -138,6 +142,16 @@ function draftDisplayName(draft: ContactEditDraft, unknownLabel: string): string
   return name || unknownLabel;
 }
 
+function replaceCardPreservingGroupMembers(
+  cards: ContactCard[],
+  cardId: string,
+  incoming: ContactCard,
+): ContactCard[] {
+  return cards.map((card) =>
+    card.id === cardId ? mergeGroupCardPreservingOptimisticMembers(incoming, card) : card,
+  );
+}
+
 function contactMutationOpts(
   card: ContactCard | undefined,
   signal?: AbortSignal,
@@ -148,35 +162,6 @@ function contactMutationOpts(
     ifInState: state ?? undefined,
     ifMatch: card?.etag,
   };
-}
-
-function mergeContactFromPatch(active: ContactCard, patch: ContactCardPatch): ContactCard {
-  const merged: ContactCard = {
-    ...active,
-    ...patch,
-    name: patch.name ?? active.name,
-    phones: { ...active.phones, ...patch.phones },
-    emails: { ...active.emails, ...patch.emails },
-    addresses: { ...active.addresses, ...patch.addresses },
-    organizations: { ...active.organizations, ...patch.organizations },
-    notes: { ...active.notes, ...patch.notes },
-  };
-  for (const [key, value] of Object.entries(patch.phones ?? {})) {
-    if (value === null) delete merged.phones?.[key];
-  }
-  for (const [key, value] of Object.entries(patch.emails ?? {})) {
-    if (value === null) delete merged.emails?.[key];
-  }
-  for (const [key, value] of Object.entries(patch.addresses ?? {})) {
-    if (value === null) delete merged.addresses?.[key];
-  }
-  for (const [key, value] of Object.entries(patch.organizations ?? {})) {
-    if (value === null) delete merged.organizations?.[key];
-  }
-  for (const [key, value] of Object.entries(patch.notes ?? {})) {
-    if (value === null) delete merged.notes?.[key];
-  }
-  return merged;
 }
 
 export function useContactsController({
@@ -244,7 +229,7 @@ export function useContactsController({
   const isTouch = useIsTouch();
 
   useEffect(() => {
-    setCards(data.cards);
+    setCards((prev) => mergeBootstrapCardsPreservingOptimistic(data.cards, prev));
     setAddressBooks(data.addressBooks);
   }, [data.addressBooks, data.cards]);
 
@@ -863,7 +848,7 @@ export function useContactsController({
             (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
             signal,
           );
-          setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
+          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
         },
         undo: rollback,
         onError: rollback,
@@ -920,7 +905,7 @@ export function useContactsController({
             () => groupRenamePatch(value),
             signal,
           );
-          setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
+          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
         },
         undo: rollback,
         onError: rollback,
@@ -1035,7 +1020,7 @@ export function useContactsController({
             (fresh) => groupAddMembersPatch(fresh, membersToAdd),
             signal,
           );
-          setCards((prev) => prev.map((card) => (card.id === created.id ? saved : card)));
+          setCards((prev) => replaceCardPreservingGroupMembers(prev, created.id, saved));
         },
         undo: rollback,
         onError: rollback,
@@ -1061,10 +1046,7 @@ export function useContactsController({
       const groupName = contactDisplayName(group);
       const addedCount = Object.keys(patch.members ?? {}).length;
       const previousCard = group;
-      const merged: ContactCard = {
-        ...group,
-        members: { ...group.members, ...patch.members } as ContactCard["members"],
-      };
+      const merged = cardWithAddedGroupMembers(group, cardsToAdd);
 
       setCards((prev) => prev.map((card) => (card.id === groupId ? merged : card)));
       const rollback = () => {
@@ -1088,7 +1070,7 @@ export function useContactsController({
             },
             signal,
           );
-          setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
+          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
         },
         undo: rollback,
         onError: rollback,
@@ -1131,7 +1113,7 @@ export function useContactsController({
             (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
             signal,
           );
-          setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
+          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
         },
         undo: rollback,
         onError: rollback,
@@ -1308,7 +1290,7 @@ export function useContactsController({
           (fresh) => groupAddMembersPatch(fresh, [created]),
           signal,
         );
-        setCards((prev) => prev.map((card) => (card.id === groupId ? saved : card)));
+        setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
       },
       undo: rollback,
       onError: rollback,
