@@ -2,6 +2,8 @@ export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
 export type { JmapNotesAdapterOptions } from "./adapter/JmapNotesAdapter.js";
 export { JmapNotesAdapter } from "./adapter/JmapNotesAdapter.js";
+export type { JmapContactsAdapterOptions } from "./adapter/JmapContactsAdapter.js";
+export { JmapContactsAdapter } from "./adapter/JmapContactsAdapter.js";
 export { NOTES_USING, JmapNotesClient } from "./notes/JmapNotesClient.js";
 export type { JmapNote, JmapNotebook } from "./notes/types.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
@@ -23,7 +25,11 @@ export type {
   JmapCalendarEventFilterCondition,
   JmapCalendarRights,
 } from "./calendars/types.js";
-export { CONTACTS_USING, JmapContactsClient } from "./contacts/JmapContactsClient.js";
+export {
+  CONTACTS_USING,
+  CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  JmapContactsClient,
+} from "./contacts/JmapContactsClient.js";
 export type {
   JmapAddressBook,
   JmapAddressBookRights,

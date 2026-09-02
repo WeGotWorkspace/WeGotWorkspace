@@ -190,7 +190,11 @@ export function TasksTaskFormFields({
               onValueChange={(listId) => setField("listId", listId)}
               disabled={disabled}
             >
-              <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskList}>
+              <SelectTrigger
+                size="sm"
+                className={COMPOSER_SELECT_TRIGGER_CLASS}
+                aria-label={L.addTaskList}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
@@ -210,7 +214,11 @@ export function TasksTaskFormFields({
               }
               disabled={disabled}
             >
-              <SelectTrigger className={COMPOSER_SELECT_TRIGGER_CLASS} aria-label={L.addTaskStatus}>
+              <SelectTrigger
+                size="sm"
+                className={COMPOSER_SELECT_TRIGGER_CLASS}
+                aria-label={L.addTaskStatus}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className={COMPOSER_SELECT_CONTENT_CLASS}>
@@ -234,6 +242,7 @@ export function TasksTaskFormFields({
               disabled={disabled}
             >
               <SelectTrigger
+                size="sm"
                 className={COMPOSER_SELECT_TRIGGER_CLASS}
                 aria-label={L.addTaskPriority}
               >

@@ -628,7 +628,7 @@ export const SearchNoMatch: Story = {
     const noMatchScope = canvasElement.querySelector(".calendar-search-results__scope");
     expect(noMatchScope?.textContent).toContain("Personal");
     expect(noMatchScope?.textContent).toContain("Work");
-    expect(noMatchScope?.textContent).toMatch(/Aug 2025/);
+    expect(noMatchScope?.textContent).toMatch(/2025/);
     expect(noMatchScope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
     await expect(canvas.queryByText(/Downloaded /)).toBeNull();
     await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();

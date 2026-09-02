@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import "@/user-avatar/src/user-avatar.css";
@@ -11,12 +11,20 @@ export type UserAvatarProps = {
   subtitle?: ReactNode;
   /** When set, show profile photo; falls back to initials on load error or when omitted. */
   imageSrc?: string;
+  /** Replaces initials when there is no photo (e.g. a company building icon). */
+  fallback?: ReactNode;
   /** Avatar + label only; no text column. */
   compact?: boolean;
   /** `sm` = sidebar/footer chip; `md` = mail sender row; `lg` / `xl` = meet tiles and lobby preview. */
   size?: UserAvatarSize;
+  /** Native `<img>` loading hint. List rows pass `lazy`; omit (eager) for the open card. */
+  loading?: "eager" | "lazy";
+  /** Native `<img>` decoding hint. List rows pass `async`. */
+  decoding?: "async" | "auto" | "sync";
   onClick?: () => void;
   className?: string;
+  /** Runtime CSS variables (e.g. a per-collection `--contacts-book-color`). */
+  style?: CSSProperties;
 };
 
 export function initialsFromDisplayName(displayName: string | null | undefined): string {
@@ -33,10 +41,14 @@ export function UserAvatar({
   displayName,
   subtitle,
   imageSrc,
+  fallback,
   compact = false,
   size = "sm",
+  loading,
+  decoding,
   onClick,
   className,
+  style,
 }: UserAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const resolvedName = displayName?.trim() || "Unknown";
@@ -61,10 +73,12 @@ export function UserAvatar({
       src={imageSrc}
       alt=""
       className="user-avatar__image"
+      loading={loading}
+      decoding={decoding}
       onError={() => setImageFailed(true)}
     />
   ) : (
-    initials
+    (fallback ?? initials)
   );
 
   const circle = onClick ? (
@@ -83,7 +97,7 @@ export function UserAvatar({
   );
 
   return (
-    <div className={cn("user-avatar", sizeClass, className)}>
+    <div className={cn("user-avatar", sizeClass, className)} style={style}>
       {circle}
       {!compact ? (
         <div className="user-avatar__text">

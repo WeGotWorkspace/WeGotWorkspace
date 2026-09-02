@@ -9,7 +9,6 @@ import {
 } from "@/lib/offline/contacts-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
-import { createHybridContactsOperations } from "@/lib/offline/contacts-hybrid-operations";
 
 const username = "alice";
 
@@ -33,6 +32,7 @@ const bootstrap = {
         sortOrder: 0,
         isDefault: true,
         isSubscribed: true,
+        isSharee: false,
         myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
       },
     ],
@@ -57,18 +57,41 @@ vi.mock("@/lib/offline/browser-online", () => ({
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));
 
+const { listAddressBooks, patchAddressBook, pullAddressBookChanges, syncAllContactBooks } =
+  vi.hoisted(() => ({
+    listAddressBooks: vi.fn(),
+    patchAddressBook: vi.fn(),
+    pullAddressBookChanges: vi.fn(),
+    syncAllContactBooks: vi.fn(),
+  }));
+
 vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/contacts")>();
   return {
     ...actual,
     getCard: vi.fn(),
-    listAddressBooks: vi.fn(),
+    listAddressBooks,
     listCards: vi.fn(),
+    patchAddressBook,
   };
 });
 
+vi.mock("@/lib/api/wgw/contacts-bootstrap", () => ({
+  fetchContactsLiveBootstrap: vi.fn(),
+}));
+
+vi.mock("@/lib/api/wgw/contacts-sync", () => ({
+  pullAddressBookChanges,
+  syncAllContactBooks,
+}));
+
 import { patchCardWithState } from "@/lib/api/wgw/contacts-mutations";
+import { fetchContactsLiveBootstrap } from "@/lib/api/wgw/contacts-bootstrap";
 import { readBrowserOnline } from "@/lib/offline/browser-online";
+import {
+  createHybridContactsOperations,
+  fetchContactsHybridBootstrap,
+} from "@/lib/offline/contacts-hybrid-operations";
 
 describe("createHybridContactsOperations", () => {
   beforeEach(async () => {
@@ -203,5 +226,51 @@ describe("createHybridContactsOperations", () => {
 
     const outbox = await listOutboxMutations(username);
     expect(outbox).toHaveLength(1);
+  });
+
+  it("serves cached address books when offline", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridContactsOperations(username);
+    const books = await operations.listAddressBooks();
+    expect(books.map((book) => book.id)).toEqual(["default"]);
+    expect(listAddressBooks).not.toHaveBeenCalled();
+  });
+
+  it("queues bookUpdate offline for shareWith", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridContactsOperations(username);
+    const shareWith = {
+      bob: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: false },
+    };
+    const updated = await operations.patchAddressBook!("default", { shareWith });
+    expect(updated.shareWith).toEqual(shareWith);
+    expect(patchAddressBook).not.toHaveBeenCalled();
+
+    const cached = await readContactsBootstrapFromCache(username);
+    expect(cached?.data.addressBooks[0]?.shareWith).toEqual(shareWith);
+
+    const outbox = await listOutboxMutations(username);
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.op).toBe("bookUpdate");
+    expect(JSON.parse(outbox[0]?.payload ?? "{}")).toEqual({
+      addressBookId: "default",
+      patch: { shareWith },
+    });
+  });
+
+  it("does not pull AddressBook/ContactCard changes again after bootstrap", async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await contactsBooksTable(db).clear();
+    await contactsCardsTable(db).clear();
+    await db.meta.clear();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(fetchContactsLiveBootstrap).mockResolvedValue(bootstrap);
+    pullAddressBookChanges.mockResolvedValue(undefined);
+    syncAllContactBooks.mockResolvedValue(undefined);
+
+    await fetchContactsHybridBootstrap();
+
+    expect(pullAddressBookChanges).not.toHaveBeenCalled();
+    expect(syncAllContactBooks).not.toHaveBeenCalled();
   });
 });

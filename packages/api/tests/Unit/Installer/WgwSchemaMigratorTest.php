@@ -106,6 +106,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'calendar_subscriptions',
             'calendar_feed_tokens',
             'calendar_share_dismissals',
+            'addressbook_shares',
+            'addressbook_share_dismissals',
             'note_stars',
             'jmap_note_states',
         ] as $table) {

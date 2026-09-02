@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { blurWorkspaceDetailEditor } from "@/hooks/blur-workspace-detail-editor";
 import { useIsTouch } from "@/hooks/use-is-touch";
@@ -43,7 +43,9 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     (noteId: string) => {
       if (lastNotifiedNoteRef.current === noteId) return;
       lastNotifiedNoteRef.current = noteId;
-      return onNoteChange?.(noteId);
+      startTransition(() => {
+        onNoteChange?.(noteId);
+      });
     },
     [onNoteChange],
   );

@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureContactsEnabled;
 use App\Http\Middleware\EnsureTasksEnabled;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\WgwSecurityHeaders;
+use App\Http\Support\WgwOversizedPost;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
 use App\Services\Meet\MeetResponseException;
@@ -77,13 +78,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 400);
         });
         $exceptions->render(function (PostTooLargeException $e) {
-            $max = trim((string) ini_get('post_max_size'));
-            $hint = $max !== '' ? "Current server post_max_size is {$max}." : 'Current server post_max_size is too low.';
-
-            return response()->json([
-                'error' => "Upload too large. {$hint}",
-                'code' => 'post_too_large',
-            ], 413);
+            return response()->json(WgwOversizedPost::payload(), 413);
         });
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
             if (! $request->is('api/*')) {

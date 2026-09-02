@@ -86,6 +86,7 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/html
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
     && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/wgw-uploads.ini
 COPY docker/install/vhost.conf /etc/apache2/conf-available/wgw-install-vhost.conf
 COPY docker/install/http-vhost.conf /etc/apache2/conf-available/wgw-install-http-vhost.conf
 RUN a2enconf wgw-install-vhost wgw-install-http-vhost

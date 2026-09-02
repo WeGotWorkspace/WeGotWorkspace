@@ -1,5 +1,18 @@
 Options -Indexes -MultiViews
 
+# Conservative shared-host upload cap (PHP default is 8M). Ignored on PHP-FPM;
+# see .user.ini. Must stay in sync with docker/php/uploads.ini.
+<IfModule mod_php.c>
+    php_value post_max_size 32M
+    php_value upload_max_filesize 32M
+    php_value display_errors 0
+</IfModule>
+<IfModule mod_php8.c>
+    php_value post_max_size 32M
+    php_value upload_max_filesize 32M
+    php_value display_errors 0
+</IfModule>
+
 # PWA ships index.html beside index.php for Workbox precache; always route "/" through Laravel
 # so unconfigured installs redirect to /install/ (see UiStaticFront).
 <IfModule mod_dir.c>

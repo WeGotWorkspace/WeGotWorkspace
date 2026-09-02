@@ -40,7 +40,11 @@ export type WorkspaceListControllerResult<TItem> = {
   selectSingle: (id: string) => void;
   isItemDragging: (id: string) => boolean;
   itemDragHandlers: (id: string) => ItemDragHandlers;
-  sidebarDropZoneProps: (targetKey: string, onCommit: (ids: string[]) => void) => ListDropZoneProps;
+  sidebarDropZoneProps: (
+    targetKey: string,
+    onCommit: (ids: string[]) => void,
+    canAccept?: (ids: string[]) => boolean,
+  ) => ListDropZoneProps;
   beginOptimisticUpdate: ({ ids, updater }: { ids: string[]; updater: (item: TItem) => TItem }) => {
     snapshotById: Map<string, TItem>;
     affectedItems: TItem[];

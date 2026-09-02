@@ -50,6 +50,22 @@ describe("CollectionSidebarRow", () => {
     );
   });
 
+  it("renders a leading mark inside the select control", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Friends"
+          color="#6366f1"
+          onSelect={vi.fn()}
+          leading={<span data-testid="leading-mark" aria-hidden />}
+        />
+      </ul>,
+    );
+    const select = screen.getByRole("button", { name: "Friends" });
+    expect(select.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
+    expect(screen.getByTestId("leading-mark")).toBeTruthy();
+  });
+
   it("keeps hover-edit when onEdit is provided", () => {
     const onEdit = vi.fn();
     render(
@@ -95,6 +111,46 @@ describe("CollectionSidebarRow", () => {
     const row = screen.getByText("Work").closest(".collection-sidebar-row");
     expect(row?.className).toMatch(/collection-sidebar-row--selected/);
     expect(row?.className).toMatch(/calendar-sidebar-row--selected/);
+  });
+
+  it("folds from a trailing expand control without selecting the row", () => {
+    const onSelect = vi.fn();
+    const onToggleExpand = vi.fn();
+    render(
+      <TooltipProvider>
+        <ul>
+          <CollectionSidebarRow
+            name="Personal"
+            color="#22c55e"
+            expanded
+            onSelect={onSelect}
+            onToggleExpand={onToggleExpand}
+            expandLabel="Collapse Personal"
+          />
+        </ul>
+      </TooltipProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Personal" }));
+    expect(onToggleExpand).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Collapse Personal" }).getAttribute("aria-expanded"),
+    ).toBe("true");
+  });
+
+  it("marks nested and related rows without treating related as selected", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow name="Personal" color="#22c55e" related onSelect={vi.fn()} />
+        <CollectionSidebarRow name="Friends" color="#22c55e" nested selected onSelect={vi.fn()} />
+      </ul>,
+    );
+    const parent = screen.getByText("Personal").closest(".collection-sidebar-row");
+    const child = screen.getByText("Friends").closest(".collection-sidebar-row");
+    expect(parent?.className).toMatch(/collection-sidebar-row--related/);
+    expect(parent?.className).not.toMatch(/collection-sidebar-row--selected/);
+    expect(child?.className).toMatch(/collection-sidebar-row--nested/);
+    expect(child?.className).toMatch(/collection-sidebar-row--selected/);
   });
 
   it("renders CollectionSidebarMark with the shared mark class", () => {

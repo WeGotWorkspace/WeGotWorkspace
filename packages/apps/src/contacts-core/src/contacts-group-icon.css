@@ -1,0 +1,26 @@
+@import "../../styles.css" reference;
+
+.contacts-group-icon {
+  @apply size-3.5 shrink-0 block;
+  color: var(--collection-row-color, var(--color-ink));
+}
+
+.contacts-group-icon-slot {
+  @apply inline-flex shrink-0 items-center justify-center;
+}
+
+.contacts-group-icon-slot .contacts-group-icon {
+  @apply size-5;
+}
+
+.contacts-group-icon-slot--lg .contacts-group-icon {
+  @apply size-8;
+}
+
+.contacts-group-icon-slot--xl {
+  @apply size-20;
+}
+
+.contacts-group-icon-slot--xl .contacts-group-icon {
+  @apply size-12;
+}

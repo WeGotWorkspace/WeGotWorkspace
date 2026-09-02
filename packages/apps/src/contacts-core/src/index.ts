@@ -15,6 +15,7 @@ export type {
   ContactsUIData,
   ContactsAPIOperations,
   AddressBook,
+  AddressBookMutationPatch,
   ContactCard,
   ContactCardCreate,
   ContactCardImportResponse,
@@ -26,12 +27,20 @@ export {
   type ContactsUILabels,
 } from "./contacts-labels";
 export {
+  contactsAddressBookDisplayName,
+  isPersonalAddressBook,
+} from "./contacts-addressbook-write";
+export {
   channelDisplayLabels,
   contactDisplayName,
   contactPersonName,
+  isContactOrgCard,
   contactInitials,
   contactListDetail,
   contactListSubtitle,
+  contactPhoneDisplayValue,
+  contactPrimaryEmail,
+  contactPrimaryPhone,
   contactPhotoUrl,
   contactPhotoBlobId,
   CONTACT_MEDIA_BLOB_PATH,
@@ -40,14 +49,23 @@ export {
   type ChannelDisplayLabelOptions,
 } from "./contacts-display-utils";
 export { ContactUserAvatar } from "./contact-user-avatar";
+export { ContactsGroupIcon } from "./contacts-group-icon";
+export { ContactsOrgIcon } from "./contacts-org-icon";
 export { useContactPhotoSrc } from "./use-contact-photo-src";
 export {
+  canWriteContactGroup,
+  contactAndGroupShareAddressBook,
   contactsGroupViewKey,
   filterCardsByView,
+  filterCardsByHiddenAddressBooks,
+  groupsContainingCard,
+  groupsInAddressBook,
   isContactGroupCard,
   listContactGroups,
   resolveGroupMemberCardIds,
   groupRenamePatch,
+  cardWithAddedGroupMember,
+  cardsWithGroupMember,
   groupAddMembersPatch,
   resolveGroupMemberCards,
   type ContactCardWithResolvedMembers,
@@ -60,6 +78,7 @@ export {
   editDraftToPatch,
   emptyContactEditDraft,
   newContactMapId,
+  canCreateContactInView,
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
   CONTACT_CHANNEL_CONTEXTS,
