@@ -58,7 +58,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
 
     public function test_join_denied_for_room_matching_neither_known_form(): void
     {
-        // Contains a slash but no leading slash: neither drive path nor note UID.
+        // Normalizes to /docs/legacy-room.md, which is not under any drive root.
         $this->joinRoom($this->userBearerToken(), RoomTestHelper::fileRoomId('docs/legacy-room.md'), 'Bob')
             ->assertForbidden()
             ->assertJsonPath('error', 'forbidden');
@@ -78,6 +78,38 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
 
         $this->joinRoom($this->carolBearerToken(), RoomTestHelper::fileRoomId(self::GROUP_DOC_PATH), 'Carol')
             ->assertForbidden();
+    }
+
+    /**
+     * The docs app strips the leading slash from drive paths when it builds the
+     * collab room (`groups/team/minutes.md`, not `/groups/team/minutes.md`).
+     * Joins with that shape must resolve to the same drive document.
+     */
+    public function test_join_allowed_for_group_member_on_group_path_without_leading_slash(): void
+    {
+        $roomId = RoomTestHelper::fileRoomId(ltrim(self::GROUP_DOC_PATH, '/'));
+
+        $this->joinRoom($this->issueBearerTokenFor('alice'), $roomId, 'Alice')
+            ->assertOk()
+            ->assertJsonStructure(['peerId', 'peers']);
+
+        $this->joinRoom($this->carolBearerToken(), $roomId, 'Carol')
+            ->assertForbidden()
+            ->assertJsonPath('error', 'forbidden');
+    }
+
+    public function test_join_allowed_for_own_home_path_without_leading_slash(): void
+    {
+        $this->joinRoom($this->userBearerToken(), RoomTestHelper::fileRoomId(ltrim(self::DOC_PATH, '/')), 'Bob')
+            ->assertOk()
+            ->assertJsonStructure(['peerId', 'peers']);
+    }
+
+    public function test_join_denied_for_other_users_private_doc_room_without_leading_slash(): void
+    {
+        $this->joinRoom($this->carolBearerToken(), RoomTestHelper::fileRoomId(ltrim(self::DOC_PATH, '/')), 'Carol')
+            ->assertForbidden()
+            ->assertJsonPath('error', 'forbidden');
     }
 
     public function test_join_allowed_with_doc_share_grant(): void

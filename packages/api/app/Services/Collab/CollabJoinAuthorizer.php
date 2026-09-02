@@ -12,9 +12,10 @@ use App\Services\Notes\NoteRepository;
  *
  * Joining exposes the roster and offer/answer mailbox, which is all a peer
  * needs to receive Yjs document sync — so joining mirrors document read
- * access. Decoded rooms have two known shapes: a drive virtual path
- * (leading `/`) or a note VJOURNAL UID (no slash at all). Anything else
- * is denied.
+ * access. Decoded rooms have two known shapes: a drive virtual path (any
+ * room containing a slash — the docs app strips the leading `/`, so both
+ * `/groups/team/doc.md` and `groups/team/doc.md` arrive here) or a note
+ * VJOURNAL UID (no slash at all).
  */
 final class CollabJoinAuthorizer
 {
@@ -28,19 +29,13 @@ final class CollabJoinAuthorizer
      */
     public function assertMayJoin(string $room, array $principal): void
     {
-        if (str_starts_with($room, '/')) {
-            $this->assertMayReadDrivePath($room, $principal);
+        if (str_contains($room, '/')) {
+            $this->assertMayReadDrivePath('/'.ltrim($room, '/'), $principal);
 
             return;
         }
 
-        if (! str_contains($room, '/')) {
-            $this->assertMayReadNote($room, $principal['username']);
-
-            return;
-        }
-
-        $this->deny();
+        $this->assertMayReadNote($room, $principal['username']);
     }
 
     /**
