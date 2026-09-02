@@ -1,3 +1,5 @@
+@import "../../styles.css" reference;
+
 /*
  * Floating mini-player shown outside /meet during an active call. Renders in the
  * app shell (outside .meet-workspace), so it carries its own tokens with dark
