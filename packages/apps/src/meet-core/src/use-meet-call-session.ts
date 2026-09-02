@@ -10,6 +10,7 @@ import {
   decodeMeetKnockerName,
 } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media-hints";
 import { useMeetLocalMedia } from "@/meet-core/src/use-meet-local-media";
@@ -23,6 +24,8 @@ export type UseMeetCallSessionArgs = {
   operations?: MeetAPIOperations;
   isGuestSession: boolean;
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
+  /** Suite-level store: RTC session + local media survive route unmounts. */
+  callStore?: MeetCallStore;
 };
 
 export function useMeetCallSession({
@@ -31,6 +34,7 @@ export function useMeetCallSession({
   operations,
   isGuestSession,
   leaveRef,
+  callStore,
 }: UseMeetCallSessionArgs) {
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
@@ -77,6 +81,7 @@ export function useMeetCallSession({
 
   const meetRtc = useMeetRtc({
     rtcSettings: rtc,
+    persistentSessionRef: callStore?.rtcSessionRef,
     signalingFetch: guestSignalingFetch,
     getLocalStream: () => getLocalStreamRef.current(),
     onLinkChange: () => room.refreshPeersRef.current(),
@@ -188,6 +193,15 @@ export function useMeetCallSession({
     getLocalStream,
   } = useMeetLocalMedia({
     meetRtc,
+    mediaHolders: callStore
+      ? {
+          localStream: callStore.localStreamRef,
+          screenStream: callStore.screenStreamRef,
+          cameraTrack: callStore.cameraTrackRef,
+          selectedMicId: callStore.selectedMicIdRef,
+          selectedCamId: callStore.selectedCamIdRef,
+        }
+      : undefined,
     micOn: room.micOn,
     videoOn: room.videoOn,
     screenOn: room.screenOn,

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
-import type { HttpSignalingClient, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
+import type {
+  HttpSignalingClient,
+  HttpSignalingPollResponse,
+  HttpSignalingPollResult,
+} from "@/lib/rtc/signaling/http-client";
 import type { RtcSettings } from "@/lib/rtc/types";
 
 vi.mock("@/lib/rtc/log", () => ({ rtcLog: vi.fn() }));
@@ -98,7 +102,7 @@ function createMockSignaling(initialJoin: {
   sessionKey?: string | null;
 }) {
   const sends: Array<{ to: string; type: string; payload: unknown }> = [];
-  let pollHandler: (() => Promise<HttpSignalingPollResult>) | null = null;
+  let pollHandler: (() => Promise<HttpSignalingPollResponse>) | null = null;
 
   const client = {
     join: vi.fn(async (input: { peerId?: string; name: string }) => ({
@@ -106,7 +110,7 @@ function createMockSignaling(initialJoin: {
       peers: initialJoin.peers ?? [],
       sessionKey: initialJoin.sessionKey ?? null,
     })),
-    poll: vi.fn(async () => {
+    poll: vi.fn(async (_input?: unknown): Promise<HttpSignalingPollResponse> => {
       if (pollHandler) return pollHandler();
       return { peers: initialJoin.peers ?? [], messages: [] };
     }),
@@ -120,7 +124,7 @@ function createMockSignaling(initialJoin: {
   return {
     client,
     sends,
-    setPollHandler(handler: () => Promise<HttpSignalingPollResult>) {
+    setPollHandler(handler: () => Promise<HttpSignalingPollResponse>) {
       pollHandler = handler;
     },
   };
@@ -289,6 +293,124 @@ describe("RtcPeerMesh", () => {
     expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 1200);
     await mesh.leave();
     setTimeoutSpy.mockRestore();
+  });
+
+  it("backs off polling when the tab is hidden and no peer connections exist", async () => {
+    const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+    const { mesh } = meshWithStubPc(signaling.client, {
+      channel: "chat",
+      ports: {
+        visibility: {
+          getState: () => "hidden",
+          subscribe: () => () => {},
+        },
+      },
+    });
+
+    await mesh.join({ name: "Host", peerId: "peer-a" });
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 60000);
+    await mesh.leave();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it("keeps normal cadence when hidden with peer connections present", async () => {
+    const signaling = createMockSignaling({
+      peerId: "ZZZZZZZZZZ",
+      peers: [{ id: "AAAAAAAAAA", name: "Guest" }],
+    });
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+    const { mesh } = meshWithStubPc(signaling.client, {
+      ports: {
+        visibility: {
+          getState: () => "hidden",
+          subscribe: () => () => {},
+        },
+      },
+    });
+
+    await mesh.join({ name: "Host", peerId: "ZZZZZZZZZZ" });
+    await flushAsyncWork();
+    expect(mesh.getPeerIds()).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 1200);
+    await mesh.leave();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it("restores fast polling when visibility returns", async () => {
+    const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+    let visibilityState: DocumentVisibilityState = "hidden";
+    let visibilityListener: (() => void) | null = null;
+    const unsubscribe = vi.fn();
+
+    const { mesh } = meshWithStubPc(signaling.client, {
+      channel: "chat",
+      ports: {
+        visibility: {
+          getState: () => visibilityState,
+          subscribe: (listener) => {
+            visibilityListener = listener;
+            return unsubscribe;
+          },
+        },
+      },
+    });
+
+    await mesh.join({ name: "Host", peerId: "peer-a" });
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 60000);
+
+    visibilityState = "visible";
+    visibilityListener!();
+
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 400);
+
+    await mesh.leave();
+    expect(unsubscribe).toHaveBeenCalled();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it("echoes rosterSig on subsequent polls and skips unchanged responses", async () => {
+    const onPollData = vi.fn();
+    const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, { onPollData });
+
+    await mesh.join({ name: "Host", peerId: "peer-a" });
+    expect(onPollData).toHaveBeenCalledTimes(1);
+
+    signaling.setPollHandler(async () => ({
+      peers: [{ id: "peer-b", name: "Guest" }],
+      messages: [],
+      rosterSig: "sig-1",
+    }));
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(onPollData).toHaveBeenCalledTimes(2);
+
+    signaling.setPollHandler(async () => ({ unchanged: true }));
+    await vi.advanceTimersByTimeAsync(1200);
+    await flushAsyncWork();
+
+    const lastPollInput = signaling.client.poll.mock.calls.at(-1)?.[0] as
+      | { sig?: string }
+      | undefined;
+    expect(lastPollInput?.sig).toBe("sig-1");
+    expect(onPollData).toHaveBeenCalledTimes(2);
+    expect(mesh.getRoomPeers()).toEqual([{ id: "peer-b", name: "Guest" }]);
+
+    await mesh.leave();
   });
 
   it("keeps steady polling for channels without idle backoff", async () => {
@@ -502,6 +624,87 @@ describe("RtcPeerMesh", () => {
     await vi.advanceTimersByTimeAsync(400);
 
     expect(signaling.sends.some((s) => s.type === "answer")).toBe(false);
+    await mesh.leave();
+  });
+
+  it("dials a hinted peer immediately when the local side is the collab initiator", async () => {
+    const signaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, {
+      channel: "collab",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Alex", peerId: "AAAAAAAAAA" });
+    mesh.applyPeerHint([{ id: "ZZZZZZZZZZ", name: "Zed" }]);
+    await flushAsyncWork();
+
+    expect(signaling.sends.some((s) => s.type === "offer" && s.to === "ZZZZZZZZZZ")).toBe(true);
+    await mesh.leave();
+  });
+
+  it("kicks an immediate poll for hinted peers where the remote side initiates", async () => {
+    const signaling = createMockSignaling({ peerId: "ZZZZZZZZZZ", peers: [] });
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const { mesh } = meshWithStubPc(signaling.client, {
+      channel: "collab",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Zed", peerId: "ZZZZZZZZZZ" });
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 1200);
+    const pollsBeforeHint = signaling.client.poll.mock.calls.length;
+
+    mesh.applyPeerHint([{ id: "AAAAAAAAAA", name: "Alex" }]);
+
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 400);
+    expect(signaling.sends.some((s) => s.type === "offer")).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(signaling.client.poll.mock.calls.length).toBe(pollsBeforeHint + 1);
+
+    await mesh.leave();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it("ignores hinted peers that are already known", async () => {
+    const signaling = createMockSignaling({
+      peerId: "AAAAAAAAAA",
+      peers: [{ id: "ZZZZZZZZZZ", name: "Zed" }],
+    });
+    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+      channel: "collab",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Alex", peerId: "AAAAAAAAAA" });
+    await flushAsyncWork();
+    const pcCountAfterJoin = pcs.size;
+    const offersAfterJoin = signaling.sends.filter((s) => s.type === "offer").length;
+
+    mesh.applyPeerHint([{ id: "ZZZZZZZZZZ", name: "Zed" }]);
+    await flushAsyncWork();
+
+    expect(pcs.size).toBe(pcCountAfterJoin);
+    expect(signaling.sends.filter((s) => s.type === "offer").length).toBe(offersAfterJoin);
+    await mesh.leave();
+  });
+
+  it("ignores hints that include the local peer id", async () => {
+    const signaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
+    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+      channel: "collab",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Alex", peerId: "AAAAAAAAAA" });
+    mesh.applyPeerHint([{ id: "AAAAAAAAAA", name: "Alex" }]);
+    await flushAsyncWork();
+
+    expect(pcs.size).toBe(0);
+    expect(signaling.sends.some((s) => s.type === "offer")).toBe(false);
     await mesh.leave();
   });
 

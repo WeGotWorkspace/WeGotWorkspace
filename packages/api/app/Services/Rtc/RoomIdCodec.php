@@ -11,6 +11,8 @@ final class RoomIdCodec
 {
     private const FILE_PREFIX = 'f_';
 
+    private const PRINCIPAL_PREFIX = 'p_';
+
     public function encodeFilePath(string $path): string
     {
         $encoded = rtrim(strtr(base64_encode($path), '+/', '-_'), '=');
@@ -19,7 +21,16 @@ final class RoomIdCodec
     }
 
     /**
-     * @return array{channel: 'meet'|'collab', room: string}
+     * Principal rooms are plain tokens (`workspace`, `groups.{slug}`) — no encoding,
+     * the room charset already fits the roomId path segment.
+     */
+    public function encodePrincipalRoom(string $room): string
+    {
+        return self::PRINCIPAL_PREFIX.$room;
+    }
+
+    /**
+     * @return array{channel: 'meet'|'collab'|'principal', room: string}
      */
     public function decode(string $roomId): array
     {
@@ -35,6 +46,15 @@ final class RoomIdCodec
             }
 
             return ['channel' => 'collab', 'room' => $path];
+        }
+
+        if (str_starts_with($roomId, self::PRINCIPAL_PREFIX)) {
+            $room = substr($roomId, strlen(self::PRINCIPAL_PREFIX));
+            if ($room === '') {
+                throw new \InvalidArgumentException('Invalid principal room id.');
+            }
+
+            return ['channel' => 'principal', 'room' => $room];
         }
 
         return ['channel' => 'meet', 'room' => $roomId];

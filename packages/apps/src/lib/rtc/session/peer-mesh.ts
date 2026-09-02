@@ -1,6 +1,10 @@
 import { toRtcConfig, turnUrlCount } from "@/lib/rtc/config";
 import { rtcLog } from "@/lib/rtc/log";
-import type { HttpSignalingClient, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
+import {
+  isUnchangedPollResponse,
+  type HttpSignalingClient,
+  type HttpSignalingPollResult,
+} from "@/lib/rtc/signaling/http-client";
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
 import {
   flushPendingIce,
@@ -22,11 +26,28 @@ import { sortRtcSignalMessages } from "@/lib/rtc/types";
 
 export type InitiatorRule = "lowerId" | "higherId";
 
+export type RtcMeshVisibilityPort = {
+  getState: () => DocumentVisibilityState;
+  subscribe: (listener: () => void) => () => void;
+};
+
 export type RtcPeerMeshPorts = {
   createPeerConnection?: (config: RTCConfiguration) => RTCPeerConnection;
   setTimeout?: typeof setTimeout;
   clearTimeout?: typeof clearTimeout;
+  visibility?: RtcMeshVisibilityPort;
 };
+
+function defaultVisibilityPort(): RtcMeshVisibilityPort | null {
+  if (typeof document === "undefined") return null;
+  return {
+    getState: () => document.visibilityState,
+    subscribe: (listener) => {
+      document.addEventListener("visibilitychange", listener);
+      return () => document.removeEventListener("visibilitychange", listener);
+    },
+  };
+}
 
 export type RtcPeerMeshOptions = {
   channel: SignalingChannel;
@@ -74,6 +95,8 @@ const DEFAULT_POLL_INTERVALS: RtcPollIntervals = {
 const COLLAB_IDLE_POLL_INTERVAL_MS = 15000;
 /** Meet idle backoff when connected with no knockers — shorter than collab for chat/control UX. */
 const MEET_IDLE_POLL_INTERVAL_MS = 4000;
+/** Hidden-tab backoff — applies only when the mesh holds no peer connections at all. */
+const HIDDEN_IDLE_POLL_INTERVAL_MS = 60000;
 /** Encoded knocker roster names — keep fast poll while guests wait for admit. */
 const MEET_KNOCK_ROSTER_PREFIX = "__wgw_knock__:";
 
@@ -85,6 +108,8 @@ export class RtcPeerMesh {
   private sessionKey: string | null = null;
 
   private lastMsgId = 0;
+
+  private lastRosterSig: string | null = null;
 
   private lastRoomPeers: RtcPeerDescriptor[] = [];
 
@@ -104,12 +129,17 @@ export class RtcPeerMesh {
 
   private readonly cancelTimeout: typeof clearTimeout;
 
+  private readonly visibility: RtcMeshVisibilityPort | null;
+
+  private visibilityUnsubscribe: (() => void) | null = null;
+
   constructor(private readonly options: RtcPeerMeshOptions) {
     this.turnConfigured = turnUrlCount(options.rtcSettings) > 0;
     this.createPeerConnection =
       options.ports?.createPeerConnection ?? ((config) => new RTCPeerConnection(config));
     this.scheduleTimeout = options.ports?.setTimeout ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.ports?.clearTimeout ?? clearTimeout.bind(globalThis);
+    this.visibility = options.ports?.visibility ?? defaultVisibilityPort();
   }
 
   private log(event: string, details?: unknown): void {
@@ -575,8 +605,13 @@ export class RtcPeerMesh {
         room: this.options.room,
         peerId: this.myId,
         since: this.lastMsgId,
+        sig: this.lastRosterSig ?? undefined,
         sessionKey: this.sessionKey ?? undefined,
       });
+      if (isUnchangedPollResponse(data)) {
+        return;
+      }
+      this.lastRosterSig = typeof data.rosterSig === "string" ? data.rosterSig : null;
       await this.onPoll(data);
     } finally {
       this.pollInFlight = false;
@@ -611,14 +646,33 @@ export class RtcPeerMesh {
     return true;
   }
 
+  /** Hidden-tab backoff only applies to meshes without any peer connections. */
+  private isHiddenWithoutPeerConnections(): boolean {
+    return this.visibility?.getState() === "hidden" && this.peers.size === 0;
+  }
+
   private steadyPollDelayMs(intervals: RtcPollIntervals): number {
+    let delay = intervals.steadyMs;
     if (this.hasStableCollabTopology()) {
-      return Math.max(intervals.steadyMs, COLLAB_IDLE_POLL_INTERVAL_MS);
+      delay = Math.max(delay, COLLAB_IDLE_POLL_INTERVAL_MS);
+    } else if (this.hasStableMeetTopology()) {
+      delay = Math.max(delay, MEET_IDLE_POLL_INTERVAL_MS);
     }
-    if (this.hasStableMeetTopology()) {
-      return Math.max(intervals.steadyMs, MEET_IDLE_POLL_INTERVAL_MS);
+    if (this.isHiddenWithoutPeerConnections()) {
+      delay = Math.max(delay, HIDDEN_IDLE_POLL_INTERVAL_MS);
     }
-    return intervals.steadyMs;
+    return delay;
+  }
+
+  private onVisibilityChange(): void {
+    if (!this.myId) return;
+    if (this.visibility?.getState() === "visible") {
+      this.log("visibility-poll-restore");
+      this.schedulePoll(false);
+      return;
+    }
+    // Reschedule so the hidden backoff (when applicable) kicks in without waiting a tick.
+    this.schedulePoll(true);
   }
 
   private schedulePoll(steady = false): void {
@@ -647,6 +701,34 @@ export class RtcPeerMesh {
     }
   }
 
+  /**
+   * Gossip hint received from an already-connected peer: another peer joined
+   * the room. Dial unknown peers where the local side is the initiator; for
+   * the rest, reschedule an immediate poll so their offer is picked up without
+   * waiting out the idle poll interval. Purely additive — the roster poll
+   * remains the source of truth and a lost hint costs nothing.
+   */
+  applyPeerHint(peers: RtcPeerDescriptor[]): void {
+    if (!this.myId || !this.rtcSignalsEnabled()) return;
+    let awaitingRemoteOffer = false;
+    for (const peer of peers) {
+      if (peer.id === this.myId || this.peers.has(peer.id)) continue;
+      if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) continue;
+      if (this.isInitiator(peer.id)) {
+        this.log("peer-hint-connect", { remoteId: peer.id });
+        void this.connectTo(peer.id, peer.name).catch((error) => {
+          this.log("peer-connect-failed", { remoteId: peer.id, error });
+        });
+      } else {
+        awaitingRemoteOffer = true;
+      }
+    }
+    if (awaitingRemoteOffer) {
+      this.log("peer-hint-poll-kick");
+      this.schedulePoll(false);
+    }
+  }
+
   async recoverUnknownPeer(): Promise<void> {
     if (!this.options.recoverOnUnknownPeer || this.rejoinInFlight || !this.myName.trim()) return;
     this.rejoinInFlight = true;
@@ -656,6 +738,7 @@ export class RtcPeerMesh {
       for (const id of [...this.peers.keys()]) this.removePeer(id);
       this.myId = null;
       this.lastMsgId = 0;
+      this.lastRosterSig = null;
       const joined = await this.options.signaling.join({
         room: this.options.room,
         name: this.myName,
@@ -687,6 +770,9 @@ export class RtcPeerMesh {
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+    this.lastRosterSig = null;
+    this.visibilityUnsubscribe ??=
+      this.visibility?.subscribe(() => this.onVisibilityChange()) ?? null;
     this.schedulePoll();
     await this.onPoll({ peers: joined.peers, messages: [] });
     return {
@@ -748,6 +834,8 @@ export class RtcPeerMesh {
 
   async leave(): Promise<void> {
     this.stopPolling();
+    this.visibilityUnsubscribe?.();
+    this.visibilityUnsubscribe = null;
     this.pollInFlight = false;
     const peerId = this.myId;
     const sessionKey = this.sessionKey;
@@ -767,6 +855,7 @@ export class RtcPeerMesh {
     this.myName = "";
     this.sessionKey = null;
     this.lastMsgId = 0;
+    this.lastRosterSig = null;
     this.lastRoomPeers = [];
   }
 }

@@ -6,6 +6,7 @@ import {
   resetConnectivityHubForTests,
 } from "@/lib/offline/browser-online";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import {
   useDocsCollab,
@@ -19,10 +20,12 @@ const rtcMocks = vi.hoisted(() => ({
   mockBroadcast: vi.fn(),
   mockOnMessage: vi.fn(),
   mockGetPeerIds: vi.fn(() => [] as string[]),
+  mockGetRoomPeers: vi.fn(() => [] as { id: string; name: string }[]),
   mockLinkCount: vi.fn(() => 0),
   mockGetRoomPeerStatuses: vi.fn(() => [] as { id: string; name: string; link: string }[]),
   mockGetMyId: vi.fn(() => "peer-a"),
   mockGetMyName: vi.fn(() => "Alex"),
+  mockClearMessageListeners: vi.fn(),
 }));
 
 vi.mock("./docs-rtc-session", () => ({
@@ -32,10 +35,12 @@ vi.mock("./docs-rtc-session", () => ({
     broadcast = rtcMocks.mockBroadcast;
     onMessage = rtcMocks.mockOnMessage;
     getPeerIds = rtcMocks.mockGetPeerIds;
+    getRoomPeers = rtcMocks.mockGetRoomPeers;
     linkCount = rtcMocks.mockLinkCount;
     getRoomPeerStatuses = rtcMocks.mockGetRoomPeerStatuses;
     getMyId = rtcMocks.mockGetMyId;
     getMyName = rtcMocks.mockGetMyName;
+    clearMessageListeners = rtcMocks.mockClearMessageListeners;
     sendTo = vi.fn();
   },
 }));
@@ -112,6 +117,7 @@ async function waitForCollabSession(result: { current: { session: unknown } }): 
 
 describe("useDocsCollab offline lifecycle", () => {
   beforeEach(async () => {
+    resetDocsCollabMeshLingerForTests();
     vi.clearAllMocks();
     MockBroadcastChannel.peers = [];
     Reflect.deleteProperty(globalThis, "BroadcastChannel");
@@ -130,6 +136,7 @@ describe("useDocsCollab offline lifecycle", () => {
   });
 
   afterEach(() => {
+    resetDocsCollabMeshLingerForTests();
     resetConnectivityHubForTests();
     resetDocsCollabBackoffForTests();
     vi.restoreAllMocks();
@@ -260,6 +267,40 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitForCollabSession(result);
     expect(mockJoin).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(result.current.status).toContain("Mesh"));
+  });
+
+  it("reuses the lingering mesh session when remounting the same room within the grace", async () => {
+    const first = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: testUrls,
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(first.result);
+    await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      first.unmount();
+    });
+    expect(rtcMocks.mockLeave).not.toHaveBeenCalled();
+    expect(rtcMocks.mockClearMessageListeners).toHaveBeenCalledTimes(1);
+
+    const second = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: testUrls,
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(second.result);
+    await waitFor(() => expect(second.result.current.status).toContain("Mesh"));
+    expect(mockJoin).toHaveBeenCalledTimes(1);
+    expect(rtcMocks.mockLeave).not.toHaveBeenCalled();
   });
 
   it("exposes session before server fetch completes", async () => {

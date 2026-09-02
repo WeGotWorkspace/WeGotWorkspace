@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Collab;
 
+use App\Models\DriveShare;
+use App\Models\DriveShareGrant;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Support\Str;
 use Tests\Support\RoomTestHelper;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class CollabEndpointsTest extends WgwDatabaseTestCase
 {
-    private const ROOM = 'docs/test-together.md';
+    private const ROOM = '/users/alice/docs/test-together.md';
 
     protected function setUp(): void
     {
@@ -53,6 +56,8 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
     public function test_two_users_exchange_signaling_messages(): void
     {
         $this->seedWgwUser('bob', displayName: 'Bob');
+        // Collab join requires document access: grant bob a share on alice's doc.
+        $this->grantDocShareToBob();
 
         $aliceToken = $this->issueBearerTokenFor('alice');
         $bobToken = $this->issueBearerTokenFor('bob');
@@ -136,5 +141,25 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
     private function roomId(): string
     {
         return RoomTestHelper::fileRoomId(self::ROOM);
+    }
+
+    private function grantDocShareToBob(): void
+    {
+        $share = new DriveShare;
+        $share->id = (string) Str::uuid();
+        $share->path = self::ROOM;
+        $share->owner_username = 'alice';
+        $share->kind = 'member';
+        $share->default_access = 'edit';
+        $share->save();
+
+        $grant = new DriveShareGrant;
+        $grant->id = (string) Str::uuid();
+        $grant->share_id = $share->id;
+        $grant->grantee_type = 'user';
+        $grant->grantee_user = 'bob';
+        $grant->access = 'edit';
+        $grant->status = 'active';
+        $grant->save();
     }
 }

@@ -7,6 +7,7 @@ import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
+import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import {
   markRoomServerFailure,
@@ -113,7 +114,9 @@ export function useDocsCollabJoin({
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
     meshJoinInFlightRef.current = false;
-    void meshSession?.leave();
+    // Park the mesh instead of leaving: returning to this room within the
+    // grace resumes the live session (joinMesh); expiry performs the leave.
+    if (meshSession) lingerDocsCollabMeshSession(room, meshSession);
     const persistence = refs.persistenceRef.current;
     refs.persistenceRef.current = null;
     void persistence?.destroy();

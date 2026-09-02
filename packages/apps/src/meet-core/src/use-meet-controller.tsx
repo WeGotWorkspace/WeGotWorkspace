@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetCallSession } from "@/meet-core/src/use-meet-call-session";
 import { meetCanModerateKnocks, useMeetMutations } from "@/meet-core/src/use-meet-mutations";
@@ -26,15 +27,20 @@ export function useMeetController({
   buildCallLink,
   onRoomChange,
 }: UseMeetControllerArgs) {
-  const leaveRef = useRef<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>(
-    null,
-  );
+  // Suite-level store (live app): call + media survive route unmounts. Null in
+  // mock/Storybook trees, where the per-mount fallbacks keep the old behavior.
+  const callStore = useMeetCallStoreContext();
+  const localLeaveRef = useRef<
+    null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)
+  >(null);
+  const leaveRef = callStore?.leaveRef ?? localLeaveRef;
 
   const room = useMeetRoomState({
     defaultDisplayName,
     sessionDisplayName: session.user.displayName || "Guest",
     buildCallLink,
     onRoomChange,
+    callStore: callStore ?? undefined,
   });
   const isGuestSession = !session.user.username?.trim() && !session.user.email?.trim();
 
@@ -44,6 +50,7 @@ export function useMeetController({
     operations,
     isGuestSession,
     leaveRef,
+    callStore: callStore ?? undefined,
   });
   const mutations = useMeetMutations({
     room,
@@ -51,6 +58,7 @@ export function useMeetController({
     canModerateKnocks: meetCanModerateKnocks(session),
     actingUsername: session.user.username,
     leaveRef,
+    persistentCall: Boolean(callStore),
   });
 
   return {
@@ -92,5 +100,6 @@ export function useMeetController({
     switchCamera: callSession.switchCamera,
     callLink: room.callLink,
     inCall: room.inCall,
+    callActiveInAnotherTab: room.remoteCallActive,
   };
 }

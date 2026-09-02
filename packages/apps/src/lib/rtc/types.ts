@@ -1,4 +1,4 @@
-export type SignalingChannel = "meet" | "collab" | "chat" | "sheet" | "slides";
+export type SignalingChannel = "meet" | "collab" | "principal" | "chat" | "sheet" | "slides";
 
 /** REST collection segment for room session signaling (`/rooms/{roomId}/*`). */
 export function signalingApiSegment(_channel: SignalingChannel): string {
@@ -36,6 +36,8 @@ export type RtcSignalMessage = {
 export type RtcPeerDescriptor = {
   id: string;
   name: string;
+  /** Sabre username of the peer's owner — principal rooms only (server-derived, authoritative). */
+  user?: string;
 };
 
 export type RtcLinkState = "connected" | "connecting" | "failed" | "disconnected" | "closed";

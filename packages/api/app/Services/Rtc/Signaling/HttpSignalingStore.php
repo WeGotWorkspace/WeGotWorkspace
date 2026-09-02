@@ -72,17 +72,35 @@ final class HttpSignalingStore
     }
 
     /**
-     * @return list<array{id: string, name: string}>
+     * @return list<array{id: string, name: string, user?: string}>
      */
     public function peerList(string $room, string $selfId): array
     {
+        $columns = ['peer_id as id', 'name'];
+        if ($this->policy->rosterIncludesOwner) {
+            $columns[] = 'owner_user';
+        }
+
         return $this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $selfId)
-            ->get(['peer_id as id', 'name'])
-            ->map(static fn ($row) => ['id' => (string) $row->id, 'name' => (string) $row->name])
+            ->get($columns)
+            ->map(function ($row): array {
+                $peer = ['id' => (string) $row->id, 'name' => (string) $row->name];
+                if ($this->policy->rosterIncludesOwner) {
+                    $peer['user'] = $this->ownerUsername((string) ($row->owner_user ?? ''));
+                }
+
+                return $peer;
+            })
             ->values()
             ->all();
+    }
+
+    /** Strip the `u:` owner marker so rosters carry the plain Sabre username. */
+    private function ownerUsername(string $ownerMarker): string
+    {
+        return str_starts_with($ownerMarker, 'u:') ? substr($ownerMarker, 2) : $ownerMarker;
     }
 
     public function touchPeer(string $room, string $peerId, ?int $now = null): void
@@ -122,11 +140,28 @@ final class HttpSignalingStore
     }
 
     /**
-     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>}
+     * Poll roster + pending messages. When the caller echoes the roster signature of a
+     * previous poll (`$knownRosterSig`) and neither the roster nor the peer's mailbox
+     * changed, a minimal `{unchanged: true}` marker is returned and payload building
+     * (message fetch/delete, roster serialization) is skipped.
+     *
+     * @return array{peers: list<array{id: string, name: string, user?: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
-    public function poll(string $room, string $peerId, int $since = 0): array
+    public function poll(string $room, string $peerId, int $since = 0, ?string $knownRosterSig = null): array
     {
         $this->touchPeer($room, $peerId);
+
+        $peers = $this->peerList($room, $peerId);
+        $rosterSig = $this->rosterSignature($peers);
+
+        if (
+            $knownRosterSig !== null
+            && $knownRosterSig !== ''
+            && hash_equals($rosterSig, $knownRosterSig)
+            && ! $this->hasPendingMessages($room, $peerId, $since)
+        ) {
+            return ['unchanged' => true, 'rosterSig' => $rosterSig];
+        }
 
         if ($this->policy->pollMode === RtcSignalingPollMode::SinceCursor) {
             $query = $this->messageQuery()
@@ -148,8 +183,9 @@ final class HttpSignalingStore
             }
 
             return [
-                'peers' => $this->peerList($room, $peerId),
+                'peers' => $peers,
                 'messages' => $messages,
+                'rosterSig' => $rosterSig,
             ];
         }
 
@@ -174,9 +210,40 @@ final class HttpSignalingStore
         }
 
         return [
-            'peers' => $this->peerList($room, $peerId),
+            'peers' => $peers,
             'messages' => $messages,
+            'rosterSig' => $rosterSig,
         ];
+    }
+
+    /**
+     * Signature over the visible roster (ids + names + optional owner, order-independent).
+     * `seen_at` is deliberately excluded — it changes on every poll touch.
+     *
+     * @param  list<array{id: string, name: string, user?: string}>  $peers
+     */
+    private function rosterSignature(array $peers): string
+    {
+        $parts = array_map(
+            static fn (array $peer): string => $peer['id']."\x1f".$peer['name']."\x1f".($peer['user'] ?? ''),
+            $peers,
+        );
+        sort($parts, SORT_STRING);
+
+        return sha1(implode("\x1e", $parts));
+    }
+
+    private function hasPendingMessages(string $room, string $peerId, int $since): bool
+    {
+        $query = $this->messageQuery()
+            ->where('room', $room)
+            ->where('to_peer', $peerId);
+
+        if ($this->policy->pollMode === RtcSignalingPollMode::SinceCursor) {
+            $query->where('id', '>', max(0, $since));
+        }
+
+        return $query->exists();
     }
 
     public function send(string $room, string $from, string $to, string $type, mixed $payload): void

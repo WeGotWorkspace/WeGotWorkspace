@@ -3696,7 +3696,13 @@ export interface paths {
         /** Poll events */
         get: {
             parameters: {
-                query?: never;
+                query: {
+                    peerId: string;
+                    since?: number;
+                    /** @description Roster signature (`rosterSig`) from a previous poll response. When it still matches and no messages are pending for the peer, the server answers 204 No Content. */
+                    sig?: string;
+                    sessionKey?: string;
+                };
                 header?: never;
                 path: {
                     roomId: string;
@@ -3707,6 +3713,13 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nothing new — roster unchanged for the provided `sig` and no pending messages. */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };

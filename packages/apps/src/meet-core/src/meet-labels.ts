@@ -61,4 +61,10 @@ export const meetLabels = {
   selfPreview: (name: string) => `${name} (you)`,
   participantJoined: (name: string) => `${name} joined the call`,
   participantLeft: (name: string) => `${name} left the call`,
+  callActiveInAnotherTab: "A call is already active in another tab.",
+  miniPlayerLabel: "Ongoing call",
+  miniPlayerWaiting: "Waiting to be let in",
+  returnToCall: "Return to call",
+  hangUp: "Hang up",
+  participantsShort: (count: number) => `${count} in call`,
 } as const;

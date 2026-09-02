@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import { resumeDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { applyAwarenessUpdate, encodeSyncStep1, handleSyncMessage } from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
@@ -181,6 +182,18 @@ export function useDocsCollabMesh({
 
   const joinMesh = useCallback(
     async (name: string, authToken: string): Promise<DocsCollabMeshPeer[]> => {
+      const resumed = resumeDocsCollabMeshSession(room);
+      if (resumed) {
+        refs.meshRef.current = resumed;
+        resumed.onMessage(handleMeshMessage);
+        refreshMeshUi();
+        publishMeshStateToTabs();
+        // Data channels are already open, so no dc-open will fire — ask the
+        // connected peers for their state against the freshly loaded Y.Doc.
+        sendSyncStep1();
+        return resumed.getRoomPeers();
+      }
+
       let rtcSettings;
       try {
         rtcSettings = await refs.wireRef.current.fetchRtcSettings({
@@ -213,6 +226,7 @@ export function useDocsCollabMesh({
       refs,
       refreshMeshUi,
       room,
+      sendSyncStep1,
       urls.collabApiBaseUrl,
       urls.collabRtcUrl,
     ],

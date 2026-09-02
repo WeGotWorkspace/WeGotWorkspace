@@ -11,8 +11,17 @@ export function encodeFileRoomId(path: string): string {
   return `f_${base64}`;
 }
 
+/**
+ * Encode a principal room token as a principal room id (`p_{room}`). Principal rooms
+ * are plain tokens (`workspace`, `groups.{slug}`) that already fit the roomId charset.
+ */
+export function encodePrincipalRoomId(room: string): string {
+  return `p_${room}`;
+}
+
 /** Map logical room + channel to the REST `/rooms/{roomId}` segment. */
 export function resolveRoomId(channel: SignalingChannel, room: string): string {
   if (channel === "collab") return encodeFileRoomId(room);
+  if (channel === "principal") return encodePrincipalRoomId(room);
   return room;
 }
