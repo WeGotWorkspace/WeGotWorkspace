@@ -894,7 +894,7 @@
 :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) {
   /* Light paper chrome: pin ink so dark lobby `.meet-workspace` text does not leak. */
   --color-ink: #042a22;
-  --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #ffffff));
   color: var(--color-ink);
@@ -984,6 +984,14 @@
 
 .meet-call-bar__avatars .user-avatar {
   --user-avatar-presence-ring: var(--meet-call-surface);
+}
+
+.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark,
+.meet-workspace
+  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
+  .user-avatar--colored
+  .user-avatar__mark {
+  color: var(--color-ink);
 }
 
 .meet-call-bar__invite {
@@ -1412,7 +1420,7 @@
 
 .meet-call-stage__chat-placeholder {
   @apply flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: var(--meet-call-ink-muted);
 }
 
 .meet-guest-channel__lobby {
