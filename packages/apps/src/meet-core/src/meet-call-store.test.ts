@@ -81,6 +81,38 @@ describe("MeetCallStore", () => {
     expect(store.getSnapshot().displayName).toBe("Alice");
   });
 
+  it("refreshes an initialized default once the real identity resolves", () => {
+    const store = createMeetCallStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    // Pre-bootstrap mount latches the placeholder.
+    store.initializeDisplayName("Guest");
+    expect(store.getSnapshot().displayName).toBe("Guest");
+
+    store.refreshDisplayName("Admin User");
+    expect(store.getSnapshot().displayName).toBe("Admin User");
+    expect(store.displayNameRef.current).toBe("Admin User");
+    expect(listener).toHaveBeenCalled();
+
+    // A later default (e.g. remount before the next bootstrap) must not clobber it.
+    store.initializeDisplayName("Guest");
+    expect(store.getSnapshot().displayName).toBe("Admin User");
+  });
+
+  it("never refreshes over a user-edited display name, and ignores blanks", () => {
+    const store = createMeetCallStore();
+
+    store.setDisplayName("Custom");
+    store.refreshDisplayName("Admin User");
+    expect(store.getSnapshot().displayName).toBe("Custom");
+
+    const fresh = createMeetCallStore();
+    fresh.initializeDisplayName("Guest");
+    fresh.refreshDisplayName("   ");
+    expect(fresh.getSnapshot().displayName).toBe("Guest");
+  });
+
   it("resets peer maps and idle media defaults", () => {
     const store = createMeetCallStore();
     store.rosterRef.current.set("p1", "Peer");

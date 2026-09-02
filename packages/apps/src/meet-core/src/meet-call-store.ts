@@ -74,6 +74,8 @@ export class MeetCallStore {
 
   private displayNameInitialized = false;
 
+  private displayNameUserEdited = false;
+
   // Ref mirrors, updated synchronously by the setters below.
   readonly statusRef: Ref<MeetCallStatus> = { current: "idle" };
 
@@ -148,6 +150,18 @@ export class MeetCallStore {
     this.displayNameRef.current = name;
   }
 
+  /**
+   * Identity-derived refresh once the session/bootstrap resolves. The suite-level
+   * store outlives the bootstrap remount, so the first-mount default may be the
+   * loading placeholder ("Guest"); overwrite it here — but never a name the user
+   * typed themselves.
+   */
+  refreshDisplayName(name: string): void {
+    if (this.displayNameUserEdited || !name.trim()) return;
+    this.displayNameInitialized = true;
+    this.set("displayName", name, this.displayNameRef);
+  }
+
   setStatus = (value: Updater<MeetCallStatus>): void => {
     this.set("status", value, this.statusRef);
   };
@@ -166,6 +180,7 @@ export class MeetCallStore {
 
   setDisplayName = (value: Updater<string>): void => {
     this.displayNameInitialized = true;
+    this.displayNameUserEdited = true;
     this.set("displayName", value, this.displayNameRef);
   };
 

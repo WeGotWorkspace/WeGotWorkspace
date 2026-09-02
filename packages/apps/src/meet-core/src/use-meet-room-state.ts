@@ -4,6 +4,12 @@ import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-ca
 export type UseMeetRoomStateArgs = {
   defaultDisplayName: string;
   sessionDisplayName: string;
+  /**
+   * False while the live bootstrap is still loading and `defaultDisplayName` /
+   * `sessionDisplayName` are placeholders. Blocks the identity refresh so the
+   * suite-level store never adopts a placeholder over the real session identity.
+   */
+  identityReady?: boolean;
   buildCallLink?: (roomCode: string) => string;
   onRoomChange?: (roomCode: string | null) => void;
   /** Suite-level store (live app). Absent in mock/Storybook: state stays per-mount. */
@@ -18,6 +24,7 @@ export type UseMeetRoomStateArgs = {
 export function useMeetRoomState({
   defaultDisplayName,
   sessionDisplayName,
+  identityReady = true,
   buildCallLink,
   onRoomChange,
   callStore,
@@ -30,6 +37,13 @@ export function useMeetRoomState({
 
   // Silent, idempotent write — safe during render (see MeetCallStore).
   store.initializeDisplayName(defaultDisplayName || sessionDisplayName || "Guest");
+
+  // The suite-level store may have latched a pre-bootstrap placeholder ("Guest")
+  // above; once the real session identity is known, refresh it (user edits win).
+  useEffect(() => {
+    if (!identityReady) return;
+    store.refreshDisplayName(defaultDisplayName || sessionDisplayName || "Guest");
+  }, [defaultDisplayName, identityReady, sessionDisplayName, store]);
 
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 

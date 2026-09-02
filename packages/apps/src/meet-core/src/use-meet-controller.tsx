@@ -9,6 +9,8 @@ import { useMeetRoomState } from "@/meet-core/src/use-meet-room-state";
 type UseMeetControllerArgs = {
   session: WorkspaceSession;
   defaultDisplayName: string;
+  /** False while the live bootstrap loads and identity props are placeholders. */
+  identityReady?: boolean;
   rtc: MeetRtcSettings;
   operations?: MeetAPIOperations;
   buildCallLink?: (roomCode: string) => string;
@@ -22,6 +24,7 @@ type UseMeetControllerArgs = {
 export function useMeetController({
   session,
   defaultDisplayName,
+  identityReady,
   rtc,
   operations,
   buildCallLink,
@@ -38,6 +41,7 @@ export function useMeetController({
   const room = useMeetRoomState({
     defaultDisplayName,
     sessionDisplayName: session.user.displayName || "Guest",
+    identityReady,
     buildCallLink,
     onRoomChange,
     callStore: callStore ?? undefined,
