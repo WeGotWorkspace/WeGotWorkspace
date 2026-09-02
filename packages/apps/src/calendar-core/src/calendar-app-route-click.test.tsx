@@ -124,9 +124,16 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     });
 
     fireEvent.click(screen.getAllByRole("button", { name: "Today" }).at(-1)!);
+    // "Today" anchors on the real current date (local), which may coincide with
+    // the 2026-09-01 anchor reached via "Next" — assert the exact target instead.
+    const now = new Date();
+    const todayIso = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
     await waitFor(() => {
-      expect(history.location.pathname).toMatch(/^\/calendar\/list\/month\/\d{4}-\d{2}-\d{2}$/);
-      expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
+      expect(history.location.pathname).toBe(`/calendar/list/month/${todayIso}`);
     });
   });
 
