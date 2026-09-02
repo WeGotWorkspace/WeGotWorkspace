@@ -31,40 +31,41 @@ function MeetCallBarStory({ joined, micOn, videoOn, invite }: MeetCallBarStoryAr
   const [video, setVideo] = useState(videoOn);
 
   return (
-    <MeetStoryScope variant="in-call">
-      <div className="flex flex-1 flex-col justify-end p-6">
-        <MeetCallBar
-          elapsedLabel="02:14"
-          selfId="self"
-          selfName="Demo User"
-          peers={STORY_MEET_PEERS.map((peer) => ({
-            id: peer.id,
-            name: peer.name,
-            stream: null,
-            remoteMedia: peer.remoteMedia,
-          }))}
-          participantCount={1 + STORY_MEET_PEERS.length}
-          micOn={mic}
-          videoOn={video}
-          cameras={STORY_MEET_DEVICES}
-          microphones={STORY_MEET_MICROPHONES}
-          speakers={STORY_MEET_SPEAKERS}
-          activeCamera={camera}
-          activeMic={microphone}
-          activeSpeaker={speaker}
-          onToggleMic={() => setMic((value) => !value)}
-          onToggleVideo={() => setVideo((value) => !value)}
-          onCameraChange={setCamera}
-          onMicrophoneChange={setMicrophone}
-          onSpeakerChange={setSpeaker}
-          onExpand={STORY_NOOP}
-          onLeave={STORY_NOOP}
-          onMuteSoon={STORY_NOOP}
-          joined={joined}
-          invite={invite}
-          onInvite={invite ? STORY_NOOP : undefined}
-        />
-      </div>
+    <MeetStoryScope
+      variant="split"
+      className="meet-workspace--call-active flex h-auto min-h-0 flex-col justify-end p-6"
+    >
+      <MeetCallBar
+        elapsedLabel="02:14"
+        selfId="self"
+        selfName="Demo User"
+        peers={STORY_MEET_PEERS.map((peer) => ({
+          id: peer.id,
+          name: peer.name,
+          stream: null,
+          remoteMedia: peer.remoteMedia,
+        }))}
+        participantCount={1 + STORY_MEET_PEERS.length}
+        micOn={mic}
+        videoOn={video}
+        cameras={STORY_MEET_DEVICES}
+        microphones={STORY_MEET_MICROPHONES}
+        speakers={STORY_MEET_SPEAKERS}
+        activeCamera={camera}
+        activeMic={microphone}
+        activeSpeaker={speaker}
+        onToggleMic={() => setMic((value) => !value)}
+        onToggleVideo={() => setVideo((value) => !value)}
+        onCameraChange={setCamera}
+        onMicrophoneChange={setMicrophone}
+        onSpeakerChange={setSpeaker}
+        onExpand={STORY_NOOP}
+        onLeave={STORY_NOOP}
+        onMuteSoon={STORY_NOOP}
+        joined={joined}
+        invite={invite}
+        onInvite={invite ? STORY_NOOP : undefined}
+      />
     </MeetStoryScope>
   );
 }
