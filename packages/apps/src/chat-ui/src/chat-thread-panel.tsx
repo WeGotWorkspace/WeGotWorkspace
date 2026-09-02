@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
+import { omitChatNestedThreadActions } from "@/chat-ui/src/chat-thread-actions";
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import type {
   ChatAuthorPresenceMap,
@@ -29,6 +31,9 @@ export type ChatThreadPanelProps = {
   composerPlaceholder?: string;
   composerInitialContent?: string;
   composerDisabled?: boolean;
+  /** In-place editor for the thread root (header owns Edit). */
+  parentEditing?: boolean;
+  parentEditComposer?: ReactNode;
   className?: string;
 };
 
@@ -48,6 +53,8 @@ export function ChatThreadPanel({
   composerPlaceholder = "Reply…",
   composerInitialContent,
   composerDisabled = false,
+  parentEditing = false,
+  parentEditComposer,
   className,
 }: ChatThreadPanelProps) {
   const replyLabel =
@@ -75,7 +82,12 @@ export function ChatThreadPanel({
           <ChatMessage
             message={parent}
             currentUserId={currentUserId}
-            actions={actionsForMessage?.(parent)}
+            editing={parentEditing}
+            editComposer={parentEditComposer}
+            allowThread={false}
+            actions={
+              parentEditing ? undefined : omitChatNestedThreadActions(actionsForMessage?.(parent))
+            }
             presence={authorPresence?.[parent.authorId]}
             onToggleReaction={
               onToggleReaction ? (emoji) => onToggleReaction(parent.id, emoji) : undefined
@@ -93,7 +105,8 @@ export function ChatThreadPanel({
                   message={reply}
                   currentUserId={currentUserId}
                   continuation={previous.authorId === reply.authorId}
-                  actions={actionsForMessage?.(reply)}
+                  allowThread={false}
+                  actions={omitChatNestedThreadActions(actionsForMessage?.(reply))}
                   presence={authorPresence?.[reply.authorId]}
                   onToggleReaction={
                     onToggleReaction ? (emoji) => onToggleReaction(reply.id, emoji) : undefined

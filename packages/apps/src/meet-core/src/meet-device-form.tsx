@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Mic, Settings as SettingsIcon, Video } from "lucide-react";
+import { Mic, Video, Volume2 } from "lucide-react";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { MeetDeviceRow } from "@/meet-core/src/meet-device-row";
@@ -23,6 +23,8 @@ export type MeetDeviceFormProps = {
   onSpeakerChange: (optionId: string) => void;
   children?: React.ReactNode;
   className?: string;
+  /** Portaled select menu surface. Lobby stays dark; the in-call sheet is paper. */
+  menuClassName?: string;
 };
 
 export function MeetDeviceForm({
@@ -38,6 +40,7 @@ export function MeetDeviceForm({
   onSpeakerChange,
   children,
   className,
+  menuClassName,
 }: MeetDeviceFormProps) {
   const displayNameId = useId();
   return (
@@ -61,6 +64,7 @@ export function MeetDeviceForm({
           value={camera}
           onChange={onCameraChange}
           options={cameras}
+          menuClassName={menuClassName}
         />
         <MeetDeviceRow
           icon={<Mic />}
@@ -68,13 +72,15 @@ export function MeetDeviceForm({
           value={microphone}
           onChange={onMicrophoneChange}
           options={microphones}
+          menuClassName={menuClassName}
         />
         <MeetDeviceRow
-          icon={<SettingsIcon />}
+          icon={<Volume2 />}
           label={meetLabels.speakerLabel}
           value={speaker}
           onChange={onSpeakerChange}
           options={speakers}
+          menuClassName={menuClassName}
         />
       </div>
       {children}

@@ -16,6 +16,10 @@ export { ChatLinkPreview } from "@/chat-ui/src/chat-link-preview";
 export type { ChatLinkPreviewProps } from "@/chat-ui/src/chat-link-preview";
 export { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
 export type { ChatThreadPanelProps } from "@/chat-ui/src/chat-thread-panel";
+export {
+  chatMessageCanOpenThread,
+  omitChatNestedThreadActions,
+} from "@/chat-ui/src/chat-thread-actions";
 export { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 export { chatUiLabels } from "@/chat-ui/src/chat-labels";
 export { shouldSendChatOnEnter } from "@/chat-ui/src/chat-send-on-enter";

@@ -1,11 +1,17 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Video } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage, type MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
-import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
+import {
+  meetCallStageShowsStage,
+  type MeetCallStageLayout,
+} from "@/meet-core/src/meet-call-stage-layout";
 import { MeetLobbyPane, type MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
+import { meetLabels } from "@/meet-core/src/meet-labels";
+import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import { cn } from "@/lib/utils";
 import "@/meet-core/src/meet-workspace.css";
 
@@ -33,29 +39,46 @@ export function MeetGuestChannel({
   className,
 }: MeetGuestChannelProps) {
   const inChannel = phase === "in-channel";
+  const showStage = inChannel && meetCallStageShowsStage(callLayout);
+  const [chatOpen, setChatOpen] = useState(defaultMeetWorkspacePanelOpen);
+  const chatTitle = meetLabels.chatInChannel(channelName);
 
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
         className={cn(
           "meet-workspace meet-workspace--split meet-guest-channel",
-          inChannel && "meet-workspace--call-active",
+          showStage && "meet-workspace--call-active",
           className,
         )}
         sidebar={null}
+        panel={
+          <MeetWorkspaceRail
+            open={showStage && chatOpen}
+            title={chatTitle}
+            closeLabel={meetLabels.chatClose}
+            onClose={() => setChatOpen(false)}
+          >
+            {chat}
+          </MeetWorkspaceRail>
+        }
         mainHeader={
-          <ViewHeader
-            hideSidebarToggle
-            title={channelName}
-            titleSize="sm"
-            titlePrefix={<Video className="meet-workspace__header-kind-icon" aria-hidden />}
-          />
+          showStage ? undefined : (
+            <ViewHeader
+              hideSidebarToggle
+              title={channelName}
+              titlePrefix={<Video className="meet-workspace__header-kind-icon" aria-hidden />}
+            />
+          )
         }
         main={
           inChannel ? (
             <MeetCallStage
               layout={callLayout}
-              chat={chat}
+              chat={showStage ? undefined : chat}
+              channelTitle={channelName}
+              chatOpen={chatOpen}
+              onToggleChat={() => setChatOpen((open) => !open)}
               onLayoutChange={onLayoutChange}
               {...stage}
             />

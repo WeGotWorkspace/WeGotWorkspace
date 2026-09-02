@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import "@/meet-core/src/meet-workspace.css";
+import "@/workspace-shell/src/workspace-app-layout.css";
 
 export type MeetStoryScopeVariant = "root" | "in-call" | "chat-column" | "pip-stage" | "split";
 
@@ -33,7 +34,7 @@ export function MeetStoryScope({
     return (
       <div
         className={cn(
-          "meet-workspace meet-workspace--split meet-workspace--call-active flex h-dvh flex-col",
+          "workspace-columns meet-workspace meet-workspace--split meet-workspace--call-active",
           className,
         )}
       >

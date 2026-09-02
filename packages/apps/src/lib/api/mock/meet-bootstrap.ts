@@ -50,6 +50,7 @@ const DEMO_CHANNELS: MeetChannel[] = [
     topic: "Announcements and day-to-day",
     unreadCount: 3,
     memberCount: 6,
+    callActive: true,
     shareWith: { "ada.lovelace": { mayRead: true, mayWrite: true } },
     myRights: { mayReadItems: true, mayWriteAll: true, mayShare: true, mayDelete: true },
   },

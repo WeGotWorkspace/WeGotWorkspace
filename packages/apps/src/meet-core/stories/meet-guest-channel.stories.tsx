@@ -34,7 +34,7 @@ const meta = {
     phase: { control: "select", options: ["checking", "waiting", "lobby", "in-channel"] as const },
     callLayout: {
       control: "select",
-      options: ["side-by-side", "fullscreen", "collapsed"] as const,
+      options: ["compact", "side-by-side", "fullscreen", "collapsed"] as const,
     },
   },
 } satisfies Meta<MeetGuestChannelStoryArgs>;

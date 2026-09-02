@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
+import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import type { ChatMessage } from "@/chat-ui/src/chat-types";
@@ -92,5 +93,11 @@ export const Populated: Story = {
         />
       </ChatStoryScope>
     );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getAllByRole("button", { name: chatUiLabels.reply }).length,
+    ).toBeGreaterThan(0);
   },
 };

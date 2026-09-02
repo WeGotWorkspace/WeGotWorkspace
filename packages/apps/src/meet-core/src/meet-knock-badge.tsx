@@ -39,7 +39,7 @@ export function MeetKnockBadge({ knockers, onAdmit, onDeny }: MeetKnockBadgeProp
                 onClick={() => onDeny(knocker.id)}
                 icon={<X />}
                 label={`Deny ${knocker.name}`}
-                variant="ghost"
+                variant="subtle"
                 size="sm"
                 showTooltip={false}
                 className="meet-knock-row__deny"

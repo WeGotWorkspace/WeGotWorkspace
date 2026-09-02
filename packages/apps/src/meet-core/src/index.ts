@@ -12,6 +12,8 @@ export type {
   MeetThreadCallLayout,
   MeetThreadPlacement,
 } from "@/meet-core/src/meet-thread-placement";
+export { MeetCallBar } from "@/meet-core/src/meet-call-bar";
+export type { MeetCallBarPeer, MeetCallBarProps } from "@/meet-core/src/meet-call-bar";
 export { MeetCallStage } from "@/meet-core/src/meet-call-stage";
 export type { MeetCallStageProps, MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 export type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";

@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
+import { expect, userEvent, within } from "storybook/test";
 import { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
@@ -12,9 +14,57 @@ import {
   storyBooleanControl,
 } from "@/meet-core/stories/meet-story-shared";
 
+type MeetCallToolbarStoryArgs = {
+  micOn: boolean;
+  videoOn: boolean;
+  screenOn: boolean;
+  callExitLabel: string;
+  callExitTitle: string;
+  callExitDescription: string;
+};
+
+function MeetCallToolbarStory({
+  micOn,
+  videoOn,
+  screenOn,
+  callExitLabel,
+  callExitTitle,
+  callExitDescription,
+}: MeetCallToolbarStoryArgs) {
+  const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
+  const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
+  const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
+  return (
+    <div className="flex flex-1 flex-col justify-end pb-8">
+      <MeetCallToolbar
+        micOn={micOn}
+        videoOn={videoOn}
+        screenOn={screenOn}
+        callExitLabel={callExitLabel}
+        callExitTitle={callExitTitle}
+        callExitDescription={callExitDescription}
+        cameras={STORY_MEET_DEVICES}
+        microphones={STORY_MEET_MICROPHONES}
+        speakers={STORY_MEET_SPEAKERS}
+        activeCamera={camera}
+        activeMic={microphone}
+        activeSpeaker={speaker}
+        onToggleMic={STORY_NOOP}
+        onToggleVideo={STORY_NOOP}
+        onToggleScreenShare={STORY_NOOP}
+        onCameraChange={setCamera}
+        onMicrophoneChange={setMicrophone}
+        onSpeakerChange={setSpeaker}
+        onConfirmExit={STORY_NOOP}
+      />
+    </div>
+  );
+}
+
 const meta = {
   title: "Apps/Meet/Components/MeetCallToolbar",
   component: MeetCallToolbar,
+  render: (args) => <MeetCallToolbarStory {...args} />,
   parameters: meetStoryParameters({
     snippet: `<MeetCallToolbar
   micOn
@@ -38,11 +88,6 @@ const meta = {
   onConfirmExit={confirmExit}
 />`,
   }),
-  render: (args) => (
-    <div className="flex flex-1 flex-col justify-end pb-8">
-      <MeetCallToolbar {...args} />
-    </div>
-  ),
   argTypes: {
     micOn: storyBooleanControl,
     videoOn: storyBooleanControl,
@@ -51,35 +96,35 @@ const meta = {
     callExitTitle: { table: { disable: true } },
     callExitDescription: { table: { disable: true } },
   },
-} satisfies Meta<typeof MeetCallToolbar>;
+} satisfies Meta<MeetCallToolbarStoryArgs>;
 
 export default meta;
-type Story = StoryObj<typeof MeetCallToolbar>;
+type Story = StoryObj<MeetCallToolbarStoryArgs>;
 
-const baseArgs = {
+const baseArgs: MeetCallToolbarStoryArgs = {
   micOn: true,
   videoOn: true,
   screenOn: false,
   callExitLabel: meetLabels.endCall,
   callExitTitle: meetLabels.endCallTitle,
   callExitDescription: meetLabels.endCallDescription,
-  cameras: STORY_MEET_DEVICES,
-  microphones: STORY_MEET_MICROPHONES,
-  speakers: STORY_MEET_SPEAKERS,
-  activeCamera: STORY_MEET_DEVICES[0]!.id,
-  activeMic: STORY_MEET_MICROPHONES[0]!.id,
-  activeSpeaker: STORY_MEET_SPEAKERS[0]!.id,
-  onToggleMic: STORY_NOOP,
-  onToggleVideo: STORY_NOOP,
-  onToggleScreenShare: STORY_NOOP,
-  onCameraChange: STORY_NOOP,
-  onMicrophoneChange: STORY_NOOP,
-  onSpeakerChange: STORY_NOOP,
-  onConfirmExit: STORY_NOOP,
 };
 
 export const Default: Story = {
   args: baseArgs,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const devices = canvas.getByRole("button", { name: meetLabels.devices });
+    const leave = canvas.getByRole("button", { name: meetLabels.endCall });
+    await expect(devices).toBeInTheDocument();
+    await expect(leave).toBeInTheDocument();
+    expect(devices.compareDocumentPosition(leave) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.click(devices);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.getByText(meetLabels.microphoneLabel)).toBeInTheDocument();
+    await expect(body.getByText(meetLabels.cameraLabel)).toBeInTheDocument();
+    await expect(body.getByText(meetLabels.speakerLabel)).toBeInTheDocument();
+  },
 };
 
 export const ScreenSharing: Story = {

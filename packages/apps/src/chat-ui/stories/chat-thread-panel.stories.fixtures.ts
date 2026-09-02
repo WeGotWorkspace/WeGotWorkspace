@@ -34,6 +34,7 @@ export const THREAD_REPLIES: ChatMessage[] = [
     previews: [],
     parentId: THREAD_PARENT.id,
     threadId: THREAD_PARENT.id,
+    replyCount: 3,
   },
   {
     id: "msg-thread-reply-2",

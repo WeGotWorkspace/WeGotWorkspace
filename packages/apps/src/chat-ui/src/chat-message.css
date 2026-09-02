@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .chat-message {
-  @apply relative flex gap-2.5 px-5 py-2.5;
+  @apply relative flex min-w-0 max-w-full gap-2.5 px-5 py-2.5;
 }
 
 .chat-message:hover,
@@ -10,7 +10,11 @@
 }
 
 .chat-message--continuation {
-  @apply pt-0;
+  @apply py-0.5;
+}
+
+.chat-message--continuation + .chat-message:not(.chat-message--continuation) {
+  @apply mt-2;
 }
 
 .chat-message__avatar {
@@ -18,7 +22,7 @@
 }
 
 .chat-message__avatar-spacer {
-  @apply size-9 shrink-0;
+  @apply w-9 shrink-0;
 }
 
 .chat-message__main {
@@ -40,8 +44,13 @@
   color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
 }
 
+.chat-message--continuation .chat-message__body,
+.chat-message--continuation .chat-message__deleted {
+  @apply mt-0;
+}
+
 .chat-message--continuation .chat-message__time {
-  @apply invisible;
+  @apply invisible absolute top-1/2 left-5 w-9 -translate-y-1/2 text-center whitespace-nowrap;
 }
 
 .chat-message--continuation:hover .chat-message__time,
@@ -50,7 +59,8 @@
 }
 
 .chat-message__body {
-  @apply mt-0.5 text-sm leading-snug;
+  @apply mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
+  overflow-wrap: anywhere;
   color: var(--chat-body, color-mix(in oklab, var(--color-ink) 88%, transparent));
 }
 
@@ -61,8 +71,11 @@
 }
 
 .chat-message__body .text-editor,
-.chat-message__body .text-editor-sheet--inline {
-  @apply min-h-0 leading-snug;
+.chat-message__body .text-editor-sheet--inline,
+.chat-message__body .text-editor-prose,
+.chat-message__body .ProseMirror {
+  @apply min-h-0 min-w-0 max-w-full break-words leading-snug;
+  overflow-wrap: anywhere;
   --text-editor-prose-font-size: 0.875rem;
   --text-editor-prose-line-height: 1.375;
 }
@@ -81,7 +94,7 @@
 }
 
 .chat-message__previews {
-  @apply mt-2 flex flex-col gap-2;
+  @apply mt-2 flex min-w-0 max-w-full flex-col gap-2;
 }
 
 .chat-message__replies {

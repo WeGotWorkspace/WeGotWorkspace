@@ -16,9 +16,11 @@ export type MeetWorkspaceProps = {
   initialThreadId?: string | null;
   /** Room slice for the built-in `MeetCallStage` (stories stub peers; no `useMeetRtc`). */
   callStageRoom?: MeetCallStageRoomProps;
-  /** When true, `callStage` fills main (it should include chat via MeetCallStage). */
+  /** When true, `callStage` fills main on `callChannelId` only. */
   callActive?: boolean;
-  /** Idle / split / fullscreen — drives thread panel vs SideDrawer. */
+  /** Channel that owns a story/fixture `callStage` — chrome does not follow channel switches. */
+  callChannelId?: string;
+  /** Idle / split / fullscreen — reserved for stories; the right rail is always the workspace panel. */
   callLayout?: MeetThreadCallLayout;
   /** Composed `MeetCallStage` (chat slot + room). Built from `callStageRoom` when omitted. */
   callStage?: ReactNode;

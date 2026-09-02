@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Users, Video } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CalendarDays, Pencil, Users, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -40,9 +40,26 @@ import {
   type MeetChannelDialogConfirmInput,
   type MeetChannelDialogState,
 } from "@/meet-core/src/meet-channel-dialog";
+import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
+import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
+import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
+import {
+  meetCallBarVisible,
+  meetCallChromeVisible,
+  meetCallInviteAction,
+  meetCallIsActive,
+  meetCallStageShowsStage,
+  meetChannelMeetingLive,
+  meetSidebarRowIsLive,
+  type MeetCallStageLayout,
+} from "@/meet-core/src/meet-call-stage-layout";
+import { meetThreadRailShowsBack } from "@/meet-core/src/meet-thread-placement";
+import { meetThreadPeopleCount } from "@/meet-core/src/meet-thread-people";
 import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { ChatComposer } from "@/chat-ui/src/chat-composer";
+import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
 import type { ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
 import {
@@ -50,18 +67,15 @@ import {
   meetDirectMessagePeople,
   type MeetDirectMessagePerson,
 } from "@/meet-core/src/meet-direct-messages";
-import type { MeetChannel, MeetChannelKind } from "@/meet-core/src/meet-types";
-import {
-  meetCallLayoutToThreadLayout,
-  meetThreadPlacement,
-} from "@/meet-core/src/meet-thread-placement";
+import type { ChatSendPayload } from "@/chat-ui/src/chat-types";
+import type { ChatMessage, MeetChannel, MeetChannelKind } from "@/meet-core/src/meet-types";
 import { useMeetCallLayout } from "@/meet-core/src/use-meet-call-layout";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
+import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
-import { SideDrawer } from "@/ui/side-drawer";
 import "@/meet-core/src/meet-workspace.css";
 
-function MeetWorkspaceThread({
+const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
   parent,
   replies,
   currentUserId,
@@ -70,6 +84,8 @@ function MeetWorkspaceThread({
   onClose,
   onSendReply,
   onToggleReaction,
+  parentEditing = false,
+  parentEditComposer,
 }: {
   parent: NonNullable<MeetWorkspaceProps["threadMessage"]>;
   replies: NonNullable<MeetWorkspaceProps["threadReplies"]>;
@@ -79,6 +95,8 @@ function MeetWorkspaceThread({
   onClose?: () => void;
   onSendReply?: (parentId: string, body: string) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
+  parentEditing?: boolean;
+  parentEditComposer?: ReactNode;
 }) {
   return (
     <ChatThreadPanel
@@ -89,15 +107,35 @@ function MeetWorkspaceThread({
       closeLabel={meetLabels.threadClose}
       mentionPrincipals={mentionPrincipals}
       authorPresence={authorPresence}
+      parentEditing={parentEditing}
+      parentEditComposer={parentEditComposer}
       onClose={onClose}
       onSend={onSendReply ? (payload) => onSendReply(parent.id, payload.body) : undefined}
       onToggleReaction={onToggleReaction}
+      actionsForMessage={(message) => {
+        if (message.id === parent.id) return undefined;
+        return [{ id: "react", onClick: () => undefined }];
+      }}
     />
   );
-}
+});
 
 function channelDotColor(channel: MeetChannel): string {
   return channel.color?.trim() || DEFAULT_MEET_CHANNEL_COLOR;
+}
+
+function MeetSidebarRowMeta({ live, unreadCount }: { live?: boolean; unreadCount?: number }) {
+  if (!live && !unreadCount) return undefined;
+  return (
+    <span className="meet-workspace__row-meta">
+      {live ? (
+        <span className="meet-workspace__live" role="img" aria-label={meetLabels.liveCall}>
+          <Video className="meet-workspace__live-icon" aria-hidden />
+        </span>
+      ) : null}
+      {unreadCount ? <span className="meet-workspace__unread">{unreadCount}</span> : null}
+    </span>
+  );
 }
 
 function MeetDirectMessageRows({
@@ -105,11 +143,13 @@ function MeetDirectMessageRows({
   selectedId,
   authorPresence,
   onSelect,
+  channelHasLiveCall,
 }: {
   people: MeetDirectMessagePerson[];
   selectedId: string | null;
   authorPresence?: MeetWorkspaceProps["data"]["authorPresence"];
   onSelect: (channelId: string) => void;
+  channelHasLiveCall: (channelId: string) => boolean;
 }) {
   return (
     <>
@@ -124,9 +164,10 @@ function MeetDirectMessageRows({
             <UserPresenceDot presence={authorPresence?.[person.id] ?? "offline"} standalone />
           }
           trailing={
-            person.unreadCount ? (
-              <span className="meet-workspace__unread">{person.unreadCount}</span>
-            ) : undefined
+            <MeetSidebarRowMeta
+              live={channelHasLiveCall(person.channelId)}
+              unreadCount={person.unreadCount}
+            />
           }
         />
       ))}
@@ -138,12 +179,12 @@ function MeetSidebarRows({
   channels,
   selectedId,
   onSelect,
-  onEdit,
+  channelHasLiveCall,
 }: {
   channels: MeetChannel[];
   selectedId: string | null;
   onSelect: (channelId: string) => void;
-  onEdit: (channel: MeetChannel) => void;
+  channelHasLiveCall: (channelId: string) => boolean;
 }) {
   return (
     <>
@@ -155,16 +196,15 @@ function MeetSidebarRows({
           selected={selectedId === channel.id}
           leading={
             channel.kind === "meeting" ? (
-              <Video className="meet-workspace__sidebar-kind-icon" aria-hidden />
+              <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
             ) : undefined
           }
           onSelect={() => onSelect(channel.id)}
-          onEdit={() => onEdit(channel)}
-          editLabel={channel.kind === "meeting" ? meetLabels.editMeeting : meetLabels.editChannel}
           trailing={
-            channel.unreadCount ? (
-              <span className="meet-workspace__unread">{channel.unreadCount}</span>
-            ) : undefined
+            <MeetSidebarRowMeta
+              live={channelHasLiveCall(channel.id)}
+              unreadCount={channel.unreadCount}
+            />
           }
         />
       ))}
@@ -183,7 +223,8 @@ export function MeetWorkspace({
   initialThreadId = null,
   callStageRoom,
   callActive = false,
-  callLayout,
+  callChannelId,
+  callLayout: _callLayout,
   callStage,
   chatColumn,
   onToggleCall,
@@ -195,12 +236,21 @@ export function MeetWorkspace({
   onCloseThread,
   onSendThreadReply,
 }: MeetWorkspaceProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () =>
+      !meetCallStageShowsStage(initialCallLayout ?? (callActive ? "side-by-side" : "collapsed")),
+  );
   const [channels, setChannels] = useState<MeetChannel[]>(() => data.channels ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(
     () => initialChannelId ?? data.channels?.[0]?.id ?? null,
   );
   const [dialog, setDialog] = useState<MeetChannelDialogState>(null);
+  const [callChatOpen, setCallChatOpen] = useState(() => {
+    const startsExpanded = meetCallStageShowsStage(
+      initialCallLayout ?? (callActive ? "side-by-side" : "collapsed"),
+    );
+    return startsExpanded || Boolean(initialThreadId) || defaultMeetWorkspacePanelOpen();
+  });
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;
@@ -332,6 +382,31 @@ export function MeetWorkspace({
     operations,
     channelId: selectedId,
   });
+  const sidebarCloseFrame = useRef<number | null>(null);
+  const handleCallLayoutChange = useCallback(
+    (layout: MeetCallStageLayout) => {
+      if (meetCallStageShowsStage(layout) && !meetCallIsActive(call.callLayout)) return;
+      call.onLayoutChange(layout);
+      if (!meetCallStageShowsStage(layout)) return;
+      setCallChatOpen(defaultMeetWorkspacePanelOpen());
+      if (sidebarCloseFrame.current != null) {
+        cancelAnimationFrame(sidebarCloseFrame.current);
+      }
+      sidebarCloseFrame.current = requestAnimationFrame(() => {
+        sidebarCloseFrame.current = null;
+        setSidebarOpen(false);
+      });
+    },
+    [call.callLayout, call.onLayoutChange],
+  );
+  useEffect(
+    () => () => {
+      if (sidebarCloseFrame.current != null) {
+        cancelAnimationFrame(sidebarCloseFrame.current);
+      }
+    },
+    [],
+  );
 
   const selectedRef = useRef(selectedId);
   useEffect(() => {
@@ -340,108 +415,294 @@ export function MeetWorkspace({
     chat.closeThread();
   }, [chat.closeThread, selectedId]);
 
-  const usingExternalStage = callStage != null;
-  const resolvedCallActive = usingExternalStage ? callActive : call.callActive;
-  const resolvedThreadLayout = callLayout ?? meetCallLayoutToThreadLayout(call.callLayout);
-  const threadPlacement = meetThreadPlacement(resolvedThreadLayout, resolvedCallActive);
+  const fixtureCallChannelId = callChannelId ?? initialChannelId ?? data.channels?.[0]?.id ?? null;
+  const externalStageOnSelected =
+    callStage != null && Boolean(selectedId) && selectedId === fixtureCallChannelId;
+  const resolvedCallActive = externalStageOnSelected ? callActive : call.callActive;
+  const resolvedStageLayout = externalStageOnSelected
+    ? resolvedCallActive
+      ? "side-by-side"
+      : "collapsed"
+    : call.callLayout;
 
   const resolvedParent = threadMessage ?? chat.activeThread?.parent ?? null;
   const resolvedOpen = threadMessage ? threadOpen : chat.threadOpen;
   const resolvedReplies = threadMessage ? threadReplies : (chat.activeThread?.replies ?? []);
   const closeResolvedThread = onCloseThread ?? chat.closeThread;
   const openResolvedThread = onOpenThread ?? chat.openThread;
-  const sendThreadReply = onSendThreadReply
-    ? onSendThreadReply
-    : (parentId: string, body: string) => {
-        void chat.sendThreadReply({ body, mentions: [] });
-        void parentId;
-      };
+  const sendThreadReply = useCallback(
+    (parentId: string, body: string) => {
+      if (onSendThreadReply) {
+        onSendThreadReply(parentId, body);
+        return;
+      }
+      void chat.sendThreadReply({ body, mentions: [] });
+    },
+    [chat.sendThreadReply, onSendThreadReply],
+  );
+  const onToggleThreadReaction = useCallback(
+    (messageId: string, emoji: string) => {
+      void chat.react(messageId, emoji);
+    },
+    [chat.react],
+  );
 
+  const onSendChannel = useCallback(
+    (payload: ChatSendPayload) => {
+      void chat.sendChannel(payload);
+    },
+    [chat.sendChannel],
+  );
+  const onReactChannel = useCallback(
+    (messageId: string, emoji: string) => {
+      void chat.react(messageId, emoji);
+    },
+    [chat.react],
+  );
+  const onReplyChannel = useCallback(
+    (message: ChatMessage) => {
+      if (meetCallStageShowsStage(call.callLayout)) setCallChatOpen(true);
+      openResolvedThread(message);
+    },
+    [call.callLayout, openResolvedThread],
+  );
+  const onDeleteChannel = useCallback(
+    (messageId: string) => {
+      void chat.deleteMessage(messageId);
+    },
+    [chat.deleteMessage],
+  );
+  const onCancelEdit = useCallback(() => {
+    chat.setEditingMessageId(null);
+  }, [chat.setEditingMessageId]);
+  const onSaveEdit = useCallback(
+    (messageId: string, payload: ChatSendPayload) => {
+      void chat.editMessage(messageId, payload);
+    },
+    [chat.editMessage],
+  );
+  const chatPlaceholder = selected
+    ? meetChannelComposerPlaceholder(selected)
+    : selectedDm
+      ? meetLabels.dmComposer(selectedDm.displayName)
+      : undefined;
   const builtChat = (
     <MeetChatColumn
       messages={chat.channelMessages}
       currentUserId={currentUserId}
       principals={mentionPrincipals}
       authorPresence={data.authorPresence}
-      placeholder={
-        selected
-          ? meetChannelComposerPlaceholder(selected)
-          : selectedDm
-            ? meetLabels.dmComposer(selectedDm.displayName)
-            : undefined
-      }
-      onSend={(payload) => {
-        void chat.sendChannel(payload);
-      }}
-      onReact={(messageId, emoji) => {
-        void chat.react(messageId, emoji);
-      }}
-      onReply={openResolvedThread}
-      onDelete={(messageId) => {
-        void chat.deleteMessage(messageId);
-      }}
+      placeholder={chatPlaceholder}
+      onSend={onSendChannel}
+      onReact={onReactChannel}
+      onReply={onReplyChannel}
+      onDelete={onDeleteChannel}
       editingMessageId={chat.editingMessageId}
       onStartEdit={chat.setEditingMessageId}
-      onCancelEdit={() => chat.setEditingMessageId(null)}
-      onSaveEdit={(messageId, payload) => {
-        void chat.editMessage(messageId, payload);
-      }}
+      onCancelEdit={onCancelEdit}
+      onSaveEdit={onSaveEdit}
     />
   );
   const resolvedChat = chatColumn ?? builtChat;
+  const railChat = chatColumn ?? (
+    <MeetChatColumn
+      messages={chat.channelMessages}
+      currentUserId={currentUserId}
+      principals={mentionPrincipals}
+      authorPresence={data.authorPresence}
+      placeholder={chatPlaceholder}
+      onSend={onSendChannel}
+      onReact={onReactChannel}
+      onReply={onReplyChannel}
+      onDelete={onDeleteChannel}
+      editingMessageId={chat.editingMessageId}
+      onStartEdit={chat.setEditingMessageId}
+      onCancelEdit={onCancelEdit}
+      onSaveEdit={onSaveEdit}
+    />
+  );
   const builtStage =
     callStageRoom != null ? (
       <MeetCallStage
-        layout={call.callLayout}
-        chat={resolvedChat}
-        onLayoutChange={call.onLayoutChange}
+        layout={meetCallStageShowsStage(call.callLayout) ? call.callLayout : "fullscreen"}
+        channelTitle={headerTitle}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        chatOpen={callChatOpen}
+        onToggleChat={() => setCallChatOpen((open) => !open)}
+        onLayoutChange={handleCallLayoutChange}
         {...callStageRoom}
       />
     ) : null;
-  const resolvedStage = callStage ?? builtStage;
+  const resolvedStage = externalStageOnSelected && callActive ? callStage : builtStage;
 
+  const threadCacheRef = useRef<{
+    parent: NonNullable<MeetWorkspaceProps["threadMessage"]>;
+    replies: NonNullable<MeetWorkspaceProps["threadReplies"]>;
+  } | null>(null);
+  if (resolvedParent) {
+    threadCacheRef.current = { parent: resolvedParent, replies: resolvedReplies };
+  }
+  const cachedThread = threadCacheRef.current;
+  const parentEditing = Boolean(cachedThread && chat.editingMessageId === cachedThread.parent.id);
   const threadContent =
     threadPanel ??
-    (resolvedOpen && resolvedParent ? (
+    (cachedThread ? (
       <MeetWorkspaceThread
-        parent={resolvedParent}
-        replies={resolvedReplies}
+        parent={cachedThread.parent}
+        replies={cachedThread.replies}
         currentUserId={currentUserId}
         mentionPrincipals={mentionPrincipals}
         authorPresence={data.authorPresence}
         onClose={closeResolvedThread}
         onSendReply={sendThreadReply}
-        onToggleReaction={(messageId, emoji) => {
-          void chat.react(messageId, emoji);
-        }}
+        onToggleReaction={onToggleThreadReaction}
+        parentEditing={parentEditing}
+        parentEditComposer={
+          parentEditing ? (
+            <ChatComposer
+              principals={mentionPrincipals}
+              initialContent={cachedThread.parent.body}
+              onSend={(payload) => onSaveEdit(cachedThread.parent.id, payload)}
+              onCancel={onCancelEdit}
+              hint={null}
+            />
+          ) : undefined
+        }
       />
     ) : null);
   const threadVisible = Boolean(resolvedOpen && threadContent);
   const callToggle = onToggleCall ?? call.toggleCall;
-  const callButtonLabel = resolvedCallActive
-    ? meetLabels.leaveCall
-    : selected?.kind === "meeting"
-      ? meetLabels.joinCall
-      : meetLabels.startCall;
+  const showExpandedStage = Boolean(
+    resolvedStage && resolvedCallActive && meetCallStageShowsStage(resolvedStageLayout),
+  );
+  const channelCallActive = Boolean(selected?.callActive);
+  const meetingLive = meetChannelMeetingLive({
+    channelCallActive,
+    localCallActive: resolvedCallActive,
+  });
+  const callInvite = meetCallInviteAction(meetingLive, resolvedCallActive);
+  const markChannelMeetingLive = useCallback((channelId: string | null) => {
+    if (!channelId) return;
+    setChannels((current) =>
+      current.map((row) =>
+        row.id === channelId && !row.callActive ? { ...row, callActive: true } : row,
+      ),
+    );
+  }, []);
+  const onCallInvite = useCallback(() => {
+    if (meetCallIsActive(resolvedStageLayout)) return;
+    markChannelMeetingLive(selectedId);
+    call.startCall();
+  }, [call.startCall, markChannelMeetingLive, resolvedStageLayout, selectedId]);
+  const showCallChrome = meetCallChromeVisible(resolvedCallActive);
+  const showCallBar = conversationOpen && meetCallBarVisible(resolvedStageLayout);
+  const keepCallChrome = Boolean(resolvedStage && showCallChrome);
+  const callRoom = callStageRoom;
+  const chatTitle = headerTitle ? meetLabels.chatInChannel(headerTitle) : meetLabels.chatTitle;
+  const panelOpen = showExpandedStage ? callChatOpen : threadVisible;
+  const railShowsThread = threadVisible;
+  const railShowsBack = meetThreadRailShowsBack(showExpandedStage, railShowsThread);
+  const railTitle = railShowsThread ? meetLabels.threadTitle : chatTitle;
+  const threadRoot = resolvedParent ?? cachedThread?.parent ?? null;
+  const threadRepliesForPeople = resolvedParent ? resolvedReplies : (cachedThread?.replies ?? []);
+  const threadPeople = railShowsThread
+    ? meetThreadPeopleCount(threadRoot, threadRepliesForPeople)
+    : 0;
+  const canEditThreadRoot = Boolean(
+    railShowsThread && threadRoot && threadRoot.authorId === currentUserId && !threadRoot.deletedAt,
+  );
+  const closeRail = () => {
+    if (showExpandedStage) {
+      setCallChatOpen(false);
+      return;
+    }
+    if (railShowsThread) {
+      closeResolvedThread();
+      return;
+    }
+    setCallChatOpen(false);
+  };
+  const channelHasLiveCall = useCallback(
+    (channelId: string) =>
+      meetSidebarRowIsLive({
+        channelCallActive:
+          Boolean(channels.find((channel) => channel.id === channelId)?.callActive) ||
+          Boolean(callActive && callChannelId === channelId),
+        localCallActive: call.isChannelJoined(channelId),
+      }),
+    [call.isChannelJoined, callActive, callChannelId, channels],
+  );
 
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
         className={cn(
           "meet-workspace meet-workspace--split",
-          resolvedCallActive && resolvedStage && "meet-workspace--call-active",
-          threadVisible && threadPlacement === "panel" && "meet-workspace--thread-panel",
+          showExpandedStage && "meet-workspace--call-active",
+          panelOpen && "meet-workspace--thread-panel",
           className,
         )}
         panel={
-          threadVisible && threadPlacement === "panel" ? (
-            <div
-              className="workspace-app-layout__panel meet-workspace__thread-panel"
-              data-open="true"
-            >
-              {threadContent}
+          <MeetWorkspaceRail
+            open={panelOpen}
+            title={railTitle}
+            closeLabel={
+              showExpandedStage || !railShowsThread ? meetLabels.chatClose : meetLabels.threadClose
+            }
+            onClose={closeRail}
+            onBack={railShowsBack ? closeResolvedThread : undefined}
+            backLabel={meetLabels.threadBack}
+            headerActions={
+              railShowsThread ? (
+                <>
+                  <span
+                    className="meet-workspace__members"
+                    aria-label={meetLabels.threadPeopleCount(threadPeople)}
+                  >
+                    <Users className="meet-workspace__members-icon" aria-hidden />
+                    {threadPeople}
+                  </span>
+                  {canEditThreadRoot && threadRoot ? (
+                    <IconButton
+                      icon={<Pencil />}
+                      label={chatUiLabels.edit}
+                      size="sm"
+                      variant="subtle"
+                      active={parentEditing}
+                      showTooltip={false}
+                      onClick={() => chat.setEditingMessageId(threadRoot.id)}
+                    />
+                  ) : null}
+                </>
+              ) : undefined
+            }
+          >
+            <div className="meet-workspace__rail-surfaces">
+              <div
+                className={cn(
+                  "meet-workspace__rail-chat",
+                  railShowsThread && "meet-workspace__surface--parked",
+                )}
+                inert={railShowsThread || undefined}
+                aria-hidden={railShowsThread}
+              >
+                {railChat}
+              </div>
+              {threadContent ? (
+                <div
+                  className={cn(
+                    "meet-workspace__rail-thread",
+                    !railShowsThread && "meet-workspace__surface--parked",
+                  )}
+                  inert={!railShowsThread || undefined}
+                  aria-hidden={!railShowsThread}
+                >
+                  {threadContent}
+                </div>
+              ) : null}
             </div>
-          ) : undefined
+          </MeetWorkspaceRail>
         }
         sidebar={
           <AppSidebar
@@ -478,7 +739,7 @@ export function MeetWorkspace({
                   channels={sections.channels}
                   selectedId={selectedId}
                   onSelect={setSelectedId}
-                  onEdit={openEdit}
+                  channelHasLiveCall={channelHasLiveCall}
                 />
               </SidebarSection>
             ) : null}
@@ -488,7 +749,7 @@ export function MeetWorkspace({
                   channels={sections.shared}
                   selectedId={selectedId}
                   onSelect={setSelectedId}
-                  onEdit={openEdit}
+                  channelHasLiveCall={channelHasLiveCall}
                 />
               </SidebarSection>
             ) : null}
@@ -498,7 +759,7 @@ export function MeetWorkspace({
                   channels={sections.meetings}
                   selectedId={selectedId}
                   onSelect={setSelectedId}
-                  onEdit={openEdit}
+                  channelHasLiveCall={channelHasLiveCall}
                 />
               </SidebarSection>
             ) : null}
@@ -509,6 +770,7 @@ export function MeetWorkspace({
                   selectedId={selectedId}
                   authorPresence={data.authorPresence}
                   onSelect={setSelectedId}
+                  channelHasLiveCall={channelHasLiveCall}
                 />
               </SidebarSection>
             ) : null}
@@ -519,7 +781,6 @@ export function MeetWorkspace({
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={headerTitle}
-            titleSize="sm"
             titlePrefix={
               selected?.kind === "meeting" ? (
                 <Video className="meet-workspace__header-kind-icon" aria-hidden />
@@ -538,37 +799,93 @@ export function MeetWorkspace({
                       {memberCount}
                     </span>
                   ) : null}
-                  <IconButton
-                    label={callButtonLabel}
-                    icon={<Video />}
-                    size="sm"
-                    variant="subtle"
-                    onClick={callToggle}
-                  />
+                  {selected ? (
+                    <IconButton
+                      className="meet-workspace__header-edit"
+                      icon={<Pencil />}
+                      label={
+                        selected.kind === "meeting"
+                          ? meetLabels.editMeeting
+                          : meetLabels.editChannel
+                      }
+                      size="sm"
+                      variant="subtle"
+                      showTooltip={false}
+                      onClick={() => openEdit(selected)}
+                    />
+                  ) : null}
                 </div>
               ) : null
             }
           />
         }
         main={
-          resolvedCallActive && resolvedStage ? (
-            <div className="meet-workspace__call-main">{resolvedStage}</div>
-          ) : conversationOpen ? (
-            <div className="meet-workspace__chat-main">{resolvedChat}</div>
+          conversationOpen ? (
+            <div className="meet-workspace__surfaces">
+              <div
+                className={cn(
+                  "meet-workspace__chat-main",
+                  showExpandedStage && "meet-workspace__surface--parked",
+                )}
+                inert={showExpandedStage || undefined}
+                aria-hidden={showExpandedStage}
+              >
+                {showCallBar || keepCallChrome ? (
+                  <MeetCallBar
+                    elapsedLabel={callRoom?.controller.elapsedLabel ?? "0:00"}
+                    selfId={callRoom?.controller.selfId ?? session.user.username ?? "self"}
+                    selfName={callRoom?.displayName ?? session.user.displayName}
+                    peers={callRoom?.controller.peers ?? []}
+                    participantCount={callRoom?.participantCount ?? 1}
+                    micOn={callRoom?.controller.micOn ?? true}
+                    videoOn={callRoom?.controller.videoOn ?? false}
+                    cameras={callRoom?.cameras ?? []}
+                    microphones={callRoom?.microphones ?? []}
+                    speakers={callRoom?.speakers ?? []}
+                    activeCamera={callRoom?.activeCamera ?? ""}
+                    activeMic={callRoom?.activeMic ?? ""}
+                    activeSpeaker={callRoom?.activeSpeaker ?? ""}
+                    onToggleMic={callRoom?.controller.toggleMic ?? (() => {})}
+                    onToggleVideo={callRoom?.controller.toggleVideo ?? (() => {})}
+                    onCameraChange={(id) => {
+                      const deviceId = meetDeviceIdForOption(callRoom?.cameras ?? [], id);
+                      if (!deviceId) return;
+                      void callRoom?.controller.switchCamera(deviceId);
+                    }}
+                    onMicrophoneChange={(id) => {
+                      const deviceId = meetDeviceIdForOption(callRoom?.microphones ?? [], id);
+                      if (!deviceId) return;
+                      void callRoom?.controller.switchMic(deviceId);
+                    }}
+                    onSpeakerChange={callRoom?.onSpeakerChange ?? (() => {})}
+                    onExpand={() => handleCallLayoutChange("fullscreen")}
+                    onLeave={callToggle}
+                    onMuteSoon={callRoom?.onMuteSoon ?? (() => {})}
+                    joined={showCallChrome}
+                    invite={callInvite}
+                    onInvite={onCallInvite}
+                  />
+                ) : null}
+                {resolvedChat}
+              </div>
+              {keepCallChrome ? (
+                <div
+                  className={cn(
+                    "meet-workspace__call-main",
+                    !showExpandedStage && "meet-workspace__surface--parked",
+                  )}
+                  inert={!showExpandedStage || undefined}
+                  aria-hidden={!showExpandedStage}
+                >
+                  {resolvedStage}
+                </div>
+              ) : null}
+            </div>
           ) : (
             <div className="meet-workspace__chat-empty">{meetLabels.emptyChannelMain}</div>
           )
         }
       />
-      <SideDrawer
-        open={threadVisible && threadPlacement === "drawer"}
-        onClose={closeResolvedThread}
-        title={meetLabels.threadTitle}
-        className="meet-workspace__thread-drawer"
-        contentClassName="meet-workspace__thread-drawer-body"
-      >
-        {threadContent}
-      </SideDrawer>
       <MeetChannelDialog
         dialog={dialog}
         groups={groups}

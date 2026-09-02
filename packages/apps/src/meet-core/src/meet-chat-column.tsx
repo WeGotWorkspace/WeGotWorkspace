@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import type {
@@ -6,6 +7,7 @@ import type {
   ChatSendPayload,
 } from "@/chat-ui/src/chat-types";
 import type { ChatMessage as MeetChatMessage } from "@/meet-core/src/meet-types";
+import { chatMessageCanOpenThread } from "@/chat-ui/src/chat-thread-actions";
 import { cn } from "@/lib/utils";
 
 export type MeetChatColumnProps = {
@@ -25,7 +27,7 @@ export type MeetChatColumnProps = {
   className?: string;
 };
 
-export function MeetChatColumn({
+export const MeetChatColumn = memo(function MeetChatColumn({
   messages,
   currentUserId,
   principals,
@@ -48,6 +50,7 @@ export function MeetChatColumn({
         currentUserId={currentUserId}
         onToggleReaction={onReact}
         onOpenThread={(message) => {
+          if (!chatMessageCanOpenThread(message)) return;
           const meetMessage = messages.find((row) => row.id === message.id);
           if (meetMessage) onReply(meetMessage);
         }}
@@ -65,14 +68,19 @@ export function MeetChatColumn({
         )}
         actionsForMessage={(message) => {
           const canWrite = message.authorId === currentUserId;
+          const canOpenThread = chatMessageCanOpenThread(message);
           return [
-            {
-              id: "reply",
-              onClick: () => {
-                const meetMessage = messages.find((row) => row.id === message.id);
-                if (meetMessage) onReply(meetMessage);
-              },
-            },
+            ...(canOpenThread
+              ? [
+                  {
+                    id: "reply" as const,
+                    onClick: () => {
+                      const meetMessage = messages.find((row) => row.id === message.id);
+                      if (meetMessage) onReply(meetMessage);
+                    },
+                  },
+                ]
+              : []),
             { id: "react", onClick: () => undefined },
             ...(canWrite && onStartEdit
               ? [{ id: "edit" as const, onClick: () => onStartEdit(message.id) }]
@@ -86,4 +94,4 @@ export function MeetChatColumn({
       </div>
     </div>
   );
-}
+});

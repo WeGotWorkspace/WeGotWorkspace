@@ -48,6 +48,8 @@ export type MeetChannel = {
   topic?: string | null;
   /** Story/fixture unread count — not a live product signal. */
   unreadCount?: number;
+  /** Story/fixture: this channel already has a live call (peers in room). */
+  callActive?: boolean;
   /** Optional roster size for header chrome; falls back to shareWith + owner. */
   memberCount?: number;
 };

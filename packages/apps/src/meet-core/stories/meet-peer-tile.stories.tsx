@@ -45,3 +45,14 @@ export const CompactStrip: Story = {
     onMuteSoon: STORY_NOOP,
   },
 };
+
+export const Speaking: Story = {
+  name: "Speaking",
+  args: {
+    name: "Alex Morgan",
+    stream: null,
+    speaking: true,
+    spotlight: true,
+    onMuteSoon: STORY_NOOP,
+  },
+};

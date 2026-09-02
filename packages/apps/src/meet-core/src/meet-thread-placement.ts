@@ -9,12 +9,18 @@ export function meetCallLayoutToThreadLayout(layout: MeetCallStageLayout): MeetT
   return "none";
 }
 
-/** Idle chat uses the docs-style right rail; an open call keeps that rail for the stage. */
+/**
+ * Thread and in-call chat share one workspace right rail. Placement is always
+ * `panel` — the old SideDrawer path is gone.
+ */
 export function meetThreadPlacement(
-  callLayout?: MeetThreadCallLayout | null,
-  callActive = false,
+  _callLayout?: MeetThreadCallLayout | null,
+  _callActive = false,
 ): MeetThreadPlacement {
-  if (callLayout === "split" || callLayout === "fullscreen") return "drawer";
-  if (callLayout === "none") return "panel";
-  return callActive ? "drawer" : "panel";
+  return "panel";
+}
+
+/** Back to channel chat — only when the expanded call rail is showing a thread. */
+export function meetThreadRailShowsBack(expandedCall: boolean, threadVisible: boolean): boolean {
+  return expandedCall && threadVisible;
 }

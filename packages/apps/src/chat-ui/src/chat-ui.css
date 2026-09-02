@@ -1,6 +1,7 @@
 @import "../../styles.css" reference;
 
 .chat-ui {
+  font-family: var(--font-sans);
   --chat-text: var(--color-ink, inherit);
   --chat-author: var(--color-ink, inherit);
   --chat-body: color-mix(in oklab, var(--color-ink) 88%, transparent);

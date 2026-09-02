@@ -71,6 +71,7 @@ export function MeetChatPane({
             onClick={onSend}
             icon={<Send />}
             label={meetLabels.sendMessage}
+            variant="subtle"
             showTooltip={false}
           />
         </div>

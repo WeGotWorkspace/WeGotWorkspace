@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .chat-thread-panel {
-  @apply flex h-full min-h-0 w-full flex-col;
+  @apply flex h-full min-h-0 min-w-0 w-full max-w-full flex-col overflow-hidden;
 }
 
 .chat-thread-panel__header {
@@ -14,7 +14,7 @@
 }
 
 .chat-thread-panel__scroll {
-  @apply min-h-0 flex-1 overflow-y-auto;
+  @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
   background-color: var(--chat-list-surface, transparent);
 }
 
@@ -33,7 +33,7 @@
 }
 
 .chat-thread-panel__composer {
-  @apply shrink-0 border-t p-3;
+  @apply min-w-0 max-w-full shrink-0 border-t p-3;
   border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
 }
 

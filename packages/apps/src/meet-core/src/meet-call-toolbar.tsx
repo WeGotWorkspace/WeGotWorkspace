@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Mic, MicOff, MonitorUp, PhoneOff, Video, VideoOff } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import {
@@ -11,7 +12,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/ui/alert-dialog";
-import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
@@ -36,6 +36,7 @@ type MeetCallToolbarProps = {
   onMicrophoneChange: (optionId: string) => void;
   onSpeakerChange: (optionId: string) => void;
   onConfirmExit: () => void;
+  extraActions?: ReactNode;
 };
 
 export function MeetCallToolbar({
@@ -58,25 +59,37 @@ export function MeetCallToolbar({
   onMicrophoneChange,
   onSpeakerChange,
   onConfirmExit,
+  extraActions,
 }: MeetCallToolbarProps) {
   return (
     <div className="meet-workspace__toolbar">
       <div className="meet-workspace__toolbar-inner">
-        <MeetCircleToggle
-          on={micOn}
+        <IconButton
           onClick={onToggleMic}
-          OnIcon={Mic}
-          OffIcon={MicOff}
-          label={micOn ? "Mute" : "Unmute"}
-          large
+          icon={micOn ? <Mic /> : <MicOff />}
+          label={micOn ? meetLabels.mute : meetLabels.unmute}
+          size="sm"
+          variant="subtle"
+          active={micOn}
+          aria-pressed={micOn}
         />
-        <MeetCircleToggle
-          on={videoOn}
+        <IconButton
           onClick={onToggleVideo}
-          OnIcon={Video}
-          OffIcon={VideoOff}
-          label={videoOn ? "Stop video" : "Start video"}
-          large
+          icon={videoOn ? <Video /> : <VideoOff />}
+          label={videoOn ? meetLabels.stopVideo : meetLabels.startVideo}
+          size="sm"
+          variant="subtle"
+          active={videoOn}
+          aria-pressed={videoOn}
+        />
+        <IconButton
+          onClick={onToggleScreenShare}
+          icon={<MonitorUp />}
+          label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
+          size="sm"
+          variant="subtle"
+          active={screenOn}
+          aria-pressed={screenOn}
         />
         <MeetDevicePopover
           cameras={cameras}
@@ -89,18 +102,11 @@ export function MeetCallToolbar({
           onMicrophone={onMicrophoneChange}
           onSpeaker={onSpeakerChange}
         />
-        <IconButton
-          onClick={onToggleScreenShare}
-          icon={<MonitorUp />}
-          label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-          size="lg"
-          variant="subtle"
-          active={screenOn}
-        />
+        {extraActions}
         <div className="meet-workspace__toolbar-divider" aria-hidden />
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <IconButton icon={<PhoneOff />} label={callExitLabel} size="lg" variant="destructive" />
+            <IconButton icon={<PhoneOff />} label={callExitLabel} size="sm" variant="destructive" />
           </AlertDialogTrigger>
           <AlertDialogContent className="meet-call-dialog">
             <AlertDialogHeader>

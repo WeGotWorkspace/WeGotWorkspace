@@ -3,8 +3,13 @@ import { Button } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createMeetChatOperations } from "@/lib/api/mock/meet-chat-operations";
+import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage, type MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
-import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
+import {
+  meetCallStageShowsStage,
+  type MeetCallStageLayout,
+} from "@/meet-core/src/meet-call-stage-layout";
+import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
 import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
@@ -26,6 +31,8 @@ const GUEST_ROOM_CODE = "h8y8-ewp6-al8n";
 
 function buildStoryRoomSlice(
   localVideoRef: RefObject<HTMLVideoElement | null>,
+  activeCamera: string,
+  activeMic: string,
   activeSpeaker: string,
   onSpeakerChange: (value: string) => void,
   overrides?: Partial<MeetControllerState>,
@@ -42,8 +49,8 @@ function buildStoryRoomSlice(
     cameras: STORY_MEET_DEVICES,
     microphones: STORY_MEET_MICROPHONES,
     speakers: STORY_MEET_SPEAKERS,
-    activeCamera: STORY_MEET_DEVICES[0]!.id,
-    activeMic: STORY_MEET_MICROPHONES[0]!.id,
+    activeCamera,
+    activeMic,
     activeSpeaker,
     onSpeakerChange,
     onCopyLink: STORY_NOOP,
@@ -74,56 +81,97 @@ export type MeetCallStageStoryArgs = {
   layout: MeetCallStageLayout;
   callActive: boolean;
   peerCount: number;
+  defaultChatOpen?: boolean;
+  sidebarOpen?: boolean;
 };
 
 export function MeetCallStageStoryHarness({
   layout: layoutInitial,
   callActive: callActiveInitial,
   peerCount,
+  defaultChatOpen = true,
+  sidebarOpen: sidebarOpenInitial = false,
 }: MeetCallStageStoryArgs) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [layout, setLayout] = useState<MeetCallStageLayout>(layoutInitial);
   const [callActive, setCallActive] = useState(callActiveInitial);
+  const [sidebarOpen, setSidebarOpen] = useState(sidebarOpenInitial);
   const [activeSpeaker, setActiveSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
+  const [activeCamera, setActiveCamera] = useState(STORY_MEET_DEVICES[0]!.id);
+  const [activeMic, setActiveMic] = useState(STORY_MEET_MICROPHONES[0]!.id);
+  const [chatOpen, setChatOpen] = useState(
+    () => defaultChatOpen ?? defaultMeetWorkspacePanelOpen(),
+  );
 
   useEffect(() => {
     setLayout(layoutInitial);
     setCallActive(callActiveInitial);
   }, [layoutInitial, callActiveInitial]);
+  useEffect(() => {
+    setChatOpen(defaultChatOpen ?? defaultMeetWorkspacePanelOpen());
+  }, [defaultChatOpen]);
   const peers = STORY_MEET_PEERS.slice(
     0,
     Math.max(0, Math.min(peerCount, STORY_MEET_PEERS.length)),
   );
-  const room = buildStoryRoomSlice(localVideoRef, activeSpeaker, setActiveSpeaker, {
-    peers: callActive ? peers : [],
-    inCall: callActive,
-    status: callActive ? "in-call" : "idle",
-  });
+  const room = buildStoryRoomSlice(
+    localVideoRef,
+    activeCamera,
+    activeMic,
+    activeSpeaker,
+    setActiveSpeaker,
+    {
+      peers: callActive ? peers : [],
+      inCall: callActive,
+      status: callActive ? "in-call" : "idle",
+      switchCamera: async (deviceId) => setActiveCamera(deviceId),
+      switchMic: async (deviceId) => setActiveMic(deviceId),
+    },
+  );
   const resolvedLayout: MeetCallStageLayout = callActive ? layout : "collapsed";
+  const expanded = meetCallStageShowsStage(resolvedLayout);
+  const chat = (
+    <ChatPlaceholder
+      callActive={callActive}
+      onToggleCall={() => {
+        setCallActive((active) => {
+          const next = !active;
+          if (next) setLayout("side-by-side");
+          return next;
+        });
+      }}
+    />
+  );
 
   return (
     <MeetStoryScope variant="split">
       <TooltipProvider delayDuration={300}>
-        <MeetCallStage
-          layout={resolvedLayout}
-          chat={
-            <ChatPlaceholder
-              callActive={callActive}
-              onToggleCall={() => {
-                setCallActive((active) => {
-                  const next = !active;
-                  if (next) setLayout("side-by-side");
-                  return next;
-                });
-              }}
-            />
-          }
-          onLayoutChange={(next) => {
-            setLayout(next);
-            if (next === "collapsed") setCallActive(false);
-          }}
-          {...room}
-        />
+        <section className="workspace-app-layout__main">
+          <MeetCallStage
+            layout={resolvedLayout}
+            channelTitle="#design"
+            chatOpen={chatOpen}
+            onToggleChat={() => setChatOpen((open) => !open)}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={() => setSidebarOpen((open) => !open)}
+            chat={expanded ? undefined : chat}
+            onLayoutChange={(next) => {
+              setLayout(next);
+              if (next === "collapsed") setCallActive(false);
+            }}
+            {...room}
+          />
+        </section>
+        {expanded ? (
+          <MeetWorkspaceRail
+            open={chatOpen}
+            title={meetLabels.chatInChannel("#design")}
+            closeLabel={meetLabels.chatClose}
+            onClose={() => setChatOpen(false)}
+          >
+            {chat}
+          </MeetWorkspaceRail>
+        ) : null}
       </TooltipProvider>
     </MeetStoryScope>
   );
@@ -189,6 +237,8 @@ export function MeetGuestChannelStoryHarness({
     setCallLayout(callLayoutInitial);
   }, [phaseInitial, callLayoutInitial]);
   const [activeSpeaker, setActiveSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
+  const [activeCamera, setActiveCamera] = useState(STORY_MEET_DEVICES[0]!.id);
+  const [activeMic, setActiveMic] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const lobby = buildStoryLobbySlice(
     localVideoRef,
     () => {
@@ -198,10 +248,19 @@ export function MeetGuestChannelStoryHarness({
     activeSpeaker,
     setActiveSpeaker,
   );
-  const stage = buildStoryRoomSlice(localVideoRef, activeSpeaker, setActiveSpeaker, {
-    peers: STORY_MEET_PEERS,
-    displayName: "Guest",
-  });
+  const stage = buildStoryRoomSlice(
+    localVideoRef,
+    activeCamera,
+    activeMic,
+    activeSpeaker,
+    setActiveSpeaker,
+    {
+      peers: STORY_MEET_PEERS,
+      displayName: "Guest",
+      switchCamera: async (deviceId) => setActiveCamera(deviceId),
+      switchMic: async (deviceId) => setActiveMic(deviceId),
+    },
+  );
 
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
   const operations = useMemo(

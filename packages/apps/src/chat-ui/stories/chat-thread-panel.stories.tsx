@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { expect, within } from "storybook/test";
+import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
 import type { ChatMessage, ChatSendPayload } from "@/chat-ui/src/chat-types";
 import { CHAT_STORY_AUTHOR_PRESENCE } from "@/chat-ui/stories/chat-stories.fixtures";
@@ -82,6 +84,13 @@ export const Empty: Story = {
 
 export const WithReplies: Story = {
   render: () => <ThreadHarness initialReplies={THREAD_REPLIES} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByRole("button", { name: chatUiLabels.reply }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /replies/i })).not.toBeInTheDocument();
+  },
 };
 
 export const Composing: Story = {

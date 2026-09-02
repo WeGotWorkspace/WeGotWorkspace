@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Mic, MicOff, MoreVertical } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { shouldMirrorMeetStream } from "@/meet-core/src/meet-stream-mirror";
 import { MeetStreamVideo } from "@/meet-core/src/meet-stream-video";
 import { meetLabels } from "@/meet-core/src/meet-labels";
@@ -18,10 +12,18 @@ type MeetPeerTileProps = {
   name: string;
   stream: MediaStream | null;
   compact?: boolean;
+  spotlight?: boolean;
+  speaking?: boolean;
+  caption?: string;
+  userId?: string;
   /** Inbound RTP heuristics; null = omit override. */
   remoteMedia?: { camera: boolean; mic: boolean } | null;
   /** Peer's announced mic/camera (control chat); when set, overrides track/stats for UI. */
   disclosedMedia?: { camera: boolean; mic: boolean; screen?: boolean } | null;
+  /** Self tile: mirrors dock mic. When set with onToggleMic, mute toggles local mic. */
+  micOn?: boolean;
+  onToggleMic?: () => void;
+  /** Peer tile: mute-for-me mock (toast / local only). */
   onMuteSoon: (name: string) => void;
 };
 
@@ -29,12 +31,19 @@ export function MeetPeerTile({
   name,
   stream,
   compact,
+  spotlight,
+  speaking,
+  caption,
+  userId,
   remoteMedia,
   disclosedMedia,
+  micOn,
+  onToggleMic,
   onMuteSoon,
 }: MeetPeerTileProps) {
   const { cameraRendering, micLive } = usePeerStreamPresence(stream);
   const [remoteVideoOk, setRemoteVideoOk] = useState(true);
+  const [mutedForMe, setMutedForMe] = useState(false);
 
   const onPresentationViable = useCallback((viable: boolean) => {
     setRemoteVideoOk(viable);
@@ -54,9 +63,55 @@ export function MeetPeerTile({
   const showAvatarFill = !showRemoteVideo || !remoteVideoOk;
   const mirrored = shouldMirrorMeetStream(stream, disclosedMedia?.screen);
   const playbackStream = stream && stream.getTracks().length > 0 ? stream : null;
+  const avatarSize = spotlight ? "xl" : compact ? "md" : "lg";
+  const isSelfMute = typeof onToggleMic === "function";
+  const mutePressed = isSelfMute ? Boolean(micOn) : !mutedForMe;
+  const muteLabel = isSelfMute
+    ? micOn
+      ? meetLabels.mute
+      : meetLabels.unmute
+    : mutedForMe
+      ? meetLabels.unmute
+      : meetLabels.muteParticipant;
+  const onMuteClick = () => {
+    if (isSelfMute) {
+      onToggleMic();
+      return;
+    }
+    setMutedForMe((value) => !value);
+    onMuteSoon(name);
+  };
+  const avatar = (
+    <UserAvatar
+      displayName={name}
+      compact
+      size={avatarSize}
+      color={userId ? avatarColorForUserId(userId) : undefined}
+    />
+  );
+  const identity =
+    spotlight || caption ? (
+      <div className="meet-peer-tile__identity">
+        {spotlight ? <p className="meet-peer-tile__display-name">{name}</p> : null}
+        {speaking ? (
+          <p className="meet-peer-tile__speaking">
+            <span className="meet-peer-tile__speaking-dot" aria-hidden />
+            {meetLabels.speaking}
+          </p>
+        ) : null}
+        {caption ? <p className="meet-peer-tile__caption">{caption}</p> : null}
+      </div>
+    ) : null;
 
   return (
-    <div className={cn("meet-peer-tile", compact && "meet-peer-tile--compact")}>
+    <div
+      className={cn(
+        "meet-peer-tile",
+        compact && "meet-peer-tile--compact",
+        spotlight && "meet-peer-tile--spotlight",
+        speaking && "meet-peer-tile--speaking",
+      )}
+    >
       {playbackStream ? (
         <div className={cn("meet-peer-tile__media", !showRemoteVideo && "sr-only")}>
           <MeetStreamVideo
@@ -71,36 +126,32 @@ export function MeetPeerTile({
           />
           {showRemoteVideo && showAvatarFill ? (
             <div className="meet-peer-tile__fill">
-              <UserAvatar displayName={name} compact size={compact ? "md" : "lg"} />
+              {avatar}
+              {identity}
             </div>
           ) : null}
         </div>
       ) : (
         <div className="meet-peer-tile__fill">
-          <UserAvatar displayName={name} compact size={compact ? "md" : "lg"} />
+          {avatar}
+          {identity}
         </div>
       )}
       <div className={cn("meet-peer-tile__name", !micLiveUi && "meet-peer-tile__name--mic-muted")}>
         {micLiveUi ? <Mic className="size-3" /> : <MicOff className="size-3 text-red-400" />}
         <span>{name}</span>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            icon={<MoreVertical />}
-            label={`Actions for ${name}`}
-            size="sm"
-            variant="ghost"
-            showTooltip={false}
-            className="meet-peer-tile__menu"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="meet-menu-surface">
-          <DropdownMenuItem className="cursor-pointer" onClick={() => onMuteSoon(name)}>
-            <MicOff className="mr-2 size-4" /> {meetLabels.muteParticipant}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <IconButton
+        icon={mutePressed ? <Mic /> : <MicOff />}
+        label={muteLabel}
+        size="sm"
+        variant="subtle"
+        active={mutePressed}
+        aria-pressed={mutePressed}
+        showTooltip={false}
+        className="meet-peer-tile__mute"
+        onClick={onMuteClick}
+      />
     </div>
   );
 }

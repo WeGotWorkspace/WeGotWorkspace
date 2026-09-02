@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .chat-message-list {
-  @apply flex min-h-0 flex-1 flex-col;
+  @apply flex min-h-0 min-w-0 max-w-full flex-1 flex-col;
   --chat-list-surface: #ffffff;
   --list-sticky-header-bg: #ffffff;
   --list-sticky-header-font-size: 0.9375rem;
@@ -9,11 +9,11 @@
 }
 
 .chat-message-list__scroll {
-  @apply min-h-0 flex-1 overflow-y-auto;
+  @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
 }
 
 .chat-message-list__day-section {
-  @apply flex flex-col;
+  @apply flex min-w-0 max-w-full flex-col;
 }
 
 .chat-message-list .list-sticky-header {
@@ -26,5 +26,9 @@
 }
 
 .chat-message-list__group {
-  @apply flex flex-col;
+  @apply flex min-w-0 max-w-full flex-col;
+}
+
+.chat-message-list__group + .chat-message-list__group {
+  @apply mt-2;
 }

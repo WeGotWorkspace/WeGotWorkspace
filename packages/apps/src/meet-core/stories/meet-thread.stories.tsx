@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useMemo, useState } from "react";
+import { expect, within } from "storybook/test";
+import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import {
   THREAD_PARENT,
@@ -12,16 +14,9 @@ import type { ChatMessage } from "@/meet-core/src/meet-types";
 
 function CallStagePlaceholder() {
   return (
-    <div className="meet-call-stage meet-call-stage--split">
-      <div className="meet-call-split__group">
-        <div className="meet-call-split__chat">
-          <div className="meet-call-stage__chat-placeholder">
-            {meetLabels.chatColumnPlaceholder}
-          </div>
-        </div>
-        <div className="meet-call-split__stage">
-          <div className="meet-call-stage__chat-placeholder">Call stage</div>
-        </div>
+    <div className="meet-call-stage meet-call-stage--expanded">
+      <div className="meet-call-stage__chrome">
+        <p className="meet-call-stage__title">Call stage</p>
       </div>
     </div>
   );
@@ -30,7 +25,11 @@ function CallStagePlaceholder() {
 function MeetThreadPlacementHarness({ callLayout }: { callLayout: MeetThreadCallLayout }) {
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
   const [threadOpen, setThreadOpen] = useState(true);
-  const parent = THREAD_PARENT as ChatMessage;
+  const parent = {
+    ...THREAD_PARENT,
+    authorId: "demo.user",
+    authorName: "Demo User",
+  } as ChatMessage;
   const replies = THREAD_REPLIES as ChatMessage[];
   const callActive = callLayout !== "none";
 
@@ -40,6 +39,7 @@ function MeetThreadPlacementHarness({ callLayout }: { callLayout: MeetThreadCall
       session={bootstrap.session}
       callLayout={callLayout}
       callActive={callActive}
+      callChannelId={bootstrap.data.channels?.[0]?.id}
       callStage={callActive ? <CallStagePlaceholder /> : undefined}
       chatColumn={
         <div className="meet-call-stage__chat-placeholder">{meetLabels.chatColumnPlaceholder}</div>
@@ -62,7 +62,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Thread placement only: workspace `panel` when idle, SideDrawer over the chat column while a call uses the right rail. Chunk F wires ChatMessageList as main.",
+          "Thread and in-call chat share one workspace right rail. Contents swap; there is no second drawer.",
       },
     },
   },
@@ -74,14 +74,34 @@ type Story = StoryObj<typeof MeetWorkspace>;
 export const IdlePanel: Story = {
   name: "Idle panel",
   render: () => <MeetThreadPlacementHarness callLayout="none" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const reply = canvas.getByText("I left comments on the first two sections.");
+    const panel = reply.closest(".chat-thread-panel");
+    await expect(panel).toBeTruthy();
+    await expect(
+      within(panel as HTMLElement).queryByRole("button", { name: (n) => n === chatUiLabels.edit }),
+    ).not.toBeInTheDocument();
+    const headerEdit = canvas.getByRole("button", { name: (n) => n === chatUiLabels.edit });
+    await expect(headerEdit).toBeInTheDocument();
+    await expect(headerEdit.closest(".docs-collab-sidebar-panel__header")).toBeTruthy();
+    const people = canvas.getByLabelText(meetLabels.threadPeopleCount(2));
+    await expect(people).toBeInTheDocument();
+    await expect(people.closest(".docs-collab-sidebar-panel__header-actions")).toBeTruthy();
+    const actions = people.closest(".docs-collab-sidebar-panel__header-actions");
+    expect(actions).toBeTruthy();
+    const actionChildren = [...(actions as HTMLElement).children];
+    expect(actionChildren.indexOf(people)).toBeLessThan(actionChildren.indexOf(headerEdit));
+    expect(actionChildren.at(-1)?.getAttribute("aria-label")).toBe(meetLabels.threadClose);
+  },
 };
 
 export const CallDrawer: Story = {
-  name: "Call drawer",
+  name: "Call rail",
   render: () => <MeetThreadPlacementHarness callLayout="split" />,
 };
 
 export const CallFullscreenDrawer: Story = {
-  name: "Call fullscreen drawer",
+  name: "Call fullscreen rail",
   render: () => <MeetThreadPlacementHarness callLayout="fullscreen" />,
 };

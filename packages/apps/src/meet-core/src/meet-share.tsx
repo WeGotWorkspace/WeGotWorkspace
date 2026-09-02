@@ -29,6 +29,7 @@ export function MeetShareButton({ link, onCopy }: MeetShareButtonProps) {
               onClick={onCopy}
               label={meetLabels.copyLink}
               icon={<Copy />}
+              variant="subtle"
               showTooltip={false}
             />
           </div>
@@ -56,6 +57,7 @@ export function MeetShareInline({ link, onCopy }: MeetShareInlineProps) {
           onClick={onCopy}
           label={meetLabels.copyLink}
           icon={<Copy />}
+          variant="subtle"
           showTooltip={false}
         />
       </div>

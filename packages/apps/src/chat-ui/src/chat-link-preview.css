@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .chat-link-preview {
-  @apply flex max-w-md overflow-hidden rounded-lg border;
+  @apply flex w-full min-w-0 max-w-full overflow-hidden rounded-lg border;
   border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
   background-color: var(--chat-surface, var(--color-cream, #fff));
 }

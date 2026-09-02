@@ -12,6 +12,10 @@ import {
 import { ChatLinkPreview } from "@/chat-ui/src/chat-link-preview";
 import { ChatReactionBar, CHAT_REACTION_EMOJIS } from "@/chat-ui/src/chat-reaction-bar";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
+import {
+  chatMessageCanOpenThread,
+  omitChatNestedThreadActions,
+} from "@/chat-ui/src/chat-thread-actions";
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
 import { formatChatTime } from "@/chat-ui/src/chat-message-group";
@@ -38,6 +42,8 @@ export type ChatMessageProps = {
   onToggleReaction?: (emoji: string) => void;
   /** Opens the thread when the under-body “N replies” link is used. */
   onOpenThread?: () => void;
+  /** False inside ThreadPanel — one level only (main → thread). */
+  allowThread?: boolean;
   presence?: UserAvatarPresence;
   /** In-place editor (typically `ChatComposer`) while `editing` is true. */
   editComposer?: ReactNode;
@@ -81,6 +87,7 @@ export function ChatMessage({
   actions,
   onToggleReaction,
   onOpenThread,
+  allowThread = true,
   presence,
   editComposer,
   className,
@@ -89,7 +96,11 @@ export function ChatMessage({
   const showHeader = !continuation;
   const showReactions = !deleted && message.reactions.length > 0 && onToggleReaction;
   const replyCount = message.replyCount ?? 0;
-  const openThread = onOpenThread ?? actions?.find((action) => action.id === "reply")?.onClick;
+  const threadAllowed = allowThread && chatMessageCanOpenThread(message);
+  const resolvedActions = threadAllowed ? actions : omitChatNestedThreadActions(actions);
+  const openThread = threadAllowed
+    ? (onOpenThread ?? resolvedActions?.find((action) => action.id === "reply")?.onClick)
+    : undefined;
 
   return (
     <article
@@ -141,7 +152,7 @@ export function ChatMessage({
             <ChatMarkdownBody content={message.body} mentions={message.mentions} />
           </div>
         )}
-        {!deleted && !editing && replyCount > 0 ? (
+        {!deleted && !editing && threadAllowed && replyCount > 0 ? (
           openThread ? (
             <button type="button" className="chat-message__replies" onClick={openThread}>
               {chatThreadReplyCountLabel(replyCount)}
@@ -166,9 +177,9 @@ export function ChatMessage({
           />
         ) : null}
       </div>
-      {actions && actions.length > 0 && !deleted && !editing ? (
+      {resolvedActions && resolvedActions.length > 0 && !deleted && !editing ? (
         <div className="chat-message__actions">
-          {actions.map((action) => {
+          {resolvedActions.map((action) => {
             const Icon = ACTION_ICONS[action.id];
             const label = action.label ?? ACTION_LABELS[action.id];
             if (action.id === "react" && onToggleReaction) {
