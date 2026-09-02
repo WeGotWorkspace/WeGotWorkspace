@@ -5,9 +5,9 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import {
   docsApiPathFromSearch,
   docsSearchFromApiPath,
-  openDocsFileInNewWindow,
   parseDocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
+import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   wgwApiBaseUrl,
   wgwCompleteLogoutNavigation,
@@ -73,9 +73,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [navigate],
   );
 
-  const handleOpenHomeFile = useCallback((apiPath: string) => {
-    openDocsFileInNewWindow(apiPath);
-  }, []);
+  const handleOpenHomeFile = useOpenDocsFile();
 
   const driveOperations = useMemo(() => createWgwDriveOperations("/"), []);
 

@@ -30,8 +30,3 @@ export function docsHrefFromApiPath(apiPath: string): string {
   if (file) query.set("file", file);
   return `/docs${query.toString() ? `?${query.toString()}` : ""}`;
 }
-
-/** Open a document for editing in a new browser tab/window (user-gesture safe). */
-export function openDocsFileInNewWindow(apiPath: string): Window | null {
-  return window.open(docsHrefFromApiPath(apiPath), "_blank", "noopener,noreferrer");
-}
