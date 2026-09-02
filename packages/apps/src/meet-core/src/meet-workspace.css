@@ -571,7 +571,9 @@
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mute {
-  @apply absolute right-2 top-2;
+  @apply absolute right-2 top-2 rounded-md;
+  background-color: color-mix(in oklab, var(--meet-call-empty, #ffffff) 72%, transparent);
+  backdrop-filter: blur(6px);
 }
 
 @media (min-width: 768px) {
