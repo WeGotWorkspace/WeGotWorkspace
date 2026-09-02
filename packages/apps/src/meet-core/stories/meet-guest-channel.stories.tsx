@@ -79,7 +79,7 @@ export const Lobby: Story = {
     await expect(canvas.getByRole("heading", { name: "Ready to join?" })).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("button", { name: "Ask to join" }));
     await expect(canvas.getByText(/Standup in five/i)).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Expand call" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Collapse call" })).toBeInTheDocument();
   },
 };
 

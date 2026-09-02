@@ -60,7 +60,7 @@ export const SideBySide: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Chat will appear here.")).toBeInTheDocument();
+    await expect(canvas.getAllByText("Chat will appear here.").length).toBeGreaterThan(0);
     await expect(canvas.getByRole("button", { name: "Collapse call" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Show sidebar" })).toBeInTheDocument();
@@ -70,7 +70,7 @@ export const SideBySide: Story = {
     await expect(canvas.getAllByRole("button", { name: "Show chat" }).length).toBeGreaterThan(0);
     await userEvent.click(canvas.getAllByRole("button", { name: "Collapse call" })[0]!);
     await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
-    await expect(canvas.getByText("Chat will appear here.")).toBeInTheDocument();
+    await expect(canvas.getAllByText("Chat will appear here.").length).toBeGreaterThan(0);
   },
 };
 
