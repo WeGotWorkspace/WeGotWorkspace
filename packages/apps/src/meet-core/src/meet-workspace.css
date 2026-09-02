@@ -564,10 +564,11 @@
   outline: 1px solid rgba(248, 113, 113, 0.95);
   outline-offset: 0;
   background-color: color-mix(in oklab, rgb(127 29 29) 55%, rgb(0 0 0));
+  color: #fff;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__name {
-  @apply absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[11px] backdrop-blur;
+  @apply absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white backdrop-blur;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mute {
@@ -1046,6 +1047,13 @@
   :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
   .meet-peer-tile__display-name {
   color: var(--color-ink);
+}
+
+.meet-workspace
+  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
+  .meet-peer-tile__speaking {
+  /* Darker than --meet-live so “Speaking” clears 4.5:1 on cream tiles. */
+  color: color-mix(in oklab, var(--meet-live) 35%, var(--color-ink));
 }
 
 .meet-workspace

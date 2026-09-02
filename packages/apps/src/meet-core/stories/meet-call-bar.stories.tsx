@@ -115,8 +115,11 @@ export const Joined: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: meetLabels.mute }));
-    await expect(canvas.getByRole("button", { name: meetLabels.unmute })).toBeInTheDocument();
+    const muteControls = canvas.getAllByRole("button", { name: meetLabels.mute });
+    await userEvent.click(muteControls[0]!);
+    await expect(canvas.getAllByRole("button", { name: meetLabels.unmute }).length).toBeGreaterThan(
+      0,
+    );
   },
 };
 
