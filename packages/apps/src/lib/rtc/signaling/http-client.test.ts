@@ -111,4 +111,17 @@ describe("HttpSignalingClient", () => {
     const body = JSON.parse(String(call![1]?.body)) as Record<string, unknown>;
     expect(body.sessionKey).toBe("guest-key");
   });
+
+  it("sends leave with keepalive so a pagehide leave can finish", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "collab",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+    });
+    await client.leave({ room: "docs/x.md", peerId: "aaaaaaaaaaaaaaaa" });
+    expect(fetchImpl.mock.calls[0]?.[1]?.keepalive).toBe(true);
+  });
 });

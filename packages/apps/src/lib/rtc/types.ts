@@ -36,7 +36,7 @@ export type RtcSignalMessage = {
 export type RtcPeerDescriptor = {
   id: string;
   name: string;
-  /** Sabre username of the peer's owner — principal rooms only (server-derived, authoritative). */
+  /** Sabre username of the peer's owner — collab and principal rooms (server-derived). */
   user?: string;
 };
 

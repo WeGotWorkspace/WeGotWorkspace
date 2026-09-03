@@ -1,8 +1,17 @@
 import type { SignalingChannel } from "@/lib/rtc/types";
 
+/**
+ * Canonical collab file-room path: strip leading slashes so
+ * `/groups/foo.md` and `groups/foo.md` encode as the same room id.
+ * Note UIDs have no slash and are unchanged.
+ */
+export function canonicalCollabFilePath(path: string): string {
+  return path.replace(/^\/+/, "");
+}
+
 /** Encode a virtual file path as a collab room id (`f_{base64url}`). */
 export function encodeFileRoomId(path: string): string {
-  const bytes = new TextEncoder().encode(path);
+  const bytes = new TextEncoder().encode(canonicalCollabFilePath(path));
   let binary = "";
   for (let i = 0; i < bytes.length; i += 1) {
     binary += String.fromCharCode(bytes[i]!);

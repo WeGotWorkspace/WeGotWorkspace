@@ -160,6 +160,7 @@ export class HttpSignalingClient {
       method: "DELETE",
       headers: this.headers(),
       body: body ? JSON.stringify(body) : undefined,
+      keepalive: true,
     });
     const text = await res.text();
     return this.parseJsonResponse<T>(res, action, text);
