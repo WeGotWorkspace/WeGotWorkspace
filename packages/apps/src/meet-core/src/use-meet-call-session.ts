@@ -215,6 +215,11 @@ export function useMeetCallSession({
     screenOnRef: room.screenOnRef,
   });
   getLocalStreamRef.current = getLocalStream;
+  // Mini-player (outside `/meet`) calls the same toggles so mic/camera stay in sync.
+  if (callStore) {
+    callStore.toggleMicRef.current = toggleMic;
+    callStore.toggleVideoRef.current = toggleVideo;
+  }
 
   const announceMediaPresenceEnterInCall = useCallback(() => {
     void announceMediaPresence(room.micOnRef.current, room.videoOnRef.current);

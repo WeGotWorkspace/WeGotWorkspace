@@ -145,4 +145,30 @@ describe("MeetCallStore", () => {
     expect(store.localStreamRef).toBe(localStreamRef);
     expect(store.leaveRef.current).toBe(leave);
   });
+
+  it("exposes shared mic/camera toggles that update the same snapshot both UIs read", () => {
+    const store = createMeetCallStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    store.toggleMicRef.current = () => {
+      store.setMicOn((prev) => !prev);
+    };
+    store.toggleVideoRef.current = () => {
+      store.setVideoOn((prev) => !prev);
+    };
+
+    expect(store.getSnapshot().micOn).toBe(true);
+    expect(store.getSnapshot().videoOn).toBe(true);
+
+    store.toggleMicRef.current();
+    store.toggleVideoRef.current();
+
+    expect(store.getSnapshot()).toMatchObject({ micOn: false, videoOn: false });
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    // Full Meet and mini-player both subscribe to getSnapshot — same source of truth.
+    store.toggleMicRef.current();
+    expect(store.getSnapshot().micOn).toBe(true);
+  });
 });

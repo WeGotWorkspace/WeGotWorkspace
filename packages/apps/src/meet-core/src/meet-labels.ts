@@ -63,8 +63,14 @@ export const meetLabels = {
   participantLeft: (name: string) => `${name} left the call`,
   callActiveInAnotherTab: "A call is already active in another tab.",
   miniPlayerLabel: "Ongoing call",
+  /** Generic product title in the mini-player (room codes are opaque ids). */
+  miniPlayerTitle: "Meet",
   miniPlayerWaiting: "Waiting to be let in",
   returnToCall: "Return to call",
   hangUp: "Hang up",
+  mute: "Mute",
+  unmute: "Unmute",
+  stopVideo: "Stop video",
+  startVideo: "Start video",
   participantsShort: (count: number) => `${count} in call`,
 } as const;

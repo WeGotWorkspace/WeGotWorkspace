@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Maximize2, Mic, MicOff, PhoneOff, Users } from "lucide-react";
+import { Maximize2, Mic, MicOff, PhoneOff, Users, Video, VideoOff } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
@@ -106,12 +106,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
       </button>
       <div className="meet-mini-player__info">
         <span className="meet-mini-player__room">
-          {snapshot.micOn ? (
-            <Mic className="size-3 shrink-0" />
-          ) : (
-            <MicOff className="meet-mini-player__mic-off size-3 shrink-0" />
-          )}
-          <span className="truncate">{snapshot.roomCode ?? meetLabels.miniPlayerLabel}</span>
+          <span className="truncate">{meetLabels.miniPlayerTitle}</span>
         </span>
         <span className="meet-mini-player__meta">
           <Users className="size-3 shrink-0" />
@@ -119,6 +114,22 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
         </span>
       </div>
       <div className="meet-mini-player__actions">
+        <IconButton
+          onClick={() => store.toggleMicRef.current?.()}
+          icon={snapshot.micOn ? <Mic /> : <MicOff />}
+          label={snapshot.micOn ? meetLabels.mute : meetLabels.unmute}
+          size="sm"
+          variant="ghost"
+          className={snapshot.micOn ? undefined : "meet-mini-player__media-off"}
+        />
+        <IconButton
+          onClick={() => store.toggleVideoRef.current?.()}
+          icon={snapshot.videoOn ? <Video /> : <VideoOff />}
+          label={snapshot.videoOn ? meetLabels.stopVideo : meetLabels.startVideo}
+          size="sm"
+          variant="ghost"
+          className={snapshot.videoOn ? undefined : "meet-mini-player__media-off"}
+        />
         <IconButton
           onClick={returnToCall}
           icon={<Maximize2 />}

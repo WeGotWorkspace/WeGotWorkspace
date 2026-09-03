@@ -6,7 +6,7 @@
  * call-surface fallbacks, mirroring the meet-pip look.
  */
 .meet-mini-player {
-  @apply fixed bottom-4 right-4 z-50 flex w-72 items-center gap-2 rounded-lg border p-2 shadow-xl;
+  @apply fixed bottom-4 right-4 z-50 flex w-80 items-center gap-2 rounded-lg border p-2 shadow-xl;
   background-color: var(--meet-mini-player-bg, rgb(24 24 27 / 0.96));
   border-color: var(--meet-mini-player-border, rgb(255 255 255 / 0.22));
   color: var(--meet-mini-player-fg, rgb(255 255 255 / 0.92));
@@ -36,14 +36,11 @@
   color: var(--meet-mini-player-muted, rgb(255 255 255 / 0.65));
 }
 
-.meet-mini-player__mic-off {
-  color: var(--meet-mini-player-danger, rgb(248 113 113));
-}
-
 .meet-mini-player__actions {
   @apply flex shrink-0 items-center gap-1;
 }
 
+.meet-mini-player .meet-mini-player__media-off,
 .meet-mini-player .meet-mini-player__hang-up {
   color: var(--meet-mini-player-danger, rgb(248 113 113));
 }

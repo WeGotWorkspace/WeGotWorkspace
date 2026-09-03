@@ -132,6 +132,14 @@ export class MeetCallStore {
     current: null,
   };
 
+  /**
+   * Headless mic/camera toggles for the mini-player. Same callbacks as full Meet
+   * (`useMeetLocalMedia`); both UIs read `micOn`/`videoOn` from this store.
+   */
+  readonly toggleMicRef: Ref<null | (() => void)> = { current: null };
+
+  readonly toggleVideoRef: Ref<null | (() => void)> = { current: null };
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => {
