@@ -1066,7 +1066,7 @@ describe("useNotesController archive persist flags", () => {
     window.localStorage.removeItem(NOTES_VIEW_PREFS_STORAGE_KEY);
   });
 
-  it("sets archived and keeps the open note selected", () => {
+  it("sets archived and closes detail when the open note leaves the current view", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1" }],
       notebooks: ["Drafts"],
@@ -1081,11 +1081,31 @@ describe("useNotesController archive persist flags", () => {
 
     expect(result.current.archived["note-1"]).toBe(true);
     expect(result.current.notes.find((note) => note.id === "note-1")?.archived).toBe(true);
-    expect(result.current.activeId).toBe("note-1");
-    expect(result.current.selectedIds).toEqual(["note-1"]);
+    expect(result.current.activeId).toBe("");
+    expect(result.current.selectedIds).toEqual([]);
   });
 
-  it("clears archived on unarchive and keeps the note selected", () => {
+  it("does not select or open a note when archiving from the list without a prior selection", () => {
+    const data: NotesUIData = {
+      notes: [
+        { ...localNote, id: "note-1" },
+        { ...localNote, id: "note-2" },
+      ],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    act(() => {
+      result.current.toggleArchive("note-1");
+    });
+
+    expect(result.current.archived["note-1"]).toBe(true);
+    expect(result.current.activeId).toBe("");
+    expect(result.current.selectedIds).toEqual([]);
+  });
+
+  it("clears archived on unarchive and closes detail when the note leaves archive view", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", archived: true }],
       notebooks: ["Drafts"],
@@ -1105,7 +1125,8 @@ describe("useNotesController archive persist flags", () => {
     });
 
     expect(result.current.archived["note-1"]).toBeFalsy();
-    expect(result.current.activeId).toBe("note-1");
+    expect(result.current.activeId).toBe("");
+    expect(result.current.selectedIds).toEqual([]);
   });
 
   it("keeps optimistic archived when a stale bootstrap refresh arrives", () => {
