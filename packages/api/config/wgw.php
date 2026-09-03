@@ -80,4 +80,5 @@ return [
      */
     'public_web_url' => env('WGW_PUBLIC_WEB_URL'),
     'vite_dev_port' => env('WGW_VITE_DEV_PORT'),
+    'php_dev_port' => env('WGW_PHP_DEV_PORT'),
 ];

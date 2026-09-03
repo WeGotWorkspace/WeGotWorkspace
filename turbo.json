@@ -7,6 +7,14 @@
     "SABRE_DATA_DIR_NAME",
     "SABRE_DATA_DIR"
   ],
+  "globalPassThroughEnv": [
+    "WGW_VITE_DEV_PORT",
+    "WGW_VITE_PREVIEW_PORT",
+    "WGW_STORYBOOK_PORT",
+    "WGW_PHP_DEV_PORT",
+    "WGW_PROXY_TARGET",
+    "WGW_PUBLIC_WEB_URL"
+  ],
   "globalDependencies": ["packages/api/composer.json", "packages/api/composer.lock"],
   "tasks": {
     "build": {

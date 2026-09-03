@@ -9,14 +9,14 @@ Canonical layout: [`docs/dev-layout.md`](../../../docs/dev-layout.md). Env files
 
 ## Multiple worktrees (parallel agents)
 
-When several chunks run `pnpm dev` on one machine, each worktree needs distinct Vite ports. Prefer [`tools/worktree-agent.sh`](../../../tools/worktree-agent.sh):
+When several chunks run `pnpm dev` on one machine, each worktree needs distinct ports. `pnpm dev` now picks the next free app / Storybook / API ports automatically. Prefer [`tools/worktree-agent.sh`](../../../tools/worktree-agent.sh) when you want pinned ports:
 
 ```bash
-tools/worktree-agent.sh create <chunk-id> --port-offset 1   # second worktree → :5174 / :4174
+tools/worktree-agent.sh create <chunk-id> --port-offset 1   # second worktree → :5174 / :6007 / :9081 / :4174
 tools/worktree-agent.sh list
 ```
 
-Manual alternative: copy `packages/apps/.env.example` → `.env.local` and set `WGW_VITE_DEV_PORT` / `WGW_VITE_PREVIEW_PORT`. Details: [dev-layout.md](../../../docs/dev-layout.md#multiple-worktrees-port-conflicts).
+Manual alternative: copy `packages/apps/.env.example` → `.env.local` and set `WGW_VITE_DEV_PORT` / `WGW_STORYBOOK_PORT` / `WGW_PHP_DEV_PORT` / `WGW_VITE_PREVIEW_PORT`. Details: [dev-layout.md](../../../docs/dev-layout.md#multiple-worktrees-port-conflicts).
 
 ## Default workflow (Docker-free)
 
@@ -87,8 +87,7 @@ docker compose -f compose.dev.yml exec web php /var/www/packages/api/artisan wgw
 | Mock-tier stories fail | Unrelated to API — check story mocks | Use `@/lib/api/mock/*-bootstrap`; see [storybook/offline-first.md](../storybook/offline-first.md) |
 | `9080` connection refused | API not started | `pnpm dev:api` or `docker compose -f compose.dev.yml up -d --build` |
 | `9080` still in use after stopping dev | Orphan `php -S` from a crashed session | `lsof -nP -iTCP:9080 -sTCP:LISTEN` then stop the PID; normal Ctrl+C on `pnpm dev` / `pnpm preview` should release the port |
-| `5173` / `4173` port in use | Another worktree or dev server | Set `WGW_VITE_DEV_PORT` / `WGW_VITE_PREVIEW_PORT` in `.env.local` (e.g. `5174` / `4174`); see [dev-layout.md](../../../docs/dev-layout.md#multiple-worktrees-port-conflicts) |
-| `6006` port in use | Another Storybook | Stop conflicting process or free the port |
+| `5173` / `4173` / `6006` / `9080` port in use | Another worktree or leftover `pnpm dev` | A second `pnpm dev` auto-picks the next free ports and prints them. To pin: `WGW_VITE_DEV_PORT` / `WGW_STORYBOOK_PORT` / `WGW_PHP_DEV_PORT` / `WGW_VITE_PREVIEW_PORT` in `.env.local`; see [dev-layout.md](../../../docs/dev-layout.md#multiple-worktrees-port-conflicts) |
 | HTTPS-only Docker without `.env.local` | Default proxy is `:9080` | Set `WGW_PROXY_TARGET=https://wegotworkspace.localhost` for `docker:up:https` |
 | HTTPS cert warnings | mkcert not installed | `pnpm docker:ssl:setup`; trust mkcert CA |
 | Port 80/443 in use | Host Apache/nginx | `brew services stop httpd` (see docker README) |

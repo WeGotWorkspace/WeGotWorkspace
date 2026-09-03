@@ -55,14 +55,17 @@ write_env_local_ports() {
   local port_offset="$3"
   local dev_port=$((5173 + port_offset))
   local preview_port=$((4173 + port_offset))
+  local storybook_port=$((6006 + port_offset))
+  local php_port=$((9080 + port_offset))
   local env_file="${worktree_path}/.env.local"
   local marker="# worktree-agent: chunk ${chunk_id} (offset ${port_offset})"
 
   if [[ -f "$env_file" ]]; then
     local tmp
     tmp="$(mktemp)"
-    awk -v marker="$marker" -v dev="$dev_port" -v preview="$preview_port" '
-      BEGIN { wrote_marker=0; wrote_dev=0; wrote_preview=0 }
+    awk -v marker="$marker" -v dev="$dev_port" -v preview="$preview_port" \
+      -v story="$storybook_port" -v php="$php_port" '
+      BEGIN { wrote_marker=0; wrote_dev=0; wrote_preview=0; wrote_story=0; wrote_php=0 }
       $0 ~ /^# worktree-agent: chunk / { next }
       /^WGW_VITE_DEV_PORT=/ {
         if (!wrote_dev) { print marker; print "WGW_VITE_DEV_PORT=" dev; wrote_dev=1; wrote_marker=1 }
@@ -72,11 +75,21 @@ write_env_local_ports() {
         if (!wrote_preview) { print "WGW_VITE_PREVIEW_PORT=" preview; wrote_preview=1 }
         next
       }
+      /^WGW_STORYBOOK_PORT=/ {
+        if (!wrote_story) { print "WGW_STORYBOOK_PORT=" story; wrote_story=1 }
+        next
+      }
+      /^WGW_PHP_DEV_PORT=/ {
+        if (!wrote_php) { print "WGW_PHP_DEV_PORT=" php; wrote_php=1 }
+        next
+      }
       { print }
       END {
         if (!wrote_marker) print marker
         if (!wrote_dev) print "WGW_VITE_DEV_PORT=" dev
         if (!wrote_preview) print "WGW_VITE_PREVIEW_PORT=" preview
+        if (!wrote_story) print "WGW_STORYBOOK_PORT=" story
+        if (!wrote_php) print "WGW_PHP_DEV_PORT=" php
       }
     ' "$env_file" >"$tmp"
     mv "$tmp" "$env_file"
@@ -85,6 +98,8 @@ write_env_local_ports() {
 ${marker}
 WGW_VITE_DEV_PORT=${dev_port}
 WGW_VITE_PREVIEW_PORT=${preview_port}
+WGW_STORYBOOK_PORT=${storybook_port}
+WGW_PHP_DEV_PORT=${php_port}
 EOF
   fi
 }
@@ -146,11 +161,13 @@ cmd_create() {
     exit 1
   fi
 
-  local branch worktree_path dev_port preview_port spec_hint
+  local branch worktree_path dev_port preview_port storybook_port php_port spec_hint
   branch="$(branch_for "$branch_type" "$chunk_id")"
   worktree_path="$(worktree_path_for "$chunk_id")"
   dev_port=$((5173 + port_offset))
   preview_port=$((4173 + port_offset))
+  storybook_port=$((6006 + port_offset))
+  php_port=$((9080 + port_offset))
   spec_hint="$(find_spec_hint "$chunk_id")"
 
   if [[ -e "$worktree_path" ]]; then
@@ -180,13 +197,13 @@ Branch:       ${branch}
 Path:         ${worktree_path}
 Spec:         ${spec_hint}
 Tasks:        grep '${chunk_id}' in tasks.md for chunk row
-Ports:        dev :${dev_port}, preview :${preview_port} (.env.local written)
+Ports:        app :${dev_port}, Storybook :${storybook_port}, API :${php_port}, preview :${preview_port} (.env.local written)
 Port docs:    docs/dev-layout.md#multiple-worktrees-port-conflicts
 
 Next:
   cd ${worktree_path}
   pnpm install   # if node_modules not yet present in this worktree
-  pnpm dev       # uses WGW_VITE_DEV_PORT / WGW_VITE_PREVIEW_PORT from .env.local
+  pnpm dev       # uses pinned ports from .env.local, or the next free ports if those are taken
 EOF
 }
 

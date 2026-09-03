@@ -63,7 +63,7 @@ tools/worktree-agent.sh remove api-drive-share --force  # unclean worktree + opt
 
 | Step | What the script does |
 |------|----------------------|
-| `create` | Branch `<type>/<chunk-id>`, sibling worktree `../<repo-name>-<chunk-id>`, `.env.local` with `WGW_VITE_DEV_PORT` / `WGW_VITE_PREVIEW_PORT` (`5173+N` / `4173+N`) |
+| `create` | Branch `<type>/<chunk-id>`, sibling worktree `../<repo-name>-<chunk-id>`, `.env.local` with `WGW_VITE_DEV_PORT` / `WGW_STORYBOOK_PORT` / `WGW_PHP_DEV_PORT` / `WGW_VITE_PREVIEW_PORT` (`5173+N` / `6006+N` / `9080+N` / `4173+N`) |
 | Handoff | Prints branch, path, spec dir hint (from `.agents/specs/`), port docs anchor |
 | `remove` | `git worktree remove`; deletes branch only when merged into `origin/main` (or with `--force`) |
 

@@ -38,7 +38,7 @@ export function wgwApiViteProxy(mode = process.env.NODE_ENV ?? "development") {
             JSON.stringify({
               error: `API proxy: backend unreachable at ${target}`,
               code: "proxy_backend_down",
-              hint: "Start the API with `pnpm dev:api` and verify http://127.0.0.1:9080/api/v1/health",
+              hint: `Start the API with \`pnpm dev:api\` and verify ${target}/api/v1/health`,
               detail: err.message,
             }),
           );

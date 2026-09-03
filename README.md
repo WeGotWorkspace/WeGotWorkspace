@@ -35,6 +35,8 @@ pnpm dev
 - **http://127.0.0.1:6006** — Storybook
 - **http://127.0.0.1:9080** — API
 
+A second `pnpm dev` (another clone or worktree) binds the next free ports and prints them.
+
 Edit **`packages/api`** and **`packages/apps`** — not `apps/wegotworkspace` during normal dev. First run bootstraps **`packages/api/.env`**, SQLite, admin user, and JWT keys.
 
 Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). Docker/WebDAV dev: [docker/README.md](docker/README.md).

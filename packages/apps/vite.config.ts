@@ -28,16 +28,16 @@ function resolveWgwVitePort(raw: string | undefined, defaultPort: number, envVar
 export default defineConfig(({ mode }) => {
   const wgwApiProxy = wgwApiViteProxy(mode);
   const wgwEnv = loadEnv(mode, wgwMonorepoRoot, "WGW_");
-  const devPort = resolveWgwVitePort(
-    wgwEnv.WGW_VITE_DEV_PORT,
-    DEFAULT_DEV_PORT,
-    "WGW_VITE_DEV_PORT",
-  );
+  const explicitDevPort = process.env.WGW_VITE_DEV_PORT ?? wgwEnv.WGW_VITE_DEV_PORT;
+  const explicitPreviewPort = process.env.WGW_VITE_PREVIEW_PORT ?? wgwEnv.WGW_VITE_PREVIEW_PORT;
+  const devPort = resolveWgwVitePort(explicitDevPort, DEFAULT_DEV_PORT, "WGW_VITE_DEV_PORT");
   const previewPort = resolveWgwVitePort(
-    wgwEnv.WGW_VITE_PREVIEW_PORT,
+    explicitPreviewPort,
     DEFAULT_PREVIEW_PORT,
     "WGW_VITE_PREVIEW_PORT",
   );
+  const pinDevPort = Boolean((explicitDevPort ?? "").trim());
+  const pinPreviewPort = Boolean((explicitPreviewPort ?? "").trim());
 
   return {
     // Absolute base so SPA deep links (e.g. /contacts/all/:id) resolve /assets/* correctly on refresh.
@@ -75,12 +75,12 @@ export default defineConfig(({ mode }) => {
       // Bind all interfaces so both http://127.0.0.1 and http://localhost work (Node may otherwise listen on ::1 only).
       host: true,
       port: devPort,
-      strictPort: true,
+      strictPort: pinDevPort,
       proxy: wgwApiProxy,
     },
     preview: {
       port: previewPort,
-      strictPort: true,
+      strictPort: pinPreviewPort,
       proxy: wgwApiProxy,
     },
     build: {

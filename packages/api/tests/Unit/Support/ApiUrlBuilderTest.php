@@ -16,6 +16,7 @@ final class ApiUrlBuilderTest extends TestCase
         config([
             'wgw.public_web_url' => null,
             'wgw.vite_dev_port' => null,
+            'wgw.php_dev_port' => null,
         ]);
     }
 
@@ -44,6 +45,17 @@ final class ApiUrlBuilderTest extends TestCase
         $urls = $this->builder(Request::create('http://127.0.0.1:9080/api/v1/admin/state', 'GET'));
 
         $this->assertSame('http://localhost:5194/logout', $urls->logout());
+    }
+
+    public function test_app_path_uses_vite_dev_port_when_php_bind_is_not_9080(): void
+    {
+        config([
+            'wgw.vite_dev_port' => 5174,
+            'wgw.php_dev_port' => 9081,
+        ]);
+        $urls = $this->builder(Request::create('http://127.0.0.1:9081/api/v1/admin/state', 'GET'));
+
+        $this->assertSame('http://localhost:5174/logout', $urls->logout());
     }
 
     public function test_app_path_prefers_loopback_origin_header_over_api_bind(): void

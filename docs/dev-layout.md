@@ -24,6 +24,8 @@ pnpm dev
 
 The API task runs `packages/api/scripts/dev-php-server.sh`, which traps `SIGINT`/`SIGTERM` and stops the `php -S` process when you exit `pnpm dev` or `pnpm preview` (Ctrl+C). If `:9080` stays bound after a crash, find the listener with `lsof -nP -iTCP:9080 -sTCP:LISTEN` and stop it manually.
 
+A second `pnpm dev` (another clone or git worktree) no longer fails when **5173 / 6006 / 9080** are taken. Startup prints the ports it actually bound (often **5174 / 6007 / 9081**) and points the Vite/Storybook proxy at that API. Pin ports in `.env.local` when you want them stable — see [Multiple worktrees](#multiple-worktrees-port-conflicts).
+
 `pnpm dev` runs `wgw:dev-install` first (idempotent), then starts all three in parallel via turbo. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), and hundreds of sample calendar events on admin's `default` / `home` / `work` calendars. OpenAPI typegen watch runs alongside. Existing local installs get the same events on the next `pnpm dev` (skip if already present). Re-seed with `php packages/api/artisan wgw:calendars:seed-dev` (`--force` recreates). The seeder refuses `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
 
 ## Docker API (optional)
@@ -110,17 +112,19 @@ See [`env.md`](env.md) — root `.env` (tooling), `packages/api/.env` (Laravel),
 
 ### Multiple worktrees (port conflicts)
 
-Default ports are **5173** (dev) and **4173** (`pnpm preview`). Vite uses `strictPort: true`, so a second clone fails if those ports are already bound.
+Default ports are **5173** (app), **6006** (Storybook), **9080** (API), and **4173** (`pnpm preview`). `pnpm dev` picks the next free port in each range when a default is already bound, and prints the URLs.
 
-Set predictable per-worktree ports in **`.env.local`** (copy from `packages/apps/.env.example`):
+To pin ports (parallel agents, bookmarks), set them in **`.env.local`** (copy from `packages/apps/.env.example`):
 
 ```bash
 # Example: second git worktree on the same machine
 WGW_VITE_DEV_PORT=5174
 WGW_VITE_PREVIEW_PORT=4174
+WGW_STORYBOOK_PORT=6007
+WGW_PHP_DEV_PORT=9081
 ```
 
-Restart `pnpm dev` or `pnpm preview` after changing ports. Single-worktree setups can omit these — defaults stay `:5173` / `:4173`.
+Restart `pnpm dev` or `pnpm preview` after changing ports. Single-worktree setups can omit these — defaults stay `:5173` / `:6006` / `:9080` / `:4173` when those ports are free.
 
 **Edit the same worktree you run `pnpm dev` in.** Git worktrees share history but not working files — each clone has its own `packages/apps/src/`. Saving in one worktree does not affect Vite running in another.
 

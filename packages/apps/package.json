@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "dev:app": "vite dev",
-    "dev:storybook": "storybook dev -p 6006",
+    "dev:storybook": "storybook dev -p ${WGW_STORYBOOK_PORT:-6006}",
     "typegen": "echo \"@wgw/apps uses shared @wgw/api generated OpenAPI types\"",
     "build": "vite build && node scripts/sync-runtime-app-builds.mjs",
     "sync:runtime": "node scripts/sync-runtime-app-builds.mjs",
@@ -20,7 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p ${WGW_STORYBOOK_PORT:-6006}",
     "build-storybook": "storybook build",
     "test": "node scripts/run-jsdom.mjs --with-unit",
     "test:contract": "vitest run --project unit src/lib/api/contract",

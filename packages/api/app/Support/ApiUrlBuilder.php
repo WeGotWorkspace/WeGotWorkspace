@@ -67,7 +67,20 @@ final class ApiUrlBuilder
     private function requestIsApiOnlyHost(): bool
     {
         return $this->isLoopbackHost($this->request->getHost())
-            && (int) $this->request->getPort() === self::API_DEV_PORT;
+            && (int) $this->request->getPort() === $this->apiDevPort();
+    }
+
+    private function apiDevPort(): int
+    {
+        $configured = config('wgw.php_dev_port');
+        if (is_numeric($configured)) {
+            $port = (int) $configured;
+            if ($port >= 1 && $port <= 65535) {
+                return $port;
+            }
+        }
+
+        return self::API_DEV_PORT;
     }
 
     private function trustedBrowserOrigin(): ?string

@@ -59,8 +59,10 @@ cp packages/apps/.env.example .env.local
 # set VITE_WGW_DEV_USERNAME / VITE_WGW_DEV_PASSWORD
 # WGW_PROXY_TARGET=http://127.0.0.1:9080   # default for pnpm dev / dev:api
 # WGW_PROXY_TARGET=https://wegotworkspace.localhost   # when using pnpm docker:up:https only
-# WGW_VITE_DEV_PORT=5174        # optional; multiple worktrees (default 5173)
-# WGW_VITE_PREVIEW_PORT=4174    # optional; multiple worktrees (default 4173)
+# WGW_VITE_DEV_PORT=5174        # optional pin; pnpm dev also auto-picks the next free port
+# WGW_VITE_PREVIEW_PORT=4174
+# WGW_STORYBOOK_PORT=6007
+# WGW_PHP_DEV_PORT=9081
 ```
 
 See [`dev-layout.md`](dev-layout.md) for the default dev commands.
