@@ -683,6 +683,31 @@ describe("useNotesController URL routing", () => {
     expect(onNoteChange).toHaveBeenCalledWith("note-1");
   });
 
+  it("selects the note and writes the path on a mobile overlay viewport", () => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    const onNoteChange = vi.fn();
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, onNoteChange }),
+    );
+
+    clickSelect(result, "note-1");
+
+    expect(result.current.activeId).toBe("note-1");
+    expect(onNoteChange).toHaveBeenCalledWith("note-1");
+  });
+
   it("onNoteChange is called for local-* temp ids so offline rows update the route", () => {
     const onNoteChange = vi.fn();
     const offlineData: NotesUIData = {
