@@ -2,7 +2,12 @@ import { useCallback, useState } from "react";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { resumeDocsCollabMeshSession } from "./docs-collab-mesh-linger";
-import { applyAwarenessUpdate, encodeSyncStep1, handleSyncMessage } from "./docs-collab-mesh-sync";
+import {
+  applyAwarenessUpdate,
+  encodeFullAwarenessBroadcast,
+  encodeSyncStep1,
+  handleSyncMessage,
+} from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 import { DocsRtcSession } from "./docs-rtc-session";
@@ -142,6 +147,20 @@ export function useDocsCollabMesh({
     [refs],
   );
 
+  const sendAwarenessBroadcast = useCallback(
+    (toPeerId?: string) => {
+      const awareness = refs.awarenessRef.current;
+      const mesh = refs.meshRef.current;
+      if (!awareness || !mesh) return;
+      const encoded = encodeFullAwarenessBroadcast(awareness);
+      if (!encoded) return;
+      const msg = { type: "awareness" as const, u: encoded };
+      if (toPeerId) mesh.sendTo(toPeerId, msg);
+      else mesh.broadcast(msg);
+    },
+    [refs],
+  );
+
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
       const ydoc = refs.ydocRef.current;
@@ -161,13 +180,22 @@ export function useDocsCollabMesh({
       }
       if (msg.type === "dc-open" && msg.from) {
         sendSyncStep1(msg.from);
+        sendAwarenessBroadcast(msg.from);
         trySeedFromFile();
       }
       refs.tabSyncRef.current?.relayMeshMessage(msg);
       refreshMeshUi();
       publishMeshStateToTabs();
     },
-    [markDocReady, publishMeshStateToTabs, refs, refreshMeshUi, sendSyncStep1, trySeedFromFile],
+    [
+      markDocReady,
+      publishMeshStateToTabs,
+      refs,
+      refreshMeshUi,
+      sendAwarenessBroadcast,
+      sendSyncStep1,
+      trySeedFromFile,
+    ],
   );
 
   const joinMesh = useCallback(
@@ -181,6 +209,7 @@ export function useDocsCollabMesh({
         // Data channels are already open, so no dc-open will fire — ask the
         // connected peers for their state against the freshly loaded Y.Doc.
         sendSyncStep1();
+        sendAwarenessBroadcast();
         return resumed.getRoomPeers();
       }
 
@@ -216,6 +245,7 @@ export function useDocsCollabMesh({
       refs,
       refreshMeshUi,
       room,
+      sendAwarenessBroadcast,
       sendSyncStep1,
       urls.collabApiBaseUrl,
       urls.collabRtcUrl,
