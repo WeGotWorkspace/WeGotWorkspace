@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { MeetChannelDialog } from "@/meet-core/src/meet-channel-dialog";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 const { data, session } = createMeetAppBootstrap();
@@ -70,6 +72,14 @@ export const EditChannel: Story = {
       />
     </MeetStoryScope>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.getByText(meetLabels.shareChannelSectionTitle)).toBeInTheDocument();
+    await expect(body.getByText("Ada Lovelace")).toBeInTheDocument();
+    await expect(body.queryByRole("combobox")).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/Can view|Can edit/i)).not.toBeInTheDocument();
+  },
 };
 
 export const EditMeetingGuestLink: Story = {

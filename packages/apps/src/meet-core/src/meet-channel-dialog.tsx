@@ -203,6 +203,7 @@ export function MeetChannelDialog({
                   knownPrincipals={share.knownPrincipals}
                   online={share.online}
                   dialogClassName={contentClassName}
+                  accessSelect={false}
                   copy={{
                     title: meetLabels.shareChannelSectionTitle,
                     hint: meetLabels.shareChannelSectionHint,

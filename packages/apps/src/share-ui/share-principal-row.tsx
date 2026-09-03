@@ -51,7 +51,7 @@ export function SharePrincipalRow({
     : undefined;
 
   const trailing =
-    canEdit && uiPermission ? (
+    permissions.length === 0 ? undefined : canEdit && uiPermission ? (
       <SharePermissionSelect
         value={uiPermission}
         title={editHint}
