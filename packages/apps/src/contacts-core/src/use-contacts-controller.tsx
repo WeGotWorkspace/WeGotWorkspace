@@ -10,6 +10,7 @@ import {
   useWorkspaceSelectionPresentation,
 } from "@/hooks/use-workspace-list-controller";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
+import { afterViewTransition } from "@/lib/view-transition";
 import {
   contactDisplayName,
   filterCardsBySearch,
@@ -277,7 +278,9 @@ export function useContactsController({
     }
     // Don't write the transient create-mode placeholder to the URL.
     if (activeId === CONTACTS_CREATE_ID) return;
-    onContactChange?.(activeId);
+    afterViewTransition(() => {
+      onContactChange?.(activeId);
+    });
   }, [activeId, onContactChange]);
 
   const contactGroups = useMemo(() => listContactGroups(cards), [cards]);

@@ -3,10 +3,42 @@ import { flushSync } from "react-dom";
 /** Set on `<html>` while a collection-detail view transition is running. */
 export const VIEW_TRANSITION_ROOT_CLASS = "workspace-vt-detail";
 
+/** Resolves when the in-flight collection-detail View Transition finishes (or immediately). */
+let viewTransitionGate: Promise<void> = Promise.resolve();
+
 export function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+/**
+ * Run `task` after the current collection-detail View Transition snapshot callback.
+ * History updates inside `startViewTransition` are ignored on iOS / Chrome, which
+ * left `/notes/all` in the URL and the overlay on the empty detail state.
+ */
+export function afterViewTransition(task: () => void): void {
+  if (
+    typeof document === "undefined" ||
+    !document.documentElement.classList.contains(VIEW_TRANSITION_ROOT_CLASS)
+  ) {
+    task();
+    return;
+  }
+  void viewTransitionGate.then(task);
+}
+
+function armViewTransitionGate(): () => void {
+  let released = false;
+  let release: () => void = () => {};
+  viewTransitionGate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return () => {
+    if (released) return;
+    released = true;
+    release();
+  };
 }
 
 /**
@@ -28,8 +60,10 @@ export function runViewTransition(update: () => void | Promise<void>): void {
 
   const root = document.documentElement;
   root.classList.add(VIEW_TRANSITION_ROOT_CLASS);
-  const clearRootClass = () => {
+  const releaseGate = armViewTransitionGate();
+  const finish = () => {
     root.classList.remove(VIEW_TRANSITION_ROOT_CLASS);
+    releaseGate();
   };
 
   try {
@@ -40,9 +74,9 @@ export function runViewTransition(update: () => void | Promise<void>): void {
       });
       if (pending != null) await pending;
     });
-    void transition.finished.then(clearRootClass, clearRootClass);
+    void transition.finished.then(finish, finish);
   } catch {
-    clearRootClass();
+    finish();
     void Promise.resolve(update());
   }
 }
