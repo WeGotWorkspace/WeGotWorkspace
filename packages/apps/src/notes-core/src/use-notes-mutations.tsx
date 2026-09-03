@@ -18,6 +18,7 @@ import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes-offline
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
   createNoteSaveDebouncer,
+  filterVisibleNotes,
   mapNotesWithBodyMarkdown,
   mergeCreatedNotePreservingLocalOptimistic,
   normalizeTag,
@@ -64,6 +65,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     show,
     showMutationError,
     queueAutoSaveToast,
+    searchQuery,
   } = shell;
 
   const {
@@ -78,6 +80,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setActiveId,
     beginOptimisticUpdate,
     openMobileDetail,
+    closeMobileDetail,
   } = list;
 
   const debouncerRef = useRef(createNoteSaveDebouncer(AUTOSAVE_WRITE_DEBOUNCE_MS));
@@ -277,14 +280,33 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (!row) return;
       const beforeArchived = !!archived[id] || !!row.archived;
       const nextArchived = !beforeArchived;
-      setArchived((state) => ({ ...state, [id]: nextArchived }));
+      const wasOpen = activeId === id;
+      const nextArchivedMap = { ...archived, [id]: nextArchived };
+      setArchived(nextArchivedMap);
       const archivedNote = { ...row, archived: nextArchived };
       setNotes((prev) => prev.map((note) => (note.id === id ? archivedNote : note)));
       persistOptimisticNote(archivedNote, true);
-      // Stay on the open note. Do not use beginOptimisticUpdate / selectView —
-      // those treat archive as a list-remove and clear the detail pane.
-      setActiveId(id);
-      selectSingle(id);
+
+      const stillVisible =
+        filterVisibleNotes([archivedNote], {
+          view,
+          archived: nextArchivedMap,
+          starred,
+          searchQuery,
+          sharedNotebookKeys: sharedNotebookFilterKeys(notebookCollections),
+          notebookCollections,
+        }).length > 0;
+
+      // Swipe/list archive must not select or open the note. Only keep (or close)
+      // the detail pane when this note was already open.
+      if (wasOpen) {
+        if (stillVisible) {
+          setActiveId(id);
+          selectSingle(id);
+        } else {
+          closeMobileDetail();
+        }
+      }
 
       const toastMessage = nextArchived ? "Archived" : "Unarchived";
 
@@ -293,6 +315,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         setNotes((prev) =>
           prev.map((note) => (note.id === id ? { ...row, archived: beforeArchived } : note)),
         );
+        if (wasOpen) {
+          setActiveId(id);
+          selectSingle(id);
+        }
       };
 
       queueMutation({
@@ -327,16 +353,22 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       });
     },
     [
+      activeId,
       archived,
+      closeMobileDetail,
       dropGoneNote,
+      notebookCollections,
       notes,
       operations,
       persistOptimisticNote,
       queueMutation,
+      searchQuery,
       selectSingle,
       setActiveId,
       setArchived,
       setNotes,
+      starred,
+      view,
     ],
   );
 

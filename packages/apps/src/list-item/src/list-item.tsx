@@ -279,7 +279,10 @@ export function ListItem({
   const leadingActions = swipeLeftAction ? (
     <LeadingActions>
       <SwipeActionPrimitive
-        onClick={swipeLeftAction.onActivate}
+        onClick={(event) => {
+          event.stopPropagation();
+          swipeLeftAction.onActivate();
+        }}
         destructive={swipeLeftAction.destructive}
       >
         <div
@@ -296,7 +299,10 @@ export function ListItem({
   const trailingActions = swipeRightAction ? (
     <TrailingActions>
       <SwipeActionPrimitive
-        onClick={swipeRightAction.onActivate}
+        onClick={(event) => {
+          event.stopPropagation();
+          swipeRightAction.onActivate();
+        }}
         destructive={swipeRightAction.destructive}
       >
         <div
