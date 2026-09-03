@@ -19,6 +19,7 @@ type CapturedMeshOptions = {
     messages: [];
   }) => void;
   shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
+  shouldAcceptOffer?: (from: string) => boolean;
 };
 
 const captured = vi.hoisted(() => ({
@@ -421,5 +422,38 @@ describe("DocsRtcSession principal reuse wiring", () => {
     });
 
     expect(captured.mesh.abortPeerConnection).toHaveBeenCalledWith(peer.id);
+  });
+
+  it("ignores inbound collab offers when principal reuse is active for that user", () => {
+    const registry = new PrincipalLinkRegistry();
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: () => undefined,
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const stalePeer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([stalePeer]);
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    const activePeer = { id: "cccccccccccccccc", name: "Wouter", user: "wouter" };
+    pollRoster([activePeer]);
+
+    expect(captured.meshOptions?.shouldAcceptOffer?.("cccccccccccccccc")).toBe(false);
+    expect(captured.meshOptions?.shouldAcceptOffer?.("bbbbbbbbbbbbbbbb")).toBe(false);
+    expect(captured.meshOptions?.shouldAcceptOffer?.("dddddddddddddddd")).toBe(true);
   });
 });

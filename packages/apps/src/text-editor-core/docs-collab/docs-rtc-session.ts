@@ -117,6 +117,7 @@ export class DocsRtcSession {
         getAuth: () => ({ bearerToken: options.authToken }),
       },
       shouldConnectToPeer: (peer) => !this.reuse.shouldSkipIce(peer),
+      shouldAcceptOffer: (from) => !this.reuse.shouldIgnoreOffer(from),
       onLinkChange: () => this.emit({ type: "link" }),
       onPollData: (data) => {
         this.reuse.considerRoster(data.peers, this.mesh.getMyId());

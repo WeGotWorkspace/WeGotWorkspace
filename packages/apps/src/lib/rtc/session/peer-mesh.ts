@@ -79,6 +79,8 @@ export type RtcPeerMeshOptions = {
   onConnectionFailed?: (remoteId: string, name: string) => void;
   onPollError?: (error: unknown) => void;
   onPeerConnected?: (remoteId: string) => void;
+  /** When false, inbound offers are dropped without creating a peer connection. */
+  shouldAcceptOffer?: (from: string) => boolean;
 };
 
 type MeshPeerEntry = {
@@ -678,6 +680,10 @@ export class RtcPeerMesh {
       const peerName = data.peers.find((peer) => peer.id === message.from)?.name ?? "Peer";
       try {
         if (message.type === "offer") {
+          if (this.options.shouldAcceptOffer && !this.options.shouldAcceptOffer(message.from)) {
+            this.log("offer-ignored", { from: message.from, reason: "should-accept-false" });
+            continue;
+          }
           await this.handleOffer(message.from, peerName, message.payload);
         } else if (message.type === "answer") {
           await this.handleAnswer(message.from, message.payload);

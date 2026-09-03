@@ -580,6 +580,40 @@ describe("RtcPeerMesh", () => {
     await mesh.leave();
   });
 
+  it("ignores inbound offers when shouldAcceptOffer returns false", async () => {
+    const signaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
+    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+      channel: "collab",
+      initiatorRule: "lowerId",
+      shouldConnectToPeer: () => false,
+      shouldAcceptOffer: (from) => from !== "ZZZZZZZZZZ",
+    });
+
+    await mesh.join({ name: "Guest", peerId: "AAAAAAAAAA" });
+
+    signaling.setPollHandler(async () => ({
+      peers: [{ id: "ZZZZZZZZZZ", name: "Host" }],
+      messages: [
+        {
+          from: "ZZZZZZZZZZ",
+          type: "offer",
+          payload: {
+            type: "offer",
+            sdp: "v=0\r\no=-\r\ns=-\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
+          },
+        },
+      ],
+    }));
+
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(mesh.getPeerIds()).toHaveLength(0);
+    expect(signaling.sends.some((s) => s.type === "answer")).toBe(false);
+    expect(pcs.size).toBe(0);
+    await mesh.leave();
+  });
+
   it("retryRoomPeerConnections dials peers skipped by shouldConnectToPeer on the last poll", async () => {
     let skipIce = true;
     const signaling = createMockSignaling({

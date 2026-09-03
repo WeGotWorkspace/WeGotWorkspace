@@ -89,6 +89,9 @@ export class DocsCollabPrincipalReuse {
 
   private readonly loggedMiss = new Set<string>();
 
+  /** Stale collab peer ids superseded by principal reuse for the same username. */
+  private readonly supersededCollabPeerIds = new Set<string>();
+
   private lastRosterPeers: RtcPeerDescriptor[] = [];
 
   constructor(private readonly ports: DocsCollabPrincipalReusePorts) {
@@ -133,6 +136,19 @@ export class DocsCollabPrincipalReuse {
     if (this.reused.has(peer.id)) return true;
     if (username && this.pending.has(username)) return true;
     if (username && this.deferredFreshIce.has(username)) return true;
+    if (username && [...this.reused.values()].some((entry) => entry.username === username)) {
+      return true;
+    }
+    return false;
+  }
+
+  /** Drop inbound collab signaling offers when reuse already covers this peer/user. */
+  shouldIgnoreOffer(fromPeerId: string): boolean {
+    if (this.supersededCollabPeerIds.has(fromPeerId)) return true;
+    if (this.reused.has(fromPeerId)) return true;
+    const rosterPeer = this.lastRosterPeers.find((peer) => peer.id === fromPeerId);
+    if (rosterPeer && this.shouldSkipIce(rosterPeer)) return true;
+    const username = rosterPeer?.user ?? "";
     if (username && [...this.reused.values()].some((entry) => entry.username === username)) {
       return true;
     }
@@ -245,6 +261,7 @@ export class DocsCollabPrincipalReuse {
     if (!username) return;
     const existing = [...this.reused.values()].find((entry) => entry.username === username);
     if (!existing || existing.collabPeerId === peer.id) return;
+    this.supersededCollabPeerIds.add(existing.collabPeerId);
     this.reused.delete(existing.collabPeerId);
     this.reused.set(peer.id, { ...existing, collabPeerId: peer.id, name: peer.name });
   }
@@ -360,6 +377,7 @@ export class DocsCollabPrincipalReuse {
       username: fromUsername,
       principalPeerId: fromPrincipalPeerId,
     });
+    this.markSupersededCollabPeerIds(fromUsername, collabPeerId);
     this.log("dc-open", { remoteId: collabPeerId, username: fromUsername, reused: true, via });
     this.ports.onReuseAttached?.(collabPeerId);
     if (wasNew) this.ports.onDcOpen(collabPeerId);
@@ -413,6 +431,14 @@ export class DocsCollabPrincipalReuse {
     if (!deferred) return;
     this.cancelTimeout(deferred.timer);
     this.deferredFreshIce.delete(username);
+  }
+
+  private markSupersededCollabPeerIds(username: string, activeCollabPeerId: string): void {
+    for (const peer of this.lastRosterPeers) {
+      if (peer.user === username && peer.id !== activeCollabPeerId) {
+        this.supersededCollabPeerIds.add(peer.id);
+      }
+    }
   }
 
   private logMiss(remoteId: string, reason: string, username: string): void {

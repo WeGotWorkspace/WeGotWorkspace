@@ -381,6 +381,35 @@ describe("DocsCollabPrincipalReuse", () => {
     });
     expect(onReuseAttached).toHaveBeenCalledWith(peer.id);
   });
+
+  it("ignores stale collab offers once principal reuse is active for that user", () => {
+    const { reuse, registry, registerAdminToWouter } = createHarness();
+    registerAdminToWouter();
+    const stalePeer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    const freshPeer = { id: "cccccccccccccccc", name: "Wouter", user: "wouter" };
+
+    reuse.considerRoster([stalePeer], "aaaaaaaaaaaaaaaa");
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    expect(reuse.shouldIgnoreOffer("bbbbbbbbbbbbbbbb")).toBe(true);
+
+    reuse.considerRoster([freshPeer], "aaaaaaaaaaaaaaaa");
+    expect(reuse.shouldIgnoreOffer("bbbbbbbbbbbbbbbb")).toBe(true);
+    expect(reuse.shouldIgnoreOffer("cccccccccccccccc")).toBe(true);
+  });
+
+  it("accepts collab offers when reuse is not active for the peer", () => {
+    const { reuse } = createHarness();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    expect(reuse.shouldIgnoreOffer("bbbbbbbbbbbbbbbb")).toBe(false);
+  });
 });
 
 describe("DocsCollabPrincipalReuse bidirectional Yjs over reused DC", () => {
