@@ -6,6 +6,7 @@ import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { MeetRemoteAudio, remoteParticipantHasAudio } from "@/meet-core/src/meet-remote-audio";
 import { meetSearchFromRoom } from "@/meet-core/src/meet-route-search";
 import "@/meet-core/src/meet-call-mini-player.css";
 
@@ -35,10 +36,16 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [, setClockTick] = useState(0);
+  const [audioPlayNonce, setAudioPlayNonce] = useState(0);
 
   const callEngaged = snapshot.status === "in-call" || snapshot.status === "waiting";
   const visible = callEngaged && !pathname.startsWith("/meet");
   const showVideo = visible && snapshot.videoOn && !snapshot.screenOn;
+  const remoteAudioPeers = visible
+    ? snapshot.participants.flatMap((peer) =>
+        remoteParticipantHasAudio(peer.stream) ? [{ id: peer.id, stream: peer.stream }] : [],
+      )
+    : [];
 
   useEffect(() => {
     if (!showVideo) return;
@@ -66,12 +73,25 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           .filter(Boolean)
           .join(" · ");
 
+  const resumeRemoteAudio = () => {
+    setAudioPlayNonce((nonce) => nonce + 1);
+  };
+
   const returnToCall = () => {
+    resumeRemoteAudio();
     void navigate({ to: "/meet", search: meetSearchFromRoom(snapshot.roomCode) });
   };
 
   return (
-    <div className="meet-mini-player" role="complementary" aria-label={meetLabels.miniPlayerLabel}>
+    <div
+      className="meet-mini-player"
+      role="complementary"
+      aria-label={meetLabels.miniPlayerLabel}
+      onPointerDown={resumeRemoteAudio}
+    >
+      {remoteAudioPeers.map((peer) => (
+        <MeetRemoteAudio key={peer.id} stream={peer.stream} playNonce={audioPlayNonce} />
+      ))}
       <button
         type="button"
         className="meet-mini-player__preview"
