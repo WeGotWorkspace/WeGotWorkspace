@@ -15,7 +15,7 @@ const captured = vi.hoisted(() => ({
   mesh: {
     getMyId: vi.fn((): string | null => "me"),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string; user?: string }>),
-    getDataChannel: vi.fn(() => null as { readyState: string } | null),
+    getDataChannel: vi.fn((_id: string) => null as { readyState: string } | null),
     getPeerConnection: vi.fn(() => null as { connectionState: string } | null),
     sendJsonTo: vi.fn(),
     broadcastJson: vi.fn(),

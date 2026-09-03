@@ -351,7 +351,10 @@ export class DocsCollabPrincipalReuse {
       if (!from || envelope.payload === undefined) return;
       const payload = envelope.payload;
       if (!payload || typeof payload !== "object") return;
-      this.ports.onMessage({ ...(payload as DocsCollabMeshMessage), from });
+      this.ports.onMessage({
+        ...(payload as DocsCollabMeshMessage),
+        from,
+      } as DocsCollabMeshMessage);
     }
   }
 

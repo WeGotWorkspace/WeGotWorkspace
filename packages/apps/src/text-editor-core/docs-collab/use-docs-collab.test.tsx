@@ -704,7 +704,7 @@ describe("useDocsCollab offline lifecycle", () => {
           urls: { ...testUrls, authToken },
           wire: delayedWire,
         }),
-      { initialProps: { authToken: undefined } },
+      { initialProps: { authToken: undefined } as { authToken?: string } },
     );
 
     await waitForCollabSession(result);

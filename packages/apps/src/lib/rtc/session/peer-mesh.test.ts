@@ -973,6 +973,7 @@ describe("RtcPeerMesh principal roster cleanup", () => {
       if (to === "wouter-stale123") {
         throw new Error("invalid_peer");
       }
+      return { ok: true };
     });
     const { mesh, pcs } = meshWithStubPc(signaling.client, {
       channel: "principal",
