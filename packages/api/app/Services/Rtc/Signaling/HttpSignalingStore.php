@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 
 final class HttpSignalingStore
 {
+    /** Same-owner rejoins within this window keep the previous peer pollable (simultaneous tab open). */
+    private const JOIN_GRACE_SECONDS = 15;
+
     public function __construct(
         private readonly RtcSignalingPolicy $policy,
     ) {}
@@ -83,9 +86,11 @@ final class HttpSignalingStore
             return [];
         }
 
+        $graceCutoff = time() - self::JOIN_GRACE_SECONDS;
         $query = $this->peerQuery()
             ->where('room', $room)
-            ->where('owner_user', $ownerMarker);
+            ->where('owner_user', $ownerMarker)
+            ->where('seen_at', '<', $graceCutoff);
         if ($keepPeerId !== null && $keepPeerId !== '') {
             $query->where('peer_id', '!=', $keepPeerId);
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Principal;
 
 use App\Models\Principal;
+use App\Models\PrincipalPeer;
 use App\Services\Settings\SettingKeys;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -264,7 +265,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->assertJsonPath('peers', []);
     }
 
-    public function test_same_user_rejoin_replaces_the_previous_peer(): void
+    public function test_same_user_rejoin_within_grace_keeps_previous_peer_pollable(): void
     {
         $token = $this->issueBearerTokenFor('alice');
 
@@ -272,6 +273,31 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
         $first->assertOk();
         $firstPeerId = (string) $first->json('peerId');
+
+        $second = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+        $second->assertOk();
+        $secondPeerId = (string) $second->json('peerId');
+        $this->assertNotSame($firstPeerId, $secondPeerId);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
+            ->assertOk()
+            ->assertJsonPath('peers.0.id', $secondPeerId);
+    }
+
+    public function test_same_user_rejoin_after_grace_evicts_previous_peer(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+
+        $first = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+        $first->assertOk();
+        $firstPeerId = (string) $first->json('peerId');
+
+        PrincipalPeer::query()
+            ->where('peer_id', $firstPeerId)
+            ->update(['seen_at' => time() - 20]);
 
         $second = $this->withBearer($token)
             ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);

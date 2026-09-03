@@ -929,4 +929,29 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     expect(pcs.size).toBeLessThanOrEqual(3);
     await mesh.leave();
   });
+
+  it("drops a ghost peer when signaling returns invalid_peer", async () => {
+    const signaling = createMockSignaling({
+      peerId: "admin-abc123",
+      peers: [{ id: "wouter-stale123", name: "Wouter", user: "wouter" }],
+    });
+    signaling.client.send = vi.fn(async ({ to }) => {
+      if (to === "wouter-stale123") {
+        throw new Error("invalid_peer");
+      }
+    });
+    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+      channel: "principal",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Admin", peerId: "admin-abc123" });
+    await flushAsyncWork();
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(pcs.has("wouter-stale123")).toBe(false);
+    expect(mesh.getRoomPeers().some((peer) => peer.id === "wouter-stale123")).toBe(false);
+    await mesh.leave();
+  });
 });

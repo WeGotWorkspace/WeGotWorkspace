@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Collab;
 
+use App\Models\CollabPeer;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Services\Settings\SettingKeys;
@@ -113,7 +114,7 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         $afterLeave->assertJsonPath('peers', []);
     }
 
-    public function test_same_user_rejoin_replaces_the_previous_peer(): void
+    public function test_same_user_rejoin_within_grace_keeps_previous_peer_pollable(): void
     {
         $token = $this->issueBearerTokenFor('alice');
         $roomId = $this->roomId();
@@ -132,12 +133,72 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         $second->assertOk();
         $secondPeerId = (string) $second->json('peerId');
         $this->assertNotSame($firstPeerId, $secondPeerId);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$firstPeerId.'&since=0')
+            ->assertOk()
+            ->assertJsonPath('peers.0.id', $secondPeerId);
+    }
+
+    public function test_same_user_rejoin_after_grace_evicts_previous_peer(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+        $roomId = $this->roomId();
+
+        $first = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.$roomId.'/participants', [
+                'name' => 'Alice',
+            ]);
+        $first->assertOk();
+        $firstPeerId = (string) $first->json('peerId');
+
+        CollabPeer::query()
+            ->where('peer_id', $firstPeerId)
+            ->update(['seen_at' => time() - 20]);
+
+        $second = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.$roomId.'/participants', [
+                'name' => 'Alice',
+            ]);
+        $second->assertOk();
+        $secondPeerId = (string) $second->json('peerId');
+        $this->assertNotSame($firstPeerId, $secondPeerId);
         $this->assertSame([], $second->json('peers'));
 
         $this->withBearer($token)
             ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
             ->assertJsonPath('error', 'unknown_peer');
+    }
+
+    public function test_two_users_simultaneous_join_both_peers_remain_pollable(): void
+    {
+        $this->seedWgwUser('bob', displayName: 'Bob');
+        $this->grantDocShareToBob();
+
+        $aliceToken = $this->issueBearerTokenFor('alice');
+        $bobToken = $this->issueBearerTokenFor('bob');
+        $roomId = $this->roomId();
+
+        $alicePeerId = (string) $this->withBearer($aliceToken)
+            ->postJson('/api/v1/rooms/'.$roomId.'/participants', ['name' => 'Alice'])
+            ->assertOk()
+            ->json('peerId');
+
+        $bobPeerId = (string) $this->withBearer($bobToken)
+            ->postJson('/api/v1/rooms/'.$roomId.'/participants', ['name' => 'Bob'])
+            ->assertOk()
+            ->json('peerId');
+
+        $this->withBearer($aliceToken)
+            ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$alicePeerId.'&since=0')
+            ->assertOk()
+            ->assertJsonPath('peers.0.id', $bobPeerId);
+
+        $this->withBearer($bobToken)
+            ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$bobPeerId.'&since=0')
+            ->assertOk()
+            ->assertJsonPath('peers.0.id', $alicePeerId);
     }
 
     public function test_slashed_and_unslashed_file_room_ids_share_one_roster(): void

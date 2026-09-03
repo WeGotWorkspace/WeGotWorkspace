@@ -276,6 +276,23 @@ export class RtcPeerMesh {
     return error.message.includes("unknown_peer");
   }
 
+  private isInvalidPeerError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    return error.message.includes("invalid_peer");
+  }
+
+  private handleRemoteSignalError(remoteId: string, error: unknown): void {
+    if (this.options.recoverOnUnknownPeer && this.isUnknownPeerError(error)) {
+      void this.recoverUnknownPeer();
+      return;
+    }
+    if (this.isInvalidPeerError(error)) {
+      this.droppedGhostIds.add(remoteId);
+      this.removePeer(remoteId, "roster");
+      this.log("peer-skipped", { remoteId, reason: "invalid-peer-signal" });
+    }
+  }
+
   private notifyLinkChange(): void {
     this.options.onLinkChange?.();
   }
@@ -325,9 +342,7 @@ export class RtcPeerMesh {
         protocol: parseCandidateProtocol(candidate.candidate),
       });
       void this.sendSignal(remoteId, "ice", candidate).catch((error) => {
-        if (this.options.recoverOnUnknownPeer && this.isUnknownPeerError(error)) {
-          void this.recoverUnknownPeer();
-        }
+        this.handleRemoteSignalError(remoteId, error);
       });
     };
     pc.onconnectionstatechange = () => {
@@ -481,7 +496,12 @@ export class RtcPeerMesh {
       const offer = await pc.createOffer();
       const formatted = this.formatOutbound(offer);
       await pc.setLocalDescription(formatted);
-      await this.sendSignal(remoteId, "offer", pc.localDescription);
+      try {
+        await this.sendSignal(remoteId, "offer", pc.localDescription);
+      } catch (error) {
+        this.handleRemoteSignalError(remoteId, error);
+        throw error;
+      }
       entry.signalSent = true;
       this.log("offer-sent", { remoteId, ...rtcSdpMeta(pc.localDescription) });
     }
@@ -521,7 +541,12 @@ export class RtcPeerMesh {
     const answer = await entry.pc.createAnswer();
     const formatted = this.formatOutbound(answer);
     await entry.pc.setLocalDescription(formatted);
-    await this.sendSignal(from, "answer", entry.pc.localDescription);
+    try {
+      await this.sendSignal(from, "answer", entry.pc.localDescription);
+    } catch (error) {
+      this.handleRemoteSignalError(from, error);
+      return;
+    }
     entry.signalSent = true;
     this.log("answer-sent", { to: from, ...rtcSdpMeta(entry.pc.localDescription) });
   }
