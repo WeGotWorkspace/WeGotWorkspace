@@ -314,6 +314,22 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.archived).toBe(true);
   });
 
+  it("keeps optimistic archived when the server row is newer but still unarchived", () => {
+    const local: Note = {
+      ...sampleNote,
+      archived: true,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      archived: false,
+      date: "2026-08-10T13:00:00.000Z",
+      updatedAt: "2026-08-10T13:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.archived).toBe(true);
+  });
+
   it("keeps optimistic notebook when merging a stale bootstrap row", () => {
     const local: Note = {
       ...sampleNote,
@@ -705,6 +721,16 @@ describe("notes-note-utils", () => {
       searchQuery: "",
     });
     expect(sharedNb.map((note) => note.id)).toEqual(["group-1"]);
+  });
+
+  it("excludes notes from All when only note.archived is set", () => {
+    const visible = filterVisibleNotes([{ ...sampleNote, id: "n-arch", archived: true }], {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible).toEqual([]);
   });
 
   it("orders visible notes newest-edited first", () => {

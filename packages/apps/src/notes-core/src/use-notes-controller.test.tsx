@@ -1129,6 +1129,35 @@ describe("useNotesController archive persist flags", () => {
     expect(result.current.selectedIds).toEqual([]);
   });
 
+  it("keeps archived notes out of All after a stale bootstrap refresh", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result, rerender } = renderHook(
+      ({ data, bootstrapRevision }: { data: NotesUIData; bootstrapRevision?: number }) =>
+        useNotesController({ data, listLoading: false, bootstrapRevision }),
+      { initialProps: { data, bootstrapRevision: 0 } },
+    );
+
+    act(() => {
+      result.current.toggleArchive("note-1");
+    });
+
+    rerender({
+      data: {
+        notes: [{ ...localNote, id: "note-1", archived: false }],
+        notebooks: ["Drafts"],
+        tags: [],
+      },
+      bootstrapRevision: 1,
+    });
+
+    expect(result.current.archived["note-1"]).toBe(true);
+    expect(result.current.visibleNotes).toEqual([]);
+  });
+
   it("keeps optimistic archived when a stale bootstrap refresh arrives", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", archived: false }],

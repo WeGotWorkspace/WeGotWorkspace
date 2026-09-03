@@ -282,8 +282,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const nextArchived = !beforeArchived;
       const wasOpen = activeId === id;
       const nextArchivedMap = { ...archived, [id]: nextArchived };
+      const editedAt = new Date().toISOString();
       setArchived(nextArchivedMap);
-      const archivedNote = { ...row, archived: nextArchived };
+      const archivedNote = { ...row, archived: nextArchived, date: editedAt, updatedAt: editedAt };
       setNotes((prev) => prev.map((note) => (note.id === id ? archivedNote : note)));
       persistOptimisticNote(archivedNote, true);
 
