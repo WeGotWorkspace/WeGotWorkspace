@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { blurWorkspaceDetailEditor } from "@/hooks/blur-workspace-detail-editor";
 import { useIsTouch } from "@/hooks/use-is-touch";
@@ -55,19 +56,16 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
 
   const openMobileDetail = useCallback(
     (noteId?: string) => {
-      const during =
-        noteId === undefined
-          ? undefined
-          : () => {
-              setActiveId(noteId);
-              return notifyNoteChange(noteId);
-            };
-      const handle = workspaceLayoutRef.current;
-      if (handle) {
-        handle.openMobileDetail(during);
-        return;
+      // Commit selection and the path *before* startViewTransition. Chrome and
+      // iOS drop history writes (and can skip React state) inside that callback,
+      // which left /notes/all with an empty overlay and no back control.
+      if (noteId !== undefined) {
+        flushSync(() => {
+          setActiveId(noteId);
+        });
+        notifyNoteChange(noteId);
       }
-      void during?.();
+      workspaceLayoutRef.current?.openMobileDetail();
     },
     [notifyNoteChange, workspaceLayoutRef],
   );
@@ -157,18 +155,13 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   });
 
   const closeMobileDetail = useCallback(() => {
-    const during = () => {
+    flushSync(() => {
       setActiveId("");
       setSelectedIds([]);
       setSelectionMode(false);
-      return notifyNoteChange("");
-    };
-    const handle = workspaceLayoutRef.current;
-    if (handle) {
-      handle.closeMobileDetail(during);
-      return;
-    }
-    void during();
+    });
+    notifyNoteChange("");
+    workspaceLayoutRef.current?.closeMobileDetail();
   }, [notifyNoteChange, setSelectedIds, setSelectionMode, workspaceLayoutRef]);
 
   // URL / deep-link changes update activeId — keep selectedIds aligned so

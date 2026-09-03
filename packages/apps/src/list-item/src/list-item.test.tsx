@@ -55,6 +55,11 @@ describe("ListItem", () => {
     expect(container.querySelector(".list-item__body")).toBeNull();
   });
 
+  it("uses itemId for data-list-item-id when React id is overwritten", () => {
+    const { getByRole } = render(<ListItem {...baseProps} id="listItem-0" itemId="note-1" />);
+    expect(getByRole("button").getAttribute("data-list-item-id")).toBe("note-1");
+  });
+
   it("keeps standalone click handlers when the list parent does not delegate", () => {
     const onClick = vi.fn();
     const { getByRole } = render(<ListItem {...baseProps} onClick={onClick} />);
