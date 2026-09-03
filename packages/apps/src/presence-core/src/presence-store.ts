@@ -1,3 +1,4 @@
+import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
 import type {
   PresenceChatMessage,
@@ -215,6 +216,7 @@ export class PresenceStore {
       await this.session.join(this.selfDisplayName);
       if (this.stopped) return;
       this.joined = true;
+      getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       this.update({ status: "online" });
       this.publishRoster();
     } catch {

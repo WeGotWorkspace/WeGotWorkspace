@@ -78,6 +78,38 @@ describe("PrincipalLinkRegistry", () => {
     registry.receive("admin", "p1", openEnvelope());
     expect(seen).toEqual(["admin:p1:open"]);
   });
+
+  it("waits for principal join attempt and resolves immediately once marked", async () => {
+    vi.useFakeTimers();
+    const registry = new PrincipalLinkRegistry();
+    const pending = registry.waitForPrincipalJoinAttempt(5000);
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(settled).toBe(false);
+    registry.markPrincipalJoinAttempted();
+    await pending;
+    expect(settled).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("times out principal join wait when presence never joins", async () => {
+    vi.useFakeTimers();
+    const registry = new PrincipalLinkRegistry();
+    const pending = registry.waitForPrincipalJoinAttempt(2000);
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await pending;
+    expect(settled).toBe(true);
+    vi.useRealTimers();
+  });
 });
 
 describe("principal link registry singleton", () => {

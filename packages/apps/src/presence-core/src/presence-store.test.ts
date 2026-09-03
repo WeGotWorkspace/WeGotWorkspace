@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import {
+  getPrincipalLinkRegistry,
+  resetPrincipalLinkRegistryForTests,
+} from "@/lib/rtc/session/principal-link-registry";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import {
   createPresenceStore,
@@ -104,6 +108,7 @@ const SELF = { username: "alice", displayName: "Alice" };
 
 describe("PresenceStore join timing", () => {
   it("joins eagerly on start in eager mode", async () => {
+    resetPrincipalLinkRegistryForTests();
     const { session, store } = setup({ joinMode: "eager" });
     store.start(SELF);
     expect(store.getSnapshot().status).toBe("joining");
@@ -111,6 +116,7 @@ describe("PresenceStore join timing", () => {
     expect(session.joinCalls).toBe(1);
     expect(store.getSnapshot().status).toBe("online");
     expect(store.getSnapshot().selfUsername).toBe("alice");
+    expect(getPrincipalLinkRegistry().hasPrincipalJoinAttempted()).toBe(true);
   });
 
   it("defers the join until the tab becomes visible in lazy mode", async () => {

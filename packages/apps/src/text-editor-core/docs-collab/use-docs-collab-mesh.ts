@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
+import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
+import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { resumeDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import {
@@ -200,6 +202,10 @@ export function useDocsCollabMesh({
 
   const joinMesh = useCallback(
     async (name: string, authToken: string): Promise<DocsCollabMeshPeer[]> => {
+      if (wgwHasAuthenticatedSession() && !wgwIsGuestSession()) {
+        await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
+      }
+
       const resumed = resumeDocsCollabMeshSession(room);
       if (resumed) {
         refs.meshRef.current = resumed;
