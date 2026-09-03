@@ -1,6 +1,9 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { SegmentedControl } from "@/segmented-control/src/segmented-control";
+import {
+  BooleanSegmentedControl,
+  SegmentedControl,
+} from "@/segmented-control/src/segmented-control";
 
 const options = [
   { value: "grid", label: "Grid" },
@@ -37,5 +40,14 @@ describe("SegmentedControl", () => {
     expect(root?.hasAttribute("data-disabled")).toBe(true);
     expect(buttons).toHaveLength(2);
     buttons.forEach((button) => expect(button.disabled).toBe(true));
+  });
+
+  it("renders a compact switch for boolean on/off", () => {
+    const onChange = vi.fn();
+    render(<BooleanSegmentedControl value={false} onChange={onChange} aria-label="Feature" />);
+    const control = screen.getByRole("switch", { name: "Feature" });
+    expect(control.classList.contains("switch")).toBe(true);
+    fireEvent.click(control);
+    expect(onChange).toHaveBeenCalledWith(true);
   });
 });

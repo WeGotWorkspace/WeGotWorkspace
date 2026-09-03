@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
+  canWriteContactGroup,
+  contactAndGroupShareAddressBook,
   contactsGroupViewKey,
+  filterCardsByHiddenAddressBooks,
   filterCardsByView,
+  cardWithAddedGroupMember,
+  cardsWithGroupMember,
+  mergeBootstrapCardsPreservingOptimistic,
+  mergeGroupCardPreservingOptimisticMembers,
   groupAddMembersPatch,
   groupRemoveMembersPatch,
   groupRenamePatch,
   isContactGroupCard,
+  groupsContainingCard,
+  groupsInAddressBook,
   listContactGroups,
   resolveGroupMemberCardIds,
   resolveGroupMemberCards,
@@ -104,6 +113,27 @@ describe("contacts-group-utils", () => {
       "card-group-family",
       "card-group-friends",
     ]);
+  });
+
+  it("keeps groups under their first enabled address book only", () => {
+    const teamGroup = {
+      ...friendsGroup,
+      id: "card-group-eng",
+      name: { full: "Standups" },
+      addressBookIds: { "group-eng": true },
+    } as unknown as ContactCard;
+    const orphan = {
+      ...friendsGroup,
+      id: "card-group-orphan",
+      name: { full: "Orphan" },
+      addressBookIds: {},
+    } as unknown as ContactCard;
+    expect(
+      groupsInAddressBook([friendsGroup, teamGroup, orphan], "default").map((g) => g.id),
+    ).toEqual(["card-group-friends"]);
+    expect(
+      groupsInAddressBook([friendsGroup, teamGroup, orphan], "group-eng").map((g) => g.id),
+    ).toEqual(["card-group-eng"]);
   });
 
   it("resolves member uids to card ids", () => {
@@ -259,6 +289,16 @@ describe("contacts-group-utils", () => {
     });
   });
 
+  it("allows write when a group book is writable or operations exist without book ids", () => {
+    const writable = [{ id: "default", myRights: { mayWrite: true } }];
+    const viewOnly = [{ id: "default", myRights: { mayWrite: false } }];
+    expect(canWriteContactGroup(friendsGroup, writable)).toBe(true);
+    expect(canWriteContactGroup(friendsGroup, viewOnly)).toBe(false);
+    expect(canWriteContactGroup(undefined, writable)).toBe(false);
+    expect(canWriteContactGroup({ addressBookIds: {} }, writable, true)).toBe(true);
+    expect(canWriteContactGroup({ addressBookIds: {} }, writable, false)).toBe(false);
+  });
+
   it("returns group members sorted by surname-first sort key regardless of members insertion order", () => {
     const zoeUid = "urn:uuid:550e8400-e29b-41d4-a716-446655440030";
     const zoe = {
@@ -303,10 +343,87 @@ describe("contacts-group-utils", () => {
   });
 });
 
+describe("groupsContainingCard", () => {
+  it("returns groups that include the contact", () => {
+    expect(
+      groupsContainingCard("card-jane", [friendsGroup, familyGroup], cards).map((g) => g.id),
+    ).toEqual(["card-group-friends", "card-group-family"]);
+    expect(
+      groupsContainingCard("card-joe", [friendsGroup, familyGroup], cards).map((g) => g.id),
+    ).toEqual(["card-group-friends"]);
+  });
+
+  it("returns an empty list when the contact is not a member", () => {
+    const outsider = { ...jane, id: "card-out", uid: "urn:uuid:out" } as ContactCard;
+    expect(groupsContainingCard("card-out", [friendsGroup], [...cards, outsider])).toEqual([]);
+  });
+});
+
+describe("contactAndGroupShareAddressBook", () => {
+  it("allows a contact and group that share an enabled book id", () => {
+    expect(
+      contactAndGroupShareAddressBook(
+        { addressBookIds: { default: true } },
+        { addressBookIds: { default: true } },
+      ),
+    ).toBe(true);
+    expect(
+      contactAndGroupShareAddressBook(
+        { addressBookIds: { default: true, "group-administrators": true } },
+        { addressBookIds: { "group-administrators": true } },
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects Admin vs Administrators (exact id, not prefix)", () => {
+    expect(
+      contactAndGroupShareAddressBook(
+        { addressBookIds: { "group-administrators": true } },
+        { addressBookIds: { "group-admin": true } },
+      ),
+    ).toBe(false);
+    expect(
+      contactAndGroupShareAddressBook(
+        { addressBookIds: { "group-admin": true } },
+        { addressBookIds: { "group-administrators": true } },
+      ),
+    ).toBe(false);
+  });
+
+  it("ignores disabled book ids and empty maps", () => {
+    expect(
+      contactAndGroupShareAddressBook(
+        { addressBookIds: { default: false, "group-admin": true } },
+        { addressBookIds: { default: true } },
+      ),
+    ).toBe(false);
+    expect(
+      contactAndGroupShareAddressBook(
+        { addressBookIds: {} },
+        { addressBookIds: { default: true } },
+      ),
+    ).toBe(false);
+    expect(contactAndGroupShareAddressBook(null, { addressBookIds: { default: true } })).toBe(
+      false,
+    );
+  });
+});
+
 describe("groupAddMembersPatch", () => {
   it("adds new members by uid", () => {
     const patch = groupAddMembersPatch(familyGroup, [joe]);
     expect(patch).toEqual({ members: { [joeUid]: true } });
+  });
+
+  it("applies a new member onto a group card and card list", () => {
+    const merged = cardWithAddedGroupMember(familyGroup, joe);
+    expect(merged.members).toEqual({ [janeUid]: true, [joeUid]: true });
+    expect((merged as { memberCardIds?: Record<string, string> }).memberCardIds?.[joeUid]).toBe(
+      joe.id,
+    );
+    const list = cardsWithGroupMember([jane, familyGroup], familyGroup.id, joe);
+    expect(list.find((card) => card.id === familyGroup.id)?.members?.[joeUid]).toBe(true);
+    expect(cardsWithGroupMember([jane], undefined, joe)).toEqual([jane]);
   });
 
   it("returns null when all cards are already members", () => {
@@ -324,6 +441,34 @@ describe("groupAddMembersPatch", () => {
 
   it("skips group cards to prevent nesting", () => {
     expect(groupAddMembersPatch(familyGroup, [friendsGroup])).toBeNull();
+  });
+
+  it("adds a same-book contact and rejects a cross-book Administrators contact", () => {
+    const adminGroup = {
+      ...familyGroup,
+      id: "card-group-admin",
+      addressBookIds: { "group-admin": true },
+      members: {},
+    } as unknown as ContactCard;
+    const adminContact = {
+      ...joe,
+      id: "card-admin-lead",
+      uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440080",
+      addressBookIds: { "group-admin": true },
+    } as unknown as ContactCard;
+    const administratorsContact = {
+      ...joe,
+      id: "card-admins-lead",
+      uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440081",
+      addressBookIds: { "group-administrators": true },
+    } as unknown as ContactCard;
+    expect(groupAddMembersPatch(adminGroup, [adminContact])).toEqual({
+      members: { [adminContact.uid!]: true },
+    });
+    expect(groupAddMembersPatch(adminGroup, [administratorsContact])).toBeNull();
+    expect(groupAddMembersPatch(adminGroup, [adminContact, administratorsContact])).toEqual({
+      members: { [adminContact.uid!]: true },
+    });
   });
 
   it("adds only the cards not yet in the group", () => {
@@ -407,5 +552,75 @@ describe("groupRemoveMembersPatch", () => {
     } as unknown as ContactCard;
     const patch = groupRemoveMembersPatch(groupWithApiIds, ["card-jane"], cards);
     expect(patch).toEqual({ members: { [janeUid]: false } });
+  });
+});
+
+describe("mergeBootstrapCardsPreservingOptimistic", () => {
+  it("returns the same list when bootstrap and local cards are the same reference", () => {
+    expect(mergeBootstrapCardsPreservingOptimistic(cards, cards)).toBe(cards);
+  });
+
+  it("keeps an optimistic add when the list payload is still stale", () => {
+    const local = cardWithAddedGroupMember(familyGroup, joe);
+    const [merged] = mergeBootstrapCardsPreservingOptimistic([familyGroup], [local]);
+    expect(merged.members?.[joeUid]).toBe(true);
+    expect(groupsContainingCard(joe.id, [merged], [jane, joe, merged]).map((g) => g.id)).toEqual([
+      familyGroup.id,
+    ]);
+  });
+
+  it("keeps an optimistic remove when the list payload still lists the member", () => {
+    const local = {
+      ...friendsGroup,
+      members: { ...friendsGroup.members, [janeUid]: false },
+    } as unknown as ContactCard;
+    const [merged] = mergeBootstrapCardsPreservingOptimistic([friendsGroup], [local]);
+    expect(merged.members?.[janeUid]).toBe(false);
+    expect(groupsContainingCard(jane.id, [merged], cards)).toEqual([]);
+  });
+
+  it("keeps a local-only group that the list payload has not seen yet", () => {
+    const created = {
+      ...familyGroup,
+      id: "card-group-studio",
+      name: { full: "Studio" },
+      members: { [janeUid]: true },
+    } as unknown as ContactCard;
+    const merged = mergeBootstrapCardsPreservingOptimistic([jane], [jane, created]);
+    expect(merged.map((card) => card.id)).toEqual(["card-jane", "card-group-studio"]);
+  });
+
+  it("takes the incoming members once they match the optimistic set", () => {
+    const local = cardWithAddedGroupMember(familyGroup, joe);
+    const incoming = {
+      ...local,
+      etag: "etag-2",
+      memberCardIds: { [janeUid]: jane.id, [joeUid]: joe.id },
+    } as ContactCard;
+    const merged = mergeGroupCardPreservingOptimisticMembers(incoming, local);
+    expect(merged.etag).toBe("etag-2");
+    expect((merged as { memberCardIds?: Record<string, string> }).memberCardIds).toEqual({
+      [janeUid]: jane.id,
+      [joeUid]: joe.id,
+    });
+  });
+});
+
+describe("filterCardsByHiddenAddressBooks", () => {
+  it("drops cards that only live in hidden books", () => {
+    const work = {
+      ...joe,
+      id: "card-work",
+      addressBookIds: { "group-eng": true },
+    } as unknown as ContactCard;
+    expect(filterCardsByHiddenAddressBooks([jane, work], new Set(["group-eng"]))).toEqual([jane]);
+  });
+
+  it("keeps a card that is also in a visible book", () => {
+    const both = {
+      ...jane,
+      addressBookIds: { default: true, "group-eng": true },
+    } as unknown as ContactCard;
+    expect(filterCardsByHiddenAddressBooks([both], new Set(["group-eng"]))).toEqual([both]);
   });
 });

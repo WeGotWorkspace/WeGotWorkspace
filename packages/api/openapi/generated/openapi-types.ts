@@ -7492,9 +7492,9 @@ export interface components {
             mayRead: boolean;
             /** @description May create, update, delete, or move cards. */
             mayWrite: boolean;
-            /** @description May modify shareWith. */
+            /** @description May modify shareWith. True for personal owners and current members of a group-owned book. False on inbound sharees. */
             mayShare: boolean;
-            /** @description May delete the address book itself. */
+            /** @description False on owned and membership books. True on inbound sharees means dismiss/hide (addressbook_share_dismissals), not delete the owner's book. */
             mayDelete: boolean;
         };
         /**
@@ -7506,6 +7506,7 @@ export interface components {
          *       "sortOrder": 0,
          *       "isDefault": true,
          *       "isSubscribed": true,
+         *       "isSharee": false,
          *       "shareWith": null,
          *       "myRights": {
          *         "mayRead": true,
@@ -7516,9 +7517,9 @@ export interface components {
          *     }
          */
         AddressBook: {
-            /** @description Immutable server-set address book identifier. */
+            /** @description Immutable server-set identifier. Personal book is `default`; group membership books are `group-{slug}`; inbound shares are `shared-{addressbookId}`. */
             id: components["schemas"]["JsContactId"];
-            /** @description User-visible name. */
+            /** @description Server-set from the principal display name. Name patches are forbidden. */
             name: string;
             /** @description Long-form description; null when unset. */
             description?: string | null;
@@ -7528,10 +7529,12 @@ export interface components {
             isDefault: boolean;
             /** @description Whether the book is shown in client UI. */
             isSubscribed: boolean;
-            /** @description Principal id to rights map; null when not shared. */
+            /** @description Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. */
             shareWith?: {
                 [key: string]: components["schemas"]["AddressBookRights"];
             } | null;
+            /** @description True on inbound share listings (Shared with me). False for personal owners and group-membership books. */
+            isSharee: boolean;
             /** @description Current user's access rights for this book. */
             myRights: components["schemas"]["AddressBookRights"];
         };
@@ -7546,6 +7549,7 @@ export interface components {
          *           "sortOrder": 0,
          *           "isDefault": true,
          *           "isSubscribed": true,
+         *           "isSharee": false,
          *           "shareWith": null,
          *           "myRights": {
          *             "mayRead": true,
@@ -8494,6 +8498,7 @@ export interface components {
             /** @description Blob size in bytes. */
             size: number;
         };
+        /** @description Rejected on AddressBook/set — mayCreateAddressBook is false (one book per principal). */
         AddressBookCreate: {
             name: string;
             description?: string | null;
@@ -8501,9 +8506,15 @@ export interface components {
             id?: components["schemas"]["JsContactId"];
         };
         AddressBookPatch: {
+            /** @description Rejected — names are server-set from the principal display name. */
             name?: string;
             description?: string | null;
+            /** @description Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals). */
             isSubscribed?: boolean;
+            /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
+            shareWith?: {
+                [key: string]: components["schemas"]["AddressBookRights"];
+            } | null;
         };
         AddressBookDeleteOptions: {
             /**

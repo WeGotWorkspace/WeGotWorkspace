@@ -1,0 +1,18 @@
+@import "../../styles.css" reference;
+
+.contacts-org-icon {
+  @apply size-3.5 shrink-0;
+  color: var(--user-avatar-fg, var(--color-ink));
+}
+
+.user-avatar--md .contacts-org-icon {
+  @apply size-4;
+}
+
+.user-avatar--lg .contacts-org-icon {
+  @apply size-5;
+}
+
+.user-avatar--xl .contacts-org-icon {
+  @apply size-8;
+}

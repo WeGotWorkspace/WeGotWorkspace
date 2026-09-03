@@ -7,7 +7,9 @@ namespace Tests\Feature\Jmap;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Support\WgwSettings;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Sabre\CardDAV\Backend\PDO;
 use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -49,7 +51,7 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         $this->assertSame([], $session['capabilities'][JmapCapabilities::CONTACTS]);
         $contacts = $session['accounts']['bob']['accountCapabilities'][JmapCapabilities::CONTACTS];
         $this->assertSame(1, $contacts['maxAddressBooksPerCard']);
-        $this->assertTrue($contacts['mayCreateAddressBook']);
+        $this->assertFalse($contacts['mayCreateAddressBook']);
         $this->assertSame('bob', $session['primaryAccounts'][JmapCapabilities::CONTACTS]);
     }
 
@@ -86,7 +88,7 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         $this->assertTrue($default['isDefault']);
         // AddressBookRights per RFC 9610 §2 — the four-property object.
         $this->assertSame(
-            ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => false],
+            ['mayRead' => true, 'mayWrite' => true, 'mayShare' => true, 'mayDelete' => false],
             $default['myRights'],
         );
         $this->assertSame([], $response->json('methodResponses.0.1.notFound'));
@@ -102,51 +104,34 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         $this->assertSame(['missing-book'], $response->json('methodResponses.0.1.notFound'));
     }
 
-    public function test_address_book_set_lifecycle_create_update_destroy(): void
+    public function test_address_book_set_create_rename_and_destroy_are_forbidden(): void
     {
         $create = $this->jmap([
             ['AddressBook/set', ['accountId' => 'bob', 'create' => ['b0' => ['name' => 'Team']]], 'c0'],
         ])->assertOk();
+        $create->assertJsonPath('methodResponses.0.1.notCreated.b0.type', 'forbidden');
 
-        $created = $create->json('methodResponses.0.1.created.b0');
-        $this->assertIsArray($created);
-        $bookId = $created['id'];
-        $this->assertSame('Team', $created['name']);
-        $oldState = $create->json('methodResponses.0.1.oldState');
-        $newState = $create->json('methodResponses.0.1.newState');
-        $this->assertNotSame($oldState, $newState);
-        $this->assertNotNull(JmapAccountStateCodec::decompose($newState));
-
-        $update = $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'update' => [$bookId => ['name' => 'Team 2']]], 'c1'],
-            ['AddressBook/get', ['accountId' => 'bob', 'ids' => [$bookId]], 'c2'],
+        $rename = $this->jmap([
+            ['AddressBook/set', ['accountId' => 'bob', 'update' => ['default' => ['name' => 'Team 2']]], 'c1'],
         ])->assertOk();
-        $this->assertNull($update->json('methodResponses.0.1.updated.'.$bookId));
-        $this->assertSame('Team 2', $update->json('methodResponses.1.1.list.0.name'));
+        $rename->assertJsonPath('methodResponses.0.1.notUpdated.default.type', 'forbidden');
 
         $destroy = $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => [$bookId]], 'c3'],
+            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => ['default']], 'c2'],
         ])->assertOk();
-        $this->assertSame([$bookId], $destroy->json('methodResponses.0.1.destroyed'));
+        $destroy->assertJsonPath('methodResponses.0.1.notDestroyed.default.type', 'forbidden');
     }
 
-    public function test_address_book_destroy_with_cards_requires_on_destroy_remove_contents(): void
+    public function test_address_book_destroy_is_forbidden_even_with_on_destroy_remove_contents(): void
     {
         $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'create' => ['b0' => ['name' => 'Filled', 'id' => 'filled']]], 'c0'],
-            ['ContactCard/set', ['accountId' => 'bob', 'create' => ['k0' => $this->sampleContactCardPayload('filled')]], 'c1'],
+            ['ContactCard/set', ['accountId' => 'bob', 'create' => ['k0' => $this->sampleContactCardPayload()]], 'c0'],
         ])->assertOk();
 
         $rejected = $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => ['filled']], 'c2'],
+            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => ['default'], 'onDestroyRemoveContents' => true], 'c1'],
         ])->assertOk();
-        // RFC 9610 §2.2 SetError for a non-empty book without the flag.
-        $rejected->assertJsonPath('methodResponses.0.1.notDestroyed.filled.type', 'addressBookHasContents');
-
-        $removed = $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => ['filled'], 'onDestroyRemoveContents' => true], 'c3'],
-        ])->assertOk();
-        $this->assertSame(['filled'], $removed->json('methodResponses.0.1.destroyed'));
+        $rejected->assertJsonPath('methodResponses.0.1.notDestroyed.default.type', 'forbidden');
     }
 
     public function test_address_book_set_rejects_on_success_set_is_default(): void
@@ -381,23 +366,27 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
 
     public function test_contact_card_changes_expands_a_destroyed_book_into_destroyed_card_ids(): void
     {
-        // Create a second book with one card, read it (records the state row),
-        // and capture the account state.
+        // Extra books are API-forbidden; seed via CardDAV to exercise the
+        // changes codec when Sabre removes cards with the collection.
+        $carddav = new PDO(DB::connection('wgw')->getPdo());
+        $carddav->createAddressBook('principals/bob', 'doomed', [
+            '{DAV:}displayname' => 'Doomed',
+        ]);
         $setup = $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'create' => ['b0' => ['name' => 'Doomed', 'id' => 'doomed']]], 'c0'],
             ['ContactCard/set', ['accountId' => 'bob', 'create' => ['k0' => $this->sampleContactCardPayload('doomed')]], 'c1'],
         ])->assertOk();
-        $cardId = $setup->json('methodResponses.1.1.created.k0.id');
+        $cardId = $setup->json('methodResponses.0.1.created.k0.id');
+        $this->assertIsString($cardId);
 
         $state = $this->jmap([
             ['ContactCard/get', ['accountId' => 'bob', 'ids' => null], 'c2'],
         ])->assertOk()->json('methodResponses.0.1.state');
 
-        // Destroy the whole book: Sabre removes the cards directly, so only
-        // the recorded state rows can expand the deletion into card ids.
-        $this->jmap([
-            ['AddressBook/set', ['accountId' => 'bob', 'destroy' => ['doomed'], 'onDestroyRemoveContents' => true], 'c3'],
-        ])->assertOk();
+        foreach ($carddav->getAddressBooksForUser('principals/bob') as $book) {
+            if (($book['uri'] ?? '') === 'doomed' && isset($book['id'])) {
+                $carddav->deleteAddressBook((int) $book['id']);
+            }
+        }
 
         $changes = $this->jmap([
             ['ContactCard/changes', ['accountId' => 'bob', 'sinceState' => $state], 'c4'],
@@ -415,17 +404,19 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         $this->assertSame([], $response->json('methodResponses.0.1.destroyed'));
     }
 
-    public function test_address_book_set_rejects_share_with(): void
+    public function test_address_book_set_persists_share_with(): void
     {
         $response = $this->jmap([
             ['AddressBook/set', [
                 'accountId' => 'bob',
                 'update' => ['default' => ['shareWith' => ['alice' => ['mayRead' => true]]]],
             ], 'c0'],
+            ['AddressBook/get', ['accountId' => 'bob', 'ids' => ['default']], 'c1'],
         ])->assertOk();
 
-        $response->assertJsonPath('methodResponses.0.1.notUpdated.default.type', 'invalidProperties');
-        $this->assertSame(['shareWith'], $response->json('methodResponses.0.1.notUpdated.default.properties'));
+        $this->assertNull($response->json('methodResponses.0.1.notUpdated.default'));
+        $this->assertIsArray($response->json('methodResponses.1.1.list.0.shareWith.alice'));
+        $this->assertFalse($response->json('methodResponses.1.1.list.0.shareWith.alice.mayWrite'));
     }
 
     public function test_contact_card_create_accepts_name_components_without_full(): void

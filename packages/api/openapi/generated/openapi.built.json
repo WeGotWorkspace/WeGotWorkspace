@@ -3174,11 +3174,11 @@
                     },
                     "mayShare": {
                         "type": "boolean",
-                        "description": "May modify shareWith."
+                        "description": "May modify shareWith. True for personal owners and current members of a group-owned book. False on inbound sharees."
                     },
                     "mayDelete": {
                         "type": "boolean",
-                        "description": "May delete the address book itself."
+                        "description": "False on owned and membership books. True on inbound sharees means dismiss/hide (addressbook_share_dismissals), not delete the owner's book."
                     }
                 },
                 "additionalProperties": false,
@@ -3192,18 +3192,19 @@
                     "sortOrder",
                     "isDefault",
                     "isSubscribed",
+                    "isSharee",
                     "myRights"
                 ],
                 "properties": {
                     "id": {
                         "$ref": "#/components/schemas/JsContactId",
-                        "description": "Immutable server-set address book identifier."
+                        "description": "Immutable server-set identifier. Personal book is `default`; group membership books are `group-{slug}`; inbound shares are `shared-{addressbookId}`."
                     },
                     "name": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 255,
-                        "description": "User-visible name."
+                        "description": "Server-set from the principal display name. Name patches are forbidden."
                     },
                     "description": {
                         "type": [
@@ -3239,7 +3240,11 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Principal id to rights map; null when not shared."
+                        "description": "Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes."
+                    },
+                    "isSharee": {
+                        "type": "boolean",
+                        "description": "True on inbound share listings (Shared with me). False for personal owners and group-membership books."
                     },
                     "myRights": {
                         "$ref": "#/components/schemas/AddressBookRights",
@@ -3255,6 +3260,7 @@
                     "sortOrder": 0,
                     "isDefault": true,
                     "isSubscribed": true,
+                    "isSharee": false,
                     "shareWith": null,
                     "myRights": {
                         "mayRead": true,
@@ -3288,6 +3294,7 @@
                             "sortOrder": 0,
                             "isDefault": true,
                             "isSubscribed": true,
+                            "isSharee": false,
                             "shareWith": null,
                             "myRights": {
                                 "mayRead": true,
@@ -5249,6 +5256,7 @@
                 "required": [
                     "name"
                 ],
+                "description": "Rejected on AddressBook/set — mayCreateAddressBook is false (one book per principal).",
                 "properties": {
                     "name": {
                         "type": "string",
@@ -5274,7 +5282,8 @@
                     "name": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 255
+                        "maxLength": 255,
+                        "description": "Rejected — names are server-set from the principal display name."
                     },
                     "description": {
                         "type": [
@@ -5283,7 +5292,25 @@
                         ]
                     },
                     "isSubscribed": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals)."
+                    },
+                    "shareWith": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JsContactId"
+                                },
+                                "additionalProperties": {
+                                    "$ref": "#/components/schemas/AddressBookRights"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes."
                     }
                 },
                 "additionalProperties": false

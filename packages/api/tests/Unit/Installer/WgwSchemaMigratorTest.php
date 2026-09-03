@@ -99,6 +99,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'drive_share_sessions',
             'collab_peers',
             'collab_messages',
+            'principal_peers',
+            'principal_messages',
             'search_documents',
             'search_terms',
             'jmap_contact_states',
@@ -106,6 +108,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'calendar_subscriptions',
             'calendar_feed_tokens',
             'calendar_share_dismissals',
+            'addressbook_shares',
+            'addressbook_share_dismissals',
             'note_stars',
             'jmap_note_states',
         ] as $table) {

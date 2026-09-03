@@ -1,5 +1,5 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
-import { Pencil } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -19,8 +19,19 @@ export type CollectionSidebarRowProps = {
   onSelect?: () => void;
   onEdit?: () => void;
   editLabel?: string;
+  /** Leading mark inside the select control (e.g. a group icon). */
+  leading?: ReactNode;
   badges?: ReactNode;
   trailing?: ReactNode;
+  /** Indent under a parent collection (contacts groups under a book). */
+  nested?: boolean;
+  /** Parent of the active nested row — related wash, not selected. */
+  related?: boolean;
+  /** Fold state when {@link onToggleExpand} is set. Default expanded. */
+  expanded?: boolean;
+  /** Independent of `onSelect`. Omit to hide the fold toggle. */
+  onToggleExpand?: () => void;
+  expandLabel?: string;
   showColorDot?: boolean;
   /**
    * Extra BEM block applied alongside {@link COLLECTION_SIDEBAR_ROW_BLOCK}.
@@ -76,8 +87,14 @@ export function CollectionSidebarRow({
   onSelect,
   onEdit,
   editLabel = "Edit",
+  leading,
   badges,
   trailing,
+  nested = false,
+  related = false,
+  expanded = true,
+  onToggleExpand,
+  expandLabel,
   showColorDot = false,
   blockName = COLLECTION_SIDEBAR_ROW_BLOCK,
   className,
@@ -90,6 +107,8 @@ export function CollectionSidebarRow({
       className={cn(
         bem(blocks),
         selected && bem(blocks, "--selected"),
+        nested && bem(blocks, "--nested"),
+        related && !selected && bem(blocks, "--related"),
         className,
         rootProps?.className,
       )}
@@ -113,6 +132,11 @@ export function CollectionSidebarRow({
         <span className={bem(blocks, "__dot")} aria-hidden />
       ) : null}
       <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
+        {leading ? (
+          <span className={bem(blocks, "__leading")} aria-hidden>
+            {leading}
+          </span>
+        ) : null}
         <span className={bem(blocks, "__title")}>
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
@@ -127,6 +151,23 @@ export function CollectionSidebarRow({
           variant="ghost"
           className={`${bem(blocks, "__action")} ${bem(blocks, "__edit")}`}
           onClick={() => onEdit()}
+        />
+      ) : null}
+      {onToggleExpand ? (
+        <IconButton
+          label={expandLabel ?? (expanded ? `Collapse ${name}` : `Expand ${name}`)}
+          icon={
+            expanded ? (
+              <ChevronDown className="size-3.5" aria-hidden />
+            ) : (
+              <ChevronRight className="size-3.5" aria-hidden />
+            )
+          }
+          size="sm"
+          variant="ghost"
+          className={bem(blocks, "__expand")}
+          aria-expanded={expanded}
+          onClick={() => onToggleExpand()}
         />
       ) : null}
     </li>

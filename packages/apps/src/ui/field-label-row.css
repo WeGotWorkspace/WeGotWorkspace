@@ -15,6 +15,15 @@
   color: var(--field-label-color, var(--color-muted-foreground));
 }
 
+/**
+ * Empty-caption spacer: keep the band in flow (height + `space-y` gap).
+ * Do not use `display: none` (collapses) or `flex-basis` to a column width
+ * (in a column stack that becomes height).
+ */
+.field-label-row__label--reserved {
+  @apply invisible pointer-events-none select-none;
+}
+
 .field-label-row__lock {
   @apply size-3 shrink-0 opacity-60;
 }

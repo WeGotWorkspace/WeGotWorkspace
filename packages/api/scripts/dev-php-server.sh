@@ -22,6 +22,12 @@ trap cleanup EXIT INT TERM
 
 (cd "${API_ROOT}" && php artisan wgw:schema-migrate)
 
-env -u SABRE_BUILD_DIR php -S 127.0.0.1:9080 -t "${APP_ROOT}" "${APP_ROOT}/index.php" &
+# Align with docker/php/uploads.ini (32M shared-host conservative). The built-in
+# server ignores .htaccess / .user.ini; -d is the only way to raise PHP's 8M default.
+env -u SABRE_BUILD_DIR php \
+  -d display_errors=0 \
+  -d post_max_size=32M \
+  -d upload_max_filesize=32M \
+  -S 127.0.0.1:9080 -t "${APP_ROOT}" "${APP_ROOT}/index.php" &
 php_pid=$!
 wait "${php_pid}"

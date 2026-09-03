@@ -18,6 +18,9 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.calendar-header-actions \.calendar-view-select \{[\s\S]*min-w-0/,
     );
     expect(css).toMatch(/\.calendar-workspace \.workspace-app-layout__main-header \{[\s\S]*p-3/);
+    expect(css).toMatch(
+      /\.calendar-workspace \.calendar-header-actions \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
   });
 
   it("tints the open inbox and current-today controls instead of filled-emerald", () => {

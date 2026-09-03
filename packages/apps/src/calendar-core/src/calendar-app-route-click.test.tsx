@@ -123,6 +123,11 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname).toBe("/calendar/list/month/2026-09-01");
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    await waitFor(() => {
+      expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
+    });
+
     fireEvent.click(screen.getAllByRole("button", { name: "Today" }).at(-1)!);
     // "Today" anchors on the real current date (local), which may coincide with
     // the 2026-09-01 anchor reached via "Next" — assert the exact target instead.
@@ -134,6 +139,7 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     ].join("-");
     await waitFor(() => {
       expect(history.location.pathname).toBe(`/calendar/list/month/${todayIso}`);
+      expect(history.location.pathname).not.toBe("/calendar/list/month/2026-08-17");
     });
   });
 

@@ -97,6 +97,10 @@
   @apply flex items-center gap-1;
 }
 
+.calendar-workspace .calendar-header-actions {
+  --control-radius: var(--control-radius-button-pill);
+}
+
 /* Labeled Today stays in actions on desktop; icon-only sits before the title on mobile. */
 .calendar-workspace .view-header__title-prefix {
   @apply hidden;

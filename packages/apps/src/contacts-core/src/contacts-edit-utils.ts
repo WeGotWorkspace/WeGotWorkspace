@@ -1,7 +1,10 @@
+import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
 import {
+  findBirthAnniversary,
   mapEntriesSorted,
   synthesizeNameFromComponents,
 } from "@/contacts-core/src/contacts-display-utils";
+import { canWriteContactGroup } from "@/contacts-core/src/contacts-group-utils";
 import type {
   AddressBook,
   ContactCard,
@@ -14,6 +17,9 @@ export const CONTACTS_CREATE_ID = "__contacts_create__";
 /** JSContact channel context values exposed in the edit UI (maps to `contexts` on phones/emails/addresses/links). */
 export const CONTACT_CHANNEL_CONTEXTS = ["", "home", "work", "school"] as const;
 export type ContactChannelContext = (typeof CONTACT_CHANNEL_CONTEXTS)[number];
+
+/** New empty channel row default: Home → JSContact `contexts.private` (vCard HOME). */
+export const CONTACT_CHANNEL_DEFAULT_CONTEXT = "home" satisfies ContactChannelContext;
 
 /**
  * Phone type select values. Contexts (`home`/`work`/`school`) map to JSContact `contexts`
@@ -51,6 +57,9 @@ export type ContactEditDraft = {
   notes: string;
   organizationId?: string;
   notesId?: string;
+  /** ISO `YYYY-MM-DD` for the first JSContact `anniversaries` entry with `kind: "birth"`. */
+  birthday: string;
+  birthdayId?: string;
 };
 
 let contactIdCounter = 0;
@@ -86,16 +95,45 @@ export function resolveDefaultContactsView(_addressBooks: AddressBook[]): string
 export function resolveCreateAddressBookIds(
   view: string,
   addressBooks: AddressBook[],
+  cards: readonly Pick<ContactCard, "id" | "addressBookIds">[] = [],
 ): Record<string, true> {
   if (view.startsWith("book:")) {
     const bookId = view.slice(5);
     return { [bookId]: true };
+  }
+  if (view.startsWith("group:")) {
+    const groupId = view.slice("group:".length);
+    const group = cards.find((card) => card.id === groupId);
+    const bookIds = enabledAddressBookIds(group?.addressBookIds);
+    const preferred =
+      bookIds.find((id) => {
+        const book = addressBooks.find((row) => row.id === id);
+        return book != null && book.myRights?.mayWrite !== false;
+      }) ?? bookIds[0];
+    if (preferred) return { [preferred]: true };
   }
   const defaultBook = addressBooks.find((book) => book.isDefault) ?? addressBooks[0];
   if (!defaultBook) {
     throw new Error("No address book available for create");
   }
   return { [defaultBook.id]: true };
+}
+
+/** New contact is allowed on writable books and writable group views. */
+export function canCreateContactInView(
+  view: string,
+  addressBooks: readonly { id: string; myRights?: { mayWrite?: boolean } | null }[],
+  selectedGroup?: Pick<ContactCard, "addressBookIds"> | null,
+  hasOperations = false,
+): boolean {
+  if (view.startsWith("group:")) {
+    return canWriteContactGroup(selectedGroup, addressBooks, hasOperations);
+  }
+  if (view.startsWith("book:")) {
+    const book = addressBooks.find((row) => row.id === view.slice("book:".length));
+    return book != null && book.myRights?.mayWrite !== false;
+  }
+  return addressBooks.length > 0;
 }
 
 export function emptyContactEditDraft(): ContactEditDraft {
@@ -113,6 +151,7 @@ export function emptyContactEditDraft(): ContactEditDraft {
     department: "",
     organization: "",
     notes: "",
+    birthday: "",
   };
 }
 
@@ -203,6 +242,7 @@ export function contactEditDraftHasContent(draft: ContactEditDraft): boolean {
   if (draft.nameGiven.trim() || draft.nameGiven2.trim() || draft.nameSurname.trim()) return true;
   if (draft.title.trim() || draft.department.trim() || draft.organization.trim()) return true;
   if (draft.notes.trim()) return true;
+  if (draft.birthday.trim()) return true;
   if (draft.phones.some((row) => row.number.trim())) return true;
   if (draft.emails.some((row) => row.address.trim())) return true;
   if (draft.urls.some((row) => row.uri.trim())) return true;
@@ -280,6 +320,55 @@ function emailValue(
     address: email?.address?.trim() ?? "",
     contextType: readContactContext(email?.contexts),
   };
+}
+
+type AnniversaryDate = NonNullable<NonNullable<ContactCard["anniversaries"]>[string]>["date"];
+
+function padIsoPart(value: number, width: number): string {
+  return String(value).padStart(width, "0");
+}
+
+function anniversaryDateToIso(date: AnniversaryDate | undefined): string {
+  if (!date) return "";
+  if (date["@type"] === "Timestamp") {
+    const parsed = new Date(date.utc);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return [
+      padIsoPart(parsed.getUTCFullYear(), 4),
+      padIsoPart(parsed.getUTCMonth() + 1, 2),
+      padIsoPart(parsed.getUTCDate(), 2),
+    ].join("-");
+  }
+  if (date.year === undefined || date.month === undefined || date.day === undefined) {
+    return "";
+  }
+  return `${padIsoPart(date.year, 4)}-${padIsoPart(date.month, 2)}-${padIsoPart(date.day, 2)}`;
+}
+
+function isoToPartialDate(
+  iso: string,
+): Extract<AnniversaryDate, { "@type": "PartialDate" }> | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  if (!match) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+  return { "@type": "PartialDate", year, month, day };
+}
+
+function birthdayValue(card: ContactCard): { birthday: string; birthdayId?: string } {
+  const birth = findBirthAnniversary(card);
+  if (!birth) return { birthday: "" };
+  return { birthday: anniversaryDateToIso(birth[1].date), birthdayId: birth[0] };
+}
+
+function birthdayEntryFromIso(
+  iso: string,
+): NonNullable<ContactCardCreate["anniversaries"]>[string] | undefined {
+  const date = isoToPartialDate(iso);
+  if (!date) return undefined;
+  return { "@type": "Anniversary", kind: "birth", date };
 }
 
 function addressValue(card: ContactCard, id: string): ContactAddressDraft {
@@ -360,6 +449,7 @@ export function contactCardToEditDraft(card: ContactCard): ContactEditDraft {
     organizationId,
     notes: notesEntry?.note?.trim() ?? "",
     notesId,
+    ...birthdayValue(card),
   };
 }
 
@@ -489,6 +579,13 @@ export function editDraftToCreateBody(
     body.notes = {
       [draft.notesId ?? newContactMapId()]: { note: draft.notes.trim() },
     } as ContactCardCreate["notes"];
+  }
+
+  const birthday = birthdayEntryFromIso(draft.birthday);
+  if (birthday) {
+    body.anniversaries = {
+      [draft.birthdayId ?? newContactMapId()]: birthday,
+    } as ContactCardCreate["anniversaries"];
   }
 
   return body;
@@ -761,6 +858,24 @@ export function editDraftToPatch(draft: ContactEditDraft, active: ContactCard): 
       patch.notes = {
         [draft.notesId ?? activeNoteId ?? newContactMapId()]: { note: noteText },
       } as ContactCardPatch["notes"];
+    }
+  }
+
+  const currentBirthday = birthdayValue(active);
+  const nextBirthday = (draft.birthday ?? "").trim();
+  if (nextBirthday !== currentBirthday.birthday) {
+    const birthId = draft.birthdayId ?? currentBirthday.birthdayId;
+    if (!nextBirthday && birthId) {
+      patch.anniversaries = {
+        [birthId]: null,
+      } as unknown as ContactCardPatch["anniversaries"];
+    } else {
+      const birthday = birthdayEntryFromIso(nextBirthday);
+      if (birthday) {
+        patch.anniversaries = {
+          [birthId ?? newContactMapId()]: birthday,
+        } as ContactCardPatch["anniversaries"];
+      }
     }
   }
 
