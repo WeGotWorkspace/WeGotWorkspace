@@ -76,6 +76,40 @@ describe("notes mobile overlay selection", () => {
     });
   });
 
+  it("opens the tapped note inside the view transition", async () => {
+    let runPendingTransition: (() => void) | null = null;
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      value: (callback: () => void | Promise<void>) => {
+        runPendingTransition = () => {
+          void callback();
+        };
+        return { finished: Promise.resolve() };
+      },
+    });
+
+    const onNoteChange = vi.fn();
+    const bootstrap = createNotesAppBootstrap();
+    render(<NotesWorkspace {...bootstrap} listLoading={false} onNoteChange={onNoteChange} />);
+
+    const row = screen.getByRole("button", { name: /Endless scroll/i });
+    fireEvent.click(row);
+
+    const pane = screen.getByRole("main");
+    expect(runPendingTransition).not.toBeNull();
+    expect(pane.getAttribute("data-open")).toBe("false");
+    expect(within(pane).queryByText("Select a note")).toBeTruthy();
+
+    runPendingTransition?.();
+
+    expect(pane.getAttribute("data-open")).toBe("true");
+    expect(within(pane).queryByText("Select a note")).toBeNull();
+    await waitFor(() => {
+      expect(onNoteChange).toHaveBeenCalledWith("1");
+    });
+    expect(within(pane).getByRole("button", { name: "All Items" })).toBeTruthy();
+  });
+
   it("opens the tapped note and updates the path instead of the empty overlay", async () => {
     const onNoteChange = vi.fn();
     const bootstrap = createNotesAppBootstrap();
@@ -92,5 +126,47 @@ describe("notes mobile overlay selection", () => {
     });
     expect(within(pane).queryByText("Select a note")).toBeNull();
     expect(within(pane).getByRole("button", { name: "All Items" })).toBeTruthy();
+  });
+
+  it("clears selection inside the close view transition, not before it", async () => {
+    let runPendingTransition: (() => void) | null = null;
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      value: (callback: () => void | Promise<void>) => {
+        runPendingTransition = () => {
+          void callback();
+        };
+        return { finished: Promise.resolve() };
+      },
+    });
+
+    const onNoteChange = vi.fn();
+    const bootstrap = createNotesAppBootstrap();
+    render(
+      <NotesWorkspace
+        {...bootstrap}
+        listLoading={false}
+        initialNoteId="1"
+        onNoteChange={onNoteChange}
+      />,
+    );
+
+    const pane = screen.getByRole("main");
+    expect(pane.getAttribute("data-open")).toBe("true");
+    expect(within(pane).queryByText("Select a note")).toBeNull();
+
+    fireEvent.click(within(pane).getByRole("button", { name: "All Items" }));
+
+    expect(runPendingTransition).not.toBeNull();
+    expect(within(pane).queryByText("Select a note")).toBeNull();
+    expect(pane.getAttribute("data-open")).toBe("true");
+
+    runPendingTransition?.();
+
+    expect(pane.getAttribute("data-open")).toBe("false");
+    expect(within(pane).getByText("Select a note")).toBeTruthy();
+    await waitFor(() => {
+      expect(onNoteChange).toHaveBeenCalledWith("");
+    });
   });
 });
