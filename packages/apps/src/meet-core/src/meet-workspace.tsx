@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Pencil, Users, Video } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -47,6 +47,7 @@ import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
 import {
   meetCallBarVisible,
   meetCallChromeVisible,
+  meetCallHeaderStartVisible,
   meetCallInviteAction,
   meetCallIsActive,
   meetCallStageShowsStage,
@@ -582,6 +583,7 @@ export function MeetWorkspace({
     localCallActive: resolvedCallActive,
   });
   const callInvite = meetCallInviteAction(meetingLive, resolvedCallActive);
+  const showHeaderStart = conversationOpen && meetCallHeaderStartVisible(meetingLive);
   const markChannelMeetingLive = useCallback((channelId: string | null) => {
     if (!channelId) return;
     setChannels((current) =>
@@ -596,7 +598,7 @@ export function MeetWorkspace({
     call.startCall();
   }, [call.startCall, markChannelMeetingLive, resolvedStageLayout, selectedId]);
   const showCallChrome = meetCallChromeVisible(resolvedCallActive);
-  const showCallBar = conversationOpen && meetCallBarVisible(resolvedStageLayout);
+  const showCallBar = conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive);
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
   const callRoom = callStageRoom;
   const chatTitle = headerTitle ? meetLabels.chatInChannel(headerTitle) : meetLabels.chatTitle;
@@ -790,6 +792,16 @@ export function MeetWorkspace({
             actions={
               conversationOpen ? (
                 <div className="meet-workspace__header-actions">
+                  {showHeaderStart ? (
+                    <Button
+                      className="meet-workspace__header-start"
+                      label={meetLabels.start}
+                      icon={<Video />}
+                      size="sm"
+                      variant="subtle"
+                      onClick={onCallInvite}
+                    />
+                  ) : null}
                   {selected ? (
                     <span
                       className="meet-workspace__members"

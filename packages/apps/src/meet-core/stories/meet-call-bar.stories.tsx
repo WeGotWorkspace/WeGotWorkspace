@@ -20,7 +20,7 @@ type MeetCallBarStoryArgs = {
   joined: boolean;
   micOn: boolean;
   videoOn: boolean;
-  invite: "start" | "join" | null;
+  invite: "join" | null;
 };
 
 function MeetCallBarStory({ joined, micOn, videoOn, invite }: MeetCallBarStoryArgs) {
@@ -97,7 +97,7 @@ const meta = {
     joined: storyBooleanControl,
     micOn: storyBooleanControl,
     videoOn: storyBooleanControl,
-    invite: { control: "select", options: [null, "start", "join"] as const },
+    invite: { control: "select", options: [null, "join"] as const },
   },
 } satisfies Meta<MeetCallBarStoryArgs>;
 

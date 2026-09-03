@@ -47,10 +47,10 @@ describe("MeetCallBar", () => {
     expect(tsx).toMatch(/\{joined && videoOn \? \(/);
   });
 
-  it("puts Start or Join on the bar while this user is not in the call", () => {
+  it("puts Join on the bar while a live meeting has not been joined", () => {
     expect(tsx).toMatch(/meet-call-bar__invite-button/);
     expect(tsx).toMatch(/meetLabels\.join/);
-    expect(tsx).toMatch(/meetLabels\.start/);
+    expect(tsx).not.toMatch(/label=\{meetLabels\.start\}/);
     expect(tsx).not.toMatch(/meetLabels\.joined/);
   });
 });

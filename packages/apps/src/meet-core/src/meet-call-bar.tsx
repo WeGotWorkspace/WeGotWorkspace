@@ -41,7 +41,7 @@ export type MeetCallBarProps = {
   onMuteSoon: (name: string) => void;
   /** IconButton cluster + camera tiles — only after this user joins. */
   joined?: boolean;
-  /** Start or Join on the bar while this user is not in the call. */
+  /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
   invite?: MeetCallInvite | null;
   onInvite?: () => void;
   className?: string;
@@ -80,7 +80,6 @@ export function MeetCallBar({
   className,
 }: MeetCallBarProps) {
   const roster: MeetCallBarPeer[] = [{ id: selfId, name: selfName, stream: selfStream }, ...peers];
-  const meetingLive = joined || invite === "join";
 
   return (
     <div className={cn("meet-call-bar", className)}>
@@ -89,34 +88,28 @@ export function MeetCallBar({
           <span className="meet-call-bar__mark" aria-hidden>
             <Video className="meet-workspace__header-kind-icon" />
           </span>
-          {meetingLive ? (
-            <>
-              <div className="meet-call-bar__copy">
-                <p className="meet-call-bar__title">{meetLabels.meetingStarted}</p>
-                <p className="meet-call-bar__meta">
-                  {meetCallBarMeta(participantCount, elapsedLabel)}
-                </p>
-              </div>
-              <ul className="meet-call-bar__avatars">
-                {roster.map((person) => (
-                  <li key={person.id}>
-                    <UserAvatar
-                      displayName={person.name}
-                      compact
-                      size="sm"
-                      color={avatarColorForUserId(person.id)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
+          <div className="meet-call-bar__copy">
+            <p className="meet-call-bar__title">{meetLabels.meetingStarted}</p>
+            <p className="meet-call-bar__meta">{meetCallBarMeta(participantCount, elapsedLabel)}</p>
+          </div>
+          <ul className="meet-call-bar__avatars">
+            {roster.map((person) => (
+              <li key={person.id}>
+                <UserAvatar
+                  displayName={person.name}
+                  compact
+                  size="sm"
+                  color={avatarColorForUserId(person.id)}
+                />
+              </li>
+            ))}
+          </ul>
         </div>
-        {invite && onInvite ? (
+        {invite === "join" && onInvite ? (
           <div className="meet-call-bar__invite">
             <Button
               className="meet-call-bar__invite-button"
-              label={invite === "join" ? meetLabels.join : meetLabels.start}
+              label={meetLabels.join}
               icon={<Video />}
               size="sm"
               variant="subtle"

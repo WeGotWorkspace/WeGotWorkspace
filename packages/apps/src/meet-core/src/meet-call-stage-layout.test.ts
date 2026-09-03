@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   meetCallBarVisible,
   meetCallChromeVisible,
+  meetCallHeaderStartVisible,
   meetCallInviteAction,
   meetCallIsActive,
   meetCallStageShowsBar,
@@ -39,11 +40,12 @@ describe("meetCallStage layout", () => {
     expect(meetCallStageShowsStage("collapsed")).toBe(false);
   });
 
-  it("shows the compact bar for idle Start, live Join, and joined AV", () => {
-    expect(meetCallBarVisible("collapsed")).toBe(true);
-    expect(meetCallBarVisible("compact")).toBe(true);
-    expect(meetCallBarVisible("side-by-side")).toBe(false);
-    expect(meetCallBarVisible("fullscreen")).toBe(false);
+  it("shows the sticky bar only when a meeting is live and the stage is not expanded", () => {
+    expect(meetCallBarVisible("collapsed", false)).toBe(false);
+    expect(meetCallBarVisible("collapsed", true)).toBe(true);
+    expect(meetCallBarVisible("compact", true)).toBe(true);
+    expect(meetCallBarVisible("side-by-side", true)).toBe(false);
+    expect(meetCallBarVisible("fullscreen", true)).toBe(false);
   });
 
   it("marks a sidebar row live from fixture callActive or a local join", () => {
@@ -60,11 +62,16 @@ describe("meetCallStage layout", () => {
     );
   });
 
-  it("maps the bar invite to Start or Join, and hides it after join", () => {
-    expect(meetCallInviteAction(false, false)).toBe("start");
+  it("maps sticky-bar invite to Join only, never Start", () => {
+    expect(meetCallInviteAction(false, false)).toBeNull();
     expect(meetCallInviteAction(true, false)).toBe("join");
     expect(meetCallInviteAction(true, true)).toBeNull();
     expect(meetCallInviteAction(false, true)).toBeNull();
+  });
+
+  it("shows ViewHeader Start only when no meeting is live", () => {
+    expect(meetCallHeaderStartVisible(false)).toBe(true);
+    expect(meetCallHeaderStartVisible(true)).toBe(false);
   });
 
   it("hides in-call chrome buttons until the local user has joined", () => {

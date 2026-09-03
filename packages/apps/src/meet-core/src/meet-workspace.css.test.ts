@@ -93,20 +93,22 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/WorkspaceSidebarScrim/);
   });
 
-  it("uses a labeled Start Button and a compact in-call bar instead of opening the stage", () => {
-    expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
-    expect(tsx).not.toMatch(/import \{ Button, IconButton \} from "@\/button\/src\/button"/);
+  it("uses a labeled Start Button in ViewHeader and Join on the compact bar when live", () => {
+    expect(tsx).toMatch(/import \{ Button, IconButton \} from "@\/button\/src\/button"/);
     expect(tsx).toMatch(/import \{ MeetCallBar \} from "@\/meet-core\/src\/meet-call-bar"/);
     expect(tsx).toMatch(/meetCallInviteAction\(/);
+    expect(tsx).toMatch(/meetCallHeaderStartVisible\(/);
     expect(tsx).toMatch(/invite=\{callInvite\}/);
     expect(tsx).toMatch(/onInvite=\{onCallInvite\}/);
+    expect(tsx).toMatch(/"meet-workspace__header-start"/);
+    expect(tsx).toMatch(/meetLabels\.start/);
     expect(tsx).not.toMatch(/meetHeaderCallAction\(/);
     expect(tsx).not.toMatch(/headerCallLabel/);
     expect(tsx).not.toMatch(/onHeaderCallClick/);
     expect(tsx).not.toMatch(/meetLabels\.joined/);
-    expect(tsx).not.toMatch(/resolvedCallActive \? null : \(/);
     expect(tsx).not.toMatch(/"meet-workspace__header-call"/);
     expect(tsx).toMatch(/meetCallBarVisible\(/);
+    expect(tsx).toMatch(/meetCallBarVisible\(resolvedStageLayout, meetingLive\)/);
     expect(tsx).toMatch(/meetCallChromeVisible\(/);
     expect(tsx).toMatch(/joined=\{showCallChrome\}/);
     expect(tsx).toMatch(/keepCallChrome = Boolean\(resolvedStage && showCallChrome\)/);
@@ -255,11 +257,12 @@ describe("meet workspace sidebar chrome", () => {
     expect(railActions!.indexOf("meet-workspace__members")).toBeLessThan(
       railActions!.indexOf("chatUiLabels.edit"),
     );
-    // Channel ViewHeader: members before edit.
+    // Channel ViewHeader: Start (when idle), then members, then edit.
     const mainActions = tsx.match(
       /className="meet-workspace__header-actions"[\s\S]*?<\/div>\s*\) : null/,
     )?.[0];
     expect(mainActions).toBeTruthy();
+    expect(mainActions!).toMatch(/meet-workspace__header-start/);
     expect(mainActions!.indexOf("meet-workspace__members")).toBeLessThan(
       mainActions!.indexOf("meet-workspace__header-edit"),
     );

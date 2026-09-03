@@ -78,7 +78,8 @@ export const IdleChannel: Story = {
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     const start = canvas.getByRole("button", { name: meetLabels.start });
     await expect(start).toBeInTheDocument();
-    await expect(start.className).toContain("meet-call-bar__invite-button");
+    await expect(start.className).toContain("meet-workspace__header-start");
+    await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
     await userEvent.click(start);
