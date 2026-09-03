@@ -50,7 +50,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setNotes,
     view,
     setView,
-    selectView,
     notebooks,
     setNotebooks,
     notebookCollections,
@@ -65,7 +64,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     show,
     showMutationError,
     queueAutoSaveToast,
-    workspaceLayoutRef,
   } = shell;
 
   const {
@@ -705,9 +703,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    if (createView !== view) {
-      selectView(createView);
-    }
     const target = resolveNotesCreateTarget(createView, notebooks);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     const id = createTempNoteId();
@@ -727,8 +722,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         : {}),
     };
     setNotes((prev) => [note, ...prev]);
+    // setView — not selectView — so closeMobileDetail does not race with opening
+    // the new note overlay (starred/archive create switches to All Items first).
+    if (createView !== view) {
+      setView(createView);
+    }
+    setActiveId(id);
     selectSingle(id);
-    openMobileDetail(id);
+    openMobileDetail();
     // Persist immediately. Leaving the detail pane without a body (or title)
     // must not DELETE — empty DESCRIPTION is a valid VJOURNAL.
     if (operations) {
@@ -774,15 +775,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     notebooks,
     operations,
     persistOptimisticNote,
+    openMobileDetail,
     selectSingle,
-    showMutationError,
-    selectView,
     setActiveId,
     setNotes,
     setSelectedIds,
+    setView,
     show,
+    showMutationError,
     view,
-    workspaceLayoutRef,
   ]);
 
   const { batchStar, batchArchive, requestDeleteSelected, openDeleteConfirm } =
