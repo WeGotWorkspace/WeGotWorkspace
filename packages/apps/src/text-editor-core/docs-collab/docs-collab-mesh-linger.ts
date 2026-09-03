@@ -1,3 +1,4 @@
+import { rtcLog } from "@/lib/rtc/log";
 import type { DocsRtcSession } from "./docs-rtc-session";
 
 /**
@@ -61,14 +62,17 @@ export class DocsCollabMeshLingerCache<S extends LingerableMeshSession> {
   linger(room: string, session: S): void {
     const existing = this.entries.get(room);
     if (existing) {
+      rtcLog({ channel: "collab" }, "mesh-linger-replace", { room });
       this.cancelTimeout(existing.timer);
       this.entries.delete(room);
       void Promise.resolve(existing.session.leave()).catch(() => undefined);
     }
     session.clearMessageListeners();
+    rtcLog({ channel: "collab" }, "mesh-linger-park", { room, graceMs: this.graceMs });
     const timer = this.scheduleTimeout(() => {
       this.entries.delete(room);
       this.syncPageHideSubscription();
+      rtcLog({ channel: "collab" }, "mesh-linger-drop", { room, reason: "grace-expired" });
       void Promise.resolve(session.leave()).catch(() => undefined);
     }, this.graceMs);
     this.entries.set(room, { session, timer });
@@ -82,11 +86,18 @@ export class DocsCollabMeshLingerCache<S extends LingerableMeshSession> {
     this.cancelTimeout(entry.timer);
     this.entries.delete(room);
     this.syncPageHideSubscription();
+    rtcLog({ channel: "collab" }, "mesh-linger-resume", { room });
     return entry.session;
   }
 
   /** Immediate leave for every lingering session (tab close / test reset). */
   leaveAllNow(): void {
+    if (this.entries.size > 0) {
+      rtcLog({ channel: "collab" }, "mesh-linger-drop", {
+        reason: "pagehide",
+        rooms: this.entries.size,
+      });
+    }
     for (const entry of this.entries.values()) {
       this.cancelTimeout(entry.timer);
       void Promise.resolve(entry.session.leave()).catch(() => undefined);

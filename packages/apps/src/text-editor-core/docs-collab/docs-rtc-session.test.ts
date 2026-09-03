@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import {
+  PrincipalLinkRegistry,
+  resetPrincipalLinkRegistryForTests,
+} from "@/lib/rtc/session/principal-link-registry";
 import type { DocsCollabMeshMessage } from "./docs-collab-types";
 import { DocsRtcSession, parsePeerHintPeers } from "./docs-rtc-session";
 
@@ -10,7 +14,11 @@ type CapturedBinding = {
 };
 
 type CapturedMeshOptions = {
-  onPollData?: (data: { peers: Array<{ id: string; name: string }>; messages: [] }) => void;
+  onPollData?: (data: {
+    peers: Array<{ id: string; name: string; user?: string }>;
+    messages: [];
+  }) => void;
+  shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
 };
 
 const captured = vi.hoisted(() => ({
@@ -19,7 +27,16 @@ const captured = vi.hoisted(() => ({
   mesh: {
     applyPeerHint: vi.fn(),
     broadcastJson: vi.fn(),
+    sendJsonTo: vi.fn(),
     getMyId: vi.fn((): string | null => "me"),
+    getMyName: vi.fn(() => "Self"),
+    getPeerIds: vi.fn(() => [] as string[]),
+    getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string }>),
+    getPeerLinkStates: vi.fn(() => [] as Array<{ id: string; name: string; link: string }>),
+    join: vi.fn(async () => ({ peerId: "me", peers: [] })),
+    leave: vi.fn(async () => undefined),
+    retryRoomPeerConnections: vi.fn(),
+    abortPeerConnection: vi.fn(),
   },
 }));
 
@@ -52,6 +69,7 @@ function pollRoster(peers: Array<{ id: string; name: string }>): void {
 describe("DocsRtcSession gossip discovery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
     captured.bindingOptions = null;
     captured.meshOptions = null;
   });
@@ -164,5 +182,244 @@ describe("parsePeerHintPeers", () => {
         "junk",
       ]),
     ).toEqual([{ id: "p1", name: "Ann" }]);
+  });
+});
+
+describe("DocsRtcSession principal reuse wiring", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+  });
+
+  it("skips ICE connect when the collab peer already has a principal DC", () => {
+    const registry = new PrincipalLinkRegistry();
+    const sent: unknown[] = [];
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: (payload) => sent.push(payload),
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(false);
+    expect(sent).toContainEqual(expect.objectContaining({ op: "open", kind: "collab-reuse" }));
+  });
+
+  it("still dials ICE when there is no principal DC for that user", () => {
+    const registry = new PrincipalLinkRegistry();
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
+  });
+
+  it("reconnects via the collab offer path after a reused principal link drops", () => {
+    const registry = new PrincipalLinkRegistry();
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: () => undefined,
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+    captured.mesh.getPeerLinkStates.mockReturnValue([
+      { id: "bbbbbbbbbbbbbbbb", name: "Wouter", link: "connecting" },
+    ]);
+
+    const session = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(false);
+
+    expect(() => {
+      registry.unregisterLink("prin-wouter");
+      pollRoster([peer]);
+    }).not.toThrow();
+
+    expect(captured.mesh.retryRoomPeerConnections).toHaveBeenCalled();
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
+    expect(session.getRoomPeerStatuses()).toEqual([
+      { id: peer.id, name: peer.name, link: "connecting" },
+    ]);
+
+    session.sendTo(peer.id, { type: "sync", u: [7] });
+    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith(peer.id, { type: "sync", u: [7] });
+
+    captured.bindingOptions?.onMessage(peer.id, JSON.stringify({ type: "sync", u: [8] }));
+    expect(seen).toContainEqual({ type: "sync", u: [8], from: peer.id });
+  });
+
+  it("retries fresh ICE immediately when a reused principal link drops without a poll", () => {
+    const registry = new PrincipalLinkRegistry();
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: () => undefined,
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    vi.mocked(captured.mesh.retryRoomPeerConnections).mockClear();
+
+    registry.unregisterLink("prin-wouter");
+
+    expect(captured.mesh.retryRoomPeerConnections).toHaveBeenCalledTimes(1);
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
+  });
+
+  it("does not retry ICE when principal reuse ack succeeds", () => {
+    const registry = new PrincipalLinkRegistry();
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: () => undefined,
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+    vi.mocked(captured.mesh.retryRoomPeerConnections).mockClear();
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    expect(captured.mesh.retryRoomPeerConnections).not.toHaveBeenCalled();
+  });
+
+  it("retries principal reuse on link-open without a collab poll-changed", () => {
+    const registry = new PrincipalLinkRegistry();
+    const sent: unknown[] = [];
+    registry.setConnectingUsernames(new Set(["wouter"]));
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(false);
+    expect(sent).toEqual([]);
+
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: (payload) => sent.push(payload),
+    });
+
+    expect(sent).toContainEqual(expect.objectContaining({ op: "open", kind: "collab-reuse" }));
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(false);
+  });
+
+  it("defers fresh ICE while principal mesh is connecting to the collab peer", () => {
+    const registry = new PrincipalLinkRegistry();
+    registry.setConnectingUsernames(new Set(["wouter"]));
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+
+    expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(false);
+    expect(captured.mesh.retryRoomPeerConnections).not.toHaveBeenCalled();
+  });
+
+  it("aborts in-flight collab ICE when principal reuse attaches", () => {
+    const registry = new PrincipalLinkRegistry();
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: () => undefined,
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "/groups/administrators/team-notes.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    pollRoster([peer]);
+    vi.mocked(captured.mesh.abortPeerConnection).mockClear();
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    expect(captured.mesh.abortPeerConnection).toHaveBeenCalledWith(peer.id);
   });
 });

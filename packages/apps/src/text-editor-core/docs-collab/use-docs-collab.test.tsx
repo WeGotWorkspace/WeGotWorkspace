@@ -676,4 +676,54 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitForCollabSession(second.result);
     expect(collaborationGetCount).toBe(firstAttemptCount);
   });
+
+  it("defers mesh join and document fetch until the auth token arrives, then joins", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("format=yjs")) {
+        return new Response(null, { status: 204 });
+      }
+      if (init?.method === "PUT" || init?.method === "POST") {
+        return new Response("{}", { status: 200 });
+      }
+      return new Response("# Hello", { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const fetchAuthToken = vi.fn(async (input: { authToken?: string }) => input.authToken);
+    const delayedWire: DocsCollabWireOperations = {
+      fetchAuthToken,
+      fetchRtcSettings: wire.fetchRtcSettings,
+    };
+
+    const { result, rerender } = renderHook(
+      ({ authToken }: { authToken?: string }) =>
+        useDocsCollab({
+          userName: "Alex",
+          autoJoin: true,
+          urls: { ...testUrls, authToken },
+          wire: delayedWire,
+        }),
+      { initialProps: { authToken: undefined } },
+    );
+
+    await waitForCollabSession(result);
+    expect(mockJoin).not.toHaveBeenCalled();
+    const collabFetchesBeforeToken = fetchMock.mock.calls.filter(([input]) =>
+      String(input).includes("/files/collaboration"),
+    );
+    expect(collabFetchesBeforeToken).toHaveLength(0);
+
+    rerender({ authToken: "live-token" });
+
+    await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
+    const authorizedCollabFetches = fetchMock.mock.calls.filter(([input, init]) => {
+      if (!String(input).includes("/files/collaboration")) return false;
+      const headers = (init as RequestInit | undefined)?.headers as
+        | Record<string, string>
+        | undefined;
+      return headers?.Authorization === "Bearer live-token";
+    });
+    expect(authorizedCollabFetches.length).toBeGreaterThan(0);
+  });
 });

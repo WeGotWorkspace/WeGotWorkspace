@@ -12,9 +12,10 @@ import type {
   DocsCollabSessionRefs,
   DocsCollabUrls,
 } from "./docs-collab-types";
+import { collectCollabWarningPeers } from "./docs-collab-mesh-warnings";
 import { isYDocEmpty, MESH_ORIGIN } from "./docs-collab-utils";
 
-export const PEER_FAILURE_WARNING_DELAY_MS = 6000;
+export { PEER_FAILURE_WARNING_DELAY_MS } from "./docs-collab-mesh-warnings";
 
 type UseDocsCollabMeshOptions = {
   refs: DocsCollabSessionRefs;
@@ -57,15 +58,7 @@ export function useDocsCollabMesh({
       .filter((peer) => peer.link !== "connected")
       .map(({ id, name }) => ({ id, name }));
     const now = Date.now();
-    const warning: DocsCollabMeshPeer[] = [];
-    for (const peer of roomPeerStatuses) {
-      if (peer.link === "failed" || peer.link === "disconnected" || peer.link === "closed") {
-        const failedSince = refs.failedSinceRef.current.get(peer.id) ?? now;
-        if (now - failedSince >= PEER_FAILURE_WARNING_DELAY_MS) {
-          warning.push({ id: peer.id, name: peer.name });
-        }
-      }
-    }
+    const warning = collectCollabWarningPeers(roomPeerStatuses, refs.failedSinceRef.current, now);
     return {
       peers: connectedPeers,
       connectingPeers: pendingPeers,
@@ -113,19 +106,16 @@ export function useDocsCollabMesh({
       .map(({ id, name }) => ({ id, name }));
     const now = Date.now();
     const failedNow = new Set<string>();
-    const warning: DocsCollabMeshPeer[] = [];
     for (const peer of roomPeerStatuses) {
       if (peer.link === "failed" || peer.link === "disconnected" || peer.link === "closed") {
         failedNow.add(peer.id);
         const failedSince = refs.failedSinceRef.current.get(peer.id) ?? now;
         refs.failedSinceRef.current.set(peer.id, failedSince);
-        if (now - failedSince >= PEER_FAILURE_WARNING_DELAY_MS) {
-          warning.push({ id: peer.id, name: peer.name });
-        }
       } else {
         refs.failedSinceRef.current.delete(peer.id);
       }
     }
+    const warning = collectCollabWarningPeers(roomPeerStatuses, refs.failedSinceRef.current, now);
     for (const trackedId of [...refs.failedSinceRef.current.keys()]) {
       if (!failedNow.has(trackedId) && !roomPeerStatuses.some((peer) => peer.id === trackedId)) {
         refs.failedSinceRef.current.delete(trackedId);
