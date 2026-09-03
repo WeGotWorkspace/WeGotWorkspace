@@ -72,3 +72,11 @@ Phased RTC improvements: collab-join authorization (security, first), Meet call 
 
 - [ ] Phase 0: failing feature tests first (`CollabJoinAuthorizationTest`), then implement, then Collab + Meet suites green
 - [ ] Phase 1+: red-green per chunk; full done gates run by the verification agent before handoff
+
+### Phase 3b verification (folded into `principal-reuse`)
+
+Keep `?rtcDebug=1` as a **number** (never `"1"`). Isolated cookies: cursor-ide-browser vs Chrome DevTools. Live URL: `http://127.0.0.1:5173/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1`. Creds: `admin` / `storybook-dev`, `wouter` / `storybook-dev`. SPA navigation after login (do not hard-reload the doc).
+
+1. **Reuse-hit confirmation.** Both users log in, wait until the principal mesh is up, one opens the doc, the other follows. Console must show `[rtc][collab][reuse-hit]` then `[dc-open]` `{ reused: true }` — not a fresh ICE round (`[collab][pc-created]` / `[ice-gathering-state]` for that peer).
+2. **Bidirectional sync over the reused channel.** A change from A must arrive in B’s Yjs doc (and B→A) on the reused DC. A’s own change must not echo back. “No error UI” is not enough — assert Yjs/update delivery in tests and live. Tests: `delivers A→B and B→A Yjs updates on the reused channel without echoing to the sender`.
+3. **Silent fallback when the principal link drops mid-session.** Drop the principal PC/DC (or unregister the link) during an active collab session. No visible “Could not connect” warning. Sync continues on a fresh ICE path. Debug log: `reuse-miss` `{ reason: "principal-link-gone" }`. Tests: `falls back to fresh ICE silently when a reused principal link disappears`, `reconnects via the collab offer path after a reused principal link drops`.
