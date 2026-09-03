@@ -7,6 +7,9 @@ use App\Services\Contacts\GroupMemberUriBackfill;
 use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
 use App\Services\Installer\DevInstallBootstrap;
+use App\Services\Installer\DevNoteCatalog;
+use App\Services\Installer\DevNoteSeeder;
+use App\Services\Installer\DevSeedRunner;
 use App\Services\Installer\InstallerJwtKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
@@ -232,6 +235,80 @@ Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', 
 
     return self::SUCCESS;
 })->purpose('Seed hundreds of local-dev calendar events for the admin user (idempotent; --force recreates)');
+
+Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', function (DevNoteSeeder $seeder): int {
+    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
+    $profile = strtolower(trim((string) ($this->option('profile') ?: DevNoteCatalog::PROFILE_FULL)));
+    if ($profile === '') {
+        $profile = DevNoteCatalog::PROFILE_FULL;
+    }
+
+    try {
+        $result = $seeder->seed($username, $profile, (bool) $this->option('force'));
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return self::FAILURE;
+    }
+
+    $this->info(sprintf(
+        'Seeded notes for %s (%s): created %d, skipped %d, deleted %d, starred %d, notebooks+%d [%s].',
+        $username,
+        $profile,
+        $result['created'],
+        $result['skipped'],
+        $result['deleted'],
+        $result['starred'],
+        $result['notebooks'],
+        (string) config('database.connections.wgw.database'),
+    ));
+
+    return self::SUCCESS;
+})->purpose('Seed ~1000 local-dev VJOURNAL notes for the admin user (idempotent; --force recreates)');
+
+Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
+    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
+    $profile = strtolower(trim((string) ($this->option('profile') ?: 'full')));
+    if ($profile === '') {
+        $profile = 'full';
+    }
+    /** @var list<string> $apps */
+    $apps = array_values(array_filter(
+        array_map(static fn (mixed $app): string => strtolower(trim((string) $app)), (array) $this->argument('apps')),
+        static fn (string $app): bool => $app !== '',
+    ));
+
+    try {
+        $results = $runner->seed($username, $apps === [] ? null : $apps, $profile, (bool) $this->option('force'));
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return self::FAILURE;
+    }
+
+    foreach ($results as $result) {
+        $extra = '';
+        if (isset($result['extra']) && is_array($result['extra'])) {
+            foreach ($result['extra'] as $key => $value) {
+                $extra .= sprintf(', %s %d', $key, $value);
+            }
+        }
+        $this->info(sprintf(
+            'Seeded %s for %s (%s): created %d, skipped %d, deleted %d%s.',
+            $result['app'],
+            $username,
+            $profile,
+            $result['created'],
+            $result['skipped'],
+            $result['deleted'],
+            $extra,
+        ));
+    }
+
+    $this->info(sprintf('Dev seed complete [%s].', (string) config('database.connections.wgw.database')));
+
+    return self::SUCCESS;
+})->purpose('Shared local-dev seeder: calendars + notes (pass app names to limit; --force recreates)');
 
 Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
     $result = $index->reindexAll();
