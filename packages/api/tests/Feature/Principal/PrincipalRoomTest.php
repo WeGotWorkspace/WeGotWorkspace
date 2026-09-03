@@ -264,6 +264,28 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->assertJsonPath('peers', []);
     }
 
+    public function test_same_user_rejoin_replaces_the_previous_peer(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+
+        $first = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+        $first->assertOk();
+        $firstPeerId = (string) $first->json('peerId');
+
+        $second = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+        $second->assertOk();
+        $secondPeerId = (string) $second->json('peerId');
+        $this->assertNotSame($firstPeerId, $secondPeerId);
+        $this->assertSame([], $second->json('peers'));
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
+            ->assertNotFound()
+            ->assertJsonPath('error', 'unknown_peer');
+    }
+
     public function test_chat_endpoint_stays_meet_only(): void
     {
         $token = $this->issueBearerTokenFor('alice');

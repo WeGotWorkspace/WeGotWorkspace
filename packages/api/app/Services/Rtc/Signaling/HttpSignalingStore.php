@@ -72,6 +72,33 @@ final class HttpSignalingStore
     }
 
     /**
+     * Drop leftover same-owner peers in this room (crashed/reloaded tabs).
+     * Meet must not use this — a user can be in a call from two devices.
+     *
+     * @return list<string> deleted peer ids
+     */
+    public function deleteOwnedPeersExcept(string $room, string $ownerMarker, ?string $keepPeerId = null): array
+    {
+        if ($ownerMarker === '') {
+            return [];
+        }
+
+        $query = $this->peerQuery()
+            ->where('room', $room)
+            ->where('owner_user', $ownerMarker);
+        if ($keepPeerId !== null && $keepPeerId !== '') {
+            $query->where('peer_id', '!=', $keepPeerId);
+        }
+
+        $staleIds = $query->pluck('peer_id')->all();
+        foreach ($staleIds as $id) {
+            $this->leave($room, (string) $id);
+        }
+
+        return array_map(static fn ($id): string => (string) $id, $staleIds);
+    }
+
+    /**
      * @return list<array{id: string, name: string, user?: string}>
      */
     public function peerList(string $room, string $selfId): array

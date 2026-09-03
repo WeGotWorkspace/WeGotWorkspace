@@ -87,6 +87,7 @@ final readonly class RtcSignalingPolicy
             leaveDeletesPeerMessages: true,
             trimMessagesOnSend: true,
             requireLivePeersOnSend: true,
+            rosterIncludesOwner: true,
         );
     }
 

@@ -60,7 +60,9 @@ final class PrincipalSignalingService
             }
 
             $peerId = $this->makePeerId($username);
-            $this->store->upsertPeer($room, $peerId, $name, $this->actors->ownerMarker($username), time());
+            $ownerMarker = $this->actors->ownerMarker($username);
+            $this->store->deleteOwnedPeersExcept($room, $ownerMarker);
+            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time());
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
                 $this->store->deletePeer($room, $peerId);

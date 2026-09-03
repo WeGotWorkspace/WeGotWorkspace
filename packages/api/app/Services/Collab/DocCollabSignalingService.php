@@ -56,6 +56,7 @@ final class DocCollabSignalingService
 
             $peerId = bin2hex(random_bytes(8));
             $now = time();
+            $this->store->deleteOwnedPeersExcept($room, $ownerMarker);
             $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, $now);
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {

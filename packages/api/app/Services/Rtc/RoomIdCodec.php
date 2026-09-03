@@ -13,9 +13,18 @@ final class RoomIdCodec
 
     private const PRINCIPAL_PREFIX = 'p_';
 
+    /**
+     * Strip leading slashes so `/groups/foo.md` and `groups/foo.md` are one room.
+     * Note UIDs have no slash and are unchanged.
+     */
+    public static function canonicalFilePath(string $path): string
+    {
+        return ltrim($path, '/');
+    }
+
     public function encodeFilePath(string $path): string
     {
-        $encoded = rtrim(strtr(base64_encode($path), '+/', '-_'), '=');
+        $encoded = rtrim(strtr(base64_encode(self::canonicalFilePath($path)), '+/', '-_'), '=');
 
         return self::FILE_PREFIX.$encoded;
     }
@@ -45,7 +54,7 @@ final class RoomIdCodec
                 throw new \InvalidArgumentException('Invalid file room id.');
             }
 
-            return ['channel' => 'collab', 'room' => $path];
+            return ['channel' => 'collab', 'room' => self::canonicalFilePath($path)];
         }
 
         if (str_starts_with($roomId, self::PRINCIPAL_PREFIX)) {

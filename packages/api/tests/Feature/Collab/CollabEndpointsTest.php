@@ -113,7 +113,7 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         $afterLeave->assertJsonPath('peers', []);
     }
 
-    public function test_same_user_can_join_multiple_peers_in_same_room(): void
+    public function test_same_user_rejoin_replaces_the_previous_peer(): void
     {
         $token = $this->issueBearerTokenFor('alice');
         $roomId = $this->roomId();
@@ -132,10 +132,32 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         $second->assertOk();
         $secondPeerId = (string) $second->json('peerId');
         $this->assertNotSame($firstPeerId, $secondPeerId);
+        $this->assertSame([], $second->json('peers'));
 
         $this->withBearer($token)
             ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$firstPeerId.'&since=0')
-            ->assertOk();
+            ->assertNotFound()
+            ->assertJsonPath('error', 'unknown_peer');
+    }
+
+    public function test_slashed_and_unslashed_file_room_ids_share_one_roster(): void
+    {
+        $this->seedWgwUser('bob', displayName: 'Bob');
+        $this->grantDocShareToBob();
+
+        $legacySlashed = 'f_'.rtrim(strtr(base64_encode(self::ROOM), '+/', '-_'), '=');
+        $canonical = RoomTestHelper::fileRoomId(ltrim(self::ROOM, '/'));
+        $this->assertNotSame($legacySlashed, $canonical);
+
+        $alicePeerId = (string) $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->postJson('/api/v1/rooms/'.$legacySlashed.'/participants', ['name' => 'Alice'])
+            ->assertOk()
+            ->json('peerId');
+
+        $bobJoin = $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->postJson('/api/v1/rooms/'.$canonical.'/participants', ['name' => 'Bob']);
+        $bobJoin->assertOk();
+        $this->assertSame($alicePeerId, $bobJoin->json('peers.0.id'));
     }
 
     private function roomId(): string
