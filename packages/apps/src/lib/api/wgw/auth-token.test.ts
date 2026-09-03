@@ -1,11 +1,34 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchWgwAuthToken } from "@/lib/api/wgw/auth-token";
+import { resetWgwSessionStateForTests } from "@/lib/api/wgw/http";
 
 const originalFetch = globalThis.fetch;
+const ACCESS_TOKEN_KEY = "wgw.api.access_token";
+const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
+
+function makeJwt(exp: number): string {
+  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+  const payload = btoa(JSON.stringify({ exp }))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+  return `${header}.${payload}.signature`;
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  resetWgwSessionStateForTests();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
   globalThis.fetch = originalFetch;
+  window.localStorage.clear();
+  resetWgwSessionStateForTests();
 });
 
 describe("fetchWgwAuthToken", () => {
@@ -20,8 +43,17 @@ describe("fetchWgwAuthToken", () => {
     );
   });
 
-  it("returns undefined when authTokenUrl is not configured", async () => {
+  it("returns undefined when authTokenUrl is not configured and no session exists", async () => {
     await expect(fetchWgwAuthToken({})).resolves.toBeUndefined();
+  });
+
+  it("uses the live session access token when no inline token or authTokenUrl is provided", async () => {
+    const token = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    window.localStorage.setItem(REFRESH_TOKEN_KEY, "refresh-token");
+
+    await expect(fetchWgwAuthToken({})).resolves.toBe(token);
+    expect(globalThis.fetch).toBe(originalFetch);
   });
 
   it("throws when credentials are missing", async () => {

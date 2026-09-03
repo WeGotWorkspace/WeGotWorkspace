@@ -1,3 +1,5 @@
+import { wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
+
 export type WgwAuthTokenOptions = {
   authToken?: string;
   authTokenUrl?: string;
@@ -6,8 +8,9 @@ export type WgwAuthTokenOptions = {
 };
 
 /**
- * Fetch a bearer token for authenticated collab signaling.
- * Returns undefined when no token URL is configured.
+ * Resolve a bearer token for authenticated collab signaling.
+ * Prefers an inline token, then a storybook token URL, then the live WGW session
+ * (same store `wgwFetch` uses for `Authorization`).
  */
 export async function fetchWgwAuthToken({
   authToken,
@@ -16,7 +19,14 @@ export async function fetchWgwAuthToken({
   authPassword,
 }: WgwAuthTokenOptions): Promise<string | undefined> {
   if (authToken?.trim()) return authToken.trim();
-  if (!authTokenUrl) return undefined;
+  if (!authTokenUrl) {
+    try {
+      const sessionToken = await wgwEnsureFreshAccessToken();
+      return sessionToken?.trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
   if (!authUser || !authPassword) {
     throw new Error("Missing auth credentials for authenticated parity story");
   }

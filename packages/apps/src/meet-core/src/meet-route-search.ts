@@ -1,10 +1,17 @@
+import { parseRtcDebugFlag } from "@/lib/rtc/debug";
+
 export type MeetRouteSearch = {
   room?: string;
+  /** Number `1` so the serializer emits `rtcDebug=1`, not `rtcDebug="1"`. */
+  rtcDebug?: 1;
 };
 
 export function parseMeetRouteSearch(search: Record<string, unknown>): MeetRouteSearch {
+  const room = typeof search.room === "string" ? search.room : undefined;
+  const rtcDebug = parseRtcDebugFlag(search.rtcDebug);
   return {
-    room: typeof search.room === "string" ? search.room : undefined,
+    ...(room !== undefined ? { room } : {}),
+    ...(rtcDebug !== undefined ? { rtcDebug } : {}),
   };
 }
 
@@ -21,8 +28,14 @@ export function meetRoomFromSearch(search: MeetRouteSearch): string | null {
 /** Serialize active room for the current meet route search params. */
 export function meetSearchFromRoom(roomCode: string | null): MeetRouteSearch {
   const room = roomCode?.trim();
-  if (!room) return {};
-  return { room };
+  const rtcDebug = parseRtcDebugFlag(
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("rtcDebug")
+      : undefined,
+  );
+  const debug = rtcDebug !== undefined ? { rtcDebug } : {};
+  if (!room) return { ...debug };
+  return { room, ...debug };
 }
 
 export type MeetCallExitMode = "end" | "leave";
