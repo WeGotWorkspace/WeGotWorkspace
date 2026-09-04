@@ -13,7 +13,6 @@ import {
   ingestRemoteChatChannel,
   ingestRemoteChatChannelDestroyed,
   ingestRemoteChatMessage,
-  ingestRemoteChatMessageDestroyed,
 } from "@/lib/offline/meet-chat-jmap-inbound";
 import {
   isChatChannelBackfilled,
@@ -65,7 +64,10 @@ async function bumpCursorFromPage(
  * the incremental path takes over. Local-first reads require the whole
  * timeline in Dexie (spec: "history always available offline").
  */
-export async function backfillChatChannelHistory(username: string, channelId: string): Promise<void> {
+export async function backfillChatChannelHistory(
+  username: string,
+  channelId: string,
+): Promise<void> {
   let before: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
     const result = await listChatMessages(channelId, {
@@ -114,7 +116,9 @@ async function relistChannelMessages(username: string, channelId: string): Promi
   return changed;
 }
 
-async function syncChannels(username: string): Promise<{ changed: boolean; usedFullResync: boolean }> {
+async function syncChannels(
+  username: string,
+): Promise<{ changed: boolean; usedFullResync: boolean }> {
   const since = await readMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE);
   let changed = false;
   try {
@@ -208,10 +212,7 @@ async function relistThenReport(
 }
 
 /** New messages only: ascending `since`-cursor pages from the last ingested ULID. */
-async function ingestNewMessagesSinceCursor(
-  username: string,
-  channelId: string,
-): Promise<boolean> {
+async function ingestNewMessagesSinceCursor(username: string, channelId: string): Promise<boolean> {
   const cursor = await readChatChannelMessageCursor(username, channelId);
   if (!cursor) return relistChannelMessages(username, channelId);
   let since = cursor;

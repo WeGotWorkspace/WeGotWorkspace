@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { chatMessageFromWire, type WgwChatChannel, type WgwChatMessage } from "@/lib/api/wgw/meet-chat";
+import {
+  chatMessageFromWire,
+  type WgwChatChannel,
+  type WgwChatMessage,
+} from "@/lib/api/wgw/meet-chat";
 import { createMeetChatJmapClient } from "@/lib/api/wgw/meet-chat-jmap";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { JmapChatAdapter, type JmapChatChannel, type JmapChatMessage } from "@/lib/jmap-client";
@@ -88,7 +92,8 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
   );
 
   const offlineUsername = useMemo(
-    () => (wgwLiveApiEnabled() ? resolveMeetChatOfflineUsername(data?.session.user.username) : null),
+    () =>
+      wgwLiveApiEnabled() ? resolveMeetChatOfflineUsername(data?.session.user.username) : null,
     [data?.session.user.username],
   );
 
