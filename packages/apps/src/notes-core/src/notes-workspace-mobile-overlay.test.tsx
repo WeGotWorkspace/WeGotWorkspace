@@ -100,7 +100,8 @@ describe("notes mobile overlay selection", () => {
     expect(pane.getAttribute("data-open")).toBe("false");
     expect(within(pane).queryByText("Select a note")).toBeTruthy();
 
-    runPendingTransition?.();
+    // Call after the null check; optional-call is typed as never under Vitest asserts.
+    runPendingTransition!();
 
     expect(pane.getAttribute("data-open")).toBe("true");
     expect(within(pane).queryByText("Select a note")).toBeNull();
@@ -161,7 +162,8 @@ describe("notes mobile overlay selection", () => {
     expect(within(pane).queryByText("Select a note")).toBeNull();
     expect(pane.getAttribute("data-open")).toBe("true");
 
-    runPendingTransition?.();
+    // Call after the null check; optional-call is typed as never under Vitest asserts.
+    runPendingTransition!();
 
     expect(pane.getAttribute("data-open")).toBe("false");
     expect(within(pane).getByText("Select a note")).toBeTruthy();
