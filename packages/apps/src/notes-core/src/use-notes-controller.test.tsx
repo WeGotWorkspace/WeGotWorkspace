@@ -1086,6 +1086,11 @@ describe("useNotesController archive persist flags", () => {
   });
 
   it("does not select or open a note when archiving from the list without a prior selection", () => {
+    const archiveNote = vi.fn().mockImplementation(async (id: string) => ({
+      ...localNote,
+      id,
+      archived: true,
+    }));
     const data: NotesUIData = {
       notes: [
         { ...localNote, id: "note-1" },
@@ -1094,15 +1099,51 @@ describe("useNotesController archive persist flags", () => {
       notebooks: ["Drafts"],
       tags: [],
     };
-    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+    const { result } = renderHook(() =>
+      useNotesController({
+        data,
+        listLoading: false,
+        operations: {
+          upsertNote: vi.fn(),
+          deleteNote: vi.fn(),
+          archiveNote,
+          restoreNote: vi.fn(),
+          createNotebook: vi.fn(),
+          renameNotebook: vi.fn(),
+          deleteNotebook: vi.fn(),
+        },
+      }),
+    );
+
+    expect(result.current.visibleNotes.map((note) => note.id).sort()).toEqual(["note-1", "note-2"]);
 
     act(() => {
       result.current.toggleArchive("note-1");
     });
 
     expect(result.current.archived["note-1"]).toBe(true);
+    expect(result.current.notes.find((note) => note.id === "note-1")?.archived).toBe(true);
+    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["note-2"]);
     expect(result.current.activeId).toBe("");
     expect(result.current.selectedIds).toEqual([]);
+  });
+
+  it("shows the empty list state after archiving the last visible note", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    expect(result.current.visibleNotes).toHaveLength(1);
+
+    act(() => {
+      result.current.toggleArchive("note-1");
+    });
+
+    expect(result.current.visibleNotes).toEqual([]);
+    expect(result.current.archived["note-1"]).toBe(true);
   });
 
   it("clears archived on unarchive and closes detail when the note leaves archive view", () => {

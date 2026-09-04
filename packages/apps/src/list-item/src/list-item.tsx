@@ -269,17 +269,12 @@ export function ListItem({
 
   if (!isTouch) return button;
 
-  // react-swipeable-list often invokes onClick with no event (setTimeout after
-  // full swipe). Only stopPropagation when a real click event is present.
-  const runSwipeAction = (activate: () => void, event?: { stopPropagation?: () => void }) => {
-    event?.stopPropagation?.();
-    activate();
-  };
-
+  // react-swipeable-list calls onClick with no args after a full swipe (setTimeout).
+  // Do not touch the event — reading stopPropagation throws and aborts the action.
   const leadingActions = swipeLeftAction ? (
     <LeadingActions>
       <SwipeActionPrimitive
-        onClick={(event) => runSwipeAction(swipeLeftAction.onActivate, event)}
+        onClick={() => swipeLeftAction.onActivate()}
         destructive={swipeLeftAction.destructive}
       >
         <div
@@ -296,7 +291,7 @@ export function ListItem({
   const trailingActions = swipeRightAction ? (
     <TrailingActions>
       <SwipeActionPrimitive
-        onClick={(event) => runSwipeAction(swipeRightAction.onActivate, event)}
+        onClick={() => swipeRightAction.onActivate()}
         destructive={swipeRightAction.destructive}
       >
         <div
