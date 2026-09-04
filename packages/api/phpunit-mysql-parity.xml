@@ -36,6 +36,7 @@
             <file>tests/Unit/Mail/MailCredentialServiceImapUsernameTest.php</file>
             <file>tests/Unit/Calendars/UserCalendarCollectionsProvisionerTest.php</file>
             <file>tests/Unit/Installer/DevCalendarEventSeederTest.php</file>
+            <file>tests/Unit/Installer/DevNoteSeederTest.php</file>
             <file>tests/Unit/Calendars/CalendarMeetLinkWriteHookTest.php</file>
             <file>tests/Unit/Calendars/CalendarImipServiceTest.php</file>
             <file>tests/Unit/Calendars/CalendarFeedIcsTimezoneTest.php</file>

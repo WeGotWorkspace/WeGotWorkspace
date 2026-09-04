@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "tools/with-root-env.sh run 'export WGW_PROXY_TARGET=http://127.0.0.1:9080 && php packages/api/artisan wgw:dev-install && turbo run typegen:watch dev --filter=@wgw/api dev:app dev:storybook --filter=@wgw/apps --concurrency=20'",
     "dev:bootstrap": "php packages/api/artisan wgw:dev-install && pnpm --filter @wgw/apps run build:dev",
+    "seed": "php packages/api/artisan wgw:seed-dev",
+    "seed:notes": "php packages/api/artisan wgw:notes:seed-dev",
+    "seed:calendars": "php packages/api/artisan wgw:calendars:seed-dev",
     "dev:api": "tools/with-root-env.sh -- turbo run dev --filter=@wgw/api",
     "dev:ui": "pnpm run dev",
     "dev:storybook": "tools/with-root-env.sh -- turbo run dev:storybook --filter=@wgw/apps",
