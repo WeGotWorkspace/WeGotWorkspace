@@ -193,7 +193,6 @@ export class PresenceStore {
       // During election grace the tab is not yet leader; stay on the follower proxy until
       // onBecomeLeader swaps in the real mesh session.
       if (!this.isMeshLeader) {
-        console.debug("[presence] mesh-follower-proxy");
         this.attachFollowerSession();
         this.update({ status: "waiting" });
       }
@@ -262,7 +261,6 @@ export class PresenceStore {
   private async onBecomeLeader(): Promise<void> {
     if (this.stopped) return;
     this.isMeshLeader = true;
-    console.debug("[presence] mesh-leader-join");
     await this.detachSession();
     if (this.stopped) return;
     this.attachRealSession();
@@ -278,7 +276,6 @@ export class PresenceStore {
   private async onResignLeader(): Promise<void> {
     if (this.stopped) return;
     this.isMeshLeader = false;
-    console.debug("[presence] mesh-follower-proxy");
     this.unsubscribeVisibility?.();
     this.unsubscribeVisibility = null;
     await this.detachSession();

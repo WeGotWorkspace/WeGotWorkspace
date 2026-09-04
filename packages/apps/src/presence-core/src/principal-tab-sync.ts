@@ -399,7 +399,6 @@ export class PrincipalTabCoordinator {
         return;
       }
       this.isLeader = true;
-      console.debug("[presence] become-leader", { tabId: this.tabId });
       this.handlers.onBecomeLeader();
       // Announce leadership immediately so late tabs adopt us during their grace.
       this.sendPing();
@@ -417,7 +416,6 @@ export class PrincipalTabCoordinator {
     if (this.knownLeaderId === this.tabId) {
       this.knownLeaderId = null;
     }
-    console.debug("[presence] resign-leader", { tabId: this.tabId });
     this.post({ type: "leader-resign", tabId: this.tabId, at: Date.now() });
     this.handlers.onResignLeader();
   }
