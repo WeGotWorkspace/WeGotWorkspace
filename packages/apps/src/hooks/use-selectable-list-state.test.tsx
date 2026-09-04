@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { COLLECTION_DETAIL_OVERLAY_MEDIA_QUERY } from "@/workspace-app/src/collection-detail-breakpoint";
 import { useSelectableListState } from "./use-selectable-list-state";
 
 function mouseEvent(overrides: Partial<ReactMouseEvent> = {}): ReactMouseEvent {
@@ -57,5 +58,30 @@ describe("useSelectableListState", () => {
     });
     expect(result.current.selectedIds).toEqual([]);
     expect(onPrimarySelect).not.toHaveBeenCalled();
+  });
+
+  it("opens the primary row synchronously on the mobile overlay viewport", () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === COLLECTION_DETAIL_OVERLAY_MEDIA_QUERY,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    const onPrimarySelect = vi.fn();
+    const { result } = renderHook(() =>
+      useSelectableListState({
+        visibleIds: ["a", "b"],
+        onPrimarySelect,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelect("a", mouseEvent());
+      expect(onPrimarySelect).toHaveBeenCalledWith("a");
+    });
   });
 });

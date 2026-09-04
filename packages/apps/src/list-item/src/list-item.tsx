@@ -34,6 +34,11 @@ type ListItemMetaPosition = "above" | "below";
 
 type ListItemProps = {
   id: string;
+  /**
+   * Stable entity id. `react-swipeable-list` clones rows with `id="listItem-${index}"`,
+   * which would otherwise become `data-list-item-id` and break selection.
+   */
+  itemId?: string;
   title: string;
   /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
   subtitle: ReactNode;
@@ -93,6 +98,7 @@ function themeToCssVars(theme: Partial<ListItemTheme>): CSSProperties {
 
 export function ListItem({
   id,
+  itemId,
   title,
   subtitle,
   metaPosition = "above",
@@ -116,8 +122,9 @@ export function ListItem({
   theme,
   leading,
 }: ListItemProps) {
+  const entityId = itemId ?? id;
   const delegated = useListItemEventDelegation();
-  const highlight = useListItemHighlight(id, { isActive, isSelected, selectionMode });
+  const highlight = useListItemHighlight(entityId, { isActive, isSelected, selectionMode });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
   const bodyContent = text || (!title ? emptyText : null);
@@ -158,7 +165,7 @@ export function ListItem({
   const button = (
     <button
       type="button"
-      data-list-item-id={id}
+      data-list-item-id={entityId}
       data-active={highlight.isActive ? "true" : "false"}
       data-selected={highlight.isSelected ? "true" : "false"}
       data-selection-mode={highlight.selectionMode ? "true" : "false"}
@@ -200,7 +207,7 @@ export function ListItem({
           : (e) => {
               onDragStart?.();
               e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("text/plain", id);
+              e.dataTransfer.setData("text/plain", entityId);
             }
       }
       onDragEnd={delegated ? undefined : onDragEnd}
@@ -223,7 +230,7 @@ export function ListItem({
             <span className="list-item__subtitle">{subtitle}</span>
             <span className="list-item__meta-trailing">
               {icons.map((icon, index) => (
-                <span key={`${id}-icon-${index}`} className="list-item__icon-slot">
+                <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
                   {icon}
                 </span>
               ))}
@@ -242,7 +249,7 @@ export function ListItem({
             </h3>
             <span className="list-item__meta-trailing">
               {icons.map((icon, index) => (
-                <span key={`${id}-icon-${index}`} className="list-item__icon-slot">
+                <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
                   {icon}
                 </span>
               ))}
@@ -269,10 +276,12 @@ export function ListItem({
 
   if (!isTouch) return button;
 
+  // react-swipeable-list calls onClick with no args after a full swipe (setTimeout).
+  // Do not touch the event — reading stopPropagation throws and aborts the action.
   const leadingActions = swipeLeftAction ? (
     <LeadingActions>
       <SwipeActionPrimitive
-        onClick={swipeLeftAction.onActivate}
+        onClick={() => swipeLeftAction.onActivate()}
         destructive={swipeLeftAction.destructive}
       >
         <div
@@ -289,7 +298,7 @@ export function ListItem({
   const trailingActions = swipeRightAction ? (
     <TrailingActions>
       <SwipeActionPrimitive
-        onClick={swipeRightAction.onActivate}
+        onClick={() => swipeRightAction.onActivate()}
         destructive={swipeRightAction.destructive}
       >
         <div
