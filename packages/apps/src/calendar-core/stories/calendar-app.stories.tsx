@@ -9,6 +9,10 @@ import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-ope
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import {
+  calendarSearchRange,
+  formatCalendarSearchScopeLabel,
+} from "@/calendar-core/src/calendar-search";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
@@ -628,7 +632,9 @@ export const SearchNoMatch: Story = {
     const noMatchScope = canvasElement.querySelector(".calendar-search-results__scope");
     expect(noMatchScope?.textContent).toContain("Personal");
     expect(noMatchScope?.textContent).toContain("Work");
-    expect(noMatchScope?.textContent).toMatch(/2025/);
+    // Scope window is relative to the real "today" — compute the expected start label.
+    const scopeStart = formatCalendarSearchScopeLabel("{start}", calendarSearchRange(), "en-US");
+    expect(noMatchScope?.textContent).toContain(scopeStart);
     expect(noMatchScope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
     await expect(canvas.queryByText(/Downloaded /)).toBeNull();
     await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();

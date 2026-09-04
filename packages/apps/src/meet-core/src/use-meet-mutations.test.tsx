@@ -71,6 +71,26 @@ describe("useMeetMutations", () => {
     expect(session.meetRtc.leave).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the call alive on unmount when the call is suite-persistent", () => {
+    const session = createSessionStub();
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { unmount } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    unmount();
+    expect(session.meetRtc.leave).not.toHaveBeenCalled();
+    // leaveRef stays populated so the mini-player can still hang up.
+    expect(leaveRef.current).toBeTypeOf("function");
+  });
+
   it("reserves an ad-hoc room owned by the acting user before joining", async () => {
     const reserveRoom = vi.fn().mockResolvedValue({ reserved: true, active: false });
     const session = createSessionStub({ reserveRoom });

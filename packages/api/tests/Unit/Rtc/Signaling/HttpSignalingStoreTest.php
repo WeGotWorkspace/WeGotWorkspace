@@ -73,6 +73,39 @@ final class HttpSignalingStoreTest extends TestCase
         $this->assertSame([], $second['messages']);
     }
 
+    public function test_delete_owned_peers_except_leaves_the_replacement(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
+        $now = time();
+        $store->upsertPeer('room-a', 'aaaaaaaaaaaaaaaa', 'Alice', 'u:alice', $now);
+        $store->upsertPeer('room-a', 'bbbbbbbbbbbbbbbb', 'Bob', 'u:bob', $now);
+
+        $deleted = $store->deleteOwnedPeersExcept('room-a', 'u:alice');
+        $this->assertSame([], $deleted);
+        $this->assertSame(
+            [
+                ['id' => 'aaaaaaaaaaaaaaaa', 'name' => 'Alice', 'user' => 'alice'],
+                ['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob'],
+            ],
+            $store->peerList('room-a', 'cccccccccccccccc'),
+        );
+    }
+
+    public function test_delete_owned_peers_except_evicts_after_join_grace(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
+        $old = time() - 20;
+        $store->upsertPeer('room-a', 'aaaaaaaaaaaaaaaa', 'Alice', 'u:alice', $old);
+        $store->upsertPeer('room-a', 'bbbbbbbbbbbbbbbb', 'Bob', 'u:bob', time());
+
+        $deleted = $store->deleteOwnedPeersExcept('room-a', 'u:alice');
+        $this->assertSame(['aaaaaaaaaaaaaaaa'], $deleted);
+        $this->assertSame(
+            [['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob']],
+            $store->peerList('room-a', 'cccccccccccccccc'),
+        );
+    }
+
     public function test_missing_peer_returns_unknown_peer_for_recovery(): void
     {
         $store = new HttpSignalingStore(RtcSignalingPolicy::meet());

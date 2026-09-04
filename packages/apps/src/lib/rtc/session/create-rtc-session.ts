@@ -35,6 +35,7 @@ export type CreateRtcSessionOptions = {
   onLinkChange?: () => void;
   onPollData?: RtcPeerMeshOptions["onPollData"];
   shouldConnectToPeer?: RtcPeerMeshOptions["shouldConnectToPeer"];
+  shouldAcceptOffer?: RtcPeerMeshOptions["shouldAcceptOffer"];
   shouldHandleRtcSignals?: RtcPeerMeshOptions["shouldHandleRtcSignals"];
   onPeerRemoved?: RtcPeerMeshOptions["onPeerRemoved"];
   onConnectionFailed?: RtcPeerMeshOptions["onConnectionFailed"];
@@ -77,6 +78,7 @@ export function createRtcSession(options: CreateRtcSessionOptions): RtcPeerMesh 
     onLinkChange: options.onLinkChange,
     onPollData: options.onPollData,
     shouldConnectToPeer: options.shouldConnectToPeer,
+    shouldAcceptOffer: options.shouldAcceptOffer,
     shouldHandleRtcSignals: options.shouldHandleRtcSignals,
     onPeerRemoved: options.onPeerRemoved,
     onConnectionFailed: options.onConnectionFailed,

@@ -113,7 +113,8 @@ final class MeetChatTest extends WgwDatabaseTestCase
     public function test_chat_on_collab_room_returns_method_not_allowed(): void
     {
         $token = $this->adminBearerToken();
-        $collabRoomId = RoomTestHelper::fileRoomId('docs/test.md');
+        // Collab join checks document access, so the room targets alice's own home.
+        $collabRoomId = RoomTestHelper::fileRoomId('/users/alice/docs/test.md');
 
         $this->withBearer($token)
             ->postJson('/api/v1/rooms/'.$collabRoomId.'/participants', [

@@ -29,6 +29,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'meet_reservations',
             'collab_peers',
             'collab_messages',
+            'principal_peers',
+            'principal_messages',
             'drive_starred_items',
             'search_documents',
             'search_terms',
