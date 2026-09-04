@@ -6395,6 +6395,659 @@
         }
       }
     },
+    "/chat/channels/changes": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Chat channel collection changes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Previous sync state token."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Channel changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatChannelChangesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      }
+    },
+    "/chat/channels": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "List chat channels",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "responses": {
+          "200": {
+            "description": "Chat channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatChannelListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Create a chat channel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatChannelCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created chat channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
+    "/chat/channels/{channelId}": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Fetch a chat channel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatChannel"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Update a chat channel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatChannelPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated chat channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Delete a chat channel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
+    "/chat/channels/{channelId}/messages": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "List channel messages (cursor paging)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Return messages after this ULID cursor (exclusive), ascending."
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Return messages before this ULID cursor (exclusive), for history backfill."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page size cap."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Channel messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Send a message",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/chat/channels/{channelId}/read-marker": {
+      "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Set the caller's read marker",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatReadMarkerPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Read marker stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/chat/messages/changes": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Message changes for one channel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Previous sync state token."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageChangesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/chat/messages/{messageId}": {
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Edit a message body (author only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ULID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessagePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Delete a message (author only, tombstone)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ULID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/chat/messages/{messageId}/reactions": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Toggle a reaction for the caller",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ULID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatReactionToggleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
     "/contacts/cards/import": {
       "post": {
         "tags": [

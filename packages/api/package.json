@@ -15,7 +15,7 @@
     "typegen:watch": "pnpm run typegen:openapi:watch",
     "typegen:openapi": "node scripts/typegen-openapi-types.mjs",
     "typegen:openapi:watch": "node scripts/typegen-openapi-types-watch.mjs",
-    "typegen:openapi:check": "pnpm run typegen:openapi && git diff --exit-code -- openapi/generated/openapi.built.json openapi/generated/openapi-types.ts openapi/generated/mail-types.ts openapi/generated/notes-types.ts openapi/generated/settings-types.ts openapi/generated/settings-request-zod.ts openapi/generated/admin-types.ts openapi/generated/drive-types.ts openapi/generated/meet-types.ts openapi/generated/installer-types.ts openapi/generated/contacts-types.ts openapi/generated/calendars-types.ts openapi/generated/tasks-types.ts",
+    "typegen:openapi:check": "pnpm run typegen:openapi && git diff --exit-code -- openapi/generated/openapi.built.json openapi/generated/openapi-types.ts openapi/generated/mail-types.ts openapi/generated/notes-types.ts openapi/generated/settings-types.ts openapi/generated/settings-request-zod.ts openapi/generated/admin-types.ts openapi/generated/drive-types.ts openapi/generated/meet-types.ts openapi/generated/installer-types.ts openapi/generated/contacts-types.ts openapi/generated/calendars-types.ts openapi/generated/tasks-types.ts openapi/generated/chat-types.ts",
     "typegen:mail": "pnpm run typegen:openapi",
     "typegen:mail:watch": "pnpm run typegen:openapi:watch",
     "typegen:mail:check": "pnpm run typegen:openapi:check",

@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
+use App\Http\Controllers\Api\V1\Chat\ChatContractStubController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -266,6 +267,31 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('noteId', '[^/]+');
     Route::delete('notes/items/{noteId}', [NotesController::class, 'destroy'])
         ->where('noteId', '[^/]+');
+
+    // Chat contract stubs (Epic #701). The OpenAPI parity gate requires routes for
+    // every documented /chat operation; chunks B/C replace these with real controllers.
+    Route::get('chat/channels/changes', ChatContractStubController::class);
+    Route::get('chat/channels', ChatContractStubController::class);
+    Route::post('chat/channels', ChatContractStubController::class);
+    Route::get('chat/channels/{channelId}', ChatContractStubController::class)
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::patch('chat/channels/{channelId}', ChatContractStubController::class)
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::delete('chat/channels/{channelId}', ChatContractStubController::class)
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::get('chat/channels/{channelId}/messages', ChatContractStubController::class)
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::post('chat/channels/{channelId}/messages', ChatContractStubController::class)
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::put('chat/channels/{channelId}/read-marker', ChatContractStubController::class)
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::get('chat/messages/changes', ChatContractStubController::class);
+    Route::patch('chat/messages/{messageId}', ChatContractStubController::class)
+        ->where('messageId', '[^/]+');
+    Route::delete('chat/messages/{messageId}', ChatContractStubController::class)
+        ->where('messageId', '[^/]+');
+    Route::post('chat/messages/{messageId}/reactions', ChatContractStubController::class)
+        ->where('messageId', '[^/]+');
 
     Route::middleware('wgw.contacts')->group(function (): void {
         Route::post('contacts/cards/import', ContactCardImportController::class);

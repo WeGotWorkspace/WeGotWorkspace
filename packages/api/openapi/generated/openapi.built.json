@@ -10642,6 +10642,510 @@
                         "type": "boolean"
                     }
                 }
+            },
+            "ChatChannel": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "kind",
+                    "scope",
+                    "groupSlug",
+                    "myRights",
+                    "isSharee"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Channel collection id (CalDAV collection uri, chat-/dm- prefixed)."
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "channel",
+                            "meeting",
+                            "dm"
+                        ]
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shareWith": {
+                        "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "$ref": "#/components/schemas/CalendarRights"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "isSharee": {
+                        "type": "boolean"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/TaskListRights"
+                    },
+                    "topic": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Channel topic shown in the main header subtitle (chat_channel_meta)."
+                    },
+                    "guestRoomCode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Meeting kind: linked meet_reservations room code for guest links."
+                    },
+                    "memberCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Roster size (owner plus sharees, groups expanded)."
+                    },
+                    "unreadCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Unread messages after the caller's read marker, own messages excluded."
+                    }
+                }
+            },
+            "ChatChannelListResponse": {
+                "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatChannel"
+                        }
+                    }
+                }
+            },
+            "ChatChannelCreate": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "channel",
+                            "meeting",
+                            "dm"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "topic": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "id": {
+                        "$ref": "#/components/schemas/JmapId",
+                        "description": "Optional client-suggested channel id (uri slug)."
+                    }
+                }
+            },
+            "ChatChannelPatch": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "topic": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null)."
+                    },
+                    "shareWith": {
+                        "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/CalendarRights"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "ChatChannelChangesResponse": {
+                "type": "object",
+                "required": [
+                    "oldState",
+                    "newState",
+                    "created",
+                    "updated",
+                    "destroyed"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "oldState": {
+                        "type": "string",
+                        "description": "Previous sync state token supplied by the client."
+                    },
+                    "newState": {
+                        "type": "string",
+                        "description": "Current sync state token to store for the next request."
+                    },
+                    "created": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "updated": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "destroyed": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    }
+                },
+                "description": "JMAP-shaped incremental sync response for channel collections."
+            },
+            "ChatReaction": {
+                "type": "object",
+                "required": [
+                    "emoji",
+                    "authors"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "emoji": {
+                        "type": "string"
+                    },
+                    "authors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Principal usernames that toggled this emoji on."
+                    }
+                }
+            },
+            "ChatMention": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "displayName"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Mentioned principal username."
+                    },
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ChatMessage": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "channelId",
+                    "authorId",
+                    "authorName",
+                    "body",
+                    "createdAt",
+                    "reactions",
+                    "mentions"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Message id — client-generated ULID (VJOURNAL UID), lexicographically time-sortable."
+                    },
+                    "channelId": {
+                        "type": "string"
+                    },
+                    "authorId": {
+                        "type": "string",
+                        "description": "Author principal username (X-WGW-AUTHOR)."
+                    },
+                    "authorName": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Empty string on delete tombstones (STATUS:CANCELLED)."
+                    },
+                    "createdAt": {
+                        "$ref": "#/components/schemas/JmapUTCDateTime",
+                        "description": "Server-assigned creation timestamp — ordering source of truth with ULID tiebreak."
+                    },
+                    "editedAt": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/JmapUTCDateTime"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "deletedAt": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/JmapUTCDateTime"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Set on tombstoned messages (STATUS:CANCELLED)."
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Thread parent message id (RELATED-TO)."
+                    },
+                    "replyCount": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "reactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatReaction"
+                        }
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatMention"
+                        }
+                    }
+                }
+            },
+            "ChatMessageListResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "hasMore"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatMessage"
+                        }
+                    },
+                    "hasMore": {
+                        "type": "boolean",
+                        "description": "True when more messages exist beyond the requested cursor window."
+                    }
+                }
+            },
+            "ChatMessageCreate": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "body"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Client-generated ULID — message id and idempotency key; retries with the same id return the existing message."
+                    },
+                    "body": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Thread parent message id."
+                    }
+                }
+            },
+            "ChatMessagePatch": {
+                "type": "object",
+                "required": [
+                    "body"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Author-only body edit — bumps SEQUENCE server-side."
+                    }
+                }
+            },
+            "ChatReactionToggleRequest": {
+                "type": "object",
+                "required": [
+                    "emoji"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "emoji": {
+                        "type": "string",
+                        "description": "Emoji to toggle for the caller — (emoji, author) set semantics, serialized server-side."
+                    }
+                }
+            },
+            "ChatReadMarkerPut": {
+                "type": "object",
+                "required": [
+                    "lastReadTs",
+                    "lastReadUid"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "lastReadTs": {
+                        "$ref": "#/components/schemas/JmapUTCDateTime",
+                        "description": "createdAt of the last read message."
+                    },
+                    "lastReadUid": {
+                        "type": "string",
+                        "description": "ULID of the last read message — tiebreak for equal timestamps; unread = (createdAt, uid) > (lastReadTs, lastReadUid)."
+                    }
+                }
+            },
+            "ChatMessageChangesResponse": {
+                "type": "object",
+                "required": [
+                    "oldState",
+                    "newState",
+                    "created",
+                    "updated",
+                    "destroyed",
+                    "hasMoreChanges"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "oldState": {
+                        "type": "string",
+                        "description": "Previous sync state token supplied by the client."
+                    },
+                    "newState": {
+                        "type": "string",
+                        "description": "Current sync state token to store for the next request."
+                    },
+                    "created": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "updated": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "destroyed": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "hasMoreChanges": {
+                        "type": "boolean",
+                        "description": "True when more changes exist after newState — repeat the request. Real at chat volume, never hardcoded false."
+                    }
+                },
+                "description": "JMAP-shaped incremental sync response for messages in one channel."
             }
         },
         "responses": {
@@ -16650,6 +17154,659 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/channels/changes": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Chat channel collection changes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Previous sync state token."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Channel changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannelChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/chat/channels": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List chat channels",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "responses": {
+                    "200": {
+                        "description": "Chat channels",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannelListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Create a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatChannelCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created chat channel",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/chat/channels/{channelId}": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Fetch a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chat channel",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Update a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatChannelPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated chat channel",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/chat/channels/{channelId}/messages": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List channel messages (cursor paging)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Return messages after this ULID cursor (exclusive), ascending."
+                    },
+                    {
+                        "name": "before",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Return messages before this ULID cursor (exclusive), for history backfill."
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Page size cap."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Channel messages",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessageListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send a message",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatMessageCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
+            }
+        },
+        "/chat/channels/{channelId}/read-marker": {
+            "put": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Set the caller's read marker",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatReadMarkerPut"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Read marker stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/messages/changes": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Message changes for one channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Previous sync state token."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessageChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/messages/{messageId}": {
+            "patch": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Edit a message body (author only)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Message ULID."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatMessagePatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete a message (author only, tombstone)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Message ULID."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/messages/{messageId}/reactions": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Toggle a reaction for the caller",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Message ULID."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatReactionToggleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
