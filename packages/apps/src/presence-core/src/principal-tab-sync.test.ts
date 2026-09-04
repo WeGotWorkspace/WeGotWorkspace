@@ -5,7 +5,9 @@ import {
   electStickyLeaderTabId,
   isPrincipalTabStale,
   PRINCIPAL_ELECTION_GRACE_MS,
+  PRINCIPAL_LEADER_STALE_MS,
   PRINCIPAL_TAB_CHANNEL,
+  PRINCIPAL_TAB_PING_INTERVAL_MS,
   PrincipalTabCoordinator,
   pruneStalePrincipalTabs,
   resolvePrincipalLeaderClaim,
@@ -105,13 +107,22 @@ describe("principal-tab-sync sticky election", () => {
     expect(electStickyLeaderTabId(tabs, null, now)).toBe("tab-a");
   });
 
-  it("takes over when the sticky leader goes stale", () => {
+  it("does not steal leadership when the known leader's pings go stale", () => {
     const tabs = new Map<string, PrincipalTabPresence>([
       ["tab-a", tab("tab-a", true, now - 10_000)],
       ["tab-b", tab("tab-b", true, now)],
     ]);
-    expect(electStickyLeaderTabId(tabs, "tab-a", now)).toBe("tab-b");
+    // Chrome may throttle the hidden leader's timers — sticky keeps tab-a.
+    expect(electStickyLeaderTabId(tabs, "tab-a", now)).toBe("tab-a");
     expect(isPrincipalTabStale(now - 10_000, now)).toBe(true);
+  });
+
+  it("prunes stale tabs only when electing without a known leader", () => {
+    const tabs = new Map<string, PrincipalTabPresence>([
+      ["tab-a", tab("tab-a", true, now - 10_000)],
+      ["tab-b", tab("tab-b", true, now)],
+    ]);
+    expect(electStickyLeaderTabId(tabs, null, now)).toBe("tab-b");
     expect(pruneStalePrincipalTabs(tabs, now).size).toBe(1);
   });
 
@@ -196,6 +207,51 @@ describe("PrincipalTabCoordinator", () => {
     leaderA.stop();
 
     expect(leaderA.meshLeader).toBe(false);
+    expect(leaderB.meshLeader).toBe(true);
+    expect(b.onBecomeLeader).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not become leader when the sticky leader stops pinging (timer throttle)", () => {
+    const a = handlers();
+    const b = handlers();
+    const leaderA = new PrincipalTabCoordinator(a, "tab-a");
+    const leaderB = new PrincipalTabCoordinator(b, "tab-b");
+    leaderA.start();
+    leaderB.start();
+    advanceElectionGrace();
+    expect(leaderA.meshLeader).toBe(true);
+    expect(leaderB.meshLeader).toBe(false);
+
+    // Simulate Chrome background-tab timer throttle: leader stops BC pings
+    // without pagehide/resign. Followers must not lease-steal.
+    vi.spyOn(leaderA as unknown as { sendPing: () => void }, "sendPing").mockImplementation(
+      () => {},
+    );
+
+    vi.advanceTimersByTime(PRINCIPAL_LEADER_STALE_MS * 5 + PRINCIPAL_TAB_PING_INTERVAL_MS);
+
+    expect(leaderA.meshLeader).toBe(true);
+    expect(leaderB.meshLeader).toBe(false);
+    expect(b.onBecomeLeader).not.toHaveBeenCalled();
+  });
+
+  it("becomes leader after explicit resign even if pings had already gone silent", () => {
+    const a = handlers();
+    const b = handlers();
+    const leaderA = new PrincipalTabCoordinator(a, "tab-a");
+    const leaderB = new PrincipalTabCoordinator(b, "tab-b");
+    leaderA.start();
+    leaderB.start();
+    advanceElectionGrace();
+
+    vi.spyOn(leaderA as unknown as { sendPing: () => void }, "sendPing").mockImplementation(
+      () => {},
+    );
+    vi.advanceTimersByTime(PRINCIPAL_LEADER_STALE_MS * 5 + PRINCIPAL_TAB_PING_INTERVAL_MS);
+    expect(leaderB.meshLeader).toBe(false);
+
+    leaderA.stop();
+
     expect(leaderB.meshLeader).toBe(true);
     expect(b.onBecomeLeader).toHaveBeenCalledTimes(1);
   });

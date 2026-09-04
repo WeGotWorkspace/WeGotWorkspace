@@ -5,6 +5,14 @@ import type { PresenceEnvelope } from "@/presence-core/src/presence-types";
 export const PRINCIPAL_TAB_CHANNEL = "wgw.principal.tab";
 
 export const PRINCIPAL_TAB_PING_INTERVAL_MS = 2000;
+/**
+ * Used only when electing with **no** known leader (cold start / post-resign):
+ * drop tabs that have not pinged recently from the candidate set.
+ *
+ * Do **not** use this as a lease to steal leadership — Chrome throttles timers in
+ * background tabs, so a hidden leader's pings go silent while the tab is still alive.
+ * Sticky handoff is resign / `pagehide` / `tab-leave` only.
+ */
 export const PRINCIPAL_LEADER_STALE_MS = 6000;
 /**
  * Wait this long after `start()` before claiming leadership. BroadcastChannel
@@ -93,20 +101,24 @@ export function pruneStalePrincipalTabs(
 }
 
 /**
- * Sticky election: keep `currentLeaderId` while that tab is still alive.
- * Only on cold start / takeover, pick the lexicographically smallest active tab id.
- * Unlike docs-collab, visibility must not bounce leadership.
+ * Sticky election: keep `currentLeaderId` until callers clear it (resign /
+ * `tab-leave` / `leader-resign`). Silent pings must not trigger takeover —
+ * background tabs often stop timers under Chrome throttling while still open.
+ *
+ * Only when there is no known leader (cold start or after explicit handoff),
+ * pick the lexicographically smallest non-stale tab id. Unlike docs-collab,
+ * visibility must not bounce leadership.
  */
 export function electStickyLeaderTabId(
   tabs: ReadonlyMap<string, PrincipalTabPresence>,
   currentLeaderId: string | null,
   now: number = Date.now(),
 ): string | null {
-  const active = pruneStalePrincipalTabs(new Map(tabs), now);
-  if (active.size === 0) return null;
-  if (currentLeaderId && active.has(currentLeaderId)) {
+  if (currentLeaderId) {
     return currentLeaderId;
   }
+  const active = pruneStalePrincipalTabs(new Map(tabs), now);
+  if (active.size === 0) return null;
   const candidates = [...active.values()].sort((a, b) => a.tabId.localeCompare(b.tabId));
   return candidates[0]?.tabId ?? null;
 }
