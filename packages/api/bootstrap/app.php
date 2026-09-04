@@ -13,6 +13,7 @@ use App\Http\Support\WgwOversizedPost;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
 use App\Services\Meet\MeetResponseException;
+use App\Services\Principal\PrincipalResponseException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -59,6 +60,9 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json($e->payload, $e->status);
         });
         $exceptions->render(function (CollabResponseException $e) {
+            return response()->json($e->payload, $e->status);
+        });
+        $exceptions->render(function (PrincipalResponseException $e) {
             return response()->json($e->payload, $e->status);
         });
         $exceptions->render(function (ApiHttpException $e) {

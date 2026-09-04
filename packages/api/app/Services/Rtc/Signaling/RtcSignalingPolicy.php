@@ -8,6 +8,8 @@ use App\Models\CollabMessage;
 use App\Models\CollabPeer;
 use App\Models\MeetMessage;
 use App\Models\MeetPeer;
+use App\Models\PrincipalMessage;
+use App\Models\PrincipalPeer;
 use Illuminate\Database\Eloquent\Model;
 
 enum RtcSignalingPollMode
@@ -42,6 +44,8 @@ final readonly class RtcSignalingPolicy
         public bool $leaveDeletesPeerMessages,
         public bool $trimMessagesOnSend,
         public bool $requireLivePeersOnSend,
+        /** Expose the peer's owner username (`owner_user` minus the `u:` marker) as `user` in rosters. */
+        public bool $rosterIncludesOwner = false,
     ) {}
 
     public static function meet(): self
@@ -83,6 +87,34 @@ final readonly class RtcSignalingPolicy
             leaveDeletesPeerMessages: true,
             trimMessagesOnSend: true,
             requireLivePeersOnSend: true,
+            rosterIncludesOwner: true,
+        );
+    }
+
+    /**
+     * Presence rooms for authenticated principals. SinceCursor like collab, but a
+     * longer peer timeout: presence tabs poll slowly (15-30 s steady state) once the
+     * data channels carry the presence/chat/typing traffic.
+     */
+    public static function principal(): self
+    {
+        return new self(
+            peersTable: 'principal_peers',
+            messagesTable: 'principal_messages',
+            peerModelClass: PrincipalPeer::class,
+            messageModelClass: PrincipalMessage::class,
+            peerTimeoutSeconds: 90,
+            messageRetentionSeconds: 600,
+            maxMessagesPerRoom: 500,
+            pollMode: RtcSignalingPollMode::SinceCursor,
+            allowedSendTypes: ['offer', 'answer', 'ice'],
+            peerIdPattern: '/^[A-Za-z0-9_-]{8,80}$/',
+            sendFromField: 'peerId',
+            unknownPeerWhenMissing: true,
+            leaveDeletesPeerMessages: true,
+            trimMessagesOnSend: true,
+            requireLivePeersOnSend: true,
+            rosterIncludesOwner: true,
         );
     }
 }

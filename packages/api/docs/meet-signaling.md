@@ -29,6 +29,23 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 
 For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
 
+## Room kinds
+
+`RoomIdCodec` dispatches the shared `/rooms/{roomId}/*` routes on the roomId prefix:
+
+| Prefix | Kind | Service | Auth on join |
+|--------|------|---------|--------------|
+| *(none)* | `meet` | `MeetSignalingService` | guest `sessionKey` or authenticated |
+| `f_` (base64url file path / note UID) | `collab` | `DocCollabSignalingService` | authenticated + document access (`CollabJoinAuthorizer`) |
+| `p_` (plain token) | `principal` | `PrincipalSignalingService` | authenticated members only |
+
+Principal rooms (presence/chat/typing over data channels, `principal_peers` / `principal_messages`):
+
+- `p_workspace` — workspace-wide room, any authenticated user may join.
+- `p_groups.{slug}` — addresses the Sabre group principal `principals/groups/{slug}`; membership is checked on join via `GroupDirectoryService::memberPrincipalUris`. Any other room form is denied.
+- Peer identity is the Sabre username: `owner_user = u:{username}` is exposed as `user` in the roster (authoritative); the peer id is `{sanitized-username}-{6 hex}` (random suffix keeps multiple tabs apart).
+- Policy: SinceCursor poll with the conditional 204 fast path, 90 s peer timeout, send types `offer`/`answer`/`ice` only.
+
 ## Reserved rooms
 
 Calendar and ad-hoc `/meet` Start persist a row via `MeetReservationService` (`meet_reservations`). Architecture lock: [`docs/architecture/meet-reserved-rooms.md`](../../docs/architecture/meet-reserved-rooms.md).

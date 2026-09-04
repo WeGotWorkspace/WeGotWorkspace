@@ -99,6 +99,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'drive_share_sessions',
             'collab_peers',
             'collab_messages',
+            'principal_peers',
+            'principal_messages',
             'search_documents',
             'search_terms',
             'jmap_contact_states',

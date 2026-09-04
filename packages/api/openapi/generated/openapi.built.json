@@ -13586,11 +13586,47 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "peerId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sig",
+                        "in": "query",
+                        "required": false,
+                        "description": "Roster signature (`rosterSig`) from a previous poll response. When it still matches and no messages are pending for the peer, the server answers 204 No Content.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sessionKey",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK"
+                    },
+                    "204": {
+                        "description": "Nothing new — roster unchanged for the provided `sig` and no pending messages."
                     }
                 },
                 "x-wgw-access": "guest"
