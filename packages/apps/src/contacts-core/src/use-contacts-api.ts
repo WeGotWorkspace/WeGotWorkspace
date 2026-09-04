@@ -1,10 +1,21 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { createContactsJmapClient } from "@/lib/api/wgw/contacts";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { JmapContactsAdapter, type JmapAddressBook, type JmapContactCard } from "@/lib/jmap-client";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridContactsOperations,
   getContactsSyncRunner,
 } from "@/lib/offline/contacts-hybrid-operations";
+import {
+  ingestRemoteAddressBook,
+  ingestRemoteAddressBookDestroyed,
+  ingestRemoteContactCard,
+  ingestRemoteContactCardDestroyed,
+  reconcileContactsSnapshot,
+} from "@/lib/offline/contacts-jmap-inbound";
 import { readContactsBootstrapFromCache } from "@/lib/offline/contacts-offline-store";
 import {
   readOfflineContactsUsername,
@@ -13,14 +24,18 @@ import {
 import { setContactsSyncConflictListener } from "@/lib/offline/contacts-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
-import type { ContactsUIData } from "@/contacts-core/src/contacts-types";
+import type { AddressBook, ContactCard, ContactsUIData } from "@/contacts-core/src/contacts-types";
 import { createDefaultContactsApiSource, type ContactsApiSource } from "./contacts-api-source";
+
+/** Live JMAP inbound poll (adapter owns the timer). */
+const ONLINE_CHANGES_POLL_MS = 10_000;
 
 export type UseContactsAPIOptions = {
   onSyncConflict?: (cardIds: string[]) => void;
 };
 
 export function useContactsAPI(source?: ContactsApiSource, options?: UseContactsAPIOptions) {
+  const { online } = useConnectivity();
   const resolvedSource = useMemo(() => source ?? createDefaultContactsApiSource(), [source]);
   const placeholderData = useMemo<ContactsUIData>(
     () => ({
@@ -72,6 +87,68 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
 
   const [listRefreshing, setListRefreshing] = useState(false);
 
+  const patchFromCache = useCallback(async () => {
+    if (!offlineUsername) return;
+    const next = await readContactsBootstrapFromCache(offlineUsername);
+    if (next) patchBootstrap(() => next);
+  }, [offlineUsername, patchBootstrap]);
+
+  useEffect(() => {
+    if (!offlineUsername || !online || phase !== "ready") return;
+    if (typeof window === "undefined") return;
+    if (!wgwLiveApiEnabled()) return;
+
+    const username = offlineUsername;
+    const adapter = new JmapContactsAdapter({
+      client: createContactsJmapClient(),
+      onRemoteContactCard: (card: JmapContactCard) => {
+        void ingestRemoteContactCard(username, card as ContactCard).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRemoteContactCardDestroyed: (cardId) => {
+        void ingestRemoteContactCardDestroyed(username, cardId).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRemoteAddressBook: (book: JmapAddressBook) => {
+        void ingestRemoteAddressBook(username, book as AddressBook).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRemoteAddressBookDestroyed: (bookId) => {
+        void ingestRemoteAddressBookDestroyed(username, bookId).then(() => {
+          void patchFromCache();
+        });
+      },
+      onRefetchAll: ({ books, cards }) => {
+        void reconcileContactsSnapshot(
+          username,
+          cards as ContactCard[],
+          books as AddressBook[],
+        ).then(() => {
+          void patchFromCache();
+        });
+      },
+    });
+
+    let cancelled = false;
+    void adapter
+      .initialize()
+      .then(() => {
+        if (cancelled) return;
+        adapter.startPolling(ONLINE_CHANGES_POLL_MS);
+      })
+      .catch(() => {
+        // Session missing contacts capability — Dexie cache still renders.
+      });
+
+    return () => {
+      cancelled = true;
+      adapter.stopPolling();
+    };
+  }, [offlineUsername, online, patchFromCache, phase]);
+
   const refreshList = useCallback(() => {
     if (listRefreshing) return;
     setListRefreshing(true);
@@ -90,7 +167,10 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     error,
     retry: load,
     successVersion,
-    listLoading: phase === "loading" || listRefreshing || reconnectSyncing,
+    // First paint only. Refresh / reconnect keep cached cards and use listRefreshing
+    // (header icon) — same split as Notes.
+    listLoading: phase === "loading",
+    listRefreshing: listRefreshing || reconnectSyncing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

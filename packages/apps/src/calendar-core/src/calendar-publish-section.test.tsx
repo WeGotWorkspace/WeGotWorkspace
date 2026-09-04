@@ -34,8 +34,8 @@ describe("CalendarPublishSection", () => {
     const onToggle = vi.fn();
     renderSection({ onToggle });
 
-    const toggle = screen.getByRole("group", { name: defaultCalendarLabels.publishCalendarTitle });
-    fireEvent.click(toggle.querySelector('button[aria-label="On"]')!);
+    const toggle = screen.getByRole("switch", { name: defaultCalendarLabels.publishCalendarTitle });
+    fireEvent.click(toggle);
     expect(onToggle).toHaveBeenCalledWith(true);
   });
 
@@ -61,8 +61,8 @@ describe("CalendarPublishSection", () => {
     expect(openLink.classList.contains("icon-button--size-sm")).toBe(true);
     expect(screen.queryByDisplayValue(feed.webcalUrl)).toBeNull();
 
-    const toggle = screen.getByRole("group", { name: defaultCalendarLabels.publishCalendarTitle });
-    fireEvent.click(toggle.querySelector('button[aria-label="Off"]')!);
+    const toggle = screen.getByRole("switch", { name: defaultCalendarLabels.publishCalendarTitle });
+    fireEvent.click(toggle);
     expect(onToggle).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", { name: defaultCalendarLabels.unpublishCalendarConfirm }),

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import type { UserAvatarColor } from "@/user-avatar/src/user-avatar-color";
@@ -50,6 +50,8 @@ export type UserAvatarProps = {
   subtitle?: ReactNode;
   /** When set, show profile photo; falls back to initials on load error or when omitted. */
   imageSrc?: string;
+  /** Replaces initials when there is no photo (e.g. a company building icon). */
+  fallback?: ReactNode;
   /** Avatar + label only; no text column. */
   compact?: boolean;
   /** `sm` = sidebar/footer chip; `md` = mail sender row; `lg` / `xl` = meet tiles and lobby preview. */
@@ -58,8 +60,14 @@ export type UserAvatarProps = {
   presence?: UserAvatarPresence;
   /** Washed fill + saturated 2px ring. Omit to keep parent `--user-avatar-*` tokens. */
   color?: UserAvatarColor;
+  /** Native `<img>` loading hint. List rows pass `lazy`; omit (eager) for the open card. */
+  loading?: "eager" | "lazy";
+  /** Native `<img>` decoding hint. List rows pass `async`. */
+  decoding?: "async" | "auto" | "sync";
   onClick?: () => void;
   className?: string;
+  /** Runtime CSS variables (e.g. a per-collection `--contacts-book-color`). */
+  style?: CSSProperties;
 };
 
 export function initialsFromDisplayName(displayName: string | null | undefined): string {
@@ -76,12 +84,16 @@ export function UserAvatar({
   displayName,
   subtitle,
   imageSrc,
+  fallback,
   compact = false,
   size = "sm",
   presence,
   color,
+  loading,
+  decoding,
   onClick,
   className,
+  style,
 }: UserAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const resolvedName = displayName?.trim() || "Unknown";
@@ -106,10 +118,12 @@ export function UserAvatar({
       src={imageSrc}
       alt=""
       className="user-avatar__image"
+      loading={loading}
+      decoding={decoding}
       onError={() => setImageFailed(true)}
     />
   ) : (
-    initials
+    (fallback ?? initials)
   );
 
   const presenceLabel =
@@ -144,6 +158,7 @@ export function UserAvatar({
         color && `user-avatar--color-${color}`,
         className,
       )}
+      style={style}
     >
       <div className="user-avatar__mark-wrap">
         {circle}

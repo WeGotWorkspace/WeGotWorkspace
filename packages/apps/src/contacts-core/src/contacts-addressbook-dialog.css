@@ -1,0 +1,20 @@
+@import "../../styles.css" reference;
+
+.contacts-addressbook-dialog__share {
+  @apply mt-4;
+}
+
+.contacts-addressbook-dialog__footer {
+  @apply mt-4 gap-2 sm:gap-0;
+}
+
+.contacts-addressbook-dialog__footer .contacts-addressbook-dialog__remove {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
+  color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .contacts-addressbook-dialog__footer .contacts-addressbook-dialog__remove {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
+}

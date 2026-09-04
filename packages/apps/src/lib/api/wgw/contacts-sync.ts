@@ -1,3 +1,4 @@
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   addressBookChanges,
   connectedContacts,
@@ -5,23 +6,24 @@ import {
   getAddressBook,
   getCard,
   isCannotCalculateChanges,
+  isContactsNotFound,
   listAddressBooks,
   listCards,
 } from "@/lib/api/wgw/contacts";
 import {
+  ingestRemoteAddressBook,
+  ingestRemoteAddressBookDestroyed,
+  ingestRemoteContactCard,
+  ingestRemoteContactCardDestroyed,
+} from "@/lib/offline/contacts-jmap-inbound";
+import {
   listCachedAddressBookIds,
+  listPendingContactCardIds,
   readAddressBooksSyncToken,
   readSyncToken,
-  removeAddressBookFromCache,
-  removeContactCardFromCache,
-  replaceAllAddressBooksInCache,
-  upsertAddressBookInCache,
-  upsertContactCardInCache,
   writeAddressBooksSyncToken,
   writeSyncToken,
 } from "@/lib/offline/contacts-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
 /** Envelope empty compose — REST used `"0"`, which cannotCalculateChanges. */
 const INITIAL_JMAP_STATE = "0:";
@@ -49,6 +51,10 @@ export async function pullContactCardChangesForBook(
       await fullResyncBook(username, addressBookId, opts);
       return;
     }
+    if (isContactsNotFound(error)) {
+      await ingestRemoteAddressBookDestroyed(username, addressBookId);
+      return;
+    }
     throw error;
   }
 }
@@ -63,11 +69,19 @@ async function fullResyncBook(
   addressBookId: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const list = await listCards({ addressBookId, signal: opts?.signal });
-  for (const card of list) {
-    await upsertContactCardInCache(username, card, false);
+  try {
+    const list = await listCards({ addressBookId, signal: opts?.signal });
+    for (const card of list) {
+      await ingestRemoteContactCard(username, card);
+    }
+    await writeSyncToken(username, addressBookId, await currentTypeState("ContactCard"));
+  } catch (error) {
+    if (isContactsNotFound(error)) {
+      await ingestRemoteAddressBookDestroyed(username, addressBookId);
+      return;
+    }
+    throw error;
   }
-  await writeSyncToken(username, addressBookId, await currentTypeState("ContactCard"));
 }
 
 async function applyContactCardChanges(
@@ -75,19 +89,18 @@ async function applyContactCardChanges(
   changes: JmapChangesResponse,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const cards = contactsCardsTable(db);
+  const pending = new Set(await listPendingContactCardIds(username));
   for (const id of changes.destroyed) {
-    const row = await cards.get(id);
-    if (row?.pendingSync) continue;
-    await removeContactCardFromCache(username, id);
+    await ingestRemoteContactCardDestroyed(username, id);
   }
   const toFetch = [...changes.created, ...changes.updated];
   for (const id of toFetch) {
-    const row = await cards.get(id);
-    if (row?.pendingSync) continue;
+    if (pending.has(id)) {
+      await ingestRemoteContactCard(username, { id } as ContactCard);
+      continue;
+    }
     const card = await getCard(id, opts);
-    await upsertContactCardInCache(username, card, false);
+    await ingestRemoteContactCard(username, card);
   }
 }
 
@@ -114,7 +127,15 @@ async function fullResyncAddressBooks(
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
   const books = await listAddressBooks(opts);
-  await replaceAllAddressBooksInCache(username, books);
+  const remoteIds = new Set(books.map((book) => book.id).filter(Boolean));
+  for (const book of books) {
+    await ingestRemoteAddressBook(username, book);
+  }
+  const cachedIds = await listCachedAddressBookIds(username);
+  for (const bookId of cachedIds) {
+    if (remoteIds.has(bookId)) continue;
+    await ingestRemoteAddressBookDestroyed(username, bookId);
+  }
   await writeAddressBooksSyncToken(username, await currentTypeState("AddressBook"));
 }
 
@@ -124,14 +145,16 @@ async function applyAddressBookChanges(
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
   for (const bookId of changes.destroyed) {
-    await removeAddressBookFromCache(username, bookId);
+    await ingestRemoteAddressBookDestroyed(username, bookId);
   }
   for (const bookId of changes.created) {
     const book = await getAddressBook(bookId, opts);
-    await upsertAddressBookInCache(username, book);
+    await ingestRemoteAddressBook(username, book);
     await pullContactCardChangesForBook(username, bookId, opts);
   }
   for (const bookId of changes.updated) {
+    const book = await getAddressBook(bookId, opts);
+    await ingestRemoteAddressBook(username, book);
     await pullContactCardChangesForBook(username, bookId, opts);
   }
 }

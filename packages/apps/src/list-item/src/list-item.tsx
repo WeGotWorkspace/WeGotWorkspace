@@ -6,6 +6,9 @@ import {
   TrailingActions,
   LeadingActions,
 } from "react-swipeable-list";
+import { useListItemEventDelegation } from "@/list-item/src/list-item-delegation";
+import { useListItemHighlight } from "@/list-item/src/list-item-selection";
+import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
 import "./list-item.css";
 
 export type SwipeAction = {
@@ -31,6 +34,11 @@ type ListItemMetaPosition = "above" | "below";
 
 type ListItemProps = {
   id: string;
+  /**
+   * Stable entity id. `react-swipeable-list` clones rows with `id="listItem-${index}"`,
+   * which would otherwise become `data-list-item-id` and break selection.
+   */
+  itemId?: string;
   title: string;
   /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
   subtitle: ReactNode;
@@ -45,11 +53,11 @@ type ListItemProps = {
   selectionMode: boolean;
   isTouch: boolean;
   isDragging: boolean;
-  onClick: (e: React.MouseEvent) => void;
+  onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
-  onLongPress: () => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
+  onLongPress?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   swipeLeftAction?: SwipeAction;
   swipeRightAction?: SwipeAction;
   emptyTitle?: string;
@@ -61,8 +69,10 @@ type ListItemProps = {
 
 const defaultTheme: ListItemTheme = {
   baseBackground: "var(--color-cream, #ffffff)",
-  activeBackground: "color-mix(in oklab, var(--color-emerald) 10%, transparent)",
-  selectedBackground: "color-mix(in oklab, var(--color-emerald) 18%, transparent)",
+  activeBackground:
+    "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))",
+  selectedBackground:
+    "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))",
   borderColor: "color-mix(in oklab, var(--color-ink) 10%, transparent)",
   accentColor: "var(--color-emerald)",
   titleColor: "var(--color-ink)",
@@ -70,7 +80,6 @@ const defaultTheme: ListItemTheme = {
   bodyColor: "color-mix(in oklab, var(--color-ink) 60%, transparent)",
 };
 
-const LONG_PRESS_DELAY_MS = 450;
 const TOUCH_MOVE_CANCEL_PX = 8;
 const DESTRUCTIVE_CALLBACK_DELAY_MS = 380;
 
@@ -89,6 +98,7 @@ function themeToCssVars(theme: Partial<ListItemTheme>): CSSProperties {
 
 export function ListItem({
   id,
+  itemId,
   title,
   subtitle,
   metaPosition = "above",
@@ -112,6 +122,9 @@ export function ListItem({
   theme,
   leading,
 }: ListItemProps) {
+  const entityId = itemId ?? id;
+  const delegated = useListItemEventDelegation();
+  const highlight = useListItemHighlight(entityId, { isActive, isSelected, selectionMode });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
   const bodyContent = text || (!title ? emptyText : null);
@@ -127,9 +140,9 @@ export function ListItem({
     longPressTimer.current = setTimeout(() => {
       if (longPressBlockedBySwipeRef.current) return;
       longPressFired.current = true;
-      onLongPress();
+      onLongPress?.();
       if ("vibrate" in navigator) navigator.vibrate?.(15);
-    }, LONG_PRESS_DELAY_MS);
+    }, LIST_ITEM_LONG_PRESS_DELAY_MS);
   };
 
   const cancelLongPress = () => {
@@ -152,44 +165,60 @@ export function ListItem({
   const button = (
     <button
       type="button"
-      data-list-item-id={id}
-      data-active={isActive ? "true" : "false"}
-      data-selected={isSelected ? "true" : "false"}
-      data-selection-mode={selectionMode ? "true" : "false"}
+      data-list-item-id={entityId}
+      data-active={highlight.isActive ? "true" : "false"}
+      data-selected={highlight.isSelected ? "true" : "false"}
+      data-selection-mode={highlight.selectionMode ? "true" : "false"}
       data-dragging={isDragging ? "true" : "false"}
-      onClick={(e) => {
-        if (longPressFired.current || longPressBlockedBySwipeRef.current) {
-          e.preventDefault();
-          return;
-        }
-        onClick(e);
-      }}
-      onDoubleClick={(e) => {
-        onDoubleClick?.(e);
-      }}
-      onMouseDown={(e) => {
-        if (e.shiftKey) e.preventDefault();
-      }}
-      onTouchStart={isTouch ? startLongPress : undefined}
-      onTouchEnd={resetTouchIntent}
-      onTouchCancel={resetTouchIntent}
-      onTouchMove={handleTouchMove}
-      onContextMenu={(e) => {
-        if (isTouch) e.preventDefault();
-      }}
+      onClick={
+        delegated
+          ? undefined
+          : (e) => {
+              if (longPressFired.current || longPressBlockedBySwipeRef.current) {
+                e.preventDefault();
+                return;
+              }
+              onClick?.(e);
+            }
+      }
+      onDoubleClick={delegated ? undefined : onDoubleClick}
+      onMouseDown={
+        delegated
+          ? undefined
+          : (e) => {
+              if (e.shiftKey) e.preventDefault();
+            }
+      }
+      onTouchStart={!delegated && isTouch ? startLongPress : undefined}
+      onTouchEnd={!delegated ? resetTouchIntent : undefined}
+      onTouchCancel={!delegated ? resetTouchIntent : undefined}
+      onTouchMove={!delegated ? handleTouchMove : undefined}
+      onContextMenu={
+        delegated
+          ? undefined
+          : (e) => {
+              if (isTouch) e.preventDefault();
+            }
+      }
       draggable={!isTouch}
-      onDragStart={(e) => {
-        onDragStart();
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", id);
-      }}
-      onDragEnd={onDragEnd}
+      onDragStart={
+        delegated
+          ? undefined
+          : (e) => {
+              onDragStart?.();
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", entityId);
+            }
+      }
+      onDragEnd={delegated ? undefined : onDragEnd}
       className={`list-item__button${leading ? " list-item__button--with-leading" : ""}`}
       style={themeVars}
     >
       <span aria-hidden className="list-item__checkbox-wrap">
         <span className="list-item__checkbox">
-          {isSelected ? <Check className="list-item__checkbox-icon" strokeWidth={2.75} /> : null}
+          {highlight.isSelected ? (
+            <Check className="list-item__checkbox-icon" strokeWidth={2.75} />
+          ) : null}
         </span>
       </span>
 
@@ -201,7 +230,7 @@ export function ListItem({
             <span className="list-item__subtitle">{subtitle}</span>
             <span className="list-item__meta-trailing">
               {icons.map((icon, index) => (
-                <span key={`${id}-icon-${index}`} className="list-item__icon-slot">
+                <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
                   {icon}
                 </span>
               ))}
@@ -220,7 +249,7 @@ export function ListItem({
             </h3>
             <span className="list-item__meta-trailing">
               {icons.map((icon, index) => (
-                <span key={`${id}-icon-${index}`} className="list-item__icon-slot">
+                <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
                   {icon}
                 </span>
               ))}
@@ -247,10 +276,12 @@ export function ListItem({
 
   if (!isTouch) return button;
 
+  // react-swipeable-list calls onClick with no args after a full swipe (setTimeout).
+  // Do not touch the event — reading stopPropagation throws and aborts the action.
   const leadingActions = swipeLeftAction ? (
     <LeadingActions>
       <SwipeActionPrimitive
-        onClick={swipeLeftAction.onActivate}
+        onClick={() => swipeLeftAction.onActivate()}
         destructive={swipeLeftAction.destructive}
       >
         <div
@@ -267,7 +298,7 @@ export function ListItem({
   const trailingActions = swipeRightAction ? (
     <TrailingActions>
       <SwipeActionPrimitive
-        onClick={swipeRightAction.onActivate}
+        onClick={() => swipeRightAction.onActivate()}
         destructive={swipeRightAction.destructive}
       >
         <div

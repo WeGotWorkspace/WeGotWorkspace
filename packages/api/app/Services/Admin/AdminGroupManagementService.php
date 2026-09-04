@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\Models\Addressbook;
+use App\Models\AddressBookShareDismissal;
 use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Contacts\AddressBookProvisioner;
+use App\Services\Contacts\AddressBookShareInvites;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 final class AdminGroupManagementService
 {
@@ -17,6 +25,8 @@ final class AdminGroupManagementService
         private GroupDirectoryService $groups,
         private InstallerSeeder $installerSeeder,
         private UserCalendarCollectionsProvisioner $calendarCollections,
+        private AddressBookProvisioner $addressBooks,
+        private AddressBookShareInvites $addressBookShares,
         private AppPaths $paths,
     ) {}
 
@@ -37,7 +47,9 @@ final class AdminGroupManagementService
             'displayname' => $displayName !== '' ? $displayName : $slug,
         ]);
 
-        $this->calendarCollections->ensureForGroupPrincipal($uri, $displayName !== '' ? $displayName : $slug);
+        $name = $displayName !== '' ? $displayName : $slug;
+        $this->calendarCollections->ensureForGroupPrincipal($uri, $name);
+        $this->addressBooks->ensureForGroupPrincipal($uri, $name);
 
         return $uri;
     }
@@ -76,6 +88,9 @@ final class AdminGroupManagementService
             throw new \InvalidArgumentException('Group not found.');
         }
 
+        $this->deleteAddressBookShares($uri);
+        $this->deleteDavCollections($uri);
+
         GroupMember::query()
             ->where('principal_id', $principal->id)
             ->orWhere('member_id', $principal->id)
@@ -100,6 +115,44 @@ final class AdminGroupManagementService
         }
 
         return $slug;
+    }
+
+    private function deleteAddressBookShares(string $principalUri): void
+    {
+        $bookIds = Addressbook::query()
+            ->where('principaluri', $principalUri)
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $this->addressBookShares->deleteGrantsForGroupPrincipal($principalUri, $bookIds);
+
+        if ($bookIds !== []) {
+            AddressBookShareDismissal::query()->whereIn('addressbookid', $bookIds)->delete();
+        }
+    }
+
+    private function deleteDavCollections(string $principalUri): void
+    {
+        $pdo = DB::connection('wgw')->getPdo();
+
+        if (Schema::connection('wgw')->hasTable('calendars')) {
+            $caldav = new CalPDO($pdo);
+            foreach ($caldav->getCalendarsForUser($principalUri) as $cal) {
+                if (isset($cal['id']) && is_array($cal['id'])) {
+                    $caldav->deleteCalendar($cal['id']);
+                }
+            }
+        }
+
+        if (Schema::connection('wgw')->hasTable('addressbooks')) {
+            $carddav = new CardPDO($pdo);
+            foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
+                if (isset($book['id'])) {
+                    $carddav->deleteAddressBook((int) $book['id']);
+                }
+            }
+        }
     }
 
     private function groupUriFromSlug(string $groupSlug): string

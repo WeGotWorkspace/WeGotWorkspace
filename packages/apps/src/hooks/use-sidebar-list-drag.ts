@@ -51,11 +51,23 @@ export function useSidebarListDrag(selectedIds: string[]) {
   );
 
   const dropZoneProps = useCallback(
-    (targetKey: string, onCommit: (ids: string[]) => void): ListDropZoneProps => {
+    (
+      targetKey: string,
+      onCommit: (ids: string[]) => void,
+      canAccept?: (ids: string[]) => boolean,
+    ): ListDropZoneProps => {
+      const accept = (ids: string[] | null): ids is string[] =>
+        Boolean(ids?.length) && (canAccept ? canAccept(ids!) : true);
+
       const highlight = (e: React.DragEvent) => {
-        if (!draggingRef.current?.length) return;
+        const ids = draggingRef.current;
+        if (!ids?.length) return;
         e.preventDefault();
         e.stopPropagation();
+        if (!accept(ids)) {
+          if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+          return;
+        }
         if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
         setDropTargetKey(targetKey);
       };
@@ -73,7 +85,7 @@ export function useSidebarListDrag(selectedIds: string[]) {
           e.preventDefault();
           e.stopPropagation();
           const ids = draggingRef.current;
-          if (!ids?.length) return;
+          if (!accept(ids)) return;
           onCommit(ids);
           endDrag();
         },

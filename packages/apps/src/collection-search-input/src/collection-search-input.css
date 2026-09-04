@@ -6,6 +6,7 @@
  */
 .collection-search-input {
   @apply mt-3;
+  --control-radius: var(--control-radius-button-pill);
   --input-background: var(
     --collection-search-input-bg,
     color-mix(in oklab, var(--color-ink) 6%, transparent)

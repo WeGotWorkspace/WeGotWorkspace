@@ -11,15 +11,35 @@ final class RoomIdCodec
 {
     private const FILE_PREFIX = 'f_';
 
+    private const PRINCIPAL_PREFIX = 'p_';
+
+    /**
+     * Strip leading slashes so `/groups/foo.md` and `groups/foo.md` are one room.
+     * Note UIDs have no slash and are unchanged.
+     */
+    public static function canonicalFilePath(string $path): string
+    {
+        return ltrim($path, '/');
+    }
+
     public function encodeFilePath(string $path): string
     {
-        $encoded = rtrim(strtr(base64_encode($path), '+/', '-_'), '=');
+        $encoded = rtrim(strtr(base64_encode(self::canonicalFilePath($path)), '+/', '-_'), '=');
 
         return self::FILE_PREFIX.$encoded;
     }
 
     /**
-     * @return array{channel: 'meet'|'collab', room: string}
+     * Principal rooms are plain tokens (`workspace`, `groups.{slug}`) — no encoding,
+     * the room charset already fits the roomId path segment.
+     */
+    public function encodePrincipalRoom(string $room): string
+    {
+        return self::PRINCIPAL_PREFIX.$room;
+    }
+
+    /**
+     * @return array{channel: 'meet'|'collab'|'principal', room: string}
      */
     public function decode(string $roomId): array
     {
@@ -34,7 +54,16 @@ final class RoomIdCodec
                 throw new \InvalidArgumentException('Invalid file room id.');
             }
 
-            return ['channel' => 'collab', 'room' => $path];
+            return ['channel' => 'collab', 'room' => self::canonicalFilePath($path)];
+        }
+
+        if (str_starts_with($roomId, self::PRINCIPAL_PREFIX)) {
+            $room = substr($roomId, strlen(self::PRINCIPAL_PREFIX));
+            if ($room === '') {
+                throw new \InvalidArgumentException('Invalid principal room id.');
+            }
+
+            return ['channel' => 'principal', 'room' => $room];
         }
 
         return ['channel' => 'meet', 'room' => $roomId];

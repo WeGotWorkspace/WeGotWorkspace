@@ -15,6 +15,7 @@ const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
 type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+  /** Height, padding, and font-size. Radius stays `--control-radius` (parent token). */
   size?: "sm" | "md";
 };
 

@@ -5,6 +5,7 @@ import {
   channelDisplayLabels,
   contactBirthdayDisplay,
   contactDisplayName,
+  isContactOrgCard,
   contactInitials,
   contactListDetail,
   contactListSortName,
@@ -63,20 +64,34 @@ describe("contacts-display-utils", () => {
     expect(contactDisplayName(joeCard)).toBe("Joe Example");
   });
 
-  it("shows org name in subtitle for individual cards; no email or phone", () => {
+  it("shows one secondary line: company over email over phone", () => {
     expect(contactListSubtitle(janeCard)).toBe("Acme Corp");
     expect(contactListDetail(janeCard)).toBe("");
 
     const noOrg: ContactCard = { ...joeCard, organizations: undefined };
     expect(contactListSubtitle(noOrg)).toBe("");
-    expect(contactListDetail(noOrg)).toBe("");
+    expect(contactListDetail(noOrg)).toBe("joe@example.com");
 
     const orgOnly: ContactCard = { ...janeCard, emails: undefined, phones: undefined };
     expect(contactListSubtitle(orgOnly)).toBe("Acme Corp");
     expect(contactListDetail(orgOnly)).toBe("");
+
+    const phoneOnly: ContactCard = {
+      ...joeCard,
+      emails: undefined,
+      phones: {
+        "phone-1": { "@type": "Phone" as const, number: "+1-555-0100" },
+      },
+    };
+    expect(contactListSubtitle(phoneOnly)).toBe("");
+    expect(contactListDetail(phoneOnly)).toBe("+1-555-0100");
+
+    const neither: ContactCard = { ...joeCard, emails: undefined, phones: undefined };
+    expect(contactListSubtitle(neither)).toBe("");
+    expect(contactListDetail(neither)).toBe("");
   });
 
-  it("shows only person name in subtitle for org cards; no email or phone", () => {
+  it("shows only person name in subtitle for org cards; email as list detail", () => {
     const companyCard = {
       "@type": "Card",
       version: "1.0",
@@ -95,9 +110,11 @@ describe("contacts-display-utils", () => {
       },
     } as unknown as ContactCard;
 
+    expect(isContactOrgCard(companyCard)).toBe(true);
+    expect(isContactOrgCard(janeCard)).toBe(false);
     expect(contactDisplayName(companyCard)).toBe("Acme Corp");
     expect(contactListSubtitle(companyCard)).toBe("");
-    expect(contactListDetail(companyCard)).toBe("");
+    expect(contactListDetail(companyCard)).toBe("info@acme.com");
   });
 
   it("shows person name in subtitle for org card that has a person name", () => {
@@ -128,11 +145,111 @@ describe("contacts-display-utils", () => {
       organizations: {
         "org-1": { "@type": "Organization" as const, name: "Acme Corp" },
       },
+      emails: {
+        "email-1": { "@type": "EmailAddress" as const, address: "friends@example.com" },
+      },
     } as unknown as ContactCard;
 
     expect(contactDisplayName(groupWithOrg)).toBe("Friends");
     expect(contactListSubtitle(groupWithOrg)).toBe("Acme Corp");
     expect(contactListDetail(groupWithOrg)).toBe("");
+  });
+
+  describe("contactListDetail primary channel", () => {
+    it("prefers the email with the lowest pref", () => {
+      const card: ContactCard = {
+        ...joeCard,
+        emails: {
+          "email-work": {
+            "@type": "EmailAddress" as const,
+            address: "work@example.com",
+            pref: 2,
+          },
+          "email-home": {
+            "@type": "EmailAddress" as const,
+            address: "home@example.com",
+            pref: 1,
+          },
+        },
+        phones: {
+          "phone-1": { "@type": "Phone" as const, number: "+1-555-0100", pref: 1 },
+        },
+      };
+      expect(contactListDetail(card)).toBe("home@example.com");
+    });
+
+    it("falls back to primary phone when no email is present", () => {
+      const card: ContactCard = {
+        ...joeCard,
+        emails: undefined,
+        phones: {
+          "phone-work": { "@type": "Phone" as const, number: "+1-555-0100", pref: 2 },
+          "phone-mobile": { "@type": "Phone" as const, number: "+1-555-0199", pref: 1 },
+        },
+      };
+      expect(contactListDetail(card)).toBe("+1-555-0199");
+    });
+
+    it("returns empty when neither email nor phone exists", () => {
+      const card: ContactCard = { ...joeCard, emails: undefined, phones: undefined };
+      expect(contactListDetail(card)).toBe("");
+    });
+
+    it("skips group cards unless they have a channel", () => {
+      const group: ContactCard = {
+        "@type": "Card",
+        version: "1.0",
+        id: "card-group-empty",
+        uid: "urn:uuid:group-empty",
+        kind: "group",
+        addressBookIds: { default: true as const },
+        name: { "@type": "Name" as const, isOrdered: false, full: "Friends" },
+        members: {},
+      } as unknown as ContactCard;
+      expect(contactListDetail(group)).toBe("");
+
+      const groupWithEmail: ContactCard = {
+        ...group,
+        emails: {
+          "email-1": { "@type": "EmailAddress" as const, address: "friends@example.com" },
+        },
+      };
+      expect(contactListDetail(groupWithEmail)).toBe("friends@example.com");
+    });
+
+    it("uses first sorted email when no pref is set", () => {
+      const card: ContactCard = {
+        ...joeCard,
+        emails: {
+          "email-z": { "@type": "EmailAddress" as const, address: "z@example.com" },
+          "email-a": { "@type": "EmailAddress" as const, address: "a@example.com" },
+        },
+        phones: {
+          "phone-1": { "@type": "Phone" as const, number: "+1-555-0100" },
+        },
+      };
+      expect(contactListDetail(card)).toBe("a@example.com");
+    });
+
+    it("formats phone from number, then uri", () => {
+      const numberCard: ContactCard = {
+        ...joeCard,
+        emails: undefined,
+        phones: {
+          "phone-1": { "@type": "Phone" as const, number: "  +1-555-0101  " },
+        },
+      };
+      expect(contactListDetail(numberCard)).toBe("+1-555-0101");
+
+      const uriCard = {
+        ...joeCard,
+        emails: undefined,
+        phones: {
+          "phone-1": { "@type": "Phone" as const, number: "   ", uri: "tel:+15550100" },
+        },
+      } as unknown as ContactCard;
+      expect(contactListDetail(uriCard)).toBe("tel:+15550100");
+    });
   });
 
   it("computes initials from a display name", () => {
@@ -347,6 +464,15 @@ describe("contacts-display-utils", () => {
   describe("contactBirthdayDisplay", () => {
     it("returns empty string when no anniversaries", () => {
       expect(contactBirthdayDisplay(janeCard)).toBe("");
+    });
+
+    it("returns empty string when a cleared birth slot is null", () => {
+      const card = {
+        ...janeCard,
+        anniversaries: { "bday-1": null },
+      } as unknown as ContactCard;
+      expect(() => contactBirthdayDisplay(card)).not.toThrow();
+      expect(contactBirthdayDisplay(card)).toBe("");
     });
 
     it("returns empty string when no birth kind anniversary", () => {

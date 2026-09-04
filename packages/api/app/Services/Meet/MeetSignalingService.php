@@ -91,7 +91,7 @@ final class MeetSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>}
+     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
     public function poll(Request $request, array $body): array
     {
@@ -103,7 +103,9 @@ final class MeetSignalingService
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
 
-            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)));
+            $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
+
+            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
         });
     }
 

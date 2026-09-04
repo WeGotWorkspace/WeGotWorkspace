@@ -7,8 +7,21 @@ import type { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
 
 type MeetRtc = ReturnType<typeof useMeetRtc>;
 
+/**
+ * Suite-level holders (from `MeetCallStore`): local media survives route unmounts
+ * when provided; otherwise per-mount refs are used (mock/Storybook behavior).
+ */
+export type MeetLocalMediaHolders = {
+  localStream: { current: MediaStream | null };
+  screenStream: { current: MediaStream | null };
+  cameraTrack: { current: MediaStreamTrack | null };
+  selectedMicId: { current: string | null };
+  selectedCamId: { current: string | null };
+};
+
 type UseMeetLocalMediaArgs = {
   meetRtc: MeetRtc;
+  mediaHolders?: MeetLocalMediaHolders;
   micOn: boolean;
   videoOn: boolean;
   screenOn: boolean;
@@ -24,6 +37,7 @@ type UseMeetLocalMediaArgs = {
 
 export function useMeetLocalMedia({
   meetRtc,
+  mediaHolders,
   micOn,
   videoOn,
   screenOn,
@@ -37,14 +51,37 @@ export function useMeetLocalMedia({
   screenOnRef: _screenOnRef,
 }: UseMeetLocalMediaArgs) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
-  const screenStreamRef = useRef<MediaStream | null>(null);
-  const [screenPreviewStream, setScreenPreviewStream] = useState<MediaStream | null>(null);
+  const fallbackLocalStreamRef = useRef<MediaStream | null>(null);
+  const fallbackCameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const fallbackScreenStreamRef = useRef<MediaStream | null>(null);
+  const localStreamRef = mediaHolders?.localStream ?? fallbackLocalStreamRef;
+  const cameraTrackRef = mediaHolders?.cameraTrack ?? fallbackCameraTrackRef;
+  const screenStreamRef = mediaHolders?.screenStream ?? fallbackScreenStreamRef;
+  // Rehydrate mid-call state (e.g. an ongoing screen share) after a route remount.
+  const [screenPreviewStream, setScreenPreviewStream] = useState<MediaStream | null>(
+    () => screenStreamRef.current,
+  );
   const [audioInputs, setAudioInputs] = useState<MediaDeviceInfo[]>([]);
   const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([]);
-  const [selectedMicId, setSelectedMicId] = useState<string | null>(null);
-  const [selectedCamId, setSelectedCamId] = useState<string | null>(null);
+  const [selectedMicId, setSelectedMicIdState] = useState<string | null>(
+    () => mediaHolders?.selectedMicId.current ?? null,
+  );
+  const [selectedCamId, setSelectedCamIdState] = useState<string | null>(
+    () => mediaHolders?.selectedCamId.current ?? null,
+  );
+
+  const selectedMicHolderRef = useRef(mediaHolders?.selectedMicId ?? null);
+  const selectedCamHolderRef = useRef(mediaHolders?.selectedCamId ?? null);
+
+  const setSelectedMicId = useCallback((deviceId: string | null) => {
+    if (selectedMicHolderRef.current) selectedMicHolderRef.current.current = deviceId;
+    setSelectedMicIdState(deviceId);
+  }, []);
+
+  const setSelectedCamId = useCallback((deviceId: string | null) => {
+    if (selectedCamHolderRef.current) selectedCamHolderRef.current.current = deviceId;
+    setSelectedCamIdState(deviceId);
+  }, []);
 
   const refreshDeviceList = useCallback(async () => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -88,7 +125,15 @@ export function useMeetLocalMedia({
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     await refreshDeviceList();
     return stream;
-  }, [micOn, refreshDeviceList, selectedCamId, selectedMicId, videoOn]);
+  }, [
+    cameraTrackRef,
+    localStreamRef,
+    micOn,
+    refreshDeviceList,
+    selectedCamId,
+    selectedMicId,
+    videoOn,
+  ]);
 
   const stopLocalMedia = useCallback(() => {
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -98,7 +143,7 @@ export function useMeetLocalMedia({
     setScreenPreviewStream(null);
     cameraTrackRef.current = null;
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
-  }, []);
+  }, [cameraTrackRef, localStreamRef, screenStreamRef]);
 
   const toggleMic = useCallback(() => {
     setMicOn((prev) => {
@@ -109,7 +154,7 @@ export function useMeetLocalMedia({
       void announceMediaPresence(next, videoOnRef.current);
       return next;
     });
-  }, [announceMediaPresence, setMicOn, videoOnRef]);
+  }, [announceMediaPresence, localStreamRef, setMicOn, videoOnRef]);
 
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
@@ -120,7 +165,7 @@ export function useMeetLocalMedia({
       void announceMediaPresence(micOnRef.current, next);
       return next;
     });
-  }, [announceMediaPresence, micOnRef, setVideoOn]);
+  }, [announceMediaPresence, localStreamRef, micOnRef, setVideoOn]);
 
   const toggleScreenShare = useCallback(async () => {
     if (screenOn) {
@@ -160,9 +205,11 @@ export function useMeetLocalMedia({
     }
   }, [
     announceMediaPresence,
+    cameraTrackRef,
     micOnRef,
     replaceVideoTrackOnAllPeers,
     screenOn,
+    screenStreamRef,
     setScreenOn,
     videoOnRef,
   ]);
@@ -192,7 +239,14 @@ export function useMeetLocalMedia({
         setError(e instanceof Error ? e.message : "Could not switch microphone.");
       }
     },
-    [micOn, refreshDeviceList, replaceAudioTrackOnAllPeers, setError],
+    [
+      localStreamRef,
+      micOn,
+      refreshDeviceList,
+      replaceAudioTrackOnAllPeers,
+      setError,
+      setSelectedMicId,
+    ],
   );
 
   const switchCamera = useCallback(
@@ -224,7 +278,16 @@ export function useMeetLocalMedia({
         setError(e instanceof Error ? e.message : "Could not switch camera.");
       }
     },
-    [refreshDeviceList, replaceVideoTrackOnAllPeers, screenOn, setError, videoOn],
+    [
+      cameraTrackRef,
+      localStreamRef,
+      refreshDeviceList,
+      replaceVideoTrackOnAllPeers,
+      screenOn,
+      setError,
+      setSelectedCamId,
+      videoOn,
+    ],
   );
 
   useEffect(() => {
@@ -236,7 +299,7 @@ export function useMeetLocalMedia({
     return () => media.removeEventListener("devicechange", onDeviceChange);
   }, [refreshDeviceList]);
 
-  const getLocalStream = useCallback(() => localStreamRef.current, []);
+  const getLocalStream = useCallback(() => localStreamRef.current, [localStreamRef]);
 
   return {
     localVideoRef,

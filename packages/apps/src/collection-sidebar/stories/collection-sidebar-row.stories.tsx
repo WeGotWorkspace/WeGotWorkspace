@@ -47,6 +47,29 @@ export const Default: Story = {
   },
 };
 
+export const NestedWithFold: Story = {
+  tags: ["vitest-ci"],
+  render: (args) => (
+    <TooltipProvider delayDuration={0}>
+      <ul className="max-w-xs p-4">
+        <CollectionSidebarRow
+          {...args}
+          name="Personal"
+          expanded
+          onToggleExpand={fn()}
+          expandLabel="Collapse Personal"
+        />
+        <CollectionSidebarRow name="Friends" color="#22c55e" nested selected onSelect={fn()} />
+      </ul>
+    </TooltipProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Collapse Personal" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Friends" })).toBeInTheDocument();
+  },
+};
+
 export const NoCheckbox: Story = {
   args: {
     onToggleVisibility: undefined,

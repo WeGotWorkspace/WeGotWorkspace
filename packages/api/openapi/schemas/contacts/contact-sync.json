@@ -2,6 +2,7 @@
   "AddressBookCreate": {
     "type": "object",
     "required": ["name"],
+    "description": "Rejected on AddressBook/set — mayCreateAddressBook is false (one book per principal).",
     "properties": {
       "name": {
         "type": "string",
@@ -24,13 +25,30 @@
       "name": {
         "type": "string",
         "minLength": 1,
-        "maxLength": 255
+        "maxLength": 255,
+        "description": "Rejected — names are server-set from the principal display name."
       },
       "description": {
         "type": ["string", "null"]
       },
       "isSubscribed": {
-        "type": "boolean"
+        "type": "boolean",
+        "description": "Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals)."
+      },
+      "shareWith": {
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/JsContactId"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AddressBookRights"
+            }
+          },
+          { "type": "null" }
+        ],
+        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes."
       }
     },
     "additionalProperties": false

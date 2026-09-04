@@ -18,6 +18,7 @@ export type JmapAddressBook = {
   isDefault?: boolean;
   isSubscribed?: boolean;
   shareWith?: Record<JmapId, JmapAddressBookRights> | null;
+  isSharee?: boolean;
   myRights?: JmapAddressBookRights;
   [key: string]: unknown;
 };

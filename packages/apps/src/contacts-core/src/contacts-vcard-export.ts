@@ -1,5 +1,9 @@
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
-import { contactDisplayName, mapEntriesSorted } from "@/contacts-core/src/contacts-display-utils";
+import {
+  contactDisplayName,
+  findBirthAnniversary,
+  mapEntriesSorted,
+} from "@/contacts-core/src/contacts-display-utils";
 
 /** Escape special vCard 3.0 characters in property values. */
 function vcardEscape(value: string): string {
@@ -168,10 +172,8 @@ export function contactCardToVCard(card: ContactCard): string {
   }
 
   // BDAY
-  const birthEntry = mapEntriesSorted(card.anniversaries).find(
-    ([, ann]) => ann.kind === "birth",
-  )?.[1];
-  if (birthEntry) {
+  const birthEntry = findBirthAnniversary(card)?.[1];
+  if (birthEntry?.date) {
     const bday = formatBday(birthEntry.date);
     if (bday) lines.push(`BDAY:${bday}`);
   }

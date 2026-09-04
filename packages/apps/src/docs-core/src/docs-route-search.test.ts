@@ -1,18 +1,14 @@
 /**
  * @vitest-environment jsdom
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   docsHrefFromApiPath,
   docsSearchFromApiPath,
-  openDocsFileInNewWindow,
+  parseDocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
 
-describe("docs-route-search open helpers", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
+describe("docs-route-search helpers", () => {
   it("docsHrefFromApiPath builds a /docs?file= query from an api path", () => {
     expect(docsHrefFromApiPath("/users/alice/Roadmap.md")).toBe(
       "/docs?file=users%2Falice%2FRoadmap.md",
@@ -22,20 +18,34 @@ describe("docs-route-search open helpers", () => {
     );
   });
 
-  it("openDocsFileInNewWindow opens the editor href in a new tab", () => {
-    const popup = { closed: false } as Window;
-    const open = vi.spyOn(window, "open").mockReturnValue(popup);
-
-    const result = openDocsFileInNewWindow("/users/alice/Roadmap.md");
-
-    expect(result).toBe(popup);
-    expect(open).toHaveBeenCalledWith(
-      docsHrefFromApiPath("/users/alice/Roadmap.md"),
-      "_blank",
-      "noopener,noreferrer",
-    );
+  it("docsSearchFromApiPath strips the leading slash for the file param", () => {
     expect(docsSearchFromApiPath("/users/alice/Roadmap.md")).toEqual({
       file: "users/alice/Roadmap.md",
+    });
+  });
+
+  it("keeps rtcDebug on the docs search object so TanStack does not strip it", () => {
+    expect(
+      parseDocsRouteSearch({
+        file: "groups/administrators/team-notes.md",
+        rtcDebug: 1,
+      }),
+    ).toEqual({
+      file: "groups/administrators/team-notes.md",
+      rtcDebug: 1,
+    });
+  });
+
+  it("preserves rtcDebug when building a file href from current search", () => {
+    expect(docsHrefFromApiPath("/groups/administrators/team-notes.md", { rtcDebug: 1 })).toBe(
+      "/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1",
+    );
+  });
+
+  it("parses a quoted leftover as the number 1 so the next serialize is unquoted", () => {
+    expect(parseDocsRouteSearch({ file: "x.md", rtcDebug: '"1"' })).toEqual({
+      file: "x.md",
+      rtcDebug: 1,
     });
   });
 });

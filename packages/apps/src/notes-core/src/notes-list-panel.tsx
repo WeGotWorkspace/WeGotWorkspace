@@ -1,4 +1,5 @@
 import {
+  useMemo,
   useRef,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
@@ -38,6 +39,7 @@ import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-righ
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-list-panel.css";
@@ -204,147 +206,218 @@ export function NotesListPanel({
       </div>
     ) : (
       <div ref={listRef} className="notes-list-panel__list">
-        <WorkspaceSwipeList isTouch={isTouch}>
-          {visibleNotes.map((note) => {
-            const dragHandlers = itemDragHandlers(note.id) as {
-              onDragStart?: () => void;
-              onDragEnd?: () => void;
-            };
-            const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
-            const multiSelect = selectionMode || selectedIds.length > 1;
-            // Single-select UI: open row = activeId ∩ selectedIds (stale activeId
-            // after empty selection must not paint). Multi-select: selected rows
-            // only (suppress active paint so leftover activeId cannot light a
-            // second beige row).
-            const rowActive = !multiSelect && note.id === activeId && selectedIds.includes(note.id);
-            const rowSelected = multiSelect
-              ? selectedIds.includes(note.id)
-              : note.id === activeId && selectedIds.includes(note.id);
-            const showTags = noteShowsTags(note);
-            const showStar = noteShowsStarControls(note);
-            const showShared = noteShowsSharedBadge(note);
-            const showViewOnly = noteShowsViewOnlyBadge(note);
-            const canArchive = noteAllowsStructureManage(note);
-            const notebookColor = notebookDisplayColor(note, notebookCollections);
-            const excerpt = noteListExcerpt(note);
-            const tagsRow = showTags ? notesListItemTags(note.tags) : null;
-            return (
-              <ListItem
-                key={note.id}
-                id={note.id}
-                title={noteListTitle(note)}
-                subtitle={
-                  <NotesListLocation
-                    note={note}
-                    labels={L}
-                    notebookColor={notebookColor}
-                    notebookCollections={notebookCollections}
-                  />
-                }
-                date={formatNoteDateForList(note.date)}
-                text={
-                  excerpt || tagsRow ? (
-                    <>
-                      {excerpt ? (
-                        <span className="notes-list-panel__excerpt">{excerpt}</span>
-                      ) : null}
-                      {tagsRow}
-                    </>
-                  ) : null
-                }
-                icons={[
-                  isPendingSync ? (
-                    <span
-                      key="pending"
-                      className="notes-list-panel__pending-dot"
-                      role="img"
-                      aria-label={L.pendingSync}
-                    >
-                      <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
-                    </span>
-                  ) : null,
-                  showViewOnly ? (
-                    <span
-                      key="view-only"
-                      className="notes-list-panel__view-only-pip"
-                      role="img"
-                      aria-label={L.viewOnly}
-                    >
-                      <Eye className="size-3 notes-list-panel__view-only-icon" aria-hidden />
-                    </span>
-                  ) : null,
-                  showShared ? (
-                    <span
-                      key="shared"
-                      className="notes-list-panel__shared-pip"
-                      role="img"
-                      aria-label={L.shared}
-                    >
-                      <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
-                    </span>
-                  ) : null,
-                  showStar ? (
-                    <span
-                      key="star"
-                      className="notes-list-panel__star-pip"
-                      data-active={starred[note.id] ? "true" : "false"}
-                    >
-                      <Star
-                        className="size-3 notes-list-panel__star-icon"
-                        fill="currentColor"
-                        aria-hidden
-                      />
-                    </span>
-                  ) : null,
-                ].filter(Boolean)}
-                isActive={rowActive}
-                isSelected={rowSelected}
-                selectionMode={selectionMode}
-                isTouch={isTouch}
-                isDragging={isItemDragging(note.id)}
-                onClick={(e: ReactMouseEvent) => handleSelect(note.id, e)}
-                onLongPress={() => enterSelectionFor(note.id)}
-                {...dragHandlers}
-                onDragStart={dragHandlers.onDragStart ?? (() => {})}
-                onDragEnd={dragHandlers.onDragEnd ?? (() => {})}
-                {...(isTouch
-                  ? {
-                      ...(showStar
-                        ? {
-                            swipeLeftAction: {
-                              icon: (
-                                <Star
-                                  className="size-5"
-                                  fill={starred[note.id] ? "currentColor" : "none"}
-                                />
-                              ),
-                              color: "var(--color-emerald)",
-                              label: starred[note.id] ? L.swipeUnstar : L.swipeStar,
-                              onActivate: () => toggleStar(note.id),
-                            },
-                          }
-                        : {}),
-                      ...(canArchive
-                        ? {
-                            swipeRightAction: {
-                              icon: <Archive className="size-5" />,
-                              color: "var(--color-ink)",
-                              label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
-                              destructive: true,
-                              onActivate: () => toggleArchive(note.id),
-                            },
-                          }
-                        : {}),
-                    }
-                  : {})}
-              />
-            );
-          })}
-        </WorkspaceSwipeList>
+        <NotesListRows
+          L={L}
+          visibleNotes={visibleNotes}
+          notebookCollections={notebookCollections}
+          isTouch={isTouch}
+          starred={starred}
+          archived={archived}
+          activeId={activeId}
+          selectedIds={selectedIds}
+          selectionMode={selectionMode}
+          isItemDragging={isItemDragging}
+          handleSelect={handleSelect}
+          enterSelectionFor={enterSelectionFor}
+          itemDragHandlers={itemDragHandlers}
+          toggleStar={toggleStar}
+          toggleArchive={toggleArchive}
+          pendingNoteIds={pendingNoteIds}
+        />
       </div>
     ),
     hasItems: listLoading || visibleNotes.length > 0,
     emptyLabel: L.emptyList,
     floatingActionBar: selectionBar,
   };
+}
+
+function NotesListRows({
+  L,
+  visibleNotes,
+  notebookCollections,
+  isTouch,
+  starred,
+  archived,
+  activeId,
+  selectedIds,
+  selectionMode,
+  isItemDragging,
+  handleSelect,
+  enterSelectionFor,
+  itemDragHandlers,
+  toggleStar,
+  toggleArchive,
+  pendingNoteIds,
+}: Pick<
+  NotesListPanelProps,
+  | "L"
+  | "visibleNotes"
+  | "notebookCollections"
+  | "isTouch"
+  | "starred"
+  | "archived"
+  | "activeId"
+  | "selectedIds"
+  | "selectionMode"
+  | "isItemDragging"
+  | "handleSelect"
+  | "enterSelectionFor"
+  | "itemDragHandlers"
+  | "toggleStar"
+  | "toggleArchive"
+  | "pendingNoteIds"
+>) {
+  const multiSelect = selectionMode || selectedIds.length > 1;
+  const paintActiveId = !multiSelect && selectedIds.includes(activeId) ? activeId : "";
+  const paintSelectedIds = multiSelect
+    ? selectedIds
+    : selectedIds.includes(activeId)
+      ? [activeId]
+      : [];
+
+  const rows = useMemo(
+    () =>
+      visibleNotes.map((note) => {
+        const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
+        const showTags = noteShowsTags(note);
+        const showStar = noteShowsStarControls(note);
+        const showShared = noteShowsSharedBadge(note);
+        const showViewOnly = noteShowsViewOnlyBadge(note);
+        const canArchive = noteAllowsStructureManage(note);
+        const notebookColor = notebookDisplayColor(note, notebookCollections);
+        const excerpt = noteListExcerpt(note);
+        const tagsRow = showTags ? notesListItemTags(note.tags) : null;
+        return (
+          <ListItem
+            key={note.id}
+            id={note.id}
+            title={noteListTitle(note)}
+            subtitle={
+              <NotesListLocation
+                note={note}
+                labels={L}
+                notebookColor={notebookColor}
+                notebookCollections={notebookCollections ?? []}
+              />
+            }
+            date={formatNoteDateForList(note.date)}
+            text={
+              excerpt || tagsRow ? (
+                <>
+                  {excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
+                  {tagsRow}
+                </>
+              ) : null
+            }
+            icons={[
+              isPendingSync ? (
+                <span
+                  key="pending"
+                  className="notes-list-panel__pending-dot"
+                  role="img"
+                  aria-label={L.pendingSync}
+                >
+                  <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+                </span>
+              ) : null,
+              showViewOnly ? (
+                <span
+                  key="view-only"
+                  className="notes-list-panel__view-only-pip"
+                  role="img"
+                  aria-label={L.viewOnly}
+                >
+                  <Eye className="size-3 notes-list-panel__view-only-icon" aria-hidden />
+                </span>
+              ) : null,
+              showShared ? (
+                <span
+                  key="shared"
+                  className="notes-list-panel__shared-pip"
+                  role="img"
+                  aria-label={L.shared}
+                >
+                  <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
+                </span>
+              ) : null,
+              showStar ? (
+                <span
+                  key="star"
+                  className="notes-list-panel__star-pip"
+                  data-active={starred[note.id] ? "true" : "false"}
+                >
+                  <Star
+                    className="size-3 notes-list-panel__star-icon"
+                    fill="currentColor"
+                    aria-hidden
+                  />
+                </span>
+              ) : null,
+            ].filter(Boolean)}
+            isActive={false}
+            isSelected={false}
+            selectionMode={false}
+            isTouch={isTouch}
+            isDragging={isItemDragging(note.id)}
+            {...(isTouch
+              ? {
+                  ...(showStar
+                    ? {
+                        swipeLeftAction: {
+                          icon: (
+                            <Star
+                              className="size-5"
+                              fill={starred[note.id] ? "currentColor" : "none"}
+                            />
+                          ),
+                          color: "var(--color-emerald)",
+                          label: starred[note.id] ? L.swipeUnstar : L.swipeStar,
+                          onActivate: () => toggleStar(note.id),
+                        },
+                      }
+                    : {}),
+                  ...(canArchive
+                    ? {
+                        swipeRightAction: {
+                          icon: <Archive className="size-5" />,
+                          color: "var(--color-ink)",
+                          label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
+                          destructive: true,
+                          onActivate: () => toggleArchive(note.id),
+                        },
+                      }
+                    : {}),
+                }
+              : {})}
+          />
+        );
+      }),
+    [
+      L,
+      archived,
+      isItemDragging,
+      isTouch,
+      notebookCollections,
+      pendingNoteIds,
+      starred,
+      toggleArchive,
+      toggleStar,
+      visibleNotes,
+    ],
+  );
+
+  return (
+    <WorkspaceSwipeList
+      isTouch={isTouch}
+      activeId={paintActiveId}
+      selectedIds={paintSelectedIds}
+      selectionMode={multiSelect}
+      onItemClick={handleSelect}
+      onItemLongPress={enterSelectionFor}
+      {...bindItemDragHandlers(itemDragHandlers)}
+    >
+      {rows}
+    </WorkspaceSwipeList>
+  );
 }

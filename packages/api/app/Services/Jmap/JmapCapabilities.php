@@ -92,7 +92,7 @@ final class JmapCapabilities
         return [
             // Storage keys each card to exactly one address book.
             'maxAddressBooksPerCard' => 1,
-            'mayCreateAddressBook' => true,
+            'mayCreateAddressBook' => false,
         ];
     }
 

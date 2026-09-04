@@ -15,6 +15,11 @@ export type UseMeetRtcOptions = {
   onConnectionFailed: (remoteId: string, name: string) => void;
   onPollError: (error: unknown) => void;
   onPeerConnected: (remoteId: string) => void;
+  /**
+   * Suite-level session holder (from `MeetCallStore`). When provided, the RTC
+   * session survives route unmounts instead of living in a per-mount ref.
+   */
+  persistentSessionRef?: { current: MeetRtcSession | null };
 };
 
 function createSession(options: UseMeetRtcOptions): MeetRtcSession {
@@ -37,22 +42,32 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  const sessionRef = useRef<MeetRtcSession | null>(null);
+  const localSessionRef = useRef<MeetRtcSession | null>(null);
+
+  const getSessionRef = useCallback(
+    () => optionsRef.current.persistentSessionRef ?? localSessionRef,
+    [],
+  );
 
   const requireSession = useCallback(() => {
-    if (!sessionRef.current) {
+    const session = getSessionRef().current;
+    if (!session) {
       throw new Error("Meet RTC session is not active");
     }
-    return sessionRef.current;
-  }, []);
+    return session;
+  }, [getSessionRef]);
 
-  const join = useCallback(async (input: { room: string; peerId: string; name: string }) => {
-    if (sessionRef.current) {
-      await sessionRef.current.leave({ sendBye: false });
-    }
-    sessionRef.current = createSession(optionsRef.current);
-    return sessionRef.current.join(input);
-  }, []);
+  const join = useCallback(
+    async (input: { room: string; peerId: string; name: string }) => {
+      const sessionRef = getSessionRef();
+      if (sessionRef.current) {
+        await sessionRef.current.leave({ sendBye: false });
+      }
+      sessionRef.current = createSession(optionsRef.current);
+      return sessionRef.current.join(input);
+    },
+    [getSessionRef],
+  );
 
   const updateJoinName = useCallback(
     async (name: string) => {
@@ -61,11 +76,15 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
     [requireSession],
   );
 
-  const leave = useCallback(async (opts?: { sendBye?: boolean }) => {
-    if (!sessionRef.current) return;
-    await sessionRef.current.leave(opts);
-    sessionRef.current = null;
-  }, []);
+  const leave = useCallback(
+    async (opts?: { sendBye?: boolean }) => {
+      const sessionRef = getSessionRef();
+      if (!sessionRef.current) return;
+      await sessionRef.current.leave(opts);
+      sessionRef.current = null;
+    },
+    [getSessionRef],
+  );
 
   const replaceAudioTrack = useCallback(
     async (track: MediaStreamTrack) => {
@@ -82,20 +101,26 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
   );
 
   const getPeerConnection = useCallback(
-    (remoteId: string) => sessionRef.current?.getPeerConnection(remoteId) ?? null,
-    [],
+    (remoteId: string) => getSessionRef().current?.getPeerConnection(remoteId) ?? null,
+    [getSessionRef],
   );
 
   const getRemoteStream = useCallback(
-    (remoteId: string) => sessionRef.current?.getRemoteStream(remoteId) ?? null,
-    [],
+    (remoteId: string) => getSessionRef().current?.getRemoteStream(remoteId) ?? null,
+    [getSessionRef],
   );
 
-  const getPeerIds = useCallback(() => sessionRef.current?.getPeerIds() ?? [], []);
+  const getPeerIds = useCallback(
+    () => getSessionRef().current?.getPeerIds() ?? [],
+    [getSessionRef],
+  );
 
-  const getMyId = useCallback(() => sessionRef.current?.getMyId() ?? null, []);
+  const getMyId = useCallback(() => getSessionRef().current?.getMyId() ?? null, [getSessionRef]);
 
-  const getSessionKey = useCallback(() => sessionRef.current?.getSessionKey() ?? null, []);
+  const getSessionKey = useCallback(
+    () => getSessionRef().current?.getSessionKey() ?? null,
+    [getSessionRef],
+  );
 
   return useMemo(
     () => ({

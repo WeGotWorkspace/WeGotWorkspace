@@ -1,4 +1,6 @@
 import type {
+  AddressBook,
+  AddressBookMutationPatch,
   ContactCard,
   ContactCardCreate,
   ContactCardPatch,
@@ -12,17 +14,23 @@ import {
   patchCardWithState,
 } from "@/lib/api/wgw/contacts-mutations";
 import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
-import { getCard, importVcards, listAddressBooks, listCards } from "@/lib/api/wgw/contacts";
-import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
+import {
+  getCard,
+  importVcards,
+  listAddressBooks,
+  listCards,
+  patchAddressBook,
+} from "@/lib/api/wgw/contacts";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
 import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
 import {
   createTempContactId,
   enqueueCoalescedContactUpdate,
   enqueueOutboxMutation,
-  listCachedAddressBookIds,
+  readCachedAddressBooks,
   readContactsBootstrapFromCache,
   removeContactCardFromCache,
+  upsertAddressBookInCache,
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
@@ -130,11 +138,49 @@ async function queueOfflineDelete(
   });
 }
 
+function applyAddressBookPatch(
+  existing: AddressBook,
+  patch: AddressBookMutationPatch,
+): AddressBook {
+  return {
+    ...existing,
+    ...(patch.isSubscribed !== undefined ? { isSubscribed: patch.isSubscribed } : {}),
+    ...(patch.shareWith !== undefined ? { shareWith: patch.shareWith } : {}),
+  };
+}
+
+async function queueOfflineBookUpdate(
+  username: string,
+  addressBookId: string,
+  patch: AddressBookMutationPatch,
+): Promise<AddressBook> {
+  const books = await readCachedAddressBooks(username);
+  const existing = books.find((book) => book.id === addressBookId);
+  if (!existing) {
+    throw new Error("Address book not found in cache while offline");
+  }
+  const updated = applyAddressBookPatch(existing, patch);
+  await upsertAddressBookInCache(username, updated);
+  await enqueueOutboxMutation(username, {
+    id: crypto.randomUUID(),
+    domain: CONTACTS_DOMAIN,
+    op: "bookUpdate",
+    payload: JSON.stringify({ addressBookId, patch }),
+  });
+  return updated;
+}
+
 export function createHybridContactsOperations(username: string): ContactsAPIOperations {
   const runner = runnerFor(username);
 
   return {
-    listAddressBooks: (opts) => listAddressBooks(opts),
+    listAddressBooks: async (opts) => {
+      const cached = await readContactsBootstrapFromCache(username);
+      if (cached && !readBrowserOnline()) {
+        return cached.data.addressBooks;
+      }
+      return listAddressBooks(opts);
+    },
     listCards: async (opts) => {
       const cached = await readContactsBootstrapFromCache(username);
       if (cached && !readBrowserOnline()) {
@@ -220,6 +266,20 @@ export function createHybridContactsOperations(username: string): ContactsAPIOpe
       }
       return importVcards(vcardText, opts);
     },
+    patchAddressBook: async (addressBookId, patch, opts) => {
+      if (!readBrowserOnline()) {
+        return queueOfflineBookUpdate(username, addressBookId, patch);
+      }
+      try {
+        const book = await patchAddressBook(addressBookId, patch, opts);
+        await upsertAddressBookInCache(username, book);
+        await runner.flush();
+        return book;
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error, opts);
+        return queueOfflineBookUpdate(username, addressBookId, patch);
+      }
+    },
   };
 }
 
@@ -235,19 +295,6 @@ export async function fetchContactsHybridBootstrap(): Promise<
     await flushContactsOutboxAndReport(username);
   }
   await writeContactsBootstrapToCache(username, bootstrap);
-  if (readBrowserOnline()) {
-    await pullAddressBookChanges(username);
-    const bookIds = await listCachedAddressBookIds(username);
-    if (bookIds.length > 0) {
-      await syncAllContactBooks(username, bookIds);
-      const cached = await readContactsBootstrapFromCache(username);
-      if (cached) {
-        cached.session = bootstrap.session;
-        await writeContactsBootstrapToCache(username, cached);
-        return cached;
-      }
-    }
-  }
   return bootstrap;
 }
 

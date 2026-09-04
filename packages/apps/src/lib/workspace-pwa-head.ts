@@ -8,7 +8,7 @@ import {
 } from "@/lib/workspace-app-icons";
 
 /** Bump when launcher / apple-touch artwork changes to bust Safari icon cache. */
-export const WORKSPACE_PWA_ICON_CACHE_VERSION = "9";
+export const WORKSPACE_PWA_ICON_CACHE_VERSION = "10";
 
 export type WorkspacePwaAppKey = WorkspaceAppId | "home";
 

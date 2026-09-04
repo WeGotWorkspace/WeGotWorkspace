@@ -29,8 +29,28 @@ export type TagProps = {
     backgroundColor?: string;
     color?: string;
   };
+  /**
+   * Address-book / collection swatch. Sets `--collection-row-color` and tints
+   * the chip from that token (same contract as sidebar group icons).
+   */
+  collectionTint?: string;
   className?: string;
 };
+
+/** Identity + optional per-chip chrome for {@link TagGroup}. Strings stay valid. */
+export type TagItem = {
+  id: string;
+  label: string;
+  colors?: TagProps["colors"];
+  icon?: ReactNode;
+  /** When `false`, the chip stays even if the group is editable. */
+  removable?: boolean;
+  collectionTint?: string;
+};
+
+export function normalizeTagItems(tags: ReadonlyArray<string | TagItem>): TagItem[] {
+  return tags.map((tag) => (typeof tag === "string" ? { id: tag, label: tag } : tag));
+}
 
 export function Tag({
   label,
@@ -40,18 +60,33 @@ export function Tag({
   removeAriaLabel,
   size = "md",
   colors,
+  collectionTint,
   className,
 }: TagProps) {
-  const tagStyle: CSSProperties | undefined = colors
-    ? ({
-        "--tag-bg":
-          colors.backgroundColor ?? "color-mix(in oklab, var(--color-ink) 8%, transparent)",
-        "--tag-fg": colors.color ?? "var(--color-ink)",
-      } as CSSProperties)
-    : undefined;
+  const tagStyle: CSSProperties | undefined =
+    colors || collectionTint
+      ? ({
+          ...(collectionTint ? { "--collection-row-color": collectionTint } : {}),
+          ...(colors
+            ? {
+                "--tag-bg":
+                  colors.backgroundColor ?? "color-mix(in oklab, var(--color-ink) 8%, transparent)",
+                "--tag-fg": colors.color ?? "var(--color-ink)",
+              }
+            : {}),
+        } as CSSProperties)
+      : undefined;
 
   return (
-    <span className={cn("tag group", size === "lg" && "tag--size-lg", className)} style={tagStyle}>
+    <span
+      className={cn(
+        "tag group",
+        size === "lg" && "tag--size-lg",
+        collectionTint && "tag--collection-tint",
+        className,
+      )}
+      style={tagStyle}
+    >
       {icon ? <span className="tag__icon">{icon}</span> : null}
       <span className="truncate">{label}</span>
       {removable && onRemove ? (
@@ -78,20 +113,29 @@ export function Tag({
 }
 
 export type TagGroupProps = {
-  tags: string[];
+  tags: Array<string | TagItem>;
   /** When `false`, tags are removable and an add control is shown when `onAddTag` is set. */
   readonly?: boolean;
   /**
    * Existing tags offered as autocomplete suggestions when adding.
    * Already-applied tags are excluded automatically.
    */
-  suggestions?: string[];
-  /** Called when the user confirms a tag via the inline add field. */
-  onAddTag?: (label: string) => void;
-  /** Called with the tag label when a tag is removed. */
-  onRemoveTag?: (label: string) => void;
+  suggestions?: Array<string | TagItem>;
+  /**
+   * When `true` (default), typing a new string offers “Create …”.
+   * Contacts sets this from `canCreateGroup`; Notes keeps the default.
+   */
+  allowCreate?: boolean;
+  /** Called with an existing item `id`, or a newly typed label when creating. */
+  onAddTag?: (idOrLabel: string) => void;
+  /** Called with the item `id` (label when tags are strings). */
+  onRemoveTag?: (id: string) => void;
   addPlaceholder?: string;
   addAriaLabel?: string;
+  /** Override the default `Remove tag {label}` name on chip dismiss. */
+  removeAriaLabelFor?: (label: string) => string;
+  /** Default chip icon when an item does not supply its own. */
+  tagIcon?: ReactNode;
   /** Density for chips + add control. Default `md` keeps compact call sites unchanged. */
   size?: TagSize;
   tagColors?: TagProps["colors"];
@@ -101,26 +145,35 @@ export type TagGroupProps = {
 
 type TagSuggestion = {
   id: string;
+  itemId: string;
   label: string;
   create: boolean;
 };
 
 function buildTagSuggestions(
   query: string,
-  suggestions: string[],
-  applied: ReadonlySet<string>,
+  suggestions: TagItem[],
+  appliedIds: ReadonlySet<string>,
+  appliedLabels: ReadonlySet<string>,
+  allowCreate: boolean,
 ): TagSuggestion[] {
   const trimmed = query.trim();
   const q = trimmed.toLowerCase();
   const filtered = suggestions
-    .filter((tag) => !applied.has(tag))
-    .filter((tag) => !q || tag.toLowerCase().includes(q))
-    .map((tag) => ({ id: `existing:${tag}`, label: tag, create: false }));
+    .filter((item) => !appliedIds.has(item.id))
+    .filter((item) => !q || item.label.toLowerCase().includes(q))
+    .map((item) => ({
+      id: `existing:${item.id}`,
+      itemId: item.id,
+      label: item.label,
+      create: false,
+    }));
 
-  const exactMatch = suggestions.some((tag) => tag.toLowerCase() === q);
-  const canCreate = !!trimmed && !exactMatch && !applied.has(trimmed);
+  const exactMatch = suggestions.some((item) => item.label.toLowerCase() === q);
+  const canCreate =
+    allowCreate && !!trimmed && !exactMatch && !appliedIds.has(trimmed) && !appliedLabels.has(q);
   if (canCreate) {
-    filtered.push({ id: `create:${trimmed}`, label: trimmed, create: true });
+    filtered.push({ id: `create:${trimmed}`, itemId: trimmed, label: trimmed, create: true });
   }
   return filtered;
 }
@@ -128,24 +181,27 @@ function buildTagSuggestions(
 function TagAddField({
   suggestions,
   appliedTags,
+  allowCreate,
   placeholder,
   ariaLabel,
   onConfirm,
   onCancel,
 }: {
-  suggestions: string[];
-  appliedTags: string[];
+  suggestions: TagItem[];
+  appliedTags: TagItem[];
+  allowCreate: boolean;
   placeholder: string;
   ariaLabel: string;
-  onConfirm: (label: string) => void;
+  onConfirm: (idOrLabel: string) => void;
   onCancel: () => void;
 }) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
-  const applied = new Set(appliedTags);
-  const options = buildTagSuggestions(query, suggestions, applied);
+  const appliedIds = new Set(appliedTags.map((item) => item.id));
+  const appliedLabels = new Set(appliedTags.map((item) => item.label.toLowerCase()));
+  const options = buildTagSuggestions(query, suggestions, appliedIds, appliedLabels, allowCreate);
   const showList = options.length > 0;
   const activeOption = options[highlight] ?? null;
 
@@ -157,9 +213,9 @@ function TagAddField({
     setHighlight(0);
   }, [query]);
 
-  const commit = (label: string) => {
-    const value = label.trim();
-    if (!value || applied.has(value)) {
+  const commit = (idOrLabel: string) => {
+    const value = idOrLabel.trim();
+    if (!value || appliedIds.has(value)) {
       onCancel();
       return;
     }
@@ -187,11 +243,11 @@ function TagAddField({
     if (event.key === "Enter") {
       event.preventDefault();
       if (activeOption) {
-        commit(activeOption.label);
+        commit(activeOption.itemId);
         return;
       }
       const trimmed = query.trim();
-      if (trimmed) commit(trimmed);
+      if (trimmed && allowCreate) commit(trimmed);
       else onCancel();
     }
   };
@@ -231,7 +287,7 @@ function TagAddField({
                   onMouseDown={(event) => {
                     // Keep focus until commit; avoid blur-cancel racing the click.
                     event.preventDefault();
-                    commit(option.label);
+                    commit(option.itemId);
                   }}
                   onMouseEnter={() => setHighlight(index)}
                 >
@@ -250,10 +306,13 @@ export function TagGroup({
   tags,
   readonly = true,
   suggestions = [],
+  allowCreate = true,
   onAddTag,
   onRemoveTag,
   addPlaceholder = "Add tag…",
   addAriaLabel = "Add tag",
+  removeAriaLabelFor,
+  tagIcon,
   size = "md",
   tagColors,
   className,
@@ -261,6 +320,9 @@ export function TagGroup({
 }: TagGroupProps) {
   const [adding, setAdding] = useState(false);
   const canAdd = !readonly && !!onAddTag;
+  const items = normalizeTagItems(tags);
+  const suggestionItems = normalizeTagItems(suggestions);
+  const defaultIcon = tagIcon ?? <TagIcon />;
 
   const closeAdd = () => setAdding(false);
 
@@ -269,26 +331,31 @@ export function TagGroup({
       className={cn("tag-group", size === "lg" && "tag-group--size-lg", className)}
       style={style}
     >
-      {tags.map((t) => (
-        <Tag
-          key={t}
-          label={t}
-          icon={<TagIcon />}
-          size={size}
-          colors={tagColors}
-          removable={!readonly}
-          onRemove={readonly || !onRemoveTag ? undefined : () => onRemoveTag(t)}
-          removeAriaLabel={`Remove tag ${t}`}
-        />
-      ))}
+      {items.map((item) => {
+        const removable = !readonly && item.removable !== false && !!onRemoveTag;
+        return (
+          <Tag
+            key={item.id}
+            label={item.label}
+            icon={item.icon ?? defaultIcon}
+            size={size}
+            colors={item.colors ?? tagColors}
+            collectionTint={item.collectionTint}
+            removable={removable}
+            onRemove={removable ? () => onRemoveTag(item.id) : undefined}
+            removeAriaLabel={removeAriaLabelFor?.(item.label) ?? `Remove tag ${item.label}`}
+          />
+        );
+      })}
       {canAdd && adding ? (
         <TagAddField
-          suggestions={suggestions}
-          appliedTags={tags}
+          suggestions={suggestionItems}
+          appliedTags={items}
+          allowCreate={allowCreate}
           placeholder={addPlaceholder}
           ariaLabel={addAriaLabel}
-          onConfirm={(label) => {
-            onAddTag(label);
+          onConfirm={(idOrLabel) => {
+            onAddTag(idOrLabel);
             closeAdd();
           }}
           onCancel={closeAdd}

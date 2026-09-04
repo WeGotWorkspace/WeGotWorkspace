@@ -1,77 +1,81 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
-import type { MeetCallStatus, MeetRemotePeer } from "@/meet-core/src/meet-call-types";
-import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
-import type { PeerInboundSample } from "@/meet-core/src/meet-inbound-media-hints";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
 
 export type UseMeetRoomStateArgs = {
   defaultDisplayName: string;
   sessionDisplayName: string;
+  /**
+   * False while the live bootstrap is still loading and `defaultDisplayName` /
+   * `sessionDisplayName` are placeholders. Blocks the identity refresh so the
+   * suite-level store never adopts a placeholder over the real session identity.
+   */
+  identityReady?: boolean;
   buildCallLink?: (roomCode: string) => string;
   onRoomChange?: (roomCode: string | null) => void;
+  /** Suite-level store (live app). Absent in mock/Storybook: state stays per-mount. */
+  callStore?: MeetCallStore;
 };
 
+/**
+ * View over the meet call store. All call state lives in `MeetCallStore` so an
+ * active call survives route unmounts when the suite-level provider supplies the
+ * store; without one, a store is created per mount (previous behavior).
+ */
 export function useMeetRoomState({
   defaultDisplayName,
   sessionDisplayName,
+  identityReady = true,
   buildCallLink,
   onRoomChange,
+  callStore,
 }: UseMeetRoomStateArgs) {
-  const [status, setStatus] = useState<MeetCallStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [roomCode, setRoomCode] = useState<string | null>(null);
-  const [selfId, setSelfId] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState(
-    defaultDisplayName || sessionDisplayName || "Guest",
-  );
-  const [micOn, setMicOn] = useState(true);
-  const [videoOn, setVideoOn] = useState(true);
-  const [screenOn, setScreenOn] = useState(false);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [peers, setPeers] = useState<MeetRemotePeer[]>([]);
-  const [chatMessages, setChatMessages] = useState<MeetChatLine[]>([]);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [waitingForAdmission, setWaitingForAdmission] = useState(false);
-  const [knockers, setKnockers] = useState<MeetKnocker[]>([]);
-  const [endedMessage, setEndedMessage] = useState<string | null>(null);
+  const localStoreRef = useRef<MeetCallStore | null>(null);
+  if (!callStore && !localStoreRef.current) {
+    localStoreRef.current = createMeetCallStore();
+  }
+  const store = callStore ?? localStoreRef.current!;
 
-  const participantRosterDiffReadyRef = useRef(false);
-  const selfIdRef = useRef<string | null>(null);
-  const roomCodeRef = useRef<string | null>(null);
-  const statusRef = useRef<MeetCallStatus>("idle");
-  const displayNameRef = useRef(displayName);
-  const waitingForAdmissionRef = useRef(false);
-  const rosterRef = useRef<Map<string, string>>(new Map());
-  const peerInboundSampleRef = useRef<Map<string, PeerInboundSample>>(new Map());
-  const peerMediaHintRef = useRef<Map<string, { camera: boolean; mic: boolean }>>(new Map());
-  const peerDisclosedMediaRef = useRef<
-    Map<string, { mic: boolean; camera: boolean; screen?: boolean }>
-  >(new Map());
-  const peerNamesRef = useRef<Map<string, string>>(new Map());
-  const micOnRef = useRef(micOn);
-  const videoOnRef = useRef(videoOn);
-  const screenOnRef = useRef(screenOn);
-  const refreshPeersRef = useRef<() => void>(() => {});
+  // Silent, idempotent write — safe during render (see MeetCallStore).
+  store.initializeDisplayName(defaultDisplayName || sessionDisplayName || "Guest");
 
-  statusRef.current = status;
-  displayNameRef.current = displayName;
-  selfIdRef.current = selfId;
-  roomCodeRef.current = roomCode;
-  waitingForAdmissionRef.current = waitingForAdmission;
-  micOnRef.current = micOn;
-  videoOnRef.current = videoOn;
-  screenOnRef.current = screenOn;
+  // The suite-level store may have latched a pre-bootstrap placeholder ("Guest")
+  // above; once the real session identity is known, refresh it (user edits win).
+  useEffect(() => {
+    if (!identityReady) return;
+    store.refreshDisplayName(defaultDisplayName || sessionDisplayName || "Guest");
+  }, [defaultDisplayName, identityReady, sessionDisplayName, store]);
+
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+
+  const {
+    status,
+    error,
+    roomCode,
+    selfId,
+    displayName,
+    micOn,
+    videoOn,
+    screenOn,
+    startedAt,
+    participants: peers,
+    chatMessages,
+    elapsedSeconds,
+    waitingForAdmission,
+    knockers,
+    endedMessage,
+    remoteCallActive,
+  } = snapshot;
 
   useEffect(() => {
     if (!startedAt) {
-      setElapsedSeconds(0);
+      store.setElapsedSeconds(0);
       return;
     }
     const id = window.setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+      store.setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, store]);
 
   const callLink = useMemo(() => {
     if (!roomCode) return "";
@@ -113,70 +117,59 @@ export function useMeetRoomState({
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }, [elapsedSeconds]);
 
-  function resetPeerMaps() {
-    rosterRef.current = new Map();
-    peerNamesRef.current = new Map();
-    participantRosterDiffReadyRef.current = false;
-    peerDisclosedMediaRef.current.clear();
-  }
-
-  function resetIdleMediaDefaults() {
-    setScreenOn(false);
-    setMicOn(true);
-    setVideoOn(true);
-  }
-
   return {
     status,
-    setStatus,
+    setStatus: store.setStatus,
     error,
-    setError,
+    setError: store.setError,
     roomCode,
-    setRoomCode,
+    setRoomCode: store.setRoomCode,
     selfId,
-    setSelfId,
+    setSelfId: store.setSelfId,
     displayName,
-    setDisplayName,
+    setDisplayName: store.setDisplayName,
     micOn,
-    setMicOn,
+    setMicOn: store.setMicOn,
     videoOn,
-    setVideoOn,
+    setVideoOn: store.setVideoOn,
     screenOn,
-    setScreenOn,
+    setScreenOn: store.setScreenOn,
     startedAt,
-    setStartedAt,
+    setStartedAt: store.setStartedAt,
     peers,
-    setPeers,
+    setPeers: store.setPeers,
     chatMessages,
-    setChatMessages,
+    setChatMessages: store.setChatMessages,
     elapsedSeconds,
-    setElapsedSeconds,
+    setElapsedSeconds: store.setElapsedSeconds,
     waitingForAdmission,
-    setWaitingForAdmission,
+    setWaitingForAdmission: store.setWaitingForAdmission,
     knockers,
-    setKnockers,
+    setKnockers: store.setKnockers,
     endedMessage,
-    setEndedMessage,
-    participantRosterDiffReadyRef,
-    selfIdRef,
-    roomCodeRef,
-    statusRef,
-    displayNameRef,
-    waitingForAdmissionRef,
-    rosterRef,
-    peerInboundSampleRef,
-    peerMediaHintRef,
-    peerDisclosedMediaRef,
-    peerNamesRef,
-    micOnRef,
-    videoOnRef,
-    screenOnRef,
-    refreshPeersRef,
+    setEndedMessage: store.setEndedMessage,
+    remoteCallActive,
+    remoteCallActiveRef: store.remoteCallActiveRef,
+    participantRosterDiffReadyRef: store.participantRosterDiffReadyRef,
+    selfIdRef: store.selfIdRef,
+    roomCodeRef: store.roomCodeRef,
+    statusRef: store.statusRef,
+    displayNameRef: store.displayNameRef,
+    waitingForAdmissionRef: store.waitingForAdmissionRef,
+    rosterRef: store.rosterRef,
+    peerInboundSampleRef: store.peerInboundSampleRef,
+    peerMediaHintRef: store.peerMediaHintRef,
+    peerDisclosedMediaRef: store.peerDisclosedMediaRef,
+    peerNamesRef: store.peerNamesRef,
+    micOnRef: store.micOnRef,
+    videoOnRef: store.videoOnRef,
+    screenOnRef: store.screenOnRef,
+    refreshPeersRef: store.refreshPeersRef,
     callLink,
     elapsedLabel,
     inCall: status === "in-call" || status === "preparing",
-    resetPeerMaps,
-    resetIdleMediaDefaults,
+    resetPeerMaps: store.resetPeerMaps,
+    resetIdleMediaDefaults: store.resetIdleMediaDefaults,
   };
 }
 

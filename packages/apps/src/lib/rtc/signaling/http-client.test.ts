@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { HttpSignalingClient, type HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
+import {
+  HttpSignalingClient,
+  isUnchangedPollResponse,
+  type HttpSignalingFetch,
+} from "@/lib/rtc/signaling/http-client";
 
 describe("HttpSignalingClient", () => {
   it("posts join and polls events on room session paths", async () => {
@@ -31,8 +35,57 @@ describe("HttpSignalingClient", () => {
     expect(joined.peerId).toBe("p1");
 
     const poll = await client.poll({ room: "room-a", peerId: "p1", since: 3 });
-    expect(poll.peers).toHaveLength(1);
+    expect(isUnchangedPollResponse(poll)).toBe(false);
+    if (!isUnchangedPollResponse(poll)) {
+      expect(poll.peers).toHaveLength(1);
+    }
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends the roster signature and maps 204 to an unchanged poll response", async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      expect(url).toContain("sig=sig-abc");
+      return new Response(null, { status: 204 });
+    });
+
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({}),
+    });
+
+    const poll = await client.poll({
+      room: "abcd-efgh-ijkl",
+      peerId: "p1",
+      since: 0,
+      sig: "sig-abc",
+    });
+
+    expect(isUnchangedPollResponse(poll)).toBe(true);
+  });
+
+  it("passes rosterSig through on full poll responses", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ peers: [], messages: [], rosterSig: "sig-next" }), {
+          status: 200,
+        }),
+    );
+
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({}),
+    });
+
+    const poll = await client.poll({ room: "abcd-efgh-ijkl", peerId: "p1" });
+
+    expect(isUnchangedPollResponse(poll)).toBe(false);
+    if (!isUnchangedPollResponse(poll)) {
+      expect(poll.rosterSig).toBe("sig-next");
+    }
   });
 
   it("includes session key on meet guest sends", async () => {
@@ -57,5 +110,18 @@ describe("HttpSignalingClient", () => {
     expect(String(call![0])).toContain("/rooms/abcd-efgh-ijkl/events");
     const body = JSON.parse(String(call![1]?.body)) as Record<string, unknown>;
     expect(body.sessionKey).toBe("guest-key");
+  });
+
+  it("sends leave with keepalive so a pagehide leave can finish", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "collab",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+    });
+    await client.leave({ room: "docs/x.md", peerId: "aaaaaaaaaaaaaaaa" });
+    expect(fetchImpl.mock.calls[0]?.[1]?.keepalive).toBe(true);
   });
 });

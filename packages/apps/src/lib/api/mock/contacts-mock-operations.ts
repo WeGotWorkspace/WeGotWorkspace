@@ -10,6 +10,7 @@ import {
   editDraftToPatch,
   newContactMapId,
 } from "@/contacts-core/src/contacts-edit-utils";
+import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
 
 type ContactsMockStore = {
   addressBooks: AddressBook[];
@@ -62,27 +63,7 @@ export function createContactsMockOperations(
       const index = store.cards.findIndex((row) => row.id === cardId);
       if (index === -1) throw new Error(`Contact ${cardId} not found`);
       const current = store.cards[index];
-      const merged: ContactCard = {
-        ...current,
-        ...patch,
-        name: patch.name ?? current.name,
-        phones: { ...current.phones, ...patch.phones },
-        emails: { ...current.emails, ...patch.emails },
-        organizations: { ...current.organizations, ...patch.organizations },
-        notes: { ...current.notes, ...patch.notes },
-      };
-      for (const [key, value] of Object.entries(patch.phones ?? {})) {
-        if (value === null) delete merged.phones?.[key];
-      }
-      for (const [key, value] of Object.entries(patch.emails ?? {})) {
-        if (value === null) delete merged.emails?.[key];
-      }
-      for (const [key, value] of Object.entries(patch.organizations ?? {})) {
-        if (value === null) delete merged.organizations?.[key];
-      }
-      for (const [key, value] of Object.entries(patch.notes ?? {})) {
-        if (value === null) delete merged.notes?.[key];
-      }
+      const merged = mergeContactFromPatch(current, patch);
       store.cards[index] = merged;
       return structuredClone(merged);
     },

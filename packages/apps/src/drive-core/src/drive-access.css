@@ -103,6 +103,7 @@
 
 .drive-workspace .drive-access-detail__search {
   @apply w-full max-w-md;
+  --control-radius: var(--control-radius-button-pill);
 }
 
 .drive-workspace .drive-access-filters {

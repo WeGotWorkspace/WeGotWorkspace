@@ -153,6 +153,7 @@ export function TasksComposerDuePicker({
                   }
                 >
                   <SelectTrigger
+                    size="sm"
                     className="tasks-main-view__composer-due-timezone"
                     aria-label={defaultCalendarLabels.eventTimeZoneLabel}
                   >

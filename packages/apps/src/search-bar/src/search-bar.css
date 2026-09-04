@@ -1,3 +1,7 @@
+.search-bar {
+  --control-radius: var(--control-radius-button-pill);
+}
+
 .search-bar > div {
   margin-top: 0;
 }

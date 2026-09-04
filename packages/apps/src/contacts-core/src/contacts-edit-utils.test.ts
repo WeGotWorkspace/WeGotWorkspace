@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import { contactBirthdayDisplay } from "./contacts-display-utils";
+import { mergeContactFromPatch } from "./contacts-patch-merge";
 import {
+  canCreateContactInView,
   contactCardToEditDraft,
   contactEditDraftHasContent,
   editDraftToCreateBody,
@@ -51,7 +54,32 @@ describe("contacts-edit-utils", () => {
       { id: "work", name: "Work", isDefault: false } as never,
     ];
     expect(resolveCreateAddressBookIds("book:work", books)).toEqual({ work: true });
+    expect(resolveCreateAddressBookIds("book:shared-42", books)).toEqual({ "shared-42": true });
     expect(resolveCreateAddressBookIds("all", books)).toEqual({ default: true });
+    expect(
+      resolveCreateAddressBookIds("group:card-group-friends", books, [
+        { id: "card-group-friends", addressBookIds: { work: true as const } },
+      ]),
+    ).toEqual({ work: true });
+    expect(resolveCreateAddressBookIds("group:missing", books, [])).toEqual({ default: true });
+  });
+
+  it("enables New on writable group views and disables it on view-only books", () => {
+    const writable = [{ id: "default", myRights: { mayWrite: true } }];
+    const viewOnly = [{ id: "shared-42", myRights: { mayWrite: false } }];
+    expect(
+      canCreateContactInView("group:card-group-friends", writable, {
+        addressBookIds: { default: true },
+      }),
+    ).toBe(true);
+    expect(
+      canCreateContactInView("group:card-group-shared", viewOnly, {
+        addressBookIds: { "shared-42": true },
+      }),
+    ).toBe(false);
+    expect(canCreateContactInView("book:shared-42", viewOnly)).toBe(false);
+    expect(canCreateContactInView("book:default", writable)).toBe(true);
+    expect(canCreateContactInView("all", [])).toBe(false);
   });
 
   it("builds create body with JSContact name components", () => {
@@ -360,6 +388,32 @@ describe("contacts-edit-utils", () => {
     expect(body).not.toHaveProperty("emails");
   });
 
+  it("omits empty channel rows from create body", () => {
+    const draft = {
+      ...emptyContactEditDraft(),
+      nameSurname: "Vendrik",
+      phones: [{ id: "empty-phone", number: "", phoneType: "work" as const }],
+      emails: [{ id: "empty-email", address: "  ", contextType: "" as const }],
+      urls: [{ id: "empty-url", uri: "", contextType: "home" as const }],
+      addresses: [
+        {
+          id: "empty-addr",
+          street: "",
+          locality: "",
+          region: "",
+          postalCode: "",
+          country: "",
+          contextType: "work" as const,
+        },
+      ],
+    };
+    const body = editDraftToCreateBody(draft, { default: true });
+    expect(body).not.toHaveProperty("phones");
+    expect(body).not.toHaveProperty("emails");
+    expect(body).not.toHaveProperty("links");
+    expect(body).not.toHaveProperty("addresses");
+  });
+
   it("builds sparse create body with phone only", () => {
     const draft = {
       ...emptyContactEditDraft(),
@@ -375,5 +429,104 @@ describe("contacts-edit-utils", () => {
     const body = editDraftToCreateBody(draft, { default: true });
     expect(body).not.toHaveProperty("name");
     expect(Object.values(body.notes ?? {})[0]).toEqual({ note: "Met at conference" });
+  });
+
+  it("round-trips a birth anniversary through draft create and patch", () => {
+    const card = {
+      ...janeCard,
+      anniversaries: {
+        "bday-1": {
+          "@type": "Anniversary" as const,
+          kind: "birth" as const,
+          date: { "@type": "PartialDate" as const, year: 1985, month: 4, day: 23 },
+        },
+        "ann-1": {
+          "@type": "Anniversary" as const,
+          kind: "wedding" as const,
+          date: { "@type": "PartialDate" as const, year: 2010, month: 6, day: 15 },
+        },
+      },
+    } as unknown as ContactCard;
+    const draft = contactCardToEditDraft(card);
+    expect(draft.birthday).toBe("1985-04-23");
+    expect(draft.birthdayId).toBe("bday-1");
+    expect(editDraftToPatch(draft, card)).not.toHaveProperty("anniversaries");
+
+    draft.birthday = "1991-07-04";
+    expect(editDraftToPatch(draft, card).anniversaries).toEqual({
+      "bday-1": {
+        "@type": "Anniversary",
+        kind: "birth",
+        date: { "@type": "PartialDate", year: 1991, month: 7, day: 4 },
+      },
+    });
+
+    draft.birthday = "";
+    expect(editDraftToPatch(draft, card).anniversaries).toEqual({ "bday-1": null });
+
+    const merged = mergeContactFromPatch(card, editDraftToPatch(draft, card));
+    expect(merged.anniversaries).toEqual({
+      "ann-1": {
+        "@type": "Anniversary",
+        kind: "wedding",
+        date: { "@type": "PartialDate", year: 2010, month: 6, day: 15 },
+      },
+    });
+    expect(merged.anniversaries).not.toHaveProperty("bday-1");
+    expect(contactCardToEditDraft(merged).birthday).toBe("");
+    expect(contactBirthdayDisplay(merged)).toBe("");
+  });
+
+  it("does not throw when a persisted card still has a null birth slot", () => {
+    const card = {
+      ...janeCard,
+      anniversaries: { "bday-1": null },
+    } as unknown as ContactCard;
+    expect(() => contactCardToEditDraft(card)).not.toThrow();
+    expect(contactCardToEditDraft(card).birthday).toBe("");
+  });
+
+  it("does not treat a yearless birth anniversary as a delete", () => {
+    const card = {
+      ...janeCard,
+      anniversaries: {
+        "bday-1": {
+          "@type": "Anniversary" as const,
+          kind: "birth" as const,
+          date: { "@type": "PartialDate" as const, month: 3, day: 15 },
+        },
+      },
+    } as unknown as ContactCard;
+    const draft = contactCardToEditDraft(card);
+    expect(draft.birthday).toBe("");
+    expect(draft.birthdayId).toBe("bday-1");
+    expect(editDraftToPatch(draft, card)).not.toHaveProperty("anniversaries");
+  });
+
+  it("patches in a birth anniversary when the card had none", () => {
+    const draft = contactCardToEditDraft(janeCard);
+    expect(draft.birthday).toBe("");
+    draft.birthday = "1985-04-23";
+    const patch = editDraftToPatch(draft, janeCard);
+    const entries = Object.values(patch.anniversaries ?? {});
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({
+      "@type": "Anniversary",
+      kind: "birth",
+      date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
+    });
+  });
+
+  it("builds create body with a birth anniversary", () => {
+    const draft = { ...emptyContactEditDraft(), birthday: "1985-04-23" };
+    expect(contactEditDraftHasContent(draft)).toBe(true);
+    const body = editDraftToCreateBody(draft, { default: true });
+    const entries = Object.values(body.anniversaries ?? {});
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({
+      "@type": "Anniversary",
+      kind: "birth",
+      date: { "@type": "PartialDate", year: 1985, month: 4, day: 23 },
+    });
   });
 });

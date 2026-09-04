@@ -31,7 +31,7 @@ Account (JMAP)
 | Property | Type | Description |
 |----------|------|-------------|
 | `maxAddressBooksPerCard` | `UnsignedInt \| null` | Max books per card (≥1), or `null` = no limit |
-| `mayCreateAddressBook` | `Boolean` | Whether user may create address books |
+| `mayCreateAddressBook` | `Boolean` | Always `false` — one server-provisioned book per principal |
 
 ---
 
@@ -39,7 +39,7 @@ Account (JMAP)
 
 | Property | Type | Attributes | Description |
 |----------|------|------------|-------------|
-| `id` | `Id` | immutable, server-set | Address book identifier |
+| `id` | `Id` | immutable, server-set | `default`, `group-{slug}`, or inbound `shared-{addressbookId}` |
 | `name` | `String` | required | User-visible name; non-empty, ≤255 UTF-8 octets |
 | `description` | `String \| null` | default: `null` | Long-form description for shared contexts |
 | `sortOrder` | `UnsignedInt` | default: `0` | UI sort order; `0 ≤ sortOrder < 2^31`; lower = first; ties → alphabetical by `name` |
@@ -55,7 +55,7 @@ Account (JMAP)
 | `mayRead` | `Boolean` | Fetch cards in this book |
 | `mayWrite` | `Boolean` | Create/update/delete/move cards |
 | `mayShare` | `Boolean` | Modify `shareWith` |
-| `mayDelete` | `Boolean` | Delete the address book itself |
+| `mayDelete` | `Boolean` | `false` on owned/membership books; `true` on inbound sharees means dismiss/hide |
 
 ### AddressBook API methods
 
@@ -189,11 +189,13 @@ This plan exposes a subset of JMAP via REST; mapping to Sabre CardDAV:
 | `AddressBook.name` | `addressbooks.displayname` |
 | `AddressBook.description` | `addressbooks.description` |
 | `AddressBook.isDefault` | `uri === 'default'` |
-| `AddressBook.isSubscribed` | always `true` (owned books) |
-| `AddressBook.shareWith` | `null` (deferred — see `jmap-collection-crud.md`) |
-| `AddressBook.myRights` | ownership-derived; `mayDelete` true for non-default owned books |
+| `AddressBook.isSubscribed` | `true` when listed; sharee `false` writes `addressbook_share_dismissals` |
+| `AddressBook.shareWith` | `addressbook_shares` (owner/group-member view); `null` for sharees |
+| `AddressBook.myRights` | owner/member: mayShare true, mayDelete false; sharee: live grant, mayDelete true (dismiss) |
+| `AddressBook.id` (sharee) | `shared-{addressbooks.id}` |
+| `AddressBook.isSharee` | WGW extension: true on inbound share listings |
 | `ContactCard.id` | card `uri` without `.vcf` |
-| `ContactCard.addressBookIds` | `{ [book.uri]: true }` |
+| `ContactCard.addressBookIds` | `{ [viewer book id]: true }` (`default` / `group-{slug}` / `shared-{id}`) |
 | JSContact `uid` | vCard `UID` |
 | `created` / `updated` | `lastmodified` + vCard metadata |
 

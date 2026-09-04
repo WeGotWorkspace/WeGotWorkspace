@@ -63,6 +63,13 @@ export const meetLabels = {
   selfPreview: (name: string) => `${name} (you)`,
   participantJoined: (name: string) => `${name} joined the call`,
   participantLeft: (name: string) => `${name} left the call`,
+  callActiveInAnotherTab: "A call is already active in another tab.",
+  miniPlayerLabel: "Ongoing call",
+  /** Generic product title in the mini-player (room codes are opaque ids). */
+  miniPlayerTitle: "Meet",
+  miniPlayerWaiting: "Waiting to be let in",
+  returnToCall: "Return to call",
+  hangUp: "Hang up",
   sidebarChannels: "My channels",
   sidebarSharedWithMe: "Shared with me",
   sidebarDirectMessages: "Direct messages",
@@ -129,4 +136,5 @@ export const meetLabels = {
   threadTitle: "Thread",
   threadClose: "Close thread",
   threadBack: "Back to chat",
+  participantsShort: (count: number) => `${count} in call`,
 } as const;

@@ -9,18 +9,38 @@ export type ContactsUILabels = {
   refreshList: string;
   searchPlaceholder: string;
   sidebarAllContacts: string;
+  sidebarSharedWithMe: string;
+  /** Fixed product name for the user's owned personal book. */
+  personalAddressBook: string;
+  /** Owned/team collections heading — same pattern as Tasks “My lists” / Notes “My notebooks”. */
+  sectionAddressBooks: string;
   sectionGroups: string;
+  expandAddressBookGroups: (name: string) => string;
+  collapseAddressBookGroups: (name: string) => string;
+  viewOnly: string;
+  editAddressBook: string;
+  newContactMenu: string;
   listSelected: (count: number) => string;
   listContacts: (count: number) => string;
   emptyList: string;
   emptyGroupMembers: string;
   renameGroup: string;
+  renameGroupDescription: string;
   deleteGroup: string;
   newGroup: string;
+  createGroupNameLabel: string;
+  createGroupAddressBookLabel: string;
+  createGroupAddressBookHint: string;
+  createGroupButton: string;
+  addGroup: string;
+  addGroupPlaceholder: string;
   toastGroupRenamed: (name: string) => string;
   newContact: string;
   createContact: string;
   importVcf: string;
+  importDialogTitle: string;
+  importDestinationLegend: string;
+  importSubmit: string;
   dropImportHint: string;
   toastImported: (count: number) => string;
   importInvalidFile: string;
@@ -29,6 +49,8 @@ export type ContactsUILabels = {
   importFailed: string;
   importPartialFailure: (count: number) => string;
   importFilesFailed: (count: number) => string;
+  importProgress: (imported: number, total: number, batch: number, batches: number) => string;
+  importCardTooLarge: string;
   unknownContact: string;
   edit: string;
   save: string;
@@ -63,9 +85,13 @@ export type ContactsUILabels = {
   /** JSContact `organizations[].units[0]` / vCard ORG unit */
   jobDepartment: string;
   notesText: string;
+  /** Placeholder on the trailing empty phone row. */
   addPhone: string;
+  /** Placeholder on the trailing empty email row. */
   addEmail: string;
+  /** Placeholder on the trailing empty address row. */
   addAddress: string;
+  /** Placeholder on the trailing empty URL row. */
   addUrl: string;
   urlAddress: string;
   addressStreet: string;
@@ -110,6 +136,27 @@ export type ContactsUILabels = {
   toastGroupDeleted: (name: string) => string;
   deleteConfirm: string;
   deleteCancel: string;
+  addressBookSettingsTitle: string;
+  addressBookNameLabel: string;
+  addressBookColorLabel: string;
+  addressBookDialogDone: string;
+  shareAddressBookTitle: string;
+  shareAddressBookHint: string;
+  shareAddressBookPlaceholder: string;
+  shareAddressBookEmpty: string;
+  shareAddressBookOffline: string;
+  removeAddressBookShareTitle: string;
+  removeAddressBookShareConfirm: string;
+  removeSharedAddressBook: string;
+  removeSharedAddressBookConfirmTitle: string;
+  removeSharedAddressBookConfirmDescription: string;
+  toastAddressBookShareRemoved: string;
+  toolbarMoveToAddressBook: string;
+  moveContactTitle: string;
+  moveContactDescription: (bookName: string) => string;
+  moveContactDescriptionWithGroups: (bookName: string) => string;
+  moveContactConfirm: string;
+  toastMovedToAddressBook: (name: string) => string;
 };
 
 export const defaultContactsLabels: ContactsUILabels = {
@@ -117,18 +164,36 @@ export const defaultContactsLabels: ContactsUILabels = {
   refreshList: "Refresh contacts",
   searchPlaceholder: "Search contacts...",
   sidebarAllContacts: "All contacts",
+  sidebarSharedWithMe: "Shared with me",
+  personalAddressBook: "Personal",
+  sectionAddressBooks: "My address books",
   sectionGroups: "Groups",
+  expandAddressBookGroups: (name) => `Expand ${name}`,
+  collapseAddressBookGroups: (name) => `Collapse ${name}`,
+  viewOnly: "View only",
+  editAddressBook: "Address book settings",
+  newContactMenu: "More create options",
   listSelected: (count) => `${count} Selected`,
   listContacts: (count) => `${count} Contacts`,
   emptyList: "No contacts",
   emptyGroupMembers: "No members in this group",
   renameGroup: "Rename group",
+  renameGroupDescription: "The group name will update in your address books and sidebar.",
   deleteGroup: "Delete group",
   newGroup: "New group",
+  createGroupNameLabel: "Name",
+  createGroupAddressBookLabel: "Address book",
+  createGroupAddressBookHint: "The group is stored in this address book. You cannot move it later.",
+  createGroupButton: "Create",
+  addGroup: "Add group",
+  addGroupPlaceholder: "Add group…",
   toastGroupRenamed: (name) => `Renamed to “${name}”`,
   newContact: "New contact",
   createContact: "Create contact",
   importVcf: "Import vCards",
+  importDialogTitle: "Import vCards",
+  importDestinationLegend: "Address book",
+  importSubmit: "Import",
   dropImportHint: "Drop vCard files to import",
   toastImported: (count) => `Imported ${count} contact${count === 1 ? "" : "s"}`,
   importInvalidFile: "Choose one or more .vcf or .vcard files to import.",
@@ -138,6 +203,10 @@ export const defaultContactsLabels: ContactsUILabels = {
   importPartialFailure: (count) =>
     `${count} contact${count === 1 ? "" : "s"} could not be imported.`,
   importFilesFailed: (count) => `${count} file${count === 1 ? "" : "s"} could not be imported.`,
+  importProgress: (imported, total, batch, batches) =>
+    `Imported ${imported} of ${total} (batch ${batch} of ${batches})`,
+  importCardTooLarge:
+    "A single contact is larger than the server upload limit and cannot be split.",
   unknownContact: "Unknown contact",
   edit: "Edit",
   save: "Save",
@@ -222,6 +291,28 @@ export const defaultContactsLabels: ContactsUILabels = {
   toastGroupDeleted: (name) => `Group "${name}" deleted`,
   deleteConfirm: workspaceDestructiveDialogLabels.dialogDelete,
   deleteCancel: workspaceDestructiveDialogLabels.dialogCancel,
+  addressBookSettingsTitle: "Address book",
+  addressBookNameLabel: "Name",
+  addressBookColorLabel: "Color",
+  addressBookDialogDone: "Done",
+  shareAddressBookTitle: "Share address book",
+  shareAddressBookHint: "People you add can open this address book in Contacts.",
+  shareAddressBookPlaceholder: "Add people or groups",
+  shareAddressBookEmpty: "No matches",
+  shareAddressBookOffline: "Sharing is unavailable offline.",
+  removeAddressBookShareTitle: "Remove access?",
+  removeAddressBookShareConfirm: "They will no longer see this address book.",
+  removeSharedAddressBook: "Remove address book",
+  removeSharedAddressBookConfirmTitle: "Remove this shared address book?",
+  removeSharedAddressBookConfirmDescription: "You will no longer see this address book.",
+  toastAddressBookShareRemoved: "Address book removed",
+  toolbarMoveToAddressBook: "Change address book",
+  moveContactTitle: "Move contact?",
+  moveContactDescription: (bookName) => `Move this contact to “${bookName}”?`,
+  moveContactDescriptionWithGroups: (bookName) =>
+    `Move this contact to “${bookName}”? They will be removed from groups in the current address book.`,
+  moveContactConfirm: "Move",
+  toastMovedToAddressBook: (name) => `Moved to “${name}”`,
 };
 
 export function mergeContactsLabels(overrides?: Partial<ContactsUILabels>): ContactsUILabels {

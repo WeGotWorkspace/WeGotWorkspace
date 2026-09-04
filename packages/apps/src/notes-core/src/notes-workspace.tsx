@@ -31,6 +31,7 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
+import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
@@ -592,8 +593,8 @@ export function NotesWorkspace({
           })
         }
         detailWrapper={(children) => wrapDetailWithCollab(children)}
-        actionBar={(_c) =>
-          !showSingleNoteDetail ? null : (
+        actionBar={(c) =>
+          showSingleNoteDetail ? (
             <NotesDetailActionBar
               active={active}
               labels={L}
@@ -615,7 +616,9 @@ export function NotesWorkspace({
               readOnly={noteReadOnly}
               canArchive={noteCanArchive}
             />
-          )
+          ) : c.detailOpenMobile ? (
+            <ActionBar onBack={closeMobileDetail} backLabel={viewLabel} />
+          ) : null
         }
         detail={() => {
           if (selectedIds.length > 1) {

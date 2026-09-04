@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -7,6 +7,7 @@ import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
+import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import {
   markRoomServerFailure,
@@ -77,6 +78,7 @@ export function useDocsCollabJoin({
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
   const meshJoinInFlightRef = useRef(false);
+  const serverJoinStartedRef = useRef(false);
 
   const markDocReady = useCallback(() => {
     refs.seedDoneRef.current = true;
@@ -113,7 +115,10 @@ export function useDocsCollabJoin({
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
     meshJoinInFlightRef.current = false;
-    void meshSession?.leave();
+    serverJoinStartedRef.current = false;
+    // Park the mesh instead of leaving: returning to this room within the
+    // grace resumes the live session (joinMesh); expiry performs the leave.
+    if (meshSession) lingerDocsCollabMeshSession(room, meshSession);
     const persistence = refs.persistenceRef.current;
     refs.persistenceRef.current = null;
     void persistence?.destroy();
@@ -254,6 +259,21 @@ export function useDocsCollabJoin({
     ],
   );
 
+  const finishAuthenticatedJoin = useCallback(
+    async (generation: number, name: string, authToken: string) => {
+      if (serverJoinStartedRef.current && refs.authTokenRef.current === authToken) return;
+      serverJoinStartedRef.current = true;
+      refs.authTokenRef.current = authToken;
+      await applyServerBootstrap(generation, authToken);
+      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+      if (refs.tabSyncRef.current?.isMeshLeader()) {
+        await connectMeshInBackground(generation, name, authToken);
+      }
+      flushPendingSaveIfReady();
+    },
+    [applyServerBootstrap, connectMeshInBackground, flushPendingSaveIfReady, refs],
+  );
+
   const join = useCallback(async () => {
     if (refs.joinedRoomRef.current === room && refs.sessionRef.current) return;
     const generation = ++refs.joinGenerationRef.current;
@@ -361,20 +381,17 @@ export function useDocsCollabJoin({
         return;
       }
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      refs.authTokenRef.current = authToken;
-
-      await applyServerBootstrap(generation, authToken);
-      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      if (authToken && refs.tabSyncRef.current?.isMeshLeader()) {
-        await connectMeshInBackground(generation, name, authToken);
+      if (!authToken) {
+        // Token may still be hydrating (docs-app race). Do not GET/PUT
+        // unauthenticated or skip mesh forever — finishAuthenticatedJoin
+        // runs when urls.authToken arrives.
+        return;
       }
-      flushPendingSaveIfReady();
+      await finishAuthenticatedJoin(generation, name, authToken);
     })();
   }, [
-    applyServerBootstrap,
-    connectMeshInBackground,
     documentFormat,
-    flushPendingSaveIfReady,
+    finishAuthenticatedJoin,
     joinMesh,
     markDocReady,
     refs,
@@ -389,6 +406,21 @@ export function useDocsCollabJoin({
     urls.authUser,
     userName,
   ]);
+
+  useEffect(() => {
+    if (!joined) return;
+    const token = urls.authToken?.trim();
+    if (!token) return;
+    if (serverJoinStartedRef.current) return;
+    if (refs.joinedRoomRef.current !== room) return;
+    if (!getConnectivitySnapshot() || !roomServerAllowed(room)) return;
+    const name = userName.trim();
+    if (!name) return;
+    const generation = refs.joinGenerationRef.current;
+    void finishAuthenticatedJoin(generation, name, token).catch((error) => {
+      console.warn("[docs-collab] delayed auth join failed", error);
+    });
+  }, [finishAuthenticatedJoin, joined, refs, room, urls.authToken, userName]);
 
   const leave = useCallback(async () => {
     const getMd = refs.getMarkdownRef.current;

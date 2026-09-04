@@ -40,6 +40,7 @@
     "docker:down:https": "docker compose -f compose.dev.yml -f compose.local.yml down",
     "docker:logs:https": "docker compose -f compose.dev.yml -f compose.local.yml logs -f",
     "docker:ssl:setup": "bash tools/docker-ssl-setup.sh",
+    "docker:test:clean": "bash tools/docker-test-clean.sh",
     "docker:install:up": "bash -c 'EF=(); if [ -f docker/install/.env ]; then EF=(--env-file docker/install/.env); else echo \"Tip: cp docker/install/.env.example docker/install/.env\"; fi; docker compose -f docker/install/docker-compose.yml \"${EF[@]}\" up -d --build'",
     "docker:install:down": "bash -c 'EF=(); if [ -f docker/install/.env ]; then EF=(--env-file docker/install/.env); else echo \"Tip: cp docker/install/.env.example docker/install/.env\"; fi; docker compose -f docker/install/docker-compose.yml \"${EF[@]}\" down'",
     "docker:install:logs": "bash -c 'EF=(); if [ -f docker/install/.env ]; then EF=(--env-file docker/install/.env); else echo \"Tip: cp docker/install/.env.example docker/install/.env\"; fi; docker compose -f docker/install/docker-compose.yml \"${EF[@]}\" logs -f'",

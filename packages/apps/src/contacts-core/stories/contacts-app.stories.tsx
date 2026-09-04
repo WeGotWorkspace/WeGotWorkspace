@@ -28,7 +28,6 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const body = within(document.body);
     const janeListItem = canvasElement.querySelector('[data-list-item-id="card-jane"]');
     expect(janeListItem).toBeTruthy();
     await userEvent.click(janeListItem as HTMLElement);
@@ -43,6 +42,7 @@ export const Default: Story = {
       expect(canvasElement.querySelector('[data-list-item-id="card-jane"]')).toBeTruthy();
       expect(canvasElement.querySelector('[data-list-item-id="card-joe"]')).toBeTruthy();
     });
+    expect(canvas.getByRole("button", { name: "New contact" })).toBeEnabled();
 
     await userEvent.click(
       canvasElement.querySelector('[data-list-item-id="card-jane"]') as HTMLElement,
@@ -76,7 +76,6 @@ export const Default: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "All contacts" }));
 
     await userEvent.click(canvas.getByRole("button", { name: "New contact" }));
-    await userEvent.click(body.getByRole("menuitem", { name: "Create contact" }));
     await userEvent.type(canvas.getByLabelText("First name"), "Pat");
     await userEvent.type(canvas.getByLabelText("Last name"), "Example");
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));

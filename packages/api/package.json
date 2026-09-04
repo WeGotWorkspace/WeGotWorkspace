@@ -7,7 +7,7 @@
     "watch:runtime": "node scripts/watch-runtime-api-package.mjs",
     "sync:runtime": "node scripts/sync-runtime-api-package.mjs --with-vendor",
     "dev": "pnpm run dev:php",
-    "dev:php": "sh -c 'app_root=\"../../apps/wegotworkspace\"; env -u SABRE_BUILD_DIR php -S 127.0.0.1:9080 -t \"$app_root\" \"$app_root/index.php\"'",
+    "dev:php": "sh -c 'app_root=\"../../apps/wegotworkspace\"; env -u SABRE_BUILD_DIR php -d display_errors=0 -d post_max_size=32M -d upload_max_filesize=32M -S 127.0.0.1:9080 -t \"$app_root\" \"$app_root/index.php\"'",
     "preview": "bash scripts/dev-php-server.sh",
     "openapi:build-json": "node scripts/build-openapi-built-json.mjs",
     "typegen": "pnpm run typegen:openapi",

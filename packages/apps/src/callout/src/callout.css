@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .callout {
-  @apply rounded-lg border p-4;
+  @apply max-w-full min-w-0 rounded-lg border p-4;
   background-color: var(--callout-bg);
   border-color: var(--callout-border);
   color: var(--callout-text, var(--color-ink));
@@ -50,4 +50,14 @@
 .callout__icon {
   @apply size-4 shrink-0;
   color: var(--callout-icon-color, currentColor);
+}
+
+.callout .menu-item,
+.callout .menu-item__main--compact {
+  @apply max-w-full overflow-visible whitespace-normal;
+}
+
+.callout .menu-item__label {
+  @apply whitespace-normal break-words;
+  overflow-wrap: anywhere;
 }

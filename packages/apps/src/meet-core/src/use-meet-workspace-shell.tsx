@@ -18,6 +18,7 @@ type MeetWorkspaceShellInput = Pick<
   | "data"
   | "session"
   | "operations"
+  | "listLoading"
   | "invitedRoom"
   | "isJoinRoute"
   | "buildCallLink"
@@ -28,6 +29,7 @@ export function useMeetWorkspaceShell({
   data,
   session,
   operations,
+  listLoading = false,
   invitedRoom = null,
   isJoinRoute = false,
   buildCallLink,
@@ -37,6 +39,7 @@ export function useMeetWorkspaceShell({
   const controller = useMeetController({
     session,
     defaultDisplayName: data.defaultDisplayName,
+    identityReady: !listLoading,
     rtc: data.rtc,
     operations,
     buildCallLink,

@@ -18,6 +18,7 @@ import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes-offline
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
   createNoteSaveDebouncer,
+  filterVisibleNotes,
   mapNotesWithBodyMarkdown,
   mergeCreatedNotePreservingLocalOptimistic,
   normalizeTag,
@@ -50,7 +51,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setNotes,
     view,
     setView,
-    selectView,
     notebooks,
     setNotebooks,
     notebookCollections,
@@ -65,7 +65,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     show,
     showMutationError,
     queueAutoSaveToast,
-    workspaceLayoutRef,
+    searchQuery,
   } = shell;
 
   const {
@@ -80,6 +80,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setActiveId,
     beginOptimisticUpdate,
     openMobileDetail,
+    closeMobileDetail,
   } = list;
 
   const debouncerRef = useRef(createNoteSaveDebouncer(AUTOSAVE_WRITE_DEBOUNCE_MS));
@@ -279,14 +280,34 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (!row) return;
       const beforeArchived = !!archived[id] || !!row.archived;
       const nextArchived = !beforeArchived;
-      setArchived((state) => ({ ...state, [id]: nextArchived }));
-      const archivedNote = { ...row, archived: nextArchived };
+      const wasOpen = activeId === id;
+      const nextArchivedMap = { ...archived, [id]: nextArchived };
+      const editedAt = new Date().toISOString();
+      setArchived(nextArchivedMap);
+      const archivedNote = { ...row, archived: nextArchived, date: editedAt, updatedAt: editedAt };
       setNotes((prev) => prev.map((note) => (note.id === id ? archivedNote : note)));
       persistOptimisticNote(archivedNote, true);
-      // Stay on the open note. Do not use beginOptimisticUpdate / selectView —
-      // those treat archive as a list-remove and clear the detail pane.
-      setActiveId(id);
-      selectSingle(id);
+
+      const stillVisible =
+        filterVisibleNotes([archivedNote], {
+          view,
+          archived: nextArchivedMap,
+          starred,
+          searchQuery,
+          sharedNotebookKeys: sharedNotebookFilterKeys(notebookCollections),
+          notebookCollections,
+        }).length > 0;
+
+      // Swipe/list archive must not select or open the note. Only keep (or close)
+      // the detail pane when this note was already open.
+      if (wasOpen) {
+        if (stillVisible) {
+          setActiveId(id);
+          selectSingle(id);
+        } else {
+          closeMobileDetail();
+        }
+      }
 
       const toastMessage = nextArchived ? "Archived" : "Unarchived";
 
@@ -295,6 +316,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         setNotes((prev) =>
           prev.map((note) => (note.id === id ? { ...row, archived: beforeArchived } : note)),
         );
+        if (wasOpen) {
+          setActiveId(id);
+          selectSingle(id);
+        }
       };
 
       queueMutation({
@@ -329,16 +354,22 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       });
     },
     [
+      activeId,
       archived,
+      closeMobileDetail,
       dropGoneNote,
+      notebookCollections,
       notes,
       operations,
       persistOptimisticNote,
       queueMutation,
+      searchQuery,
       selectSingle,
       setActiveId,
       setArchived,
       setNotes,
+      starred,
+      view,
     ],
   );
 
@@ -705,9 +736,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    if (createView !== view) {
-      selectView(createView);
-    }
     const target = resolveNotesCreateTarget(createView, notebooks);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     const id = createTempNoteId();
@@ -727,8 +755,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         : {}),
     };
     setNotes((prev) => [note, ...prev]);
+    // setView — not selectView — so closeMobileDetail does not race with opening
+    // the new note overlay (starred/archive create switches to All Items first).
+    if (createView !== view) {
+      setView(createView);
+    }
+    setActiveId(id);
     selectSingle(id);
-    openMobileDetail(id);
+    openMobileDetail();
     // Persist immediately. Leaving the detail pane without a body (or title)
     // must not DELETE — empty DESCRIPTION is a valid VJOURNAL.
     if (operations) {
@@ -774,15 +808,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     notebooks,
     operations,
     persistOptimisticNote,
+    openMobileDetail,
     selectSingle,
-    showMutationError,
-    selectView,
     setActiveId,
     setNotes,
     setSelectedIds,
+    setView,
     show,
+    showMutationError,
     view,
-    workspaceLayoutRef,
   ]);
 
   const { batchStar, batchArchive, requestDeleteSelected, openDeleteConfirm } =

@@ -271,6 +271,9 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(workspaceAppTsx).toMatch(/className=\{cn\("workspace-detail-pane"/);
     expect(workspaceAppTsx).toMatch(/\{actionBar\?\.\(chrome\)\}/);
     expect(workspaceAppTsx).toMatch(/workspace-detail-pane__scroll/);
+    expect(css).toMatch(
+      /\.notes-workspace \.action-bar \.notes-notebook-select \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
   });
 });
 

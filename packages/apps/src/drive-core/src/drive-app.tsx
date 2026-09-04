@@ -7,7 +7,7 @@ import {
   driveViewFromSearch,
   parseDriveRouteSearch,
 } from "@/drive-core/src/drive-route-search";
-import { openDocsFileInNewWindow } from "@/docs-core/src/docs-route-search";
+import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import type { ViewKey } from "@/drive-core/src/drive-models";
 import { useDriveAPI } from "@/drive-core/src/use-drive-api";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
@@ -44,9 +44,7 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
     [navigate],
   );
 
-  const handleOpenDocsFile = useCallback((apiPath: string) => {
-    openDocsFileInNewWindow(apiPath);
-  }, []);
+  const handleOpenDocsFile = useOpenDocsFile();
 
   const handleNavigate = useCallback((href: string) => {
     window.location.assign(href);

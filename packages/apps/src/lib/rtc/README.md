@@ -30,9 +30,13 @@ Signaling uses `/api/v1/rooms/{roomId}/*` (`signalingApiSegment()` returns `room
 
 ## Debug
 
-Add `?rtcDebug=1` to the URL. Logs use prefix:
+Add `?rtcDebug=1` to the page URL (declared on `/docs` and `/meet` search schemas so TanStack does not strip it). Refresh with the param on to log; without it the logger is silent.
 
-`[rtc][channel][peerId][event]`
+Docs example:
+
+`/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1`
+
+Logs use prefix `[rtc][channel][peerId][event]` plus `tMs` (`performance.now()`) and ISO `at` on every line. Events cover join, roster, linger park/resume/drop, poll 200/204 and interval, offer/answer sent/received (SDP type + byte length only), ICE gathering/connection state, data-channel open, first remote sync/awareness, and why a peer was skipped. No tokens, no full SDP.
 
 Force TURN relay-only mode (dev/debug, not admin):
 

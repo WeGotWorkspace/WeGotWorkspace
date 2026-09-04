@@ -10,6 +10,8 @@ import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
 } from "@/meet-core/src/meet-invite-status";
+import { meetLabels } from "@/meet-core/src/meet-labels";
+import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
@@ -20,6 +22,11 @@ export type UseMeetMutationsArgs = {
   canModerateKnocks: boolean;
   actingUsername?: string | null;
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
+  /**
+   * True when a suite-level call store keeps the call alive across route unmounts.
+   * Skips the unmount leave and the page-level handlers (owned by `MeetCallProvider`).
+   */
+  persistentCall?: boolean;
 };
 
 export function useMeetMutations({
@@ -28,6 +35,7 @@ export function useMeetMutations({
   canModerateKnocks,
   actingUsername,
   leaveRef,
+  persistentCall = false,
 }: UseMeetMutationsArgs) {
   const { meetRtc, operationsRef, debugRtc, ensureLocalMedia, stopLocalMedia } = session;
 
@@ -62,25 +70,18 @@ export function useMeetMutations({
     const roomCode = room.roomCodeRef.current;
     const peerId = room.selfIdRef.current;
     if (!roomCode || !peerId) return;
-    const payload = JSON.stringify({
-      room: roomCode,
-      peerId,
-      sessionKey: meetRtc.getSessionKey() ?? undefined,
-    });
-    const endpoint = `/api/v1/rooms/${encodeURIComponent(roomCode)}/participants/${encodeURIComponent(peerId)}`;
-    void fetch(endpoint, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: payload,
-      keepalive: true,
-      credentials: "same-origin",
-    }).catch(() => {
-      // Ignore best-effort unload failures.
-    });
+    sendMeetLeaveBeacon({ roomCode, peerId, sessionKey: meetRtc.getSessionKey() });
   }, [meetRtc, room.roomCodeRef, room.selfIdRef]);
+
+  const warnIfCallActiveElsewhere = useCallback(() => {
+    if (room.remoteCallActiveRef?.current) {
+      toast.info(meetLabels.callActiveInAnotherTab);
+    }
+  }, [room.remoteCallActiveRef]);
 
   const joinRoom = useCallback(
     async (roomCode?: string) => {
+      warnIfCallActiveElsewhere();
       const target = (roomCode ?? createMeetRoomCode()).trim().toLowerCase();
       const peerId = createMeetPeerId(10);
       room.setError(null);
@@ -114,13 +115,14 @@ export function useMeetMutations({
         throw e;
       }
     },
-    [debugRtc, ensureLocalMedia, meetRtc, room],
+    [debugRtc, ensureLocalMedia, meetRtc, room, warnIfCallActiveElsewhere],
   );
 
   const requestJoin = useCallback(
     async (roomCode: string) => {
       const target = roomCode.trim().toLowerCase();
       if (!target) return;
+      warnIfCallActiveElsewhere();
       const peerId = createMeetPeerId(10);
       room.setError(null);
       room.setStatus("preparing");
@@ -162,7 +164,7 @@ export function useMeetMutations({
         throw e;
       }
     },
-    [ensureLocalMedia, meetRtc, operationsRef, room],
+    [ensureLocalMedia, meetRtc, operationsRef, room, warnIfCallActiveElsewhere],
   );
 
   const admitKnocker = useCallback(
@@ -260,13 +262,17 @@ export function useMeetMutations({
     await joinRoom(target);
   }, [actingUsername, joinRoom, operationsRef]);
 
+  // With a suite-level call store the call survives route unmounts; page-level
+  // leave behavior (beforeunload/pagehide) is owned by MeetCallProvider instead.
   useEffect(() => {
+    if (persistentCall) return;
     return () => {
       void leaveRef.current?.();
     };
-  }, [leaveRef]);
+  }, [leaveRef, persistentCall]);
 
   useEffect(() => {
+    if (persistentCall) return;
     const isMeetingActive =
       room.status === "in-call" || room.status === "preparing" || room.status === "waiting";
     if (!isMeetingActive) return;
@@ -277,9 +283,10 @@ export function useMeetMutations({
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [room.status]);
+  }, [persistentCall, room.status]);
 
   useEffect(() => {
+    if (persistentCall) return;
     const onPageHide = () => {
       const active = room.statusRef.current === "in-call" || room.statusRef.current === "waiting";
       if (!active) return;
@@ -287,7 +294,7 @@ export function useMeetMutations({
     };
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
-  }, [room.statusRef, sendLeaveBeacon]);
+  }, [persistentCall, room.statusRef, sendLeaveBeacon]);
 
   return {
     joinRoom,

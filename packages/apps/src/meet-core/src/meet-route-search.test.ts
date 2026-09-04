@@ -9,6 +9,13 @@ import {
 } from "@/meet-core/src/meet-route-search";
 
 describe("meet route search", () => {
+  it("keeps rtcDebug so TanStack does not strip the handshake logger flag", () => {
+    expect(parseMeetRouteSearch({ room: "h8y8-ewp6-al8n", rtcDebug: 1 })).toEqual({
+      room: "h8y8-ewp6-al8n",
+      rtcDebug: 1,
+    });
+  });
+
   it("reads room from router search params", () => {
     expect(meetRoomFromSearch(parseMeetRouteSearch({ room: "h8y8-ewp6-al8n" }))).toBe(
       "h8y8-ewp6-al8n",

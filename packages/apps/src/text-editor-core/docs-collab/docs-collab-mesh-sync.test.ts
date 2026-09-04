@@ -3,6 +3,7 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import {
   applyAwarenessUpdate,
+  encodeFullAwarenessBroadcast,
   encodeSyncStep1,
   encodeUpdateBroadcast,
   handleSyncMessage,
@@ -49,5 +50,22 @@ describe("docs-collab-mesh-sync", () => {
     const changed = awarenessProtocol.encodeAwarenessUpdate(awarenessA, [awarenessA.clientID]);
     applyAwarenessUpdate(Array.from(changed), awarenessB);
     expect(awarenessB.getStates().size).toBeGreaterThan(0);
+  });
+
+  it("encodeFullAwarenessBroadcast encodes the local client state", () => {
+    const doc = new Y.Doc();
+    const awareness = new awarenessProtocol.Awareness(doc);
+    awareness.setLocalStateField("user", { name: "Alex", color: "#2563eb" });
+
+    const encoded = encodeFullAwarenessBroadcast(awareness);
+    expect(encoded).not.toBeNull();
+    expect(encoded!.length).toBeGreaterThan(0);
+
+    const remote = new awarenessProtocol.Awareness(new Y.Doc());
+    applyAwarenessUpdate(encoded!, remote);
+    expect(remote.getStates().get(awareness.clientID)?.user).toEqual({
+      name: "Alex",
+      color: "#2563eb",
+    });
   });
 });

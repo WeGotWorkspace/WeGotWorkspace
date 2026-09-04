@@ -30,8 +30,8 @@ export {
   docsApiPathFromSearch,
   docsHrefFromApiPath,
   docsSearchFromApiPath,
-  openDocsFileInNewWindow,
   parseDocsRouteSearch,
   validateDocsRouteSearch,
   type DocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
+export { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";

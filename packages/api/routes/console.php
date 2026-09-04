@@ -2,6 +2,7 @@
 
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
 use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
@@ -153,6 +154,25 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
 
     return self::SUCCESS;
 })->purpose('Provision home/work VEVENT calendars, VTODO lists, VJOURNAL notebooks, and group collections (idempotent)');
+
+Artisan::command('wgw:contacts:provision-address-books', function (AddressBookProvisioner $provisioner): int {
+    $users = $provisioner->ensureForAllUsers();
+    $groups = $provisioner->ensureForAllGroups();
+    $this->info(sprintf(
+        'Users: scanned %d, created %d address book(s), skipped %d.',
+        $users['scanned'],
+        $users['created'],
+        $users['skipped'],
+    ));
+    $this->info(sprintf(
+        'Groups: scanned %d, created %d address book(s), skipped %d.',
+        $groups['scanned'],
+        $groups['created'],
+        $groups['skipped'],
+    ));
+
+    return self::SUCCESS;
+})->purpose('Provision one address book per user and group principal (idempotent)');
 
 Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrator): int {
     $result = $migrator->migrate();

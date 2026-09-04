@@ -13,11 +13,11 @@
       },
       "mayShare": {
         "type": "boolean",
-        "description": "May modify shareWith."
+        "description": "May modify shareWith. True for personal owners and current members of a group-owned book. False on inbound sharees."
       },
       "mayDelete": {
         "type": "boolean",
-        "description": "May delete the address book itself."
+        "description": "False on owned and membership books. True on inbound sharees means dismiss/hide (addressbook_share_dismissals), not delete the owner's book."
       }
     },
     "additionalProperties": false,
@@ -25,17 +25,17 @@
   },
   "AddressBook": {
     "type": "object",
-    "required": ["id", "name", "sortOrder", "isDefault", "isSubscribed", "myRights"],
+    "required": ["id", "name", "sortOrder", "isDefault", "isSubscribed", "isSharee", "myRights"],
     "properties": {
       "id": {
         "$ref": "#/components/schemas/JsContactId",
-        "description": "Immutable server-set address book identifier."
+        "description": "Immutable server-set identifier. Personal book is `default`; group membership books are `group-{slug}`; inbound shares are `shared-{addressbookId}`."
       },
       "name": {
         "type": "string",
         "minLength": 1,
         "maxLength": 255,
-        "description": "User-visible name."
+        "description": "Server-set from the principal display name. Name patches are forbidden."
       },
       "description": {
         "type": ["string", "null"],
@@ -66,7 +66,11 @@
           },
           { "type": "null" }
         ],
-        "description": "Principal id to rights map; null when not shared."
+        "description": "Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes."
+      },
+      "isSharee": {
+        "type": "boolean",
+        "description": "True on inbound share listings (Shared with me). False for personal owners and group-membership books."
       },
       "myRights": {
         "$ref": "#/components/schemas/AddressBookRights",
@@ -82,6 +86,7 @@
       "sortOrder": 0,
       "isDefault": true,
       "isSubscribed": true,
+      "isSharee": false,
       "shareWith": null,
       "myRights": {
         "mayRead": true,
@@ -113,6 +118,7 @@
           "sortOrder": 0,
           "isDefault": true,
           "isSubscribed": true,
+          "isSharee": false,
           "shareWith": null,
           "myRights": {
             "mayRead": true,

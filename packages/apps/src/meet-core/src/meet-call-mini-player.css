@@ -1,0 +1,46 @@
+@import "../../styles.css" reference;
+
+/*
+ * Floating mini-player shown outside /meet during an active call. Renders in the
+ * app shell (outside .meet-workspace), so it carries its own tokens with dark
+ * call-surface fallbacks, mirroring the meet-pip look.
+ */
+.meet-mini-player {
+  @apply fixed bottom-4 right-4 z-50 flex w-80 items-center gap-2 rounded-lg border p-2 shadow-xl;
+  background-color: var(--meet-mini-player-bg, rgb(24 24 27 / 0.96));
+  border-color: var(--meet-mini-player-border, rgb(255 255 255 / 0.22));
+  color: var(--meet-mini-player-fg, rgb(255 255 255 / 0.92));
+  --button-ghost-color: var(--meet-mini-player-fg, rgb(255 255 255 / 0.92));
+}
+
+.meet-mini-player__preview {
+  @apply relative flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md;
+  background-color: var(--meet-mini-player-preview-bg, rgb(0 0 0 / 0.55));
+}
+
+.meet-mini-player__video {
+  @apply h-full w-full object-cover;
+  transform: scaleX(-1);
+}
+
+.meet-mini-player__info {
+  @apply flex min-w-0 flex-1 flex-col gap-0.5;
+}
+
+.meet-mini-player__room {
+  @apply flex items-center gap-1 text-xs font-medium;
+}
+
+.meet-mini-player__meta {
+  @apply flex items-center gap-1 text-[11px];
+  color: var(--meet-mini-player-muted, rgb(255 255 255 / 0.65));
+}
+
+.meet-mini-player__actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.meet-mini-player .meet-mini-player__media-off,
+.meet-mini-player .meet-mini-player__hang-up {
+  color: var(--meet-mini-player-danger, rgb(248 113 113));
+}

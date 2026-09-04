@@ -6,31 +6,29 @@ namespace App\Services\Contacts;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\Addressbook;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Sabre\CardDAV\Backend\PDO as CardPDO;
 use Sabre\CardDAV\Plugin as CardDAVPlugin;
-use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\PropPatch;
 
 final class AddressBookRepository
 {
+    public function __construct(
+        private readonly AddressBookCollectionAccess $collectionAccess,
+        private readonly AddressBookShareInvites $shareInvites,
+        private readonly AddressBookShareVisibility $shareVisibility,
+    ) {}
+
     /**
      * @return array{list: list<array<string, mixed>>}
      */
     public function list(string $username): array
     {
-        $books = Addressbook::query()
-            ->where('principaluri', $this->principalUri($username))
-            ->orderBy('id')
-            ->get();
-
         return [
-            'list' => $books
-                ->map(fn (Addressbook $book): array => $this->mapAddressBook($book))
-                ->values()
-                ->all(),
+            'list' => array_map(
+                fn (AddressBookListing $listing): array => $this->mapListing($listing),
+                $this->collectionAccess->accessibleListings($username),
+            ),
         ];
     }
 
@@ -39,12 +37,7 @@ final class AddressBookRepository
      */
     public function show(string $username, string $addressBookId): array
     {
-        $book = $this->findOwnedBook($username, $addressBookId);
-        if ($book === null) {
-            throw new ApiHttpException(404, 'Address book not found.', 'not_found');
-        }
-
-        return $this->mapAddressBook($book);
+        return $this->mapListing($this->requireListing($username, $addressBookId));
     }
 
     /**
@@ -53,40 +46,7 @@ final class AddressBookRepository
      */
     public function create(string $username, array $payload): array
     {
-        $name = trim((string) ($payload['name'] ?? ''));
-        if ($name === '') {
-            throw new ApiHttpException(400, 'name is required.', 'bad_request');
-        }
-
-        $uri = $this->allocateBookUri(
-            $username,
-            isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null,
-            $name,
-        );
-
-        $properties = [
-            '{DAV:}displayname' => $name,
-        ];
-
-        if (array_key_exists('description', $payload)) {
-            $description = $payload['description'];
-            $properties['{'.CardDAVPlugin::NS_CARDDAV.'}addressbook-description'] = is_string($description)
-                ? $description
-                : null;
-        }
-
-        try {
-            $this->cardBackend()->createAddressBook($this->principalUri($username), $uri, $properties);
-        } catch (BadRequest $exception) {
-            throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
-        }
-
-        $book = $this->findOwnedBook($username, $uri);
-        if ($book === null) {
-            throw new ApiHttpException(500, 'Could not load created address book.', 'server_error');
-        }
-
-        return $this->mapAddressBook($book);
+        throw new ApiHttpException(403, 'Creating address books is not allowed.', 'forbidden');
     }
 
     /**
@@ -95,19 +55,38 @@ final class AddressBookRepository
      */
     public function update(string $username, string $addressBookId, array $payload): array
     {
-        $book = $this->findOwnedBook($username, $addressBookId);
-        if ($book === null) {
-            throw new ApiHttpException(404, 'Address book not found.', 'not_found');
+        $listing = $this->requireListing($username, $addressBookId);
+
+        if (array_key_exists('name', $payload)) {
+            throw new ApiHttpException(403, 'Address book names cannot be changed.', 'forbidden');
+        }
+
+        if ($listing->isSharee) {
+            $this->assertShareePatchAllowed($payload);
+            if (array_key_exists('isSubscribed', $payload)) {
+                if ($payload['isSubscribed'] === false) {
+                    $this->shareVisibility->dismiss($username, (int) $listing->book->id);
+                } elseif ($payload['isSubscribed'] === true) {
+                    $this->shareVisibility->restore($username, (int) $listing->book->id);
+                }
+            }
+
+            $restored = $this->collectionAccess->listingFor($username, $addressBookId);
+            if ($restored === null) {
+                return $this->mapListing($listing);
+            }
+
+            return $this->mapListing($restored);
+        }
+
+        if (array_key_exists('shareWith', $payload)) {
+            if (! $this->shareInvites->canShare($listing)) {
+                throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
+            }
+            $this->shareInvites->apply($listing->book, $payload['shareWith']);
         }
 
         $mutations = [];
-        if (array_key_exists('name', $payload)) {
-            $name = trim((string) $payload['name']);
-            if ($name === '') {
-                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
-            }
-            $mutations['{DAV:}displayname'] = $name;
-        }
         if (array_key_exists('description', $payload)) {
             $description = $payload['description'];
             $mutations['{'.CardDAVPlugin::NS_CARDDAV.'}addressbook-description'] = is_string($description)
@@ -117,13 +96,13 @@ final class AddressBookRepository
 
         if ($mutations !== []) {
             $propPatch = new PropPatch($mutations);
-            $this->cardBackend()->updateAddressBook((int) $book->id, $propPatch);
+            $this->cardBackend()->updateAddressBook((int) $listing->book->id, $propPatch);
             $propPatch->commit();
         }
 
-        $book->refresh();
+        $listing->book->refresh();
 
-        return $this->mapAddressBook($book);
+        return $this->mapListing($this->requireListing($username, $addressBookId));
     }
 
     /**
@@ -132,28 +111,13 @@ final class AddressBookRepository
      */
     public function delete(string $username, string $addressBookId, array $options = []): array
     {
-        $book = $this->findOwnedBook($username, $addressBookId);
-        if ($book === null) {
-            throw new ApiHttpException(404, 'Address book not found.', 'not_found');
+        $listing = $this->requireListing($username, $addressBookId);
+
+        if ($this->collectionAccess->dismissIfSharee($username, $listing)) {
+            return ['ok' => true];
         }
 
-        if ((string) $book->uri === 'default') {
-            throw new ApiHttpException(403, 'The default address book cannot be deleted.', 'forbidden');
-        }
-
-        $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
-        $hasCards = $book->cards()->exists();
-        if ($hasCards && ! $removeContents) {
-            throw new ApiHttpException(
-                409,
-                'Address book contains contact cards.',
-                'addressBookHasContents',
-            );
-        }
-
-        $this->cardBackend()->deleteAddressBook((int) $book->id);
-
-        return ['ok' => true];
+        throw new ApiHttpException(403, 'Address books cannot be deleted.', 'forbidden');
     }
 
     /**
@@ -167,19 +131,19 @@ final class AddressBookRepository
      */
     public function changes(string $username, ?string $since): array
     {
-        $books = Addressbook::query()
-            ->where('principaluri', $this->principalUri($username))
-            ->orderBy('uri')
-            ->get(['uri', 'synctoken']);
+        $listings = $this->collectionAccess->accessibleListings($username);
 
-        $currentState = $this->computeBooksState($books);
+        $currentState = $this->computeBooksState($listings);
         $previous = $this->parseBooksState($since);
 
         if ($since === null || $since === '' || $since === '0') {
             return [
                 'oldState' => '0',
                 'newState' => $currentState,
-                'created' => $books->pluck('uri')->map(fn ($uri): string => (string) $uri)->all(),
+                'created' => array_map(
+                    fn (AddressBookListing $listing): string => $this->collectionAccess->apiIdForListing($listing),
+                    $listings,
+                ),
                 'updated' => [],
                 'destroyed' => [],
             ];
@@ -200,8 +164,8 @@ final class AddressBookRepository
         }
 
         $currentMap = [];
-        foreach ($books as $book) {
-            $currentMap[(string) $book->uri] = (int) $book->synctoken;
+        foreach ($listings as $listing) {
+            $currentMap[$this->collectionAccess->apiIdForListing($listing)] = (int) $listing->book->synctoken;
         }
 
         $created = [];
@@ -234,7 +198,7 @@ final class AddressBookRepository
     }
 
     /**
-     * Current Sabre sync token per owned address book uri — the contacts
+     * Current Sabre sync token per visible address book JMAP id — the contacts
      * analog of CalendarEventRepository::calendarSyncTokens(), feeding the
      * JMAP envelope's account-wide state codec.
      *
@@ -243,61 +207,78 @@ final class AddressBookRepository
     public function syncTokens(string $username): array
     {
         $tokens = [];
-        $books = Addressbook::query()
-            ->where('principaluri', $this->principalUri($username))
-            ->orderBy('uri')
-            ->get(['uri', 'synctoken']);
-        foreach ($books as $book) {
-            $tokens[(string) $book->uri] = (string) (int) ($book->synctoken ?? 1);
+        foreach ($this->collectionAccess->accessibleListings($username) as $listing) {
+            $tokens[$this->collectionAccess->apiIdForListing($listing)] = (string) (int) ($listing->book->synctoken ?? 1);
         }
 
         return $tokens;
     }
 
-    private function findOwnedBook(string $username, string $addressBookId): ?Addressbook
+    public function requireAccessibleBook(string $username, string $addressBookId): Addressbook
     {
-        return Addressbook::query()
-            ->where('principaluri', $this->principalUri($username))
-            ->where('uri', $addressBookId)
-            ->first();
+        return $this->requireListing($username, $addressBookId)->book;
     }
 
-    private function allocateBookUri(string $username, ?string $requestedId, string $name): string
+    public function requireListing(string $username, string $addressBookId): AddressBookListing
     {
-        if ($requestedId !== null && $requestedId !== '') {
-            if ($requestedId === 'default') {
-                throw new ApiHttpException(409, 'Address book id already exists.', 'alreadyExists');
-            }
-            if ($this->findOwnedBook($username, $requestedId) !== null) {
-                throw new ApiHttpException(409, 'Address book id already exists.', 'alreadyExists');
-            }
-
-            return $requestedId;
+        $listing = $this->collectionAccess->listingFor($username, $addressBookId);
+        if ($listing !== null) {
+            return $listing;
         }
 
-        $base = Str::slug($name, '-');
-        if ($base === '') {
-            $base = 'book';
-        }
+        throw new ApiHttpException(404, 'Address book not found.', 'not_found');
+    }
 
-        $candidate = $base;
-        $suffix = 2;
-        while ($this->findOwnedBook($username, $candidate) !== null) {
-            $candidate = $base.'-'.$suffix;
-            $suffix++;
-        }
+    public function apiIdFor(Addressbook $book): string
+    {
+        return $this->collectionAccess->ownerApiId($book);
+    }
 
-        return $candidate;
+    public function viewerApiId(string $username, Addressbook $book): string
+    {
+        return $this->collectionAccess->viewerApiId($username, $book);
+    }
+
+    public function assertWritable(string $username, Addressbook $book): void
+    {
+        $this->collectionAccess->assertWritable($username, $book);
     }
 
     /**
-     * @param  Collection<int, Addressbook>  $books
+     * @return list<int>
      */
-    private function computeBooksState($books): string
+    public function accessibleBookNumericIds(string $username): array
+    {
+        return array_values(array_map(
+            static fn (AddressBookListing $listing): int => (int) $listing->book->id,
+            $this->collectionAccess->accessibleListings($username),
+        ));
+    }
+
+    /**
+     * @param  list<string>  $disallowedKeys
+     */
+    private function assertShareePatchAllowed(array $payload): void
+    {
+        $disallowed = [];
+        foreach (['description', 'shareWith'] as $key) {
+            if (array_key_exists($key, $payload)) {
+                $disallowed[] = $key;
+            }
+        }
+        if ($disallowed !== []) {
+            throw new ApiHttpException(403, 'Sharees cannot change owner address book fields.', 'forbidden');
+        }
+    }
+
+    /**
+     * @param  list<AddressBookListing>  $listings
+     */
+    private function computeBooksState(array $listings): string
     {
         $parts = [];
-        foreach ($books as $book) {
-            $parts[] = (string) $book->uri.':'.(int) $book->synctoken;
+        foreach ($listings as $listing) {
+            $parts[] = $this->collectionAccess->apiIdForListing($listing).':'.(int) $listing->book->synctoken;
         }
 
         return (string) count($parts).':'.implode(',', $parts);
@@ -337,17 +318,20 @@ final class AddressBookRepository
     /**
      * @return array<string, mixed>
      */
-    private function mapAddressBook(Addressbook $book): array
+    private function mapListing(AddressBookListing $listing): array
     {
-        $uri = (string) $book->uri;
+        $book = $listing->book;
+        $id = $this->collectionAccess->apiIdForListing($listing);
+        $isDefault = ! $listing->isSharee && $id === AddressBookCollectionUris::PERSONAL_DEFAULT;
         $name = trim((string) ($book->displayname ?? ''));
-        if ($name === '') {
-            $name = $uri;
+        if ($isDefault) {
+            $name = AddressBookCollectionUris::PERSONAL_DISPLAY_NAME;
+        } elseif ($name === '') {
+            $name = $id;
         }
-        $isDefault = $uri === 'default';
 
         return [
-            'id' => $uri,
+            'id' => $id,
             'name' => $name,
             'description' => is_string($book->description) && trim($book->description) !== ''
                 ? trim($book->description)
@@ -355,19 +339,10 @@ final class AddressBookRepository
             'sortOrder' => (int) ($book->id ?? 0),
             'isDefault' => $isDefault,
             'isSubscribed' => true,
-            'shareWith' => null,
-            'myRights' => [
-                'mayRead' => true,
-                'mayWrite' => true,
-                'mayShare' => false,
-                'mayDelete' => ! $isDefault,
-            ],
+            'isSharee' => $listing->isSharee,
+            'shareWith' => $listing->isSharee ? null : $this->shareInvites->shareWithForOwner($book),
+            'myRights' => $listing->rights(),
         ];
-    }
-
-    private function principalUri(string $username): string
-    {
-        return 'principals/'.$username;
     }
 
     private function cardBackend(): CardPDO

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { createBrowserHistory } from "@tanstack/react-router";
 import { normalizeWgwApiBaseUrl } from "@/lib/api/wgw/wgw-api-runtime";
 import { WgwApiRuntimeProvider } from "@/lib/api/wgw/wgw-api-runtime-provider";
+import { MeetCallProvider } from "@/meet-core/src/meet-call-provider";
+import { PresenceProvider } from "@/presence-core/src/presence-provider";
 import { WeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-router";
 
 export function resolveProductionApiBaseUrl(): string {
@@ -21,7 +23,13 @@ export function WeGotWorkspaceApp() {
 
   return (
     <WgwApiRuntimeProvider apiBaseUrl={apiBaseUrl}>
-      <WeGotWorkspaceRouter mode="live" history={history} />
+      {/* Above the router: the Meet call store survives route changes. */}
+      <MeetCallProvider>
+        {/* Live-only: workspace presence mesh for authenticated members. */}
+        <PresenceProvider>
+          <WeGotWorkspaceRouter mode="live" history={history} />
+        </PresenceProvider>
+      </MeetCallProvider>
     </WgwApiRuntimeProvider>
   );
 }

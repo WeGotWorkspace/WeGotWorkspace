@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { runViewTransition, VIEW_TRANSITION_ROOT_CLASS } from "./view-transition";
+import {
+  afterViewTransition,
+  runViewTransition,
+  VIEW_TRANSITION_ROOT_CLASS,
+} from "./view-transition";
 
 function stubReducedMotion(matches: boolean): void {
   vi.stubGlobal(
@@ -113,5 +117,45 @@ describe("runViewTransition", () => {
 
     expect(update).toHaveBeenCalledOnce();
     expect(document.documentElement.classList.contains(VIEW_TRANSITION_ROOT_CLASS)).toBe(false);
+  });
+});
+
+describe("afterViewTransition", () => {
+  it("runs immediately when no collection-detail transition is in flight", async () => {
+    stubReducedMotion(false);
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      value: undefined,
+    });
+    const task = vi.fn();
+    afterViewTransition(task);
+    expect(task).toHaveBeenCalledOnce();
+  });
+
+  it("defers history work until startViewTransition.finished", async () => {
+    stubReducedMotion(false);
+    let settle!: () => void;
+    const finished = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    const startViewTransition = vi.fn((callback: () => void) => {
+      callback();
+      return { finished };
+    });
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      value: startViewTransition,
+    });
+    const task = vi.fn();
+
+    runViewTransition(() => {
+      afterViewTransition(task);
+    });
+
+    expect(task).not.toHaveBeenCalled();
+    settle();
+    await finished;
+    await Promise.resolve();
+    expect(task).toHaveBeenCalledOnce();
   });
 });

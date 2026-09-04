@@ -117,8 +117,13 @@ final class JmapContactStateService
             return $row;
         }
 
-        if ($rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag) {
-            $row->etag = $rawEtag;
+        $bookChanged = $row->address_book_uri !== $addressBookUri;
+        $etagChanged = $rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag;
+        if ($bookChanged || $etagChanged) {
+            $row->address_book_uri = $addressBookUri;
+            if ($etagChanged) {
+                $row->etag = $rawEtag;
+            }
             $row->state_token = $this->generateStateToken();
             $row->save();
         }
