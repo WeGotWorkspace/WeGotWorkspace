@@ -66,3 +66,9 @@ export {
   meetGuestLinkAllowsHostUpgrade,
   type MeetApiSource,
 } from "@/meet-core/src/meet-api-source";
+export {
+  createDefaultMeetChatApiSource,
+  createHybridMeetChatApiSource,
+  type MeetChatApiSource,
+} from "@/meet-core/src/meet-chat-api-source";
+export { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
