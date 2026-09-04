@@ -10,7 +10,7 @@ Source plan: [plan.md](./plan.md)
 | id | owner / agent | skill | key paths | verify command | status |
 | --- | --- | --- | --- | --- | --- |
 | `file-issues-spec` | builder (this phase) | developer, plan-feature, git-workflow | `.agents/specs/701-meet-chat-backend/` | `gh issue view 701`; body-hash `d8ff6cc8` | done |
-| `chunk-a-openapi` | builder (this phase) | api | `packages/api/openapi/schemas/chat/`, `openapi/openapi.json`, generated types | `pnpm --filter @wgw/api typegen`; `composer test -- --filter OpenApi` | pending |
+| `chunk-a-openapi` | builder (this phase) | api | `packages/api/openapi/schemas/chat/`, `openapi/openapi.json`, generated types | `pnpm --filter @wgw/api typegen`; `composer test -- --filter OpenApi` | done |
 | `chunk-b-channels` | later | api | `ChatChannelRepository`, `chat_channel_meta` migration, channels controller, DAV-exposure filter + regression test | `composer test`; `pnpm test:api-done-gate` | pending |
 | `chunk-c-messages` | later | api | `ChatMessageJournalConverter`, message repo/controllers, `chat_read_markers` migration | `composer test`; `pnpm test:api-done-gate` | pending |
 | `chunk-d-jmap` | later | api | `Jmap/Methods/ChatChannel*`, `ChatMessage*`, capability provider, state codec, `tests/Feature/Jmap/` | `composer test -- --filter Jmap` | pending |
@@ -32,3 +32,4 @@ Source plan: [plan.md](./plan.md)
 - Chunk→Task map: A/B/C → #702, D → #703, E/F → #704, H/I → #705, G → #706, K → #707, J → #708, L → #709.
 - Branch `feat/meet-chat-backend` tracks Epic **#701**, not Goal #686.
 - Worktree: `/Users/woutervroege/Sites/sabre-installer-meet-chat-ui` (port offset 1 → dev :5174).
+- Chunk A note: `OpenApiRouteContractTest` is strictly bidirectional, so `/chat/*` routes are registered as 501 stubs (`ChatContractStubController`) inside the `wgw.auth`+`wgw.role:user` group; chunks B/C replace them with real controllers. `{channelId}` sample added to `OpenApiContract::sampleRequestPath` for the role-matrix smoke.
