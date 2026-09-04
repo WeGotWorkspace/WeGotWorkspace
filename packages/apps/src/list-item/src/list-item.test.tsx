@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ListItem } from "@/list-item/src/list-item";
@@ -19,7 +21,7 @@ const baseProps = {
   onDragEnd: vi.fn(),
 };
 
-describe("ListItem metaPosition", () => {
+describe("ListItem", () => {
   it("renders subtitle above title by default (mail/notes layout)", () => {
     const { container } = render(<ListItem {...baseProps} />);
     const content = container.querySelector(".list-item__content");
@@ -53,6 +55,11 @@ describe("ListItem metaPosition", () => {
     expect(container.querySelector(".list-item__body")).toBeNull();
   });
 
+  it("uses itemId for data-list-item-id when React id is overwritten", () => {
+    const { getByRole } = render(<ListItem {...baseProps} id="listItem-0" itemId="note-1" />);
+    expect(getByRole("button").getAttribute("data-list-item-id")).toBe("note-1");
+  });
+
   it("keeps standalone click handlers when the list parent does not delegate", () => {
     const onClick = vi.fn();
     const { getByRole } = render(<ListItem {...baseProps} onClick={onClick} />);
@@ -77,5 +84,17 @@ describe("ListItem metaPosition", () => {
     expect(body!.querySelector(".list-item__tags")).not.toBeNull();
     expect(body!.textContent).toContain("architecture");
     expect(body!.textContent).toContain("+1 more");
+  });
+
+  it("does not read a swipe onClick event (library calls onClick with no args)", () => {
+    // react-swipeable-list full-swipe path: setTimeout(() => onClick(), delay)
+    // with zero arguments. Reading event.stopPropagation throws and aborts archive.
+    const source = readFileSync(
+      path.join(process.cwd(), "src/list-item/src/list-item.tsx"),
+      "utf8",
+    );
+    expect(source).toMatch(/onClick=\{\(\) => swipeLeftAction\.onActivate\(\)\}/);
+    expect(source).toMatch(/onClick=\{\(\) => swipeRightAction\.onActivate\(\)\}/);
+    expect(source).not.toMatch(/event\.?stopPropagation/);
   });
 });

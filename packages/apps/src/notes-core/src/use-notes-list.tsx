@@ -1,9 +1,10 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { blurWorkspaceDetailEditor } from "@/hooks/blur-workspace-detail-editor";
 import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
+import { afterViewTransition } from "@/lib/view-transition";
 import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   filterNotesByHiddenNotebooks,
@@ -43,7 +44,9 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     (noteId: string) => {
       if (lastNotifiedNoteRef.current === noteId) return;
       lastNotifiedNoteRef.current = noteId;
-      startTransition(() => {
+      // History writes inside startViewTransition are dropped on iOS / Chrome,
+      // so wait until the overlay snapshot callback finishes.
+      afterViewTransition(() => {
         onNoteChange?.(noteId);
       });
     },
@@ -57,7 +60,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
           ? undefined
           : () => {
               setActiveId(noteId);
-              return notifyNoteChange(noteId);
+              notifyNoteChange(noteId);
             };
       const handle = workspaceLayoutRef.current;
       if (handle) {
@@ -158,7 +161,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       setActiveId("");
       setSelectedIds([]);
       setSelectionMode(false);
-      return notifyNoteChange("");
+      notifyNoteChange("");
     };
     const handle = workspaceLayoutRef.current;
     if (handle) {

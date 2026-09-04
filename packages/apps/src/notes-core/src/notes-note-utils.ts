@@ -354,7 +354,9 @@ export function mergeBootstrapNotesPreservingOptimistic(
     const preserveStarred =
       localNewerOrEqual && local.starred !== undefined && local.starred !== server.starred;
     const preserveArchived =
-      localNewerOrEqual && local.archived !== undefined && local.archived !== server.archived;
+      local.archived !== undefined &&
+      local.archived !== server.archived &&
+      (localNewerOrEqual || (local.archived && !server.archived));
     const preserveNotebook =
       localNewerOrEqual && !!local.notebook && local.notebook !== server.notebook;
     const preserveBody =
@@ -558,6 +560,11 @@ function noteMatchesSharedNotebook(
   return sharedNotebookKeys.has(note.notebook);
 }
 
+/** Archived map is UI-owned; note.archived is the persisted row flag — honor both. */
+export function noteIsArchived(note: Note, archived: Record<string, boolean>): boolean {
+  return !!archived[note.id] || !!note.archived;
+}
+
 export function filterVisibleNotes(
   notes: Note[],
   {
@@ -580,17 +587,17 @@ export function filterVisibleNotes(
 ): Note[] {
   const q = searchQuery.trim().toLowerCase();
   const filtered = dedupeNotesById(notes).filter((note) => {
+    const isArchived = noteIsArchived(note, archived);
     let inView = true;
     if (view === "all") {
-      inView = !note.sharedInbox && !note.sharedNotebookGrant && !archived[note.id];
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && !isArchived;
     } else if (view === "starred") {
-      inView =
-        !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !archived[note.id];
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !isArchived;
     } else if (view === "archive") {
-      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!archived[note.id];
+      inView = !note.sharedInbox && !note.sharedNotebookGrant && isArchived;
     } else if (view === "shared-with-me") {
       inView =
-        !archived[note.id] &&
+        !isArchived &&
         !note.sharedInbox &&
         !note.sharedNotebookGrant &&
         noteMatchesSharedNotebook(note, sharedNotebookKeys);
@@ -600,7 +607,7 @@ export function filterVisibleNotes(
         parsed !== null &&
         note.notebook === parsed.notebook &&
         note.groupSlug === parsed.groupSlug &&
-        !archived[note.id];
+        !isArchived;
     } else if (view.startsWith("nb:")) {
       const target = view.slice(3);
       inView =
@@ -608,13 +615,13 @@ export function filterVisibleNotes(
         (note.notebookId === target ||
           note.notebook === target ||
           note.notebook.toLowerCase() === target.toLowerCase()) &&
-        !archived[note.id];
+        !isArchived;
     } else if (view.startsWith("tag:")) {
       inView =
         !note.sharedInbox &&
         !note.sharedNotebookGrant &&
         note.tags.includes(view.slice(4)) &&
-        !archived[note.id];
+        !isArchived;
     }
     if (!inView) return false;
     if (!q) return true;

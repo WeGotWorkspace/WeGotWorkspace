@@ -50,45 +50,20 @@ const personWithPhoto = {
   },
 } as unknown as ContactCard;
 
-function renderListAvatars(visibleCards: ContactCard[]) {
-  const panel = ContactsListPanel({
-    L: defaultContactsLabels,
-    sidebarOpen: true,
-    onToggleSidebar: vi.fn(),
-    viewLabel: "All contacts",
-    view: "all",
-    selectedGroupId: null,
-    selectedIds: [],
-    selectionMode: false,
-    listLoading: false,
-    visibleCards,
-    searchQuery: "",
-    setSearchQuery: vi.fn(),
-    searchInputRef: createRef<HTMLInputElement>(),
-    isTouch: false,
-    activeId: "",
-    isItemDragging: () => false,
-    handleSelect: vi.fn(),
-    enterSelectionFor: vi.fn(),
-    itemDragHandlers: () => ({}),
-    onSwipeDelete: vi.fn(),
-    onSwipeRemoveFromGroup: vi.fn(),
-    selectionBar: null,
-  });
-  return render(<>{panel.listContent}</>);
-}
-
 function ListHarness({
   visibleCards,
   listLoading = false,
   listRefreshing = false,
   onRefreshList,
+  slot = "both",
 }: {
   visibleCards: ContactCard[];
   listLoading?: boolean;
   listRefreshing?: boolean;
   onRefreshList?: () => void;
+  slot?: "list" | "header" | "both";
 }) {
+  // ContactsListPanel uses hooks; call it only while a React component is rendering.
   const panel = ContactsListPanel({
     L: defaultContactsLabels,
     sidebarOpen: true,
@@ -115,11 +90,21 @@ function ListHarness({
     selectionBar: null,
     onRefreshList,
   });
+  if (slot === "list") return <>{panel.listContent}</>;
+  if (slot === "header") return <>{panel.header}</>;
   return (
     <>
       {panel.header}
       {panel.listContent}
     </>
+  );
+}
+
+function renderListAvatars(visibleCards: ContactCard[]) {
+  return render(
+    <TooltipProvider>
+      <ListHarness visibleCards={visibleCards} slot="list" />
+    </TooltipProvider>,
   );
 }
 
@@ -199,5 +184,11 @@ describe("ContactsListPanel avatars", () => {
     expect(img?.getAttribute("src")).toBe("https://example.com/photos/jane.jpg");
     expect(img?.getAttribute("loading")).toBe("lazy");
     expect(img?.getAttribute("decoding")).toBe("async");
+  });
+
+  it("wraps rows in the shared list reorder animation container", () => {
+    const { container } = renderListAvatars([personCard]);
+    expect(container.querySelector(".contacts-list-panel__list")).toBeTruthy();
+    expect(container.querySelector('[data-list-item-id="card-jane"]')).toBeTruthy();
   });
 });

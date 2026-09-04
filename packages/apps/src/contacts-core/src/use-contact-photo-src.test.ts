@@ -67,9 +67,13 @@ describe("useContactPhotoSrc", () => {
       revokeObjectURL,
     });
 
-    downloadContactBlobMock.mockResolvedValue(
-      new Response(new Blob(["jpeg-bytes"], { type: "image/jpeg" }), { status: 200 }),
-    );
+    // Avoid `new Response(blob)` under jsdom — undici expects Blob#stream(), which
+    // jsdom's Blob does not implement.
+    downloadContactBlobMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(["jpeg-bytes"], { type: "image/jpeg" }),
+    } as Response);
 
     const { result, unmount } = renderHook(() => useContactPhotoSrc(card));
 

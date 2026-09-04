@@ -1,10 +1,25 @@
 import { startTransition, useCallback, useState } from "react";
+import { COLLECTION_DETAIL_OVERLAY_MEDIA_QUERY } from "@/workspace-app/src/collection-detail-breakpoint";
 
 type UseSelectableListStateOptions = {
   initialId?: string;
   visibleIds: string[];
   onPrimarySelect?: (id: string) => void;
 };
+
+/**
+ * Overlay viewports run `openMobileDetail` inside `startViewTransition` + `flushSync`.
+ * Deferring that with `startTransition` drops the note id / URL update and leaves
+ * the empty detail pane on screen with no back control.
+ */
+function runPrimarySelect(select: () => void): void {
+  const overlay = window.matchMedia?.(COLLECTION_DETAIL_OVERLAY_MEDIA_QUERY)?.matches;
+  if (overlay) {
+    select();
+    return;
+  }
+  startTransition(select);
+}
 
 export function useSelectableListState({
   initialId,
@@ -24,7 +39,7 @@ export function useSelectableListState({
         setSelectedIds(next);
         setLastClickedId(id);
         if (next.length === 1) {
-          startTransition(() => {
+          runPrimarySelect(() => {
             onPrimarySelect?.(next[0]!);
           });
         }
@@ -52,7 +67,7 @@ export function useSelectableListState({
         // Single leftover selection must drive the open/active row — otherwise
         // isActive and isSelected highlight two different rows in single-select UI.
         if (next.length === 1) {
-          startTransition(() => {
+          runPrimarySelect(() => {
             onPrimarySelect?.(next[0]!);
           });
         }
@@ -61,7 +76,7 @@ export function useSelectableListState({
 
       setSelectedIds([id]);
       setLastClickedId(id);
-      startTransition(() => {
+      runPrimarySelect(() => {
         onPrimarySelect?.(id);
       });
     },
