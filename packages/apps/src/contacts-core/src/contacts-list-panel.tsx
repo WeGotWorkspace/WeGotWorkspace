@@ -1,10 +1,17 @@
-import { useMemo, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
+import {
+  useMemo,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Circle, RefreshCw, Trash2, UserMinus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { cn } from "@/lib/utils";
@@ -73,6 +80,12 @@ export function ContactsListPanel({
   onRefreshList,
   pendingCardIds,
 }: ContactsListPanelProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  useListReorderAnimation(
+    listRef,
+    visibleCards.map((card) => card.id),
+  );
+
   return {
     header: (
       <ViewHeader
@@ -104,31 +117,29 @@ export function ContactsListPanel({
         searchInputRef={searchInputRef}
       />
     ),
-    listContent: (
-      <>
-        {listLoading ? (
-          <div className="contacts-list-panel__loading" aria-busy>
-            <LoadingSpinner size="lg" label={L.listLoading} />
-          </div>
-        ) : (
-          <ContactsListRows
-            L={L}
-            visibleCards={visibleCards}
-            isTouch={isTouch}
-            activeId={activeId}
-            selectedIds={selectedIds}
-            selectionMode={selectionMode}
-            selectedGroupId={selectedGroupId}
-            isItemDragging={isItemDragging}
-            handleSelect={handleSelect}
-            enterSelectionFor={enterSelectionFor}
-            itemDragHandlers={itemDragHandlers}
-            onSwipeDelete={onSwipeDelete}
-            onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
-            pendingCardIds={pendingCardIds}
-          />
-        )}
-      </>
+    listContent: listLoading ? (
+      <div className="contacts-list-panel__loading" aria-busy>
+        <LoadingSpinner size="lg" label={L.listLoading} />
+      </div>
+    ) : (
+      <div ref={listRef} className="contacts-list-panel__list">
+        <ContactsListRows
+          L={L}
+          visibleCards={visibleCards}
+          isTouch={isTouch}
+          activeId={activeId}
+          selectedIds={selectedIds}
+          selectionMode={selectionMode}
+          selectedGroupId={selectedGroupId}
+          isItemDragging={isItemDragging}
+          handleSelect={handleSelect}
+          enterSelectionFor={enterSelectionFor}
+          itemDragHandlers={itemDragHandlers}
+          onSwipeDelete={onSwipeDelete}
+          onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
+          pendingCardIds={pendingCardIds}
+        />
+      </div>
     ),
     hasItems: listLoading || visibleCards.length > 0,
     emptyLabel: view.startsWith("group:") ? L.emptyGroupMembers : L.emptyList,
