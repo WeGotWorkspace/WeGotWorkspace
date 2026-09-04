@@ -1,4 +1,5 @@
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
+import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
 import type {
   PresenceChatMessage,
@@ -8,6 +9,10 @@ import type {
   PresenceSnapshot,
   PresenceUserStatus,
 } from "@/presence-core/src/presence-types";
+import {
+  PrincipalTabCoordinator,
+  type PrincipalTabSyncHandlers,
+} from "@/presence-core/src/principal-tab-sync";
 
 export type PresenceVisibilityPort = {
   getState: () => DocumentVisibilityState;
@@ -29,6 +34,12 @@ export type PresenceStoreOptions = {
   createSession: () => PresenceMeshSession;
   /** `eager` joins on start; `lazy` defers the join until the tab is visible. */
   joinMode: PresenceJoinMode;
+  /**
+   * When true, only the sticky BroadcastChannel leader dials the principal mesh;
+   * follower windows proxy envelopes (Phase 4 / #695). Default false for unit tests.
+   */
+  crossWindowLeader?: boolean;
+  createTabCoordinator?: (handlers: PrincipalTabSyncHandlers) => PrincipalTabCoordinator;
   visibility?: PresenceVisibilityPort | null;
   now?: () => number;
   setTimeoutFn?: typeof setTimeout;
@@ -58,6 +69,10 @@ function createInitialSnapshot(): PresenceSnapshot {
  * Join timing: `eager` joins on `start()`; `lazy` (mobile) waits until the tab is
  * visible and retries on every resume until joined — the mesh itself already
  * fast-polls when the tab becomes visible, so resume reconnects need no extra kick.
+ *
+ * Cross-window leadership (`crossWindowLeader`): sticky BC election so only one
+ * window dials; followers use {@link FollowerPresenceSession}. Leader close →
+ * handoff with an expected ~0.5–2 s reconnect blip (PeerConnection cannot move).
  */
 export class PresenceStore {
   private snapshot: PresenceSnapshot = createInitialSnapshot();
@@ -65,6 +80,10 @@ export class PresenceStore {
   private readonly listeners = new Set<() => void>();
 
   private session: PresenceMeshSession | null = null;
+
+  private followerSession: FollowerPresenceSession | null = null;
+
+  private coordinator: PrincipalTabCoordinator | null = null;
 
   private unsubscribeSession: (() => void) | null = null;
 
@@ -80,6 +99,12 @@ export class PresenceStore {
 
   private readonly typingTtlMs: number;
 
+  private readonly crossWindowLeader: boolean;
+
+  private readonly createTabCoordinator: (
+    handlers: PrincipalTabSyncHandlers,
+  ) => PrincipalTabCoordinator;
+
   private selfUsername = "";
 
   private selfDisplayName = "";
@@ -91,6 +116,8 @@ export class PresenceStore {
   private joined = false;
 
   private stopped = false;
+
+  private isMeshLeader = false;
 
   private chatCounter = 0;
 
@@ -109,6 +136,9 @@ export class PresenceStore {
     this.scheduleTimeout = options.setTimeoutFn ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.clearTimeoutFn ?? clearTimeout.bind(globalThis);
     this.typingTtlMs = options.typingTtlMs ?? DEFAULT_TYPING_TTL_MS;
+    this.crossWindowLeader = options.crossWindowLeader ?? false;
+    this.createTabCoordinator =
+      options.createTabCoordinator ?? ((handlers) => new PrincipalTabCoordinator(handlers));
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -120,48 +150,69 @@ export class PresenceStore {
 
   getSnapshot = (): PresenceSnapshot => this.snapshot;
 
+  /** Whether this window currently owns the principal mesh dial (cross-window mode). */
+  get meshLeader(): boolean {
+    return this.crossWindowLeader ? this.isMeshLeader : true;
+  }
+
   /** Begin presence for the authenticated user. Join now (eager) or on visibility (lazy). */
   start(self: { username: string; displayName: string }): void {
-    if (this.session) return;
+    if (this.session || this.coordinator) return;
     this.stopped = false;
     this.selfUsername = self.username;
     this.selfDisplayName = self.displayName.trim() || self.username;
-    this.session = this.options.createSession();
-    this.unsubscribeSession = this.session.onEvent((event) => {
-      if (event.type === "roster") {
-        this.publishRoster();
-      } else if (event.type === "dc-open") {
-        // Disclose our current status to the newly linked peer.
-        this.session?.sendTo(event.peerId, { v: 1, kind: "presence", status: this.selfStatus });
-        this.publishRoster();
-      } else if (event.type === "envelope") {
-        this.handleEnvelope(event.peerId, event.envelope);
-      }
-    });
     this.update({ selfUsername: this.selfUsername });
 
+    if (this.crossWindowLeader) {
+      this.coordinator = this.createTabCoordinator({
+        onBecomeLeader: () => {
+          void this.onBecomeLeader();
+        },
+        onResignLeader: () => {
+          void this.onResignLeader();
+        },
+        onEnvelopeFromFollower: ({ envelope, peerId }) => {
+          if (!this.isMeshLeader || !this.session) return;
+          if (peerId) this.session.sendTo(peerId, envelope);
+          else this.session.broadcast(envelope);
+        },
+        onEnvelopeFromLeader: ({ peerId, envelope }) => {
+          this.followerSession?.applyEnvelope(peerId, envelope);
+        },
+        onRosterFromLeader: (snapshot) => {
+          this.followerSession?.applyRoster(snapshot);
+          if (!this.joined) {
+            this.joined = true;
+            getPrincipalLinkRegistry().markPrincipalJoinAttempted();
+            this.update({ status: "online" });
+          }
+        },
+      });
+      this.coordinator.start();
+      // Cold followers never see onResignLeader — attach the proxy when we did not win.
+      if (!this.isMeshLeader) {
+        this.attachFollowerSession();
+        this.update({ status: "waiting" });
+      }
+      return;
+    }
+
+    this.attachRealSession();
     if (this.options.joinMode === "eager" || this.isVisible()) {
       void this.joinNow();
     } else {
       this.update({ status: "waiting" });
     }
-
-    if (this.options.joinMode === "lazy") {
-      this.unsubscribeVisibility =
-        this.visibility?.subscribe(() => {
-          // Resume: join if the deferred/failed join is still pending. Poll cadence
-          // recovery for an existing session is handled inside the mesh.
-          if (this.isVisible() && !this.joined) {
-            void this.joinNow();
-          }
-        }) ?? null;
-    }
+    this.installLazyVisibility();
   }
 
   async stop(): Promise<void> {
     this.stopped = true;
     this.unsubscribeVisibility?.();
     this.unsubscribeVisibility = null;
+    this.coordinator?.stop();
+    this.coordinator = null;
+    this.isMeshLeader = false;
     this.unsubscribeSession?.();
     this.unsubscribeSession = null;
     if (this.typingTimer !== null) {
@@ -170,6 +221,7 @@ export class PresenceStore {
     }
     const session = this.session;
     this.session = null;
+    this.followerSession = null;
     this.joined = false;
     this.snapshot = createInitialSnapshot();
     this.notify();
@@ -204,12 +256,104 @@ export class PresenceStore {
     this.session?.broadcast({ v: 1, kind: "presence", status });
   }
 
+  private async onBecomeLeader(): Promise<void> {
+    if (this.stopped) return;
+    this.isMeshLeader = true;
+    await this.detachSession();
+    if (this.stopped) return;
+    this.attachRealSession();
+    this.joined = false;
+    this.installLazyVisibility();
+    if (this.options.joinMode === "eager" || this.isVisible()) {
+      void this.joinNow();
+    } else {
+      this.update({ status: "waiting" });
+    }
+  }
+
+  private async onResignLeader(): Promise<void> {
+    if (this.stopped) return;
+    this.isMeshLeader = false;
+    this.unsubscribeVisibility?.();
+    this.unsubscribeVisibility = null;
+    await this.detachSession();
+    if (this.stopped) return;
+    this.attachFollowerSession();
+    this.joined = false;
+    this.update({ status: "waiting" });
+  }
+
+  private attachRealSession(): void {
+    this.followerSession = null;
+    this.session = this.options.createSession();
+    this.unsubscribeSession = this.session.onEvent((event) => {
+      if (event.type === "roster") {
+        this.publishRoster();
+        this.relayRosterToFollowers();
+      } else if (event.type === "dc-open") {
+        this.session?.sendTo(event.peerId, { v: 1, kind: "presence", status: this.selfStatus });
+        this.publishRoster();
+        this.relayRosterToFollowers();
+      } else if (event.type === "envelope") {
+        this.handleEnvelope(event.peerId, event.envelope);
+        this.coordinator?.publishEnvelopeIn(event.peerId, event.envelope);
+      }
+    });
+  }
+
+  private attachFollowerSession(): void {
+    const proxy = new FollowerPresenceSession((envelope, peerId) => {
+      this.coordinator?.publishEnvelopeOut(envelope, peerId);
+    });
+    this.followerSession = proxy;
+    this.session = proxy;
+    this.unsubscribeSession = this.session.onEvent((event) => {
+      if (event.type === "roster") {
+        this.publishRoster();
+      } else if (event.type === "envelope") {
+        this.handleEnvelope(event.peerId, event.envelope);
+      }
+    });
+  }
+
+  private async detachSession(): Promise<void> {
+    this.unsubscribeSession?.();
+    this.unsubscribeSession = null;
+    const session = this.session;
+    this.session = null;
+    this.followerSession = null;
+    this.joined = false;
+    this.joinInFlight = false;
+    if (session) await session.leave();
+  }
+
+  private relayRosterToFollowers(): void {
+    if (!this.isMeshLeader || !this.session) return;
+    this.coordinator?.publishRosterState({
+      peers: this.session.getRoomPeers(),
+      selfPeerId: null,
+    });
+  }
+
+  private installLazyVisibility(): void {
+    this.unsubscribeVisibility?.();
+    this.unsubscribeVisibility = null;
+    if (this.options.joinMode !== "lazy") return;
+    this.unsubscribeVisibility =
+      this.visibility?.subscribe(() => {
+        if (this.isVisible() && !this.joined && (!this.crossWindowLeader || this.isMeshLeader)) {
+          void this.joinNow();
+        }
+      }) ?? null;
+  }
+
   private isVisible(): boolean {
     return (this.visibility?.getState() ?? "visible") === "visible";
   }
 
   private async joinNow(): Promise<void> {
     if (!this.session || this.joined || this.joinInFlight) return;
+    if (this.crossWindowLeader && !this.isMeshLeader) return;
     this.joinInFlight = true;
     this.update({ status: "joining" });
     try {
@@ -219,6 +363,7 @@ export class PresenceStore {
       getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       this.update({ status: "online" });
       this.publishRoster();
+      this.relayRosterToFollowers();
     } catch {
       if (this.stopped) return;
       // Lazy mode retries on the next visibility resume; eager sessions surface the error.

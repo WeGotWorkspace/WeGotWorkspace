@@ -63,6 +63,8 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         createSession: () =>
           createPresenceRtcSession({ room: PRESENCE_WORKSPACE_ROOM, rtcSettings }),
         joinMode: decidePresenceJoinMode(readPresenceEnvironment()),
+        // Phase 4 (#695): one principal dial per user across windows/tabs.
+        crossWindowLeader: true,
       });
       activeStore = presenceStore;
       try {

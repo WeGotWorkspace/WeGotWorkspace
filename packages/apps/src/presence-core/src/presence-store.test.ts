@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+/** @vitest-environment jsdom */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getPrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
@@ -13,6 +14,28 @@ import type {
   PresenceMeshEvent,
   PresenceMeshSession,
 } from "@/presence-core/src/presence-types";
+import { PrincipalTabCoordinator } from "@/presence-core/src/principal-tab-sync";
+
+class MockBroadcastChannel {
+  static peers: MockBroadcastChannel[] = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+
+  constructor(_name: string) {
+    MockBroadcastChannel.peers.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    for (const peer of MockBroadcastChannel.peers) {
+      if (peer !== this) peer.onmessage?.({ data } as MessageEvent);
+    }
+  }
+
+  close(): void {
+    const index = MockBroadcastChannel.peers.indexOf(this);
+    if (index >= 0) MockBroadcastChannel.peers.splice(index, 1);
+  }
+}
 
 class FakeSession implements PresenceMeshSession {
   peers: RtcPeerDescriptor[] = [];
@@ -397,5 +420,141 @@ describe("PresenceStore lifecycle", () => {
     session.emit({ type: "roster" });
     expect(listener).toHaveBeenCalled();
     expect(store.getSnapshot().roster).toHaveLength(1);
+  });
+});
+
+describe("PresenceStore cross-window leadership", () => {
+  beforeEach(() => {
+    MockBroadcastChannel.peers = [];
+    Reflect.deleteProperty(globalThis, "BroadcastChannel");
+    vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
+    resetPrincipalLinkRegistryForTests();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    MockBroadcastChannel.peers = [];
+  });
+
+  function setupLeaderPair() {
+    const sessions: FakeSession[] = [];
+    const createSession = () => {
+      const session = new FakeSession();
+      sessions.push(session);
+      return session;
+    };
+    const storeA = createPresenceStore({
+      createSession,
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-a"),
+    });
+    const storeB = createPresenceStore({
+      createSession,
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-b"),
+    });
+    return { storeA, storeB, sessions };
+  }
+
+  it("only the sticky leader dials the principal session", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await flushMicrotasks();
+
+    expect(storeA.meshLeader).toBe(true);
+    expect(storeB.meshLeader).toBe(false);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.joinCalls).toBe(1);
+    expect(storeA.getSnapshot().status).toBe("online");
+    // Leader join relays an (empty) roster snapshot → follower goes online without dialing.
+    expect(storeB.getSnapshot().status).toBe("online");
+  });
+
+  it("proxies follower chat through the leader mesh session", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await flushMicrotasks();
+
+    const leaderSession = sessions[0]!;
+    leaderSession.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    leaderSession.emit({ type: "roster" });
+    await flushMicrotasks();
+
+    expect(storeB.getSnapshot().status).toBe("online");
+    expect(storeB.getSnapshot().roster).toEqual([
+      { username: "bob", name: "Bob", status: "online" },
+    ]);
+
+    storeB.sendChat("from follower");
+    await flushMicrotasks();
+
+    expect(
+      leaderSession.broadcasts.some((e) => e.kind === "chat" && e.body === "from follower"),
+    ).toBe(true);
+    expect(storeB.getSnapshot().chat[0]).toMatchObject({
+      body: "from follower",
+      isSelf: true,
+    });
+  });
+
+  it("hands off the dial to a follower when the leader stops", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await flushMicrotasks();
+    expect(sessions).toHaveLength(1);
+
+    await storeA.stop();
+    await flushMicrotasks();
+
+    expect(storeB.meshLeader).toBe(true);
+    expect(sessions).toHaveLength(2);
+    expect(sessions[1]?.joinCalls).toBe(1);
+    expect(storeB.getSnapshot().status).toBe("online");
+  });
+
+  it("keeps leadership when the leader tab is hidden", async () => {
+    const visibility = new FakeVisibility();
+    const sessions: FakeSession[] = [];
+    const storeA = createPresenceStore({
+      createSession: () => {
+        const session = new FakeSession();
+        sessions.push(session);
+        return session;
+      },
+      joinMode: "eager",
+      visibility,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-a"),
+    });
+    const storeB = createPresenceStore({
+      createSession: () => new FakeSession(),
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-b"),
+    });
+
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await flushMicrotasks();
+
+    visibility.setState("hidden");
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await flushMicrotasks();
+
+    expect(storeA.meshLeader).toBe(true);
+    expect(storeB.meshLeader).toBe(false);
+    expect(sessions).toHaveLength(1);
   });
 });
