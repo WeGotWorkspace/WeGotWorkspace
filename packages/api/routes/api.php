@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
+use App\Http\Controllers\Api\V1\Chat\ChatChannelsController;
 use App\Http\Controllers\Api\V1\Chat\ChatContractStubController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
@@ -268,16 +269,16 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::delete('notes/items/{noteId}', [NotesController::class, 'destroy'])
         ->where('noteId', '[^/]+');
 
-    // Chat contract stubs (Epic #701). The OpenAPI parity gate requires routes for
-    // every documented /chat operation; chunks B/C replace these with real controllers.
-    Route::get('chat/channels/changes', ChatContractStubController::class);
-    Route::get('chat/channels', ChatContractStubController::class);
-    Route::post('chat/channels', ChatContractStubController::class);
-    Route::get('chat/channels/{channelId}', ChatContractStubController::class)
+    // Chat channels (Epic #701, chunk B): CalDAV VJOURNAL collections with
+    // chat-/dm- URI prefixes, API-only (hidden from DAV by ChatHiddenCalendarBackend).
+    Route::get('chat/channels/changes', [ChatChannelsController::class, 'changes']);
+    Route::get('chat/channels', [ChatChannelsController::class, 'index']);
+    Route::post('chat/channels', [ChatChannelsController::class, 'store']);
+    Route::get('chat/channels/{channelId}', [ChatChannelsController::class, 'show'])
         ->where('channelId', '[A-Za-z0-9._-]+');
-    Route::patch('chat/channels/{channelId}', ChatContractStubController::class)
+    Route::patch('chat/channels/{channelId}', [ChatChannelsController::class, 'update'])
         ->where('channelId', '[A-Za-z0-9._-]+');
-    Route::delete('chat/channels/{channelId}', ChatContractStubController::class)
+    Route::delete('chat/channels/{channelId}', [ChatChannelsController::class, 'destroy'])
         ->where('channelId', '[A-Za-z0-9._-]+');
     Route::get('chat/channels/{channelId}/messages', ChatContractStubController::class)
         ->where('channelId', '[A-Za-z0-9._-]+');

@@ -12,7 +12,9 @@ use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Chat\ChatCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -37,8 +39,7 @@ final class NotebookRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
 
-        $lists = $this->collectionAccess
-            ->accessibleInstances($username, fn ($query) => $query->vjournalOnly())
+        $lists = $this->accessibleNotebookInstances($username)
             ->map(function (CalendarInstance $instance): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -209,10 +210,7 @@ final class NotebookRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
         $tokens = [];
-        $instances = $this->collectionAccess->accessibleInstances(
-            $username,
-            fn ($query) => $query->vjournalOnly(),
-        );
+        $instances = $this->accessibleNotebookInstances($username);
         foreach ($instances as $instance) {
             $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
         }
@@ -223,10 +221,7 @@ final class NotebookRepository
     public function changes(string $username, ?string $since): array
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
-        $instances = $this->collectionAccess->accessibleInstances(
-            $username,
-            fn ($query) => $query->vjournalOnly(),
-        );
+        $instances = $this->accessibleNotebookInstances($username);
 
         $currentState = $this->computeInstancesState($instances);
         $previous = $this->parseInstancesState($since);
@@ -321,9 +316,23 @@ final class NotebookRepository
 
     public function findAccessibleInstanceForCalendar(string $username, int $calendarId): ?CalendarInstance
     {
+        return $this->accessibleNotebookInstances($username)
+            ->first(fn (CalendarInstance $instance): bool => (int) $instance->calendarid === $calendarId);
+    }
+
+    /**
+     * Accessible VJOURNAL collections minus chat channels: chat collections are
+     * VJOURNAL-only too, so the `chat-`/`dm-` URI prefix is the discriminator
+     * (regression: ChatNotebookIsolationTest).
+     *
+     * @return Collection<int, CalendarInstance>
+     */
+    private function accessibleNotebookInstances(string $username)
+    {
         return $this->collectionAccess
             ->accessibleInstances($username, fn ($query) => $query->vjournalOnly())
-            ->first(fn (CalendarInstance $instance): bool => (int) $instance->calendarid === $calendarId);
+            ->filter(fn (CalendarInstance $instance): bool => ! ChatCollectionUris::isChatUri((string) $instance->uri))
+            ->values();
     }
 
     public function apiIdForInstance(CalendarInstance $instance): string
@@ -444,6 +453,13 @@ final class NotebookRepository
     private function allocateNotebookUri(string $principalUri, ?string $requestedId, string $name): string
     {
         if ($requestedId !== null && $requestedId !== '') {
+            if (ChatCollectionUris::isChatUri($requestedId)) {
+                throw new ApiHttpException(
+                    409,
+                    'This notebook id is reserved for chat channels.',
+                    'alreadyExists',
+                );
+            }
             if (in_array($requestedId, CalendarCollectionUris::reservedNoteViewSlugs(), true)) {
                 throw new ApiHttpException(
                     409,
@@ -463,6 +479,9 @@ final class NotebookRepository
         $base = Str::slug($name, '-') ?: 'notes';
         if (str_starts_with($base, 'group-')) {
             $base = 'notebook-'.substr($base, strlen('group-'));
+        }
+        if (ChatCollectionUris::isChatUri($base)) {
+            $base = 'notebook-'.$base;
         }
         if ($base === '' || in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
             $base = 'notebook';
@@ -605,11 +624,17 @@ final class NotebookRepository
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
+            ->filter(static fn (CalendarInstance $instance): bool => ! ChatCollectionUris::isChatUri((string) $instance->uri))
+            ->values()
             ->all();
     }
 
     private function findNotebookInstance(string $principalUri, string $notebookUri): ?CalendarInstance
     {
+        if (ChatCollectionUris::isChatUri($notebookUri)) {
+            return null;
+        }
+
         return CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $principalUri)

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Services\Installer\WgwInstallEnv;
 use App\Support\ApiUrlBuilder;
 use App\Support\UpdateFeedDefaults;
@@ -52,6 +53,15 @@ return [
     ],
 
     'auth_realm' => env('WGW_AUTH_REALM', 'SabreDAV'),
+
+    'chat' => [
+        /**
+         * CalDAV collection URI prefixes hidden from DAV enumeration and direct
+         * DAV access (see {@see ChatHiddenCalendarBackend}).
+         * Chat collections are API-only surfaces; notes stay DAV-visible by design.
+         */
+        'dav_hidden_prefixes' => ['chat-', 'dm-'],
+    ],
 
     'jwt' => [
         'issuer' => env('WGW_API_JWT_ISSUER', 'wegotworkspace-api'),
