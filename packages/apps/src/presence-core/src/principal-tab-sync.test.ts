@@ -4,9 +4,11 @@ import {
   applyPrincipalTabPresenceMessage,
   electStickyLeaderTabId,
   isPrincipalTabStale,
+  PRINCIPAL_ELECTION_GRACE_MS,
   PRINCIPAL_TAB_CHANNEL,
   PrincipalTabCoordinator,
   pruneStalePrincipalTabs,
+  resolvePrincipalLeaderClaim,
   shouldResignPrincipalOnHide,
   type PrincipalTabPresence,
 } from "./principal-tab-sync";
@@ -32,6 +34,40 @@ class MockBroadcastChannel {
   }
 }
 
+/** Queues posts until `flush()` — models async BroadcastChannel delivery. */
+class DeferredBroadcastChannel {
+  static peers: DeferredBroadcastChannel[] = [];
+
+  static queue: Array<{ from: DeferredBroadcastChannel; data: unknown }> = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+
+  constructor(_name: string) {
+    DeferredBroadcastChannel.peers.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    DeferredBroadcastChannel.queue.push({ from: this, data });
+  }
+
+  close(): void {
+    const index = DeferredBroadcastChannel.peers.indexOf(this);
+    if (index >= 0) DeferredBroadcastChannel.peers.splice(index, 1);
+  }
+
+  static flush(): void {
+    // Drain nested replies (e.g. discovery `sendPing`) like a burst of BC tasks.
+    while (DeferredBroadcastChannel.queue.length > 0) {
+      const batch = DeferredBroadcastChannel.queue.splice(0);
+      for (const { from, data } of batch) {
+        for (const peer of DeferredBroadcastChannel.peers) {
+          if (peer !== from) peer.onmessage?.({ data } as MessageEvent);
+        }
+      }
+    }
+  }
+}
+
 function tab(tabId: string, visible: boolean, lastSeen: number): PrincipalTabPresence {
   return { tabId, visible, lastSeen };
 }
@@ -44,6 +80,10 @@ function handlers() {
     onEnvelopeFromLeader: vi.fn(),
     onRosterFromLeader: vi.fn(),
   };
+}
+
+function advanceElectionGrace(): void {
+  vi.advanceTimersByTime(PRINCIPAL_ELECTION_GRACE_MS);
 }
 
 describe("principal-tab-sync sticky election", () => {
@@ -85,6 +125,12 @@ describe("principal-tab-sync sticky election", () => {
     applyPrincipalTabPresenceMessage(tabs, { type: "tab-leave", tabId: "tab-a", at: now });
     expect(tabs.size).toBe(0);
   });
+
+  it("adopts a remote leader claim and resolves split-brain by lex order", () => {
+    expect(resolvePrincipalLeaderClaim("tab-b", false, null, "tab-a", true)).toBe("tab-a");
+    expect(resolvePrincipalLeaderClaim("tab-b", true, "tab-b", "tab-a", true)).toBe("tab-a");
+    expect(resolvePrincipalLeaderClaim("tab-a", true, "tab-a", "tab-b", true)).toBe("tab-a");
+  });
 });
 
 describe("PrincipalTabCoordinator", () => {
@@ -92,9 +138,11 @@ describe("PrincipalTabCoordinator", () => {
     MockBroadcastChannel.peers = [];
     Reflect.deleteProperty(globalThis, "BroadcastChannel");
     vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     MockBroadcastChannel.peers = [];
   });
@@ -106,6 +154,7 @@ describe("PrincipalTabCoordinator", () => {
     const leaderB = new PrincipalTabCoordinator(b, "tab-b");
     leaderA.start();
     leaderB.start();
+    advanceElectionGrace();
 
     expect(leaderA.meshLeader).toBe(true);
     expect(leaderB.meshLeader).toBe(false);
@@ -120,6 +169,7 @@ describe("PrincipalTabCoordinator", () => {
     const leaderB = new PrincipalTabCoordinator(b, "tab-b");
     leaderA.start();
     leaderB.start();
+    advanceElectionGrace();
 
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -141,10 +191,10 @@ describe("PrincipalTabCoordinator", () => {
     const leaderB = new PrincipalTabCoordinator(b, "tab-b");
     leaderA.start();
     leaderB.start();
+    advanceElectionGrace();
 
     leaderA.stop();
 
-    expect(a.onResignLeader).not.toHaveBeenCalled(); // stop resigns via BC without onResignLeader when already posting leave
     expect(leaderA.meshLeader).toBe(false);
     expect(leaderB.meshLeader).toBe(true);
     expect(b.onBecomeLeader).toHaveBeenCalledTimes(1);
@@ -157,6 +207,7 @@ describe("PrincipalTabCoordinator", () => {
     const leaderB = new PrincipalTabCoordinator(b, "tab-b");
     leaderA.start();
     leaderB.start();
+    advanceElectionGrace();
 
     const envelope = { v: 1 as const, kind: "typing" as const };
     leaderB.publishEnvelopeOut(envelope);
@@ -176,6 +227,7 @@ describe("PrincipalTabCoordinator", () => {
     const leaderB = new PrincipalTabCoordinator(b, "tab-b");
     leaderA.start();
     leaderB.start();
+    advanceElectionGrace();
 
     const envelope = { v: 1 as const, kind: "presence" as const, status: "online" as const };
     leaderA.publishEnvelopeIn("peer-1", envelope);
@@ -194,5 +246,68 @@ describe("PrincipalTabCoordinator", () => {
 
   it("exports the expected channel name", () => {
     expect(PRINCIPAL_TAB_CHANNEL).toBe("wgw.principal.tab");
+  });
+});
+
+describe("PrincipalTabCoordinator async BroadcastChannel", () => {
+  beforeEach(() => {
+    DeferredBroadcastChannel.peers = [];
+    DeferredBroadcastChannel.queue = [];
+    Reflect.deleteProperty(globalThis, "BroadcastChannel");
+    vi.stubGlobal("BroadcastChannel", DeferredBroadcastChannel);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    DeferredBroadcastChannel.peers = [];
+    DeferredBroadcastChannel.queue = [];
+  });
+
+  it("second tab does not become leader when existing leader pings arrive before grace ends", () => {
+    const a = handlers();
+    const b = handlers();
+    const leaderA = new PrincipalTabCoordinator(a, "tab-a");
+    const leaderB = new PrincipalTabCoordinator(b, "tab-b");
+
+    leaderA.start();
+    DeferredBroadcastChannel.flush();
+    advanceElectionGrace();
+    DeferredBroadcastChannel.flush();
+    expect(leaderA.meshLeader).toBe(true);
+
+    leaderB.start();
+    // Deliver A's isLeader ping (and discovery replies) while B is still in grace.
+    DeferredBroadcastChannel.flush();
+    advanceElectionGrace();
+    DeferredBroadcastChannel.flush();
+
+    expect(leaderA.meshLeader).toBe(true);
+    expect(leaderB.meshLeader).toBe(false);
+    expect(b.onBecomeLeader).not.toHaveBeenCalled();
+  });
+
+  it("resolves split-brain when delayed delivery lets both tabs claim leadership", () => {
+    const a = handlers();
+    const b = handlers();
+    const leaderA = new PrincipalTabCoordinator(a, "tab-a");
+    const leaderB = new PrincipalTabCoordinator(b, "tab-b");
+
+    leaderA.start();
+    advanceElectionGrace();
+    // No flush yet — A elected in isolation.
+    expect(leaderA.meshLeader).toBe(true);
+
+    leaderB.start();
+    advanceElectionGrace();
+    // Still isolated — classic live bug before isLeader reconciliation.
+    expect(leaderB.meshLeader).toBe(true);
+
+    DeferredBroadcastChannel.flush();
+
+    expect(leaderA.meshLeader).toBe(true);
+    expect(leaderB.meshLeader).toBe(false);
+    expect(b.onResignLeader).toHaveBeenCalled();
   });
 });

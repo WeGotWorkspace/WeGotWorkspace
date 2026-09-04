@@ -6,6 +6,12 @@ export const PRINCIPAL_TAB_CHANNEL = "wgw.principal.tab";
 
 export const PRINCIPAL_TAB_PING_INTERVAL_MS = 2000;
 export const PRINCIPAL_LEADER_STALE_MS = 6000;
+/**
+ * Wait this long after `start()` before claiming leadership. BroadcastChannel
+ * delivery is async — without a listen window a second tab elects itself, then
+ * sticky election preserves a split brain with the existing leader.
+ */
+export const PRINCIPAL_ELECTION_GRACE_MS = 150;
 
 export type PrincipalTabPresence = {
   tabId: string;
@@ -23,7 +29,14 @@ export type PrincipalRosterSnapshot = {
  * Envelope traffic is proxied so follower windows never dial the principal room.
  */
 export type PrincipalTabMessage =
-  | { type: "tab-ping"; tabId: string; visible: boolean; at: number }
+  | {
+      type: "tab-ping";
+      tabId: string;
+      visible: boolean;
+      at: number;
+      /** True when this tab currently owns the principal mesh dial. */
+      isLeader?: boolean;
+    }
   | { type: "tab-leave"; tabId: string; at: number }
   | { type: "leader-resign"; tabId: string; at: number }
   | {
@@ -141,6 +154,23 @@ export function applyPrincipalTabPresenceMessage(
 }
 
 /**
+ * When a remote tab announces `isLeader`, adopt or reconcile so sticky self-election
+ * after an isolated cold start cannot preserve a split brain.
+ */
+export function resolvePrincipalLeaderClaim(
+  selfTabId: string,
+  selfIsLeader: boolean,
+  knownLeaderId: string | null,
+  remoteTabId: string,
+  remoteIsLeader: boolean,
+): string | null {
+  if (!remoteIsLeader || remoteTabId === selfTabId) return knownLeaderId;
+  if (!selfIsLeader) return remoteTabId;
+  // Split brain: both claim — keep the lexicographically smaller tab id.
+  return remoteTabId.localeCompare(selfTabId) < 0 ? remoteTabId : selfTabId;
+}
+
+/**
  * Coordinates sticky leadership for the workspace principal mesh and proxies
  * presence envelopes between the leader window and follower windows.
  */
@@ -153,7 +183,12 @@ export class PrincipalTabCoordinator {
 
   private electTimer: ReturnType<typeof setInterval> | null = null;
 
+  private graceTimer: ReturnType<typeof setTimeout> | null = null;
+
   private isLeader = false;
+
+  /** After grace, this tab may call `onBecomeLeader` (BC peers had time to ping). */
+  private electionReady = false;
 
   /** Last known elected leader across the channel (may be this tab or another). */
   private knownLeaderId: string | null = null;
@@ -191,6 +226,7 @@ export class PrincipalTabCoordinator {
 
   start(): void {
     const now = Date.now();
+    this.electionReady = false;
     this.tabs.set(this.tabId, { tabId: this.tabId, visible: this.visible, lastSeen: now });
 
     try {
@@ -201,7 +237,13 @@ export class PrincipalTabCoordinator {
     }
 
     this.sendPing();
+    // Collect peer pings before claiming leadership (BC delivery is async).
     this.runElection();
+    this.graceTimer = setTimeout(() => {
+      this.graceTimer = null;
+      this.electionReady = true;
+      this.runElection();
+    }, PRINCIPAL_ELECTION_GRACE_MS);
 
     this.pingTimer = setInterval(() => this.sendPing(), PRINCIPAL_TAB_PING_INTERVAL_MS);
     this.electTimer = setInterval(() => this.runElection(), PRINCIPAL_TAB_PING_INTERVAL_MS);
@@ -213,6 +255,10 @@ export class PrincipalTabCoordinator {
   }
 
   stop(): void {
+    if (this.graceTimer) clearTimeout(this.graceTimer);
+    this.graceTimer = null;
+    this.electionReady = false;
+
     if (this.isLeader) {
       this.isLeader = false;
       this.post({ type: "leader-resign", tabId: this.tabId, at: Date.now() });
@@ -264,6 +310,13 @@ export class PrincipalTabCoordinator {
       const wasKnown = this.tabs.has(data.tabId);
       applyPrincipalTabPresenceMessage(this.tabs, data);
       if (!wasKnown && data.tabId !== this.tabId) this.sendPing();
+      this.knownLeaderId = resolvePrincipalLeaderClaim(
+        this.tabId,
+        this.isLeader,
+        this.knownLeaderId,
+        data.tabId,
+        data.isLeader === true,
+      );
       this.runElection();
       return;
     }
@@ -319,6 +372,7 @@ export class PrincipalTabCoordinator {
       tabId: this.tabId,
       visible: this.visible,
       at: Date.now(),
+      isLeader: this.isLeader,
     });
   }
 
@@ -328,8 +382,15 @@ export class PrincipalTabCoordinator {
     const shouldLead = leaderId === this.tabId;
 
     if (shouldLead && !this.isLeader) {
+      if (!this.electionReady) {
+        // Still listening for peer leader claims before dialing.
+        return;
+      }
       this.isLeader = true;
+      console.debug("[presence] become-leader", { tabId: this.tabId });
       this.handlers.onBecomeLeader();
+      // Announce leadership immediately so late tabs adopt us during their grace.
+      this.sendPing();
       return;
     }
 
@@ -344,6 +405,7 @@ export class PrincipalTabCoordinator {
     if (this.knownLeaderId === this.tabId) {
       this.knownLeaderId = null;
     }
+    console.debug("[presence] resign-leader", { tabId: this.tabId });
     this.post({ type: "leader-resign", tabId: this.tabId, at: Date.now() });
     this.handlers.onResignLeader();
   }
