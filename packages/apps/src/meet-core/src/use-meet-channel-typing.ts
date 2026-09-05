@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import {
+  expandMeetTypingChannelKeys,
+  meetTypingChannelId,
+} from "@/meet-core/src/meet-typing-channel-id";
+import {
   createMeetTypingHeartbeat,
   type MeetTypingHeartbeat,
 } from "@/meet-core/src/meet-typing-heartbeat";
@@ -37,9 +41,14 @@ export function useMeetChannelTyping(): MeetChannelTyping {
   const storeRef = useRef<PresenceStore | null>(store);
   storeRef.current = store;
 
-  const typingByChannel = useSyncExternalStore(
+  const rawTypingByChannel = useSyncExternalStore(
     store?.subscribe ?? noopSubscribe,
     store ? () => store.getSnapshot().channelTyping : emptySnapshot,
+  );
+
+  const typingByChannel = useMemo(
+    () => expandMeetTypingChannelKeys(rawTypingByChannel),
+    [rawTypingByChannel],
   );
 
   const heartbeat = useMemo<MeetTypingHeartbeat>(
@@ -55,7 +64,9 @@ export function useMeetChannelTyping(): MeetChannelTyping {
 
   const onComposerTyping = useCallback(
     (channelId: string, typing: boolean) => {
-      if (typing) heartbeat.keystroke(channelId);
+      const self = storeRef.current?.getSnapshot().selfUsername;
+      const canonical = meetTypingChannelId(channelId, self);
+      if (typing) heartbeat.keystroke(canonical);
       else heartbeat.stop();
     },
     [heartbeat],

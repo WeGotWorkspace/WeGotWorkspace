@@ -149,4 +149,38 @@ describe("useMeetChannelTyping", () => {
       result.current.onComposerTyping("channel-general", false);
     }).not.toThrow();
   });
+
+  it("canonicalizes virtual DM ids so both peers broadcast on a shared key", async () => {
+    const nowRef = { value: 1000 };
+    const { session, store } = await onlineStore(nowRef);
+    const { result } = renderHook(() => useMeetChannelTyping(), {
+      wrapper: wrapperFor(store),
+    });
+
+    act(() => {
+      result.current.onComposerTyping("dm:bob", true);
+    });
+    expect(session.broadcasts).toEqual([{ v: 1, kind: "typing", channel: "dm:alice:bob" }]);
+  });
+
+  it("expands inbound canonical DM keys onto both virtual rail ids", async () => {
+    const nowRef = { value: 1000 };
+    const { session, store } = await onlineStore(nowRef);
+    const { result } = renderHook(() => useMeetChannelTyping(), {
+      wrapper: wrapperFor(store),
+    });
+
+    act(() => {
+      session.emit({
+        type: "envelope",
+        peerId: "bob-aaa111",
+        envelope: { v: 1, kind: "typing", channel: "dm:alice:bob" },
+      });
+    });
+    expect(result.current.typingByChannel).toEqual({
+      "dm:alice:bob": ["bob"],
+      "dm:alice": ["bob"],
+      "dm:bob": ["bob"],
+    });
+  });
 });

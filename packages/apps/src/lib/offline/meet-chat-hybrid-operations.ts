@@ -19,6 +19,7 @@ import {
   openChatDm,
   patchChatChannel,
   patchChatMessage,
+  putChatReadMarker,
   sendChatMessage,
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
@@ -32,9 +33,18 @@ import {
 import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
+  findCachedChannelForUiId,
+  latestCachedMessageForChannel,
+  meetChatReadMarkerTarget,
+  shouldSkipMeetChatReadMarker,
+  zeroCachedChannelUnread,
+  type MeetChatReadMarkerTarget,
+} from "@/lib/offline/meet-chat/meet-chat-read-marker";
+import {
   enqueueChatDelete,
   enqueueChatEdit,
   enqueueChatReactionToggle,
+  enqueueChatReadMarker,
   enqueueChatSend,
   findCachedDmChannelByPeer,
   getCachedChatMessage,
@@ -170,6 +180,7 @@ export function createHybridMeetChatOperations(
   author: MeetChatAuthor,
 ): MeetChatOperations {
   const runner = getMeetChatSyncRunner(username);
+  const lastReadByChannel = new Map<string, MeetChatReadMarkerTarget>();
 
   const sendMessageHybrid = async (
     channelId: string,
@@ -356,6 +367,39 @@ export function createHybridMeetChatOperations(
       return meetChannelFromWire(updated);
     },
     searchSharePrincipals: (query) => searchCollectionSharePrincipals(query, username),
+    markChannelRead: async (channelId) => {
+      if (!channelId) return;
+      const latest = await latestCachedMessageForChannel(username, channelId);
+      const cached = await findCachedChannelForUiId(username, channelId);
+      const unreadCount = cached?.unreadCount ?? 0;
+      const target = meetChatReadMarkerTarget(latest);
+      if (shouldSkipMeetChatReadMarker(unreadCount, target, lastReadByChannel.get(channelId))) {
+        return;
+      }
+      await zeroCachedChannelUnread(username, channelId);
+      const rememberAndQueue = async () => {
+        lastReadByChannel.set(channelId, target);
+        await enqueueChatReadMarker(username, {
+          channelId,
+          lastReadTs: target.lastReadTs,
+          lastReadUid: target.lastReadUid,
+        });
+      };
+      if (!readBrowserOnline()) {
+        await rememberAndQueue();
+        return;
+      }
+      try {
+        const restChannelId = await resolveRestChannelId(username, channelId);
+        await putChatReadMarker(restChannelId, target);
+        await zeroCachedChannelUnread(username, channelId);
+        lastReadByChannel.set(channelId, target);
+        await runner.flush();
+      } catch (error) {
+        if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
+        await rememberAndQueue();
+      }
+    },
   };
 }
 

@@ -2,14 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
+import { latestMessageInChannel } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import { meetChannelTitle } from "@/meet-core/src/meet-channel-label";
 import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
+import { mergeAuthorPresence } from "@/meet-core/src/meet-author-presence";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
+import { useMeetAuthorPresence } from "@/meet-core/src/use-meet-author-presence";
 import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
+import { useMeetChannelReadMarker } from "@/meet-core/src/use-meet-channel-read-marker";
 import { useMeetChannelTyping } from "@/meet-core/src/use-meet-channel-typing";
 import { useMeetChatCall } from "@/meet-core/src/use-meet-chat-call";
 import { useMeetChannelCallActivity } from "@/meet-core/src/use-meet-channel-call-activity";
@@ -77,9 +81,27 @@ function MeetChatLiveWorkspace({
     chatOperations,
   });
 
-  // Typing indicators ride the workspace presence mesh (chunk K); degrades to a
-  // no-op when the mesh is absent (guest session, mesh not joined yet).
+  const liveAuthorPresence = useMeetAuthorPresence();
   const { typingByChannel, onComposerTyping } = useMeetChannelTyping();
+
+  const selectedReadSignal = useMemo(() => {
+    if (!selectedChannelId) {
+      return { latestMessageId: null as string | null, unreadCount: 0 };
+    }
+    const latest = latestMessageInChannel(data.messages ?? [], selectedChannelId);
+    const peer = meetDirectMessagePrincipalId(selectedChannelId);
+    const unreadCount = peer
+      ? (data.dmUnread?.[peer] ?? 0)
+      : (data.channels?.find((row) => row.id === selectedChannelId)?.unreadCount ?? 0);
+    return { latestMessageId: latest?.id ?? null, unreadCount };
+  }, [data.channels, data.dmUnread, data.messages, selectedChannelId]);
+
+  useMeetChannelReadMarker({
+    selectedChannelId,
+    markChannelRead: operations?.markChannelRead,
+    selectedLatestMessageId: selectedReadSignal.latestMessageId,
+    selectedUnreadCount: selectedReadSignal.unreadCount,
+  });
 
   const callActiveByChannel = useMeetChannelCallActivity({
     operations: meetOperations,
@@ -106,21 +128,27 @@ function MeetChatLiveWorkspace({
     suiteCallStore.setCallLabel(channel ? meetChannelTitle(channel) : null);
   }, [channels, data.directory, liveCallChannelId, suiteCallStore]);
 
-  const dataWithCallActivity = useMemo<MeetUIData>(() => {
-    if (Object.keys(callActiveByChannel).length === 0) return data;
-    return {
-      ...data,
-      channels: channels.map((channel) =>
-        callActiveByChannel[channel.id] && !channel.callActive
-          ? { ...channel, callActive: true }
-          : channel,
-      ),
-    };
-  }, [callActiveByChannel, channels, data]);
+  const workspaceData = useMemo<MeetUIData>(() => {
+    const authorPresence = mergeAuthorPresence(liveAuthorPresence, data.authorPresence);
+    const withCalls =
+      Object.keys(callActiveByChannel).length === 0
+        ? data
+        : {
+            ...data,
+            channels: channels.map((channel) =>
+              callActiveByChannel[channel.id] && !channel.callActive
+                ? { ...channel, callActive: true }
+                : channel,
+            ),
+          };
+    return authorPresence === withCalls.authorPresence
+      ? withCalls
+      : { ...withCalls, authorPresence };
+  }, [callActiveByChannel, channels, data, liveAuthorPresence]);
 
   return (
     <MeetWorkspace
-      data={dataWithCallActivity}
+      data={workspaceData}
       session={session}
       operations={operations}
       onLogout={onLogout}

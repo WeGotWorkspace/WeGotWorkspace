@@ -139,6 +139,8 @@ export type MeetChatOperations = {
   ) => Promise<MeetChannel>;
   /** Find-or-create the DM channel with a workspace principal (chunk G); returns the real dm- channel. */
   openDm?: (principalId: string) => Promise<MeetChannel>;
+  /** Advance the server read marker and zero local unread for this UI channel id. */
+  markChannelRead?: (channelId: string) => Promise<void>;
   startCall?: (channelId: string) => Promise<void>;
   leaveCall?: (channelId: string) => Promise<void>;
   searchSharePrincipals?: (query: string) => Promise<CollectionSharePrincipal[]>;

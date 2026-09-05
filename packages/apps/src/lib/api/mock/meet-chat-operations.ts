@@ -149,5 +149,10 @@ export function createMeetChatOperations(seed: {
     startCall: async () => undefined,
     leaveCall: async () => undefined,
     searchSharePrincipals: async (query) => filterSharePrincipals(query, directory),
+    markChannelRead: async (channelId) => {
+      const current = state.channels.find((row) => row.id === channelId);
+      if (!current || !current.unreadCount) return;
+      replaceChannel({ ...current, unreadCount: 0 });
+    },
   };
 }

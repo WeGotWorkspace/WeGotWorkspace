@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
@@ -86,11 +86,6 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
       readCache,
     });
 
-  const operations = useMemo(
-    () => resolvedSource.createOperations(data ?? undefined),
-    [resolvedSource, data],
-  );
-
   const offlineUsername = useMemo(
     () =>
       wgwLiveApiEnabled() ? resolveMeetChatOfflineUsername(data?.session.user.username) : null,
@@ -118,6 +113,27 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
       };
     });
   }, [offlineUsername, patchBootstrap]);
+
+  const bootstrapRef = useRef(data);
+  bootstrapRef.current = data;
+  const rawOperations = useMemo(
+    () => resolvedSource.createOperations(bootstrapRef.current ?? undefined),
+    // Hybrid ops close over username/displayName only. Recreating on every inbound
+    // patch would drop in-memory read-marker dedupe.
+    [resolvedSource, data?.session.user.displayName, data?.session.user.username],
+  );
+
+  const operations = useMemo(() => {
+    if (!rawOperations?.markChannelRead) return rawOperations;
+    const markChannelRead = rawOperations.markChannelRead;
+    return {
+      ...rawOperations,
+      markChannelRead: async (channelId: string) => {
+        await markChannelRead(channelId);
+        await patchFromCache();
+      },
+    };
+  }, [patchFromCache, rawOperations]);
 
   const applyInboundRefresh = useCallback(async () => {
     if (!offlineUsername) return;

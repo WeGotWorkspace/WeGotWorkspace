@@ -9,13 +9,16 @@ import {
 import { isChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
 import {
   getCachedChatMessage,
+  listCachedChatChannels,
   listCachedChatMessages,
   listMeetChatOutbox,
   listPendingChatMessageIds,
   upsertChatChannelInCache,
   upsertChatMessageInCache,
+  type MeetChatReadMarkerOutboxPayload,
   type MeetChatSendOutboxPayload,
 } from "@/lib/offline/meet-chat-offline-store";
+import { MEET_CHAT_CAUGHT_UP_READ_UID } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import { createHybridMeetChatOperations } from "@/lib/offline/meet-chat-hybrid-operations";
 
 const username = "alice";
@@ -59,6 +62,7 @@ import {
   openChatDm,
   patchChatChannel,
   patchChatMessage,
+  putChatReadMarker,
   sendChatMessage,
   toggleChatReaction,
   type WgwChatChannel,
@@ -397,6 +401,127 @@ describe("createHybridMeetChatOperations", () => {
 
       expect(edited.channelId).toBe("dm:bob");
       expect((await getCachedChatMessage(username, cached.id))?.channelId).toBe("dm:bob");
+    });
+  });
+
+  describe("markChannelRead", () => {
+    const rights = {
+      mayReadItems: true,
+      mayWriteAll: true,
+      mayWriteOwn: true,
+      mayUpdatePrivate: true,
+      mayRSVP: true,
+      mayAdmin: true,
+      mayDelete: true,
+      mayShare: true,
+    } as const;
+
+    function channelRow(
+      overrides: Partial<WgwChatChannel> & Pick<WgwChatChannel, "id">,
+    ): WgwChatChannel {
+      return {
+        name: overrides.name ?? "General",
+        kind: "channel",
+        scope: "personal",
+        groupSlug: null,
+        isSharee: false,
+        shareWith: null,
+        unreadCount: 2,
+        myRights: rights,
+        ...overrides,
+      } as WgwChatChannel;
+    }
+
+    it("PUTs the latest message marker online and zeros unread", async () => {
+      const createdAt = Date.UTC(2026, 0, 15, 12, 0, 0);
+      await upsertChatChannelInCache(username, channelRow({ id: "chat-general", unreadCount: 3 }));
+      await upsertChatMessageInCache(
+        username,
+        { ...cachedMessage("01ARZ3NDEKTSV4RRFFQ69G5FD0", "hi"), createdAt },
+        false,
+      );
+      vi.mocked(putChatReadMarker).mockResolvedValue(undefined);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.markChannelRead!("chat-general");
+
+      expect(putChatReadMarker).toHaveBeenCalledWith("chat-general", {
+        lastReadTs: "2026-01-15T12:00:00.000Z",
+        lastReadUid: "01ARZ3NDEKTSV4RRFFQ69G5FD0",
+      });
+      expect((await listCachedChatChannels(username))[0]?.unreadCount).toBe(0);
+    });
+
+    it("resolves a virtual DM id onto the real collection before PUT", async () => {
+      const dmChannel = channelRow({
+        id: "dm-0123456789abcdef0123456789abcdef01234567",
+        name: "Bob",
+        kind: "dm",
+        dmPeer: "bob",
+        unreadCount: 4,
+        myRights: { ...rights, mayAdmin: false, mayShare: false },
+      });
+      const createdAt = Date.UTC(2026, 2, 1, 8, 0, 0);
+      await upsertChatChannelInCache(username, dmChannel);
+      await upsertChatMessageInCache(
+        username,
+        { ...cachedMessage("01ARZ3NDEKTSV4RRFFQ69G5FD1", "dm", "dm:bob"), createdAt },
+        false,
+      );
+      vi.mocked(putChatReadMarker).mockResolvedValue(undefined);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.markChannelRead!("dm:bob");
+
+      expect(putChatReadMarker).toHaveBeenCalledWith(dmChannel.id, {
+        lastReadTs: "2026-03-01T08:00:00.000Z",
+        lastReadUid: "01ARZ3NDEKTSV4RRFFQ69G5FD1",
+      });
+      expect((await listCachedChatChannels(username))[0]?.unreadCount).toBe(0);
+    });
+
+    it("queues the marker offline and still zeros unread", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+      await upsertChatChannelInCache(username, channelRow({ id: "chat-general", unreadCount: 2 }));
+      await upsertChatMessageInCache(username, cachedMessage("01ARZ3NDEKTSV4RRFFQ69G5FD2"), false);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.markChannelRead!("chat-general");
+
+      expect(putChatReadMarker).not.toHaveBeenCalled();
+      expect((await listCachedChatChannels(username))[0]?.unreadCount).toBe(0);
+      const outbox = await listMeetChatOutbox(username);
+      expect(outbox).toHaveLength(1);
+      expect(outbox[0]?.op).toBe("readMarker");
+      const payload = JSON.parse(outbox[0]!.payload) as MeetChatReadMarkerOutboxPayload;
+      expect(payload.channelId).toBe("chat-general");
+      expect(payload.lastReadUid).toBe("01ARZ3NDEKTSV4RRFFQ69G5FD2");
+    });
+
+    it("skips a duplicate PUT when unread is already 0 for the same last message", async () => {
+      await upsertChatChannelInCache(username, channelRow({ id: "chat-general", unreadCount: 1 }));
+      await upsertChatMessageInCache(username, cachedMessage("01ARZ3NDEKTSV4RRFFQ69G5FD3"), false);
+      vi.mocked(putChatReadMarker).mockResolvedValue(undefined);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.markChannelRead!("chat-general");
+      await operations.markChannelRead!("chat-general");
+
+      expect(putChatReadMarker).toHaveBeenCalledOnce();
+    });
+
+    it("PUTs a caught-up sentinel when unread is set but no messages are cached", async () => {
+      await upsertChatChannelInCache(username, channelRow({ id: "chat-general", unreadCount: 5 }));
+      vi.mocked(putChatReadMarker).mockResolvedValue(undefined);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.markChannelRead!("chat-general");
+
+      expect(putChatReadMarker).toHaveBeenCalledWith("chat-general", {
+        lastReadTs: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+        lastReadUid: MEET_CHAT_CAUGHT_UP_READ_UID,
+      });
+      expect((await listCachedChatChannels(username))[0]?.unreadCount).toBe(0);
     });
   });
 
