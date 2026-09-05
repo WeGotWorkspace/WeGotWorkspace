@@ -6,8 +6,11 @@ import {
   calendarMeetJoinHref,
   calendarMeetOwnerPrincipal,
   isHttpUrl,
+  isMeetChatRoomId,
   isMeetRoomCode,
   linksFromMeetingUrl,
+  meetChannelCallHref,
+  meetChannelCallRoom,
   meetingUrlFromCalendarEvent,
   meetingUrlFromLinks,
   meetDraftExpiresAt,
@@ -17,12 +20,15 @@ import {
   parsedOrigin,
   resolveCalendarMeetReserveScope,
   resolveMeetReserveExpiresAt,
+  roomCodeFromMeetingUrl,
 } from "@/calendar-core/src/calendar-meet-link";
 
 const ORIGIN = "https://workspace.example.com";
 const ROOM = "h8y8-ewp6-al8n";
 const GUEST = `${ORIGIN}/meet/guest?room=${ROOM}`;
 const JOIN = `${ORIGIN}/meet/join?room=${ROOM}`;
+const CHAT_ROOM = "chat-01h455vb4pa9nnrjpznsav8hva";
+const CHAT_GUEST = `${ORIGIN}/meet/guest?room=${CHAT_ROOM}`;
 
 describe("parseCalendarMeetHref", () => {
   it("accepts a complete same-origin guest URL by origin equality", () => {
@@ -30,7 +36,20 @@ describe("parseCalendarMeetHref", () => {
       kind: "wgw",
       href: GUEST,
       room: ROOM,
+      roomKind: "code",
     });
+  });
+
+  it("accepts a same-origin chat-channel room as a channel-kind wgw href", () => {
+    expect(parseCalendarMeetHref(CHAT_GUEST, ORIGIN)).toEqual({
+      kind: "wgw",
+      href: CHAT_GUEST,
+      room: CHAT_ROOM,
+      roomKind: "channel",
+    });
+    expect(parseCalendarMeetHref(`${ORIGIN}/meet/join?room=${CHAT_ROOM}`, ORIGIN)?.kind).toBe(
+      "wgw",
+    );
   });
 
   it("accepts /meet/join and a trailing slash on the path", () => {
@@ -83,6 +102,20 @@ describe("meet room code and links map", () => {
     expect(isMeetRoomCode("abc")).toBe(false);
   });
 
+  it("matches chat- prefixed channel room ids but not dm- or bare slugs", () => {
+    expect(isMeetChatRoomId(CHAT_ROOM)).toBe(true);
+    expect(isMeetChatRoomId("chat-team_sync")).toBe(true);
+    expect(isMeetChatRoomId("dm-alice-bob")).toBe(false);
+    expect(isMeetChatRoomId("chat-")).toBe(false);
+    expect(isMeetChatRoomId("general")).toBe(false);
+    expect(isMeetChatRoomId(ROOM)).toBe(false);
+  });
+
+  it("excludes channel rooms from the reserve-managed room code lookup", () => {
+    expect(roomCodeFromMeetingUrl(GUEST, ORIGIN)).toBe(ROOM);
+    expect(roomCodeFromMeetingUrl(CHAT_GUEST, ORIGIN)).toBeUndefined();
+  });
+
   it("reads the first href and writes a meet link", () => {
     expect(
       meetingUrlFromLinks({
@@ -110,6 +143,36 @@ describe("meet room code and links map", () => {
         "2033-01-12T10:00:00",
       ),
     ).toBe("https://zoom.us/j/override");
+  });
+});
+
+describe("meetChannelCallHref", () => {
+  it("uses the channel id lowercased as the room for plain channels", () => {
+    const channel = { id: "CHAT-01H455VB4PA9NNRJPZNSAV8HVA", kind: "channel" as const };
+    expect(meetChannelCallRoom(channel)).toBe(CHAT_ROOM);
+    expect(meetChannelCallHref(channel, ORIGIN)).toBe(CHAT_GUEST);
+  });
+
+  it("uses guestRoomCode for meeting-kind channels", () => {
+    const meeting = {
+      id: "chat-01h455vb4pa9nnrjpznsav8hvb",
+      kind: "meeting" as const,
+      guestRoomCode: ROOM,
+    };
+    expect(meetChannelCallRoom(meeting)).toBe(ROOM);
+    expect(meetChannelCallHref(meeting, ORIGIN)).toBe(GUEST);
+  });
+
+  it("falls back to the channel id when a meeting has no guestRoomCode", () => {
+    const meeting = { id: CHAT_ROOM, kind: "meeting" as const, guestRoomCode: null };
+    expect(meetChannelCallRoom(meeting)).toBe(CHAT_ROOM);
+  });
+
+  it("produces hrefs the join flow rewrites to /meet/join, matching the generated format", () => {
+    const channel = { id: CHAT_ROOM, kind: "channel" as const };
+    expect(calendarMeetJoinHref(meetChannelCallHref(channel, ORIGIN), ORIGIN)).toBe(
+      `/meet/join?room=${encodeURIComponent(CHAT_ROOM)}`,
+    );
   });
 });
 
