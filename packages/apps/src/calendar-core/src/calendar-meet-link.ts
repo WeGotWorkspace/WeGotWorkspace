@@ -8,9 +8,18 @@ import type {
   WgwMeetRoomStatusResponse,
 } from "@/lib/api/wgw/types";
 import { meetActorPrincipal } from "@/meet-core/src/meet-invite-status";
+import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
 
 /** Same pattern as PHP `CalendarMeetLinkHref::ROOM_CODE_PATTERN`. */
 export const MEET_ROOM_CODE_PATTERN = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/;
+
+/**
+ * Chat-channel call room: the channel collection id lowercased (`chat-` +
+ * uri slug, ULID-based server-side; client-suggested slugs are JMAP ids).
+ * Channel rooms are persistent — never reserved or swept by the calendar
+ * reservation GC (the API's `CalendarMeetLinkHref` ignores them by design).
+ */
+export const MEET_CHAT_ROOM_PATTERN = /^chat-[a-z0-9_-]{1,250}$/;
 
 export const MEET_DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MEET_EVENT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -20,14 +29,25 @@ const MEET_JOIN_PATHS = new Set(["/meet/guest", "/meet/join"]);
 
 export type CalendarMeetHrefKind = "wgw" | "https";
 
+/** `code` = reserve-managed ad-hoc room; `channel` = persistent chat-channel room. */
+export type CalendarMeetRoomKind = "code" | "channel";
+
 export type ParsedCalendarMeetHref =
-  | { kind: "wgw"; href: string; room: string }
+  | { kind: "wgw"; href: string; room: string; roomKind: CalendarMeetRoomKind }
   | { kind: "https"; href: string };
 
 export type CalendarMeetReserveScope = "single" | "series" | "thisAndFuture" | "thisInstance";
 
 export type CalendarMeetRequestOptions = {
   signal?: AbortSignal;
+};
+
+/** Chat channel the event form can attach a call link for (dm rows filtered out). */
+export type CalendarMeetChannelOption = {
+  id: string;
+  name: string;
+  kind: "channel" | "meeting";
+  guestRoomCode?: string | null;
 };
 
 export type CalendarMeetOperations = {
@@ -43,10 +63,16 @@ export type CalendarMeetOperations = {
     input: WgwMeetPatchRoomRequest,
     opts?: CalendarMeetRequestOptions,
   ) => Promise<WgwMeetRoomStatusResponse>;
+  /** User's chat channels (kind channel + meeting) for the event-form channel picker. */
+  listChannels?: (opts?: CalendarMeetRequestOptions) => Promise<CalendarMeetChannelOption[]>;
 };
 
 export function isMeetRoomCode(value: string): boolean {
   return MEET_ROOM_CODE_PATTERN.test(value.trim().toLowerCase());
+}
+
+export function isMeetChatRoomId(value: string): boolean {
+  return MEET_CHAT_ROOM_PATTERN.test(value.trim().toLowerCase());
 }
 
 /** Parsed `origin` only. Rejects on parse failure. */
@@ -95,7 +121,10 @@ export function parseCalendarMeetHref(
     if (MEET_JOIN_PATHS.has(path)) {
       const room = (parsed.searchParams.get("room") ?? "").trim().toLowerCase();
       if (isMeetRoomCode(room)) {
-        return { kind: "wgw", href: trimmed, room };
+        return { kind: "wgw", href: trimmed, room, roomKind: "code" };
+      }
+      if (isMeetChatRoomId(room)) {
+        return { kind: "wgw", href: trimmed, room, roomKind: "channel" };
       }
       return null;
     }
@@ -216,9 +245,14 @@ export function meetingUrlFromCalendarEvent(
   return meetingUrlFromLinks(event.links);
 }
 
+/**
+ * Reserve-managed ad-hoc room code only. Channel rooms are excluded on
+ * purpose: they are persistent and must never be expired/re-reserved by the
+ * event form's reservation lifecycle.
+ */
 export function roomCodeFromMeetingUrl(href: string, workspaceOrigin: string): string | undefined {
   const parsed = parseCalendarMeetHref(href, workspaceOrigin);
-  return parsed?.kind === "wgw" ? parsed.room : undefined;
+  return parsed?.kind === "wgw" && parsed.roomKind === "code" ? parsed.room : undefined;
 }
 
 /**
@@ -232,6 +266,27 @@ export function calendarMeetJoinHref(href: string, workspaceOrigin: string): str
     return `/meet/join?room=${encodeURIComponent(parsed.room)}`;
   }
   return parsed.href;
+}
+
+/**
+ * Call room for a chat channel: meeting-kind channels use their
+ * `guestRoomCode`, plain channels use the channel id lowercased (the Meet
+ * room convention for in-channel calls).
+ */
+export function meetChannelCallRoom(
+  channel: Pick<CalendarMeetChannelOption, "id" | "kind" | "guestRoomCode">,
+): string {
+  const guestRoom = channel.guestRoomCode?.trim();
+  if (channel.kind === "meeting" && guestRoom) return guestRoom.toLowerCase();
+  return channel.id.trim().toLowerCase();
+}
+
+/** Channel call URL in the same format the ad-hoc generator produces (`/meet/guest?room=`). */
+export function meetChannelCallHref(
+  channel: Pick<CalendarMeetChannelOption, "id" | "kind" | "guestRoomCode">,
+  workspaceOrigin: string,
+): string {
+  return buildMeetGuestCallLink(meetChannelCallRoom(channel), workspaceOrigin);
 }
 
 /** Open a calendar meeting in a new window (user-gesture safe). */

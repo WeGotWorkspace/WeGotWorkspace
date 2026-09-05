@@ -36,7 +36,9 @@ export function CalendarMeetJoin({
       setState("hidden");
       return;
     }
-    if (next.kind !== "wgw" || !meetOperations) {
+    // Channel rooms live as long as the channel — the reservation-based
+    // dead-link check only applies to ad-hoc room codes.
+    if (next.kind !== "wgw" || next.roomKind !== "code" || !meetOperations) {
       setState("ready");
       return;
     }

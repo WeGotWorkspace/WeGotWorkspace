@@ -122,6 +122,12 @@ export type CalendarUILabels = {
   eventMeetSectionTitle: string;
   /** Accessible name for the generate-Meet icon button. */
   eventMeetAdd: string;
+  /** Accessible name for the pick-a-Meet-channel menu trigger and its heading. */
+  eventMeetPickChannel: string;
+  eventMeetChannelsLoading: string;
+  /** Shown as a retryable menu item when the channel list fetch fails. */
+  eventMeetChannelsError: string;
+  eventMeetChannelsEmpty: string;
   /** Confirm title when generating over a non-empty meeting URL. */
   eventMeetReplaceTitle: string;
   eventMeetReplaceDescription: string;
@@ -348,6 +354,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
+  eventMeetPickChannel: "Attach a Meet channel link",
+  eventMeetChannelsLoading: "Loading channels…",
+  eventMeetChannelsError: "Could not load channels. Try again",
+  eventMeetChannelsEmpty: "No channels yet",
   eventMeetReplaceTitle: "Replace Meet link?",
   eventMeetReplaceDescription:
     "A new meeting link will replace the current one. The previous room will expire, and anyone with the current join URL will lose access.",
