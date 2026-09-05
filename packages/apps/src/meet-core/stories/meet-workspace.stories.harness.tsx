@@ -20,6 +20,10 @@ export type MeetWorkspaceStoryArgs = {
   initialVideoOn?: boolean;
   /** Mock-tier typing fixture (channel id -> directory user ids). */
   typingByChannel?: Record<string, string[]>;
+  /** Mock-tier knock fixture (chunk I): non-members waiting on the knock path. */
+  initialKnockers?: { id: string; name: string }[];
+  /** Start with this user knocking — waiting to be let in (chunk I). */
+  initialWaitingForAdmission?: boolean;
 };
 
 const STORY_BAR_PEERS = [
@@ -49,33 +53,48 @@ const STORY_BAR_PEERS = [
   },
 ];
 
-function useMeetWorkspaceCallRoom(initialVideoOn: boolean): MeetCallStageRoomProps {
+function useMeetWorkspaceCallRoom(
+  initialVideoOn: boolean,
+  initialKnockers: { id: string; name: string }[] = [],
+  initialWaitingForAdmission = false,
+): MeetCallStageRoomProps {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [activeSpeaker, setActiveSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
   const [activeCamera, setActiveCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [activeMic, setActiveMic] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(initialVideoOn);
+  // Knock fixtures stay stateful so admit/deny/cancel interactions play out.
+  const [knockers, setKnockers] = useState(initialKnockers);
+  const [waitingForAdmission, setWaitingForAdmission] = useState(initialWaitingForAdmission);
   useEffect(() => {
     setVideoOn(initialVideoOn);
   }, [initialVideoOn]);
+  const resolveKnocker = async (peerId: string) => {
+    setKnockers((current) => current.filter((entry) => entry.id !== peerId));
+  };
   const controller = createMeetStoryController(localVideoRef, {
-    peers: STORY_BAR_PEERS,
+    peers: waitingForAdmission ? [] : STORY_BAR_PEERS,
     micOn,
     videoOn,
     toggleMic: () => setMicOn((on) => !on),
     toggleVideo: () => setVideoOn((on) => !on),
     switchCamera: async (deviceId) => setActiveCamera(deviceId),
     switchMic: async (deviceId) => setActiveMic(deviceId),
-    inCall: true,
-    status: "in-call",
+    knockers,
+    waitingForAdmission,
+    admitKnocker: resolveKnocker,
+    denyKnocker: resolveKnocker,
+    leave: async () => setWaitingForAdmission(false),
+    inCall: !waitingForAdmission,
+    status: waitingForAdmission ? "waiting" : "in-call",
     elapsedLabel: "2:18",
   });
   return {
     controller,
     displayName: controller.displayName,
     hasSignedInIdentity: true,
-    participantCount: STORY_BAR_PEERS.length + 1,
+    participantCount: waitingForAdmission ? 0 : STORY_BAR_PEERS.length + 1,
     callExitLabel: meetLabels.leaveCall,
     callExitTitle: meetLabels.leaveCallTitle,
     callExitDescription: meetLabels.leaveCallDescription,
@@ -99,6 +118,8 @@ export function MeetWorkspaceStoryHarness({
   initialThreadId = null,
   initialVideoOn = false,
   typingByChannel,
+  initialKnockers,
+  initialWaitingForAdmission = false,
 }: MeetWorkspaceStoryArgs) {
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
   const operations = useMemo(
@@ -115,7 +136,11 @@ export function MeetWorkspaceStoryHarness({
       }),
     [bootstrap],
   );
-  const callStageRoom = useMeetWorkspaceCallRoom(initialVideoOn);
+  const callStageRoom = useMeetWorkspaceCallRoom(
+    initialVideoOn,
+    initialKnockers,
+    initialWaitingForAdmission,
+  );
 
   return (
     <MeetWorkspace

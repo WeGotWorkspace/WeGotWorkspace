@@ -23,6 +23,24 @@ export function buildMeetControlMessage(payload: MeetControlMessage): string {
   return `${MEET_CONTROL_PREFIX}${JSON.stringify(payload)}`;
 }
 
+/**
+ * Server error codes from the channel-ACL join policy (chunk H,
+ * `MeetSignalingService` / `MeetChannelJoinPolicy`): a direct join by a
+ * non-member fails with `knock_required`; a knock join on a room with nobody
+ * to admit fails with `room_not_active`. The signaling http-client surfaces
+ * the code as the thrown Error message.
+ */
+const MEET_KNOCK_REQUIRED_ERROR = "knock_required";
+const MEET_ROOM_NOT_ACTIVE_ERROR = "room_not_active";
+
+export function isMeetKnockRequiredError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes(MEET_KNOCK_REQUIRED_ERROR);
+}
+
+export function isMeetRoomNotActiveError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes(MEET_ROOM_NOT_ACTIVE_ERROR);
+}
+
 export function parseMeetControlMessage(text: string): MeetControlMessage | null {
   if (!text.startsWith(MEET_CONTROL_PREFIX)) return null;
   try {

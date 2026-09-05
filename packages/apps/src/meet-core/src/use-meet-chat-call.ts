@@ -8,6 +8,10 @@ import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
 } from "@/meet-core/src/meet-invite-status";
+import {
+  isMeetKnockRequiredError,
+  isMeetRoomNotActiveError,
+} from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   meetSpeakerOptionsFromAudioInputs,
@@ -96,8 +100,8 @@ export function useMeetChatCall({
   const startCall = useCallback(
     async (channelId: string) => {
       // The rethrow on failure makes the call layout revert its chrome.
+      let room: string | null = null;
       try {
-        let room: string;
         const dmPrincipal = meetDirectMessagePrincipalId(channelId);
         if (dmPrincipal) {
           // DM call room = the provisioned dm- channel id (chunk G): openDm
@@ -115,6 +119,29 @@ export function useMeetChatCall({
         await reserveChannelRoom(room);
         await controllerRef.current.joinRoom(room);
       } catch (error) {
+        // Chunk-H join policy: the server rejects direct joins from channel
+        // non-members with `knock_required`. Fall back to the legacy knock
+        // machinery — `requestJoin` does the knock-named join + knock control
+        // message and parks the session in the "waiting" state; the poll
+        // handler completes it (admit → rename-rejoin with the same peer id;
+        // deny → leave + toast). A re-knock after deny takes this same path.
+        // Applies to any channel-room join, DMs included (server policy makes
+        // knock_required unreachable for DM members, but no special-casing).
+        if (room !== null && isMeetKnockRequiredError(error)) {
+          try {
+            await controllerRef.current.requestJoin(room);
+            return;
+          } catch (knockError) {
+            toastRef.current.showError(
+              isMeetRoomNotActiveError(knockError)
+                ? meetLabels.knockCallNotActive
+                : knockError instanceof Error && knockError.message.trim()
+                  ? knockError.message
+                  : meetLabels.couldNotStartCall,
+            );
+            throw knockError;
+          }
+        }
         const message =
           error instanceof Error && error.message.trim()
             ? error.message
