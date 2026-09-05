@@ -7,12 +7,14 @@ import {
   sendChatMessage,
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
+import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   listMeetChatOutbox,
   markOutboxError,
   meetChatOutboxMessageId,
   removeChatMessageFromCache,
   removeOutboxMutation,
+  uiChatMessageForCache,
   upsertChatMessageInCache,
   type MeetChatDeleteOutboxPayload,
   type MeetChatEditOutboxPayload,
@@ -49,12 +51,19 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
       if (row.op === "send") {
         const payload = JSON.parse(row.payload) as MeetChatSendOutboxPayload;
         try {
-          const saved = await sendChatMessage(payload.channelId, {
+          // Offline DM sends queue under the virtual `dm:{peer}` id — the dm-
+          // collection is found-or-created (idempotent) at flush time.
+          const restChannelId = await resolveRestChannelId(username, payload.channelId);
+          const saved = await sendChatMessage(restChannelId, {
             id: payload.messageId,
             body: payload.body,
             ...(payload.parentId ? { parentId: payload.parentId } : {}),
           });
-          await upsertChatMessageInCache(username, chatMessageFromWire(saved), false);
+          await upsertChatMessageInCache(
+            username,
+            await uiChatMessageForCache(username, chatMessageFromWire(saved)),
+            false,
+          );
         } catch (error) {
           if (!isMeetChatGone(error)) throw error;
           // Channel deleted remotely — the queued message has no home anymore.
@@ -64,7 +73,11 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
         const payload = JSON.parse(row.payload) as MeetChatEditOutboxPayload;
         try {
           const saved = await patchChatMessage(payload.messageId, { body: payload.body });
-          await upsertChatMessageInCache(username, chatMessageFromWire(saved), false);
+          await upsertChatMessageInCache(
+            username,
+            await uiChatMessageForCache(username, chatMessageFromWire(saved)),
+            false,
+          );
         } catch (error) {
           if (!isMeetChatGone(error)) throw error;
           await removeChatMessageFromCache(username, payload.messageId);
@@ -80,14 +93,18 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
         const payload = JSON.parse(row.payload) as MeetChatReactOutboxPayload;
         try {
           const saved = await toggleChatReaction(payload.messageId, payload.emoji);
-          await upsertChatMessageInCache(username, chatMessageFromWire(saved), false);
+          await upsertChatMessageInCache(
+            username,
+            await uiChatMessageForCache(username, chatMessageFromWire(saved)),
+            false,
+          );
         } catch (error) {
           if (!isMeetChatGone(error)) throw error;
           await removeChatMessageFromCache(username, payload.messageId);
         }
       } else if (row.op === "readMarker") {
         const payload = JSON.parse(row.payload) as MeetChatReadMarkerOutboxPayload;
-        await putChatReadMarker(payload.channelId, {
+        await putChatReadMarker(await resolveRestChannelId(username, payload.channelId), {
           lastReadTs: payload.lastReadTs,
           lastReadUid: payload.lastReadUid,
         });

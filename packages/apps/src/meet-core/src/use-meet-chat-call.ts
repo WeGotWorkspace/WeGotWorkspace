@@ -3,7 +3,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
-import { isMeetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
@@ -68,6 +68,11 @@ export function useMeetChatCall({
   usernameRef.current = session.user.username ?? null;
   const toastRef = useRef(toast);
   toastRef.current = toast;
+  const chatOperationsRef = useRef(chatOperations);
+  chatOperationsRef.current = chatOperations;
+  // DM rooms are not in the sidebar channel list; remember room → virtual
+  // `dm:{peer}` id so `liveCallChannelId` maps the joined call back to the rail.
+  const dmRoomChannelIdsRef = useRef<Record<string, string>>({});
 
   /** Best-effort reservation so the room shows up in status polls with an owner. */
   const reserveChannelRoom = useCallback(async (room: string) => {
@@ -90,16 +95,24 @@ export function useMeetChatCall({
 
   const startCall = useCallback(
     async (channelId: string) => {
-      // DM calls need the chunk-G provisioned collections; guard until then.
-      // The rethrow makes the call layout revert its chrome.
-      if (isMeetDirectMessageChannelId(channelId)) {
-        toastRef.current.show(meetLabels.dmCallUnavailable, { severity: "info" });
-        throw new Error(meetLabels.dmCallUnavailable);
-      }
-      const channel = channelsRef.current.find((row) => row.id === channelId);
-      const room = meetChannelRoomId(channel ?? { id: channelId, kind: "channel" });
-      await reserveChannelRoom(room);
+      // The rethrow on failure makes the call layout revert its chrome.
       try {
+        let room: string;
+        const dmPrincipal = meetDirectMessagePrincipalId(channelId);
+        if (dmPrincipal) {
+          // DM call room = the provisioned dm- channel id (chunk G): openDm
+          // finds-or-creates the collection, H's join policy admits both
+          // members and rejects guests.
+          const openDm = chatOperationsRef.current?.openDm;
+          if (!openDm) throw new Error(meetLabels.couldNotStartCall);
+          const dm = await openDm(dmPrincipal);
+          room = meetChannelRoomId({ id: dm.id, kind: "channel" });
+          dmRoomChannelIdsRef.current[room] = channelId;
+        } else {
+          const channel = channelsRef.current.find((row) => row.id === channelId);
+          room = meetChannelRoomId(channel ?? { id: channelId, kind: "channel" });
+        }
+        await reserveChannelRoom(room);
         await controllerRef.current.joinRoom(room);
       } catch (error) {
         const message =
@@ -119,19 +132,10 @@ export function useMeetChatCall({
 
   const operations = useMemo<MeetChatOperations | undefined>(() => {
     if (!chatOperations) return undefined;
-    const sendMessage = chatOperations.sendMessage;
+    // DM sends flow through the hybrid ops unchanged — the lib layer resolves
+    // `dm:{peer}` ids onto the auto-provisioned dm- collections (chunk G).
     return {
       ...chatOperations,
-      // DM sends need chunk-G auto-provisioned collections; fail with a clear
-      // message instead of a REST 404 (surfaced by the workspace toast).
-      sendMessage: sendMessage
-        ? (channelId, body, opts) => {
-            if (isMeetDirectMessageChannelId(channelId)) {
-              return Promise.reject(new Error(meetLabels.dmSendUnavailable));
-            }
-            return sendMessage(channelId, body, opts);
-          }
-        : undefined,
       startCall,
       leaveCall: () => leaveCall(),
     };
@@ -187,7 +191,9 @@ export function useMeetChatCall({
     controller.status === "waiting";
   const joinedRoomCode = sessionEngaged ? controller.roomCode : null;
   const liveCallChannelId = useMemo(
-    () => meetChannelIdForRoom(channels, joinedRoomCode),
+    () =>
+      meetChannelIdForRoom(channels, joinedRoomCode) ??
+      (joinedRoomCode ? (dmRoomChannelIdsRef.current[joinedRoomCode] ?? null) : null),
     [channels, joinedRoomCode],
   );
 

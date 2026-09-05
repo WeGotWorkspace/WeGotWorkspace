@@ -12,6 +12,7 @@ import {
   listCachedChatMessages,
   listMeetChatOutbox,
   listPendingChatMessageIds,
+  upsertChatChannelInCache,
   upsertChatMessageInCache,
   type MeetChatSendOutboxPayload,
 } from "@/lib/offline/meet-chat-offline-store";
@@ -43,6 +44,7 @@ vi.mock("@/lib/api/wgw/meet-chat", async (importOriginal) => {
     createChatChannel: vi.fn(),
     patchChatChannel: vi.fn(),
     putChatReadMarker: vi.fn(),
+    openChatDm: vi.fn(),
   };
 });
 
@@ -54,7 +56,9 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
 
 import {
   MeetChatRequestError,
+  openChatDm,
   patchChatChannel,
+  patchChatMessage,
   sendChatMessage,
   toggleChatReaction,
   type WgwChatChannel,
@@ -297,6 +301,103 @@ describe("createHybridMeetChatOperations", () => {
     const principals = await operations.searchSharePrincipals!("bo");
     expect(searchCollectionSharePrincipals).toHaveBeenCalledWith("bo", username);
     expect(principals.map((row) => row.id)).toEqual(["bob"]);
+  });
+
+  describe("direct messages (chunk G)", () => {
+    const dmChannel: WgwChatChannel = {
+      id: "dm-0123456789abcdef0123456789abcdef01234567",
+      name: "Bob",
+      kind: "dm",
+      scope: "personal",
+      groupSlug: null,
+      isSharee: false,
+      shareWith: null,
+      dmPeer: "bob",
+      unreadCount: 0,
+      myRights: {
+        mayReadItems: true,
+        mayWriteAll: true,
+        mayWriteOwn: true,
+        mayUpdatePrivate: true,
+        mayRSVP: true,
+        mayAdmin: false,
+        mayDelete: true,
+        mayShare: false,
+      },
+    } as WgwChatChannel;
+
+    it("openDm returns the cached dm channel without a REST call", async () => {
+      await upsertChatChannelInCache(username, dmChannel);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      const channel = await operations.openDm!("bob");
+
+      expect(channel.id).toBe(dmChannel.id);
+      expect(openChatDm).not.toHaveBeenCalled();
+    });
+
+    it("openDm provisions via POST /chat/dms on a cache miss and caches the row", async () => {
+      vi.mocked(openChatDm).mockResolvedValue(dmChannel);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      const channel = await operations.openDm!("bob");
+
+      expect(openChatDm).toHaveBeenCalledWith("bob");
+      expect(channel.id).toBe(dmChannel.id);
+
+      // Cached: the second open (and later sends/calls) skip the network.
+      vi.mocked(openChatDm).mockClear();
+      await operations.openDm!("bob");
+      expect(openChatDm).not.toHaveBeenCalled();
+    });
+
+    it("sends to a virtual dm:{peer} id by provisioning and re-keys the saved message", async () => {
+      vi.mocked(openChatDm).mockResolvedValue(dmChannel);
+      vi.mocked(sendChatMessage).mockImplementation(async (channelId, body) =>
+        wireMessage({ id: body.id, body: body.body, channelId }),
+      );
+
+      const operations = createHybridMeetChatOperations(username, author);
+      const saved = await operations.sendMessage!("dm:bob", "hi bob");
+
+      expect(openChatDm).toHaveBeenCalledWith("bob");
+      expect(sendChatMessage).toHaveBeenCalledWith(
+        dmChannel.id,
+        expect.objectContaining({ body: "hi bob" }),
+      );
+      // The UI keeps addressing the conversation by the virtual DM-rail id.
+      expect(saved.channelId).toBe("dm:bob");
+      expect((await getCachedChatMessage(username, saved.id))?.channelId).toBe("dm:bob");
+    });
+
+    it("queues offline dm sends under the virtual id for the flush to resolve", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      const optimistic = await operations.sendMessage!("dm:bob", "offline dm");
+
+      expect(optimistic.channelId).toBe("dm:bob");
+      expect(openChatDm).not.toHaveBeenCalled();
+      const outbox = await listMeetChatOutbox(username);
+      expect(outbox).toHaveLength(1);
+      const payload = JSON.parse(outbox[0]!.payload) as MeetChatSendOutboxPayload;
+      expect(payload.channelId).toBe("dm:bob");
+    });
+
+    it("re-keys dm edit/react responses onto the virtual channel id", async () => {
+      await upsertChatChannelInCache(username, dmChannel);
+      const cached = cachedMessage("01ARZ3NDEKTSV4RRFFQ69G5FC0", "dm body", "dm:bob");
+      await upsertChatMessageInCache(username, cached, false);
+      vi.mocked(patchChatMessage).mockResolvedValue(
+        wireMessage({ id: cached.id, body: "dm body!", channelId: dmChannel.id }),
+      );
+
+      const operations = createHybridMeetChatOperations(username, author);
+      const edited = await operations.editMessage!(cached.id, "dm body!");
+
+      expect(edited.channelId).toBe("dm:bob");
+      expect((await getCachedChatMessage(username, cached.id))?.channelId).toBe("dm:bob");
+    });
   });
 
   it("orders cached messages by (createdAt, ULID)", async () => {

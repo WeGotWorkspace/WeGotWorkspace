@@ -9,6 +9,12 @@ import {
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
+  buildUiChannelIdMap,
+  dmUnreadFromWireChannels,
+  uiChatMessageFromMap,
+  uiDmChannelIdForWire,
+} from "@/lib/offline/meet-chat/meet-chat-dm";
+import {
   MEET_CHAT_DOMAIN,
   meetChatChannelsTable,
   meetChatMessagesTable,
@@ -221,8 +227,22 @@ export async function removeChatChannelFromCache(
   channelId: string,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  // DM messages are cached under the virtual `dm:{peer}` id — resolve it from
+  // the stored wire row before that row disappears.
+  const stored = await meetChatChannelsTable(db).get(channelId);
+  let uiChannelId: string | null = null;
+  if (stored) {
+    try {
+      uiChannelId = uiDmChannelIdForWire(JSON.parse(stored.data) as WgwChatChannel);
+    } catch {
+      // Malformed row — fall through to the real-id delete only.
+    }
+  }
   await meetChatChannelsTable(db).delete(channelId);
   await meetChatMessagesTable(db).where("channelId").equals(channelId).delete();
+  if (uiChannelId) {
+    await meetChatMessagesTable(db).where("channelId").equals(uiChannelId).delete();
+  }
   await db.meta.delete(metaKeyForSyncToken(channelId));
   await db.meta.delete(metaKeyForBackfill(channelId));
   await db.meta.delete(metaKeyForMessageCursor(channelId));
@@ -240,6 +260,31 @@ export async function listCachedChatChannels(username: string): Promise<WgwChatC
     }
   }
   return parsed.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Cached wire dm row for a peer principal, if the DM was ever provisioned. */
+export async function findCachedDmChannelByPeer(
+  username: string,
+  peerPrincipalId: string,
+): Promise<WgwChatChannel | undefined> {
+  const channels = await listCachedChatChannels(username);
+  return channels.find((row) => row.kind === "dm" && row.dmPeer === peerPrincipalId);
+}
+
+/** Real→virtual channel-id map over the cached channel list (dm rows only). */
+export async function readUiChannelIdMap(username: string): Promise<Map<string, string>> {
+  return buildUiChannelIdMap(await listCachedChatChannels(username));
+}
+
+/**
+ * Re-key a wire-derived message onto its UI channel id: dm messages cache under
+ * the virtual `dm:{peer}` id the workspace selects, everything else unchanged.
+ */
+export async function uiChatMessageForCache(
+  username: string,
+  message: ChatMessage,
+): Promise<ChatMessage> {
+  return uiChatMessageFromMap(message, await readUiChannelIdMap(username));
 }
 
 // --- messages ------------------------------------------------------------------------------------
@@ -392,6 +437,8 @@ export type MeetChatCachedBootstrap = {
   rtc: MeetRtcSettings;
   channels: ReturnType<typeof meetChannelFromWire>[];
   messages: ChatMessage[];
+  /** Live DM unread badge counts keyed by peer principal (chunk G). */
+  dmUnread: Record<string, number>;
 };
 
 /** Cache snapshot for offline mount; null until a live bootstrap has been cached. */
@@ -408,5 +455,6 @@ export async function readMeetChatBootstrapFromCache(
     rtc: JSON.parse(rtcRow.value) as MeetRtcSettings,
     channels: wireChannels.filter((row) => !isWireDmChannel(row)).map(meetChannelFromWire),
     messages: await listCachedChatMessages(username),
+    dmUnread: dmUnreadFromWireChannels(wireChannels),
   };
 }

@@ -212,6 +212,18 @@ export async function deleteChatChannel(
   );
 }
 
+/**
+ * Find-or-create the 2-person DM channel with a workspace principal. Idempotent:
+ * the dm- collection uri is a deterministic, order-independent hash of both
+ * usernames, so either side opening the DM gets the same channel back.
+ */
+export async function openChatDm(
+  principal: string,
+  opts?: MeetChatRequestOpts,
+): Promise<WgwChatChannel> {
+  return (await requestChatJson("/chat/dms", "POST", { principal }, opts)) as WgwChatChannel;
+}
+
 export async function listChatChannelChanges(
   since: string | null,
   opts?: MeetChatRequestOpts,

@@ -28,16 +28,19 @@ vi.mock("@/lib/api/wgw/meet-chat", async (importOriginal) => {
     deleteChatMessage: vi.fn(),
     toggleChatReaction: vi.fn(),
     putChatReadMarker: vi.fn(),
+    openChatDm: vi.fn(),
   };
 });
 
 import {
   deleteChatMessage,
   MeetChatRequestError,
+  openChatDm,
   patchChatMessage,
   putChatReadMarker,
   sendChatMessage,
   toggleChatReaction,
+  type WgwChatChannel,
   type WgwChatMessage,
 } from "@/lib/api/wgw/meet-chat";
 
@@ -179,6 +182,58 @@ describe("flushMeetChatOutbox", () => {
     expect(result.flushed).toBe(1);
     expect(await getCachedChatMessage(username, ULID_A)).toBeUndefined();
     expect(await listMeetChatOutbox(username)).toHaveLength(0);
+  });
+
+  it("resolves virtual dm:{peer} sends by provisioning and re-keys the saved message", async () => {
+    const dmChannel = {
+      id: "dm-0123456789abcdef0123456789abcdef01234567",
+      name: "Bob",
+      kind: "dm",
+      scope: "personal",
+      groupSlug: null,
+      isSharee: false,
+      dmPeer: "bob",
+      myRights: {
+        mayReadItems: true,
+        mayWriteAll: true,
+        mayWriteOwn: true,
+        mayUpdatePrivate: true,
+        mayRSVP: true,
+        mayAdmin: false,
+        mayDelete: true,
+        mayShare: false,
+      },
+    } as WgwChatChannel;
+    vi.mocked(openChatDm).mockResolvedValue(dmChannel);
+    vi.mocked(sendChatMessage).mockImplementation(async (channelId, body) => ({
+      ...wireMessage(body.id, body.body),
+      channelId,
+    }));
+
+    // Queued offline against the virtual DM-rail id — the dm collection did
+    // not exist yet when the user hit send.
+    await upsertChatMessageInCache(
+      username,
+      { ...pendingMessage(ULID_A, "offline dm"), channelId: "dm:bob" },
+      true,
+    );
+    await enqueueChatSend(username, {
+      messageId: ULID_A,
+      channelId: "dm:bob",
+      body: "offline dm",
+      parentId: null,
+    });
+
+    const result = await flushMeetChatOutbox(username);
+
+    expect(result).toEqual({ flushed: 1, failedMessageIds: [] });
+    expect(openChatDm).toHaveBeenCalledWith("bob");
+    expect(sendChatMessage).toHaveBeenCalledWith(
+      dmChannel.id,
+      expect.objectContaining({ id: ULID_A, body: "offline dm" }),
+    );
+    // The cached row keeps the virtual id the workspace reads conversations by.
+    expect((await getCachedChatMessage(username, ULID_A))?.channelId).toBe("dm:bob");
   });
 
   it("drops the queued message when its channel is gone on send replay", async () => {

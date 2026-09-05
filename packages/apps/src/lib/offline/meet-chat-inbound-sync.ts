@@ -23,6 +23,7 @@ import {
   MEET_CHAT_CHANNELS_TOKEN_SCOPE,
   readChatChannelMessageCursor,
   readMeetChatSyncToken,
+  readUiChannelIdMap,
   removeChatMessageFromCache,
   writeChatChannelMessageCursor,
   writeMeetChatSyncToken,
@@ -39,8 +40,9 @@ export type MeetChatInboundSyncResult = {
 
 async function ingestWirePage(username: string, page: WgwChatMessage[]): Promise<boolean> {
   let changed = false;
+  const uiIdByChannel = await readUiChannelIdMap(username);
   for (const row of page) {
-    const result = await ingestRemoteChatMessage(username, chatMessageFromWire(row));
+    const result = await ingestRemoteChatMessage(username, chatMessageFromWire(row), uiIdByChannel);
     if (result === "upserted") changed = true;
   }
   return changed;
@@ -107,8 +109,11 @@ async function relistChannelMessages(username: string, channelId: string): Promi
     before = result.list.reduce((min, row) => (row.id < min ? row.id : min), result.list[0]!.id);
   }
   const pending = new Set(await listPendingChatMessageIds(username));
+  // DM messages cache under the virtual `dm:{peer}` id — prune against the id
+  // this channel's rows are actually keyed with.
+  const cachedChannelId = (await readUiChannelIdMap(username)).get(channelId) ?? channelId;
   for (const message of await listCachedChatMessages(username)) {
-    if (message.channelId !== channelId) continue;
+    if (message.channelId !== cachedChannelId) continue;
     if (seen.has(message.id) || pending.has(message.id)) continue;
     await removeChatMessageFromCache(username, message.id);
     changed = true;

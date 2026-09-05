@@ -16,6 +16,7 @@ import {
   isMeetChatGone,
   meetChannelFromWire,
   meetChatHttpStatus,
+  openChatDm,
   patchChatChannel,
   patchChatMessage,
   sendChatMessage,
@@ -29,14 +30,17 @@ import {
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
+import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   enqueueChatDelete,
   enqueueChatEdit,
   enqueueChatReactionToggle,
   enqueueChatSend,
+  findCachedDmChannelByPeer,
   getCachedChatMessage,
   readMeetChatBootstrapFromCache,
   removeChatMessageFromCache,
+  uiChatMessageForCache,
   upsertChatChannelInCache,
   upsertChatMessageInCache,
   writeChatChannelMessageCursor,
@@ -173,6 +177,8 @@ export function createHybridMeetChatOperations(
     parentId: string | null,
   ): Promise<ChatMessage> => {
     const id = createChatMessageUlid();
+    // The optimistic message keeps the UI channel id (virtual `dm:{peer}` for
+    // DM sends) so the workspace applies it to the open conversation.
     const optimistic = buildOptimisticMessage(author, channelId, body, parentId, id);
     const queueSend = async (): Promise<ChatMessage> => {
       await upsertChatMessageInCache(username, optimistic, true);
@@ -187,15 +193,20 @@ export function createHybridMeetChatOperations(
     };
     if (!readBrowserOnline()) return queueSend();
     try {
-      const saved = chatMessageFromWire(
-        await sendChatMessage(channelId, {
-          id,
-          body: optimistic.body,
-          ...(parentId ? { parentId } : {}),
-        }),
+      // DM sends find-or-create the real dm- collection first (idempotent).
+      const restChannelId = await resolveRestChannelId(username, channelId);
+      const saved = await uiChatMessageForCache(
+        username,
+        chatMessageFromWire(
+          await sendChatMessage(restChannelId, {
+            id,
+            body: optimistic.body,
+            ...(parentId ? { parentId } : {}),
+          }),
+        ),
       );
       await upsertChatMessageInCache(username, saved, false);
-      await writeChatChannelMessageCursor(username, channelId, saved.id);
+      await writeChatChannelMessageCursor(username, restChannelId, saved.id);
       await bumpParentReplyCount(username, parentId);
       await runner.flush();
       return saved;
@@ -228,7 +239,10 @@ export function createHybridMeetChatOperations(
       };
       if (!readBrowserOnline()) return queueEdit();
       try {
-        const saved = chatMessageFromWire(await patchChatMessage(messageId, { body }));
+        const saved = await uiChatMessageForCache(
+          username,
+          chatMessageFromWire(await patchChatMessage(messageId, { body })),
+        );
         await upsertChatMessageInCache(username, saved, false);
         await runner.flush();
         return saved;
@@ -280,7 +294,10 @@ export function createHybridMeetChatOperations(
       };
       if (!readBrowserOnline()) return queueReact();
       try {
-        const saved = chatMessageFromWire(await toggleChatReaction(messageId, emoji));
+        const saved = await uiChatMessageForCache(
+          username,
+          chatMessageFromWire(await toggleChatReaction(messageId, emoji)),
+        );
         await upsertChatMessageInCache(username, saved, false);
         await runner.flush();
         return saved;
@@ -292,6 +309,20 @@ export function createHybridMeetChatOperations(
         if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
         return queueReact();
       }
+    },
+    openDm: async (principalId: string) => {
+      // Find-or-create the DM with a workspace principal: cached hit is free
+      // (and works offline); otherwise the idempotent POST /chat/dms provisions
+      // the collection shared to both members and the row is cached for the
+      // rail, sends, and calls.
+      const cached = await findCachedDmChannelByPeer(username, principalId);
+      if (cached) return meetChannelFromWire(cached);
+      if (!readBrowserOnline()) {
+        throw new Error("Starting a new direct message requires a connection.");
+      }
+      const created = await openChatDm(principalId);
+      await upsertChatChannelInCache(username, created);
+      return meetChannelFromWire(created);
     },
     createChannel: async (input: MeetChannelWriteInput) => {
       if (!readBrowserOnline()) {
@@ -340,6 +371,7 @@ export function meetChatBootstrapFromCached(cached: MeetChatCachedBootstrap): Me
       rtc: cached.rtc,
       channels,
       messages: cached.messages,
+      dmUnread: cached.dmUnread,
     },
   };
 }

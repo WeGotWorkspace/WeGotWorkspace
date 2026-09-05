@@ -3,6 +3,7 @@ import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
+import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
@@ -34,6 +35,18 @@ function MeetChatLiveWorkspace({
 }) {
   const channels = useMemo(() => data.channels ?? [], [data.channels]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+
+  // DM rail click: eagerly find-or-create the backing dm- collection (chunk G)
+  // so history/unread sync starts before the first message. Best-effort — a
+  // failure just defers provisioning to the first send/call.
+  const handleSelectedChannelChange = useCallback(
+    (channelId: string | null) => {
+      setSelectedChannelId(channelId);
+      const dmPrincipal = channelId ? meetDirectMessagePrincipalId(channelId) : null;
+      if (dmPrincipal) void chatOperations?.openDm?.(dmPrincipal).catch(() => undefined);
+    },
+    [chatOperations],
+  );
 
   const { operations, callStageRoom, liveCallChannelId, joinedRoomCode } = useMeetChatCall({
     session,
@@ -75,7 +88,7 @@ function MeetChatLiveWorkspace({
       onLogout={onLogout}
       callStageRoom={callStageRoom}
       liveCallChannelId={liveCallChannelId}
-      onSelectedChannelChange={setSelectedChannelId}
+      onSelectedChannelChange={handleSelectedChannelChange}
       typingByChannel={typingByChannel}
       onComposerTyping={onComposerTyping}
     />

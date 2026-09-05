@@ -103,13 +103,18 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
     if (!offlineUsername) return;
     const cached = await readMeetChatBootstrapFromCache(offlineUsername);
     if (!cached) return;
-    // Patch channels/messages only — session/rtc stay from the live bootstrap and
-    // successVersion is untouched, so the mounted workspace never remounts.
+    // Patch channels/messages/dmUnread only — session/rtc stay from the live
+    // bootstrap and successVersion is untouched, so the workspace never remounts.
     patchBootstrap((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        data: { ...prev.data, channels: cached.channels, messages: cached.messages },
+        data: {
+          ...prev.data,
+          channels: cached.channels,
+          messages: cached.messages,
+          dmUnread: cached.dmUnread,
+        },
       };
     });
   }, [offlineUsername, patchBootstrap]);

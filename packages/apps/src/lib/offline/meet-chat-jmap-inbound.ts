@@ -1,11 +1,13 @@
 import type { ChatMessage } from "@/meet-core/src/meet-types";
 import type { WgwChatChannel } from "@/lib/api/wgw/meet-chat";
+import { buildUiChannelIdMap, uiChatMessageFromMap } from "@/lib/offline/meet-chat/meet-chat-dm";
 import {
   listCachedChatChannels,
   listCachedChatMessages,
   listMeetChatOutbox,
   listPendingChatMessageIds,
   meetChatOutboxMessageId,
+  readUiChannelIdMap,
   removeChatChannelFromCache,
   removeChatMessageFromCache,
   upsertChatChannelInCache,
@@ -29,15 +31,20 @@ async function protectedMessageIds(username: string): Promise<Set<string>> {
 /**
  * Ingest a remote message into Dexie. Rows owned by a pending local write are
  * skipped — the outbox flush replays the local op and the next poll converges.
+ * DM messages are re-keyed onto the virtual `dm:{peer}` channel id the
+ * workspace selects; pass `uiIdByChannel` (readUiChannelIdMap) when ingesting
+ * pages to avoid a per-message cache read.
  */
 export async function ingestRemoteChatMessage(
   username: string,
   message: ChatMessage,
+  uiIdByChannel?: ReadonlyMap<string, string>,
 ): Promise<"upserted" | "skipped-pending"> {
   if (!message.id) return "skipped-pending";
   const pending = await protectedMessageIds(username);
   if (pending.has(message.id)) return "skipped-pending";
-  await upsertChatMessageInCache(username, message, false);
+  const map = uiIdByChannel ?? (await readUiChannelIdMap(username));
+  await upsertChatMessageInCache(username, uiChatMessageFromMap(message, map), false);
   return "upserted";
 }
 
@@ -86,8 +93,9 @@ export async function reconcileMeetChatSnapshot(
   for (const channel of channels) {
     await ingestRemoteChatChannel(username, channel);
   }
+  const uiIdByChannel = buildUiChannelIdMap(channels);
   for (const message of messages) {
-    await ingestRemoteChatMessage(username, message);
+    await ingestRemoteChatMessage(username, message, uiIdByChannel);
   }
   for (const message of await listCachedChatMessages(username)) {
     if (remoteMessageIds.has(message.id) || pending.has(message.id)) continue;

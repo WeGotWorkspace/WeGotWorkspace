@@ -77,8 +77,6 @@ export const meetLabels = {
   liveCall: "In a call",
   dmComposer: (name: string) => `Message ${name}`,
   chatActionFailed: "Could not update the conversation.",
-  dmSendUnavailable: "Direct messages are not available yet.",
-  dmCallUnavailable: "Direct message calls are not available yet.",
   couldNotStartCall: "Could not start the call.",
   newChannel: "New channel",
   newMeeting: "New meeting",

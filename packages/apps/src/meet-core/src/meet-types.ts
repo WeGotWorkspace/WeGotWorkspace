@@ -137,6 +137,8 @@ export type MeetChatOperations = {
     channelId: string,
     shareWith: CollectionShareWith,
   ) => Promise<MeetChannel>;
+  /** Find-or-create the DM channel with a workspace principal (chunk G); returns the real dm- channel. */
+  openDm?: (principalId: string) => Promise<MeetChannel>;
   startCall?: (channelId: string) => Promise<void>;
   leaveCall?: (channelId: string) => Promise<void>;
   searchSharePrincipals?: (query: string) => Promise<CollectionSharePrincipal[]>;
@@ -152,7 +154,7 @@ export type MeetUIData = {
   unfurl?: MeetUnfurlMap;
   /** Fixture/demo presence for chat authors. */
   authorPresence?: ChatAuthorPresenceMap;
-  /** Story/fixture unread counts keyed by directory user id — not a live product signal. */
+  /** DM unread counts keyed by directory user id (live: server read markers; stories: fixtures). */
   dmUnread?: Record<string, number>;
 };
 
