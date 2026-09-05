@@ -1,7 +1,8 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type MouseEvent } from "react";
 import type { Editor } from "@tiptap/react";
 import { Send, X } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
+import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorFormatBar } from "@/text-editor-core/src/text-editor-format-bar";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { getTextEditorContent } from "@/text-editor-core/src/text-editor-content";
@@ -105,9 +106,13 @@ export function ChatComposer({
   const mentions = useChatComposerMentions(editor, principals);
   mentionKeyRef.current = mentions.onMenuKeyDown;
 
+  const onCardMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    focusTextEditorFromChromeEvent(event, editor);
+  };
+
   return (
     <div className={cn("chat-ui chat-composer", className)}>
-      <div className="chat-composer__card">
+      <div className="chat-composer__card" onMouseDown={onCardMouseDown}>
         <TextEditorFormatBar
           editor={editor}
           groups={["marksBasic", "blocksBasic", "link"]}

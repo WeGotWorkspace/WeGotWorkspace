@@ -5,9 +5,13 @@
 }
 
 .chat-composer__card {
-  @apply flex min-w-0 max-w-full flex-col overflow-hidden rounded-xl border;
+  @apply flex min-w-0 max-w-full cursor-text flex-col overflow-hidden rounded-xl border;
   border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 14%, transparent));
   background-color: var(--chat-surface, var(--color-cream, #fff));
+}
+
+.chat-composer__card :is(button, a, [role="button"], [role="option"], [role="listbox"]) {
+  @apply cursor-pointer;
 }
 
 .chat-composer__bar.text-editor-format-bar,
