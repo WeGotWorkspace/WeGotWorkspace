@@ -117,7 +117,9 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
       </button>
       <div className="meet-mini-player__info">
         <span className="meet-mini-player__room">
-          <span className="truncate">{meetLabels.miniPlayerTitle}</span>
+          <span className="truncate">
+            {snapshot.callLabel?.trim() || meetLabels.miniPlayerTitle}
+          </span>
         </span>
         <span className="meet-mini-player__meta">
           <Users className="size-3 shrink-0" />

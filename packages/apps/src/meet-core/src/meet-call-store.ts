@@ -37,6 +37,11 @@ export type MeetCallSnapshot = {
    * legacy shells never set this, so their full-screen call keeps hiding it.
    */
   callUiParked: boolean;
+  /**
+   * Display label for the live call's channel/meeting/DM (mini-player title).
+   * Null for ad-hoc/legacy rooms — the mini-player falls back to "Meet".
+   */
+  callLabel: string | null;
 };
 
 function createInitialSnapshot(): MeetCallSnapshot {
@@ -58,6 +63,7 @@ function createInitialSnapshot(): MeetCallSnapshot {
     endedMessage: null,
     remoteCallActive: false,
     callUiParked: false,
+    callLabel: null,
   };
 }
 
@@ -252,6 +258,10 @@ export class MeetCallStore {
 
   setCallUiParked = (value: Updater<boolean>): void => {
     this.set("callUiParked", value);
+  };
+
+  setCallLabel = (value: Updater<string | null>): void => {
+    this.set("callLabel", value);
   };
 
   resetPeerMaps = (): void => {

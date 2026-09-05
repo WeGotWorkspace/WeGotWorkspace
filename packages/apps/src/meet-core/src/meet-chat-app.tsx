@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import { meetChannelTitle } from "@/meet-core/src/meet-channel-label";
 import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
@@ -67,6 +69,24 @@ function MeetChatLiveWorkspace({
     selectedChannelId,
     joinedRoomCode,
   });
+
+  // Mini-player title: the live call's channel/meeting title or DM peer name.
+  const suiteCallStore = useMeetCallStoreContext();
+  useEffect(() => {
+    if (!suiteCallStore) return;
+    if (!liveCallChannelId) {
+      suiteCallStore.setCallLabel(null);
+      return;
+    }
+    const dmPrincipal = meetDirectMessagePrincipalId(liveCallChannelId);
+    if (dmPrincipal) {
+      const person = data.directory?.find((principal) => principal.id === dmPrincipal);
+      suiteCallStore.setCallLabel(person?.displayName?.trim() || dmPrincipal);
+      return;
+    }
+    const channel = channels.find((row) => row.id === liveCallChannelId);
+    suiteCallStore.setCallLabel(channel ? meetChannelTitle(channel) : null);
+  }, [channels, data.directory, liveCallChannelId, suiteCallStore]);
 
   const dataWithCallActivity = useMemo<MeetUIData>(() => {
     if (Object.keys(callActiveByChannel).length === 0) return data;
