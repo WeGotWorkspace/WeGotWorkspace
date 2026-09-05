@@ -5,8 +5,8 @@
  * Lobby / in-call alerts keep `.meet-dialog-surface` / `.meet-call-dialog` (dark).
  */
 .meet-channel-dialog {
-  --meet-accent: #06b6d4;
-  --meet-accent-strong: #0e7490;
+  --meet-accent: #2a1644;
+  --meet-accent-strong: #1a0e2a;
   --color-emerald: var(--meet-accent);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: #ffffff;

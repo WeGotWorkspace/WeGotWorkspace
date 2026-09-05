@@ -46,7 +46,7 @@ describe("meet workspace sidebar chrome", () => {
 
   it("washes Meet accent onto cream like Notes/Tasks/Calendar, not a solid teal slab", () => {
     expect(css).toMatch(
-      /--meet-sidebar:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%,\s*var\(--color-cream/,
+      /--meet-sidebar:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 20%,\s*var\(--color-cream/,
     );
     expect(css).toMatch(/--app-sidebar-bg:\s*var\(--meet-sidebar\)/);
     expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-ink\)/);
@@ -60,11 +60,11 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/--workspace-user-footer-subtitle-color:/);
   });
 
-  it("uses ink SidebarSection titles and an ink Meet glyph on the cyan lockup", () => {
+  it("uses ink SidebarSection titles and a cream Meet glyph on the dark purple lockup", () => {
     expect(css).toMatch(
       /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 60%/,
     );
-    expect(css).toMatch(/--app-switch-icon-fg:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
     expect(css).toMatch(/--wai-fg:\s*var\(--app-switch-icon-fg\)/);
     expect(css).toMatch(
       /\.meet-workspace--split \.app-sidebar[\s\S]*--user-avatar-presence-ring:\s*var\(--meet-sidebar\)/,
@@ -192,7 +192,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/\.meet-workspace__surface--parked[\s\S]*content-visibility:\s*hidden/);
     expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--color-cream/);
     expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--color-cream/);
-    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--meet-accent:\s*#06b6d4/);
+    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--meet-accent:\s*#2a1644/);
     expect(css.match(/\.meet-device-popover \{[\s\S]*?\n\}/)?.[0] ?? "").not.toMatch(
       /#171826|--meet-call-surface/,
     );

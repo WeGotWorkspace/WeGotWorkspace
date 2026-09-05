@@ -270,7 +270,7 @@ describe("calendar event dialog Meet field", () => {
       /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*@apply/,
     );
     expect(css).toMatch(/\.calendar-event-dialog__meet-generate/);
-    expect(css).toContain("--meet-accent: #06b6d4");
+    expect(css).toContain("--meet-accent: #2a1644");
     expect(css).toContain("background-color: var(--meet-accent)");
     expect(css).toContain("color: #ffffff");
     expect(css).toContain("--loading-spinner-color: currentColor");

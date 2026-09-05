@@ -5,8 +5,8 @@
 .meet-workspace {
   @apply flex h-dvh w-full flex-col;
 
-  --meet-accent: #06b6d4;
-  --meet-accent-strong: #0e7490;
+  --meet-accent: #2a1644;
+  --meet-accent-strong: #1a0e2a;
   --workspace-accent: var(--meet-accent);
   --meet-surface: var(--workspace-home-bg, #1b1d3a);
   --meet-panel: #171826;
@@ -359,8 +359,8 @@
 .meet-dialog-surface,
 .meet-call-dialog,
 .meet-popover-surface {
-  --meet-accent: #06b6d4;
-  --meet-accent-strong: #0e7490;
+  --meet-accent: #2a1644;
+  --meet-accent-strong: #1a0e2a;
   --meet-panel: #171826;
   --meet-panel-soft: #20223a;
   --meet-text: #ffffff;
@@ -420,8 +420,8 @@
  * Do not reuse `.meet-popover-surface` (lobby dark) or `--meet-call-surface`.
  */
 .meet-device-popover {
-  --meet-accent: #06b6d4;
-  --meet-accent-strong: #0e7490;
+  --meet-accent: #2a1644;
+  --meet-accent-strong: #1a0e2a;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
@@ -824,9 +824,9 @@
   --workspace-panel-width: 22rem;
   /*
    * Product workspace chrome matches Notes / Tasks / Calendar: cream paper
-   * with a light accent wash — not the dark lobby/call slab.
+   * with a quiet dusk wash from the dark purple accent — chic, not lilac.
    */
-  --meet-sidebar: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #ffffff));
   --meet-surface: var(--color-cream, #ffffff);
   --workspace-accent: var(--meet-accent);
   --workspace-root-bg: var(--meet-surface);
@@ -917,12 +917,12 @@
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
-/** App switcher lockup: Meet cyan tile + ink camera (white-on-cyan washes out). */
+/** App switcher lockup: near-black purple tile + cream camera. */
 .meet-workspace--split
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--meet-accent);
-  --app-switch-icon-fg: var(--color-ink);
+  --app-switch-icon-fg: var(--color-cream, #ffffff);
   background-color: var(--app-switch-icon-bg);
 }
 
@@ -947,7 +947,7 @@
 }
 
 /*
- * Call chrome is light paper with the same cyan wash as the Meet sidebar
+ * Call chrome is light paper with a lighter purple wash than the Meet sidebar
  * (`--meet-accent` 12% on cream) — “in a call”, not a dark island and not a
  * solid mint block on `__row`. `--meet-screen-bg` stays black for video pixels.
  */
