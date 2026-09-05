@@ -54,6 +54,12 @@ Manual network checks: [`docs/testing/rtc-network-matrix.md`](../../../../docs/t
 
 Set via `initiatorRule: "higherId" | "lowerId"` on `RtcPeerMesh`.
 
+## Principal mesh (presence) — cross-window leadership
+
+Suite presence (`presence-core`) dials the workspace principal room from **one sticky leader window** (`BroadcastChannel` `wgw.principal.tab`, Phase 4 / #695). Followers proxy presence/chat/typing envelopes through the leader and do not join signaling.
+
+**Handoff blip:** when the leader window closes, a follower becomes leader and re-dials. `RTCPeerConnection` cannot transfer across windows, so expect a short **~0.5–2 s** gap on the shared presence/collab-reuse layer until the new leader’s mesh is up. Leadership does **not** bounce on `visibilitychange` hide (unlike docs-collab tab sync).
+
 ## Relay fallback
 
 On `connectionState === "failed"`, initiator **recreates** the peer connection in relay-only mode and sends a fresh offer (not `setConfiguration` + `restartIce`).

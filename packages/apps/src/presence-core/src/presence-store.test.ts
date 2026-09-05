@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+/** @vitest-environment jsdom */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getPrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
@@ -13,6 +14,65 @@ import type {
   PresenceMeshEvent,
   PresenceMeshSession,
 } from "@/presence-core/src/presence-types";
+import {
+  PRINCIPAL_ELECTION_GRACE_MS,
+  PrincipalTabCoordinator,
+} from "@/presence-core/src/principal-tab-sync";
+
+class MockBroadcastChannel {
+  static peers: MockBroadcastChannel[] = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+
+  constructor(_name: string) {
+    MockBroadcastChannel.peers.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    for (const peer of MockBroadcastChannel.peers) {
+      if (peer !== this) peer.onmessage?.({ data } as MessageEvent);
+    }
+  }
+
+  close(): void {
+    const index = MockBroadcastChannel.peers.indexOf(this);
+    if (index >= 0) MockBroadcastChannel.peers.splice(index, 1);
+  }
+}
+
+/** Queues posts until `flush()` — models async BroadcastChannel delivery. */
+class DeferredBroadcastChannel {
+  static peers: DeferredBroadcastChannel[] = [];
+
+  static queue: Array<{ from: DeferredBroadcastChannel; data: unknown }> = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+
+  constructor(_name: string) {
+    DeferredBroadcastChannel.peers.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    DeferredBroadcastChannel.queue.push({ from: this, data });
+  }
+
+  close(): void {
+    const index = DeferredBroadcastChannel.peers.indexOf(this);
+    if (index >= 0) DeferredBroadcastChannel.peers.splice(index, 1);
+  }
+
+  static flush(): void {
+    // Drain nested replies (e.g. discovery `sendPing`) like a burst of BC tasks.
+    while (DeferredBroadcastChannel.queue.length > 0) {
+      const batch = DeferredBroadcastChannel.queue.splice(0);
+      for (const { from, data } of batch) {
+        for (const peer of DeferredBroadcastChannel.peers) {
+          if (peer !== from) peer.onmessage?.({ data } as MessageEvent);
+        }
+      }
+    }
+  }
+}
 
 class FakeSession implements PresenceMeshSession {
   peers: RtcPeerDescriptor[] = [];
@@ -397,5 +457,202 @@ describe("PresenceStore lifecycle", () => {
     session.emit({ type: "roster" });
     expect(listener).toHaveBeenCalled();
     expect(store.getSnapshot().roster).toHaveLength(1);
+  });
+});
+
+describe("PresenceStore cross-window leadership", () => {
+  beforeEach(() => {
+    MockBroadcastChannel.peers = [];
+    Reflect.deleteProperty(globalThis, "BroadcastChannel");
+    vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
+    resetPrincipalLinkRegistryForTests();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    MockBroadcastChannel.peers = [];
+  });
+
+  async function settle(): Promise<void> {
+    // Grace timer + promise chains from onBecomeLeader → joinNow (avoid setTimeout(0)
+    // flushMicrotasks, which deadlocks under fake timers).
+    await vi.advanceTimersByTimeAsync(PRINCIPAL_ELECTION_GRACE_MS);
+    await drain();
+  }
+
+  async function drain(): Promise<void> {
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
+  function setupLeaderPair() {
+    const sessions: FakeSession[] = [];
+    const createSession = () => {
+      const session = new FakeSession();
+      sessions.push(session);
+      return session;
+    };
+    const storeA = createPresenceStore({
+      createSession,
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-a"),
+    });
+    const storeB = createPresenceStore({
+      createSession,
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-b"),
+    });
+    return { storeA, storeB, sessions };
+  }
+
+  it("only the sticky leader dials the principal session", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+
+    expect(storeA.meshLeader).toBe(true);
+    expect(storeB.meshLeader).toBe(false);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.joinCalls).toBe(1);
+    expect(storeA.getSnapshot().status).toBe("online");
+    // Leader join relays an (empty) roster snapshot → follower goes online without dialing.
+    expect(storeB.getSnapshot().status).toBe("online");
+  });
+
+  it("proxies follower chat through the leader mesh session", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+
+    const leaderSession = sessions[0]!;
+    leaderSession.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    leaderSession.emit({ type: "roster" });
+    await drain();
+
+    expect(storeB.getSnapshot().status).toBe("online");
+    expect(storeB.getSnapshot().roster).toEqual([
+      { username: "bob", name: "Bob", status: "online" },
+    ]);
+
+    storeB.sendChat("from follower");
+    await drain();
+
+    expect(
+      leaderSession.broadcasts.some((e) => e.kind === "chat" && e.body === "from follower"),
+    ).toBe(true);
+    expect(storeB.getSnapshot().chat[0]).toMatchObject({
+      body: "from follower",
+      isSelf: true,
+    });
+  });
+
+  it("hands off the dial to a follower when the leader stops", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+    expect(sessions).toHaveLength(1);
+
+    await storeA.stop();
+    await settle();
+
+    expect(storeB.meshLeader).toBe(true);
+    expect(sessions).toHaveLength(2);
+    expect(sessions[1]?.joinCalls).toBe(1);
+    expect(storeB.getSnapshot().status).toBe("online");
+  });
+
+  it("keeps leadership when the leader tab is hidden", async () => {
+    const visibility = new FakeVisibility();
+    const sessions: FakeSession[] = [];
+    const storeA = createPresenceStore({
+      createSession: () => {
+        const session = new FakeSession();
+        sessions.push(session);
+        return session;
+      },
+      joinMode: "eager",
+      visibility,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-a"),
+    });
+    const storeB = createPresenceStore({
+      createSession: () => new FakeSession(),
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-b"),
+    });
+
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+
+    visibility.setState("hidden");
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await drain();
+
+    expect(storeA.meshLeader).toBe(true);
+    expect(storeB.meshLeader).toBe(false);
+    expect(sessions).toHaveLength(1);
+  });
+
+  it("second tab does not join while leader is alive (async BC)", async () => {
+    DeferredBroadcastChannel.peers = [];
+    DeferredBroadcastChannel.queue = [];
+    vi.stubGlobal("BroadcastChannel", DeferredBroadcastChannel);
+
+    const sessions: FakeSession[] = [];
+    const createSession = () => {
+      const session = new FakeSession();
+      sessions.push(session);
+      return session;
+    };
+    const storeA = createPresenceStore({
+      createSession,
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-a"),
+    });
+    const storeB = createPresenceStore({
+      createSession,
+      joinMode: "eager",
+      visibility: null,
+      crossWindowLeader: true,
+      createTabCoordinator: (handlers) => new PrincipalTabCoordinator(handlers, "tab-b"),
+    });
+
+    storeA.start(SELF);
+    DeferredBroadcastChannel.flush();
+    await settle();
+    DeferredBroadcastChannel.flush();
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.joinCalls).toBe(1);
+
+    storeB.start(SELF);
+    // Existing leader's isLeader ping arrives during B's grace — B must not dial.
+    DeferredBroadcastChannel.flush();
+    await settle();
+    DeferredBroadcastChannel.flush();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(storeA.meshLeader).toBe(true);
+    expect(storeB.meshLeader).toBe(false);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.joinCalls).toBe(1);
   });
 });
