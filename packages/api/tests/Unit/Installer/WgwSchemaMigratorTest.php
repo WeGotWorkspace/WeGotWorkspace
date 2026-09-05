@@ -120,6 +120,7 @@ final class WgwSchemaMigratorTest extends TestCase
         }
 
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'owner_user'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'admitted'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'grantee_group'));
     }
 

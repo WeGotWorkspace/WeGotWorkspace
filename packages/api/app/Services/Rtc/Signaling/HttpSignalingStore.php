@@ -163,6 +163,49 @@ final class HttpSignalingStore
         }
     }
 
+    /**
+     * Marks a knocking peer as admitted (Meet channel-ACL join policy): set
+     * when a channel member sends an admit control message; checked when the
+     * peer re-joins without the knock name prefix. Lives on the peer row so
+     * it dies with the peer (leave/timeout). Only the Meet policy's table
+     * carries the column — collab/principal never call these.
+     */
+    public function markPeerAdmitted(string $room, string $peerId): void
+    {
+        $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->update(['admitted' => true]);
+    }
+
+    /** A fresh knock always starts unadmitted, even on a reused peer id. */
+    public function clearPeerAdmission(string $room, string $peerId): void
+    {
+        $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->update(['admitted' => false]);
+    }
+
+    /**
+     * Admission only counts for the actor that knocked: the owner marker must
+     * match the peer row, so a stranger cannot ride an admitted peer id.
+     */
+    public function isPeerAdmitted(string $room, string $peerId, string $ownerMarker): bool
+    {
+        $row = $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->first(['owner_user', 'admitted']);
+        if ($row === null || ! (bool) ($row->admitted ?? false)) {
+            return false;
+        }
+
+        $owner = is_string($row->owner_user ?? null) ? $row->owner_user : '';
+
+        return $owner !== '' && $ownerMarker !== '' && hash_equals($owner, $ownerMarker);
+    }
+
     public function peerExists(string $room, string $peerId): bool
     {
         return $this->peerQuery()

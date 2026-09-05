@@ -29,6 +29,18 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 
 For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
 
+## Channel-linked rooms (chat ACL join policy)
+
+A call in a chat channel uses the deterministic room id = the channel collection id (`chat-{ulid}` / `dm-…`); a meeting channel's guest link uses its `chat_channel_meta.room_code`. Both resolve to the channel via `MeetChannelJoinPolicy`, and `MeetSignalingService::join` then enforces server-side (Epic #701 chunk H):
+
+- **Channel member** (owner / sharee / group member — any ACL read access via `ChatChannelRepository`): joins directly, never knocks, and is a host (any member may admit).
+- **Internal non-member and guest**: forced onto the knock path. A non-knock join is rejected with `knock_required` (403) unless the peer was previously admitted; a knock join requires somebody joinable in the room (`room_not_active` 404 otherwise, same as legacy guest gating).
+- **Admission** is recorded server-side when a channel *member* sends an `admit` control message through the chat endpoint: the target peer row in `meet_peers` gets `admitted = 1`, so the knocker's non-knock re-join (same peer id + owner marker) passes. The flag dies with the peer row, and every re-knock clears it. Admits from non-members/guests still deliver but record nothing.
+- **Guests never join `dm-` rooms** (`forbidden` 403), knock or not.
+- Rooms that resolve to no channel keep the legacy behavior exactly (guest lobby gating stays a client convention there).
+
+`MAX_PEERS_PER_ROOM` (4) is unchanged and counts knocking peers too — a channel call fills up host slots and pending knockers alike.
+
 ## Room kinds
 
 `RoomIdCodec` dispatches the shared `/rooms/{roomId}/*` routes on the roomId prefix:

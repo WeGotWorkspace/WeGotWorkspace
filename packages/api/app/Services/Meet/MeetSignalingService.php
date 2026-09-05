@@ -22,6 +22,7 @@ final class MeetSignalingService
         private MeetActorResolver $actors,
         private RtcSettingsService $rtcSettingsService,
         private MeetReservationService $reservations,
+        private MeetChannelJoinPolicy $channelJoinPolicy,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::meet());
     }
@@ -64,7 +65,21 @@ final class MeetSignalingService
             $isKnockRequest = str_starts_with($name, self::KNOCK_NAME_PREFIX);
             $guestSessionKey = null;
             $ownerMarker = $this->actors->ownerMarkerForAuthenticatedUser($username);
-            if ($ownerMarker === null) {
+
+            $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+            if ($channel !== null) {
+                // Channel-linked room: ACL members join directly (and are
+                // hosts); everyone else is forced onto the knock path —
+                // server-enforced, not a client naming convention (chunk H).
+                if ($ownerMarker === null) {
+                    $guestSessionKey = $this->actors->readGuestSessionKey($body) ?? $this->actors->newGuestSessionKey();
+                    $ownerMarker = $this->actors->ownerMarkerForGuestSession($guestSessionKey);
+                }
+                if ($username === null || ! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
+                    $this->assertNonMemberChannelJoin($channel, $username, $room, $peerId, $ownerMarker, $isKnockRequest);
+                }
+            } elseif ($ownerMarker === null) {
+                // Non-channel rooms keep the legacy behavior exactly.
                 if ($isKnockRequest && ! $this->roomHasJoinablePeer($room)) {
                     $this->fail('room_not_active', 404);
                 }
@@ -73,6 +88,11 @@ final class MeetSignalingService
             }
 
             $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time());
+            if ($channel !== null && $isKnockRequest) {
+                // A (re-)knock always starts unadmitted — otherwise a reused
+                // peer id could inherit a stale admission.
+                $this->store->clearPeerAdmission($room, $peerId);
+            }
             if ($this->roomHasJoinablePeer($room)) {
                 $this->reservations->markActivated($room);
             }
@@ -174,6 +194,8 @@ final class MeetSignalingService
                 $this->fail('not_in_room');
             }
 
+            $this->recordChannelAdmission($request, $room, $text);
+
             $payload = json_encode(['text' => $text], JSON_THROW_ON_ERROR);
             if (strlen($payload) > 12_000) {
                 $this->fail('payload_too_large', 413);
@@ -201,6 +223,61 @@ final class MeetSignalingService
 
             return ['ok' => true, 'delivered' => count($targets)];
         });
+    }
+
+    /**
+     * Non-member (guest or authenticated non-member) join on a channel room:
+     * knock joins mirror the legacy guest gating (nobody in the call to admit
+     * → room_not_active); non-knock joins pass only for a previously admitted
+     * peer (same owner marker); guests never enter dm- rooms.
+     */
+    private function assertNonMemberChannelJoin(
+        MeetChannelRoom $channel,
+        ?string $username,
+        string $room,
+        string $peerId,
+        string $ownerMarker,
+        bool $isKnockRequest,
+    ): void {
+        if ($username === null && $channel->isDm) {
+            $this->fail('forbidden', 403, 'Guests cannot join direct-message calls.');
+        }
+        if ($isKnockRequest) {
+            if (! $this->roomHasJoinablePeer($room)) {
+                $this->fail('room_not_active', 404);
+            }
+
+            return;
+        }
+        if (! $this->store->isPeerAdmitted($room, $peerId, $ownerMarker)) {
+            $this->fail('knock_required', 403, 'Only channel members join directly — request to join instead.');
+        }
+    }
+
+    /**
+     * Server-side half of knock admission on channel rooms: when a channel
+     * member broadcasts an `admit` control message, the target peer row is
+     * marked admitted so its non-knock re-join passes the policy. Non-member
+     * and guest senders are ignored (the message still delivers — control
+     * messages stay a client convention on non-channel rooms and for
+     * everything except this hook).
+     */
+    private function recordChannelAdmission(Request $request, string $room, string $text): void
+    {
+        $peerId = $this->channelJoinPolicy->admittedPeerIdFromControlText($text);
+        if ($peerId === null) {
+            return;
+        }
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        if ($channel === null) {
+            return;
+        }
+        $username = $this->actors->tryAuthenticatedUsername($request);
+        if ($username === null || ! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
+            return;
+        }
+
+        $this->store->markPeerAdmitted($room, $peerId);
     }
 
     private function roomHasJoinablePeer(string $room): bool
