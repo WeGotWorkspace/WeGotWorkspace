@@ -1,7 +1,11 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
-import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
+import {
+  emptyCalendarEventForm,
+  type CalendarEventFormValue,
+} from "@/calendar-core/src/calendar-editor-model";
 import { MOCK_CALENDAR_CONTACT_CARDS } from "@/calendar-core/src/calendar-api-source";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -11,6 +15,18 @@ const stubMeetOperations = {
   reserveRoom: async () => ({ reserved: true, active: false }),
   patchRoomExpiresAt: async () => ({ reserved: true, active: false }),
 };
+
+/** Offline-first channel fixtures for the pick-a-Meet-channel menu (mock tier). */
+const MOCK_MEET_CHANNELS = [
+  { id: "chat-01h455vb4pa9nnrjpznsav8hva", name: "General", kind: "channel" as const },
+  { id: "chat-01h455vb4pa9nnrjpznsav8hvb", name: "Design", kind: "channel" as const },
+  {
+    id: "chat-01h455vb4pa9nnrjpznsav8hvc",
+    name: "Standup",
+    kind: "meeting" as const,
+    guestRoomCode: "h8y8-ewp6-al8n",
+  },
+];
 
 function generateMeet(canvas: ReturnType<typeof within>) {
   return canvas.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd });
@@ -117,6 +133,38 @@ export const WithMeetLink: Story = {
     await expect(
       canvas.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }),
     ).toBeTruthy();
+  },
+};
+
+export const WithChannelPicker: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    meetOperations: {
+      ...stubMeetOperations,
+      listChannels: async () => MOCK_MEET_CHANNELS,
+    },
+    workspaceOrigin: "https://workspace.example.com",
+  },
+  render: function WithChannelPickerRender(args) {
+    // Controlled form: hold state locally so the picked channel URL shows up.
+    const [form, setForm] = useState<CalendarEventFormValue>(args.form);
+    return <CalendarEventDialog {...args} form={form} onChange={setForm} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    // Both affordances live side by side: ad-hoc generate stays available.
+    await expect(generateMeet(canvas)).toBeEnabled();
+    const trigger = canvas.getByRole("button", {
+      name: defaultCalendarLabels.eventMeetPickChannel,
+    });
+    await userEvent.click(trigger);
+    const general = await canvas.findByRole("menuitem", { name: "General" });
+    await expect(canvas.getByRole("menuitem", { name: "Standup" })).toBeTruthy();
+    await userEvent.click(general);
+    const url = canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
+    await expect(url.value).toBe(
+      "https://workspace.example.com/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva",
+    );
   },
 };
 

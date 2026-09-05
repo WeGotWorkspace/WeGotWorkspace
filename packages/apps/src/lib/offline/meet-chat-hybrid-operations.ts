@@ -22,6 +22,7 @@ import {
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
 import { fetchMeetLiveBootstrap } from "@/lib/api/wgw/meet";
+import { fetchMeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ConnectivitySyncRunner,
@@ -354,16 +355,23 @@ export async function fetchMeetChatHybridBootstrap(): Promise<MeetAppBootstrap> 
   if (!username) {
     throw new Error("Meet chat bootstrap missing username");
   }
+  // Mentions / DM rail / share-suggestion principals (never throws; not cached
+  // offline — offline sessions run without a directory).
+  const directoryPromise = fetchMeetChatDirectory();
   await writeMeetChatBootstrapMetaToCache(username, base.session, base.data.rtc);
   if (readBrowserOnline()) {
     await getMeetChatSyncRunner(username).flush();
     await syncMeetChatInboundFromRest(username);
   }
   const cached = await readMeetChatBootstrapFromCache(username);
-  if (!cached) {
-    return base;
-  }
-  return meetChatBootstrapFromCached({ ...cached, session: base.session, rtc: base.data.rtc });
+  const bootstrap = cached
+    ? meetChatBootstrapFromCached({ ...cached, session: base.session, rtc: base.data.rtc })
+    : base;
+  const { directory, groups } = await directoryPromise;
+  return {
+    ...bootstrap,
+    data: { ...bootstrap.data, directory, groups },
+  };
 }
 
 export async function loadMeetChatBootstrapHybrid(): Promise<MeetAppBootstrap> {

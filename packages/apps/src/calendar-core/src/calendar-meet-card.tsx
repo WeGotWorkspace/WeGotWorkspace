@@ -1,4 +1,4 @@
-import { useRef, useState, type MutableRefObject } from "react";
+import { useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Copy, Video } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
@@ -28,13 +28,16 @@ import {
   calendarMeetOwnerPrincipal,
   formEventEndMs,
   isHttpUrl,
+  meetChannelCallHref,
   meetRemoveExpiresAt,
   parseCalendarMeetHref,
   resolveCalendarMeetReserveScope,
   resolveMeetReserveExpiresAt,
   roomCodeFromMeetingUrl,
+  type CalendarMeetChannelOption,
   type CalendarMeetOperations,
 } from "@/calendar-core/src/calendar-meet-link";
+import { CalendarMeetChannelPicker } from "@/calendar-core/src/calendar-meet-channel-picker";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
@@ -80,6 +83,7 @@ function CalendarMeetUrlRow({
   onGenerate,
   onChange,
   onBlur,
+  channelPicker,
 }: {
   href: string;
   labels: CalendarUILabels;
@@ -90,6 +94,8 @@ function CalendarMeetUrlRow({
   onGenerate?: () => void;
   onChange?: (value: string) => void;
   onBlur?: () => void;
+  /** "Pick a Meet channel" menu rendered beside the generate affordance. */
+  channelPicker?: ReactNode;
 }) {
   const trimmed = href.trim();
   return (
@@ -135,6 +141,7 @@ function CalendarMeetUrlRow({
           }}
         />
       ) : null}
+      {channelPicker}
     </div>
   );
 }
@@ -308,7 +315,8 @@ export function CalendarMeetCard({
       applyForm(form, { meetingUrl: "" }, onChange);
       return;
     }
-    if (parsed.kind === "https") {
+    if (parsed.kind === "https" || parsed.roomKind === "channel") {
+      // Channel rooms are persistent — store the href, never reserve/expire them.
       await expireLocalWgwRoom();
       applyForm(form, { meetingUrl: raw, meetRoomCode: undefined }, onChange);
       return;
@@ -330,6 +338,18 @@ export function CalendarMeetCard({
     }
   };
 
+  /**
+   * Attach a channel's call URL — same field/format as the generated link so
+   * downstream rendering/join flows are unchanged. Any ad-hoc room staged this
+   * session is expired first so its reservation does not leak.
+   */
+  const pickChannel = async (channel: CalendarMeetChannelOption): Promise<void> => {
+    await expireLocalWgwRoom();
+    const href = meetChannelCallHref(channel, workspaceOrigin);
+    hrefDraftRef.current = href;
+    applyForm(form, { meetingUrl: href, meetRoomCode: undefined }, onChange);
+  };
+
   if (readOnly) {
     if (!form.meetingUrl.trim()) return null;
     return (
@@ -347,6 +367,7 @@ export function CalendarMeetCard({
   }
 
   const canGenerate = !disabled && !reserving && Boolean(meetOperations?.reserveRoom);
+  const listChannels = meetOperations?.listChannels;
 
   return (
     <Card
@@ -391,6 +412,18 @@ export function CalendarMeetCard({
           onBlur={() => {
             void onUrlBlur();
           }}
+          channelPicker={
+            listChannels ? (
+              <CalendarMeetChannelPicker
+                labels={labels}
+                listChannels={listChannels}
+                disabled={disabled || reserving}
+                onPick={(channel) => {
+                  void pickChannel(channel);
+                }}
+              />
+            ) : null
+          }
         />
       </CardRow>
       <AlertDialog

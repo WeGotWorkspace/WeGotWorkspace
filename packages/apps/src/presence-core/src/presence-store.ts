@@ -34,9 +34,13 @@ export type PresenceStoreOptions = {
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
   typingTtlMs?: number;
+  channelTypingTtlMs?: number;
 };
 
 const DEFAULT_TYPING_TTL_MS = 5000;
+
+/** Channel typing outlives the ~4s sender heartbeat so continuous typing never flickers. */
+const DEFAULT_CHANNEL_TYPING_TTL_MS = 6000;
 
 const MAX_CHAT_HISTORY = 200;
 
@@ -47,6 +51,7 @@ function createInitialSnapshot(): PresenceSnapshot {
     roster: [],
     chat: [],
     typingUsernames: [],
+    channelTyping: {},
   };
 }
 
@@ -80,6 +85,8 @@ export class PresenceStore {
 
   private readonly typingTtlMs: number;
 
+  private readonly channelTypingTtlMs: number;
+
   private selfUsername = "";
 
   private selfDisplayName = "";
@@ -102,6 +109,11 @@ export class PresenceStore {
 
   private typingTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** channel id -> username -> typing expiry timestamp. */
+  private readonly channelTypingUntil = new Map<string, Map<string, number>>();
+
+  private channelTypingTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(private readonly options: PresenceStoreOptions) {
     this.visibility =
       options.visibility === undefined ? defaultVisibilityPort() : options.visibility;
@@ -109,6 +121,7 @@ export class PresenceStore {
     this.scheduleTimeout = options.setTimeoutFn ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.clearTimeoutFn ?? clearTimeout.bind(globalThis);
     this.typingTtlMs = options.typingTtlMs ?? DEFAULT_TYPING_TTL_MS;
+    this.channelTypingTtlMs = options.channelTypingTtlMs ?? DEFAULT_CHANNEL_TYPING_TTL_MS;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -168,6 +181,11 @@ export class PresenceStore {
       this.cancelTimeout(this.typingTimer);
       this.typingTimer = null;
     }
+    if (this.channelTypingTimer !== null) {
+      this.cancelTimeout(this.channelTypingTimer);
+      this.channelTypingTimer = null;
+    }
+    this.channelTypingUntil.clear();
     const session = this.session;
     this.session = null;
     this.joined = false;
@@ -195,6 +213,18 @@ export class PresenceStore {
   sendTyping(): void {
     if (!this.session || !this.joined) return;
     this.session.broadcast({ v: 1, kind: "typing" });
+  }
+
+  /** Heartbeat "typing in channel" signal; a no-op while the mesh is not joined. */
+  sendChannelTyping(channelId: string): void {
+    if (!channelId || !this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing", channel: channelId });
+  }
+
+  /** Early retraction (send/blur/cleared composer); receivers otherwise expire by TTL. */
+  stopChannelTyping(channelId: string): void {
+    if (!channelId || !this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing", channel: channelId, stop: true });
   }
 
   setAway(away: boolean): void {
@@ -252,10 +282,29 @@ export class PresenceStore {
     }
 
     if (envelope.kind === "typing" && senderUsername && senderUsername !== this.selfUsername) {
+      if (envelope.channel) {
+        this.handleChannelTyping(envelope.channel, senderUsername, envelope.stop === true);
+        return;
+      }
       this.typingUntil.set(senderUsername, this.now() + this.typingTtlMs);
       this.scheduleTypingExpiry();
       this.publishTyping();
     }
+  }
+
+  private handleChannelTyping(channelId: string, username: string, stop: boolean): void {
+    const channelMap = this.channelTypingUntil.get(channelId);
+    if (stop) {
+      if (!channelMap?.delete(username)) return;
+      if (channelMap.size === 0) this.channelTypingUntil.delete(channelId);
+      this.publishChannelTyping();
+      return;
+    }
+    const map = channelMap ?? new Map<string, number>();
+    if (!channelMap) this.channelTypingUntil.set(channelId, map);
+    map.set(username, this.now() + this.channelTypingTtlMs);
+    this.scheduleChannelTypingExpiry();
+    this.publishChannelTyping();
   }
 
   private appendChat(message: PresenceChatMessage): void {
@@ -313,6 +362,35 @@ export class PresenceStore {
       this.publishTyping();
       if (this.typingUntil.size > 0) this.scheduleTypingExpiry();
     }, this.typingTtlMs);
+  }
+
+  private currentChannelTyping(): Record<string, string[]> {
+    const now = this.now();
+    const result: Record<string, string[]> = {};
+    for (const [channelId, byUsername] of this.channelTypingUntil) {
+      for (const [username, until] of byUsername) {
+        if (until <= now) byUsername.delete(username);
+      }
+      if (byUsername.size === 0) {
+        this.channelTypingUntil.delete(channelId);
+        continue;
+      }
+      result[channelId] = [...byUsername.keys()].sort();
+    }
+    return result;
+  }
+
+  private publishChannelTyping(): void {
+    this.update({ channelTyping: this.currentChannelTyping() });
+  }
+
+  private scheduleChannelTypingExpiry(): void {
+    if (this.channelTypingTimer !== null) return;
+    this.channelTypingTimer = this.scheduleTimeout(() => {
+      this.channelTypingTimer = null;
+      this.publishChannelTyping();
+      if (this.channelTypingUntil.size > 0) this.scheduleChannelTypingExpiry();
+    }, this.channelTypingTtlMs);
   }
 
   private update(partial: Partial<PresenceSnapshot>): void {

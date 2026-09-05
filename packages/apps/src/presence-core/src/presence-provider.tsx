@@ -25,6 +25,17 @@ export function usePresenceStoreContext(): PresenceStore | null {
   return useContext(PresenceStoreContext);
 }
 
+/** Bare store injector for tests: provides an existing store without any RTC boot. */
+export function PresenceStoreValueProvider({
+  store,
+  children,
+}: {
+  store: PresenceStore | null;
+  children: ReactNode;
+}) {
+  return <PresenceStoreContext.Provider value={store}>{children}</PresenceStoreContext.Provider>;
+}
+
 /** Login happens in-tab without an observable event; recheck the stored session cheaply. */
 const AUTH_RECHECK_INTERVAL_MS = 3000;
 

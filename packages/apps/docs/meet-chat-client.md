@@ -158,9 +158,53 @@ server-side clarifications marked **[chunk D]** inline:
 5. Errors are JSON with an optional `code` field; 404 means the target object
    (or its channel) is gone and local state may be dropped.
 
+## Typing indicators (chunk K)
+
+Typing signals ride the **workspace presence mesh** (`presence-core`, PR #690)
+— WebRTC data channels on the suite-level principal room — never the
+REST/JMAP sync path. Nothing is persisted; a signal is stale after seconds by
+design.
+
+**Transport reality (verified):** `PresenceProvider` mounts **above the
+router** (`wegotworkspace-app.tsx`) and joins the workspace-wide principal
+room (`p_workspace`) for every authenticated member — eagerly on desktop,
+deferred-until-visible on mobile. Typing indicators therefore work **whether
+or not an RTC call is up**; they do _not_ require the Meet call stage. They
+are absent (silently, no errors) when there is no transport:
+
+- **guest sessions** (`/meet/join`) — guests never join the principal mesh;
+- the member's mesh **has not joined yet** (lazy mode with a hidden tab,
+  transient join failure) — outbound sends are dropped by the store guard;
+- **mock/Storybook trees** — no `PresenceProvider`, hook context is null.
+
+**Known v1 scope limit:** the broadcast goes to every peer in the workspace
+mesh, not just channel members — receivers only _render_ it for the channel
+they are viewing, but "someone is typing in channel X" metadata is technically
+observable by any authenticated member with a modified client. Acceptable at
+self-hosted team scale; a member-scoped fan-out would need channel-ACL
+knowledge inside the mesh.
+
+| Module                                                  | Role                                                                                                                                                                    |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `presence-core/src/presence-types.ts`                   | `typing` envelope gains optional `channel` + `stop` (v1 envelope, old clients ignore the extra fields)                                                                  |
+| `presence-core/src/presence-store.ts`                   | `sendChannelTyping`/`stopChannelTyping`; inbound → `snapshot.channelTyping` (channel id → usernames), **~6s TTL** expiry, self/multi-tab excluded                       |
+| `meet-core/src/meet-typing-heartbeat.ts`                | Pure sender throttle: first keystroke broadcasts immediately, then at most one per **~4s**; `stop()` retracts eagerly (send / blur / emptied composer / channel switch) |
+| `meet-core/src/use-meet-channel-typing.ts`              | Bridges the presence store to `MeetWorkspace` props; degrades to empty map + no-op sends without a store                                                                |
+| `meet-core/src/meet-typing-label.ts` + `meet-labels.ts` | "Alice is typing…" / "A and B are typing…" / "N people are typing…"                                                                                                     |
+| `chat-ui/src/chat-composer.tsx`                         | `onTypingChange` (true on non-empty edits; false on send, blur, emptied)                                                                                                |
+| `meet-core/src/meet-chat-column.tsx`                    | Fixed-height `meet-workspace__typing` row (aria-live polite) above the composer                                                                                         |
+
+Heartbeat (4s) < receiver TTL (6s), so a continuous typist never flickers;
+an abandoned draft fades within ~6s even if the stop envelope is lost.
+
 ## Not in chunk E (owned elsewhere)
 
-- `MeetWorkspace` composition, `startCall` RTC wiring, `/meet` route flip — chunk F.
+- `MeetWorkspace` composition, `startCall` RTC wiring, `/meet` route flip —
+  shipped as chunk F: `meet-core/src/meet-chat-app.tsx` (`MeetChatApp`),
+  `use-meet-chat-call.ts` (controller → stage + call ops),
+  `meet-channel-room.ts` (deterministic room id = channel id;
+  meeting channels keep `guestRoomCode`),
+  `use-meet-channel-call-activity.ts` (`callActive` room-status polling).
 - DM rail + unread badges (dm rows are cached but filtered out of
   `MeetUIData.channels`) — chunk G.
 - Read-marker UI calls (the outbox op + REST op exist and are tested) — chunk F/G.

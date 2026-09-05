@@ -15,6 +15,22 @@ describe("presence envelope", () => {
     expect(parsePresenceEnvelope(serializePresenceEnvelope(typing))).toEqual(typing);
   });
 
+  it("round-trips channel-scoped typing envelopes", () => {
+    const channelTyping = { v: 1, kind: "typing", channel: "channel-general" } as const;
+    const channelStop = { v: 1, kind: "typing", channel: "channel-general", stop: true } as const;
+
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(channelTyping))).toEqual(channelTyping);
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(channelStop))).toEqual(channelStop);
+  });
+
+  it("rejects invalid channel typing payloads and drops non-true stop flags", () => {
+    expect(parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "typing", channel: "" }))).toBeNull();
+    expect(parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "typing", channel: 7 }))).toBeNull();
+    expect(
+      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "typing", channel: "c1", stop: "yes" })),
+    ).toEqual({ v: 1, kind: "typing", channel: "c1" });
+  });
+
   it("rejects malformed payloads", () => {
     expect(parsePresenceEnvelope("not json")).toBeNull();
     expect(parsePresenceEnvelope("42")).toBeNull();

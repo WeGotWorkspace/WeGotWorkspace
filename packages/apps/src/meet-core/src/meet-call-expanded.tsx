@@ -6,6 +6,7 @@ import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
   meetCallGivenName,
   meetCallPeerCameraOn,
+  meetCallPeerScreenSharing,
   meetCallStripPeers,
   pickMeetCallSpotlight,
   type MeetCallSpotlightPeer,
@@ -48,6 +49,7 @@ function tileCaption(
   isSelf: boolean,
   videoOn: boolean,
 ): string | undefined {
+  if (!isSelf && meetCallPeerScreenSharing(peer)) return meetLabels.presenting;
   if (isSelf && videoOn && !peer.stream) return meetLabels.startingCamera;
   if (!meetCallPeerCameraOn(peer)) return meetLabels.camerasOffAudioOnly;
   return undefined;
@@ -154,7 +156,9 @@ export function MeetCallExpanded({
                 stream={spotlight.stream ?? null}
                 userId={spotlight.id}
                 spotlight
-                speaking={!sharing && spotlight.id !== self.id}
+                speaking={
+                  !sharing && spotlight.id !== self.id && !meetCallPeerScreenSharing(spotlight)
+                }
                 caption={tileCaption(spotlight, spotlight.id === self.id, room.controller.videoOn)}
                 remoteMedia={spotlight.remoteMedia}
                 disclosedMedia={spotlight.disclosedMedia}

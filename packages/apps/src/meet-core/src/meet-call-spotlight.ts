@@ -11,8 +11,15 @@ export function meetCallGivenName(name: string): string {
   return first || name;
 }
 
+/** Peer announced an active screen share (their video track carries the screen). */
+export function meetCallPeerScreenSharing(peer: MeetCallSpotlightPeer): boolean {
+  return peer.disclosedMedia?.screen === true;
+}
+
 export function meetCallPeerCameraOn(peer: MeetCallSpotlightPeer): boolean {
-  if (peer.disclosedMedia) return peer.disclosedMedia.camera;
+  // A screen share replaces the outbound video track, so the tile has live
+  // video to show even when the camera toggle is off.
+  if (peer.disclosedMedia) return peer.disclosedMedia.camera || peer.disclosedMedia.screen === true;
   if (peer.remoteMedia) return peer.remoteMedia.camera;
   return Boolean(peer.stream);
 }
@@ -27,6 +34,10 @@ export function pickMeetCallSpotlight<T extends MeetCallSpotlightPeer>(
   peers: readonly T[],
   self: T,
 ): T {
+  // A remote screen share always takes the spotlight (the local share is
+  // handled separately via `controller.screenOn` / `screenPreviewStream`).
+  const sharing = peers.find((peer) => meetCallPeerScreenSharing(peer));
+  if (sharing) return sharing;
   const speaking = peers.find((peer) => meetCallPeerMicOn(peer));
   return speaking ?? peers[0] ?? self;
 }

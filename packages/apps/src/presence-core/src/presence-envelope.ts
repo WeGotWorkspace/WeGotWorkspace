@@ -37,7 +37,11 @@ export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
   }
 
   if (envelope.kind === "typing") {
-    return { v: 1, kind: "typing" };
+    if (envelope.channel === undefined) return { v: 1, kind: "typing" };
+    if (typeof envelope.channel !== "string" || envelope.channel === "") return null;
+    return envelope.stop === true
+      ? { v: 1, kind: "typing", channel: envelope.channel, stop: true }
+      : { v: 1, kind: "typing", channel: envelope.channel };
   }
 
   return null;

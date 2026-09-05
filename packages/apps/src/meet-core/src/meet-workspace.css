@@ -1161,6 +1161,12 @@
   @apply min-w-0 max-w-full shrink-0 px-4 pb-3 pt-1;
 }
 
+/* Fixed-height row so the indicator never shifts the composer. */
+.meet-workspace__typing {
+  @apply h-5 shrink-0 truncate px-4 text-xs italic;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
 .meet-workspace__rail.workspace-app-layout__panel,
 .meet-call-stage__chat {
   @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-none;

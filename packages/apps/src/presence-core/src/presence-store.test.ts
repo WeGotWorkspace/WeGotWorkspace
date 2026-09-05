@@ -90,6 +90,7 @@ type SetupOptions = {
   visibility?: FakeVisibility | null;
   now?: () => number;
   typingTtlMs?: number;
+  channelTypingTtlMs?: number;
 };
 
 function setup(options: SetupOptions = {}) {
@@ -100,6 +101,7 @@ function setup(options: SetupOptions = {}) {
     visibility: options.visibility ?? null,
     now: options.now,
     typingTtlMs: options.typingTtlMs,
+    channelTypingTtlMs: options.channelTypingTtlMs,
   });
   return { session, store };
 }
@@ -367,6 +369,121 @@ describe("PresenceStore envelope routing", () => {
 
     expect(session.broadcasts).toEqual([]);
     expect(store.getSnapshot().chat).toEqual([]);
+  });
+});
+
+describe("PresenceStore channel typing", () => {
+  async function online(overrides: SetupOptions = {}) {
+    const now = { value: 1000 };
+    const result = setup({ now: () => now.value, channelTypingTtlMs: 100, ...overrides });
+    result.store.start(SELF);
+    await flushMicrotasks();
+    result.session.peers = [
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+      { id: "carol-bbb222", name: "Carol", user: "carol" },
+    ];
+    result.session.emit({ type: "roster" });
+    return { ...result, now };
+  }
+
+  it("tracks per-channel typing usernames and keeps channels isolated", async () => {
+    const { session, store } = await online();
+
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "typing", channel: "channel-general" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "carol-bbb222",
+      envelope: { v: 1, kind: "typing", channel: "channel-random" },
+    });
+
+    expect(store.getSnapshot().channelTyping).toEqual({
+      "channel-general": ["bob"],
+      "channel-random": ["carol"],
+    });
+    // Workspace-wide typing is untouched by channel-scoped signals.
+    expect(store.getSnapshot().typingUsernames).toEqual([]);
+  });
+
+  it("clears a typist on an explicit stop envelope", async () => {
+    const { session, store } = await online();
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "typing", channel: "channel-general" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "typing", channel: "channel-general", stop: true },
+    });
+    expect(store.getSnapshot().channelTyping).toEqual({});
+  });
+
+  it("expires channel typing after the ttl", async () => {
+    vi.useFakeTimers();
+    try {
+      const session = new FakeSession();
+      let nowValue = 1000;
+      const store = createPresenceStore({
+        createSession: () => session,
+        joinMode: "eager",
+        visibility: null,
+        now: () => nowValue,
+        channelTypingTtlMs: 100,
+      });
+      store.start(SELF);
+      await vi.runAllTimersAsync();
+      session.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+      session.emit({ type: "roster" });
+
+      session.emit({
+        type: "envelope",
+        peerId: "bob-aaa111",
+        envelope: { v: 1, kind: "typing", channel: "channel-general" },
+      });
+      expect(store.getSnapshot().channelTyping).toEqual({ "channel-general": ["bob"] });
+
+      nowValue += 200;
+      await vi.advanceTimersByTimeAsync(200);
+      expect(store.getSnapshot().channelTyping).toEqual({});
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ignores channel typing from own username (other tab)", async () => {
+    const { session, store } = await online();
+    session.peers = [...session.peers, { id: "alice-tab222", name: "Alice", user: "alice" }];
+    session.emit({
+      type: "envelope",
+      peerId: "alice-tab222",
+      envelope: { v: 1, kind: "typing", channel: "channel-general" },
+    });
+    expect(store.getSnapshot().channelTyping).toEqual({});
+  });
+
+  it("broadcasts channel typing and stop envelopes once joined, never before", async () => {
+    const { session, store } = await online();
+
+    store.sendChannelTyping("channel-general");
+    store.stopChannelTyping("channel-general");
+
+    expect(session.broadcasts).toEqual([
+      { v: 1, kind: "typing", channel: "channel-general" },
+      { v: 1, kind: "typing", channel: "channel-general", stop: true },
+    ]);
+
+    const visibility = new FakeVisibility();
+    visibility.state = "hidden";
+    const unjoined = setup({ joinMode: "lazy", visibility });
+    unjoined.store.start(SELF);
+    unjoined.store.sendChannelTyping("channel-general");
+    unjoined.store.stopChannelTyping("channel-general");
+    expect(unjoined.session.broadcasts).toEqual([]);
   });
 });
 

@@ -86,6 +86,96 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("compact");
   });
 
+  it("collapses the chrome when the start operation rejects", async () => {
+    let rejectStart: (error: Error) => void = () => {};
+    const startCall = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectStart = reject;
+        }),
+    );
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        operations: { startCall },
+      }),
+    );
+
+    act(() => {
+      result.current.startCall();
+    });
+    expect(result.current.callLayout).toBe("compact");
+
+    await act(async () => {
+      rejectStart(new Error("calls unavailable"));
+      await Promise.resolve();
+    });
+    expect(result.current.callActive).toBe(false);
+    expect(result.current.callLayout).toBe("collapsed");
+  });
+
+  it("restores the stage for an already-running live session (route remount)", () => {
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        liveCallChannelId: "channel-general",
+      }),
+    );
+
+    expect(result.current.callActive).toBe(true);
+    expect(result.current.callLayout).toBe("side-by-side");
+  });
+
+  it("collapses the channel when its live session ends remotely", () => {
+    const { result, rerender } = renderHook(
+      ({ live }: { live: string | null }) =>
+        useMeetCallLayout({
+          initialLayout: "collapsed",
+          channelId: "channel-general",
+          liveCallChannelId: live,
+        }),
+      { initialProps: { live: null as string | null } },
+    );
+
+    act(() => {
+      result.current.startCall();
+    });
+    expect(result.current.callLayout).toBe("compact");
+
+    rerender({ live: "channel-general" });
+    // The user's chosen layout is respected while the session is live.
+    expect(result.current.callLayout).toBe("compact");
+
+    rerender({ live: null });
+    expect(result.current.callActive).toBe(false);
+    expect(result.current.callLayout).toBe("collapsed");
+  });
+
+  it("does not re-open the stage after a local leave while the session winds down", () => {
+    const { result, rerender } = renderHook(
+      ({ live }: { live: string | null }) =>
+        useMeetCallLayout({
+          initialLayout: "compact",
+          channelId: "channel-general",
+          liveCallChannelId: live,
+        }),
+      { initialProps: { live: null as string | null } },
+    );
+
+    rerender({ live: "channel-general" });
+    act(() => {
+      // Local leave: layout collapses immediately; the async session teardown
+      // has not flipped liveCallChannelId to null yet.
+      result.current.leaveCall();
+    });
+    expect(result.current.callLayout).toBe("collapsed");
+
+    rerender({ live: null });
+    expect(result.current.callLayout).toBe("collapsed");
+  });
+
   it("seeds initialLayout for the starting channel only", () => {
     const { result, rerender } = renderHook(
       ({ channelId }: { channelId: string }) =>
