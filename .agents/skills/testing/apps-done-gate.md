@@ -14,7 +14,7 @@ From the repo root:
 pnpm test:apps-done-gate
 ```
 
-**Husky pre-push** runs this automatically when `packages/apps/**` changed in the commits being pushed (vs the remote tip). CI `apps-quality` runs the same gate on **PR HEAD** only — not on every commit in the PR ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250)).
+**Husky pre-push** runs this automatically when `packages/apps/**` changed in the commits being pushed (vs the remote tip). CI `apps-quality` runs `pnpm run ci:quality:apps` on **PR HEAD** only — that includes `pnpm run check:agent-docs` (agent-doc links + English-only prose) and then this UI gate. Intermediate commits in the PR are not gated ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250)).
 
 Or inside `packages/apps`:
 

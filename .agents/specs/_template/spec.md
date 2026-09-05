@@ -2,7 +2,7 @@ Source: #NNN (body-hash: xxxxxxxx)
 
 # [Feature title]
 
-Technical translation of the GitHub issue — not a duplicate of the issue body or AC checklist.
+Technical translation of the GitHub issue — not a duplicate of the issue body or AC checklist. Write in **English** even if the user prompt was Dutch.
 
 ## Goal
 

@@ -10,6 +10,7 @@ body:
       value: |
         This template is used for OWASP ZAP full-scan findings created by the security workflow.
         If you are reporting a finding manually, fill in the fields below.
+        Write the finding in **English**.
 
   - type: textarea
     id: alert

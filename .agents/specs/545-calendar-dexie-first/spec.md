@@ -1,4 +1,4 @@
-Source: #545 (body-hash: 9fbe8bf7)
+Source: #545 (body-hash: db34363b)
 Goal: #385
 
 # Calendar Dexie-first store

@@ -38,6 +38,8 @@ EOF
 )"
 ```
 
+**English only** for the PR title, body, and every review comment — even if the user prompt is Dutch ([english-only.md](../developer/english-only.md)).
+
 Use the repo template sections where applicable — see [`.github/pull_request_template.md`](../../../.github/pull_request_template.md):
 
 - **Summary** — what and why ([document](../document/SKILL.md) feature summary template)
@@ -98,6 +100,7 @@ Use **`--squash`** or **`--rebase`** only when the user explicitly requests it, 
 - **Do not** skip hooks (`--no-verify`) unless the user explicitly requests it.
 - **Do not** amend commits unless user requests it and amend rules are satisfied (unpushed, your commit, etc.).
 - Use `gh` for all GitHub tasks (PR, checks, issues).
+- **English only** for issue/PR text and comments — [english-only.md](../developer/english-only.md).
 - **Merge with `--merge` by default** — see [Merging PRs](#merging-prs). Never use `--squash` unless the user asks.
 - **Issue linking:** `feat/` PRs close a **Task or Epic** (`fixes #N` / `closes #N`) — never a Goal alone as the sole closing issue. Spec `Source:` follows the same rule — [issue-filing.md](../developer/issue-filing.md), [verify-issue](../verify-issue/SKILL.md).
 

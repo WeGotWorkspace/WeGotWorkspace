@@ -1,0 +1,40 @@
+---
+description: English-only for GitHub, specs, plans, docs — even when the user writes Dutch
+alwaysApply: true
+---
+
+# English-only artifacts
+
+**Prompt language does not change output language.** Chat may be Dutch or English; the artifacts below are always **English**.
+
+## Must be English
+
+- Specs and plans (`.agents/specs/**`, `.agents/plans/**`, `docs/plans/**`)
+- Documentation (`docs/**`, package docs, READMEs, skills)
+- GitHub issue titles and bodies (Goals, Epics, Tasks, Chores, Bugs)
+- GitHub issue comments, including automated comments
+- PR titles, descriptions, review comments, and replies
+- Anything posted via `gh` or the GitHub API
+- Commit messages
+
+Write English on the first create — do not file Dutch and translate later.
+
+## Out of scope
+
+- **User chat** may stay Dutch or English as the user writes
+- **Code comments** may follow the existing language of the file
+- **Product / fixture strings** (`nl-NL` samples, locale files) may be Dutch
+- Do **not** rewrite historical GitHub **comments** unless asked
+- **Do** translate Dutch issue/PR **bodies** and **repo docs** when found
+
+Canonical policy: [`.agents/skills/developer/english-only.md`](../../.agents/skills/developer/english-only.md). CI: `pnpm run check:agent-docs`.
+
+## Examples
+
+```text
+❌ BAD (Dutch on GitHub / in a spec)
+De tiebreaker is deterministic op lex-min.
+
+✅ GOOD
+The tiebreaker is deterministic on lex-min.
+```
