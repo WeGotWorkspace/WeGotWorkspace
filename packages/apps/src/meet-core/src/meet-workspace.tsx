@@ -246,7 +246,9 @@ export function MeetWorkspace({
   const notifyChatError = useCallback(
     (error: unknown) => {
       const message =
-        error instanceof Error && error.message.trim() ? error.message : meetLabels.chatActionFailed;
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : meetLabels.chatActionFailed;
       toast.showError(message);
     },
     [toast],

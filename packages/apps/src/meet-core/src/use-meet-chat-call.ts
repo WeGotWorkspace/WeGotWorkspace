@@ -91,9 +91,10 @@ export function useMeetChatCall({
   const startCall = useCallback(
     async (channelId: string) => {
       // DM calls need the chunk-G provisioned collections; guard until then.
+      // The rethrow makes the call layout revert its chrome.
       if (isMeetDirectMessageChannelId(channelId)) {
         toastRef.current.show(meetLabels.dmCallUnavailable, { severity: "info" });
-        return;
+        throw new Error(meetLabels.dmCallUnavailable);
       }
       const channel = channelsRef.current.find((row) => row.id === channelId);
       const room = meetChannelRoomId(channel ?? { id: channelId, kind: "channel" });
@@ -101,13 +102,12 @@ export function useMeetChatCall({
       try {
         await controllerRef.current.joinRoom(room);
       } catch (error) {
-        // The layout sync collapses the channel chrome (session never reached
-        // "in-call"); surface why here.
         const message =
           error instanceof Error && error.message.trim()
             ? error.message
             : meetLabels.couldNotStartCall;
         toastRef.current.showError(message);
+        throw error;
       }
     },
     [reserveChannelRoom],

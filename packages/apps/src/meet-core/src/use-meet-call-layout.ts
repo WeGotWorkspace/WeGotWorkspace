@@ -79,7 +79,11 @@ export function useMeetCallLayout({
 
   const startCall = useCallback(() => {
     writeLayout(channelId, "compact");
-    if (channelId) void operations?.startCall?.(channelId);
+    if (!channelId) return;
+    const started = operations?.startCall?.(channelId);
+    // A rejected start (join failed, calls unavailable) takes the chrome back
+    // down instead of leaving an idle call bar behind. Mock ops never reject.
+    void started?.catch(() => writeLayout(channelId, "collapsed"));
   }, [channelId, operations, writeLayout]);
 
   const leaveCall = useCallback(() => {

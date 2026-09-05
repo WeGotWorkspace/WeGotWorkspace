@@ -86,6 +86,35 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("compact");
   });
 
+  it("collapses the chrome when the start operation rejects", async () => {
+    let rejectStart: (error: Error) => void = () => {};
+    const startCall = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectStart = reject;
+        }),
+    );
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        operations: { startCall },
+      }),
+    );
+
+    act(() => {
+      result.current.startCall();
+    });
+    expect(result.current.callLayout).toBe("compact");
+
+    await act(async () => {
+      rejectStart(new Error("calls unavailable"));
+      await Promise.resolve();
+    });
+    expect(result.current.callActive).toBe(false);
+    expect(result.current.callLayout).toBe("collapsed");
+  });
+
   it("restores the stage for an already-running live session (route remount)", () => {
     const { result } = renderHook(() =>
       useMeetCallLayout({
