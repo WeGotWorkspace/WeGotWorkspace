@@ -18,7 +18,7 @@ Source plan: [plan.md](./plan.md)
 | `chunk-f-liveapp` | later | workspace, meet | live `MeetApp`, `startCall` RTC wiring, `wegotworkspace-routes.tsx` flip, guest flow, screen-share parity | targeted Vitest + stories; manual :5174 smoke | pending |
 | `chunk-g-dms` | builder (this phase) | api, apps-ui | DM auto-provision, unread badges, DM rail wiring | feature tests + targeted Vitest | done |
 | `chunk-h-join-policy` | builder (this phase) | api | `MeetChannelJoinPolicy` in `MeetSignalingService`, join matrix feature tests | `composer test` signaling suites | done |
-| `chunk-i-knock-ui` | later | meet, apps-ui, storybook | knock/admit in `MeetCallStage`, pending-knock list, stories | stories + Storybook coverage | pending |
+| `chunk-i-knock-ui` | later | meet, apps-ui, storybook | knock/admit in `MeetCallStage`, pending-knock list, stories | stories + Storybook coverage | done |
 | `chunk-k-typing` | later | meet, apps-ui | presence-core typing wiring, typing-indicator UI, stories | targeted Vitest + stories | pending |
 | `chunk-l-calendar-picker` | later | workspace, apps-ui | calendar event form Meet-channel conferencing picker | targeted Vitest + calendar stories | pending |
 | `chunk-j-cleanup` | later | meet, document | delete `MeetCallWorkspace` + lobby/room panes + old chat pane + stories; docs/exports | Storybook coverage + typecheck | pending |
