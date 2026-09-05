@@ -98,8 +98,8 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
     if (!offlineUsername) return;
     const cached = await readMeetChatBootstrapFromCache(offlineUsername);
     if (!cached) return;
-    // Patch channels/messages/dmUnread only — session/rtc stay from the live
-    // bootstrap and successVersion is untouched, so the workspace never remounts.
+    // Patch list state only — session/rtc stay from the live bootstrap and
+    // successVersion is untouched, so the workspace never remounts.
     patchBootstrap((prev) => {
       if (!prev) return prev;
       return {
@@ -109,6 +109,8 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
           channels: cached.channels,
           messages: cached.messages,
           dmUnread: cached.dmUnread,
+          ...(cached.directory !== undefined ? { directory: cached.directory } : {}),
+          ...(cached.groups !== undefined ? { groups: cached.groups } : {}),
         },
       };
     });
@@ -157,6 +159,35 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
       await applyInboundRefresh();
     },
   });
+
+  const applyInboundRefreshRef = useRef(applyInboundRefresh);
+  applyInboundRefreshRef.current = applyInboundRefresh;
+  const didInitialInboundRef = useRef(false);
+  useEffect(() => {
+    didInitialInboundRef.current = false;
+  }, [offlineUsername]);
+
+  // Inbound catch-up after first paint: cache (channels + directory) already
+  // mounted the workspace. Flush + REST history must not block the DM rail.
+  useEffect(() => {
+    if (!offlineUsername || !online || phase !== "ready") return;
+    if (typeof window === "undefined") return;
+    if (!wgwLiveApiEnabled()) return;
+    if (didInitialInboundRef.current) return;
+    didInitialInboundRef.current = true;
+    let cancelled = false;
+    const username = offlineUsername;
+    void getMeetChatSyncRunner(username)
+      .flush()
+      .then(() => {
+        if (cancelled) return;
+        return applyInboundRefreshRef.current();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [offlineUsername, online, phase]);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
@@ -232,5 +263,6 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,
     operations,
+    patchFromCache,
   };
 }

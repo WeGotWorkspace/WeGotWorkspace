@@ -1,5 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { ChatMessage, MeetRtcSettings } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetDirectoryGroup, MeetRtcSettings } from "@/meet-core/src/meet-types";
+import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { isWireDmChannel, meetChannelFromWire, type WgwChatChannel } from "@/lib/api/wgw/meet-chat";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
@@ -30,6 +31,8 @@ export {
 
 const META_SESSION = "meet-chat:session";
 const META_RTC = "meet-chat:rtc";
+const META_DIRECTORY = "meet-chat:directory";
+const META_GROUPS = "meet-chat:groups";
 
 /** Sync-token scope for the channel collection list (`ChatChannel/changes`). */
 export const MEET_CHAT_CHANNELS_TOKEN_SCOPE = "__channels__";
@@ -432,6 +435,17 @@ export async function writeMeetChatBootstrapMetaToCache(
   rememberOfflineMeetChatUsername(username);
 }
 
+/** Persist mention/DM-rail principals so the people list paints from Dexie. */
+export async function writeMeetChatDirectoryToCache(
+  username: string,
+  directory: CollectionSharePrincipal[],
+  groups: MeetDirectoryGroup[],
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.meta.put({ key: META_DIRECTORY, value: JSON.stringify(directory) });
+  await db.meta.put({ key: META_GROUPS, value: JSON.stringify(groups) });
+}
+
 export type MeetChatCachedBootstrap = {
   session: WorkspaceSession;
   rtc: MeetRtcSettings;
@@ -439,7 +453,19 @@ export type MeetChatCachedBootstrap = {
   messages: ChatMessage[];
   /** Live DM unread badge counts keyed by peer principal (chunk G). */
   dmUnread: Record<string, number>;
+  /** Cached workspace principals for the DM rail / mentions; absent until first live fetch. */
+  directory?: CollectionSharePrincipal[];
+  groups?: MeetDirectoryGroup[];
 };
+
+function parseJsonMeta<T>(value: string | undefined): T | undefined {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Cache snapshot for offline mount; null until a live bootstrap has been cached. */
 export async function readMeetChatBootstrapFromCache(
@@ -450,11 +476,17 @@ export async function readMeetChatBootstrapFromCache(
   const rtcRow = await db.meta.get(META_RTC);
   if (!sessionRow?.value || !rtcRow?.value) return null;
   const wireChannels = await listCachedChatChannels(username);
+  const directory = parseJsonMeta<CollectionSharePrincipal[]>(
+    (await db.meta.get(META_DIRECTORY))?.value,
+  );
+  const groups = parseJsonMeta<MeetDirectoryGroup[]>((await db.meta.get(META_GROUPS))?.value);
   return {
     session: JSON.parse(sessionRow.value) as WorkspaceSession,
     rtc: JSON.parse(rtcRow.value) as MeetRtcSettings,
     channels: wireChannels.filter((row) => !isWireDmChannel(row)).map(meetChannelFromWire),
     messages: await listCachedChatMessages(username),
     dmUnread: dmUnreadFromWireChannels(wireChannels),
+    ...(directory !== undefined ? { directory } : {}),
+    ...(groups !== undefined ? { groups } : {}),
   };
 }

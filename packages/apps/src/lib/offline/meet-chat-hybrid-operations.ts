@@ -24,7 +24,7 @@ import {
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
 import { fetchMeetLiveBootstrap } from "@/lib/api/wgw/meet";
-import { fetchMeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
+import { fetchMeetChatDirectory, type MeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ConnectivitySyncRunner,
@@ -55,13 +55,13 @@ import {
   upsertChatMessageInCache,
   writeChatChannelMessageCursor,
   writeMeetChatBootstrapMetaToCache,
+  writeMeetChatDirectoryToCache,
   type MeetChatCachedBootstrap,
 } from "@/lib/offline/meet-chat-offline-store";
 import {
   flushMeetChatOutbox,
   type MeetChatOutboxFlushResult,
 } from "@/lib/offline/meet-chat-outbox-flush";
-import { syncMeetChatInboundFromRest } from "@/lib/offline/meet-chat-inbound-sync";
 import { readOfflineMeetChatUsername } from "@/lib/offline/offline-session";
 
 export type MeetChatAuthor = {
@@ -416,14 +416,22 @@ export function meetChatBootstrapFromCached(cached: MeetChatCachedBootstrap): Me
       channels,
       messages: cached.messages,
       dmUnread: cached.dmUnread,
+      ...(cached.directory !== undefined ? { directory: cached.directory } : {}),
+      ...(cached.groups !== undefined ? { groups: cached.groups } : {}),
     },
   };
 }
 
+function cachedDirectorySnapshot(cached: MeetChatCachedBootstrap | null): MeetChatDirectory | null {
+  if (!cached || cached.directory === undefined) return null;
+  return { directory: cached.directory, groups: cached.groups ?? [] };
+}
+
 /**
- * Live bootstrap: session + RTC settings from the Meet REST surface, chat state
- * from Dexie after an outbox flush and inbound sync (first run backfills the
- * full history of every accessible channel; later runs are incremental).
+ * Live bootstrap: session + RTC from Meet REST, chat rows from Dexie.
+ * The DM rail is directory principals — return those as soon as cache or the
+ * directory fetch has them. Do not wait on inbound history backfill; flush +
+ * REST inbound run after first paint from `useMeetChatAPI`.
  */
 export async function fetchMeetChatHybridBootstrap(): Promise<MeetAppBootstrap> {
   const base = await fetchMeetLiveBootstrap();
@@ -431,23 +439,28 @@ export async function fetchMeetChatHybridBootstrap(): Promise<MeetAppBootstrap> 
   if (!username) {
     throw new Error("Meet chat bootstrap missing username");
   }
-  // Mentions / DM rail / share-suggestion principals (never throws; not cached
-  // offline — offline sessions run without a directory).
-  const directoryPromise = fetchMeetChatDirectory();
+  const directoryPromise = fetchMeetChatDirectory().then(async (result) => {
+    await writeMeetChatDirectoryToCache(username, result.directory, result.groups);
+    return result;
+  });
   await writeMeetChatBootstrapMetaToCache(username, base.session, base.data.rtc);
-  if (readBrowserOnline()) {
-    await getMeetChatSyncRunner(username).flush();
-    await syncMeetChatInboundFromRest(username);
-  }
   const cached = await readMeetChatBootstrapFromCache(username);
-  const bootstrap = cached
-    ? meetChatBootstrapFromCached({ ...cached, session: base.session, rtc: base.data.rtc })
-    : base;
-  const { directory, groups } = await directoryPromise;
-  return {
-    ...bootstrap,
-    data: { ...bootstrap.data, directory, groups },
-  };
+  const fromCache = cachedDirectorySnapshot(cached);
+  const { directory, groups } = fromCache ?? (await directoryPromise);
+  if (fromCache) {
+    void directoryPromise.catch(() => undefined);
+  }
+  const snapshot = (await readMeetChatBootstrapFromCache(username)) ?? cached;
+  if (!snapshot) {
+    return { ...base, data: { ...base.data, directory, groups } };
+  }
+  return meetChatBootstrapFromCached({
+    ...snapshot,
+    session: base.session,
+    rtc: base.data.rtc,
+    directory,
+    groups,
+  });
 }
 
 export async function loadMeetChatBootstrapHybrid(): Promise<MeetAppBootstrap> {
