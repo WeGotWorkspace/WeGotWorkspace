@@ -27,7 +27,7 @@ use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
 use App\Http\Controllers\Api\V1\Chat\ChatChannelsController;
-use App\Http\Controllers\Api\V1\Chat\ChatContractStubController;
+use App\Http\Controllers\Api\V1\Chat\ChatMessagesController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -280,18 +280,20 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('channelId', '[A-Za-z0-9._-]+');
     Route::delete('chat/channels/{channelId}', [ChatChannelsController::class, 'destroy'])
         ->where('channelId', '[A-Za-z0-9._-]+');
-    Route::get('chat/channels/{channelId}/messages', ChatContractStubController::class)
+    // Chat messages (Epic #701, chunk C): VJOURNAL objects, ULID ids, author-only
+    // edit/delete, transactional reaction toggles, sync-token changes feed.
+    Route::get('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'index'])
         ->where('channelId', '[A-Za-z0-9._-]+');
-    Route::post('chat/channels/{channelId}/messages', ChatContractStubController::class)
+    Route::post('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'store'])
         ->where('channelId', '[A-Za-z0-9._-]+');
-    Route::put('chat/channels/{channelId}/read-marker', ChatContractStubController::class)
+    Route::put('chat/channels/{channelId}/read-marker', [ChatMessagesController::class, 'putReadMarker'])
         ->where('channelId', '[A-Za-z0-9._-]+');
-    Route::get('chat/messages/changes', ChatContractStubController::class);
-    Route::patch('chat/messages/{messageId}', ChatContractStubController::class)
+    Route::get('chat/messages/changes', [ChatMessagesController::class, 'changes']);
+    Route::patch('chat/messages/{messageId}', [ChatMessagesController::class, 'update'])
         ->where('messageId', '[^/]+');
-    Route::delete('chat/messages/{messageId}', ChatContractStubController::class)
+    Route::delete('chat/messages/{messageId}', [ChatMessagesController::class, 'destroy'])
         ->where('messageId', '[^/]+');
-    Route::post('chat/messages/{messageId}/reactions', ChatContractStubController::class)
+    Route::post('chat/messages/{messageId}/reactions', [ChatMessagesController::class, 'toggleReaction'])
         ->where('messageId', '[^/]+');
 
     Route::middleware('wgw.contacts')->group(function (): void {

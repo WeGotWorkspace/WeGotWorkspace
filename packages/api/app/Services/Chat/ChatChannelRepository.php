@@ -48,6 +48,7 @@ final class ChatChannelRepository
         private readonly CalendarShareInvites $shareInvites,
         private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
+        private readonly ChatUnreadCounter $unreadCounter,
     ) {}
 
     /**
@@ -377,6 +378,7 @@ final class ChatChannelRepository
             'topic' => $meta?->topic,
             'guestRoomCode' => $meta?->room_code,
             'memberCount' => $this->memberCount($instance, $groupSlug),
+            'unreadCount' => $this->unreadCounter->count($username, (int) $instance->calendarid),
         ];
     }
 
