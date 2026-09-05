@@ -20,6 +20,7 @@ export const OFFLINE_DOMAIN_VERSION_RANGES: Record<string, OfflineDomainVersionR
   drive: { min: 30, max: 39 },
   tasks: { min: 40, max: 49 },
   calendars: { min: 50, max: 59 },
+  "meet-chat": { min: 60, max: 69 },
 };
 
 /** Contacts version steps within the contacts block (2–9). */
@@ -58,6 +59,11 @@ export const CALENDARS_OFFLINE_VERSION = {
   tables: 50,
   groups: 51,
   scheduling: 52,
+} as const;
+
+/** Meet chat version steps within the meet-chat block (60–69). */
+export const MEET_CHAT_OFFLINE_VERSION = {
+  tables: 60,
 } as const;
 
 const versionOwners = new Map<number, string>();
