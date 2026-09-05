@@ -2,12 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
+import { findCachedDmChannelByPeer } from "@/lib/offline/meet-chat-offline-store";
 import { latestMessageInChannel } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import { meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
 import { meetChannelTitle } from "@/meet-core/src/meet-channel-label";
 import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
 import { mergeAuthorPresence } from "@/meet-core/src/meet-author-presence";
+import {
+  meetLegacyRedirect,
+  meetNavigateTargetFromSelection,
+  meetSelectionFromRouteParams,
+  type MeetChatRouteParams,
+} from "@/meet-core/src/meet-chat-route";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
@@ -16,7 +24,9 @@ import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
 import { useMeetChannelReadMarker } from "@/meet-core/src/use-meet-channel-read-marker";
 import { useMeetChannelTyping } from "@/meet-core/src/use-meet-channel-typing";
 import { useMeetChatCall } from "@/meet-core/src/use-meet-chat-call";
+import { mergeMeetCallActive } from "@/meet-core/src/meet-call-stage-layout";
 import { useMeetChannelCallActivity } from "@/meet-core/src/use-meet-channel-call-activity";
+import { useMeetMeshSync } from "@/meet-core/src/use-meet-mesh-sync";
 
 export type MeetChatAppProps = {
   /** Chat bootstrap/ops source (defaults to the hybrid Dexie + REST source). */
@@ -32,6 +42,7 @@ function MeetChatLiveWorkspace({
   meetOperations,
   listLoading,
   onLogout,
+  patchFromCache,
 }: {
   data: MeetUIData;
   session: WorkspaceSession;
@@ -39,17 +50,24 @@ function MeetChatLiveWorkspace({
   meetOperations: MeetAPIOperations;
   listLoading: boolean;
   onLogout: () => void;
+  patchFromCache: () => Promise<void>;
 }) {
   const channels = useMemo(() => data.channels ?? [], [data.channels]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
 
-  // Deep links: /meet/$channelId ↔ workspace selection. The param route is a
-  // child of /meet, so navigating between channels never remounts this app.
-  const params = useParams({ strict: false }) as { channelId?: string };
-  const routeChannelId = params.channelId ?? null;
+  // Deep links: /meet/channels/$channelId and /meet/dms/$peerId ↔ workspace
+  // selection. Nested children of /meet, so switching never remounts this app.
+  const params = useParams({ strict: false }) as MeetChatRouteParams;
+  const routeChannelId = meetSelectionFromRouteParams(params);
   const routeChannelIdRef = useRef(routeChannelId);
   routeChannelIdRef.current = routeChannelId;
   const navigate = useNavigate();
+
+  // Cheap `/meet/{legacyId}` → nested path (replace so Back skips the old URL).
+  useEffect(() => {
+    if (!params.legacyId) return;
+    void navigate({ ...meetLegacyRedirect(params.legacyId), replace: true });
+  }, [navigate, params.legacyId]);
 
   // DM rail click: eagerly find-or-create the backing dm- collection (chunk G)
   // so history/unread sync starts before the first message. Best-effort — a
@@ -63,8 +81,7 @@ function MeetChatLiveWorkspace({
       // /meet) replaces instead of pushing, so Back leaves the app.
       if (channelId && channelId !== routeChannelIdRef.current) {
         void navigate({
-          to: "/meet/$channelId",
-          params: { channelId },
+          ...meetNavigateTargetFromSelection(channelId),
           replace: routeChannelIdRef.current === null,
         });
       }
@@ -79,6 +96,16 @@ function MeetChatLiveWorkspace({
     channels,
     meetOperations,
     chatOperations,
+  });
+
+  const { meshCallActive, operations: operationsWithMesh } = useMeetMeshSync({
+    operations,
+    liveCallChannelId,
+    username: session.user.username ?? null,
+    selfUsername: session.user.username,
+    channels,
+    directory: data.directory,
+    onApplied: patchFromCache,
   });
 
   const liveAuthorPresence = useMeetAuthorPresence();
@@ -98,17 +125,30 @@ function MeetChatLiveWorkspace({
 
   useMeetChannelReadMarker({
     selectedChannelId,
-    markChannelRead: operations?.markChannelRead,
+    markChannelRead: operationsWithMesh?.markChannelRead,
     selectedLatestMessageId: selectedReadSignal.latestMessageId,
     selectedUnreadCount: selectedReadSignal.unreadCount,
   });
 
-  const callActiveByChannel = useMeetChannelCallActivity({
+  const resolveDmRoom = useCallback(
+    async (channelId: string) => {
+      const peer = meetDirectMessagePrincipalId(channelId);
+      const account = session.user.username;
+      if (!peer || !account) return null;
+      const row = await findCachedDmChannelByPeer(account, peer);
+      return row ? meetChannelRoomId({ id: row.id, kind: "channel" }) : null;
+    },
+    [session.user.username],
+  );
+
+  const polledCallActive = useMeetChannelCallActivity({
     operations: meetOperations,
     channels,
     selectedChannelId,
     joinedRoomCode,
+    resolveRoom: resolveDmRoom,
   });
+  const callActiveByChannel = mergeMeetCallActive(meshCallActive, polledCallActive);
 
   // Mini-player title: the live call's channel/meeting title or DM peer name.
   const suiteCallStore = useMeetCallStoreContext();
@@ -130,13 +170,14 @@ function MeetChatLiveWorkspace({
 
   const workspaceData = useMemo<MeetUIData>(() => {
     const authorPresence = mergeAuthorPresence(liveAuthorPresence, data.authorPresence);
+    const liveByChannel = callActiveByChannel;
     const withCalls =
-      Object.keys(callActiveByChannel).length === 0
+      Object.keys(liveByChannel).length === 0
         ? data
         : {
             ...data,
             channels: channels.map((channel) =>
-              callActiveByChannel[channel.id] && !channel.callActive
+              liveByChannel[channel.id] && !channel.callActive
                 ? { ...channel, callActive: true }
                 : channel,
             ),
@@ -150,7 +191,7 @@ function MeetChatLiveWorkspace({
     <MeetWorkspace
       data={workspaceData}
       session={session}
-      operations={operations}
+      operations={operationsWithMesh}
       onLogout={onLogout}
       callStageRoom={callStageRoom}
       // Deep link wins; otherwise returning to /meet mid-call lands on the call.
@@ -160,6 +201,7 @@ function MeetChatLiveWorkspace({
       onSelectedChannelChange={handleSelectedChannelChange}
       typingByChannel={typingByChannel}
       onComposerTyping={onComposerTyping}
+      callActiveByChannel={callActiveByChannel}
     />
   );
 }
@@ -171,8 +213,17 @@ function MeetChatLiveWorkspace({
  * (`meet-channel-room.ts`); the guest flow stays on `MeetApp`/`/meet/join`.
  */
 export function MeetChatApp({ source, createMeetOperations }: MeetChatAppProps = {}) {
-  const { phase, error, retry, successVersion, listLoading, data, session, operations } =
-    useMeetChatAPI(source);
+  const {
+    phase,
+    error,
+    retry,
+    successVersion,
+    listLoading,
+    data,
+    session,
+    operations,
+    patchFromCache,
+  } = useMeetChatAPI(source);
   const meetOperations = useMemo(
     () => (createMeetOperations ?? createWgwMeetOperations)(),
     [createMeetOperations],
@@ -198,6 +249,7 @@ export function MeetChatApp({ source, createMeetOperations }: MeetChatAppProps =
           meetOperations={meetOperations}
           listLoading={listLoading}
           onLogout={handleLogout}
+          patchFromCache={patchFromCache}
         />
       )}
     />

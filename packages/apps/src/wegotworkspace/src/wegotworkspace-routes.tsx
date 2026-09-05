@@ -448,13 +448,27 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: isLive ? withWeGotWorkspaceAuth(MeetChatApp) : MockMeetRoute,
   });
 
-  // Channel deep link (/meet/chat-general, /meet/dm%3Aadmin). Child of /meet so
-  // switching channels only changes the param — the workspace stays mounted.
-  // Static /meet/guest and /meet/join rank above this dynamic segment, and
-  // channel ids always carry the chat-/dm- prefix so they can never collide.
-  const meetChannelRoute = createRoute({
+  // Nested under /meet (already on UiStaticServer + FrontRoutingTest) so the
+  // workspace stays mounted when switching conversations. Type lives in the
+  // path: /meet/channels/{id} vs /meet/dms/{peer}. /meet/guest and /meet/join
+  // stay sibling root routes and rank above these children.
+  const meetChannelsRoute = createRoute({
     getParentRoute: () => meetRoute,
-    path: "$channelId",
+    path: "channels/$channelId",
+    head: meetPwaHead,
+  });
+
+  const meetDmsRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "dms/$peerId",
+    head: meetPwaHead,
+  });
+
+  // Back-compat `/meet/{id}` so MeetChatApp stays mounted and can replace the
+  // URL (`dm:alice` → /meet/dms/alice, `chat-…` → /meet/channels/{id}).
+  const meetLegacyChannelRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "$legacyId",
     head: meetPwaHead,
   });
 
@@ -667,7 +681,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     driveRoute,
     docsRoute,
     settingsRoute,
-    meetRoute.addChildren([meetChannelRoute]),
+    meetRoute.addChildren([meetChannelsRoute, meetDmsRoute, meetLegacyChannelRoute]),
     meetGuestRoute,
     meetJoinRoute,
     adminRoute,

@@ -55,6 +55,7 @@ import {
   meetCallIsActive,
   meetCallStageShowsStage,
   meetChannelMeetingLive,
+  meetSelectedConversationLive,
   meetSidebarRowIsLive,
   type MeetCallStageLayout,
 } from "@/meet-core/src/meet-call-stage-layout";
@@ -236,6 +237,7 @@ export function MeetWorkspace({
   routeChannelId,
   typingByChannel,
   onComposerTyping,
+  callActiveByChannel,
   onToggleCall,
   threadOpen = false,
   threadMessage = null,
@@ -643,7 +645,7 @@ export function MeetWorkspace({
   const showExpandedStage = Boolean(
     resolvedStage && resolvedCallActive && meetCallStageShowsStage(resolvedStageLayout),
   );
-  const channelCallActive = Boolean(selected?.callActive);
+  const channelCallActive = meetSelectedConversationLive(selected, selectedId, callActiveByChannel);
   const meetingLive = meetChannelMeetingLive({
     channelCallActive,
     localCallActive: resolvedCallActive,
@@ -718,11 +720,12 @@ export function MeetWorkspace({
     (channelId: string) =>
       meetSidebarRowIsLive({
         channelCallActive:
+          Boolean(callActiveByChannel?.[channelId]) ||
           Boolean(channels.find((channel) => channel.id === channelId)?.callActive) ||
           Boolean(callActive && callChannelId === channelId),
         localCallActive: call.isChannelJoined(channelId),
       }),
-    [call.isChannelJoined, callActive, callChannelId, channels],
+    [call.isChannelJoined, callActive, callActiveByChannel, callChannelId, channels],
   );
 
   return (

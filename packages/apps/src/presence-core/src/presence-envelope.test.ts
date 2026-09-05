@@ -50,6 +50,96 @@ describe("presence envelope", () => {
     ).toBeNull();
   });
 
+  it("round-trips channel-message and call-active envelopes", () => {
+    const message = {
+      v: 1,
+      kind: "channel-message" as const,
+      message: {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        channelId: "dm:bob",
+        authorId: "alice",
+        authorName: "Alice",
+        body: "hello",
+        createdAt: 1_700_000_000_000,
+        parentId: null,
+      },
+    };
+    const call = { v: 1, kind: "call-active" as const, channel: "chat-general", active: true };
+
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(message))).toEqual(message);
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(call))).toEqual(call);
+  });
+
+  it("round-trips Meet patch, destroy, reaction, and channel-changed envelopes", () => {
+    const patch = {
+      v: 1,
+      kind: "channel-message-patch" as const,
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channel: "chat-general",
+      body: "edited",
+      editedAt: 1_700_000_000_100,
+    };
+    const destroy = {
+      v: 1,
+      kind: "channel-message-destroy" as const,
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channel: "chat-general",
+    };
+    const reaction = {
+      v: 1,
+      kind: "channel-reaction" as const,
+      messageId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channel: "dm:bob",
+      emoji: "👍",
+      on: true,
+    };
+    const changed = { v: 1, kind: "channel-changed" as const, channel: "chat-general" };
+
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(patch))).toEqual(patch);
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(destroy))).toEqual(destroy);
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(reaction))).toEqual(reaction);
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(changed))).toEqual(changed);
+  });
+
+  it("rejects malformed channel-message and call-active payloads", () => {
+    expect(
+      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "channel-message", message: {} })),
+    ).toBeNull();
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({ v: 1, kind: "call-active", channel: "", active: true }),
+      ),
+    ).toBeNull();
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({ v: 1, kind: "call-active", channel: "c1", active: "yes" }),
+      ),
+    ).toBeNull();
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({
+          v: 1,
+          kind: "channel-message-patch",
+          id: "x",
+          channel: "c1",
+          body: "  ",
+          editedAt: 1,
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({
+          v: 1,
+          kind: "channel-reaction",
+          messageId: "x",
+          channel: "c1",
+          emoji: "👍",
+        }),
+      ),
+    ).toBeNull();
+  });
+
   it("caps oversized chat bodies", () => {
     const parsed = parsePresenceEnvelope(
       JSON.stringify({ v: 1, kind: "chat", id: "x", body: "a".repeat(5000), ts: 1 }),

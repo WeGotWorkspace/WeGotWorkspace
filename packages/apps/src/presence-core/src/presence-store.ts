@@ -4,6 +4,7 @@ import type {
   PresenceChatMessage,
   PresenceCoworker,
   PresenceEnvelope,
+  PresenceMeetFanoutEvent,
   PresenceMeshSession,
   PresenceSnapshot,
   PresenceUserStatus,
@@ -69,6 +70,8 @@ export class PresenceStore {
 
   private readonly listeners = new Set<() => void>();
 
+  private readonly meetListeners = new Set<(event: PresenceMeetFanoutEvent) => void>();
+
   private session: PresenceMeshSession | null = null;
 
   private unsubscribeSession: (() => void) | null = null;
@@ -131,6 +134,14 @@ export class PresenceStore {
     };
   };
 
+  /** Meet acceleration envelopes, after sender-username checks. Apply is `meet-mesh-sot`. */
+  subscribeMeetFanout = (listener: (event: PresenceMeetFanoutEvent) => void): (() => void) => {
+    this.meetListeners.add(listener);
+    return () => {
+      this.meetListeners.delete(listener);
+    };
+  };
+
   getSnapshot = (): PresenceSnapshot => this.snapshot;
 
   /** Begin presence for the authenticated user. Join now (eager) or on visibility (lazy). */
@@ -186,6 +197,7 @@ export class PresenceStore {
       this.channelTypingTimer = null;
     }
     this.channelTypingUntil.clear();
+    this.meetListeners.clear();
     const session = this.session;
     this.session = null;
     this.joined = false;
@@ -225,6 +237,24 @@ export class PresenceStore {
   stopChannelTyping(channelId: string): void {
     if (!channelId || !this.session || !this.joined) return;
     this.session.broadcast({ v: 1, kind: "typing", channel: channelId, stop: true });
+  }
+
+  /**
+   * Targeted send for Meet payloads. Looks up every live peer id for each
+   * username (multi-tab) and never broadcasts — missing peers just miss the
+   * hint and wait for the JMAP/room-status poll.
+   */
+  sendToUsernames(usernames: readonly string[], envelope: PresenceEnvelope): void {
+    if (!this.session || !this.joined || usernames.length === 0) return;
+    const targets = new Set(
+      usernames.map((name) => name.trim()).filter((name) => name && name !== this.selfUsername),
+    );
+    if (targets.size === 0) return;
+    for (const peer of this.session.getRoomPeers()) {
+      const username = peer.user ?? "";
+      if (!targets.has(username)) continue;
+      this.session.sendTo(peer.id, envelope);
+    }
   }
 
   setAway(away: boolean): void {
@@ -289,7 +319,76 @@ export class PresenceStore {
       this.typingUntil.set(senderUsername, this.now() + this.typingTtlMs);
       this.scheduleTypingExpiry();
       this.publishTyping();
+      return;
     }
+
+    if (!senderUsername || senderUsername === this.selfUsername) return;
+
+    if (envelope.kind === "channel-message") {
+      if (envelope.message.authorId !== senderUsername) return;
+      this.emitMeetFanout({
+        kind: "channel-message",
+        senderUsername,
+        message: envelope.message,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-message-patch") {
+      this.emitMeetFanout({
+        kind: "channel-message-patch",
+        senderUsername,
+        id: envelope.id,
+        channel: envelope.channel,
+        body: envelope.body,
+        editedAt: envelope.editedAt,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-message-destroy") {
+      this.emitMeetFanout({
+        kind: "channel-message-destroy",
+        senderUsername,
+        id: envelope.id,
+        channel: envelope.channel,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-reaction") {
+      this.emitMeetFanout({
+        kind: "channel-reaction",
+        senderUsername,
+        messageId: envelope.messageId,
+        channel: envelope.channel,
+        emoji: envelope.emoji,
+        on: envelope.on,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-changed") {
+      this.emitMeetFanout({
+        kind: "channel-changed",
+        senderUsername,
+        channel: envelope.channel,
+      });
+      return;
+    }
+
+    if (envelope.kind === "call-active") {
+      this.emitMeetFanout({
+        kind: "call-active",
+        senderUsername,
+        channel: envelope.channel,
+        active: envelope.active,
+      });
+    }
+  }
+
+  private emitMeetFanout(event: PresenceMeetFanoutEvent): void {
+    for (const listener of this.meetListeners) listener(event);
   }
 
   private handleChannelTyping(channelId: string, username: string, stop: boolean): void {

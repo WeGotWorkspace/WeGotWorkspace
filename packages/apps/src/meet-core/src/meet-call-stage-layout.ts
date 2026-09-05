@@ -16,6 +16,33 @@ export function meetChannelMeetingLive(options: {
 }
 
 /**
+ * Live/mesh/poll flag for the open conversation. DMs are not in `channels`,
+ * so fixture `selected.callActive` is never set — `callActiveByChannel` is
+ * the SST for `dm:{peer}` (and a belt-and-suspenders for real channels).
+ */
+/** Mesh hint OR room-status poll — never let a false poll wipe a live hint. */
+export function mergeMeetCallActive(
+  ...sources: readonly Record<string, boolean>[]
+): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const source of sources) {
+    for (const [id, active] of Object.entries(source)) {
+      if (active) out[id] = true;
+    }
+  }
+  return out;
+}
+
+export function meetSelectedConversationLive(
+  selected: { callActive?: boolean } | null,
+  selectedId: string | null,
+  callActiveByChannel?: Record<string, boolean>,
+): boolean {
+  if (!selectedId) return false;
+  return Boolean(selected?.callActive || callActiveByChannel?.[selectedId]);
+}
+
+/**
  * Sticky-bar Join only. Start lives in ViewHeader; hidden after this user joins.
  * Does not control expand.
  */

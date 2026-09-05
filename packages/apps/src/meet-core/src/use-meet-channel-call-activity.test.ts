@@ -39,4 +39,12 @@ describe("meetCallActivityTargets", () => {
   it("returns no targets without selection or session", () => {
     expect(meetCallActivityTargets([general, weekly], null, null)).toEqual([]);
   });
+
+  it("includes an extra DM room when the selection is not a channel row", () => {
+    expect(
+      meetCallActivityTargets([general], "dm:bob", null, [
+        { channelId: "dm:bob", room: "dm-0123456789abcdef0123456789abcdef01234567" },
+      ]),
+    ).toEqual([{ channelId: "dm:bob", room: "dm-0123456789abcdef0123456789abcdef01234567" }]);
+  });
 });

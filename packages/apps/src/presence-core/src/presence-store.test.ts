@@ -516,3 +516,131 @@ describe("PresenceStore lifecycle", () => {
     expect(store.getSnapshot().roster).toHaveLength(1);
   });
 });
+
+describe("PresenceStore Meet fanout", () => {
+  const channelMessage = {
+    v: 1 as const,
+    kind: "channel-message" as const,
+    message: {
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channelId: "dm:alice",
+      authorId: "bob",
+      authorName: "Bob",
+      body: "hi",
+      createdAt: 1_700_000_000_000,
+      parentId: null,
+    },
+  };
+
+  async function online() {
+    const result = setup();
+    result.store.start(SELF);
+    await flushMicrotasks();
+    result.session.peers = [
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+      { id: "bob-tab222", name: "Bob", user: "bob" },
+      { id: "carol-ccc333", name: "Carol", user: "carol" },
+    ];
+    result.session.emit({ type: "roster" });
+    return result;
+  }
+
+  it("sendToUsernames targets every live peer for those usernames and never broadcasts", async () => {
+    const { session, store } = await online();
+    store.sendToUsernames(["bob", "alice"], channelMessage);
+    expect(session.broadcasts).toEqual([]);
+    expect(session.sentTo.map((row) => row.peerId).sort()).toEqual(["bob-aaa111", "bob-tab222"]);
+    expect(session.sentTo[0]?.envelope).toEqual(channelMessage);
+  });
+
+  it("emits inbound channel-message when authorId matches the sender username", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({ type: "envelope", peerId: "bob-aaa111", envelope: channelMessage });
+    expect(listener).toHaveBeenCalledWith({
+      kind: "channel-message",
+      senderUsername: "bob",
+      message: channelMessage.message,
+    });
+  });
+
+  it("drops channel-message when authorId does not match the sender", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        ...channelMessage,
+        message: { ...channelMessage.message, authorId: "mallory" },
+      },
+    });
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("emits inbound call-active", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "call-active", channel: "chat-general", active: true },
+    });
+    expect(listener).toHaveBeenCalledWith({
+      kind: "call-active",
+      senderUsername: "bob",
+      channel: "chat-general",
+      active: true,
+    });
+  });
+
+  it("emits inbound patch, destroy, reaction, and channel-changed", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        v: 1,
+        kind: "channel-message-patch",
+        id: "m1",
+        channel: "chat-general",
+        body: "edited",
+        editedAt: 2,
+      },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "channel-message-destroy", id: "m1", channel: "chat-general" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        v: 1,
+        kind: "channel-reaction",
+        messageId: "m1",
+        channel: "chat-general",
+        emoji: "👍",
+        on: true,
+      },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "channel-changed", channel: "chat-new" },
+    });
+    expect(listener).toHaveBeenCalledTimes(4);
+    expect(listener.mock.calls.map((call) => call[0].kind)).toEqual([
+      "channel-message-patch",
+      "channel-message-destroy",
+      "channel-reaction",
+      "channel-changed",
+    ]);
+  });
+});

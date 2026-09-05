@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
 import type { MeetAPIOperations, MeetChannel } from "@/meet-core/src/meet-types";
 
@@ -9,6 +9,7 @@ export function meetCallActivityTargets(
   channels: readonly MeetChannel[],
   selectedChannelId: string | null,
   joinedRoomCode: string | null,
+  extras: readonly { channelId: string; room: string }[] = [],
 ): { channelId: string; room: string }[] {
   const targets = new Map<string, string>();
   const selected = channels.find((channel) => channel.id === selectedChannelId);
@@ -16,6 +17,10 @@ export function meetCallActivityTargets(
   const joinedChannelId = meetChannelIdForRoom(channels, joinedRoomCode);
   const joined = channels.find((channel) => channel.id === joinedChannelId);
   if (joined && !targets.has(joined.id)) targets.set(joined.id, meetChannelRoomId(joined));
+  for (const extra of extras) {
+    if (!extra.channelId || !extra.room || targets.has(extra.channelId)) continue;
+    targets.set(extra.channelId, extra.room);
+  }
   return [...targets].map(([channelId, room]) => ({ channelId, room }));
 }
 
@@ -36,27 +41,33 @@ export function useMeetChannelCallActivity({
   selectedChannelId,
   joinedRoomCode,
   pollMs = MEET_CALL_ACTIVITY_POLL_MS,
+  resolveRoom,
 }: {
   operations: MeetAPIOperations;
   channels: readonly MeetChannel[];
   selectedChannelId: string | null;
   joinedRoomCode: string | null;
   pollMs?: number;
+  /** Room code for a selected id that is not in `channels` (virtual `dm:{peer}`). */
+  resolveRoom?: (channelId: string) => Promise<string | null>;
 }): Record<string, boolean> {
   const [active, setActive] = useState<Record<string, boolean>>({});
 
-  const targets = useMemo(
-    () => meetCallActivityTargets(channels, selectedChannelId, joinedRoomCode),
-    [channels, joinedRoomCode, selectedChannelId],
-  );
-
   useEffect(() => {
-    if (targets.length === 0) {
-      setActive((prev) => (Object.keys(prev).length === 0 ? prev : {}));
-      return;
-    }
     let cancelled = false;
     const poll = async () => {
+      const extras: { channelId: string; room: string }[] = [];
+      const selectedListed = channels.some((channel) => channel.id === selectedChannelId);
+      if (selectedChannelId && resolveRoom && !selectedListed) {
+        const room = await resolveRoom(selectedChannelId);
+        if (room) extras.push({ channelId: selectedChannelId, room });
+      }
+      if (cancelled) return;
+      const targets = meetCallActivityTargets(channels, selectedChannelId, joinedRoomCode, extras);
+      if (targets.length === 0) {
+        setActive((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+        return;
+      }
       const entries = await Promise.all(
         targets.map(async ({ channelId, room }) => {
           try {
@@ -77,7 +88,7 @@ export function useMeetChannelCallActivity({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [operations, pollMs, targets]);
+  }, [channels, joinedRoomCode, operations, pollMs, resolveRoom, selectedChannelId]);
 
   return active;
 }

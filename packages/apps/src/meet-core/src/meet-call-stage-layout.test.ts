@@ -9,6 +9,8 @@ import {
   meetCallStageShowsChat,
   meetCallStageShowsStage,
   meetChannelMeetingLive,
+  mergeMeetCallActive,
+  meetSelectedConversationLive,
   meetSidebarRowIsLive,
 } from "@/meet-core/src/meet-call-stage-layout";
 
@@ -52,6 +54,19 @@ describe("meetCallStage layout", () => {
     expect(meetSidebarRowIsLive({ channelCallActive: true })).toBe(true);
     expect(meetSidebarRowIsLive({ localCallActive: true })).toBe(true);
     expect(meetSidebarRowIsLive({ channelCallActive: false, localCallActive: false })).toBe(false);
+  });
+
+  it("ORs mesh and poll live maps so a false poll cannot hide a hint", () => {
+    expect(
+      mergeMeetCallActive({ "dm:bob": true }, { "chat-general": true, "dm:bob": false }),
+    ).toEqual({ "dm:bob": true, "chat-general": true });
+  });
+
+  it("reads DM / mesh live from callActiveByChannel when the selection is not a channel row", () => {
+    expect(meetSelectedConversationLive(null, "dm:bob", { "dm:bob": true })).toBe(true);
+    expect(meetSelectedConversationLive(null, "dm:bob", {})).toBe(false);
+    expect(meetSelectedConversationLive({ callActive: true }, "chat-general", {})).toBe(true);
+    expect(meetSelectedConversationLive(null, null, { "dm:bob": true })).toBe(false);
   });
 
   it("treats a channel meeting as live when anyone started or the local user joined", () => {

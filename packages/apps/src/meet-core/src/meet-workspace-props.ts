@@ -24,9 +24,10 @@ export type MeetWorkspaceProps = {
   /** Live app: selection feed for room-status polling and deep links. */
   onSelectedChannelChange?: (channelId: string | null) => void;
   /**
-   * Live app: channel id from the /meet/$channelId route. When it changes
-   * (deep link, back/forward) the workspace follows; selection changes flow
-   * back out through `onSelectedChannelChange`, which updates the URL.
+   * Live app: selection key from `/meet/channels/{id}` or `/meet/dms/{peer}`
+   * (`dm:{peer}` for DMs). When it changes (deep link, back/forward) the
+   * workspace follows; selection changes flow back out through
+   * `onSelectedChannelChange`, which updates the URL.
    */
   routeChannelId?: string | null;
   /**
@@ -37,6 +38,8 @@ export type MeetWorkspaceProps = {
   typingByChannel?: Record<string, string[]>;
   /** Composer typing activity for the selected conversation (throttling happens upstream). */
   onComposerTyping?: (channelId: string, typing: boolean) => void;
+  /** Live/mesh/poll `callActive` keyed by UI channel id (includes `dm:{peer}`). */
+  callActiveByChannel?: Record<string, boolean>;
   /** When true, `callStage` fills main on `callChannelId` only. */
   callActive?: boolean;
   /** Channel that owns a story/fixture `callStage` — chrome does not follow channel switches. */

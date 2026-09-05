@@ -31,3 +31,65 @@ describe("wegotworkspace meet invite routes", () => {
     expect(routesSource).not.toContain("createWgwMeetGuestApiSource()");
   });
 });
+
+describe("wegotworkspace meet conversation routes", () => {
+  it("matches channelId on /meet/channels/:channelId", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/meet/channels/chat-design-reviews"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/meet/channels/chat-design-reviews");
+    const match = router.state.matches.find((row) => matchHasParam(row.params, "channelId"));
+    expect(match?.params).toMatchObject({ channelId: "chat-design-reviews" });
+  });
+
+  it("matches peerId on /meet/dms/:peerId without a dm: prefix", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/meet/dms/ada.lovelace"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/meet/dms/ada.lovelace");
+    const match = router.state.matches.find((row) => matchHasParam(row.params, "peerId"));
+    expect(match?.params).toMatchObject({ peerId: "ada.lovelace" });
+  });
+
+  it("navigates between channel and dm paths without leaving /meet", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/meet/channels/chat-general"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    await router.navigate({
+      to: "/meet/dms/$peerId",
+      params: { peerId: "alice" },
+    });
+    expect(router.state.location.pathname).toBe("/meet/dms/alice");
+
+    await router.navigate({
+      to: "/meet/channels/$channelId",
+      params: { channelId: "chat-general" },
+    });
+    expect(router.state.location.pathname).toBe("/meet/channels/chat-general");
+  });
+
+  it("matches legacy /meet/{id} so MeetChatApp can replace onto nested paths", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/meet/chat-general"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/meet/chat-general");
+    const match = router.state.matches.find((row) => matchHasParam(row.params, "legacyId"));
+    expect(match?.params).toMatchObject({ legacyId: "chat-general" });
+  });
+});
+
+function matchHasParam(params: Record<string, unknown>, key: string): boolean {
+  return typeof params[key] === "string";
+}
