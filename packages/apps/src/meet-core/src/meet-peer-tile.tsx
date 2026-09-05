@@ -58,7 +58,11 @@ export function MeetPeerTile({
   const cameraFromTracks = cameraRendering && statsAllowCamera;
   const micFromTracks = micLive && statsAllowMic;
 
-  const showRemoteVideo = !!(stream && (disclosedMedia ? disclosedMedia.camera : cameraFromTracks));
+  // A screen share replaces the peer's video track — render it even when the
+  // camera toggle is announced as off.
+  const showRemoteVideo = !!(
+    stream && (disclosedMedia ? disclosedMedia.camera || disclosedMedia.screen : cameraFromTracks)
+  );
   const micLiveUi = disclosedMedia ? disclosedMedia.mic : micFromTracks;
   const showAvatarFill = !showRemoteVideo || !remoteVideoOk;
   const mirrored = shouldMirrorMeetStream(stream, disclosedMedia?.screen);

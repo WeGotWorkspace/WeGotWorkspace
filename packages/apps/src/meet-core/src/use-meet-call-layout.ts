@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { meetCallIsActive, type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetChatOperations } from "@/meet-core/src/meet-types";
 
@@ -6,6 +6,15 @@ export type UseMeetCallLayoutArgs = {
   initialLayout?: MeetCallStageLayout;
   operations?: MeetChatOperations;
   channelId: string | null;
+  /**
+   * Channel owning the real RTC session (live app; `undefined` in mock/story
+   * trees, which keeps layout state purely local). When provided, layout state
+   * follows session *transitions*: a session that ends (remote end, join
+   * failure) collapses its channel's chrome, and an already-running session
+   * (e.g. restored from the suite call store after a route remount) re-opens
+   * its stage.
+   */
+  liveCallChannelId?: string | null;
 };
 
 function seedLayouts(
@@ -24,6 +33,7 @@ export function useMeetCallLayout({
   initialLayout = "collapsed",
   operations,
   channelId,
+  liveCallChannelId,
 }: UseMeetCallLayoutArgs) {
   const [layouts, setLayouts] = useState<Record<string, MeetCallStageLayout>>(() =>
     seedLayouts(channelId, initialLayout),
@@ -48,6 +58,24 @@ export function useMeetCallLayout({
       return { ...current, [id]: layout };
     });
   }, []);
+
+  // Live session sync — transition-based so it never fights an in-flight local
+  // action (start writes its layout before the session reaches "preparing";
+  // a local leave collapses before the session drops).
+  const previousLiveChannelRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (liveCallChannelId === undefined) return;
+    const previous = previousLiveChannelRef.current;
+    if (previous === liveCallChannelId) return;
+    previousLiveChannelRef.current = liveCallChannelId;
+    if (previous) writeLayout(previous, "collapsed");
+    if (!liveCallChannelId) return;
+    setLayouts((current) =>
+      meetCallIsActive(current[liveCallChannelId] ?? "collapsed")
+        ? current
+        : { ...current, [liveCallChannelId]: "side-by-side" },
+    );
+  }, [liveCallChannelId, writeLayout]);
 
   const startCall = useCallback(() => {
     writeLayout(channelId, "compact");

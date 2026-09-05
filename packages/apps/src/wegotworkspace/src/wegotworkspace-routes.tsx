@@ -25,6 +25,7 @@ import {
 import { InstallApp } from "@/install-core/src/install-app";
 import { MailApp } from "@/mail-core/src/mail-app";
 import { MeetApp } from "@/meet-core/src/meet-app";
+import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { createWgwMeetGuestOrHostApiSource } from "@/meet-core/src/meet-api-source";
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
@@ -442,7 +443,9 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/meet",
     head: meetPwaHead,
     validateSearch: validateMeetRouteSearch,
-    component: isLive ? withWeGotWorkspaceAuth(MeetApp) : MockMeetRoute,
+    // Live: the Slack-like channel workspace (chunk F). Guests and calendar
+    // invites keep the call-first flow on /meet/join and /meet/guest below.
+    component: isLive ? withWeGotWorkspaceAuth(MeetChatApp) : MockMeetRoute,
   });
 
   const meetGuestRoute = createRoute({

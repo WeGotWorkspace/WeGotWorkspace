@@ -21,7 +21,7 @@ Shared layout CSS for split and collection lives under `packages/apps/src/worksp
 | File browser or document library (folder tree + main)                              | **Split**                | Tree/nav in sidebar; browser or editor in main                                                                                            |
 | Meet **product** workspace (named channels + chat + optional call)                 | **Split**                | Same sidebar + main as Tasks/Docs; the call stage is a resizable rail inside `main`, not a reason to stay Custom                          |
 | Mailbox, notes, or any **list + detail** collection                                | **Collection**           | Shared list/detail/mobile back behavior via `WorkspaceApp`                                                                                |
-| Live `/meet` lobby + in-call room, or other **non-standard** fullscreen RTC chrome | **Custom**               | Today's routed `MeetCallWorkspace` until a later API chunk remounts `MeetWorkspace`; do **not** keep the new Meet product shell on Custom |
+| Meet **guest** join flow (`/meet/join`, `/meet/guest`), or other **non-standard** fullscreen RTC chrome | **Custom**               | `MeetCallWorkspace` lobby/room stays routed for guests until Chunk J retires it; live `/meet` itself is Split (`MeetChatApp` → `MeetWorkspace`) |
 | Auth / marketing screen with app header only                                       | **Custom** (header only) | No workspace body chrome — see `login-core`                                                                                               |
 
 When unsure: if the primary interaction is **pick an item from a list, show detail beside it**, use **Collection**. If it is **pick a section, show one full pane**, use **Split**.
@@ -42,7 +42,7 @@ IF product = list + detail collection (mail, notes, similar)
   THEN entry = WorkspaceApp with list/detail render props
   THEN inner layout = CollectionListWorkspace (via WorkspaceApp; do not mount alone in *Workspace)
 
-IF product = live /meet lobby-room (MeetCallWorkspace) OR other fullscreen RTC chrome that cannot map to sidebar + main OR list + detail
+IF product = Meet guest join flow (MeetCallWorkspace on /meet/join, /meet/guest) OR other fullscreen RTC chrome that cannot map to sidebar + main OR list + detail
   THEN shell = custom
   THEN entry = WorkspaceShellHeader + product root layout
   THEN do NOT force WorkspaceAppLayout or WorkspaceApp
@@ -68,7 +68,8 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                               |
 | `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                             |
 | `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                  |
-| `meet-core` (live `/meet`) | Custom                   | `meet-core/src/meet-call-workspace.tsx` — lobby/room until a later API chunk remounts `MeetWorkspace`            |
+| `meet-core` (live `/meet`) | Split                    | `meet-core/src/meet-chat-app.tsx` — `MeetChatApp`: hybrid chat client + real RTC call stage in `MeetWorkspace`   |
+| `meet-core` (guest join)   | Custom                   | `meet-core/src/meet-call-workspace.tsx` — lobby/room on `/meet/join` + `/meet/guest` until Chunk J retires it    |
 | `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)  |
 | `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                      |
 | `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app |
@@ -159,7 +160,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 - **Hand-rolling** split chrome (`<section>`, scroll wrappers, mobile detail translate) when `WorkspaceAppLayout` split props or `WorkspaceApp` already provide it.
 - **Mounting `CollectionListWorkspace` directly** in `*Workspace` instead of going through `WorkspaceApp` (loses sidebar/detail mobile orchestration).
 - **Using split layout for mail/notes-style** list+detail — you lose shared back button, empty states, and mobile view-transition overlay.
-- **Keeping the new Meet product shell on Custom** — `MeetWorkspace` is Split (channels + chat + optional call). Custom is only for live `MeetCallWorkspace` (lobby/room) until the `/meet` route flips.
+- **Keeping the new Meet product shell on Custom** — `MeetWorkspace` is Split (channels + chat + optional call) and owns live `/meet`. Custom is only the guest `MeetCallWorkspace` flow until Chunk J retires it.
 - **Forcing `WorkspaceAppLayout` on live lobby/room RTC** (`MeetCallWorkspace`) — that chrome stays bespoke until a later API chunk.
 - **Second mobile scrim** beside `AppSidebar` — scrim is rendered inside `AppSidebar` when open.
 - **Navigation in `*-core`** — no `window.location` or router calls; expose `onLogout` / callbacks from `*App` (see workspace skill).

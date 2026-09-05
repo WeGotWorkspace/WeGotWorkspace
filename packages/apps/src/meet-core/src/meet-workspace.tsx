@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Pencil, Users, Video } from "lucide-react";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { Button, IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -228,6 +229,8 @@ export function MeetWorkspace({
   callLayout: _callLayout,
   callStage,
   chatColumn,
+  liveCallChannelId,
+  onSelectedChannelChange,
   onToggleCall,
   threadOpen = false,
   threadMessage = null,
@@ -237,6 +240,17 @@ export function MeetWorkspace({
   onCloseThread,
   onSendThreadReply,
 }: MeetWorkspaceProps) {
+  const toast = useAppToast();
+  // Live operations reject on auth/validation errors (mock ops never throw);
+  // surface those instead of leaking unhandled rejections.
+  const notifyChatError = useCallback(
+    (error: unknown) => {
+      const message =
+        error instanceof Error && error.message.trim() ? error.message : meetLabels.chatActionFailed;
+      toast.showError(message);
+    },
+    [toast],
+  );
   const [sidebarOpen, setSidebarOpen] = useState(
     () =>
       !meetCallStageShowsStage(initialCallLayout ?? (callActive ? "side-by-side" : "collapsed")),
@@ -252,6 +266,17 @@ export function MeetWorkspace({
     );
     return startsExpanded || Boolean(initialThreadId) || defaultMeetWorkspacePanelOpen();
   });
+
+  // Live bootstrap patches (inbound sync) replace the seeded rows; the mock
+  // path passes a stable bootstrap, so this effect is a mount-time no-op there.
+  const bootstrapChannels = data.channels;
+  useEffect(() => {
+    setChannels((current) => bootstrapChannels ?? current);
+  }, [bootstrapChannels]);
+
+  useEffect(() => {
+    onSelectedChannelChange?.(selectedId);
+  }, [onSelectedChannelChange, selectedId]);
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;
@@ -346,11 +371,17 @@ export function MeetWorkspace({
   const patchShareWith = async (channelId: string, shareWith: CollectionShareWith) => {
     const current = channels.find((row) => row.id === channelId);
     if (!current) return;
-    const patched = operations?.patchChannelShareWith
-      ? await operations.patchChannelShareWith(channelId, shareWith)
-      : applyMeetChannelPatch(current, {
-          shareWith: mergeShareWith(current.shareWith, shareWith),
-        });
+    let patched: MeetChannel;
+    try {
+      patched = operations?.patchChannelShareWith
+        ? await operations.patchChannelShareWith(channelId, shareWith)
+        : applyMeetChannelPatch(current, {
+            shareWith: mergeShareWith(current.shareWith, shareWith),
+          });
+    } catch (error) {
+      notifyChatError(error);
+      return;
+    }
     replaceChannel(patched);
     setDialog((openDialog) =>
       openDialog?.mode === "edit" && openDialog.channelId === channelId
@@ -370,8 +401,9 @@ export function MeetWorkspace({
       })),
     [data.directory],
   );
+  const bootstrapMessages = useMemo(() => data.messages ?? [], [data.messages]);
   const chat = useMeetChatSession({
-    initialMessages: data.messages ?? [],
+    initialMessages: bootstrapMessages,
     operations,
     selectedChannelId: selectedId,
     author: { id: currentUserId, displayName: session.user.displayName },
@@ -382,6 +414,7 @@ export function MeetWorkspace({
     initialLayout: initialCallLayout ?? (callActive ? "side-by-side" : "collapsed"),
     operations,
     channelId: selectedId,
+    liveCallChannelId,
   });
   const sidebarCloseFrame = useRef<number | null>(null);
   const handleCallLayoutChange = useCallback(
@@ -437,28 +470,28 @@ export function MeetWorkspace({
         onSendThreadReply(parentId, body);
         return;
       }
-      void chat.sendThreadReply({ body, mentions: [] });
+      void chat.sendThreadReply({ body, mentions: [] }).catch(notifyChatError);
     },
-    [chat.sendThreadReply, onSendThreadReply],
+    [chat.sendThreadReply, notifyChatError, onSendThreadReply],
   );
   const onToggleThreadReaction = useCallback(
     (messageId: string, emoji: string) => {
-      void chat.react(messageId, emoji);
+      void chat.react(messageId, emoji).catch(notifyChatError);
     },
-    [chat.react],
+    [chat.react, notifyChatError],
   );
 
   const onSendChannel = useCallback(
     (payload: ChatSendPayload) => {
-      void chat.sendChannel(payload);
+      void chat.sendChannel(payload).catch(notifyChatError);
     },
-    [chat.sendChannel],
+    [chat.sendChannel, notifyChatError],
   );
   const onReactChannel = useCallback(
     (messageId: string, emoji: string) => {
-      void chat.react(messageId, emoji);
+      void chat.react(messageId, emoji).catch(notifyChatError);
     },
-    [chat.react],
+    [chat.react, notifyChatError],
   );
   const onReplyChannel = useCallback(
     (message: ChatMessage) => {
@@ -469,18 +502,18 @@ export function MeetWorkspace({
   );
   const onDeleteChannel = useCallback(
     (messageId: string) => {
-      void chat.deleteMessage(messageId);
+      void chat.deleteMessage(messageId).catch(notifyChatError);
     },
-    [chat.deleteMessage],
+    [chat.deleteMessage, notifyChatError],
   );
   const onCancelEdit = useCallback(() => {
     chat.setEditingMessageId(null);
   }, [chat.setEditingMessageId]);
   const onSaveEdit = useCallback(
     (messageId: string, payload: ChatSendPayload) => {
-      void chat.editMessage(messageId, payload);
+      void chat.editMessage(messageId, payload).catch(notifyChatError);
     },
-    [chat.editMessage],
+    [chat.editMessage, notifyChatError],
   );
   const chatPlaceholder = selected
     ? meetChannelComposerPlaceholder(selected)
@@ -904,7 +937,7 @@ export function MeetWorkspace({
         personalOwnerLabel={ownerLabel}
         onClose={() => setDialog(null)}
         onConfirm={(input) => {
-          void confirmDialog(input);
+          void confirmDialog(input).catch(notifyChatError);
         }}
         share={
           dialog?.mode === "edit" && dialog.mayShare

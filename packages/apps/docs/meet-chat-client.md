@@ -150,7 +150,12 @@ or this file and the client must change together:
 
 ## Not in chunk E (owned elsewhere)
 
-- `MeetWorkspace` composition, `startCall` RTC wiring, `/meet` route flip — chunk F.
+- `MeetWorkspace` composition, `startCall` RTC wiring, `/meet` route flip —
+  shipped as chunk F: `meet-core/src/meet-chat-app.tsx` (`MeetChatApp`),
+  `use-meet-chat-call.ts` (controller → stage + call ops),
+  `meet-channel-room.ts` (deterministic room id = channel id;
+  meeting channels keep `guestRoomCode`),
+  `use-meet-channel-call-activity.ts` (`callActive` room-status polling).
 - DM rail + unread badges (dm rows are cached but filtered out of
   `MeetUIData.channels`) — chunk G.
 - Read-marker UI calls (the outbox op + REST op exist and are tested) — chunk F/G.

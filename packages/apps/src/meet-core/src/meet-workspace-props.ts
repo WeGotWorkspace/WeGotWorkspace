@@ -14,8 +14,15 @@ export type MeetWorkspaceProps = {
   initialChannelId?: string;
   initialCallLayout?: MeetCallStageLayout;
   initialThreadId?: string | null;
-  /** Room slice for the built-in `MeetCallStage` (stories stub peers; no `useMeetRtc`). */
+  /** Room slice for the built-in `MeetCallStage` (stories stub peers; live app passes the real controller). */
   callStageRoom?: MeetCallStageRoomProps;
+  /**
+   * Live app: channel owning the real RTC session (null = none). Undefined in
+   * mock/story trees. Drives layout sync — see `useMeetCallLayout`.
+   */
+  liveCallChannelId?: string | null;
+  /** Live app: selection feed for room-status polling and deep links. */
+  onSelectedChannelChange?: (channelId: string | null) => void;
   /** When true, `callStage` fills main on `callChannelId` only. */
   callActive?: boolean;
   /** Channel that owns a story/fixture `callStage` — chrome does not follow channel switches. */

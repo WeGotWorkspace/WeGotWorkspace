@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChatMentionPrincipal, ChatSendPayload } from "@/chat-ui/src/chat-types";
 import {
   meetChannelMessages,
@@ -34,6 +34,14 @@ export function useMeetChatSession({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [threadId, setThreadId] = useState<string | null>(initialThreadId);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+
+  // Live inbound sync patches the bootstrap messages (new identity); adopt them
+  // wholesale — the cache is the source of truth and already contains local
+  // pending writes. Mock/story trees pass a stable array, so this never fires
+  // there (the mount-time run bails on identical state).
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   const channelMessages = useMemo(
     () => meetChannelMessages(messages, selectedChannelId),
