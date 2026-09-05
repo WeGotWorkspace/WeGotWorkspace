@@ -59,14 +59,17 @@ final class ChatCollectionUris
     }
 
     /**
-     * DM collection uri for a user pair — usernames sorted so both sides
-     * derive the same collection (first-message race resolves on unique uri).
+     * DM collection uri for a user pair — order-independent hash over the
+     * sorted usernames, so both sides derive the same collection id. Hashing
+     * (vs joining the raw names) keeps the id unambiguous for usernames that
+     * contain "-" and fits the 64-char meet room-id limit — DM calls use the
+     * channel id as the room id (MeetChannelJoinPolicy).
      */
     public static function dmUri(string $usernameA, string $usernameB): string
     {
-        $pair = [$usernameA, $usernameB];
+        $pair = [strtolower(trim($usernameA)), strtolower(trim($usernameB))];
         sort($pair, SORT_STRING);
 
-        return self::PREFIX_DM.$pair[0].'-'.$pair[1];
+        return self::PREFIX_DM.substr(hash('sha256', $pair[0]."\n".$pair[1]), 0, 40);
     }
 }

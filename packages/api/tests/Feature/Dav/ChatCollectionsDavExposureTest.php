@@ -128,6 +128,27 @@ final class ChatCollectionsDavExposureTest extends WgwDatabaseTestCase
         $this->dav('PROPFIND', '/calendars/bob/'.$channelId.'/', depth: '1', username: 'bob')->assertNotFound();
     }
 
+    public function test_provisioned_dm_collections_are_dav_invisible_for_both_members(): void
+    {
+        // A real chunk-G DM: find-or-create via the API, shared to both sides.
+        $dmId = (string) $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'bob'])
+            ->assertOk()->json('id');
+        $this->seedJournalObject('principals/alice', $dmId, 'DMMSG1');
+
+        foreach (['alice', 'bob'] as $member) {
+            $home = $this->dav('PROPFIND', '/calendars/'.$member.'/', depth: '1', username: $member);
+            $home->assertStatus(207);
+            $this->assertStringNotContainsString($dmId, (string) $home->getContent());
+            $this->dav('PROPFIND', '/calendars/'.$member.'/'.$dmId.'/', depth: '1', username: $member)
+                ->assertNotFound();
+        }
+        $this->dav('GET', '/calendars/alice/'.$dmId.'/DMMSG1.ics')->assertNotFound();
+
+        // REST stays fully functional for both members.
+        $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$dmId)->assertOk();
+        $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$dmId)->assertOk();
+    }
+
     public function test_dav_clients_cannot_mint_chat_prefixed_collections(): void
     {
         // Extended MKCOL with a calendar resourcetype (MKCALENDAR is not even

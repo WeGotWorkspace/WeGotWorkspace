@@ -95,8 +95,10 @@ final class ChatChannelRepository
             throw new ApiHttpException(400, 'name is required.', 'bad_request');
         }
         $kind = (string) ($payload['kind'] ?? '');
-        if (! in_array($kind, ChatChannelMeta::kinds(), true)) {
-            throw new ApiHttpException(400, 'kind must be channel, meeting, or dm.', 'invalidProperties', ['kind']);
+        // DMs are never created here: openDm() provisions the deterministic
+        // 2-person collection find-or-create (POST /chat/dms).
+        if (! in_array($kind, [ChatChannelMeta::KIND_CHANNEL, ChatChannelMeta::KIND_MEETING], true)) {
+            throw new ApiHttpException(400, 'kind must be channel or meeting.', 'invalidProperties', ['kind']);
         }
 
         $groupSlug = isset($payload['groupSlug']) && is_string($payload['groupSlug'])
@@ -121,7 +123,6 @@ final class ChatChannelRepository
         }
 
         $uri = $this->allocateChannelUri(
-            $kind,
             isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null,
         );
 
@@ -157,6 +158,80 @@ final class ChatChannelRepository
     }
 
     /**
+     * Find-or-create the 2-person DM channel with $target (POST /chat/dms).
+     *
+     * The collection uri is the deterministic, order-independent hash of both
+     * usernames (ChatCollectionUris::dmUri), so either side opening the DM
+     * lands on the same channel — idempotent by construction. The pair's
+     * principal rows are locked inside the transaction so two concurrent
+     * first-opens serialize instead of racing the uri-uniqueness check.
+     *
+     * @return array<string, mixed>
+     */
+    public function openDm(string $username, string $target): array
+    {
+        $caller = strtolower(trim($username));
+        $peer = strtolower(trim($target));
+        if ($peer === '' || str_contains($peer, '/')) {
+            throw new ApiHttpException(400, 'principal must be a workspace username.', 'invalidProperties', ['principal']);
+        }
+        if ($peer === $caller) {
+            throw new ApiHttpException(400, 'Cannot open a direct message with yourself.', 'invalidProperties', ['principal']);
+        }
+        // Internal workspace users only: guests have no principal row and
+        // groups/externals are excluded by the username shape above.
+        $peerPrincipal = Principal::forUsername($peer);
+        if ($peerPrincipal === null) {
+            throw new ApiHttpException(400, 'Unknown or invalid DM principal.', 'invalidProperties', ['principal']);
+        }
+
+        $uri = ChatCollectionUris::dmUri($caller, $peer);
+
+        return DB::connection('wgw')->transaction(function () use ($caller, $peer, $peerPrincipal, $uri): array {
+            Principal::query()
+                ->whereIn('uri', [$this->principalUri($caller), $this->principalUri($peer)])
+                ->orderBy('uri')
+                ->lockForUpdate()
+                ->get();
+
+            $existing = $this->findAccessibleChannel($caller, $uri);
+            if ($existing !== null) {
+                return $this->mapChannel($caller, $existing, $this->metaForCalendar((int) $existing->calendarid));
+            }
+            if (CalendarInstance::query()->where('uri', $uri)->exists()) {
+                // Exists but is not accessible to the caller — a previous
+                // provision was interrupted before sharing completed.
+                throw new ApiHttpException(409, 'DM channel exists but is not accessible.', 'alreadyExists');
+            }
+
+            $callerPrincipalUri = $this->principalUri($caller);
+            $this->calBackend()->createCalendar($callerPrincipalUri, $uri, [
+                '{DAV:}displayname' => trim((string) ($peerPrincipal->displayname ?? '')) ?: $peer,
+                '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
+            ]);
+            $instance = $this->findChannelInstance($callerPrincipalUri, $uri);
+            if ($instance === null) {
+                throw new ApiHttpException(500, 'Could not load created DM channel.', 'server_error');
+            }
+
+            ChatChannelMeta::query()->create([
+                'calendarid' => (int) $instance->calendarid,
+                'kind' => ChatChannelMeta::KIND_DM,
+            ]);
+
+            // Both members write: the peer joins through the standard sharing
+            // machinery (invite + normalized uri), exactly like channel sharees.
+            $this->shareInvites->apply($instance, null, [$peer => ['mayWrite' => true]]);
+            $this->normalizeShareeInstanceUris($instance);
+            $this->nameDmShareeInstancesAfterOwner($instance, $caller);
+
+            $instance->refresh();
+
+            return $this->mapChannel($caller, $instance, $this->metaForCalendar((int) $instance->calendarid));
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
@@ -166,6 +241,7 @@ final class ChatChannelRepository
         if ($instance === null) {
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
+        $this->assertNotDm($instance, 'Direct message channels cannot be modified.');
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         // Sharees may only rename/recolor their own instance; topic lives in the
@@ -226,6 +302,7 @@ final class ChatChannelRepository
         if ($instance === null) {
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
+        $this->assertNotDm($instance, 'Direct message channels cannot be deleted.');
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
@@ -365,11 +442,14 @@ final class ChatChannelRepository
             ],
         };
 
+        $kind = $meta?->kind ?? ChatChannelMeta::KIND_CHANNEL;
+        $roster = $this->rosterUsernames($instance, $groupSlug);
+
         return [
             'id' => $uri,
             'name' => trim((string) ($instance->displayname ?? '')) ?: $uri,
             'color' => is_string($instance->calendarcolor) && trim($instance->calendarcolor) !== '' ? trim($instance->calendarcolor) : null,
-            'kind' => $meta?->kind ?? ChatChannelMeta::KIND_CHANNEL,
+            'kind' => $kind,
             'scope' => $groupSlug !== null ? 'group' : 'personal',
             'groupSlug' => $groupSlug,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
@@ -377,7 +457,8 @@ final class ChatChannelRepository
             'myRights' => $rights,
             'topic' => $meta?->topic,
             'guestRoomCode' => $meta?->room_code,
-            'memberCount' => $this->memberCount($instance, $groupSlug),
+            'dmPeer' => $kind === ChatChannelMeta::KIND_DM ? $this->dmPeerFromRoster($username, $roster) : null,
+            'memberCount' => count($roster),
             'unreadCount' => $this->unreadCounter->count($username, (int) $instance->calendarid),
         ];
     }
@@ -470,9 +551,10 @@ final class ChatChannelRepository
         $instance->save();
     }
 
-    private function allocateChannelUri(string $kind, ?string $requestedId): string
+    private function allocateChannelUri(?string $requestedId): string
     {
-        $prefix = $kind === ChatChannelMeta::KIND_DM ? ChatCollectionUris::PREFIX_DM : ChatCollectionUris::PREFIX_CHANNEL;
+        // Only chat- ids: dm- uris are exclusively minted by openDm's hash.
+        $prefix = ChatCollectionUris::PREFIX_CHANNEL;
 
         if ($requestedId !== null && $requestedId !== '') {
             if (! str_starts_with($requestedId, $prefix)) {
@@ -505,10 +587,25 @@ final class ChatChannelRepository
     }
 
     /**
-     * Roster size: owner side (group members or the personal owner) plus
-     * sharees, group sharees expanded, distinct by username.
+     * DM channels are immutable through the generic channel endpoints: no
+     * rename/recolor, no further sharing, no owner transfer, no delete (not
+     * even sharee dismissal) — the collection exists exactly as provisioned
+     * by openDm until an account-level cleanup removes it.
      */
-    private function memberCount(CalendarInstance $instance, ?string $groupSlug): int
+    private function assertNotDm(CalendarInstance $instance, string $message): void
+    {
+        if (str_starts_with((string) $instance->uri, ChatCollectionUris::PREFIX_DM)) {
+            throw new ApiHttpException(403, $message, 'forbidden');
+        }
+    }
+
+    /**
+     * Distinct channel roster: owner side (group members or the personal
+     * owner) plus sharees, group sharees expanded.
+     *
+     * @return list<string>
+     */
+    private function rosterUsernames(CalendarInstance $instance, ?string $groupSlug): array
     {
         $usernames = [];
 
@@ -526,7 +623,37 @@ final class ChatChannelRepository
             }
         }
 
-        return count($usernames);
+        return array_keys($usernames);
+    }
+
+    /**
+     * @param  list<string>  $roster
+     */
+    private function dmPeerFromRoster(string $username, array $roster): ?string
+    {
+        foreach ($roster as $member) {
+            if (strtolower($member) !== strtolower($username)) {
+                return $member;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * DM instances are named after the *other* member: the owner instance got
+     * the peer's display name at create time; the sharee copy (Sabre names it
+     * after the sharee) is re-pointed at the owner's display name here.
+     */
+    private function nameDmShareeInstancesAfterOwner(CalendarInstance $owner, string $ownerUsername): void
+    {
+        $ownerPrincipal = Principal::forUsername($ownerUsername);
+        $ownerName = trim((string) ($ownerPrincipal?->displayname ?? '')) ?: $ownerUsername;
+
+        CalendarInstance::query()
+            ->where('calendarid', (int) $owner->calendarid)
+            ->where('id', '!=', (int) $owner->id)
+            ->update(['displayname' => $ownerName]);
     }
 
     private function ownerPrincipalUri(CalendarInstance $instance): string

@@ -64,6 +64,10 @@
         "type": ["string", "null"],
         "description": "Meeting kind: linked meet_reservations room code for guest links."
       },
+      "dmPeer": {
+        "type": ["string", "null"],
+        "description": "dm kind: the other member's username (DM rail key); null for channel/meeting kinds."
+      },
       "memberCount": {
         "type": "integer",
         "minimum": 0,
@@ -101,7 +105,8 @@
       },
       "kind": {
         "type": "string",
-        "enum": ["channel", "meeting", "dm"]
+        "enum": ["channel", "meeting"],
+        "description": "dm channels are never created here — POST /chat/dms provisions them find-or-create."
       },
       "color": {
         "type": ["string", "null"]
@@ -115,6 +120,19 @@
       "id": {
         "$ref": "#/components/schemas/JmapId",
         "description": "Optional client-suggested channel id (uri slug)."
+      }
+    }
+  },
+  "ChatDmOpen": {
+    "type": "object",
+    "required": ["principal"],
+    "additionalProperties": false,
+    "properties": {
+      "principal": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 190,
+        "description": "Target username — an internal workspace user other than the caller (no groups, guests, or external addresses)."
       }
     }
   },

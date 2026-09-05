@@ -6509,6 +6509,49 @@
         }
       }
     },
+    "/chat/dms": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Open (find-or-create) a direct message channel",
+        "description": "Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatDmOpen"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The DM channel (existing or newly provisioned)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      }
+    },
     "/chat/channels/{channelId}": {
       "get": {
         "tags": [

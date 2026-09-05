@@ -101,12 +101,9 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
     public function test_guest_is_always_rejected_on_dm_rooms(): void
     {
-        $dmId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
-            'name' => 'Alice & Bob', 'kind' => 'dm', 'id' => 'dm-alice-bob',
-        ])->assertCreated()->json('id');
-        $this->asUser('alice')->patchJson('/api/v1/chat/channels/'.$dmId, [
-            'shareWith' => ['bob' => ['mayWriteAll' => true]],
-        ])->assertOk();
+        // Chunk-G provisioning: find-or-create shares the dm to both members.
+        $dmId = (string) $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'bob'])
+            ->assertOk()->json('id');
         $this->join('alice', $dmId, 'peer-alice', 'Alice')->assertOk();
 
         // Even with a member present, guests never enter DMs — knock or not.

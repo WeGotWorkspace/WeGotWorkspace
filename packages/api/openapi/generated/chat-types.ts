@@ -12,6 +12,7 @@ export type ChatChannelChangesResponse = components["schemas"]["ChatChannelChang
 export type ChatChannelCreate = components["schemas"]["ChatChannelCreate"];
 export type ChatChannelListResponse = components["schemas"]["ChatChannelListResponse"];
 export type ChatChannelPatch = components["schemas"]["ChatChannelPatch"];
+export type ChatDmOpen = components["schemas"]["ChatDmOpen"];
 export type ChatMention = components["schemas"]["ChatMention"];
 export type ChatMessage = components["schemas"]["ChatMessage"];
 export type ChatMessageChangesResponse = components["schemas"]["ChatMessageChangesResponse"];

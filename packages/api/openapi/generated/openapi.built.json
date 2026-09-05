@@ -10727,6 +10727,13 @@
                         ],
                         "description": "Meeting kind: linked meet_reservations room code for guest links."
                     },
+                    "dmPeer": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "dm kind: the other member's username (DM rail key); null for channel/meeting kinds."
+                    },
                     "memberCount": {
                         "type": "integer",
                         "minimum": 0,
@@ -10771,9 +10778,9 @@
                         "type": "string",
                         "enum": [
                             "channel",
-                            "meeting",
-                            "dm"
-                        ]
+                            "meeting"
+                        ],
+                        "description": "dm channels are never created here — POST /chat/dms provisions them find-or-create."
                     },
                     "color": {
                         "type": [
@@ -11146,6 +11153,21 @@
                     }
                 },
                 "description": "JMAP-shaped incremental sync response for messages in one channel."
+            },
+            "ChatDmOpen": {
+                "type": "object",
+                "required": [
+                    "principal"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "principal": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 190,
+                        "description": "Target username — an internal workspace user other than the caller (no groups, guests, or external addresses)."
+                    }
+                }
             }
         },
         "responses": {
@@ -17813,6 +17835,49 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/dms": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Open (find-or-create) a direct message channel",
+                "description": "Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatDmOpen"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The DM channel (existing or newly provisioned)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
                     }
                 }
             }

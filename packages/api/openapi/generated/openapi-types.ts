@@ -6906,6 +6906,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/dms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open (find-or-create) a direct message channel
+         * @description Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatDmOpen"];
+                };
+            };
+            responses: {
+                /** @description The DM channel (existing or newly provisioned) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10521,6 +10566,8 @@ export interface components {
             topic?: string | null;
             /** @description Meeting kind: linked meet_reservations room code for guest links. */
             guestRoomCode?: string | null;
+            /** @description dm kind: the other member's username (DM rail key); null for channel/meeting kinds. */
+            dmPeer?: string | null;
             /** @description Roster size (owner plus sharees, groups expanded). */
             memberCount?: number;
             /** @description Unread messages after the caller's read marker, own messages excluded. */
@@ -10531,8 +10578,11 @@ export interface components {
         };
         ChatChannelCreate: {
             name: string;
-            /** @enum {string} */
-            kind: "channel" | "meeting" | "dm";
+            /**
+             * @description dm channels are never created here — POST /chat/dms provisions them find-or-create.
+             * @enum {string}
+             */
+            kind: "channel" | "meeting";
             color?: string | null;
             topic?: string | null;
             groupSlug?: string | null;
@@ -10627,6 +10677,10 @@ export interface components {
             destroyed: components["schemas"]["JmapId"][];
             /** @description True when more changes exist after newState — repeat the request. Real at chat volume, never hardcoded false. */
             hasMoreChanges: boolean;
+        };
+        ChatDmOpen: {
+            /** @description Target username — an internal workspace user other than the caller (no groups, guests, or external addresses). */
+            principal: string;
         };
     };
     responses: {

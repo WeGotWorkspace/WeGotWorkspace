@@ -280,6 +280,9 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('channelId', '[A-Za-z0-9._-]+');
     Route::delete('chat/channels/{channelId}', [ChatChannelsController::class, 'destroy'])
         ->where('channelId', '[A-Za-z0-9._-]+');
+    // DM provisioning (Epic #701, chunk G): find-or-create the deterministic
+    // 2-person dm- collection; DM channels are immutable via the routes above.
+    Route::post('chat/dms', [ChatChannelsController::class, 'openDm']);
     // Chat messages (Epic #701, chunk C): VJOURNAL objects, ULID ids, author-only
     // edit/delete, transactional reaction toggles, sync-token changes feed.
     Route::get('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'index'])
