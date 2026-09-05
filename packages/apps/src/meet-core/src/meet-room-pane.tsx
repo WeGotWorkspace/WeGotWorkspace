@@ -184,6 +184,8 @@ export function MeetRoomPane({
           void controller.switchMic(deviceId);
         }}
         onSpeakerChange={onSpeakerChange}
+        // Members leave without ceremony; guests and end-call-for-all confirm.
+        confirmExit={!hasSignedInIdentity || callExitLabel === meetLabels.endCall}
         onConfirmExit={() =>
           void (callExitLabel === meetLabels.endCall
             ? controller.endCallForAll()

@@ -43,6 +43,7 @@ import {
 } from "@/meet-core/src/meet-channel-dialog";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
@@ -658,6 +659,29 @@ export function MeetWorkspace({
   const showCallBar = conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive);
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
   const callRoom = callStageRoom;
+  // Mini-player handshake: while the live call's channel is not on screen the
+  // call is "parked" here, so the suite mini-player may show inside `/meet`.
+  // Null store (mock/Storybook trees) makes this a no-op.
+  const suiteCallStore = useMeetCallStoreContext();
+  const liveCallParked = Boolean(
+    liveCallChannelId && !(selectedId === liveCallChannelId && showCallChrome),
+  );
+  useEffect(() => {
+    suiteCallStore?.setCallUiParked(liveCallParked);
+  }, [liveCallParked, suiteCallStore]);
+  useEffect(() => {
+    if (!suiteCallStore || !liveCallChannelId) return;
+    suiteCallStore.focusCallChannelRef.current = () => setSelectedId(liveCallChannelId);
+    return () => {
+      suiteCallStore.focusCallChannelRef.current = null;
+    };
+  }, [liveCallChannelId, suiteCallStore]);
+  useEffect(
+    () => () => {
+      suiteCallStore?.setCallUiParked(false);
+    },
+    [suiteCallStore],
+  );
   const chatTitle = headerTitle ? meetLabels.chatInChannel(headerTitle) : meetLabels.chatTitle;
   const panelOpen = showExpandedStage ? callChatOpen : threadVisible;
   const railShowsThread = threadVisible;

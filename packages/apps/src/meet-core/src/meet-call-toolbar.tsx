@@ -36,6 +36,11 @@ type MeetCallToolbarProps = {
   onMicrophoneChange: (optionId: string) => void;
   onSpeakerChange: (optionId: string) => void;
   onConfirmExit: () => void;
+  /**
+   * Ask before leaving. Guests get the confirmation (leaving may be hard to
+   * undo for them); signed-in members leave instantly — rejoining is one click.
+   */
+  confirmExit?: boolean;
   extraActions?: ReactNode;
 };
 
@@ -59,6 +64,7 @@ export function MeetCallToolbar({
   onMicrophoneChange,
   onSpeakerChange,
   onConfirmExit,
+  confirmExit = true,
   extraActions,
 }: MeetCallToolbarProps) {
   return (
@@ -104,27 +110,42 @@ export function MeetCallToolbar({
         />
         {extraActions}
         <div className="meet-workspace__toolbar-divider" aria-hidden />
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <IconButton icon={<PhoneOff />} label={callExitLabel} size="sm" variant="destructive" />
-          </AlertDialogTrigger>
-          <AlertDialogContent className="meet-call-dialog">
-            <AlertDialogHeader>
-              <AlertDialogTitle>{callExitTitle}</AlertDialogTitle>
-              <AlertDialogDescription>{callExitDescription}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel asChild>
-                <Button variant="outline">Cancel</Button>
-              </AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <Button variant="destructive" onClick={onConfirmExit}>
-                  {callExitLabel}
-                </Button>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {confirmExit ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <IconButton
+                icon={<PhoneOff />}
+                label={callExitLabel}
+                size="sm"
+                variant="destructive"
+              />
+            </AlertDialogTrigger>
+            <AlertDialogContent className="meet-call-dialog">
+              <AlertDialogHeader>
+                <AlertDialogTitle>{callExitTitle}</AlertDialogTitle>
+                <AlertDialogDescription>{callExitDescription}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel asChild>
+                  <Button variant="outline">Cancel</Button>
+                </AlertDialogCancel>
+                <AlertDialogAction asChild>
+                  <Button variant="destructive" onClick={onConfirmExit}>
+                    {callExitLabel}
+                  </Button>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <IconButton
+            onClick={onConfirmExit}
+            icon={<PhoneOff />}
+            label={callExitLabel}
+            size="sm"
+            variant="destructive"
+          />
+        )}
       </div>
     </div>
   );

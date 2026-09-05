@@ -39,7 +39,10 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
   const [audioPlayNonce, setAudioPlayNonce] = useState(0);
 
   const callEngaged = snapshot.status === "in-call" || snapshot.status === "waiting";
-  const visible = callEngaged && !pathname.startsWith("/meet");
+  // Outside /meet the card always accompanies an engaged call. Inside /meet it
+  // only shows when the chat workspace parked the call (another channel on
+  // screen); legacy shells (/meet/join guest flow) never park, keeping it hidden.
+  const visible = callEngaged && (!pathname.startsWith("/meet") || snapshot.callUiParked);
   const showVideo = visible && snapshot.videoOn && !snapshot.screenOn;
   const remoteAudioPeers = visible
     ? snapshot.participants.flatMap((peer) =>
@@ -79,6 +82,14 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
 
   const returnToCall = () => {
     resumeRemoteAudio();
+    // Parked call inside /meet: re-select the call's channel instead of
+    // navigating (the workspace registered this callback; search alone would
+    // not change the internal channel selection).
+    const focusCallChannel = store.focusCallChannelRef.current;
+    if (pathname.startsWith("/meet") && focusCallChannel) {
+      focusCallChannel();
+      return;
+    }
     void navigate({ to: "/meet", search: meetSearchFromRoom(snapshot.roomCode) });
   };
 

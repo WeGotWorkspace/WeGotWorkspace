@@ -262,6 +262,9 @@ export function MeetCallExpanded({
               void room.controller.switchMic(deviceId);
             }}
             onSpeakerChange={room.onSpeakerChange}
+            // Members leave without ceremony (rejoining is one click); guests
+            // and end-call-for-all keep the confirmation dialog.
+            confirmExit={!room.hasSignedInIdentity || room.callExitLabel === meetLabels.endCall}
             onConfirmExit={() => {
               onLeave?.();
               void (room.callExitLabel === meetLabels.endCall

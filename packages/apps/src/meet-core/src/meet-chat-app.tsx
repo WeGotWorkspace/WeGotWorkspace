@@ -87,6 +87,8 @@ function MeetChatLiveWorkspace({
       operations={operations}
       onLogout={onLogout}
       callStageRoom={callStageRoom}
+      // Returning to /meet mid-call (mini-player) lands on the call's channel.
+      initialChannelId={liveCallChannelId ?? undefined}
       liveCallChannelId={liveCallChannelId}
       onSelectedChannelChange={handleSelectedChannelChange}
       typingByChannel={typingByChannel}

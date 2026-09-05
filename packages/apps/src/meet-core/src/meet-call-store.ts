@@ -31,6 +31,12 @@ export type MeetCallSnapshot = {
   endedMessage: string | null;
   /** Another browser tab reports an active call (BroadcastChannel signal). */
   remoteCallActive: boolean;
+  /**
+   * The Meet chat workspace is mounted but the live call's channel is not on
+   * screen (another channel selected). Lets the mini-player show inside `/meet`;
+   * legacy shells never set this, so their full-screen call keeps hiding it.
+   */
+  callUiParked: boolean;
 };
 
 function createInitialSnapshot(): MeetCallSnapshot {
@@ -51,6 +57,7 @@ function createInitialSnapshot(): MeetCallSnapshot {
     knockers: [],
     endedMessage: null,
     remoteCallActive: false,
+    callUiParked: false,
   };
 }
 
@@ -131,6 +138,13 @@ export class MeetCallStore {
   readonly leaveRef: Ref<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)> = {
     current: null,
   };
+
+  /**
+   * Registered by the Meet chat workspace: selects the live call's channel.
+   * Lets the mini-player's "return to call" work while already on `/meet`
+   * (parked call), where navigation alone would not change the selection.
+   */
+  readonly focusCallChannelRef: Ref<null | (() => void)> = { current: null };
 
   /**
    * Headless mic/camera toggles for the mini-player. Same callbacks as full Meet
@@ -234,6 +248,10 @@ export class MeetCallStore {
 
   setRemoteCallActive = (value: Updater<boolean>): void => {
     this.set("remoteCallActive", value, this.remoteCallActiveRef);
+  };
+
+  setCallUiParked = (value: Updater<boolean>): void => {
+    this.set("callUiParked", value);
   };
 
   resetPeerMaps = (): void => {
