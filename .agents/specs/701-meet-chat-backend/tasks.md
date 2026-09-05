@@ -16,7 +16,7 @@ Source plan: [plan.md](./plan.md)
 | `chunk-d-jmap` | builder (this phase) | api | `Jmap/Methods/ChatChannel*`, `ChatMessage*`, capability provider, state codec, `tests/Feature/Jmap/` | `composer test -- --filter Jmap` | done |
 | `chunk-e-client` | later | apps-ui, workspace | `lib/api/wgw/meet-chat.ts`, `lib/offline/meet-chat-hybrid-operations.ts`, `meet-chat-jmap-inbound`, `meet-chat-api-source.ts`, `use-meet-chat-api.ts` | targeted Vitest; `pnpm --filter @wgw/apps typecheck` | pending |
 | `chunk-f-liveapp` | later | workspace, meet | live `MeetApp`, `startCall` RTC wiring, `wegotworkspace-routes.tsx` flip, guest flow, screen-share parity | targeted Vitest + stories; manual :5174 smoke | pending |
-| `chunk-g-dms` | later | api, apps-ui | DM auto-provision, unread badges, DM rail wiring | feature tests + targeted Vitest | pending |
+| `chunk-g-dms` | builder (this phase) | api, apps-ui | DM auto-provision, unread badges, DM rail wiring | feature tests + targeted Vitest | done |
 | `chunk-h-join-policy` | builder (this phase) | api | `MeetChannelJoinPolicy` in `MeetSignalingService`, join matrix feature tests | `composer test` signaling suites | done |
 | `chunk-i-knock-ui` | later | meet, apps-ui, storybook | knock/admit in `MeetCallStage`, pending-knock list, stories | stories + Storybook coverage | pending |
 | `chunk-k-typing` | later | meet, apps-ui | presence-core typing wiring, typing-indicator UI, stories | targeted Vitest + stories | pending |
