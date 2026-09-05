@@ -72,4 +72,20 @@ final class ChatCollectionUris
 
         return self::PREFIX_DM.substr(hash('sha256', $pair[0]."\n".$pair[1]), 0, 40);
     }
+
+    /**
+     * Deterministic default-channel uri for an ACL group — every group gets
+     * exactly one (ChatGroupDefaultChannelProvisioner), find-or-create keyed
+     * on this uri. Hashing the slug mirrors dmUri: idempotent provisioning,
+     * unambiguous for slugs containing "-", and within the 64-char meet
+     * room-id limit (room id = channel id, MeetChannelJoinPolicy). The
+     * `grp-` marker is cosmetic (debugging); default-ness is authoritative in
+     * chat_channel_meta.default_for_group.
+     */
+    public static function groupDefaultUri(string $groupSlug): string
+    {
+        $slug = strtolower(trim($groupSlug));
+
+        return self::PREFIX_CHANNEL.'grp-'.substr(hash('sha256', 'group-default'."\n".$slug), 0, 40);
+    }
 }

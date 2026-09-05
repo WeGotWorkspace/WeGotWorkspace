@@ -9,6 +9,7 @@ use App\Models\AddressBookShareDismissal;
 use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Chat\ChatGroupDefaultChannelProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\AddressBookShareInvites;
 use App\Services\Installer\InstallerSeeder;
@@ -25,6 +26,7 @@ final class AdminGroupManagementService
         private GroupDirectoryService $groups,
         private InstallerSeeder $installerSeeder,
         private UserCalendarCollectionsProvisioner $calendarCollections,
+        private ChatGroupDefaultChannelProvisioner $chatDefaults,
         private AddressBookProvisioner $addressBooks,
         private AddressBookShareInvites $addressBookShares,
         private AppPaths $paths,
@@ -49,6 +51,10 @@ final class AdminGroupManagementService
 
         $name = $displayName !== '' ? $displayName : $slug;
         $this->calendarCollections->ensureForGroupPrincipal($uri, $name);
+        // Eager half of the group-default chat channel guarantee; the lazy
+        // half (ChatChannelRepository::accessibleChatInstances) retro-fits
+        // groups that predate the feature or were seeded outside this service.
+        $this->chatDefaults->ensureForGroupSlugs([$slug]);
         $this->addressBooks->ensureForGroupPrincipal($uri, $name);
 
         return $uri;
