@@ -40,7 +40,7 @@ function selfPeer(
   return {
     id: room.controller.selfId ?? "self",
     name: room.displayName,
-    stream: null,
+    stream: room.controller.getLocalStream(),
     disclosedMedia: { camera: room.controller.videoOn, mic: room.controller.micOn },
   };
 }
@@ -210,7 +210,9 @@ export function MeetCallExpanded({
                       userId={peer.id}
                       compact
                       caption={
-                        isSelf && room.controller.videoOn ? meetLabels.startingCamera : undefined
+                        isSelf && room.controller.videoOn && !peer.stream
+                          ? meetLabels.startingCamera
+                          : undefined
                       }
                       remoteMedia={peer.remoteMedia}
                       disclosedMedia={

@@ -909,6 +909,7 @@ export function MeetWorkspace({
                     elapsedLabel={callRoom?.controller.elapsedLabel ?? "0:00"}
                     selfId={callRoom?.controller.selfId ?? session.user.username ?? "self"}
                     selfName={callRoom?.displayName ?? session.user.displayName}
+                    selfStream={callRoom?.controller.getLocalStream() ?? null}
                     peers={callRoom?.controller.peers ?? []}
                     participantCount={callRoom?.participantCount ?? 1}
                     micOn={callRoom?.controller.micOn ?? true}

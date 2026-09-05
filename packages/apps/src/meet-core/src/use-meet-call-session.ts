@@ -253,6 +253,7 @@ export function useMeetCallSession({
     debugRtc,
     ensureLocalMedia,
     stopLocalMedia,
+    getLocalStream,
     localVideoRef,
     screenPreviewStream,
     audioInputs,

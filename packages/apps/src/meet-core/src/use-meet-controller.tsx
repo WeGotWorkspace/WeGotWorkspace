@@ -84,6 +84,9 @@ export function useMeetController({
     endedMessage: room.endedMessage,
     chatMessages: room.chatMessages,
     localVideoRef: callSession.localVideoRef,
+    // Live local stream for tile-based stages (MeetCallBar/MeetCallExpanded);
+    // read at render time — join/toggle state changes re-render consumers.
+    getLocalStream: callSession.getLocalStream,
     audioInputs: callSession.audioInputs,
     videoInputs: callSession.videoInputs,
     selectedMicId: callSession.selectedMicId,

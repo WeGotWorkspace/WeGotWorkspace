@@ -93,6 +93,7 @@ export function createMeetStoryController(
     endedMessage: null,
     chatMessages: STORY_MEET_CHAT_MESSAGES,
     localVideoRef,
+    getLocalStream: () => null,
     audioInputs: [],
     videoInputs: [],
     selectedMicId: "mic-1",
