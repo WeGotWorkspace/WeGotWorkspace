@@ -9,19 +9,19 @@ Spec: `.agents/specs/701-meet-chat-backend/spec.md` (Epic #701, Task #704).
 
 ## Module map
 
-| Module | Role |
-|--------|------|
-| `src/lib/api/wgw/meet-chat.ts` | Typed REST client for the 13 `/chat/*` operations (generated `@wgw-api-generated/chat-types`), wire→app mapping |
-| `src/lib/api/wgw/meet-chat-jmap.ts` | JMAP client factory (`POST /jmap` through `wgwFetch`) |
-| `src/lib/jmap-client/chat/` + `adapter/JmapChatAdapter.ts` | `ChatChannel`/`ChatMessage` `/changes` → `/get` inbound poll |
-| `src/lib/offline/meet-chat/meet-chat-schema.ts` | Dexie tables (domain `meet-chat`, version block 60–69) |
-| `src/lib/offline/meet-chat/chat-ulid.ts` | Client-side ULID generator for message ids |
-| `src/lib/offline/meet-chat-offline-store.ts` | Dexie cache, sync tokens, backfill markers, outbox enqueue/coalescing |
-| `src/lib/offline/meet-chat-outbox-flush.ts` | Outbox replay on reconnect |
-| `src/lib/offline/meet-chat-inbound-sync.ts` | REST changes-feed inbound + full-history backfill |
-| `src/lib/offline/meet-chat-jmap-inbound.ts` | Dexie ingest for remote objects (pending-write protection) |
-| `src/lib/offline/meet-chat-hybrid-operations.ts` | `MeetChatOperations` implementation + hybrid bootstrap |
-| `src/meet-core/src/meet-chat-api-source.ts` / `use-meet-chat-api.ts` | Mock vs live source (`wgwLiveApiEnabled()`) + workspace hook |
+| Module                                                               | Role                                                                                                            |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/lib/api/wgw/meet-chat.ts`                                       | Typed REST client for the 13 `/chat/*` operations (generated `@wgw-api-generated/chat-types`), wire→app mapping |
+| `src/lib/api/wgw/meet-chat-jmap.ts`                                  | JMAP client factory (`POST /jmap` through `wgwFetch`)                                                           |
+| `src/lib/jmap-client/chat/` + `adapter/JmapChatAdapter.ts`           | `ChatChannel`/`ChatMessage` `/changes` → `/get` inbound poll                                                    |
+| `src/lib/offline/meet-chat/meet-chat-schema.ts`                      | Dexie tables (domain `meet-chat`, version block 60–69)                                                          |
+| `src/lib/offline/meet-chat/chat-ulid.ts`                             | Client-side ULID generator for message ids                                                                      |
+| `src/lib/offline/meet-chat-offline-store.ts`                         | Dexie cache, sync tokens, backfill markers, outbox enqueue/coalescing                                           |
+| `src/lib/offline/meet-chat-outbox-flush.ts`                          | Outbox replay on reconnect                                                                                      |
+| `src/lib/offline/meet-chat-inbound-sync.ts`                          | REST changes-feed inbound + full-history backfill                                                               |
+| `src/lib/offline/meet-chat-jmap-inbound.ts`                          | Dexie ingest for remote objects (pending-write protection)                                                      |
+| `src/lib/offline/meet-chat-hybrid-operations.ts`                     | `MeetChatOperations` implementation + hybrid bootstrap                                                          |
+| `src/meet-core/src/meet-chat-api-source.ts` / `use-meet-chat-api.ts` | Mock vs live source (`wgwLiveApiEnabled()`) + workspace hook                                                    |
 
 ## Dexie schema
 
@@ -85,12 +85,11 @@ flush lands.
   `before` ULID cursor (200/page) into Dexie, then primes the changes token —
   local-first reads with history available offline, per the spec.
 
-## JMAP contract assumptions (chunk D must verify)
+## JMAP contract assumptions (verified against chunk D)
 
-The server-side `urn:wgw:jmap:chat` methods did not exist when this client was
-built. Everything below is built strictly against the Notes-pattern method
-shapes (`urn:wgw:jmap:notes`, `JmapAccountStateCodec` fan-out) and must hold —
-or this file and the client must change together:
+The server-side `urn:wgw:jmap:chat` methods (chunk D, `JmapChatMethodsTest`)
+were built against this section; every assumption below holds, with two
+server-side clarifications marked **[chunk D]** inline:
 
 1. **Capability + session:** the JMAP session lists `urn:wgw:jmap:chat` in
    `capabilities` and provides a `primaryAccounts["urn:wgw:jmap:chat"]` account
@@ -101,7 +100,10 @@ or this file and the client must change together:
    `ids: []` = state-only envelope) and `/changes` (`sinceState`,
    `created/updated/destroyed`, `newState`, `hasMoreChanges`) argument/response
    shapes. The client never calls `ChatChannel/set` / `ChatMessage/set`
-   (mutations stay REST), but chunk D ships them per the spec.
+   (mutations stay REST). **[chunk D]** The server accordingly ships
+   get/changes only — there are no `/set` methods; a `ChatChannel/set` call
+   returns the standard `unknownMethod` error. (Deviation from the original
+   spec note that `/set` would ship anyway; nothing consumes it.)
 3. **Object shapes:** JMAP `ChatChannel` and `ChatMessage` objects use the
    **same field names and value encodings as the REST OpenAPI schemas**
    (`openapi/schemas/chat/` → `ChatChannel`, `ChatMessage`): notably `id`
@@ -116,19 +118,27 @@ or this file and the client must change together:
    collections, exactly like `Note/changes` over notebooks). Consequently:
    - a reaction/edit/tombstone anywhere surfaces as an `updated` message id;
    - a message delete is a **tombstone** (`STATUS:CANCELLED` → `deletedAt`
-     set, body empty) and arrives as `updated`, *not* `destroyed`; `destroyed`
-     is reserved for hard removals (e.g. channel purge);
+     set, body empty) and arrives as `updated`, _not_ `destroyed`; `destroyed`
+     is reserved for hard removals. **[chunk D]** In practice message-level
+     `destroyed` stays empty: a channel purge/unshare is signaled **only** via
+     `ChatChannel/changes.destroyed` (the server keeps no per-message
+     bookkeeping table) — clients MUST prune that channel's cached messages on
+     channel destroy, which this client does
+     (`ingestRemoteChatChannelDestroyed`);
    - when a channel is newly shared to the account, its channel id appears in
      `ChatChannel/changes.created` — the client then runs a one-time REST
      history backfill for that channel (it does **not** assume the messages
-     replay through `ChatMessage/changes.created`).
+     replay through `ChatMessage/changes.created`). **[chunk D]** The server
+     relies on this: a newly visible channel is primed at its current token
+     and its pre-share history is deliberately **never** replayed as `created`
+     ids, so the REST backfill is mandatory, not defensive.
 5. **`hasMoreChanges` is real** (never hardcoded false, unlike Notes): the
    adapter follows up to 20 pages per tick and the REST sync loops the same way.
 6. **`cannotCalculateChanges`:** returned as a standard JMAP method-level error
    with `type: "cannotCalculateChanges"` when the change log was pruned → the
    client refetches everything and reconciles. The REST changes endpoints
    signal the same condition with an error body `{ "code":
-   "cannotCalculateChanges" }` (mirrors `/notes/*/changes`).
+"cannotCalculateChanges" }` (mirrors `/notes/*/changes`).
 7. **State tokens are opaque strings**; the client stores them per type
    (channels) and per channel (messages, REST path) and never inspects them.
 

@@ -16,6 +16,10 @@ use App\Services\Jmap\Methods\CalendarEventQueryMethod;
 use App\Services\Jmap\Methods\CalendarEventSetMethod;
 use App\Services\Jmap\Methods\CalendarGetMethod;
 use App\Services\Jmap\Methods\CalendarSetMethod;
+use App\Services\Jmap\Methods\ChatChannelChangesMethod;
+use App\Services\Jmap\Methods\ChatChannelGetMethod;
+use App\Services\Jmap\Methods\ChatMessageChangesMethod;
+use App\Services\Jmap\Methods\ChatMessageGetMethod;
 use App\Services\Jmap\Methods\ContactCardChangesMethod;
 use App\Services\Jmap\Methods\ContactCardGetMethod;
 use App\Services\Jmap\Methods\ContactCardQueryChangesMethod;
@@ -87,6 +91,12 @@ final class JmapMethodDispatcher
         NoteChangesMethod::class,
         NoteSetMethod::class,
         NoteQueryChangesMethod::class,
+        // urn:wgw:jmap:chat (vendor Meet chat envelope; mutations stay REST,
+        // so only get/changes are registered — meet-chat-client.md)
+        ChatChannelGetMethod::class,
+        ChatChannelChangesMethod::class,
+        ChatMessageGetMethod::class,
+        ChatMessageChangesMethod::class,
     ];
 
     /** @var array<string, JmapMethodInterface> */

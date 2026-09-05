@@ -86,6 +86,63 @@ final class ChatMessageRepository
     }
 
     /**
+     * Every message in one channel, presented — the JMAP ChatMessage/get
+     * `ids: null` path (the bound check lives in the method handler).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listAll(string $username, string $channelId): array
+    {
+        $instance = $this->requireChannel($username, $channelId);
+        $messages = $this->sortedChannelMessages($instance);
+
+        return $this->presentMessages($messages, $messages, (string) $instance->uri);
+    }
+
+    /**
+     * Batch lookup by message id across accessible channels — the JMAP
+     * ChatMessage/get explicit-ids path. Groups by channel so the reply-count
+     * scan runs once per channel, not once per id.
+     *
+     * @param  list<string>  $ids
+     * @return array{list: list<array<string, mixed>>, notFound: list<string>}
+     */
+    public function getByIds(string $username, array $ids): array
+    {
+        /** @var array<int, CalendarInstance> $instances */
+        $instances = [];
+        /** @var array<int, list<string>> $uidsByCalendar */
+        $uidsByCalendar = [];
+        $notFound = [];
+        foreach ($ids as $id) {
+            $located = $this->locateMessage($username, $id);
+            if ($located === null) {
+                $notFound[] = $id;
+
+                continue;
+            }
+            [$object, $instance] = $located;
+            $calendarId = (int) $instance->calendarid;
+            $instances[$calendarId] = $instance;
+            $uidsByCalendar[$calendarId][] = (string) $object->uid;
+        }
+
+        $list = [];
+        foreach ($uidsByCalendar as $calendarId => $uids) {
+            $instance = $instances[$calendarId];
+            $all = $this->sortedChannelMessages($instance);
+            $wanted = array_flip($uids);
+            $window = array_values(array_filter(
+                $all,
+                static fn (array $message): bool => isset($wanted[(string) ($message['id'] ?? '')]),
+            ));
+            array_push($list, ...$this->presentMessages($window, $all, (string) $instance->uri));
+        }
+
+        return ['list' => $list, 'notFound' => $notFound];
+    }
+
+    /**
      * @param  array{id: string, body: string, parentId?: string|null}  $payload
      * @return array{message: array<string, mixed>, created: bool}
      */

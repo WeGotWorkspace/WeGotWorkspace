@@ -383,6 +383,22 @@ final class ChatChannelRepository
     }
 
     /**
+     * Channel-uri → synctoken map for the JMAP account-state codec fan-out
+     * (mirror of NotebookRepository::notebookSyncTokens; chunk D).
+     *
+     * @return array<string, string>
+     */
+    public function channelSyncTokens(string $username): array
+    {
+        $tokens = [];
+        foreach ($this->accessibleChatInstances($username) as $instance) {
+            $tokens[(string) $instance->uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+        }
+
+        return $tokens;
+    }
+
+    /**
      * @return Collection<int, CalendarInstance>
      */
     public function accessibleChatInstances(string $username)
