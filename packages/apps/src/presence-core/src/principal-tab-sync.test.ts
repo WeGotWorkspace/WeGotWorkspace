@@ -142,6 +142,23 @@ describe("principal-tab-sync sticky election", () => {
     expect(resolvePrincipalLeaderClaim("tab-b", true, "tab-b", "tab-a", true)).toBe("tab-a");
     expect(resolvePrincipalLeaderClaim("tab-a", true, "tab-a", "tab-b", true)).toBe("tab-a");
   });
+
+  it("keeps running lex-min across 3+ sequential claims (any arrival order)", () => {
+    // Follower already adopted global min must not regress to a larger mid-tier claim.
+    expect(resolvePrincipalLeaderClaim("tab-c", false, "tab-a", "tab-b", true)).toBe("tab-a");
+    // Mid-tier leader yields to global min, then ignores a larger third claim.
+    let known: string | null = "tab-b";
+    known = resolvePrincipalLeaderClaim("tab-b", true, known, "tab-a", true);
+    expect(known).toBe("tab-a");
+    known = resolvePrincipalLeaderClaim("tab-b", false, known, "tab-c", true);
+    expect(known).toBe("tab-a");
+    // Arrival order C then A then B from an isolated claimant still ends on A.
+    known = null;
+    known = resolvePrincipalLeaderClaim("tab-c", true, "tab-c", "tab-b", true);
+    expect(known).toBe("tab-b");
+    known = resolvePrincipalLeaderClaim("tab-c", false, known, "tab-a", true);
+    expect(known).toBe("tab-a");
+  });
 });
 
 describe("PrincipalTabCoordinator", () => {
@@ -365,5 +382,43 @@ describe("PrincipalTabCoordinator async BroadcastChannel", () => {
     expect(leaderA.meshLeader).toBe(true);
     expect(leaderB.meshLeader).toBe(false);
     expect(b.onResignLeader).toHaveBeenCalled();
+  });
+
+  it("converges to one lex-min leader when three tabs claim simultaneously", () => {
+    const a = handlers();
+    const b = handlers();
+    const c = handlers();
+    const leaderA = new PrincipalTabCoordinator(a, "tab-a");
+    const leaderB = new PrincipalTabCoordinator(b, "tab-b");
+    const leaderC = new PrincipalTabCoordinator(c, "tab-c");
+
+    leaderA.start();
+    leaderB.start();
+    leaderC.start();
+    advanceElectionGrace();
+    // Isolated cold starts — all three claim before any BC delivery.
+    expect(leaderA.meshLeader).toBe(true);
+    expect(leaderB.meshLeader).toBe(true);
+    expect(leaderC.meshLeader).toBe(true);
+
+    DeferredBroadcastChannel.flush();
+
+    expect(leaderA.meshLeader).toBe(true);
+    expect(leaderB.meshLeader).toBe(false);
+    expect(leaderC.meshLeader).toBe(false);
+    expect(leaderA.leaderTabId).toBe("tab-a");
+    expect(leaderB.leaderTabId).toBe("tab-a");
+    expect(leaderC.leaderTabId).toBe("tab-a");
+    expect(b.onResignLeader).toHaveBeenCalled();
+    expect(c.onResignLeader).toHaveBeenCalled();
+
+    // True leader exits while followers still hold post-reconcile state —
+    // must re-elect exactly one successor (not stay stuck on each other).
+    leaderA.stop();
+    DeferredBroadcastChannel.flush();
+
+    const successors = [leaderB, leaderC].filter((t) => t.meshLeader);
+    expect(successors).toHaveLength(1);
+    expect(successors[0]?.tabId).toBe("tab-b");
   });
 });

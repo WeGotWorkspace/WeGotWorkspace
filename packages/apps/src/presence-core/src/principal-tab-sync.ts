@@ -168,6 +168,12 @@ export function applyPrincipalTabPresenceMessage(
 /**
  * When a remote tab announces `isLeader`, adopt or reconcile so sticky self-election
  * after an isolated cold start cannot preserve a split brain.
+ *
+ * Contenders are reduced to the lexicographic minimum so N-way simultaneous
+ * claims (3+ tabs) converge to one sticky winner — not only pairwise A↔B.
+ * Followers must not overwrite a better `knownLeaderId` with a later, larger
+ * claimant (that left mid-tier ids sticky and could deadlock after the true
+ * leader exits).
  */
 export function resolvePrincipalLeaderClaim(
   selfTabId: string,
@@ -177,9 +183,11 @@ export function resolvePrincipalLeaderClaim(
   remoteIsLeader: boolean,
 ): string | null {
   if (!remoteIsLeader || remoteTabId === selfTabId) return knownLeaderId;
-  if (!selfIsLeader) return remoteTabId;
-  // Split brain: both claim — keep the lexicographically smaller tab id.
-  return remoteTabId.localeCompare(selfTabId) < 0 ? remoteTabId : selfTabId;
+  const contenders: string[] = [remoteTabId];
+  if (knownLeaderId) contenders.push(knownLeaderId);
+  if (selfIsLeader) contenders.push(selfTabId);
+  contenders.sort((a, b) => a.localeCompare(b));
+  return contenders[0] ?? knownLeaderId;
 }
 
 /**
