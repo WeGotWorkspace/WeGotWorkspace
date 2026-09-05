@@ -24,6 +24,12 @@ export type MeetWorkspaceProps = {
   /** Live app: selection feed for room-status polling and deep links. */
   onSelectedChannelChange?: (channelId: string | null) => void;
   /**
+   * Live app: channel id from the /meet/$channelId route. When it changes
+   * (deep link, back/forward) the workspace follows; selection changes flow
+   * back out through `onSelectedChannelChange`, which updates the URL.
+   */
+  routeChannelId?: string | null;
+  /**
    * Channel id -> user ids currently typing there (ephemeral presence signal,
    * self already excluded). Live app feeds `useMeetChannelTyping`; stories may
    * pass fixtures. Absent = no transport, indicator simply not rendered.

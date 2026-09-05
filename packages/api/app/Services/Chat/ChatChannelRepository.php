@@ -124,6 +124,7 @@ final class ChatChannelRepository
 
         $uri = $this->allocateChannelUri(
             isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null,
+            $name,
         );
 
         $properties = [
@@ -551,7 +552,7 @@ final class ChatChannelRepository
         $instance->save();
     }
 
-    private function allocateChannelUri(?string $requestedId): string
+    private function allocateChannelUri(?string $requestedId, string $name = ''): string
     {
         // Only chat- ids: dm- uris are exclusively minted by openDm's hash.
         $prefix = ChatCollectionUris::PREFIX_CHANNEL;
@@ -569,7 +570,20 @@ final class ChatChannelRepository
             return $requestedId;
         }
 
-        return $prefix.strtolower((string) Str::ulid());
+        // Channel id = slug of the *initial* name (readable urls/room ids);
+        // renames only change the displayname, the id never moves. Collisions
+        // dedupe with -2, -3, …; names that slug to nothing fall back to a ULID.
+        $slug = Str::slug(Str::substr($name, 0, 48));
+        if ($slug === '') {
+            return $prefix.strtolower((string) Str::ulid());
+        }
+
+        $candidate = $prefix.$slug;
+        for ($suffix = 2; CalendarInstance::query()->where('uri', $candidate)->exists(); $suffix++) {
+            $candidate = $prefix.$slug.'-'.$suffix;
+        }
+
+        return $candidate;
     }
 
     private function findChannelInstance(string $principalUri, string $channelUri): ?CalendarInstance

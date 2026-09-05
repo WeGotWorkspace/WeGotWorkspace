@@ -233,6 +233,7 @@ export function MeetWorkspace({
   chatColumn,
   liveCallChannelId,
   onSelectedChannelChange,
+  routeChannelId,
   typingByChannel,
   onComposerTyping,
   onToggleCall,
@@ -283,6 +284,13 @@ export function MeetWorkspace({
   useEffect(() => {
     onSelectedChannelChange?.(selectedId);
   }, [onSelectedChannelChange, selectedId]);
+
+  // Follow route changes (deep link, back/forward). Selection → URL runs the
+  // other way via onSelectedChannelChange, so equal values settle immediately.
+  useEffect(() => {
+    if (routeChannelId == null) return;
+    setSelectedId((current) => (current === routeChannelId ? current : routeChannelId));
+  }, [routeChannelId]);
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;

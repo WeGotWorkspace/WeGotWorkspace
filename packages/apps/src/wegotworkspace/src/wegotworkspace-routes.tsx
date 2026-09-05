@@ -448,6 +448,16 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: isLive ? withWeGotWorkspaceAuth(MeetChatApp) : MockMeetRoute,
   });
 
+  // Channel deep link (/meet/chat-general, /meet/dm%3Aadmin). Child of /meet so
+  // switching channels only changes the param — the workspace stays mounted.
+  // Static /meet/guest and /meet/join rank above this dynamic segment, and
+  // channel ids always carry the chat-/dm- prefix so they can never collide.
+  const meetChannelRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "$channelId",
+    head: meetPwaHead,
+  });
+
   const meetGuestRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/meet/guest",
@@ -657,7 +667,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     driveRoute,
     docsRoute,
     settingsRoute,
-    meetRoute,
+    meetRoute.addChildren([meetChannelRoute]),
     meetGuestRoute,
     meetJoinRoute,
     adminRoute,

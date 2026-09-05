@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
@@ -38,6 +39,14 @@ function MeetChatLiveWorkspace({
   const channels = useMemo(() => data.channels ?? [], [data.channels]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
 
+  // Deep links: /meet/$channelId ↔ workspace selection. The param route is a
+  // child of /meet, so navigating between channels never remounts this app.
+  const params = useParams({ strict: false }) as { channelId?: string };
+  const routeChannelId = params.channelId ?? null;
+  const routeChannelIdRef = useRef(routeChannelId);
+  routeChannelIdRef.current = routeChannelId;
+  const navigate = useNavigate();
+
   // DM rail click: eagerly find-or-create the backing dm- collection (chunk G)
   // so history/unread sync starts before the first message. Best-effort — a
   // failure just defers provisioning to the first send/call.
@@ -46,8 +55,17 @@ function MeetChatLiveWorkspace({
       setSelectedChannelId(channelId);
       const dmPrincipal = channelId ? meetDirectMessagePrincipalId(channelId) : null;
       if (dmPrincipal) void chatOperations?.openDm?.(dmPrincipal).catch(() => undefined);
+      // Reflect the selection in the URL. The very first sync (landing on bare
+      // /meet) replaces instead of pushing, so Back leaves the app.
+      if (channelId && channelId !== routeChannelIdRef.current) {
+        void navigate({
+          to: "/meet/$channelId",
+          params: { channelId },
+          replace: routeChannelIdRef.current === null,
+        });
+      }
     },
-    [chatOperations],
+    [chatOperations, navigate],
   );
 
   const { operations, callStageRoom, liveCallChannelId, joinedRoomCode } = useMeetChatCall({
@@ -107,8 +125,9 @@ function MeetChatLiveWorkspace({
       operations={operations}
       onLogout={onLogout}
       callStageRoom={callStageRoom}
-      // Returning to /meet mid-call (mini-player) lands on the call's channel.
-      initialChannelId={liveCallChannelId ?? undefined}
+      // Deep link wins; otherwise returning to /meet mid-call lands on the call.
+      initialChannelId={routeChannelId ?? liveCallChannelId ?? undefined}
+      routeChannelId={routeChannelId}
       liveCallChannelId={liveCallChannelId}
       onSelectedChannelChange={handleSelectedChannelChange}
       typingByChannel={typingByChannel}

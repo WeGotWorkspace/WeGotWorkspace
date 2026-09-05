@@ -72,6 +72,36 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
         $this->assertSame('meeting', $shown['kind']);
     }
 
+    public function test_channel_id_is_slug_of_initial_name_and_survives_rename(): void
+    {
+        $created = $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Design Reviews!',
+            'kind' => 'channel',
+        ])->assertCreated()->json();
+        $this->assertSame('chat-design-reviews', $created['id']);
+
+        // Renaming changes the display name only; the id (and thus room id,
+        // deep links) stays the slug of the initial name.
+        $this->asUser('alice')->patchJson('/api/v1/chat/channels/'.$created['id'], [
+            'name' => 'Design Crits',
+        ])->assertOk()->assertJsonPath('id', 'chat-design-reviews')
+            ->assertJsonPath('name', 'Design Crits');
+
+        // Same initial name dedupes with a numeric suffix.
+        $second = $this->asUser('bob')->postJson('/api/v1/chat/channels', [
+            'name' => 'Design Reviews',
+            'kind' => 'channel',
+        ])->assertCreated()->json();
+        $this->assertSame('chat-design-reviews-2', $second['id']);
+
+        // Names that slug to nothing fall back to a ULID-based id.
+        $emoji = $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => '🎉🎉🎉',
+            'kind' => 'channel',
+        ])->assertCreated()->json();
+        $this->assertMatchesRegularExpression('/^chat-[0-9a-z]{26}$/', (string) $emoji['id']);
+    }
+
     public function test_client_supplied_id_is_validated_and_conflicts_are_409(): void
     {
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
