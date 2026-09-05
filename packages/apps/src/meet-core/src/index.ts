@@ -19,6 +19,12 @@ export { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 export type { MeetCallBarPeer, MeetCallBarProps } from "@/meet-core/src/meet-call-bar";
 export { MeetCallStage } from "@/meet-core/src/meet-call-stage";
 export type { MeetCallStageProps, MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
+export { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+export type {
+  MeetCallKnocker,
+  MeetCallKnockQueueProps,
+  MeetCallKnockWaitingProps,
+} from "@/meet-core/src/meet-call-knock";
 export type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 export { MeetGuestChannel } from "@/meet-core/src/meet-guest-channel";
 export type {

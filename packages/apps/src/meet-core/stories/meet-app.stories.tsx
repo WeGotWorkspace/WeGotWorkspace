@@ -222,6 +222,63 @@ export const CallFullscreen: Story = {
   },
 };
 
+export const KnockWaiting: Story = {
+  name: "Knock waiting",
+  args: {
+    initialChannelId: "channel-random",
+    initialCallLayout: "compact",
+    initialWaitingForAdmission: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Knocker side (chunk-H knock path): the compact call chrome swaps to a
+    // polite wait banner — channel name, waiting copy, cancel. Text queries use
+    // getAllByText because the parked stage surface renders an aria-hidden copy.
+    await expect(canvas.getAllByText(meetLabels.knockWaitTitle("#random")).length).toBeGreaterThan(
+      0,
+    );
+    await expect(canvas.getAllByText(meetLabels.knockWaitHint).length).toBeGreaterThan(0);
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.devices }),
+    ).not.toBeInTheDocument();
+    const cancel = canvas.getByRole("button", { name: meetLabels.cancelRequest });
+    await userEvent.click(cancel);
+    // Cancel collapses the call chrome entirely (re-knock = Start again).
+    await expect(canvas.queryByText(meetLabels.knockWaitHint)).not.toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.start })).toBeInTheDocument();
+  },
+};
+
+export const KnockQueue: Story = {
+  name: "Knock queue",
+  args: {
+    initialChannelId: "channel-general",
+    initialCallLayout: "side-by-side",
+    initialKnockers: [
+      { id: "guest-1", name: "Alex Morgan" },
+      { id: "guest-2", name: "Jamie Lee" },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Member side: knockers surface as an alert queue in the stage chrome with
+    // per-person admit/deny (role queries skip the parked aria-hidden copy).
+    await expect(canvas.getByRole("alert")).toBeInTheDocument();
+    await expect(canvas.getByRole("alert").getAttribute("aria-label")).toBe(
+      meetLabels.waitingToJoin(2),
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+    );
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.denyName("Jamie Lee") }));
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+  },
+};
+
 export const ThreadOpen: Story = {
   name: "Thread",
   args: {

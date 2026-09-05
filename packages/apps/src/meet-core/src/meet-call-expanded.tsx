@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useState } from "react";
 import { MessageSquare, Minimize2, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
+import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
   meetCallGivenName,
@@ -93,6 +94,15 @@ export function MeetCallExpanded({
   const self = selfPeer(room);
   const remotes = room.controller.peers;
   const sharing = room.controller.screenOn;
+  // Chunk-I knock chrome: knocker-side wait state on the stage; member-side
+  // admit/deny queue in the chrome (guests never moderate knocks).
+  const waitingForAdmission = room.controller.waitingForAdmission;
+  const knockers = room.hasSignedInIdentity && !waitingForAdmission ? room.controller.knockers : [];
+  const cancelKnock = useCallback(() => {
+    onLeave?.();
+    void room.controller.leave();
+    // Both paths reset the same session state; the double leave is idempotent.
+  }, [onLeave, room.controller]);
   const spotlight = sharing
     ? {
         id: "screen",
@@ -141,64 +151,86 @@ export function MeetCallExpanded({
           </div>
         </header>
 
-        <div className="meet-call-stage__body">
-          <div className="meet-call-stage__spotlight">
-            {sharing && !room.controller.screenPreviewStream ? (
-              <div className="meet-call-stage__screen-fallback">{meetLabels.sharingScreen}</div>
-            ) : sharing && room.controller.screenPreviewStream ? (
-              <MeetStreamVideo
-                stream={room.controller.screenPreviewStream}
-                className="meet-call-stage__screen"
-              />
-            ) : (
-              <MeetPeerTile
-                name={spotlight.name}
-                stream={spotlight.stream ?? null}
-                userId={spotlight.id}
-                spotlight
-                speaking={
-                  !sharing && spotlight.id !== self.id && !meetCallPeerScreenSharing(spotlight)
-                }
-                caption={tileCaption(spotlight, spotlight.id === self.id, room.controller.videoOn)}
-                remoteMedia={spotlight.remoteMedia}
-                disclosedMedia={spotlight.disclosedMedia}
-                micOn={spotlight.id === self.id ? room.controller.micOn : undefined}
-                onToggleMic={spotlight.id === self.id ? room.controller.toggleMic : undefined}
-                onMuteSoon={room.onMuteSoon}
-              />
-            )}
+        {knockers.length > 0 ? (
+          <MeetCallKnockQueue
+            knockers={knockers}
+            onAdmit={(peerId) => void room.controller.admitKnocker(peerId)}
+            onDeny={(peerId) => void room.controller.denyKnocker(peerId)}
+          />
+        ) : null}
+
+        {waitingForAdmission ? (
+          <div className="meet-call-stage__body">
+            <MeetCallKnockWaiting
+              variant="stage"
+              channelTitle={channelTitle}
+              onCancel={cancelKnock}
+            />
           </div>
-          <ul className="meet-call-stage__strip">
-            {strip.map((peer) => {
-              const isSelf = peer.id === self.id;
-              return (
-                <li key={peer.id} className="meet-call-stage__strip-item">
-                  <MeetPeerTile
-                    name={peer.name}
-                    stream={peer.stream ?? null}
-                    userId={peer.id}
-                    compact
-                    caption={
-                      isSelf && room.controller.videoOn ? meetLabels.startingCamera : undefined
-                    }
-                    remoteMedia={peer.remoteMedia}
-                    disclosedMedia={
-                      isSelf
-                        ? { camera: room.controller.videoOn, mic: room.controller.micOn }
-                        : peer.disclosedMedia
-                    }
-                    micOn={isSelf ? room.controller.micOn : undefined}
-                    onToggleMic={isSelf ? room.controller.toggleMic : undefined}
-                    onMuteSoon={room.onMuteSoon}
-                  />
-                  <p className="meet-call-stage__strip-caption">
-                    {isSelf ? meetLabels.youLabel : meetCallGivenName(peer.name)}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        ) : (
+          <div className="meet-call-stage__body">
+            <div className="meet-call-stage__spotlight">
+              {sharing && !room.controller.screenPreviewStream ? (
+                <div className="meet-call-stage__screen-fallback">{meetLabels.sharingScreen}</div>
+              ) : sharing && room.controller.screenPreviewStream ? (
+                <MeetStreamVideo
+                  stream={room.controller.screenPreviewStream}
+                  className="meet-call-stage__screen"
+                />
+              ) : (
+                <MeetPeerTile
+                  name={spotlight.name}
+                  stream={spotlight.stream ?? null}
+                  userId={spotlight.id}
+                  spotlight
+                  speaking={
+                    !sharing && spotlight.id !== self.id && !meetCallPeerScreenSharing(spotlight)
+                  }
+                  caption={tileCaption(
+                    spotlight,
+                    spotlight.id === self.id,
+                    room.controller.videoOn,
+                  )}
+                  remoteMedia={spotlight.remoteMedia}
+                  disclosedMedia={spotlight.disclosedMedia}
+                  micOn={spotlight.id === self.id ? room.controller.micOn : undefined}
+                  onToggleMic={spotlight.id === self.id ? room.controller.toggleMic : undefined}
+                  onMuteSoon={room.onMuteSoon}
+                />
+              )}
+            </div>
+            <ul className="meet-call-stage__strip">
+              {strip.map((peer) => {
+                const isSelf = peer.id === self.id;
+                return (
+                  <li key={peer.id} className="meet-call-stage__strip-item">
+                    <MeetPeerTile
+                      name={peer.name}
+                      stream={peer.stream ?? null}
+                      userId={peer.id}
+                      compact
+                      caption={
+                        isSelf && room.controller.videoOn ? meetLabels.startingCamera : undefined
+                      }
+                      remoteMedia={peer.remoteMedia}
+                      disclosedMedia={
+                        isSelf
+                          ? { camera: room.controller.videoOn, mic: room.controller.micOn }
+                          : peer.disclosedMedia
+                      }
+                      micOn={isSelf ? room.controller.micOn : undefined}
+                      onToggleMic={isSelf ? room.controller.toggleMic : undefined}
+                      onMuteSoon={room.onMuteSoon}
+                    />
+                    <p className="meet-call-stage__strip-caption">
+                      {isSelf ? meetLabels.youLabel : meetCallGivenName(peer.name)}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         <div className="meet-call-stage__dock">
           <MeetCallToolbar

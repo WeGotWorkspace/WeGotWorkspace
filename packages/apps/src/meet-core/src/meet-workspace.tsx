@@ -42,6 +42,7 @@ import {
   type MeetChannelDialogState,
 } from "@/meet-core/src/meet-channel-dialog";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
+import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
@@ -898,7 +899,12 @@ export function MeetWorkspace({
                 inert={showExpandedStage || undefined}
                 aria-hidden={showExpandedStage}
               >
-                {showCallBar || keepCallChrome ? (
+                {/* Chunk-I knock chrome (chunk-H join policy): the compact bar
+                    swaps to a knock-wait banner while this user waits to be let
+                    in; joined members see the admit/deny queue under the bar. */}
+                {(showCallBar || keepCallChrome) && callRoom?.controller.waitingForAdmission ? (
+                  <MeetCallKnockWaiting channelTitle={headerTitle} onCancel={callToggle} />
+                ) : showCallBar || keepCallChrome ? (
                   <MeetCallBar
                     elapsedLabel={callRoom?.controller.elapsedLabel ?? "0:00"}
                     selfId={callRoom?.controller.selfId ?? session.user.username ?? "self"}
@@ -932,6 +938,16 @@ export function MeetWorkspace({
                     joined={showCallChrome}
                     invite={callInvite}
                     onInvite={onCallInvite}
+                  />
+                ) : null}
+                {showCallChrome &&
+                callRoom &&
+                !callRoom.controller.waitingForAdmission &&
+                callRoom.controller.knockers.length > 0 ? (
+                  <MeetCallKnockQueue
+                    knockers={callRoom.controller.knockers}
+                    onAdmit={(peerId) => void callRoom.controller.admitKnocker(peerId)}
+                    onDeny={(peerId) => void callRoom.controller.denyKnocker(peerId)}
                   />
                 ) : null}
                 {resolvedChat}

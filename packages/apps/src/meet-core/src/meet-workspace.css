@@ -711,6 +711,66 @@
   padding: 0;
 }
 
+/* Chunk-I knock chrome: member-side queue banner + knocker-side wait state. */
+.meet-call-knock-queue {
+  @apply flex shrink-0 flex-col gap-1 rounded-sm border p-2;
+  background-color: var(--meet-panel);
+  border-color: var(--meet-border);
+}
+
+.meet-workspace__chat-main > .meet-call-knock-queue {
+  @apply mx-3 mt-2;
+}
+
+.meet-call-stage__chrome > .meet-call-knock-queue {
+  @apply mx-auto w-full max-w-md;
+}
+
+.meet-call-knock-wait {
+  @apply flex shrink-0 items-center gap-3 rounded-sm border px-4 py-2.5;
+  background-color: var(--meet-panel);
+  border-color: var(--meet-border);
+}
+
+.meet-workspace__chat-main > .meet-call-knock-wait {
+  @apply mx-3 mt-2;
+}
+
+.meet-call-knock-wait__icon {
+  @apply flex size-9 shrink-0 items-center justify-center rounded-full;
+  background-color: var(--meet-accent);
+  color: var(--meet-text);
+}
+
+.meet-call-knock-wait__copy {
+  @apply min-w-0 flex-1;
+}
+
+.meet-call-knock-wait__title {
+  @apply truncate text-sm font-semibold;
+}
+
+.meet-call-knock-wait__hint {
+  @apply text-xs;
+  color: var(--meet-muted);
+}
+
+.meet-call-knock-wait--stage {
+  @apply m-auto max-w-md flex-col gap-4 p-8 text-center;
+}
+
+.meet-call-knock-wait--stage .meet-call-knock-wait__icon {
+  @apply size-16;
+}
+
+.meet-call-knock-wait--stage .meet-call-knock-wait__icon svg {
+  @apply size-7;
+}
+
+.meet-call-knock-wait--stage .meet-call-knock-wait__title {
+  @apply whitespace-normal text-base;
+}
+
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-chat {
   @apply flex min-h-0 flex-col border;
   border-radius: var(--control-radius);
