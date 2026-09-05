@@ -41,6 +41,8 @@ A call in a chat channel uses the deterministic room id = the channel collection
 
 `MAX_PEERS_PER_ROOM` (4) is unchanged and counts knocking peers too — a channel call fills up host slots and pending knockers alike.
 
+**Same-browser leftovers.** Join accepts an optional `browserId` (32 hex, minted in `localStorage` as `wgw.rtc.browserId`). When present, other peers in the room with that id are evicted immediately — a reload or second tab on the same device replaces the ghost instead of showing two avatars. A second device has its own token and both peers stay. Omitting `browserId` (old clients, tests) keeps the previous behavior.
+
 ## Room kinds
 
 `RoomIdCodec` dispatches the shared `/rooms/{roomId}/*` routes on the roomId prefix:

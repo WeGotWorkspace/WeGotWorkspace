@@ -79,6 +79,8 @@ export type HttpSignalingClientOptions = {
   getAuth?: () => HttpSignalingAuth;
   /** Collab API uses `peerId` instead of `from` on send. */
   sendFromField?: "from" | "peerId";
+  /** Meet: stable per-browser token so a reload evicts the leftover peer. */
+  getBrowserId?: () => string | undefined;
 };
 
 export class HttpSignalingClient {
@@ -92,12 +94,15 @@ export class HttpSignalingClient {
 
   private readonly sendFromField: "from" | "peerId";
 
+  private readonly getBrowserId: (() => string | undefined) | undefined;
+
   constructor(options: HttpSignalingClientOptions) {
     this.channel = options.channel;
     this.apiBase = options.apiBase.replace(/\/$/, "");
     this.fetchImpl = options.fetchImpl ?? ((url, init) => fetch(url, init));
     this.getAuth = options.getAuth ?? (() => ({}));
     this.sendFromField = options.sendFromField ?? "from";
+    this.getBrowserId = options.getBrowserId;
   }
 
   private roomUrl(room: string, suffix: string): string {
@@ -172,6 +177,8 @@ export class HttpSignalingClient {
       name: input.name,
     };
     if (input.peerId) body.peerId = input.peerId;
+    const browserId = this.getBrowserId?.();
+    if (browserId) body.browserId = browserId;
     return this.post<HttpSignalingJoinResult>(
       "join",
       this.roomUrl(input.room, "/participants"),

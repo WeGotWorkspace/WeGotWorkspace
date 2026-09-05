@@ -87,7 +87,11 @@ final class MeetSignalingService
                 $ownerMarker = $this->actors->ownerMarkerForGuestSession($guestSessionKey);
             }
 
-            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time());
+            $browserId = $this->readBrowserId($body);
+            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId);
+            if ($browserId !== null) {
+                $this->store->deletePeersForBrowser($room, $browserId, $peerId);
+            }
             if ($channel !== null && $isKnockRequest) {
                 // A (re-)knock always starts unadmitted — otherwise a reused
                 // peer id could inherit a stale admission.
@@ -303,6 +307,24 @@ final class MeetSignalingService
         }
 
         return $room;
+    }
+
+    /**
+     * Optional client token that identifies the browser profile (localStorage).
+     * Invalid or missing values are ignored — join still succeeds, leftover
+     * peers are just not evicted.
+     *
+     * @param  array<string, mixed>  $body
+     * @return non-empty-string|null
+     */
+    private function readBrowserId(array $body): ?string
+    {
+        $raw = $body['browserId'] ?? null;
+        if (! is_string($raw) || preg_match('/^[a-f0-9]{32}$/', $raw) !== 1) {
+            return null;
+        }
+
+        return $raw;
     }
 
     /**

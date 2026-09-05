@@ -7910,6 +7910,8 @@ export interface components {
             peerId: string;
             name?: string;
             sessionKey?: components["schemas"]["MeetSessionKey"];
+            /** @description Stable per browser profile. Same-browser rejoins evict leftover peers; a second device keeps both. */
+            browserId?: string;
         };
         /**
          * @example {

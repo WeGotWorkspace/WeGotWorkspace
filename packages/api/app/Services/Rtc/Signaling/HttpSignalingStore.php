@@ -44,19 +44,22 @@ final class HttpSignalingStore
             ->delete();
     }
 
-    public function upsertPeer(string $room, string $peerId, string $name, string $ownerMarker, int $now): void
+    public function upsertPeer(string $room, string $peerId, string $name, string $ownerMarker, int $now, ?string $browserId = null): void
     {
-        $this->policy->peerModelClass::upsert(
-            [[
-                'room' => $room,
-                'peer_id' => $peerId,
-                'name' => $name,
-                'owner_user' => $ownerMarker,
-                'seen_at' => $now,
-            ]],
-            ['room', 'peer_id'],
-            ['name', 'owner_user', 'seen_at'],
-        );
+        $row = [
+            'room' => $room,
+            'peer_id' => $peerId,
+            'name' => $name,
+            'owner_user' => $ownerMarker,
+            'seen_at' => $now,
+        ];
+        $update = ['name', 'owner_user', 'seen_at'];
+        if ($this->policy->persistBrowserId) {
+            $row['browser_id'] = $browserId ?? '';
+            $update[] = 'browser_id';
+        }
+
+        $this->policy->peerModelClass::upsert([$row], ['room', 'peer_id'], $update);
     }
 
     public function countPeers(string $room): int
@@ -96,6 +99,32 @@ final class HttpSignalingStore
         }
 
         $staleIds = $query->pluck('peer_id')->all();
+        foreach ($staleIds as $id) {
+            $this->leave($room, (string) $id);
+        }
+
+        return array_map(static fn ($id): string => (string) $id, $staleIds);
+    }
+
+    /**
+     * Drop leftover peers from the same browser in this room (reload / second
+     * tab). A second device has a different browser id and is left alone.
+     *
+     * @return list<string> deleted peer ids
+     */
+    public function deletePeersForBrowser(string $room, string $browserId, string $keepPeerId): array
+    {
+        if ($browserId === '' || ! $this->policy->persistBrowserId) {
+            return [];
+        }
+
+        $staleIds = $this->peerQuery()
+            ->where('room', $room)
+            ->where('browser_id', $browserId)
+            ->where('peer_id', '!=', $keepPeerId)
+            ->pluck('peer_id')
+            ->all();
+
         foreach ($staleIds as $id) {
             $this->leave($room, (string) $id);
         }

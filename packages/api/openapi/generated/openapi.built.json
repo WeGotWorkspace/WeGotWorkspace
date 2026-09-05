@@ -2835,6 +2835,11 @@
                     },
                     "sessionKey": {
                         "$ref": "#/components/schemas/MeetSessionKey"
+                    },
+                    "browserId": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{32}$",
+                        "description": "Stable per browser profile. Same-browser rejoins evict leftover peers; a second device keeps both."
                     }
                 },
                 "required": [
