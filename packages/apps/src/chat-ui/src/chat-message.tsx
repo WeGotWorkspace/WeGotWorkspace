@@ -188,7 +188,12 @@ export function ChatMessage({
                   <PopoverTrigger asChild>
                     <IconButton label={label} icon={<Icon />} size="sm" variant="ghost" />
                   </PopoverTrigger>
-                  <PopoverContent align="end" side="top" className="chat-reaction-bar__picker">
+                  <PopoverContent
+                    align="end"
+                    side="top"
+                    sideOffset={0}
+                    className="chat-reaction-bar__picker"
+                  >
                     <div className="chat-reaction-bar__picker-grid">
                       {CHAT_REACTION_EMOJIS.map((emoji) => (
                         <button

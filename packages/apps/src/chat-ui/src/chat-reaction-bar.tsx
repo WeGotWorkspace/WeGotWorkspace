@@ -80,7 +80,12 @@ export function ChatReactionBar({
             <Smile className="chat-reaction-bar__reaction-add-icon" aria-hidden />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" side="top" className="chat-reaction-bar__picker">
+        <PopoverContent
+          align="start"
+          side="top"
+          sideOffset={0}
+          className="chat-reaction-bar__picker"
+        >
           <div className="chat-reaction-bar__picker-grid">
             {CHAT_REACTION_EMOJIS.map((emoji) => (
               <button

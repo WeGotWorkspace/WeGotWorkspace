@@ -41,7 +41,25 @@
 }
 
 .chat-reaction-bar__picker {
-  @apply w-auto p-1.5;
+  @apply relative w-auto p-1.5;
+}
+
+/* Portaled picker sits off the trigger — keep a pointer bridge so the gap
+   does not drop hover before the cursor reaches the emoji grid. */
+.chat-reaction-bar__picker[data-side="top"]::after,
+.chat-reaction-bar__picker[data-side="bottom"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 0.5rem;
+}
+
+.chat-reaction-bar__picker[data-side="top"]::after {
+  top: 100%;
+}
+
+.chat-reaction-bar__picker[data-side="bottom"]::after {
+  bottom: 100%;
 }
 
 .chat-reaction-bar__picker-grid {

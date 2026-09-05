@@ -30,6 +30,12 @@ describe("chat-message continuation spacing", () => {
     );
   });
 
+  it("keeps hover actions visible while the reaction picker is open", () => {
+    expect(css).toMatch(
+      /\.chat-message:has\(\[data-state="open"\]\) \.chat-message__actions \{\s*display:\s*flex;/,
+    );
+  });
+
   it("wraps message body text instead of overflowing a narrow rail", () => {
     expect(css).toMatch(/\.chat-message__body \{[\s\S]*?break-words/);
     expect(css).toMatch(/\.chat-message__body \{[\s\S]*?overflow-wrap:\s*anywhere/);
