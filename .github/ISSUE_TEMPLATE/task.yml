@@ -12,6 +12,7 @@ body:
 
         Tasks are **implementable** delivery work. Link a parent Epic or Goal.
         Acceptance criteria should be checkbox-ready (`- [ ]`) so agents and PRs can verify done.
+        **Write the entire issue in English**, even if the conversation that produced it was in another language.
 
         Do not put tasks on the Product roadmap Project.
 

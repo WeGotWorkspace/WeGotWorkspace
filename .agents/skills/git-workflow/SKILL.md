@@ -41,7 +41,7 @@ Use **[Conventional Commits](https://www.conventionalcommits.org/)** for every c
 - **Format:** `<type>(<optional scope>): <description>`
   Example: `feat(settings): add mail transport label helper`
 - **Common types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-- **Description:** imperative mood, lowercase start (unless a proper noun), no trailing period; **subject line ~72 chars or less** when practical.
+- **Description:** **English**; imperative mood, lowercase start (unless a proper noun), no trailing period; **subject line ~72 chars or less** when practical.
 - **Body:** optional; use for **why** or non-obvious **what** (wrap at ~72 chars). Separate from subject with a blank line.
 - **Breaking changes:** `!` after type/scope (e.g. `feat(api)!:`) and/or a `BREAKING CHANGE:` footer when appropriate.
 

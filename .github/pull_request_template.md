@@ -1,6 +1,6 @@
 ## Summary
 
-<!-- Explain what this PR changes and why. -->
+<!-- Explain what this PR changes and why. Write in English. -->
 
 ## Type of change
 

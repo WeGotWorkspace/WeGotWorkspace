@@ -39,6 +39,8 @@ Goals live on the **Product roadmap** Project. Engineering epics, tasks, bugs, a
 
 Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened by non-maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+**Language:** Goals, delivery issues, comments, specs, and docs are **English** even when maintainers discuss them in another language. [english-only.md](.agents/skills/developer/english-only.md).
+
 ## Relationship to delivery
 
 | Layer | Owns |
