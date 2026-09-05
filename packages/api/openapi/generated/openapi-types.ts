@@ -10562,6 +10562,8 @@ export interface components {
             } | null;
             isSharee: boolean;
             myRights: components["schemas"]["TaskListRights"];
+            /** @description True for a group's auto-provisioned default channel: owned by the group principal, immutable through the generic channel endpoints (like DMs), name tracks the group display name. */
+            isDefault?: boolean;
             /** @description Channel topic shown in the main header subtitle (chat_channel_meta). */
             topic?: string | null;
             /** @description Meeting kind: linked meet_reservations room code for guest links. */

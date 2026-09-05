@@ -10,8 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Chat channel side table keyed by the CalDAV calendar id — kind
- * (channel|meeting|dm), topic, and the meet_reservations room code for
- * meeting channels. Rows cascade away with the calendar.
+ * (channel|meeting|dm), topic, the meet_reservations room code for meeting
+ * channels, and default_for_group (the group slug when this is the group's
+ * auto-provisioned default channel; unique per group). Rows cascade away with
+ * the calendar.
  */
 final class ChatChannelMeta extends Model
 {
@@ -43,6 +45,7 @@ final class ChatChannelMeta extends Model
         'kind',
         'topic',
         'room_code',
+        'default_for_group',
     ];
 
     /** @return BelongsTo<Calendar, $this> */

@@ -56,6 +56,10 @@
       "myRights": {
         "$ref": "#/components/schemas/TaskListRights"
       },
+      "isDefault": {
+        "type": "boolean",
+        "description": "True for a group's auto-provisioned default channel: owned by the group principal, immutable through the generic channel endpoints (like DMs), name tracks the group display name."
+      },
       "topic": {
         "type": ["string", "null"],
         "description": "Channel topic shown in the main header subtitle (chat_channel_meta)."

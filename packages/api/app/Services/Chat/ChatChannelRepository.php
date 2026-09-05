@@ -49,6 +49,7 @@ final class ChatChannelRepository
         private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly ChatUnreadCounter $unreadCounter,
+        private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
     ) {}
 
     /**
@@ -242,6 +243,7 @@ final class ChatChannelRepository
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be modified.');
+        $this->assertNotGroupDefault($instance, 'Group default channels cannot be modified.');
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         // Sharees may only rename/recolor their own instance; topic lives in the
@@ -303,6 +305,7 @@ final class ChatChannelRepository
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be deleted.');
+        $this->assertNotGroupDefault($instance, 'Group default channels cannot be deleted.');
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
@@ -443,6 +446,13 @@ final class ChatChannelRepository
         };
 
         $kind = $meta?->kind ?? ChatChannelMeta::KIND_CHANNEL;
+        $isDefault = $meta?->default_for_group !== null;
+        if ($isDefault) {
+            // Immutable like DMs (assertNotGroupDefault): surface that in the
+            // rights so clients hide the share/delete affordances.
+            $rights['mayShare'] = false;
+            $rights['mayDelete'] = false;
+        }
         $roster = $this->rosterUsernames($instance, $groupSlug);
 
         return [
@@ -455,6 +465,7 @@ final class ChatChannelRepository
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
             'myRights' => $rights,
+            'isDefault' => $isDefault,
             'topic' => $meta?->topic,
             'guestRoomCode' => $meta?->room_code,
             'dmPeer' => $kind === ChatChannelMeta::KIND_DM ? $this->dmPeerFromRoster($username, $roster) : null,
@@ -484,6 +495,14 @@ final class ChatChannelRepository
      */
     public function accessibleChatInstances(string $username)
     {
+        // Lazy ensure-on-read: every group the caller belongs to gets its
+        // default channel here — covers REST list/changes and the JMAP
+        // get/changes/state fan-out (they all funnel through this method), and
+        // retro-fits pre-existing groups with zero admin migration. Same
+        // pattern as the group calendar/notebook provisioning inside
+        // CalendarCollectionAccess::groupInstances.
+        $this->groupDefaults->ensureForGroupSlugs($this->groups->allowedGroupSlugs($username));
+
         return $this->collectionAccess
             ->accessibleInstances($username, fn ($query) => $query->vjournalOnly())
             ->filter(fn (CalendarInstance $instance): bool => ChatCollectionUris::isChatUri((string) $instance->uri))
@@ -595,6 +614,22 @@ final class ChatChannelRepository
     private function assertNotDm(CalendarInstance $instance, string $message): void
     {
         if (str_starts_with((string) $instance->uri, ChatCollectionUris::PREFIX_DM)) {
+            throw new ApiHttpException(403, $message, 'forbidden');
+        }
+    }
+
+    /**
+     * Group default channels get the same immutability as DMs: no rename,
+     * recolor, topic, extra shares, owner transfer, or delete for anyone —
+     * admins included. The channel exists exactly as provisioned; its display
+     * name tracks the group name (ChatGroupDefaultChannelProvisioner) and its
+     * lifecycle is the group's (deleted with the group's DAV collections in
+     * AdminGroupManagementService::delete).
+     */
+    private function assertNotGroupDefault(CalendarInstance $instance, string $message): void
+    {
+        $meta = $this->metaForCalendar((int) $instance->calendarid);
+        if ($meta?->default_for_group !== null) {
             throw new ApiHttpException(403, $message, 'forbidden');
         }
     }
