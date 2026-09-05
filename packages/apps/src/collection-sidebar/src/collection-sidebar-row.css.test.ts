@@ -7,6 +7,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "collection-sidebar-row.css"), "utf8");
 
 describe("collection sidebar row CSS", () => {
+  it("stretches the select control over the full row hover box", () => {
+    expect(css).toMatch(/\.collection-sidebar-row \{[\s\S]*@apply relative flex/);
+    expect(css).toMatch(
+      /\.collection-sidebar-row__select::after \{[\s\S]*position:\s*absolute;[\s\S]*inset:\s*0/,
+    );
+    expect(css).toMatch(
+      /\.collection-sidebar-row:has\(> \.collection-sidebar-row__select:focus-visible\)/,
+    );
+    expect(css).toMatch(/\.collection-sidebar-row__visibility \{[\s\S]*@apply relative z-10/);
+    expect(css).toMatch(/\.collection-sidebar-row__action\.button,[\s\S]*@apply relative z-10/);
+    expect(css).toMatch(/\.collection-sidebar-row__trailing \{[\s\S]*@apply relative z-10/);
+  });
+
   it("owns hover-only edit on fine pointers", () => {
     expect(css).toMatch(/@media \(hover: hover\) and \(pointer: fine\)/);
     expect(css).toMatch(/\.collection-sidebar-row__action\.button \{[\s\S]*opacity:\s*0/);

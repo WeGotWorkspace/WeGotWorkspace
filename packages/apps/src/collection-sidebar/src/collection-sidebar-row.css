@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .collection-sidebar-row {
-  @apply flex min-h-8 min-w-0 items-center gap-2 px-4 py-1 text-sm font-medium;
+  @apply relative flex min-h-8 min-w-0 items-center gap-2 px-4 py-1 text-sm font-medium;
   border-radius: var(--collection-sidebar-row-radius, 0.25rem);
   color: color-mix(in oklab, var(--color-ink) 75%, transparent);
 }
@@ -41,7 +41,7 @@
   --checkbox-checked-bg: var(--collection-row-color, var(--color-ink));
   --checkbox-checked-border: var(--collection-row-color, var(--color-ink));
   --checkbox-checked-fg: #ffffff;
-  flex-shrink: 0;
+  @apply relative z-10 shrink-0;
   border-color: var(--collection-row-color, var(--color-ink));
 }
 
@@ -57,16 +57,12 @@
 }
 
 .collection-sidebar-row__dot {
-  @apply size-2.5 shrink-0 rounded-full;
+  @apply relative z-10 size-2.5 shrink-0 rounded-full;
   background-color: var(--collection-row-color, var(--color-ink));
 }
 
-.collection-sidebar-row__leading {
-  @apply inline-flex shrink-0 items-center;
-}
-
 .collection-sidebar-row__select {
-  @apply flex min-w-0 flex-1 items-center gap-1.5;
+  @apply flex min-w-0 flex-1 items-center gap-1.5 self-stretch;
   margin: 0;
   padding: 0;
   border: 0;
@@ -77,18 +73,32 @@
   cursor: pointer;
 }
 
-.collection-sidebar-row__select:focus-visible {
+/* Stretch the select control over the row padding (same box as hover). */
+.collection-sidebar-row__select::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.collection-sidebar-row__select:focus {
+  outline: none;
+}
+
+.collection-sidebar-row:has(> .collection-sidebar-row__select:focus-visible) {
   outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
   outline-offset: 1px;
-  border-radius: 0.125rem;
 }
 
 .collection-sidebar-row__leading {
-  @apply inline-flex shrink-0 items-center justify-center;
+  @apply relative z-10 inline-flex shrink-0 items-center justify-center;
+}
+
+.collection-sidebar-row__trailing {
+  @apply relative z-10 inline-flex shrink-0 items-center;
 }
 
 .collection-sidebar-row__title {
-  @apply inline-flex min-w-0 items-center gap-1;
+  @apply relative z-10 inline-flex min-w-0 items-center gap-1;
 }
 
 .collection-sidebar-row__name {
@@ -102,7 +112,7 @@
 
 .collection-sidebar-row__action.button,
 .collection-sidebar-row__expand.button {
-  @apply size-6 shrink-0;
+  @apply relative z-10 size-6 shrink-0;
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
 }
 
