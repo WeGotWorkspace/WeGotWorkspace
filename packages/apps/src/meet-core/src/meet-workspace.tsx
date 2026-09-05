@@ -231,6 +231,8 @@ export function MeetWorkspace({
   chatColumn,
   liveCallChannelId,
   onSelectedChannelChange,
+  typingByChannel,
+  onComposerTyping,
   onToggleCall,
   threadOpen = false,
   threadMessage = null,
@@ -522,6 +524,21 @@ export function MeetWorkspace({
     : selectedDm
       ? meetLabels.dmComposer(selectedDm.displayName)
       : undefined;
+  const typingNames = useMemo(() => {
+    if (!selectedId) return [];
+    return (typingByChannel?.[selectedId] ?? [])
+      .filter((userId) => userId !== currentUserId)
+      .map(
+        (userId) =>
+          mentionPrincipals.find((principal) => principal.id === userId)?.displayName ?? userId,
+      );
+  }, [currentUserId, mentionPrincipals, selectedId, typingByChannel]);
+  const onComposerTypingForSelected = useCallback(
+    (typing: boolean) => {
+      if (selectedId) onComposerTyping?.(selectedId, typing);
+    },
+    [onComposerTyping, selectedId],
+  );
   const builtChat = (
     <MeetChatColumn
       messages={chat.channelMessages}
@@ -537,6 +554,8 @@ export function MeetWorkspace({
       onStartEdit={chat.setEditingMessageId}
       onCancelEdit={onCancelEdit}
       onSaveEdit={onSaveEdit}
+      typingNames={typingNames}
+      onComposerTyping={onComposerTypingForSelected}
     />
   );
   const resolvedChat = chatColumn ?? builtChat;
@@ -555,6 +574,8 @@ export function MeetWorkspace({
       onStartEdit={chat.setEditingMessageId}
       onCancelEdit={onCancelEdit}
       onSaveEdit={onSaveEdit}
+      typingNames={typingNames}
+      onComposerTyping={onComposerTypingForSelected}
     />
   );
   const builtStage =

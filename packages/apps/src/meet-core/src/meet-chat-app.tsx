@@ -6,6 +6,7 @@ import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
+import { useMeetChannelTyping } from "@/meet-core/src/use-meet-channel-typing";
 import { useMeetChatCall } from "@/meet-core/src/use-meet-chat-call";
 import { useMeetChannelCallActivity } from "@/meet-core/src/use-meet-channel-call-activity";
 
@@ -43,6 +44,10 @@ function MeetChatLiveWorkspace({
     chatOperations,
   });
 
+  // Typing indicators ride the workspace presence mesh (chunk K); degrades to a
+  // no-op when the mesh is absent (guest session, mesh not joined yet).
+  const { typingByChannel, onComposerTyping } = useMeetChannelTyping();
+
   const callActiveByChannel = useMeetChannelCallActivity({
     operations: meetOperations,
     channels,
@@ -71,6 +76,8 @@ function MeetChatLiveWorkspace({
       callStageRoom={callStageRoom}
       liveCallChannelId={liveCallChannelId}
       onSelectedChannelChange={setSelectedChannelId}
+      typingByChannel={typingByChannel}
+      onComposerTyping={onComposerTyping}
     />
   );
 }

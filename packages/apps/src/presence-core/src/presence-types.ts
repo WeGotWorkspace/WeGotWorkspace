@@ -36,13 +36,24 @@ export type PresenceSnapshot = {
   roster: PresenceCoworker[];
   chat: PresenceChatMessage[];
   typingUsernames: string[];
+  /**
+   * Chat-channel-scoped typing (chunk K): channel id -> sorted usernames
+   * currently typing there. Ephemeral, expiry-pruned; self excluded.
+   */
+  channelTyping: Record<string, string[]>;
 };
 
-/** Data-only payload envelope carried on the `presence` data channel. */
+/**
+ * Data-only payload envelope carried on the `presence` data channel.
+ *
+ * `typing` without `channel` is the workspace-wide indicator; with `channel`
+ * it scopes to a Meet chat channel, and `stop: true` retracts it early
+ * (send/blur/cleared composer) instead of waiting for the receiver TTL.
+ */
 export type PresenceEnvelope =
   | { v: 1; kind: "presence"; status: PresenceUserStatus }
   | { v: 1; kind: "chat"; id: string; body: string; ts: number }
-  | { v: 1; kind: "typing" };
+  | { v: 1; kind: "typing"; channel?: string; stop?: boolean };
 
 export type PresenceMeshEvent =
   | { type: "roster" }

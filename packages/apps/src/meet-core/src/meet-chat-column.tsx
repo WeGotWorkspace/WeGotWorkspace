@@ -8,6 +8,7 @@ import type {
 } from "@/chat-ui/src/chat-types";
 import type { ChatMessage as MeetChatMessage } from "@/meet-core/src/meet-types";
 import { chatMessageCanOpenThread } from "@/chat-ui/src/chat-thread-actions";
+import { meetTypingLabel } from "@/meet-core/src/meet-typing-label";
 import { cn } from "@/lib/utils";
 
 export type MeetChatColumnProps = {
@@ -24,6 +25,10 @@ export type MeetChatColumnProps = {
   onStartEdit?: (messageId: string) => void;
   onCancelEdit?: () => void;
   onSaveEdit?: (messageId: string, payload: ChatSendPayload) => void;
+  /** Display names currently typing in this conversation (ephemeral presence signal). */
+  typingNames?: readonly string[];
+  /** Composer activity for typing broadcasts: `true` = content present, `false` = stop. */
+  onComposerTyping?: (typing: boolean) => void;
   className?: string;
 };
 
@@ -41,8 +46,11 @@ export const MeetChatColumn = memo(function MeetChatColumn({
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
+  typingNames = [],
+  onComposerTyping,
   className,
 }: MeetChatColumnProps) {
+  const typingLabel = meetTypingLabel(typingNames);
   return (
     <div className={cn("meet-workspace__chat-column", className)}>
       <ChatMessageList
@@ -89,8 +97,16 @@ export const MeetChatColumn = memo(function MeetChatColumn({
           ];
         }}
       />
+      <div className="meet-workspace__typing" aria-live="polite">
+        {typingLabel}
+      </div>
       <div className="meet-workspace__chat-composer">
-        <ChatComposer principals={principals} placeholder={placeholder} onSend={onSend} />
+        <ChatComposer
+          principals={principals}
+          placeholder={placeholder}
+          onSend={onSend}
+          onTypingChange={onComposerTyping}
+        />
       </div>
     </div>
   );

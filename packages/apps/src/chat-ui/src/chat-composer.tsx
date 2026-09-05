@@ -24,6 +24,11 @@ export type ChatComposerProps = {
   disabled?: boolean;
   onSend: (payload: ChatSendPayload) => void;
   onCancel?: () => void;
+  /**
+   * Typing activity: `true` on every edit that leaves content in the composer,
+   * `false` when it empties, blurs, or a message is sent. Callers throttle.
+   */
+  onTypingChange?: (typing: boolean) => void;
   /** Caption under the card. Pass `null` to hide (e.g. inline edit). */
   hint?: string | null;
   className?: string;
@@ -36,6 +41,7 @@ export function ChatComposer({
   disabled = false,
   onSend,
   onCancel,
+  onTypingChange,
   hint = chatUiLabels.sendHint,
   className,
 }: ChatComposerProps) {
@@ -43,6 +49,8 @@ export function ChatComposer({
   onSendRef.current = onSend;
   const onCancelRef = useRef(onCancel);
   onCancelRef.current = onCancel;
+  const onTypingChangeRef = useRef(onTypingChange);
+  onTypingChangeRef.current = onTypingChange;
   const mentionKeyRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
   const editorRef = useRef<Editor | null>(null);
 
@@ -55,6 +63,7 @@ export function ChatComposer({
         mentions: parseChatMentions(body, principals),
       });
       current.commands.clearContent();
+      onTypingChangeRef.current?.(false);
     },
     [principals],
   );
@@ -64,7 +73,16 @@ export function ChatComposer({
     format: "markdown",
     editable: !disabled,
     placeholder,
+    onUpdate: ({ content }) => {
+      onTypingChangeRef.current?.(content.trim().length > 0);
+    },
     editorProps: {
+      handleDOMEvents: {
+        blur: () => {
+          onTypingChangeRef.current?.(false);
+          return false;
+        },
+      },
       handleKeyDown: (_view, event) => {
         if (mentionKeyRef.current(event)) return true;
         if (event.key === "Escape" && onCancelRef.current) {

@@ -9,19 +9,19 @@ Spec: `.agents/specs/701-meet-chat-backend/spec.md` (Epic #701, Task #704).
 
 ## Module map
 
-| Module | Role |
-|--------|------|
-| `src/lib/api/wgw/meet-chat.ts` | Typed REST client for the 13 `/chat/*` operations (generated `@wgw-api-generated/chat-types`), wire→app mapping |
-| `src/lib/api/wgw/meet-chat-jmap.ts` | JMAP client factory (`POST /jmap` through `wgwFetch`) |
-| `src/lib/jmap-client/chat/` + `adapter/JmapChatAdapter.ts` | `ChatChannel`/`ChatMessage` `/changes` → `/get` inbound poll |
-| `src/lib/offline/meet-chat/meet-chat-schema.ts` | Dexie tables (domain `meet-chat`, version block 60–69) |
-| `src/lib/offline/meet-chat/chat-ulid.ts` | Client-side ULID generator for message ids |
-| `src/lib/offline/meet-chat-offline-store.ts` | Dexie cache, sync tokens, backfill markers, outbox enqueue/coalescing |
-| `src/lib/offline/meet-chat-outbox-flush.ts` | Outbox replay on reconnect |
-| `src/lib/offline/meet-chat-inbound-sync.ts` | REST changes-feed inbound + full-history backfill |
-| `src/lib/offline/meet-chat-jmap-inbound.ts` | Dexie ingest for remote objects (pending-write protection) |
-| `src/lib/offline/meet-chat-hybrid-operations.ts` | `MeetChatOperations` implementation + hybrid bootstrap |
-| `src/meet-core/src/meet-chat-api-source.ts` / `use-meet-chat-api.ts` | Mock vs live source (`wgwLiveApiEnabled()`) + workspace hook |
+| Module                                                               | Role                                                                                                            |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/lib/api/wgw/meet-chat.ts`                                       | Typed REST client for the 13 `/chat/*` operations (generated `@wgw-api-generated/chat-types`), wire→app mapping |
+| `src/lib/api/wgw/meet-chat-jmap.ts`                                  | JMAP client factory (`POST /jmap` through `wgwFetch`)                                                           |
+| `src/lib/jmap-client/chat/` + `adapter/JmapChatAdapter.ts`           | `ChatChannel`/`ChatMessage` `/changes` → `/get` inbound poll                                                    |
+| `src/lib/offline/meet-chat/meet-chat-schema.ts`                      | Dexie tables (domain `meet-chat`, version block 60–69)                                                          |
+| `src/lib/offline/meet-chat/chat-ulid.ts`                             | Client-side ULID generator for message ids                                                                      |
+| `src/lib/offline/meet-chat-offline-store.ts`                         | Dexie cache, sync tokens, backfill markers, outbox enqueue/coalescing                                           |
+| `src/lib/offline/meet-chat-outbox-flush.ts`                          | Outbox replay on reconnect                                                                                      |
+| `src/lib/offline/meet-chat-inbound-sync.ts`                          | REST changes-feed inbound + full-history backfill                                                               |
+| `src/lib/offline/meet-chat-jmap-inbound.ts`                          | Dexie ingest for remote objects (pending-write protection)                                                      |
+| `src/lib/offline/meet-chat-hybrid-operations.ts`                     | `MeetChatOperations` implementation + hybrid bootstrap                                                          |
+| `src/meet-core/src/meet-chat-api-source.ts` / `use-meet-chat-api.ts` | Mock vs live source (`wgwLiveApiEnabled()`) + workspace hook                                                    |
 
 ## Dexie schema
 
@@ -116,7 +116,7 @@ or this file and the client must change together:
    collections, exactly like `Note/changes` over notebooks). Consequently:
    - a reaction/edit/tombstone anywhere surfaces as an `updated` message id;
    - a message delete is a **tombstone** (`STATUS:CANCELLED` → `deletedAt`
-     set, body empty) and arrives as `updated`, *not* `destroyed`; `destroyed`
+     set, body empty) and arrives as `updated`, _not_ `destroyed`; `destroyed`
      is reserved for hard removals (e.g. channel purge);
    - when a channel is newly shared to the account, its channel id appears in
      `ChatChannel/changes.created` — the client then runs a one-time REST
@@ -128,7 +128,7 @@ or this file and the client must change together:
    with `type: "cannotCalculateChanges"` when the change log was pruned → the
    client refetches everything and reconciles. The REST changes endpoints
    signal the same condition with an error body `{ "code":
-   "cannotCalculateChanges" }` (mirrors `/notes/*/changes`).
+"cannotCalculateChanges" }` (mirrors `/notes/*/changes`).
 7. **State tokens are opaque strings**; the client stores them per type
    (channels) and per channel (messages, REST path) and never inspects them.
 
@@ -147,6 +147,45 @@ or this file and the client must change together:
 4. Reaction toggle POST returns the **full updated message**.
 5. Errors are JSON with an optional `code` field; 404 means the target object
    (or its channel) is gone and local state may be dropped.
+
+## Typing indicators (chunk K)
+
+Typing signals ride the **workspace presence mesh** (`presence-core`, PR #690)
+— WebRTC data channels on the suite-level principal room — never the
+REST/JMAP sync path. Nothing is persisted; a signal is stale after seconds by
+design.
+
+**Transport reality (verified):** `PresenceProvider` mounts **above the
+router** (`wegotworkspace-app.tsx`) and joins the workspace-wide principal
+room (`p_workspace`) for every authenticated member — eagerly on desktop,
+deferred-until-visible on mobile. Typing indicators therefore work **whether
+or not an RTC call is up**; they do _not_ require the Meet call stage. They
+are absent (silently, no errors) when there is no transport:
+
+- **guest sessions** (`/meet/join`) — guests never join the principal mesh;
+- the member's mesh **has not joined yet** (lazy mode with a hidden tab,
+  transient join failure) — outbound sends are dropped by the store guard;
+- **mock/Storybook trees** — no `PresenceProvider`, hook context is null.
+
+**Known v1 scope limit:** the broadcast goes to every peer in the workspace
+mesh, not just channel members — receivers only _render_ it for the channel
+they are viewing, but "someone is typing in channel X" metadata is technically
+observable by any authenticated member with a modified client. Acceptable at
+self-hosted team scale; a member-scoped fan-out would need channel-ACL
+knowledge inside the mesh.
+
+| Module                                                  | Role                                                                                                                                                                    |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `presence-core/src/presence-types.ts`                   | `typing` envelope gains optional `channel` + `stop` (v1 envelope, old clients ignore the extra fields)                                                                  |
+| `presence-core/src/presence-store.ts`                   | `sendChannelTyping`/`stopChannelTyping`; inbound → `snapshot.channelTyping` (channel id → usernames), **~6s TTL** expiry, self/multi-tab excluded                       |
+| `meet-core/src/meet-typing-heartbeat.ts`                | Pure sender throttle: first keystroke broadcasts immediately, then at most one per **~4s**; `stop()` retracts eagerly (send / blur / emptied composer / channel switch) |
+| `meet-core/src/use-meet-channel-typing.ts`              | Bridges the presence store to `MeetWorkspace` props; degrades to empty map + no-op sends without a store                                                                |
+| `meet-core/src/meet-typing-label.ts` + `meet-labels.ts` | "Alice is typing…" / "A and B are typing…" / "N people are typing…"                                                                                                     |
+| `chat-ui/src/chat-composer.tsx`                         | `onTypingChange` (true on non-empty edits; false on send, blur, emptied)                                                                                                |
+| `meet-core/src/meet-chat-column.tsx`                    | Fixed-height `meet-workspace__typing` row (aria-live polite) above the composer                                                                                         |
+
+Heartbeat (4s) < receiver TTL (6s), so a continuous typist never flickers;
+an abandoned draft fades within ~6s even if the stop envelope is lost.
 
 ## Not in chunk E (owned elsewhere)
 

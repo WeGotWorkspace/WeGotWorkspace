@@ -18,6 +18,8 @@ export type MeetWorkspaceStoryArgs = {
   initialCallLayout?: MeetCallStageLayout;
   initialThreadId?: string | null;
   initialVideoOn?: boolean;
+  /** Mock-tier typing fixture (channel id -> directory user ids). */
+  typingByChannel?: Record<string, string[]>;
 };
 
 const STORY_BAR_PEERS = [
@@ -96,6 +98,7 @@ export function MeetWorkspaceStoryHarness({
   initialCallLayout = "collapsed",
   initialThreadId = null,
   initialVideoOn = false,
+  typingByChannel,
 }: MeetWorkspaceStoryArgs) {
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
   const operations = useMemo(
@@ -124,6 +127,7 @@ export function MeetWorkspaceStoryHarness({
       initialCallLayout={initialCallLayout}
       initialThreadId={initialThreadId}
       callStageRoom={callStageRoom}
+      typingByChannel={typingByChannel}
     />
   );
 }

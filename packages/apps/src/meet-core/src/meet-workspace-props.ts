@@ -23,6 +23,14 @@ export type MeetWorkspaceProps = {
   liveCallChannelId?: string | null;
   /** Live app: selection feed for room-status polling and deep links. */
   onSelectedChannelChange?: (channelId: string | null) => void;
+  /**
+   * Channel id -> user ids currently typing there (ephemeral presence signal,
+   * self already excluded). Live app feeds `useMeetChannelTyping`; stories may
+   * pass fixtures. Absent = no transport, indicator simply not rendered.
+   */
+  typingByChannel?: Record<string, string[]>;
+  /** Composer typing activity for the selected conversation (throttling happens upstream). */
+  onComposerTyping?: (channelId: string, typing: boolean) => void;
   /** When true, `callStage` fills main on `callChannelId` only. */
   callActive?: boolean;
   /** Channel that owns a story/fixture `callStage` — chrome does not follow channel switches. */

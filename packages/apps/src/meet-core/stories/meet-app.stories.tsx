@@ -67,6 +67,26 @@ export const Default: Story = {
   },
 };
 
+export const TypingIndicator: Story = {
+  name: "Typing indicator",
+  args: {
+    initialChannelId: "channel-random",
+    initialCallLayout: "collapsed",
+    typingByChannel: {
+      "channel-random": ["ada.lovelace", "grace.hopper"],
+      "channel-general": ["alan.turing"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Selected channel resolves directory display names (main column; the parked
+    // rail copy may add a second match); other channels stay silent.
+    const rows = canvas.getAllByText(meetLabels.typingTwo("Ada Lovelace", "Grace Hopper"));
+    await expect(rows.length).toBeGreaterThan(0);
+    await expect(canvas.queryByText(meetLabels.typingOne("Alan Turing"))).not.toBeInTheDocument();
+  },
+};
+
 export const IdleChannel: Story = {
   name: "Idle channel",
   args: {
