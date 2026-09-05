@@ -838,8 +838,8 @@
   --app-switch-lockup-bg: var(--meet-sidebar);
   --sidebar-logo-close-button-color: var(--color-ink);
   --sidebar-badge-fg: var(--meet-accent);
-  --meet-unread-bg: color-mix(in oklab, var(--meet-accent) 22%, var(--color-cream, #ffffff));
-  --meet-unread-fg: var(--meet-accent-strong);
+  --meet-unread-bg: var(--meet-accent-strong);
+  --meet-unread-fg: #ffffff;
   --workspace-sidebar-toggle-color: var(--color-ink);
   --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
@@ -1157,7 +1157,7 @@
 
 .meet-workspace__live {
   @apply inline-flex size-5 shrink-0 items-center justify-center;
-  color: var(--meet-accent);
+  color: var(--meet-accent-strong);
 }
 
 .meet-workspace__live-icon {

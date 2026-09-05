@@ -225,10 +225,11 @@ describe("meet workspace sidebar chrome", () => {
   it("styles unread counts as trailing accent pills, not red coins", () => {
     expect(tsx).toMatch(/trailing=\{/);
     expect(css).toMatch(/\.meet-workspace \.collection-sidebar-row__title/);
-    expect(css).toMatch(/--meet-unread-bg:\s*color-mix\(in oklab,\s*var\(--meet-accent\)/);
-    expect(css).toMatch(/--meet-unread-fg:\s*var\(--meet-accent-strong\)/);
+    expect(css).toMatch(/--meet-unread-bg:\s*var\(--meet-accent-strong\)/);
+    expect(css).toMatch(/--meet-unread-fg:\s*#ffffff/);
     expect(css).toMatch(/\.meet-workspace__unread[\s\S]*min-w-6/);
-    expect(css).toMatch(/\.meet-workspace__live \{[\s\S]*?color:\s*var\(--meet-accent\)/);
+    expect(css).toMatch(/\.meet-workspace__live \{[\s\S]*?color:\s*var\(--meet-accent-strong\)/);
+    expect(css).not.toMatch(/--meet-live-badge-/);
     expect(css).toMatch(/\.meet-workspace__live-icon[\s\S]*size-3\.5/);
     expect(css.match(/\.meet-workspace__live \{[\s\S]*?\n\}/)?.[0] ?? "").not.toMatch(
       /min-w-6|"Live"/,
