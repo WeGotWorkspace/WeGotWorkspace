@@ -144,15 +144,25 @@ describe("principal-tab-sync sticky election", () => {
   });
 
   it("keeps running lex-min across 3+ sequential claims (any arrival order)", () => {
+    // Non-ascending mid → lower → higher (classic 5 → 2 → 8): "adopt latest remote"
+    // would end on tab-8; running lex-min must stay on the global min tab-2.
+    let known: string | null = null;
+    known = resolvePrincipalLeaderClaim("tab-observer", false, known, "tab-5", true);
+    expect(known).toBe("tab-5");
+    known = resolvePrincipalLeaderClaim("tab-observer", false, known, "tab-2", true);
+    expect(known).toBe("tab-2");
+    known = resolvePrincipalLeaderClaim("tab-observer", false, known, "tab-8", true);
+    expect(known).toBe("tab-2");
+
     // Follower already adopted global min must not regress to a larger mid-tier claim.
     expect(resolvePrincipalLeaderClaim("tab-c", false, "tab-a", "tab-b", true)).toBe("tab-a");
     // Mid-tier leader yields to global min, then ignores a larger third claim.
-    let known: string | null = "tab-b";
+    known = "tab-b";
     known = resolvePrincipalLeaderClaim("tab-b", true, known, "tab-a", true);
     expect(known).toBe("tab-a");
     known = resolvePrincipalLeaderClaim("tab-b", false, known, "tab-c", true);
     expect(known).toBe("tab-a");
-    // Arrival order C then A then B from an isolated claimant still ends on A.
+    // Arrival order C then B then A from an isolated claimant still ends on A.
     known = null;
     known = resolvePrincipalLeaderClaim("tab-c", true, "tab-c", "tab-b", true);
     expect(known).toBe("tab-b");
