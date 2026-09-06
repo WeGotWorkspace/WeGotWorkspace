@@ -28,8 +28,15 @@ const MOCK_MEET_CHANNELS = [
   },
 ];
 
-function generateMeet(canvas: ReturnType<typeof within>) {
+function meetMenuTrigger(canvas: ReturnType<typeof within>) {
   return canvas.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd });
+}
+
+async function chooseNewMeetLink(canvas: ReturnType<typeof within>) {
+  await userEvent.click(meetMenuTrigger(canvas));
+  await userEvent.click(
+    canvas.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }),
+  );
 }
 
 const bootstrap = createCalendarAppBootstrap();
@@ -63,7 +70,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await expect(generateMeet(canvas)).toBeEnabled();
+    await expect(meetMenuTrigger(canvas)).toBeEnabled();
     await expect(canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeTruthy();
     await expect(
       canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationLabel),
@@ -118,8 +125,8 @@ export const WithMeetLink: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await expect(generateMeet(canvas)).toBeEnabled();
-    await userEvent.click(generateMeet(canvas));
+    await expect(meetMenuTrigger(canvas)).toBeEnabled();
+    await chooseNewMeetLink(canvas);
     const confirm = canvas.getByRole("alertdialog");
     await expect(confirm).toHaveTextContent(defaultCalendarLabels.eventMeetReplaceTitle);
     await userEvent.click(
@@ -152,13 +159,19 @@ export const WithChannelPicker: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    // Both affordances live side by side: ad-hoc generate stays available.
-    await expect(generateMeet(canvas)).toBeEnabled();
-    const trigger = canvas.getByRole("button", {
-      name: defaultCalendarLabels.eventMeetPickChannel,
-    });
+    const trigger = meetMenuTrigger(canvas);
+    await expect(trigger).toBeEnabled();
+    await expect(
+      canvas.queryByRole("button", { name: defaultCalendarLabels.eventMeetPickChannel }),
+    ).toBeNull();
     await userEvent.click(trigger);
+    const newLink = await canvas.findByRole("menuitem", {
+      name: defaultCalendarLabels.eventMeetNewLink,
+    });
     const general = await canvas.findByRole("menuitem", { name: "General" });
+    const items = canvas.getAllByRole("menuitem");
+    await expect(items[0]).toBe(newLink);
+    await expect(canvas.getByRole("separator")).toBeTruthy();
     await expect(canvas.getByRole("menuitem", { name: "Standup" })).toBeTruthy();
     await userEvent.click(general);
     const url = canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
@@ -179,8 +192,8 @@ export const MeetReserving: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await userEvent.click(generateMeet(canvas));
-    const generate = generateMeet(canvas);
+    await chooseNewMeetLink(canvas);
+    const generate = meetMenuTrigger(canvas);
     await expect(generate).toBeDisabled();
     await expect(generate.querySelector(".loading-spinner")).toBeTruthy();
     await expect(

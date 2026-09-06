@@ -598,18 +598,7 @@
 
 .calendar-dialog-surface .calendar-event-dialog__meet {
   --meet-accent: #2a1644;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-generate {
-  --button-outline-color: #ffffff;
-  --loading-spinner-color: currentColor;
-  background-color: var(--meet-accent);
-  color: #ffffff;
-  border-color: var(--meet-accent);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-generate:hover {
-  background-color: color-mix(in oklab, var(--meet-accent) 88%, black);
+  --card-title-icon-color: var(--meet-accent);
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-row {
@@ -625,6 +614,37 @@
   @apply size-9 shrink-0;
 }
 
+/*
+ * ColorSwatchTrigger is an input-height control-surface (calendar picker chrome).
+ * In this row it must match the adjacent outline IconButton sm (size-9).
+ */
+.calendar-dialog-surface
+  .control-surface.color-swatch-trigger.calendar-event-dialog__meet-menu-trigger {
+  @apply h-9 min-h-9 w-auto shrink-0 border px-2 py-0 shadow-none;
+  min-width: 0;
+  box-sizing: border-box;
+  border-color: var(--button-outline-border-color, var(--control-border-color));
+  border-radius: var(--control-radius-button-pill);
+  background-color: transparent;
+  --loading-spinner-color: currentColor;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger .color-swatch-trigger__icon,
+.calendar-dialog-surface
+  .calendar-event-dialog__meet-menu-trigger
+  .color-swatch-trigger__icon
+  > svg,
+.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger .color-swatch-trigger__chevron {
+  @apply size-3.5;
+}
+
+.calendar-dialog-surface
+  .calendar-event-dialog__meet-menu-trigger
+  .color-swatch-trigger__icon
+  > svg {
+  stroke-width: 1.75;
+}
+
 .calendar-dialog-surface .calendar-event-dialog__meet-readonly {
   @apply flex flex-col items-stretch gap-2;
 }
@@ -638,7 +658,8 @@
 }
 
 /* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
-.calendar-event-dialog__calendar-menu {
+.calendar-event-dialog__calendar-menu,
+.calendar-event-dialog__meet-menu {
   min-width: 12rem;
 }
 

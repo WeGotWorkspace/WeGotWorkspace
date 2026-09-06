@@ -1,10 +1,9 @@
-import { useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Copy, Video } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
-import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
 import "@/share-ui/share-ui.css";
@@ -78,24 +77,18 @@ function CalendarMeetUrlRow({
   labels,
   readOnly = false,
   disabled = false,
-  generateDisabled = false,
-  reserving = false,
-  onGenerate,
   onChange,
   onBlur,
-  channelPicker,
+  meetMenu,
 }: {
   href: string;
   labels: CalendarUILabels;
   readOnly?: boolean;
   disabled?: boolean;
-  generateDisabled?: boolean;
-  reserving?: boolean;
-  onGenerate?: () => void;
   onChange?: (value: string) => void;
   onBlur?: () => void;
-  /** "Pick a Meet channel" menu rendered beside the generate affordance. */
-  channelPicker?: ReactNode;
+  /** Meet actions dropdown (new link + channels) after copy. */
+  meetMenu?: ReactNode;
 }) {
   const trimmed = href.trim();
   return (
@@ -126,22 +119,7 @@ function CalendarMeetUrlRow({
           void copyShareText(trimmed);
         }}
       />
-      {onGenerate ? (
-        <IconButton
-          className="calendar-event-dialog__meet-generate"
-          label={labels.eventMeetAdd}
-          icon={
-            reserving ? <LoadingSpinner size="sm" /> : <Video className="size-3.5" aria-hidden />
-          }
-          size="sm"
-          variant="outline"
-          disabled={generateDisabled}
-          onClick={() => {
-            onGenerate();
-          }}
-        />
-      ) : null}
-      {channelPicker}
+      {meetMenu}
     </div>
   );
 }
@@ -170,12 +148,26 @@ export function CalendarMeetCard({
   const stagedRoomRef = useRef(form.meetRoomCode?.trim() ?? "");
   const reservedThisSessionRef = useRef(Boolean(form.meetRoomCode));
   const hrefDraftRef = useRef(form.meetingUrl);
+  const urlWriteGenRef = useRef(0);
+  const [draftHref, setDraftHref] = useState(form.meetingUrl);
   const canChooseScope = Boolean(recurrenceId) && !thisInstanceLocked && !readOnly;
   const scope = resolveCalendarMeetReserveScope({
     recurrencePreset: form.recurrencePreset,
     recurrenceId,
     recurrenceSaveScope: thisInstanceLocked ? "thisInstance" : recurrenceSaveScope,
   });
+
+  useEffect(() => {
+    hrefDraftRef.current = form.meetingUrl;
+    setDraftHref(form.meetingUrl);
+  }, [form.meetingUrl]);
+
+  const writeMeetingHref = (href: string, extra: Partial<CalendarEventFormValue> = {}): void => {
+    urlWriteGenRef.current += 1;
+    hrefDraftRef.current = href;
+    setDraftHref(href);
+    applyForm(form, { meetingUrl: href, ...extra }, onChange);
+  };
 
   const expireStagedRoom = async (room: string): Promise<void> => {
     const patch = meetOperations?.patchRoomExpiresAt;
@@ -300,9 +292,11 @@ export function CalendarMeetCard({
   };
 
   const onUrlBlur = async (): Promise<void> => {
+    const writeGen = urlWriteGenRef.current;
     const raw = hrefDraftRef.current.trim();
     if (!raw) {
       await expireLocalWgwRoom();
+      if (writeGen !== urlWriteGenRef.current) return;
       applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
       return;
     }
@@ -318,6 +312,7 @@ export function CalendarMeetCard({
     if (parsed.kind === "https" || parsed.roomKind === "channel") {
       // Channel rooms are persistent — store the href, never reserve/expire them.
       await expireLocalWgwRoom();
+      if (writeGen !== urlWriteGenRef.current) return;
       applyForm(form, { meetingUrl: raw, meetRoomCode: undefined }, onChange);
       return;
     }
@@ -343,11 +338,10 @@ export function CalendarMeetCard({
    * downstream rendering/join flows are unchanged. Any ad-hoc room staged this
    * session is expired first so its reservation does not leak.
    */
-  const pickChannel = async (channel: CalendarMeetChannelOption): Promise<void> => {
-    await expireLocalWgwRoom();
+  const pickChannel = (channel: CalendarMeetChannelOption): void => {
     const href = meetChannelCallHref(channel, workspaceOrigin);
-    hrefDraftRef.current = href;
-    applyForm(form, { meetingUrl: href, meetRoomCode: undefined }, onChange);
+    writeMeetingHref(href, { meetRoomCode: undefined });
+    void expireLocalWgwRoom();
   };
 
   if (readOnly) {
@@ -366,7 +360,7 @@ export function CalendarMeetCard({
     );
   }
 
-  const canGenerate = !disabled && !reserving && Boolean(meetOperations?.reserveRoom);
+  const canGenerate = Boolean(meetOperations?.reserveRoom);
   const listChannels = meetOperations?.listChannels;
 
   return (
@@ -399,30 +393,26 @@ export function CalendarMeetCard({
       ) : null}
       <CardRow fill>
         <CalendarMeetUrlRow
-          href={form.meetingUrl}
+          href={draftHref}
           labels={labels}
           disabled={disabled}
-          generateDisabled={!canGenerate}
-          reserving={reserving}
-          onGenerate={requestGenerate}
           onChange={(value) => {
             hrefDraftRef.current = value;
+            setDraftHref(value);
             applyForm(form, { meetingUrl: value }, onChange);
           }}
           onBlur={() => {
             void onUrlBlur();
           }}
-          channelPicker={
-            listChannels ? (
-              <CalendarMeetChannelPicker
-                labels={labels}
-                listChannels={listChannels}
-                disabled={disabled || reserving}
-                onPick={(channel) => {
-                  void pickChannel(channel);
-                }}
-              />
-            ) : null
+          meetMenu={
+            <CalendarMeetChannelPicker
+              labels={labels}
+              listChannels={listChannels}
+              disabled={disabled}
+              reserving={reserving}
+              onNewLink={canGenerate ? requestGenerate : undefined}
+              onPick={pickChannel}
+            />
           }
         />
       </CardRow>

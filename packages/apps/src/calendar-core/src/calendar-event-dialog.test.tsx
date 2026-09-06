@@ -945,7 +945,10 @@ describe("CalendarEventDialog", () => {
       workspaceOrigin: "https://workspace.example.com",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    const meetTrigger = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd });
+    fireEvent.pointerDown(meetTrigger);
+    fireEvent.click(meetTrigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }));
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
 

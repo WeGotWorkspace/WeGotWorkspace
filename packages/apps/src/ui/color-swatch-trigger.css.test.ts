@@ -13,5 +13,7 @@ describe("color swatch trigger CSS", () => {
     );
     expect(css).toMatch(/\.control-surface\.color-swatch-trigger--labeled \{[\s\S]*width:\s*100%/);
     expect(css).toMatch(/\.color-swatch-trigger \{[\s\S]*min-width:\s*3\.25rem/);
+    expect(css).toMatch(/\.color-swatch-trigger__chevron \{[\s\S]*@apply size-3\.5/);
+    expect(css).toMatch(/\.color-swatch-trigger__icon \{[\s\S]*@apply/);
   });
 });

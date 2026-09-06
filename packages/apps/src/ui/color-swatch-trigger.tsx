@@ -8,12 +8,14 @@ export type ColorSwatchTriggerProps = React.ComponentPropsWithoutRef<"button"> &
   label: string;
   /** Hide the color dot (action rows such as “New calendar”). Default true. */
   showSwatch?: boolean;
+  /** Replaces the color dot; keeps the unlabeled mark + chevron layout. */
+  icon?: React.ReactNode;
 };
 
 /** Shared control-surface trigger: color dot + chevron (dialogs + pickers). */
 export const ColorSwatchTrigger = React.forwardRef<HTMLButtonElement, ColorSwatchTriggerProps>(
   function ColorSwatchTrigger(
-    { color, label, showSwatch = true, className, type = "button", children, ...props },
+    { color, label, showSwatch = true, icon, className, type = "button", children, ...props },
     ref,
   ) {
     return (
@@ -28,7 +30,11 @@ export const ColorSwatchTrigger = React.forwardRef<HTMLButtonElement, ColorSwatc
         aria-label={label}
         {...props}
       >
-        {showSwatch ? (
+        {icon != null ? (
+          <span className="color-swatch-trigger__icon" aria-hidden>
+            {icon}
+          </span>
+        ) : showSwatch ? (
           <span
             className="color-swatch-trigger__dot"
             style={{ backgroundColor: color || "transparent" }}

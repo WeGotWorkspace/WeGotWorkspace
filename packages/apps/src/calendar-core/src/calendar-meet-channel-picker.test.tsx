@@ -1,5 +1,5 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
@@ -57,66 +57,150 @@ function renderCard(
   return { onChange, meetOperations };
 }
 
-function openPicker(): void {
-  const trigger = screen.getByRole("button", { name: L.eventMeetPickChannel });
-  fireEvent.pointerDown(trigger);
-  fireEvent.click(trigger);
+function meetMenuTrigger(): HTMLElement {
+  return screen.getByRole("button", { name: L.eventMeetAdd });
 }
 
-describe("CalendarMeetChannelPicker (event-form channel picker)", () => {
+function openMeetMenu(): HTMLElement {
+  const trigger = meetMenuTrigger();
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  return screen.getByRole("menu");
+}
+
+describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
   beforeEach(() => {
     cleanup();
   });
 
-  it("hides the picker when the operations layer has no channel source", () => {
-    renderCard({ meetOperations: stubMeet({ listChannels: undefined }) });
+  it("uses one Meet menu trigger instead of adjacent generate and channel buttons", () => {
+    renderCard();
+    const trigger = meetMenuTrigger();
+    expect(screen.getAllByRole("button", { name: L.eventMeetAdd })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: L.eventMeetPickChannel })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.eventMeetNewLink })).toBeNull();
+    expect(trigger.className).toContain("color-swatch-trigger");
+    expect(trigger.className).toContain("calendar-event-dialog__meet-menu-trigger");
+    expect(trigger.querySelector(".color-swatch-trigger__icon")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
   });
 
-  it("fetches lazily on open and lists channels as menu items", async () => {
+  it("lists New meeting link first, then a separator, then channels", async () => {
     const { meetOperations } = renderCard();
     expect(meetOperations.listChannels).not.toHaveBeenCalled();
 
-    openPicker();
+    const menu = openMeetMenu();
+    expect(within(menu).getByRole("menuitem", { name: L.eventMeetNewLink })).toBeTruthy();
 
-    await waitFor(() => expect(screen.getByRole("menuitem", { name: "General" })).toBeTruthy());
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "General" })).toBeTruthy(),
+    );
     expect(meetOperations.listChannels).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("menuitem", { name: "Standup" })).toBeTruthy();
+
+    const items = within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent?.trim());
+    expect(items[0]).toBe(L.eventMeetNewLink);
+    expect(items.slice(1)).toEqual(["General", "Standup"]);
+    expect(within(menu).getByRole("separator")).toBeTruthy();
+  });
+
+  it("still shows New meeting link when the operations layer has no channel source", () => {
+    renderCard({ meetOperations: stubMeet({ listChannels: undefined }) });
+    const menu = openMeetMenu();
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items).toHaveLength(1);
+    expect(items[0]?.textContent?.trim()).toBe(L.eventMeetNewLink);
+    expect(within(menu).queryByRole("separator")).toBeNull();
+  });
+
+  it("keeps New meeting link and the empty-channel state when the user has no channels", async () => {
+    renderCard({ meetOperations: stubMeet({ listChannels: vi.fn().mockResolvedValue([]) }) });
+    const menu = openMeetMenu();
+    expect(within(menu).getByRole("menuitem", { name: L.eventMeetNewLink })).toBeTruthy();
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: L.eventMeetChannelsEmpty })).toBeTruthy(),
+    );
+    expect(within(menu).getByRole("separator")).toBeTruthy();
+  });
+
+  it("generates an ad-hoc meeting link from New meeting link", async () => {
+    const { onChange, meetOperations } = renderCard();
+    const menu = openMeetMenu();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: L.eventMeetNewLink }));
+
+    await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          meetingUrl: expect.stringContaining("/meet/guest?room="),
+          meetRoomCode: expect.any(String),
+        }),
+      ),
+    );
+  });
+
+  it("writes the picked channel URL into the visible Meet input", async () => {
+    renderCard();
+    const input = screen.getByLabelText(L.eventMeetUrlLabel);
+    fireEvent.focus(input);
+    const menu = openMeetMenu();
+    fireEvent.blur(input);
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "General" })).toBeTruthy(),
+    );
+
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "General" }));
+
+    await waitFor(() =>
+      expect(input).toHaveProperty(
+        "value",
+        `${ORIGIN}/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva`,
+      ),
+    );
   });
 
   it("attaches the channel-id room URL for a plain channel without reserving", async () => {
     const { onChange, meetOperations } = renderCard();
-    openPicker();
-    await waitFor(() => expect(screen.getByRole("menuitem", { name: "General" })).toBeTruthy());
+    const menu = openMeetMenu();
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "General" })).toBeTruthy(),
+    );
 
-    fireEvent.click(screen.getByRole("menuitem", { name: "General" }));
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "General" }));
 
+    const channelHref = `${ORIGIN}/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva`;
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          meetingUrl: `${ORIGIN}/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva`,
+          meetingUrl: channelHref,
           meetRoomCode: undefined,
         }),
       ),
     );
+    expect(screen.getByLabelText(L.eventMeetUrlLabel)).toHaveProperty("value", channelHref);
     expect(meetOperations.reserveRoom).not.toHaveBeenCalled();
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
   });
 
   it("attaches the guestRoomCode URL for a meeting-kind channel", async () => {
     const { onChange } = renderCard();
-    openPicker();
-    await waitFor(() => expect(screen.getByRole("menuitem", { name: "Standup" })).toBeTruthy());
+    const menu = openMeetMenu();
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "Standup" })).toBeTruthy(),
+    );
 
-    fireEvent.click(screen.getByRole("menuitem", { name: "Standup" }));
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Standup" }));
 
+    const standupHref = `${ORIGIN}/meet/guest?room=h8y8-ewp6-al8n`;
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          meetingUrl: `${ORIGIN}/meet/guest?room=h8y8-ewp6-al8n`,
+          meetingUrl: standupHref,
         }),
       ),
     );
+    expect(screen.getByLabelText(L.eventMeetUrlLabel)).toHaveProperty("value", standupHref);
   });
 
   it("expires a staged ad-hoc room when a channel replaces it", async () => {
@@ -126,10 +210,12 @@ describe("CalendarMeetChannelPicker (event-form channel picker)", () => {
       meetRoomCode: "aaaa-bbbb-cccc",
     };
     const { onChange, meetOperations } = renderCard({ form });
-    openPicker();
-    await waitFor(() => expect(screen.getByRole("menuitem", { name: "General" })).toBeTruthy());
+    const menu = openMeetMenu();
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "General" })).toBeTruthy(),
+    );
 
-    fireEvent.click(screen.getByRole("menuitem", { name: "General" }));
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "General" }));
 
     await waitFor(() =>
       expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalledWith(
@@ -152,24 +238,18 @@ describe("CalendarMeetChannelPicker (event-form channel picker)", () => {
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce(CHANNELS);
     renderCard({ meetOperations: stubMeet({ listChannels }) });
-    openPicker();
+    const menu = openMeetMenu();
 
     await waitFor(() =>
-      expect(screen.getByRole("menuitem", { name: L.eventMeetChannelsError })).toBeTruthy(),
+      expect(within(menu).getByRole("menuitem", { name: L.eventMeetChannelsError })).toBeTruthy(),
     );
+    expect(within(menu).getByRole("menuitem", { name: L.eventMeetNewLink })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("menuitem", { name: L.eventMeetChannelsError }));
+    fireEvent.click(within(menu).getByRole("menuitem", { name: L.eventMeetChannelsError }));
 
-    await waitFor(() => expect(screen.getByRole("menuitem", { name: "General" })).toBeTruthy());
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "General" })).toBeTruthy(),
+    );
     expect(listChannels).toHaveBeenCalledTimes(2);
-  });
-
-  it("shows an empty state when the user has no channels", async () => {
-    renderCard({ meetOperations: stubMeet({ listChannels: vi.fn().mockResolvedValue([]) }) });
-    openPicker();
-
-    await waitFor(() =>
-      expect(screen.getByRole("menuitem", { name: L.eventMeetChannelsEmpty })).toBeTruthy(),
-    );
   });
 });

@@ -120,9 +120,11 @@ export type CalendarUILabels = {
   eventLocationLabel: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
-  /** Accessible name for the generate-Meet icon button. */
+  /** Accessible name for the Meet actions menu trigger. */
   eventMeetAdd: string;
-  /** Accessible name for the pick-a-Meet-channel menu trigger and its heading. */
+  /** Menu item: generate an ad-hoc meeting link. */
+  eventMeetNewLink: string;
+  /** Channel-list heading inside the Meet actions menu. */
   eventMeetPickChannel: string;
   eventMeetChannelsLoading: string;
   /** Shown as a retryable menu item when the channel list fetch fails. */
@@ -354,6 +356,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
+  eventMeetNewLink: "New meeting link",
   eventMeetPickChannel: "Attach a Meet channel link",
   eventMeetChannelsLoading: "Loading channels…",
   eventMeetChannelsError: "Could not load channels. Try again",

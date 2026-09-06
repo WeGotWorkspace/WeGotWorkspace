@@ -51,7 +51,10 @@ function generateMeetButton(): HTMLElement {
 }
 
 function clickGenerateMeet(): void {
-  fireEvent.click(generateMeetButton());
+  const trigger = generateMeetButton();
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }));
 }
 
 describe("CalendarMeetCard", () => {
@@ -83,7 +86,6 @@ describe("CalendarMeetCard", () => {
     const urlInput = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel);
     expect(urlInput.className).not.toContain("share-dialog__input--mono");
     expect(generateMeetButton().querySelector(".loading-spinner")).toBeNull();
-    clickGenerateMeet();
     clickGenerateMeet();
     expect(generateMeetButton()).toHaveProperty("disabled", true);
     expect(generateMeetButton().querySelector(".loading-spinner")).toBeTruthy();
