@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createMeetChatOperations } from "@/lib/api/mock/meet-chat-operations";
 import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
@@ -54,7 +54,8 @@ const STORY_BAR_PEERS = [
 ];
 
 function useMeetWorkspaceCallRoom(
-  initialVideoOn: boolean,
+  videoOn: boolean,
+  setVideoOn: Dispatch<SetStateAction<boolean>>,
   initialKnockers: { id: string; name: string }[] = [],
   initialWaitingForAdmission = false,
 ): MeetCallStageRoomProps {
@@ -63,13 +64,9 @@ function useMeetWorkspaceCallRoom(
   const [activeCamera, setActiveCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [activeMic, setActiveMic] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [micOn, setMicOn] = useState(true);
-  const [videoOn, setVideoOn] = useState(initialVideoOn);
   // Knock fixtures stay stateful so admit/deny/cancel interactions play out.
   const [knockers, setKnockers] = useState(initialKnockers);
   const [waitingForAdmission, setWaitingForAdmission] = useState(initialWaitingForAdmission);
-  useEffect(() => {
-    setVideoOn(initialVideoOn);
-  }, [initialVideoOn]);
   const resolveKnocker = async (peerId: string) => {
     setKnockers((current) => current.filter((entry) => entry.id !== peerId));
   };
@@ -77,6 +74,7 @@ function useMeetWorkspaceCallRoom(
     peers: waitingForAdmission ? [] : STORY_BAR_PEERS,
     micOn,
     videoOn,
+    setVideoOn,
     toggleMic: () => setMicOn((on) => !on),
     toggleVideo: () => setVideoOn((on) => !on),
     switchCamera: async (deviceId) => setActiveCamera(deviceId),
@@ -106,7 +104,6 @@ function useMeetWorkspaceCallRoom(
     activeSpeaker,
     onSpeakerChange: setActiveSpeaker,
     onCopyLink: STORY_NOOP,
-    onMuteSoon: STORY_NOOP,
     onToastInfo: STORY_NOOP,
     onToastError: STORY_NOOP,
   };
@@ -122,22 +119,32 @@ export function MeetWorkspaceStoryHarness({
   initialWaitingForAdmission = false,
 }: MeetWorkspaceStoryArgs) {
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
-  const operations = useMemo(
-    () =>
-      createMeetChatOperations({
-        channels: bootstrap.data.channels ?? [],
-        messages: bootstrap.data.messages ?? [],
-        unfurl: bootstrap.data.unfurl,
-        directory: bootstrap.data.directory,
-        author: {
-          id: bootstrap.session.user.username ?? "demo.user",
-          displayName: bootstrap.session.user.displayName,
-        },
-      }),
-    [bootstrap],
-  );
+  const [videoOn, setVideoOn] = useState(initialVideoOn);
+  useEffect(() => {
+    setVideoOn(initialVideoOn);
+  }, [initialVideoOn]);
+  const operations = useMemo(() => {
+    const base = createMeetChatOperations({
+      channels: bootstrap.data.channels ?? [],
+      messages: bootstrap.data.messages ?? [],
+      unfurl: bootstrap.data.unfurl,
+      directory: bootstrap.data.directory,
+      author: {
+        id: bootstrap.session.user.username ?? "demo.user",
+        displayName: bootstrap.session.user.displayName,
+      },
+    });
+    return {
+      ...base,
+      startCall: async (channelId: string, options?: { video?: boolean }) => {
+        if (options?.video === false) setVideoOn(false);
+        await base.startCall?.(channelId, options);
+      },
+    };
+  }, [bootstrap]);
   const callStageRoom = useMeetWorkspaceCallRoom(
-    initialVideoOn,
+    videoOn,
+    setVideoOn,
     initialKnockers,
     initialWaitingForAdmission,
   );
@@ -153,6 +160,9 @@ export function MeetWorkspaceStoryHarness({
       initialThreadId={initialThreadId}
       callStageRoom={callStageRoom}
       typingByChannel={typingByChannel}
+      callParticipantsByChannel={{
+        "channel-general": ["ada.lovelace", "grace.hopper", "alan.turing"],
+      }}
     />
   );
 }

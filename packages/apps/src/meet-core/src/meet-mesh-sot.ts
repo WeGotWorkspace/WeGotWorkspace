@@ -29,6 +29,7 @@ import {
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
 import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
+import { presenceCallActiveEnvelope } from "@/presence-core/src/presence-envelope";
 import type { PresenceEnvelope, PresenceMeetFanoutEvent } from "@/presence-core/src/presence-types";
 
 export type MeetMeshApplyResult = "applied" | "dropped";
@@ -301,16 +302,16 @@ export function wrapMeetChatOperationsWithMesh(
         }
       : undefined,
     startCall: operations.startCall
-      ? async (channelId) => {
-          await operations.startCall!(channelId);
-          send(channelId, { v: 1, kind: "call-active", channel: channelId, active: true });
+      ? async (channelId, options) => {
+          await operations.startCall!(channelId, options);
+          send(channelId, presenceCallActiveEnvelope(channelId, true, options?.video === false));
         }
       : undefined,
     leaveCall: operations.leaveCall
       ? async (channelId) => {
           await operations.leaveCall!(channelId);
           const target = channelId || liveCallChannelId || "";
-          if (target) send(target, { v: 1, kind: "call-active", channel: target, active: false });
+          if (target) send(target, presenceCallActiveEnvelope(target, false));
         }
       : undefined,
   };

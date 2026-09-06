@@ -191,7 +191,6 @@ export function useMeetWorkspaceShell({
       activeSpeaker,
       onSpeakerChange: setSpeakerId,
       onCopyLink: copyCallLink,
-      onMuteSoon: (name: string) => toast.show(meetLabels.muteSoon(name), { severity: "info" }),
       onToastInfo: (message: string) => toast.show(message, { severity: "info" }),
       onToastError: (message: string) => toast.showError(message),
     },

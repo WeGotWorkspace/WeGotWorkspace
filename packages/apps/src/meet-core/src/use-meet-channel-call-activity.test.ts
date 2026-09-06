@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { meetCallActivityTargets } from "@/meet-core/src/use-meet-channel-call-activity";
+import {
+  meetCallActivityTargets,
+  omitMeetCallActivityChannels,
+} from "@/meet-core/src/use-meet-channel-call-activity";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 
 const general: MeetChannel = {
@@ -46,5 +49,19 @@ describe("meetCallActivityTargets", () => {
         { channelId: "dm:bob", room: "dm-0123456789abcdef0123456789abcdef01234567" },
       ]),
     ).toEqual([{ channelId: "dm:bob", room: "dm-0123456789abcdef0123456789abcdef01234567" }]);
+  });
+});
+
+describe("omitMeetCallActivityChannels", () => {
+  it("drops poll-true channels that mesh has already emptied", () => {
+    expect(
+      omitMeetCallActivityChannels({ "chat-general": true, "dm:bob": true }, ["chat-general"]),
+    ).toEqual({ "dm:bob": true });
+  });
+
+  it("returns the same map when nothing is omitted", () => {
+    const active = { "chat-general": true };
+    expect(omitMeetCallActivityChannels(active, [])).toBe(active);
+    expect(omitMeetCallActivityChannels(active, ["dm:bob"])).toBe(active);
   });
 });

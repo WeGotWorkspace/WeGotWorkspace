@@ -1,3 +1,4 @@
+import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import type { MeetCallStatus, MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import type { PeerInboundSample } from "@/meet-core/src/meet-inbound-media-hints";
@@ -214,10 +215,18 @@ export class MeetCallStore {
 
   setMicOn = (value: Updater<boolean>): void => {
     this.set("micOn", value, this.micOnRef);
+    syncMeetLocalTrackEnabled(this.localStreamRef.current, {
+      mic: this.micOnRef.current,
+      video: this.videoOnRef.current,
+    });
   };
 
   setVideoOn = (value: Updater<boolean>): void => {
     this.set("videoOn", value, this.videoOnRef);
+    syncMeetLocalTrackEnabled(this.localStreamRef.current, {
+      mic: this.micOnRef.current,
+      video: this.videoOnRef.current,
+    });
   };
 
   setScreenOn = (value: Updater<boolean>): void => {

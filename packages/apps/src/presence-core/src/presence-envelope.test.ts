@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parsePresenceEnvelope,
+  presenceCallActiveEnvelope,
   serializePresenceEnvelope,
 } from "@/presence-core/src/presence-envelope";
 
@@ -65,9 +66,46 @@ describe("presence envelope", () => {
       },
     };
     const call = { v: 1, kind: "call-active" as const, channel: "chat-general", active: true };
+    const audioOnly = presenceCallActiveEnvelope("chat-general", true, true);
 
     expect(parsePresenceEnvelope(serializePresenceEnvelope(message))).toEqual(message);
     expect(parsePresenceEnvelope(serializePresenceEnvelope(call))).toEqual(call);
+    expect(audioOnly).toEqual({
+      v: 1,
+      kind: "call-active",
+      channel: "chat-general",
+      active: true,
+      audioOnly: true,
+    });
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(audioOnly))).toEqual(audioOnly);
+    expect(presenceCallActiveEnvelope("chat-general", true)).toEqual(call);
+    expect(presenceCallActiveEnvelope("chat-general", true, false)).toEqual(call);
+  });
+
+  it("ignores unknown extra fields on call-active and defaults audioOnly to false", () => {
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({
+          v: 1,
+          kind: "call-active",
+          channel: "c1",
+          active: true,
+          extra: "x",
+          audioOnly: "yes",
+        }),
+      ),
+    ).toEqual({ v: 1, kind: "call-active", channel: "c1", active: true });
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({
+          v: 1,
+          kind: "call-active",
+          channel: "c1",
+          active: true,
+          audioOnly: false,
+        }),
+      ),
+    ).toEqual({ v: 1, kind: "call-active", channel: "c1", active: true });
   });
 
   it("round-trips Meet patch, destroy, reaction, and channel-changed envelopes", () => {

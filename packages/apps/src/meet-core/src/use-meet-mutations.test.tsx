@@ -30,7 +30,10 @@ function createRoomStub(): MeetRoomState {
   } as unknown as MeetRoomState;
 }
 
-function createSessionStub(operations?: { reserveRoom?: ReturnType<typeof vi.fn> }) {
+function createSessionStub(operations?: {
+  reserveRoom?: ReturnType<typeof vi.fn>;
+  chat?: ReturnType<typeof vi.fn>;
+}) {
   const meetRtc = {
     leave: vi.fn().mockResolvedValue(undefined),
     join: vi.fn().mockResolvedValue(undefined),
@@ -119,5 +122,48 @@ describe("useMeetMutations", () => {
     expect(reserved.ownerPrincipal).toBe("u:bob");
     expect(reserved.room).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
     expect(session.meetRtc.join).toHaveBeenCalled();
+  });
+
+  it("sends a mute control for another peer when the caller can moderate", async () => {
+    const chat = vi.fn().mockResolvedValue({ ok: true, delivered: 1 });
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: true,
+        leaveRef,
+      }),
+    );
+
+    await result.current.mutePeer("peer-2");
+
+    expect(chat).toHaveBeenCalledTimes(1);
+    const sent = chat.mock.calls[0]?.[0] as { text: string; from: string; room: string };
+    expect(sent.room).toBe("abc123");
+    expect(sent.from).toBe("peer-1");
+    expect(sent.text).toContain('"kind":"mute"');
+    expect(sent.text).toContain('"peerId":"peer-2"');
+  });
+
+  it("does not send mute when the caller cannot moderate", async () => {
+    const chat = vi.fn().mockResolvedValue({ ok: true, delivered: 1 });
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+      }),
+    );
+
+    await result.current.mutePeer("peer-2");
+
+    expect(chat).not.toHaveBeenCalled();
   });
 });

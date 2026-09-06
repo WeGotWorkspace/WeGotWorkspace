@@ -176,6 +176,24 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("collapsed");
   });
 
+  it("passes startCall options through to operations", () => {
+    const startCall = vi.fn(async () => undefined);
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        operations: { startCall, leaveCall: vi.fn(async () => undefined) },
+      }),
+    );
+
+    act(() => {
+      result.current.startCall({ video: false });
+    });
+
+    expect(startCall).toHaveBeenCalledWith("channel-general", { video: false });
+    expect(result.current.callLayout).toBe("compact");
+  });
+
   it("seeds initialLayout for the starting channel only", () => {
     const { result, rerender } = renderHook(
       ({ channelId }: { channelId: string }) =>

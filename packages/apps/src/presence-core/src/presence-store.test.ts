@@ -595,6 +595,24 @@ describe("PresenceStore Meet fanout", () => {
       channel: "chat-general",
       active: true,
     });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        v: 1,
+        kind: "call-active",
+        channel: "chat-general",
+        active: true,
+        audioOnly: true,
+      },
+    });
+    expect(listener).toHaveBeenCalledWith({
+      kind: "call-active",
+      senderUsername: "bob",
+      channel: "chat-general",
+      active: true,
+      audioOnly: true,
+    });
   });
 
   it("emits inbound patch, destroy, reaction, and channel-changed", async () => {

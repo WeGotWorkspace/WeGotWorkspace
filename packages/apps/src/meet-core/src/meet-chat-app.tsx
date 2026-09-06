@@ -24,7 +24,7 @@ import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
 import { useMeetChannelReadMarker } from "@/meet-core/src/use-meet-channel-read-marker";
 import { useMeetChannelTyping } from "@/meet-core/src/use-meet-channel-typing";
 import { useMeetChatCall } from "@/meet-core/src/use-meet-chat-call";
-import { mergeMeetCallActive } from "@/meet-core/src/meet-call-stage-layout";
+import { mergeMeetCallLive } from "@/meet-core/src/meet-call-stage-layout";
 import { useMeetChannelCallActivity } from "@/meet-core/src/use-meet-channel-call-activity";
 import { useMeetMeshSync } from "@/meet-core/src/use-meet-mesh-sync";
 
@@ -54,6 +54,7 @@ function MeetChatLiveWorkspace({
 }) {
   const channels = useMemo(() => data.channels ?? [], [data.channels]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [caughtUp, setCaughtUp] = useState(true);
 
   // Deep links: /meet/channels/$channelId and /meet/dms/$peerId ↔ workspace
   // selection. Nested children of /meet, so switching never remounts this app.
@@ -75,6 +76,7 @@ function MeetChatLiveWorkspace({
   const handleSelectedChannelChange = useCallback(
     (channelId: string | null) => {
       setSelectedChannelId(channelId);
+      setCaughtUp(true);
       const dmPrincipal = channelId ? meetDirectMessagePrincipalId(channelId) : null;
       if (dmPrincipal) void chatOperations?.openDm?.(dmPrincipal).catch(() => undefined);
       // Reflect the selection in the URL. The very first sync (landing on bare
@@ -98,7 +100,11 @@ function MeetChatLiveWorkspace({
     chatOperations,
   });
 
-  const { meshCallActive, operations: operationsWithMesh } = useMeetMeshSync({
+  const {
+    meshCallParticipants,
+    meshCallAudioOnly,
+    operations: operationsWithMesh,
+  } = useMeetMeshSync({
     operations,
     liveCallChannelId,
     username: session.user.username ?? null,
@@ -128,6 +134,7 @@ function MeetChatLiveWorkspace({
     markChannelRead: operationsWithMesh?.markChannelRead,
     selectedLatestMessageId: selectedReadSignal.latestMessageId,
     selectedUnreadCount: selectedReadSignal.unreadCount,
+    caughtUp,
   });
 
   const resolveDmRoom = useCallback(
@@ -141,14 +148,22 @@ function MeetChatLiveWorkspace({
     [session.user.username],
   );
 
+  const meshEndedChannelIds = useMemo(
+    () =>
+      Object.keys(meshCallParticipants).filter(
+        (id) => (meshCallParticipants[id]?.length ?? 0) === 0,
+      ),
+    [meshCallParticipants],
+  );
   const polledCallActive = useMeetChannelCallActivity({
     operations: meetOperations,
     channels,
     selectedChannelId,
     joinedRoomCode,
     resolveRoom: resolveDmRoom,
+    omitChannelIds: meshEndedChannelIds,
   });
-  const callActiveByChannel = mergeMeetCallActive(meshCallActive, polledCallActive);
+  const callActiveByChannel = mergeMeetCallLive(meshCallParticipants, polledCallActive);
 
   // Mini-player title: the live call's channel/meeting title or DM peer name.
   const suiteCallStore = useMeetCallStoreContext();
@@ -202,6 +217,9 @@ function MeetChatLiveWorkspace({
       typingByChannel={typingByChannel}
       onComposerTyping={onComposerTyping}
       callActiveByChannel={callActiveByChannel}
+      callParticipantsByChannel={meshCallParticipants}
+      callAudioOnlyByChannel={meshCallAudioOnly}
+      onCaughtUpChange={setCaughtUp}
     />
   );
 }

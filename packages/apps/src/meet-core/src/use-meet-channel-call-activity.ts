@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
 import type { MeetAPIOperations, MeetChannel } from "@/meet-core/src/meet-types";
+
+const NO_OMIT_CHANNEL_IDS: readonly string[] = [];
 
 export const MEET_CALL_ACTIVITY_POLL_MS = 5_000;
 
@@ -30,6 +32,25 @@ function sameActiveSet(prev: Record<string, boolean>, next: Record<string, boole
   return prevKeys.length === nextKeys.length && nextKeys.every((key) => prev[key]);
 }
 
+/** Drop poll-true flags for channels mesh has already emptied (stale room-status). */
+export function omitMeetCallActivityChannels(
+  active: Record<string, boolean>,
+  omitIds: readonly string[],
+): Record<string, boolean> {
+  if (omitIds.length === 0) return active;
+  const omit = new Set(omitIds);
+  let omitted = false;
+  const out: Record<string, boolean> = {};
+  for (const [id, isActive] of Object.entries(active)) {
+    if (isActive && omit.has(id)) {
+      omitted = true;
+      continue;
+    }
+    if (isActive) out[id] = true;
+  }
+  return omitted ? out : active;
+}
+
 /**
  * v1 `callActive` signal (spec: room-status polling, deliberately narrow): polls
  * only the selected channel's room and the channel with an active local session.
@@ -42,6 +63,7 @@ export function useMeetChannelCallActivity({
   joinedRoomCode,
   pollMs = MEET_CALL_ACTIVITY_POLL_MS,
   resolveRoom,
+  omitChannelIds = NO_OMIT_CHANNEL_IDS,
 }: {
   operations: MeetAPIOperations;
   channels: readonly MeetChannel[];
@@ -50,8 +72,19 @@ export function useMeetChannelCallActivity({
   pollMs?: number;
   /** Room code for a selected id that is not in `channels` (virtual `dm:{peer}`). */
   resolveRoom?: (channelId: string) => Promise<string | null>;
+  /** Mesh-emptied channel ids — drop immediately and ignore stale poll `true`. */
+  omitChannelIds?: readonly string[];
 }): Record<string, boolean> {
   const [active, setActive] = useState<Record<string, boolean>>({});
+  const omitChannelIdsRef = useRef(omitChannelIds);
+  omitChannelIdsRef.current = omitChannelIds;
+
+  useEffect(() => {
+    setActive((prev) => {
+      const next = omitMeetCallActivityChannels(prev, omitChannelIds);
+      return sameActiveSet(prev, next) ? prev : next;
+    });
+  }, [omitChannelIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +112,10 @@ export function useMeetChannelCallActivity({
         }),
       );
       if (cancelled) return;
-      const next = Object.fromEntries(entries.filter(([, isActive]) => isActive));
+      const next = omitMeetCallActivityChannels(
+        Object.fromEntries(entries.filter(([, isActive]) => isActive)),
+        omitChannelIdsRef.current,
+      );
       setActive((prev) => (sameActiveSet(prev, next) ? prev : next));
     };
     void poll();

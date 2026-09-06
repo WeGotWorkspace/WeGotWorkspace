@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCachedChatMessage } from "@/lib/offline/meet-chat-offline-store";
 import { isMeetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
+import { useMeetMeshCallReplay } from "@/meet-core/src/meet-mesh-call-replay";
+import {
+  applyMeetMeshCallEvent,
+  meetMeshCallActiveFromParticipants,
+  type MeetMeshCallState,
+} from "@/meet-core/src/meet-mesh-call-participants";
 import {
   meetMeshFanoutUsernames,
   meetMeshFanoutUsernamesUnion,
@@ -34,6 +40,8 @@ export function useMeetMeshSync({
   onApplied?: () => void;
 }): {
   meshCallActive: Record<string, boolean>;
+  meshCallParticipants: Record<string, string[]>;
+  meshCallAudioOnly: Record<string, boolean>;
   operations: MeetChatOperations | undefined;
 } {
   const store = usePresenceStoreContext();
@@ -50,7 +58,14 @@ export function useMeetMeshSync({
   const selfRef = useRef(selfUsername);
   selfRef.current = selfUsername;
 
-  const [meshCallActive, setMeshCallActive] = useState<Record<string, boolean>>({});
+  const [meshCall, setMeshCall] = useState<MeetMeshCallState>({
+    participants: {},
+    audioOnly: {},
+  });
+  const meshCallActive = useMemo(
+    () => meetMeshCallActiveFromParticipants(meshCall.participants),
+    [meshCall.participants],
+  );
 
   const knownChannelIds = useMemo(() => new Set(channels.map((row) => row.id)), [channels]);
   const knownChannelIdsRef = useRef(knownChannelIds);
@@ -67,14 +82,14 @@ export function useMeetMeshSync({
         ) {
           return;
         }
-        setMeshCallActive((current) => {
-          if (event.active) {
-            return current[channelId] ? current : { ...current, [channelId]: true };
-          }
-          if (!current[channelId]) return current;
-          const { [channelId]: _dropped, ...rest } = current;
-          return rest;
-        });
+        setMeshCall((current) =>
+          applyMeetMeshCallEvent(current, {
+            channelId,
+            senderUsername: event.senderUsername,
+            active: event.active,
+            audioOnly: event.audioOnly,
+          }),
+        );
         return;
       }
       const account = usernameRef.current;
@@ -121,12 +136,50 @@ export function useMeetMeshSync({
 
   const wrapped = useMemo(() => {
     if (!operations) return undefined;
-    return wrapMeetChatOperationsWithMesh(operations, selfUsername, liveCallChannelId, {
+    const mesh = wrapMeetChatOperationsWithMesh(operations, selfUsername, liveCallChannelId, {
       sendToUsernames,
       targetsFor,
       resolveMessage,
     });
+    if (!mesh.startCall && !mesh.leaveCall) return mesh;
+    return {
+      ...mesh,
+      startCall: mesh.startCall
+        ? async (channelId: string, options?: { video?: boolean }) => {
+            await mesh.startCall!(channelId, options);
+            setMeshCall((current) =>
+              applyMeetMeshCallEvent(current, {
+                channelId,
+                active: true,
+                audioOnly: options?.video === false,
+              }),
+            );
+          }
+        : undefined,
+      leaveCall: mesh.leaveCall
+        ? async (channelId: string) => {
+            await mesh.leaveCall!(channelId);
+            const target = channelId || liveCallChannelId || "";
+            if (!target) return;
+            setMeshCall((current) =>
+              applyMeetMeshCallEvent(current, { channelId: target, active: false }),
+            );
+          }
+        : undefined,
+    };
   }, [liveCallChannelId, operations, resolveMessage, selfUsername, sendToUsernames, targetsFor]);
 
-  return { meshCallActive, operations: wrapped };
+  useMeetMeshCallReplay({
+    store,
+    liveCallChannelId,
+    audioOnly: Boolean(liveCallChannelId && meshCall.audioOnly[liveCallChannelId]),
+    targetsFor,
+  });
+
+  return {
+    meshCallActive,
+    meshCallParticipants: meshCall.participants,
+    meshCallAudioOnly: meshCall.audioOnly,
+    operations: wrapped,
+  };
 }

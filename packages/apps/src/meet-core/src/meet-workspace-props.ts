@@ -40,6 +40,10 @@ export type MeetWorkspaceProps = {
   onComposerTyping?: (channelId: string, typing: boolean) => void;
   /** Live/mesh/poll `callActive` keyed by UI channel id (includes `dm:{peer}`). */
   callActiveByChannel?: Record<string, boolean>;
+  /** Mesh `call-active` senders keyed by UI channel id — preview roster when not joined. */
+  callParticipantsByChannel?: Record<string, string[]>;
+  /** Mesh `call-active` audio-only flag keyed by UI channel id. */
+  callAudioOnlyByChannel?: Record<string, boolean>;
   /** When true, `callStage` fills main on `callChannelId` only. */
   callActive?: boolean;
   /** Channel that owns a story/fixture `callStage` — chrome does not follow channel switches. */
@@ -59,4 +63,5 @@ export type MeetWorkspaceProps = {
   onOpenThread?: (message: ChatMessage) => void;
   onCloseThread?: () => void;
   onSendThreadReply?: (parentId: string, body: string) => void;
+  onCaughtUpChange?: (caughtUp: boolean) => void;
 };

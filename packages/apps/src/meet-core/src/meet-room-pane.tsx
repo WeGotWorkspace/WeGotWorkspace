@@ -30,7 +30,6 @@ export type MeetRoomPaneProps = {
   activeSpeaker: string;
   onSpeakerChange: (value: string) => void;
   onCopyLink: () => void;
-  onMuteSoon: (name: string) => void;
   onToastInfo: (message: string) => void;
   onToastError: (message: string) => void;
   hideChatToggle?: boolean;
@@ -61,7 +60,6 @@ export function MeetRoomPane({
   activeSpeaker,
   onSpeakerChange,
   onCopyLink,
-  onMuteSoon,
   onToastInfo,
   onToastError,
   hideChatToggle = false,
@@ -113,7 +111,9 @@ export function MeetRoomPane({
                       compact
                       remoteMedia={peer.remoteMedia}
                       disclosedMedia={peer.disclosedMedia}
-                      onMuteSoon={onMuteSoon}
+                      onMuteParticipant={
+                        hasSignedInIdentity ? () => void controller.mutePeer(peer.id) : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -135,7 +135,9 @@ export function MeetRoomPane({
                   stream={peer.stream}
                   remoteMedia={peer.remoteMedia}
                   disclosedMedia={peer.disclosedMedia}
-                  onMuteSoon={onMuteSoon}
+                  onMuteParticipant={
+                    hasSignedInIdentity ? () => void controller.mutePeer(peer.id) : undefined
+                  }
                 />
               ))}
             </div>

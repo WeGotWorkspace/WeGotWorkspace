@@ -946,6 +946,10 @@
   @apply flex items-center gap-2;
 }
 
+.meet-workspace__header-start {
+  @apply w-auto shrink-0;
+}
+
 /*
  * Call chrome is light paper with a lighter purple wash than the Meet sidebar
  * (`--meet-accent` 12% on cream) — “in a call”, not a dark island and not a

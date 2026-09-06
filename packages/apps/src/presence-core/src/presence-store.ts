@@ -383,6 +383,7 @@ export class PresenceStore {
         senderUsername,
         channel: envelope.channel,
         active: envelope.active,
+        ...(envelope.audioOnly === true ? { audioOnly: true as const } : {}),
       });
     }
   }

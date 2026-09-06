@@ -319,4 +319,26 @@ describe("wrapMeetChatOperationsWithMesh", () => {
       emoji: "🎉",
     });
   });
+
+  it("fans call-active with audioOnly when startCall sets video false", async () => {
+    const startCall = vi.fn().mockResolvedValue(undefined);
+    const leaveCall = vi.fn().mockResolvedValue(undefined);
+    const mesh = port();
+    const wrapped = wrapMeetChatOperationsWithMesh(
+      { startCall, leaveCall },
+      "alice",
+      "chat-general",
+      mesh,
+    );
+
+    await wrapped.startCall!("chat-general", { video: false });
+    await wrapped.startCall!("chat-general");
+    await wrapped.leaveCall!("chat-general");
+
+    expect(mesh.sent.map((row) => row.envelope)).toEqual([
+      { v: 1, kind: "call-active", channel: "chat-general", active: true, audioOnly: true },
+      { v: 1, kind: "call-active", channel: "chat-general", active: true },
+      { v: 1, kind: "call-active", channel: "chat-general", active: false },
+    ]);
+  });
 });

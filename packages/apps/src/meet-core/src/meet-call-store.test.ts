@@ -38,6 +38,22 @@ describe("MeetCallStore", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
+  it("applies mic and camera flags to existing local tracks synchronously", () => {
+    const store = createMeetCallStore();
+    const audio = { kind: "audio", enabled: true };
+    const video = { kind: "video", enabled: true };
+    store.localStreamRef.current = {
+      getAudioTracks: () => [audio],
+      getVideoTracks: () => [video],
+    } as unknown as MediaStream;
+
+    store.setMicOn(false);
+    store.setVideoOn(false);
+
+    expect(audio.enabled).toBe(false);
+    expect(video.enabled).toBe(false);
+  });
+
   it("mirrors setter writes into the corresponding refs synchronously", () => {
     const store = createMeetCallStore();
 

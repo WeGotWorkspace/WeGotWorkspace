@@ -53,15 +53,20 @@ export const Default: Story = {
     await expect(join).toBeInTheDocument();
     await expect(join.className).toContain("meet-call-bar__invite-button");
     await expect(join.textContent).toContain(meetLabels.join);
-    await expect(canvas.queryByRole("button", { name: meetLabels.start })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
+    const bar = canvasElement.querySelector(".meet-call-bar");
+    expect(bar).toBeTruthy();
+    await expect(
+      within(bar as HTMLElement).queryByRole("img", { name: "Demo User avatar" }),
+    ).not.toBeInTheDocument();
     await userEvent.click(join);
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.start })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.queryByLabelText(meetLabels.resizeCall)).not.toBeInTheDocument();
   },
@@ -96,9 +101,9 @@ export const IdleChannel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
-    const start = canvas.getByRole("button", { name: meetLabels.start });
+    const start = canvas.getByRole("button", { name: /^Meet$/ });
     await expect(start).toBeInTheDocument();
-    await expect(start.className).toContain("meet-workspace__header-start");
+    await expect(start.closest(".meet-workspace__header-start")).toBeTruthy();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
@@ -106,7 +111,7 @@ export const IdleChannel: Story = {
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.start })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.queryByLabelText(meetLabels.resizeCall)).not.toBeInTheDocument();
   },
@@ -213,7 +218,7 @@ export const CallFullscreen: Story = {
     await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.speaking)).toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.start })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.collapseCall })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Show sidebar" })).toBeInTheDocument();
@@ -244,9 +249,9 @@ export const KnockWaiting: Story = {
     ).not.toBeInTheDocument();
     const cancel = canvas.getByRole("button", { name: meetLabels.cancelRequest });
     await userEvent.click(cancel);
-    // Cancel collapses the call chrome entirely (re-knock = Start again).
+    // Cancel collapses the call chrome entirely (re-knock = Meet again).
     await expect(canvas.queryByText(meetLabels.knockWaitHint)).not.toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.start })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /^Meet$/ })).toBeInTheDocument();
   },
 };
 

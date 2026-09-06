@@ -141,7 +141,7 @@ export type MeetChatOperations = {
   openDm?: (principalId: string) => Promise<MeetChannel>;
   /** Advance the server read marker and zero local unread for this UI channel id. */
   markChannelRead?: (channelId: string) => Promise<void>;
-  startCall?: (channelId: string) => Promise<void>;
+  startCall?: (channelId: string, options?: { video?: boolean }) => Promise<void>;
   leaveCall?: (channelId: string) => Promise<void>;
   searchSharePrincipals?: (query: string) => Promise<CollectionSharePrincipal[]>;
 };

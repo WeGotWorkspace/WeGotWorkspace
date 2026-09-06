@@ -197,6 +197,25 @@ export function useMeetMutations({
     [canModerateKnocks, meetRtc, operationsRef, room],
   );
 
+  const mutePeer = useCallback(
+    async (peerId: string) => {
+      if (!canModerateKnocks) return;
+      if (!operationsRef.current || !room.roomCodeRef.current || !room.selfIdRef.current) return;
+      if (peerId === room.selfIdRef.current) return;
+      try {
+        await operationsRef.current.chat({
+          room: room.roomCodeRef.current,
+          from: room.selfIdRef.current,
+          text: buildMeetControlMessage({ kind: "mute", peerId }),
+          sessionKey: meetRtc.getSessionKey() ?? undefined,
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : meetLabels.couldNotMuteParticipant);
+      }
+    },
+    [canModerateKnocks, meetRtc, operationsRef, room],
+  );
+
   const endCallForAll = useCallback(async () => {
     if (!operationsRef.current || !room.roomCodeRef.current || !room.selfIdRef.current) {
       await leave();
@@ -302,6 +321,7 @@ export function useMeetMutations({
     requestJoin,
     admitKnocker,
     denyKnocker,
+    mutePeer,
     endCallForAll,
     sendChat,
     startMeeting,

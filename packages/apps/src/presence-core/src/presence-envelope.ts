@@ -28,6 +28,17 @@ export function serializePresenceEnvelope(envelope: PresenceEnvelope): string {
   return JSON.stringify(envelope);
 }
 
+/** Build a `call-active` hint. `audioOnly` is omitted unless it is true. */
+export function presenceCallActiveEnvelope(
+  channel: string,
+  active: boolean,
+  audioOnly?: boolean,
+): Extract<PresenceEnvelope, { kind: "call-active" }> {
+  return audioOnly === true
+    ? { v: 1, kind: "call-active", channel, active, audioOnly: true }
+    : { v: 1, kind: "call-active", channel, active };
+}
+
 /** Parse an inbound data-channel payload; unknown or malformed envelopes yield null. */
 export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
   let data: unknown;
@@ -118,7 +129,11 @@ export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
   if (envelope.kind === "call-active") {
     if (typeof envelope.channel !== "string" || envelope.channel === "") return null;
     if (typeof envelope.active !== "boolean") return null;
-    return { v: 1, kind: "call-active", channel: envelope.channel, active: envelope.active };
+    return presenceCallActiveEnvelope(
+      envelope.channel,
+      envelope.active,
+      envelope.audioOnly === true,
+    );
   }
 
   return null;

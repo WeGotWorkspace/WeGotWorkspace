@@ -3,6 +3,11 @@ import { Button, IconButton } from "@/button/src/button";
 import type { MeetCallInvite } from "@/meet-core/src/meet-call-stage-layout";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
+import {
+  meetCallBarMeta,
+  meetCallBarRoster,
+  meetCallBarShownCount,
+} from "@/meet-core/src/meet-call-bar-roster";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
@@ -38,18 +43,24 @@ export type MeetCallBarProps = {
   onSpeakerChange: (optionId: string) => void;
   onExpand: () => void;
   onLeave: () => void;
-  onMuteSoon: (name: string) => void;
+  /** Host/moderator: force-mute a remote peer. Omitted for guests. */
+  onMuteParticipant?: (peerId: string) => void;
   /** IconButton cluster + camera tiles — only after this user joins. */
   joined?: boolean;
   /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
   invite?: MeetCallInvite | null;
   onInvite?: () => void;
+  /** Meeting was started as Meet (Audio Only) — mark and Join use audio chrome. */
+  audioOnly?: boolean;
   className?: string;
 };
 
-export function meetCallBarMeta(count: number, elapsed: string): string {
-  return [meetLabels.inCallCount(count), elapsed].join(" · ");
-}
+export {
+  meetCallBarMeta,
+  meetCallBarRoster,
+  meetCallBarShownCount,
+  meetCallPreviewPeers,
+} from "@/meet-core/src/meet-call-bar-roster";
 
 export function MeetCallBar({
   elapsedLabel,
@@ -73,24 +84,37 @@ export function MeetCallBar({
   onSpeakerChange,
   onExpand,
   onLeave,
-  onMuteSoon,
+  onMuteParticipant,
   joined = false,
   invite = null,
   onInvite,
+  audioOnly = false,
   className,
 }: MeetCallBarProps) {
-  const roster: MeetCallBarPeer[] = [{ id: selfId, name: selfName, stream: selfStream }, ...peers];
+  const roster = meetCallBarRoster({
+    joined,
+    self: { id: selfId, name: selfName, stream: selfStream },
+    peers,
+  });
+  const meta = meetCallBarMeta(
+    meetCallBarShownCount({ joined, participantCount, peerCount: peers.length }),
+    joined ? elapsedLabel : undefined,
+  );
 
   return (
     <div className={cn("meet-call-bar", className)}>
       <div className="meet-call-bar__row">
         <div className="meet-call-bar__start">
           <span className="meet-call-bar__mark" aria-hidden>
-            <Video className="meet-workspace__header-kind-icon" />
+            {audioOnly ? (
+              <Mic className="meet-workspace__header-kind-icon" />
+            ) : (
+              <Video className="meet-workspace__header-kind-icon" />
+            )}
           </span>
           <div className="meet-call-bar__copy">
             <p className="meet-call-bar__title">{meetLabels.meetingStarted}</p>
-            <p className="meet-call-bar__meta">{meetCallBarMeta(participantCount, elapsedLabel)}</p>
+            {meta ? <p className="meet-call-bar__meta">{meta}</p> : null}
           </div>
           <ul className="meet-call-bar__avatars">
             {roster.map((person) => (
@@ -110,7 +134,7 @@ export function MeetCallBar({
             <Button
               className="meet-call-bar__invite-button"
               label={meetLabels.join}
-              icon={<Video />}
+              icon={audioOnly ? <Mic /> : <Video />}
               size="sm"
               variant="subtle"
               onClick={onInvite}
@@ -175,7 +199,6 @@ export function MeetCallBar({
             disclosedMedia={{ camera: videoOn, mic: micOn }}
             micOn={micOn}
             onToggleMic={onToggleMic}
-            onMuteSoon={onMuteSoon}
           />
           {peers.map((peer) => (
             <MeetPeerTile
@@ -185,7 +208,7 @@ export function MeetCallBar({
               compact
               remoteMedia={peer.remoteMedia}
               disclosedMedia={peer.disclosedMedia}
-              onMuteSoon={onMuteSoon}
+              onMuteParticipant={onMuteParticipant ? () => onMuteParticipant(peer.id) : undefined}
             />
           ))}
         </div>

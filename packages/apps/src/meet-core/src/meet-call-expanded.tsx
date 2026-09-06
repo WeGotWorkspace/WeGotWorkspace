@@ -195,7 +195,11 @@ export function MeetCallExpanded({
                   disclosedMedia={spotlight.disclosedMedia}
                   micOn={spotlight.id === self.id ? room.controller.micOn : undefined}
                   onToggleMic={spotlight.id === self.id ? room.controller.toggleMic : undefined}
-                  onMuteSoon={room.onMuteSoon}
+                  onMuteParticipant={
+                    spotlight.id === self.id || !room.hasSignedInIdentity
+                      ? undefined
+                      : () => void room.controller.mutePeer(spotlight.id)
+                  }
                 />
               )}
             </div>
@@ -222,7 +226,11 @@ export function MeetCallExpanded({
                       }
                       micOn={isSelf ? room.controller.micOn : undefined}
                       onToggleMic={isSelf ? room.controller.toggleMic : undefined}
-                      onMuteSoon={room.onMuteSoon}
+                      onMuteParticipant={
+                        isSelf || !room.hasSignedInIdentity
+                          ? undefined
+                          : () => void room.controller.mutePeer(peer.id)
+                      }
                     />
                     <p className="meet-call-stage__strip-caption">
                       {isSelf ? meetLabels.youLabel : meetCallGivenName(peer.name)}

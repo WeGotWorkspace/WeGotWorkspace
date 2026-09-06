@@ -41,6 +41,7 @@ export function useMeetCallSession({
   operationsRef.current = operations;
 
   const meetRtcRef = useRef<ReturnType<typeof useMeetRtc> | null>(null);
+  const muteMicRef = useRef<null | (() => boolean)>(null);
   const getLocalStreamRef = useRef<() => MediaStream | null>(() => null);
   const announceMediaPresenceRef = useRef<
     (mic: boolean, camera: boolean, screen?: boolean) => Promise<void>
@@ -66,6 +67,7 @@ export function useMeetCallSession({
     refreshPeersRef: room.refreshPeersRef,
     leaveRef,
     meetRtcRef,
+    muteMicRef,
     setKnockers: room.setKnockers,
     setEndedMessage: room.setEndedMessage,
     setStatus: room.setStatus,
@@ -186,6 +188,7 @@ export function useMeetCallSession({
     ensureLocalMedia,
     stopLocalMedia,
     toggleMic,
+    muteMic,
     toggleVideo,
     toggleScreenShare,
     switchMic,
@@ -215,6 +218,7 @@ export function useMeetCallSession({
     screenOnRef: room.screenOnRef,
   });
   getLocalStreamRef.current = getLocalStream;
+  muteMicRef.current = muteMic;
   // Mini-player (outside `/meet`) calls the same toggles so mic/camera stay in sync.
   if (callStore) {
     callStore.toggleMicRef.current = toggleMic;

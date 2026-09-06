@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import {
   buildMeetAudioConstraints,
   buildMeetVideoConstraints,
@@ -109,30 +110,30 @@ export function useMeetLocalMedia({
   );
 
   const ensureLocalMedia = useCallback(async () => {
-    if (localStreamRef.current) return localStreamRef.current;
+    const mic = micOnRef.current;
+    const video = videoOnRef.current;
+    if (localStreamRef.current) {
+      syncMeetLocalTrackEnabled(localStreamRef.current, { mic, video });
+      return localStreamRef.current;
+    }
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: buildMeetAudioConstraints(selectedMicId ?? undefined),
       video: buildMeetVideoConstraints(selectedCamId ?? undefined),
     });
     localStreamRef.current = stream;
     cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
-    stream.getAudioTracks().forEach((track) => {
-      track.enabled = micOn;
-    });
-    stream.getVideoTracks().forEach((track) => {
-      track.enabled = videoOn;
-    });
+    syncMeetLocalTrackEnabled(stream, { mic, video });
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     await refreshDeviceList();
     return stream;
   }, [
     cameraTrackRef,
     localStreamRef,
-    micOn,
+    micOnRef,
     refreshDeviceList,
     selectedCamId,
     selectedMicId,
-    videoOn,
+    videoOnRef,
   ]);
 
   const stopLocalMedia = useCallback(() => {
@@ -155,6 +156,17 @@ export function useMeetLocalMedia({
       return next;
     });
   }, [announceMediaPresence, localStreamRef, setMicOn, videoOnRef]);
+
+  /** Host remote-mute: force the local mic off. No-op when already muted. */
+  const muteMic = useCallback((): boolean => {
+    if (!micOnRef.current) return false;
+    localStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = false;
+    });
+    setMicOn(false);
+    void announceMediaPresence(false, videoOnRef.current);
+    return true;
+  }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
 
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
@@ -312,6 +324,7 @@ export function useMeetLocalMedia({
     ensureLocalMedia,
     stopLocalMedia,
     toggleMic,
+    muteMic,
     toggleVideo,
     toggleScreenShare,
     switchMic,

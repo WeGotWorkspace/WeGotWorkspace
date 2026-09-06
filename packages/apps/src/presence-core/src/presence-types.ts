@@ -90,7 +90,7 @@ export type PresenceEnvelope =
       on: boolean;
     }
   | { v: 1; kind: "channel-changed"; channel: string }
-  | { v: 1; kind: "call-active"; channel: string; active: boolean };
+  | { v: 1; kind: "call-active"; channel: string; active: boolean; audioOnly?: boolean };
 
 /** Inbound Meet acceleration events (after sender-username checks). */
 export type PresenceMeetFanoutEvent =
@@ -118,7 +118,13 @@ export type PresenceMeetFanoutEvent =
       on: boolean;
     }
   | { kind: "channel-changed"; senderUsername: string; channel: string }
-  | { kind: "call-active"; senderUsername: string; channel: string; active: boolean };
+  | {
+      kind: "call-active";
+      senderUsername: string;
+      channel: string;
+      active: boolean;
+      audioOnly?: boolean;
+    };
 
 export type PresenceMeshEvent =
   | { type: "roster" }

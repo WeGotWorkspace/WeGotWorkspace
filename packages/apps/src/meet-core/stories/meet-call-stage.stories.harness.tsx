@@ -54,7 +54,6 @@ function buildStoryRoomSlice(
     activeSpeaker,
     onSpeakerChange,
     onCopyLink: STORY_NOOP,
-    onMuteSoon: STORY_NOOP,
     onToastInfo: STORY_NOOP,
     onToastError: STORY_NOOP,
   };

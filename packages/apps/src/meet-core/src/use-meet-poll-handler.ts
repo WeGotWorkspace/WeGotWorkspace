@@ -37,6 +37,7 @@ export type UseMeetPollHandlerArgs = {
   refreshPeersRef: MutableRefObject<() => void>;
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
   meetRtcRef: MutableRefObject<MeetRtc | null>;
+  muteMicRef: MutableRefObject<null | (() => boolean)>;
   setKnockers: Dispatch<SetStateAction<MeetKnocker[]>>;
   setEndedMessage: Dispatch<SetStateAction<string | null>>;
   setStatus: Dispatch<SetStateAction<CallStatus>>;
@@ -58,6 +59,7 @@ export function useMeetPollHandler({
   refreshPeersRef,
   leaveRef,
   meetRtcRef,
+  muteMicRef,
   setKnockers,
   setEndedMessage,
   setStatus,
@@ -132,6 +134,12 @@ export function useMeetPollHandler({
             }
             continue;
           }
+          if (control.kind === "mute") {
+            if (control.peerId === selfPeerId && muteMicRef.current?.()) {
+              toast.info(meetLabels.mutedByHost);
+            }
+            continue;
+          }
           if (control.kind !== "admit" && control.kind !== "deny") continue;
           if (control.peerId !== selfPeerId) continue;
           if (control.kind === "admit") {
@@ -159,6 +167,7 @@ export function useMeetPollHandler({
       displayNameRef,
       leaveRef,
       meetRtcRef,
+      muteMicRef,
       participantRosterDiffReadyRef,
       peerDisclosedMediaRef,
       peerNamesRef,

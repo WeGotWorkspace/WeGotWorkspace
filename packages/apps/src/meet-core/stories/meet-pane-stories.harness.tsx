@@ -114,7 +114,6 @@ export function MeetRoomPaneHarness(
           activeSpeaker={props.activeSpeaker ?? devices.activeSpeaker}
           onSpeakerChange={props.onSpeakerChange ?? devices.setActiveSpeaker}
           onCopyLink={props.onCopyLink ?? (() => {})}
-          onMuteSoon={props.onMuteSoon ?? (() => {})}
           onToastInfo={props.onToastInfo ?? (() => {})}
           onToastError={props.onToastError ?? (() => {})}
         />

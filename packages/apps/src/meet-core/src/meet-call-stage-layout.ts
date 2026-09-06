@@ -33,6 +33,31 @@ export function mergeMeetCallActive(
   return out;
 }
 
+/**
+ * Sticky chrome live map. Distinguishes mesh silence from mesh "this call ended":
+ * - non-empty participant set → live (a false poll cannot hide a live mesh)
+ * - empty set (last sender removed) → not live (a stale poll true cannot keep chrome)
+ * - missing key (page load / poll-only) → trust poll
+ */
+export function mergeMeetCallLive(
+  meshParticipants: Record<string, readonly string[]>,
+  polledActive: Record<string, boolean>,
+): Record<string, boolean> {
+  const meshLive: Record<string, boolean> = {};
+  const meshEnded = new Set<string>();
+  for (const [id, usernames] of Object.entries(meshParticipants)) {
+    if (usernames.length > 0) meshLive[id] = true;
+    else meshEnded.add(id);
+  }
+  const merged = mergeMeetCallActive(meshLive, polledActive);
+  if (meshEnded.size === 0) return merged;
+  const out: Record<string, boolean> = {};
+  for (const [id, active] of Object.entries(merged)) {
+    if (active && !meshEnded.has(id)) out[id] = true;
+  }
+  return out;
+}
+
 export function meetSelectedConversationLive(
   selected: { callActive?: boolean } | null,
   selectedId: string | null,
@@ -52,6 +77,11 @@ export function meetCallInviteAction(
 ): MeetCallInvite | null {
   if (localJoined || !meetingLive) return null;
   return "join";
+}
+
+/** Join from the sticky bar: audio-only meetings join with video off. */
+export function meetCallInviteStartOptions(audioOnly: boolean): { video: false } | undefined {
+  return audioOnly ? { video: false } : undefined;
 }
 
 /** ViewHeader Start — only when no meeting is live on this channel. */

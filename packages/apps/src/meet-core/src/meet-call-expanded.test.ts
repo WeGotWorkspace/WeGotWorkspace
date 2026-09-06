@@ -12,6 +12,8 @@ const callBar = readFileSync(join(here, "meet-call-bar.tsx"), "utf8");
 const toolbar = readFileSync(join(here, "meet-call-toolbar.tsx"), "utf8");
 const peerTile = readFileSync(join(here, "meet-peer-tile.tsx"), "utf8");
 const pip = readFileSync(join(here, "meet-self-preview-pip.tsx"), "utf8");
+const chatCall = readFileSync(join(here, "use-meet-chat-call.ts"), "utf8");
+const workspaceShell = readFileSync(join(here, "use-meet-workspace-shell.tsx"), "utf8");
 
 describe("MeetCallExpanded", () => {
   it("owns the light stage, peer strip, and chat rail — not the old room split", () => {
@@ -85,6 +87,7 @@ describe("Meet call/chat IconButton chrome", () => {
     expect(peerTile).not.toMatch(/variant="ghost"/);
     expect(peerTile).toMatch(/meet-peer-tile__mute/);
     expect(peerTile).toMatch(/onToggleMic/);
+    expect(peerTile).not.toMatch(/onMuteSoon/);
     expect(peerTile).not.toMatch(/DropdownMenu/);
     expect(peerTile).not.toMatch(/MoreVertical/);
     expect(pip).toMatch(/variant="subtle"/);
@@ -92,6 +95,10 @@ describe("Meet call/chat IconButton chrome", () => {
     expect(expanded).toMatch(/size="sm"/);
     expect(expanded).toMatch(/variant="subtle"/);
     expect(expanded).not.toMatch(/variant="ghost"/);
+    expect(chatCall).not.toMatch(/muteSoon/);
+    expect(chatCall).not.toMatch(/onMuteSoon/);
+    expect(workspaceShell).not.toMatch(/muteSoon/);
+    expect(workspaceShell).not.toMatch(/onMuteSoon/);
   });
 });
 

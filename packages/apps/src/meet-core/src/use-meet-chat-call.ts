@@ -98,7 +98,7 @@ export function useMeetChatCall({
   }, []);
 
   const startCall = useCallback(
-    async (channelId: string) => {
+    async (channelId: string, options?: { video?: boolean }) => {
       // The rethrow on failure makes the call layout revert its chrome.
       let room: string | null = null;
       try {
@@ -117,6 +117,9 @@ export function useMeetChatCall({
           room = meetChannelRoomId(channel ?? { id: channelId, kind: "channel" });
         }
         await reserveChannelRoom(room);
+        if (options?.video === false) {
+          controllerRef.current.setVideoOn(false);
+        }
         await controllerRef.current.joinRoom(room);
       } catch (error) {
         // Chunk-H join policy: the server rejects direct joins from channel
@@ -207,7 +210,6 @@ export function useMeetChatCall({
     activeSpeaker: speakerId || speakers[0]?.id || "default",
     onSpeakerChange: setSpeakerId,
     onCopyLink,
-    onMuteSoon: (name: string) => toast.show(meetLabels.muteSoon(name), { severity: "info" }),
     onToastInfo: (message: string) => toast.show(message, { severity: "info" }),
     onToastError: (message: string) => toast.showError(message),
   };

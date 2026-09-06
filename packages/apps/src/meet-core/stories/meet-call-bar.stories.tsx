@@ -21,9 +21,10 @@ type MeetCallBarStoryArgs = {
   micOn: boolean;
   videoOn: boolean;
   invite: "join" | null;
+  audioOnly: boolean;
 };
 
-function MeetCallBarStory({ joined, micOn, videoOn, invite }: MeetCallBarStoryArgs) {
+function MeetCallBarStory({ joined, micOn, videoOn, invite, audioOnly }: MeetCallBarStoryArgs) {
   const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
@@ -45,7 +46,7 @@ function MeetCallBarStory({ joined, micOn, videoOn, invite }: MeetCallBarStoryAr
           stream: null,
           remoteMedia: peer.remoteMedia,
         }))}
-        participantCount={1 + STORY_MEET_PEERS.length}
+        participantCount={joined ? 1 + STORY_MEET_PEERS.length : STORY_MEET_PEERS.length}
         micOn={mic}
         videoOn={video}
         cameras={STORY_MEET_DEVICES}
@@ -61,9 +62,10 @@ function MeetCallBarStory({ joined, micOn, videoOn, invite }: MeetCallBarStoryAr
         onSpeakerChange={setSpeaker}
         onExpand={STORY_NOOP}
         onLeave={STORY_NOOP}
-        onMuteSoon={STORY_NOOP}
+        onMuteParticipant={STORY_NOOP}
         joined={joined}
         invite={invite}
+        audioOnly={audioOnly}
         onInvite={invite ? STORY_NOOP : undefined}
       />
     </MeetStoryScope>
@@ -98,6 +100,7 @@ const meta = {
     micOn: storyBooleanControl,
     videoOn: storyBooleanControl,
     invite: { control: "select", options: [null, "join"] as const },
+    audioOnly: storyBooleanControl,
   },
 } satisfies Meta<MeetCallBarStoryArgs>;
 
@@ -111,6 +114,7 @@ export const Joined: Story = {
     micOn: true,
     videoOn: true,
     invite: null,
+    audioOnly: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -131,10 +135,37 @@ export const InviteToJoin: Story = {
     micOn: true,
     videoOn: false,
     invite: "join",
+    audioOnly: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: meetLabels.join })).toBeInTheDocument();
+    const join = canvas.getByRole("button", { name: meetLabels.join });
+    await expect(join).toBeInTheDocument();
+    await expect(join.querySelector(".lucide-video")).toBeTruthy();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.expandCall }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("img", { name: "Demo User avatar" })).not.toBeInTheDocument();
+    await expect(canvas.getByRole("img", { name: "Alex Morgan avatar" })).toBeInTheDocument();
+    await expect(canvas.getByRole("img", { name: "Jamie Lee avatar" })).toBeInTheDocument();
+  },
+};
+
+export const InviteToJoinAudioOnly: Story = {
+  name: "Invite to join (audio only)",
+  args: {
+    joined: false,
+    micOn: true,
+    videoOn: false,
+    invite: "join",
+    audioOnly: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const join = canvas.getByRole("button", { name: meetLabels.join });
+    await expect(join).toBeInTheDocument();
+    await expect(join.querySelector(".lucide-mic")).toBeTruthy();
+    await expect(join.querySelector(".lucide-video")).toBeNull();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
     ).not.toBeInTheDocument();

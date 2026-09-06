@@ -15,8 +15,8 @@ describe("meet workspace sidebar chrome", () => {
   it("uses the Meet lockup and segmented New menu, not section + or sidebar search", () => {
     expect(tsx).toMatch(/appSwitchSubtitle=\{meetLabels\.productName\}/);
     expect(tsx).toMatch(/<SidebarSegmentedNewMenu/);
-    expect(tsx).toMatch(/mainLabel=\{meetLabels\.newChannel\}/);
-    expect(tsx).toMatch(/label: meetLabels\.newMeeting/);
+    expect(tsx).toMatch(/mainLabel=\{meetLabels\.newMeeting\}/);
+    expect(tsx).toMatch(/label: meetLabels\.newChannel/);
     expect(tsx).toMatch(/title=\{meetLabels\.sidebarDirectMessages\}/);
     expect(tsx.indexOf("title={meetLabels.sidebarChannels}")).toBeLessThan(
       tsx.indexOf("title={meetLabels.sidebarSharedWithMe}"),
@@ -94,14 +94,19 @@ describe("meet workspace sidebar chrome", () => {
   });
 
   it("uses a labeled Start Button in ViewHeader and Join on the compact bar when live", () => {
-    expect(tsx).toMatch(/import \{ Button, IconButton \} from "@\/button\/src\/button"/);
+    expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
     expect(tsx).toMatch(/import \{ MeetCallBar \} from "@\/meet-core\/src\/meet-call-bar"/);
     expect(tsx).toMatch(/meetCallInviteAction\(/);
     expect(tsx).toMatch(/meetCallHeaderStartVisible\(/);
     expect(tsx).toMatch(/invite=\{callInvite\}/);
-    expect(tsx).toMatch(/onInvite=\{onCallInvite\}/);
+    expect(tsx).toMatch(/audioOnly=\{callAudioOnly\}/);
+    expect(tsx).toMatch(/meetCallInviteStartOptions\(callAudioOnly\)/);
+    expect(tsx).toMatch(/callAudioOnlyByChannel/);
     expect(tsx).toMatch(/"meet-workspace__header-start"/);
-    expect(tsx).toMatch(/meetLabels\.start/);
+    expect(tsx).toMatch(/mainLabel=\{meetLabels\.meet\}/);
+    expect(tsx).toMatch(/meetLabels\.startAudioOnly/);
+    expect(tsx).toMatch(/stretch=\{false\}/);
+    expect(tsx).not.toMatch(/label=\{meetLabels\.start\}/);
     expect(tsx).not.toMatch(/meetHeaderCallAction\(/);
     expect(tsx).not.toMatch(/headerCallLabel/);
     expect(tsx).not.toMatch(/onHeaderCallClick/);
@@ -258,13 +263,16 @@ describe("meet workspace sidebar chrome", () => {
     expect(railActions!.indexOf("meet-workspace__members")).toBeLessThan(
       railActions!.indexOf("chatUiLabels.edit"),
     );
-    // Channel ViewHeader: Start (when idle), then members, then edit.
+    // Channel ViewHeader: members, then Meet segmented, then edit.
     const mainActions = tsx.match(
       /className="meet-workspace__header-actions"[\s\S]*?<\/div>\s*\) : null/,
     )?.[0];
     expect(mainActions).toBeTruthy();
     expect(mainActions!).toMatch(/meet-workspace__header-start/);
     expect(mainActions!.indexOf("meet-workspace__members")).toBeLessThan(
+      mainActions!.indexOf("meet-workspace__header-start"),
+    );
+    expect(mainActions!.indexOf("meet-workspace__header-start")).toBeLessThan(
       mainActions!.indexOf("meet-workspace__header-edit"),
     );
     expect(css).toMatch(/\.meet-workspace__rail-surfaces[\s\S]*grid-template:\s*1fr \/ 1fr/);

@@ -4,12 +4,14 @@ import {
   meetCallChromeVisible,
   meetCallHeaderStartVisible,
   meetCallInviteAction,
+  meetCallInviteStartOptions,
   meetCallIsActive,
   meetCallStageShowsBar,
   meetCallStageShowsChat,
   meetCallStageShowsStage,
   meetChannelMeetingLive,
   mergeMeetCallActive,
+  mergeMeetCallLive,
   meetSelectedConversationLive,
   meetSidebarRowIsLive,
 } from "@/meet-core/src/meet-call-stage-layout";
@@ -62,6 +64,34 @@ describe("meetCallStage layout", () => {
     ).toEqual({ "dm:bob": true, "chat-general": true });
   });
 
+  it("hides chrome when mesh emptied a channel even if the poll is still true", () => {
+    expect(mergeMeetCallLive({ "chat-general": [] }, { "chat-general": true })).toEqual({});
+  });
+
+  it("keeps chrome live when mesh still has participants even if the poll is false", () => {
+    expect(mergeMeetCallLive({ "chat-general": ["bob"] }, { "chat-general": false })).toEqual({
+      "chat-general": true,
+    });
+    expect(mergeMeetCallLive({ "dm:bob": ["bob"] }, {})).toEqual({ "dm:bob": true });
+  });
+
+  it("trusts a true poll when mesh has never seen the channel", () => {
+    expect(mergeMeetCallLive({}, { "chat-general": true })).toEqual({ "chat-general": true });
+    expect(mergeMeetCallLive({ "dm:bob": ["bob"] }, { "chat-general": true })).toEqual({
+      "dm:bob": true,
+      "chat-general": true,
+    });
+  });
+
+  it("keeps chrome for a local join even when mesh emptied and poll is stale", () => {
+    const channelCallActive = mergeMeetCallLive({ "chat-general": [] }, { "chat-general": true })[
+      "chat-general"
+    ];
+    expect(channelCallActive).toBeUndefined();
+    expect(meetChannelMeetingLive({ channelCallActive, localCallActive: true })).toBe(true);
+    expect(meetChannelMeetingLive({ channelCallActive, localCallActive: false })).toBe(false);
+  });
+
   it("reads DM / mesh live from callActiveByChannel when the selection is not a channel row", () => {
     expect(meetSelectedConversationLive(null, "dm:bob", { "dm:bob": true })).toBe(true);
     expect(meetSelectedConversationLive(null, "dm:bob", {})).toBe(false);
@@ -82,6 +112,11 @@ describe("meetCallStage layout", () => {
     expect(meetCallInviteAction(true, false)).toBe("join");
     expect(meetCallInviteAction(true, true)).toBeNull();
     expect(meetCallInviteAction(false, true)).toBeNull();
+  });
+
+  it("joins an audio-only meeting with video off", () => {
+    expect(meetCallInviteStartOptions(true)).toEqual({ video: false });
+    expect(meetCallInviteStartOptions(false)).toBeUndefined();
   });
 
   it("shows ViewHeader Start only when no meeting is live", () => {
