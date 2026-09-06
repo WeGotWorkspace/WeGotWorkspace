@@ -20,4 +20,12 @@ describe("chat-message-list day chrome", () => {
     expect(css).not.toMatch(/chat-message-list__day-label/);
     expect(css).not.toMatch(/rounded-full/);
   });
+
+  it("anchors a New messages jump chip at the bottom of a relative list", () => {
+    expect(tsx).toMatch(/onCaughtUpChange\?:/);
+    expect(tsx).toMatch(/chatUiLabels\.newMessages/);
+    expect(tsx).toMatch(/chat-message-list__jump/);
+    expect(css).toMatch(/\.chat-message-list \{[\s\S]*relative/);
+    expect(css).toMatch(/\.chat-message-list__jump[\s\S]*absolute/);
+  });
 });

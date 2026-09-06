@@ -29,6 +29,7 @@ export type MeetChatColumnProps = {
   typingNames?: readonly string[];
   /** Composer activity for typing broadcasts: `true` = content present, `false` = stop. */
   onComposerTyping?: (typing: boolean) => void;
+  onCaughtUpChange?: (caughtUp: boolean) => void;
   className?: string;
 };
 
@@ -48,6 +49,7 @@ export const MeetChatColumn = memo(function MeetChatColumn({
   onSaveEdit,
   typingNames = [],
   onComposerTyping,
+  onCaughtUpChange,
   className,
 }: MeetChatColumnProps) {
   const typingLabel = meetTypingLabel(typingNames);
@@ -57,6 +59,7 @@ export const MeetChatColumn = memo(function MeetChatColumn({
         messages={messages}
         currentUserId={currentUserId}
         onToggleReaction={onReact}
+        onCaughtUpChange={onCaughtUpChange}
         onOpenThread={(message) => {
           if (!chatMessageCanOpenThread(message)) return;
           const meetMessage = messages.find((row) => row.id === message.id);

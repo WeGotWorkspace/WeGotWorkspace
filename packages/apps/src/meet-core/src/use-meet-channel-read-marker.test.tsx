@@ -48,6 +48,41 @@ describe("useMeetChannelReadMarker", () => {
     expect(markChannelRead).toHaveBeenCalledWith("chat-general");
   });
 
+  it("does not mark when caughtUp is false", () => {
+    const markChannelRead = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = renderHook(
+      (props: { selectedLatestMessageId: string | null }) =>
+        useMeetChannelReadMarker({
+          selectedChannelId: "chat-general",
+          markChannelRead,
+          selectedLatestMessageId: props.selectedLatestMessageId,
+          caughtUp: false,
+        }),
+      { initialProps: { selectedLatestMessageId: "msg-1" as string | null } },
+    );
+
+    expect(markChannelRead).not.toHaveBeenCalled();
+    rerender({ selectedLatestMessageId: "msg-2" });
+    expect(markChannelRead).not.toHaveBeenCalled();
+  });
+
+  it("marks when caughtUp becomes true", () => {
+    const markChannelRead = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = renderHook(
+      (props: { caughtUp: boolean }) =>
+        useMeetChannelReadMarker({
+          selectedChannelId: "chat-general",
+          markChannelRead,
+          caughtUp: props.caughtUp,
+        }),
+      { initialProps: { caughtUp: false } },
+    );
+
+    expect(markChannelRead).not.toHaveBeenCalled();
+    rerender({ caughtUp: true });
+    expect(markChannelRead).toHaveBeenCalledWith("chat-general");
+  });
+
   it("does not mark inbound while the tab is hidden, then marks on resume", () => {
     const markChannelRead = vi.fn().mockResolvedValue(undefined);
     setVisibility("hidden");

@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
+import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import { omitChatNestedThreadActions } from "@/chat-ui/src/chat-thread-actions";
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import type {
@@ -35,6 +36,7 @@ export type ChatThreadPanelProps = {
   parentEditing?: boolean;
   parentEditComposer?: ReactNode;
   className?: string;
+  onCaughtUpChange?: (caughtUp: boolean) => void;
 };
 
 export function ChatThreadPanel({
@@ -56,6 +58,7 @@ export function ChatThreadPanel({
   parentEditing = false,
   parentEditComposer,
   className,
+  onCaughtUpChange,
 }: ChatThreadPanelProps) {
   const replyLabel =
     replies.length === 0
@@ -77,7 +80,7 @@ export function ChatThreadPanel({
           />
         ) : null}
       </header>
-      <div className="chat-thread-panel__scroll">
+      <div className="chat-thread-panel__body">
         <div className="chat-thread-panel__parent">
           <ChatMessage
             message={parent}
@@ -96,25 +99,18 @@ export function ChatThreadPanel({
         </div>
         <p className="chat-thread-panel__divider">{replyLabel}</p>
         {replies.length > 0 ? (
-          <div className="chat-thread-panel__replies">
-            {replies.map((reply, index) => {
-              const previous = index === 0 ? parent : replies[index - 1];
-              return (
-                <ChatMessage
-                  key={reply.id}
-                  message={reply}
-                  currentUserId={currentUserId}
-                  continuation={previous.authorId === reply.authorId}
-                  allowThread={false}
-                  actions={omitChatNestedThreadActions(actionsForMessage?.(reply))}
-                  presence={authorPresence?.[reply.authorId]}
-                  onToggleReaction={
-                    onToggleReaction ? (emoji) => onToggleReaction(reply.id, emoji) : undefined
-                  }
-                />
-              );
-            })}
-          </div>
+          <ChatMessageList
+            className="chat-thread-panel__replies"
+            messages={replies}
+            currentUserId={currentUserId}
+            allowThread={false}
+            authorPresence={authorPresence}
+            onCaughtUpChange={onCaughtUpChange}
+            actionsForMessage={(message) =>
+              omitChatNestedThreadActions(actionsForMessage?.(message))
+            }
+            onToggleReaction={onToggleReaction}
+          />
         ) : null}
       </div>
       {onSend ? (

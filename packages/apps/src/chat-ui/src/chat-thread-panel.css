@@ -13,23 +13,23 @@
   @apply text-sm font-semibold;
 }
 
-.chat-thread-panel__scroll {
-  @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
+.chat-thread-panel__body {
+  @apply flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden;
   background-color: var(--chat-list-surface, transparent);
 }
 
 .chat-thread-panel__parent {
-  @apply border-b pb-1;
+  @apply shrink-0 border-b pb-1;
   border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
 }
 
 .chat-thread-panel__divider {
-  @apply px-3 py-2 text-xs font-medium;
+  @apply shrink-0 px-3 py-2 text-xs font-medium;
   color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }
 
 .chat-thread-panel__replies {
-  @apply flex flex-col pb-2;
+  @apply flex min-h-0 min-w-0 flex-1 flex-col pb-2;
 }
 
 .chat-thread-panel__composer {

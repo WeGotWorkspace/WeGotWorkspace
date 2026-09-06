@@ -16,4 +16,5 @@ export const chatUiLabels = {
   sendHint: "Return to send · Shift + Return for new line",
   today: "Today",
   yesterday: "Yesterday",
+  newMessages: "New messages",
 } as const;
