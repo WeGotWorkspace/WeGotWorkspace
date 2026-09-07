@@ -22,6 +22,19 @@ const CHANNELS: CalendarMeetChannelOption[] = [
   },
 ];
 
+const MIXED_CHANNELS: CalendarMeetChannelOption[] = [
+  { id: "chat-merge", name: "Merge smoke channel", kind: "channel" },
+  { id: "chat-onzin", name: "onzin", kind: "channel" },
+  { id: "chat-ditjes", name: "ditjes en datjes", kind: "channel" },
+  { id: "chat-jasja", name: "jasja", kind: "channel" },
+  { id: "chat-test-meet", name: "Test Meet", kind: "meeting" },
+  { id: "chat-week-start", name: "Week Start", kind: "meeting" },
+  { id: "chat-email-guest", name: "Email guest create check", kind: "meeting" },
+  { id: "chat-standup", name: "Standup", kind: "channel" },
+  { id: "chat-admins", name: "Administrators", kind: "channel" },
+  { id: "chat-dev", name: "Dev Team", kind: "channel" },
+];
+
 function stubMeet(overrides: Partial<CalendarMeetOperations> = {}): CalendarMeetOperations {
   return {
     roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
@@ -85,7 +98,7 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
   });
 
-  it("lists New meeting link first, then a separator, then channels", async () => {
+  it("lists New meeting link first, then a separator, then # channels (not meetings)", async () => {
     const { meetOperations } = renderCard();
     expect(meetOperations.listChannels).not.toHaveBeenCalled();
 
@@ -101,8 +114,36 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
       .getAllByRole("menuitem")
       .map((item) => item.textContent?.trim());
     expect(items[0]).toBe(L.eventMeetNewLink);
-    expect(items.slice(1)).toEqual(["General", "Standup"]);
+    expect(items.slice(1)).toEqual(["General"]);
+    expect(within(menu).queryByRole("menuitem", { name: "Standup" })).toBeNull();
     expect(within(menu).getByRole("separator")).toBeTruthy();
+  });
+
+  it("omits meeting-kind collections and sorts remaining channels A–Z", async () => {
+    renderCard({
+      meetOperations: stubMeet({ listChannels: vi.fn().mockResolvedValue(MIXED_CHANNELS) }),
+    });
+    const menu = openMeetMenu();
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "Administrators" })).toBeTruthy(),
+    );
+
+    const items = within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent?.trim());
+    expect(items[0]).toBe(L.eventMeetNewLink);
+    expect(items.slice(1)).toEqual([
+      "Administrators",
+      "Dev Team",
+      "ditjes en datjes",
+      "jasja",
+      "Merge smoke channel",
+      "onzin",
+      "Standup",
+    ]);
+    expect(within(menu).queryByRole("menuitem", { name: "Test Meet" })).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: "Week Start" })).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: "Email guest create check" })).toBeNull();
   });
 
   it("still shows New meeting link when the operations layer has no channel source", () => {
@@ -133,7 +174,7 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          meetingUrl: expect.stringContaining("/meet/guest?room="),
+          meetingUrl: expect.stringContaining("/meet/meetings/"),
           meetRoomCode: expect.any(String),
         }),
       ),
@@ -153,10 +194,7 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
     fireEvent.click(within(menu).getByRole("menuitem", { name: "General" }));
 
     await waitFor(() =>
-      expect(input).toHaveProperty(
-        "value",
-        `${ORIGIN}/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva`,
-      ),
+      expect(input).toHaveProperty("value", `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hva`),
     );
   });
 
@@ -169,7 +207,7 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
 
     fireEvent.click(within(menu).getByRole("menuitem", { name: "General" }));
 
-    const channelHref = `${ORIGIN}/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva`;
+    const channelHref = `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hva`;
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -183,24 +221,20 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
   });
 
-  it("attaches the guestRoomCode URL for a meeting-kind channel", async () => {
-    const { onChange } = renderCard();
+  it("shows the empty-channel state when listChannels returns only meeting-kind collections", async () => {
+    renderCard({
+      meetOperations: stubMeet({
+        listChannels: vi
+          .fn()
+          .mockResolvedValue([{ id: "chat-test-meet", name: "Test Meet", kind: "meeting" }]),
+      }),
+    });
     const menu = openMeetMenu();
+    expect(within(menu).getByRole("menuitem", { name: L.eventMeetNewLink })).toBeTruthy();
     await waitFor(() =>
-      expect(within(menu).getByRole("menuitem", { name: "Standup" })).toBeTruthy(),
+      expect(within(menu).getByRole("menuitem", { name: L.eventMeetChannelsEmpty })).toBeTruthy(),
     );
-
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Standup" }));
-
-    const standupHref = `${ORIGIN}/meet/guest?room=h8y8-ewp6-al8n`;
-    await waitFor(() =>
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          meetingUrl: standupHref,
-        }),
-      ),
-    );
-    expect(screen.getByLabelText(L.eventMeetUrlLabel)).toHaveProperty("value", standupHref);
+    expect(within(menu).queryByRole("menuitem", { name: "Test Meet" })).toBeNull();
   });
 
   it("expires a staged ad-hoc room when a channel replaces it", async () => {
@@ -225,7 +259,7 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          meetingUrl: `${ORIGIN}/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva`,
+          meetingUrl: `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
           meetRoomCode: undefined,
         }),
       ),

@@ -9275,11 +9275,13 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** @description POST body; server assigns id and @type. */
+        /** @description POST body; server assigns id and @type. title is required and must be non-empty after trim. */
         CalendarEventCreate: {
             "@type"?: unknown;
             id?: unknown;
-        } & components["schemas"]["CalendarEvent"];
+        } & components["schemas"]["CalendarEvent"] & {
+            title: string;
+        };
         /** @description PATCH request body for partial calendar event updates. Omits server-owned id and @type. */
         CalendarEventPatch: {
             title?: string;

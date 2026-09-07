@@ -1,0 +1,5 @@
+@import "../../styles.css" reference;
+
+.meet-create-meeting-dialog.calendar-event-dialog {
+  @apply max-w-lg;
+}

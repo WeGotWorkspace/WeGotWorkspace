@@ -111,7 +111,7 @@ describe("CalendarMeetCard", () => {
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
           meetRoomCode: staged,
-          meetingUrl: expect.stringContaining(`/meet/guest?room=${staged}`),
+          meetingUrl: expect.stringContaining(`/meet/meetings/${staged}`),
         }),
       ),
     );
@@ -463,5 +463,20 @@ describe("CalendarMeetCard", () => {
       ),
     );
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
+  });
+
+  it("copyOnly shows the URL without the Meet actions menu", () => {
+    renderCard({
+      copyOnly: true,
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        meetingUrl: `${ORIGIN}/meet/guest?room=${ROOM}`,
+      },
+    });
+    expect(screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toHaveProperty(
+      "readOnly",
+      true,
+    );
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
   });
 });

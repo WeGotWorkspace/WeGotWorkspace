@@ -172,11 +172,16 @@ export const WithChannelPicker: Story = {
     const items = canvas.getAllByRole("menuitem");
     await expect(items[0]).toBe(newLink);
     await expect(canvas.getByRole("separator")).toBeTruthy();
-    await expect(canvas.getByRole("menuitem", { name: "Standup" })).toBeTruthy();
+    await expect(items.map((item) => item.textContent?.trim())).toEqual([
+      defaultCalendarLabels.eventMeetNewLink,
+      "Design",
+      "General",
+    ]);
+    await expect(canvas.queryByRole("menuitem", { name: "Standup" })).toBeNull();
     await userEvent.click(general);
     const url = canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
     await expect(url.value).toBe(
-      "https://workspace.example.com/meet/guest?room=chat-01h455vb4pa9nnrjpznsav8hva",
+      "https://workspace.example.com/meet/channels/01h455vb4pa9nnrjpznsav8hva",
     );
   },
 };

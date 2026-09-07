@@ -12,6 +12,7 @@ import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import {
   chatMessageFromWire,
   createChatChannel,
+  deleteChatChannel,
   deleteChatMessage,
   isMeetChatGone,
   meetChannelFromWire,
@@ -49,6 +50,7 @@ import {
   findCachedDmChannelByPeer,
   getCachedChatMessage,
   readMeetChatBootstrapFromCache,
+  removeChatChannelFromCache,
   removeChatMessageFromCache,
   uiChatMessageForCache,
   upsertChatChannelInCache,
@@ -365,6 +367,17 @@ export function createHybridMeetChatOperations(
       });
       await upsertChatChannelInCache(username, updated);
       return meetChannelFromWire(updated);
+    },
+    deleteChannel: async (channelId) => {
+      if (!readBrowserOnline()) {
+        throw new Error("Deleting a channel requires a connection.");
+      }
+      try {
+        await deleteChatChannel(channelId);
+      } catch (error) {
+        if (!isMeetChatGone(error)) throw error;
+      }
+      await removeChatChannelFromCache(username, channelId);
     },
     searchSharePrincipals: (query) => searchCollectionSharePrincipals(query, username),
     markChannelRead: async (channelId) => {

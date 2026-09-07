@@ -64,8 +64,7 @@ export const STORY_MEET_CHAT_MESSAGES: MeetChatMessage[] = [
   },
 ];
 
-export const STORY_MEET_CALL_LINK =
-  "https://workspace.example.com/meet/guest?room=demo-1234-abcd-5678";
+export const STORY_MEET_CALL_LINK = "https://workspace.example.com/meet?room=demo-1234-abcd-5678";
 
 const noop = () => {};
 const noopAsync = async () => {};

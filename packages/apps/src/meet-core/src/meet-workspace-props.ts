@@ -1,9 +1,31 @@
+import type { CalendarAPIOperations, CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { ReactNode } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { ChatMessage, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import type { MeetThreadCallLayout } from "@/meet-core/src/meet-thread-placement";
+import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
+
+export type MeetCalendarSlice = {
+  calendars: CalendarInfo[];
+  events?: JmapCalendarEvent[];
+  createEvent?: CalendarAPIOperations["createEvent"];
+  patchEvent?: CalendarAPIOperations["patchEvent"];
+  deleteEvent?: CalendarAPIOperations["deleteEvent"];
+  meetOperations?: CalendarMeetOperations;
+  sessionUsername?: string;
+  sessionDisplayName?: string;
+  sessionEmail?: string;
+  workspaceOrigin?: string;
+  contactCards?: ContactCard[];
+  onEventCreated?: (event: JmapCalendarEvent) => void;
+  onEventUpdated?: (event: JmapCalendarEvent) => void;
+  onEventDeleted?: (eventId: string) => void;
+};
 
 export type MeetWorkspaceProps = {
   data: MeetUIData;
@@ -64,4 +86,8 @@ export type MeetWorkspaceProps = {
   onCloseThread?: () => void;
   onSendThreadReply?: (parentId: string, body: string) => void;
   onCaughtUpChange?: (caughtUp: boolean) => void;
+  /** Calendar events with a Meet URL (in progress or future), already sorted by start. */
+  upcomingMeetings?: MeetUpcomingMeeting[];
+  onJoinUpcomingMeeting?: (href: string) => void;
+  calendar?: MeetCalendarSlice;
 };

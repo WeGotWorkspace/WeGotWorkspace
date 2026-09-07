@@ -13,7 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   groupSlugFromOwnerScopeValue,
   OwnerScopeField,
@@ -21,12 +20,16 @@ import {
   PERSONAL_SCOPE_VALUE,
   type OwnerScopeGroupOption,
 } from "@/ui/owner-scope-field";
+import { Copy } from "lucide-react";
+import { IconButton } from "@/button/src/icon-button";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
-import { MeetShareButton } from "@/meet-core/src/meet-share";
-import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
+import { ShareDialogInput } from "@/share-ui/share-dialog-input";
+import { copyShareText } from "@/share-ui/share-path-utils";
+import { buildMeetCollectionInviteLink } from "@/meet-core/src/meet-route-search";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannelKind } from "@/meet-core/src/meet-types";
+import { workspaceOnlySharePrincipals } from "@/calendar-core/src/calendar-meet-channel-email";
 import "@/share-ui/share-ui.css";
 import "./meet-channel-dialog.css";
 
@@ -45,6 +48,8 @@ export type MeetChannelDialogState =
       shareWith?: CollectionShareWith | null;
       canChangeOwner?: boolean;
       guestRoomCode?: string | null;
+      /** Owner delete in the footer — same gate as Notes/Tasks `mayDelete`. */
+      mayDelete?: boolean;
     };
 
 export type MeetChannelDialogConfirmInput = {
@@ -52,6 +57,57 @@ export type MeetChannelDialogConfirmInput = {
   kind: MeetChannelKind;
   groupSlug?: string | null;
 };
+
+/** Same meeting/channel destroy confirm used from the edit footer and leftover rows. */
+export function MeetDeleteConfirmDialog({
+  open,
+  meetingKind,
+  onOpenChange,
+  onConfirm,
+  contentClassName = "meet-channel-dialog",
+}: {
+  open: boolean;
+  meetingKind: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  contentClassName?: string;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className={contentClassName}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {meetingKind
+              ? meetLabels.deleteMeetingConfirmTitle
+              : meetLabels.deleteChannelConfirmTitle}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {meetingKind
+              ? meetLabels.deleteMeetingConfirmDescription
+              : meetLabels.deleteChannelConfirmDescription}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel asChild>
+            <Button variant="outline">{meetLabels.cancel}</Button>
+          </AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Button
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                onOpenChange(false);
+                onConfirm();
+              }}
+            >
+              {meetLabels.delete}
+            </Button>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export type MeetChannelDialogShare = {
   knownPrincipals?: readonly CollectionSharePrincipal[];
@@ -69,6 +125,7 @@ type MeetChannelDialogProps = {
   contentClassName?: string;
   share?: MeetChannelDialogShare;
   onCopyGuestLink?: (link: string) => void;
+  onDelete?: () => void;
 };
 
 export function MeetChannelDialog({
@@ -80,27 +137,35 @@ export function MeetChannelDialog({
   contentClassName = "meet-channel-dialog",
   share,
   onCopyGuestLink,
+  onDelete,
 }: MeetChannelDialogProps) {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<MeetChannelKind>("channel");
   const [scopeValue, setScopeValue] = useState(PERSONAL_SCOPE_VALUE);
   const [confirmOwnerOpen, setConfirmOwnerOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const open = dialog !== null;
   const isCreate = dialog?.mode === "create";
   const showShare = dialog?.mode === "edit" && Boolean(dialog.mayShare) && Boolean(share);
   const canChangeOwner = isCreate || (dialog?.mode === "edit" && Boolean(dialog.canChangeOwner));
+  const canDelete = dialog?.mode === "edit" && dialog.mayDelete === true && Boolean(onDelete);
   const meetingKind = kind === "meeting";
-  const guestRoomCode = dialog?.mode === "edit" ? dialog.guestRoomCode : null;
-  const guestLink = guestRoomCode ? buildMeetGuestCallLink(guestRoomCode) : "";
+  const workspaceOrigin =
+    typeof window !== "undefined" ? window.location.origin : "https://workspace.example.com";
+  const guestLink =
+    dialog?.mode === "edit"
+      ? buildMeetCollectionInviteLink({ id: dialog.channelId, kind }, workspaceOrigin)
+      : "";
 
   useEffect(() => {
     if (!dialog) {
       setConfirmOwnerOpen(false);
+      setConfirmDeleteOpen(false);
       return;
     }
     if (dialog.mode === "create") {
       setName("");
-      setKind(dialog.kind);
+      setKind("channel");
       setScopeValue(PERSONAL_SCOPE_VALUE);
       return;
     }
@@ -166,20 +231,6 @@ export function MeetChannelDialog({
               />
             </FieldLabelRow>
 
-            {isCreate ? (
-              <FieldLabelRow label={meetLabels.channelKindLabel} htmlFor="meet-channel-kind">
-                <Select value={kind} onValueChange={(value) => setKind(value as MeetChannelKind)}>
-                  <SelectTrigger id="meet-channel-kind">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="channel">{meetLabels.channelKindChannel}</SelectItem>
-                    <SelectItem value="meeting">{meetLabels.channelKindMeeting}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldLabelRow>
-            ) : null}
-
             <OwnerScopeField
               id="meet-channel-scope"
               value={scopeValue}
@@ -194,6 +245,36 @@ export function MeetChannelDialog({
               }}
               disabled={!canChangeOwner}
             />
+
+            {meetingKind ? (
+              guestLink ? (
+                <FieldLabelRow label={meetLabels.meetingLinkLabel} htmlFor="meet-channel-link">
+                  <div className="meet-channel-dialog__link-row share-dialog__link-row">
+                    <ShareDialogInput
+                      id="meet-channel-link"
+                      type="url"
+                      value={guestLink}
+                      readOnly
+                      aria-label={meetLabels.meetingLinkLabel}
+                    />
+                    <IconButton
+                      type="button"
+                      label={meetLabels.copyLink}
+                      icon={<Copy className="size-3.5" aria-hidden />}
+                      size="sm"
+                      variant="outline"
+                      disabled={!guestLink}
+                      onClick={() => {
+                        void copyShareText(guestLink);
+                        onCopyGuestLink?.(guestLink);
+                      }}
+                    />
+                  </div>
+                </FieldLabelRow>
+              ) : (
+                <p className="meet-channel-dialog__guest-hint">{meetLabels.guestLinkAfterCreate}</p>
+              )
+            ) : null}
 
             {showShare && share && dialog?.mode === "edit" ? (
               <div className="meet-channel-dialog__share">
@@ -213,25 +294,25 @@ export function MeetChannelDialog({
                     removeTitle: meetLabels.removeChannelShareTitle,
                     removeConfirm: meetLabels.removeChannelShareConfirm,
                   }}
-                  onSearchPrincipals={share.onSearchPrincipals}
+                  onSearchPrincipals={async (query) =>
+                    workspaceOnlySharePrincipals(await share.onSearchPrincipals(query))
+                  }
                   onPatchShareWith={share.onPatchShareWith}
                 />
               </div>
             ) : null}
 
-            {meetingKind ? (
-              <div className="meet-channel-dialog__guest">
-                {guestLink ? (
-                  <MeetShareButton link={guestLink} onCopy={() => onCopyGuestLink?.(guestLink)} />
-                ) : (
-                  <p className="meet-channel-dialog__guest-hint">
-                    {meetLabels.guestLinkAfterCreate}
-                  </p>
-                )}
-              </div>
-            ) : null}
-
             <DialogFooter className="meet-channel-dialog__footer">
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="meet-channel-dialog__delete"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                >
+                  {meetingKind ? meetLabels.deleteMeeting : meetLabels.deleteChannel}
+                </Button>
+              ) : null}
               <Button type="button" variant="outline" onClick={onClose}>
                 {meetLabels.cancel}
               </Button>
@@ -262,6 +343,14 @@ export function MeetChannelDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MeetDeleteConfirmDialog
+        open={confirmDeleteOpen}
+        meetingKind={meetingKind}
+        contentClassName={contentClassName}
+        onOpenChange={setConfirmDeleteOpen}
+        onConfirm={() => onDelete?.()}
+      />
     </>
   );
 }

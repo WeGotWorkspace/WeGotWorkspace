@@ -48,6 +48,7 @@ import {
   canOpenCalendarSettings,
   canRenameCalendar,
   canWriteCalendarCollection,
+  pickDefaultCalendarId,
 } from "@/calendar-core/src/calendar-collection-write";
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-share";
 import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending-create";
@@ -154,13 +155,6 @@ function draftFromForm(
 ): CalendarEventDraft {
   const draft = formToDraft(form);
   return organizer ? { ...draft, organizer } : draft;
-}
-
-function pickDefaultCalendarId(calendars: CalendarInfo[], preferred?: string): string | undefined {
-  const writable = calendars.filter((c) => canWriteCalendarCollection(c));
-  if (preferred && writable.some((c) => c.id === preferred)) return preferred;
-  if (preferred && calendars.some((c) => c.id === preferred)) return preferred;
-  return (writable.find((c) => c.isDefault) ?? writable[0])?.id;
 }
 
 export function useCalendarController({

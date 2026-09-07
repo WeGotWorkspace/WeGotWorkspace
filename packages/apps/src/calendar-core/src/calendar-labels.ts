@@ -141,6 +141,14 @@ export type CalendarUILabels = {
   eventMeetApplyTo: string;
   /** GET 404 / swept room — same copy as Meet missing-invite. */
   eventMeetDeadLink: string;
+  /** Channel URL + email-only invitees — choice dialog. */
+  eventMeetChannelEmailTitle: string;
+  eventMeetChannelEmailDescription: string;
+  eventMeetChannelEmailKeepBoth: string;
+  eventMeetChannelEmailStripEmails: string;
+  eventMeetChannelEmailReplaceLink: string;
+  /** Persistent hint after keeping both. */
+  eventMeetEmailGuestsNoAccessHint: string;
   eventNotesLabel: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
@@ -370,6 +378,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetUrlPlaceholder: "https://…",
   eventMeetApplyTo: "Apply Meet to",
   eventMeetDeadLink: "This meeting is not active. Ask the host for a fresh invite link.",
+  eventMeetChannelEmailTitle: "Email guests can't join this Meet channel",
+  eventMeetChannelEmailDescription:
+    "This meeting uses a members-only Meet channel. People invited by email only cannot join the Meet. They can still receive a calendar invitation and RSVP. Workspace members keep Meet access.",
+  eventMeetChannelEmailKeepBoth: "Ignore",
+  eventMeetChannelEmailStripEmails: "Remove Email Invites",
+  eventMeetChannelEmailReplaceLink: "Use Meeting Link",
+  eventMeetEmailGuestsNoAccessHint:
+    "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
   eventNotesLabel: "Notes",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),

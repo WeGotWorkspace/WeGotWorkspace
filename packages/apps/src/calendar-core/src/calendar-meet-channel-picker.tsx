@@ -10,7 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarMeetChannelOption } from "@/calendar-core/src/calendar-meet-link";
+import {
+  calendarMeetPickerChannels,
+  type CalendarMeetChannelOption,
+} from "@/calendar-core/src/calendar-meet-link";
 
 export type CalendarMeetChannelPickerProps = {
   labels: CalendarUILabels;
@@ -29,8 +32,8 @@ type ChannelLoadState =
 
 /**
  * Meet actions menu on the event form: generate an ad-hoc link, then list
- * chat channels (kind channel + meeting; DMs already filtered upstream).
- * Channels are fetched lazily when the menu opens.
+ * `#` chat channels A–Z (meeting-kind collections excluded; DMs already
+ * filtered upstream). Channels are fetched lazily when the menu opens.
  */
 export function CalendarMeetChannelPicker({
   labels,
@@ -48,7 +51,9 @@ export function CalendarMeetChannelPicker({
     if (!listChannels) return;
     setState({ phase: "loading" });
     void listChannels()
-      .then((channels) => setState({ phase: "ready", channels }))
+      .then((channels) =>
+        setState({ phase: "ready", channels: calendarMeetPickerChannels(channels) }),
+      )
       .catch(() => setState({ phase: "error" }));
   };
 
@@ -97,11 +102,7 @@ export function CalendarMeetChannelPicker({
         {listChannels && state.phase === "ready"
           ? state.channels.map((channel) => (
               <DropdownMenuItem key={channel.id} onSelect={() => onPick?.(channel)}>
-                {channel.kind === "meeting" ? (
-                  <Video className="size-3.5" aria-hidden />
-                ) : (
-                  <Hash className="size-3.5" aria-hidden />
-                )}
+                <Hash className="size-3.5" aria-hidden />
                 {channel.name}
               </DropdownMenuItem>
             ))

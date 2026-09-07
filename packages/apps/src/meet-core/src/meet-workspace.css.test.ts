@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "meet-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "meet-workspace.css"), "utf8");
+const guestChannel = readFileSync(join(here, "meet-guest-channel.tsx"), "utf8");
+const inviteGate = readFileSync(join(here, "meet-invite-gate.tsx"), "utf8");
+const meetApp = readFileSync(join(here, "meet-app.tsx"), "utf8");
 const layoutCss = readFileSync(
   join(here, "../../workspace-shell/src/workspace-app-layout.css"),
   "utf8",
@@ -16,6 +19,11 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/appSwitchSubtitle=\{meetLabels\.productName\}/);
     expect(tsx).toMatch(/<SidebarSegmentedNewMenu/);
     expect(tsx).toMatch(/mainLabel=\{meetLabels\.newMeeting\}/);
+    expect(tsx).toMatch(/onMainAction=\{\(\) => setCreateMeetingOpen\(true\)\}/);
+    expect(tsx).toMatch(/setEditMeeting/);
+    expect(tsx).not.toMatch(/openCreate\("meeting"\)/);
+    expect(tsx).toMatch(/channels=\{todayMeetings\}/);
+    expect(tsx).toMatch(/leftoverUpcoming/);
     expect(tsx).toMatch(/label: meetLabels\.newChannel/);
     expect(tsx).toMatch(/title=\{meetLabels\.sidebarDirectMessages\}/);
     expect(tsx.indexOf("title={meetLabels.sidebarChannels}")).toBeLessThan(
@@ -32,6 +40,8 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/meet-workspace__sidebar-kind-icon/);
     expect(tsx).toMatch(/CalendarDays className="meet-workspace__sidebar-kind-icon"/);
     expect(tsx).not.toMatch(/Video className="meet-workspace__sidebar-kind-icon"/);
+    expect(tsx).toMatch(/CalendarDays className="meet-workspace__header-kind-icon"/);
+    expect(tsx).not.toMatch(/Video className="meet-workspace__header-kind-icon"/);
     expect(tsx).toMatch(/meet-workspace__live/);
     expect(tsx).toMatch(/meet-workspace__live-icon/);
     expect(tsx).toMatch(/meetLabels\.liveCall/);
@@ -77,7 +87,18 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/<ViewHeader/);
     expect(tsx).toMatch(/title=\{headerTitle\}/);
     expect(tsx).not.toMatch(/titleSize=/);
-    expect(tsx).toMatch(/meetChannelTopicSubtitle\(selected\?\.topic\)/);
+    expect(tsx).toMatch(/meetMeetingHeaderSubtitle\(/);
+    expect(tsx).toMatch(/relativeLabelForCalendarEvent\(selectedMeetingEvent, nowTick\)/);
+    expect(tsx).toMatch(/clockLabelForMeetingChannel/);
+    expect(tsx).toMatch(/todaySidebarMeetingChannels/);
+    expect(tsx).toMatch(/leftoverBelongsInTodaySidebar/);
+    expect(tsx).toMatch(/shouldAutoJoinScheduledMeeting/);
+    expect(tsx).toMatch(/useMeetNowClock/);
+    expect(tsx).toMatch(/startLabelForChannel=\{meetingStartLabel\}/);
+    expect(tsx).toMatch(/leftoverMeetingStartLabel/);
+    expect(tsx).not.toMatch(/meetLabels\.upcomingStarted/);
+    expect(tsx).not.toMatch(/upcomingNow/);
+    expect(tsx).toMatch(/scheduledWindowLive/);
     expect(tsx).toMatch(/sidebarOpen=\{sidebarOpen\}/);
     expect(tsx).toMatch(/onToggleSidebar=/);
     expect(tsx).not.toMatch(/meet-workspace__main-header/);
@@ -154,7 +175,9 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/\.meet-call-bar__title[\s\S]*var\(--color-ink\)/);
     expect(css).toMatch(/\.meet-call-bar__meta[\s\S]*--meet-call-ink-muted/);
     expect(css).toMatch(/\.meet-call-bar\s*\{[\s\S]*--meet-call-border/);
-    expect(css).not.toMatch(/\.meet-call-bar__row[\s\S]*--meet-accent\) 12%/);
+    expect(css.match(/\.meet-call-bar__row \{[\s\S]*?\n\}/)?.[0] ?? "").not.toMatch(
+      /--meet-accent\) 12%/,
+    );
     expect(css).not.toMatch(/meet-workspace__header-call/);
     expect(css).not.toMatch(
       /:is\(\.meet-workspace__header-call,\s*\.meet-call-bar \.button--variant-subtle\)/,
@@ -254,6 +277,19 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/icon=\{<Trash2 \/>\}/);
     expect(tsx).not.toMatch(/onEdit=\{\(\) => onEdit\(channel\)\}/);
     expect(tsx).not.toMatch(/onEdit=\{openEdit\}/);
+    expect(tsx).toMatch(/dialog\.mayDelete/);
+    expect(tsx).toMatch(/void deleteChannel\(dialog\.channelId\)/);
+    expect(tsx).toMatch(/upcomingEventIdsForChannel/);
+    expect(tsx).toMatch(/leftoverUpcomingMeetings/);
+    expect(tsx).toMatch(/pendingUpcomingDelete/);
+    expect(tsx).toMatch(/MeetDeleteConfirmDialog/);
+    expect(tsx).toMatch(/calendar\?\.deleteEvent/);
+    expect(tsx).toMatch(
+      /onEdit=\{calendar \? \(meeting\) => openEditLeftover\(meeting\) : undefined\}/,
+    );
+    expect(tsx).toMatch(/mode=\{editMeeting \? "edit" : "create"\}/);
+    expect(tsx).toMatch(/calendarEventsForMeetingChannel/);
+    expect(tsx).toMatch(/editLabel=\{meetLabels\.editMeeting\}/);
     expect(tsx).toMatch(/parentEditing/);
     // Thread rail: people indicator before edit; DocsCollab Close stays outermost.
     const railActions = tsx.match(
@@ -287,5 +323,33 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/\.meet-call-stage__strip[\s\S]*w-44/);
     expect(css).toMatch(/\.meet-call-stage__strip \.meet-peer-tile--compact[\s\S]*min-h-36/);
     expect(css).toMatch(/\.meet-peer-tile__mute/);
+  });
+});
+
+describe("meet guest invite lobby chrome", () => {
+  it("paints cream/dusk product tokens, not the navy waiting slab", () => {
+    const lobby = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
+    const title =
+      css.match(/\.meet-guest-channel__lobby \.meet-workspace__title \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(lobby).toMatch(/--meet-text:\s*var\(--color-ink\)/);
+    expect(lobby).toMatch(/background-color:\s*var\(--meet-surface\)/);
+    expect(lobby).not.toMatch(/#1b1d3a/);
+    expect(title).toMatch(/font-family:\s*var\(--font-sans\)/);
+    expect(title).toMatch(/color:\s*var\(--color-ink\)/);
+    expect(title).not.toMatch(/#ffffff/);
+  });
+
+  it("keeps live guest/invite mounts off MeetLobbyPane and MeetCallWorkspace", () => {
+    expect(guestChannel).not.toMatch(/import \{ MeetLobbyPane /);
+    expect(guestChannel).toMatch(/MeetGuestChannelFrame/);
+    expect(guestChannel).toMatch(/MeetCallKnockWaiting/);
+    expect(inviteGate).toMatch(/MeetGuestChannelFrame/);
+    expect(inviteGate).toMatch(/sessionHint \|\| !channelId \|\| access === "member"/);
+    expect(inviteGate).toContain("meetNavigateTargetFromSelection");
+    expect(inviteGate).not.toMatch(/to: MEET_CHANNELS_ROUTE/);
+    expect(inviteGate).not.toMatch(/className="meet-workspace meet-guest-channel"/);
+    expect(meetApp).toMatch(/MeetGuestChannel/);
+    expect(meetApp).toMatch(/meetGuestChannelPhase/);
+    expect(meetApp).not.toMatch(/<MeetCallWorkspace/);
   });
 });

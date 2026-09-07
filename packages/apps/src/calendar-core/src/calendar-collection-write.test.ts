@@ -7,6 +7,7 @@ import {
   canWriteCalendarCollection,
   isCalendarCollectionOwner,
   isCalendarEventFormReadOnly,
+  pickDefaultCalendarId,
 } from "@/calendar-core/src/calendar-collection-write";
 
 describe("isCalendarCollectionOwner", () => {
@@ -165,5 +166,25 @@ describe("isCalendarEventFormReadOnly", () => {
         isOrganizer: false,
       }),
     ).toBe(true);
+  });
+});
+
+describe("pickDefaultCalendarId", () => {
+  it("prefers the writable isDefault calendar", () => {
+    expect(
+      pickDefaultCalendarId([
+        { id: "work", mayWrite: true },
+        { id: "default", isDefault: true, mayWrite: true },
+      ]),
+    ).toBe("default");
+  });
+
+  it("skips read-only default and falls back to the first writable calendar", () => {
+    expect(
+      pickDefaultCalendarId([
+        { id: "holidays", isDefault: true, mayWrite: false },
+        { id: "work", mayWrite: true },
+      ]),
+    ).toBe("work");
   });
 });

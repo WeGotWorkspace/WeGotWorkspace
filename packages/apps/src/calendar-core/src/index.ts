@@ -31,6 +31,7 @@ export {
   canWriteCalendarCollection,
   isCalendarCollectionOwner,
   isCalendarEventFormReadOnly,
+  pickDefaultCalendarId,
 } from "./calendar-collection-write";
 export {
   defaultCalendarLabels,

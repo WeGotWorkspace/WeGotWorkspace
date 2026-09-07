@@ -298,6 +298,7 @@ describe("wrapMeetChatOperationsWithMesh", () => {
         }),
       ),
       createChannel: vi.fn().mockResolvedValue(channel),
+      deleteChannel: vi.fn().mockResolvedValue(undefined),
     };
     const mesh = port();
     const wrapped = wrapMeetChatOperationsWithMesh(ops, "alice", null, mesh);
@@ -306,11 +307,13 @@ describe("wrapMeetChatOperationsWithMesh", () => {
     await wrapped.deleteMessage!("m1");
     await wrapped.react!("m1", "🎉");
     await wrapped.createChannel!({ name: "general", kind: "channel" });
+    await wrapped.deleteChannel!("chat-general");
 
     expect(mesh.sent.map((row) => row.envelope.kind)).toEqual([
       "channel-message-patch",
       "channel-message-destroy",
       "channel-reaction",
+      "channel-changed",
       "channel-changed",
     ]);
     expect(mesh.sent[2]?.envelope).toMatchObject({

@@ -80,8 +80,9 @@ export function useMeetMutations({
   }, [room.remoteCallActiveRef]);
 
   const joinRoom = useCallback(
-    async (roomCode?: string) => {
+    async (roomCode?: string, options?: { video?: boolean }) => {
       warnIfCallActiveElsewhere();
+      if (options?.video === false) room.setVideoOn(false);
       const target = (roomCode ?? createMeetRoomCode()).trim().toLowerCase();
       const peerId = createMeetPeerId(10);
       room.setError(null);

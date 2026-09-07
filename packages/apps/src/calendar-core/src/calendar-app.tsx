@@ -23,7 +23,7 @@ import {
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { isWireDmChannel, listChatChannels } from "@/lib/api/wgw/meet-chat";
 
-/** Event-form channel picker source: live `/chat/channels`, dm rows filtered out. */
+/** Event-form channel picker source: live `/chat/channels` (DMs dropped; picker keeps `#` only). */
 async function listCalendarMeetChannels(
   opts?: CalendarMeetRequestOptions,
 ): Promise<CalendarMeetChannelOption[]> {

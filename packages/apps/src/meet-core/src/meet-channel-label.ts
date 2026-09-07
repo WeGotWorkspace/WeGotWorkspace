@@ -15,6 +15,17 @@ export function meetChannelTopicSubtitle(topic: string | null | undefined): stri
   return value ? `— ${value}` : undefined;
 }
 
+/** ViewHeader subtitle: relative When first, then the channel topic. */
+export function meetMeetingHeaderSubtitle(
+  relativeLabel: string | null | undefined,
+  topic: string | null | undefined,
+): string | undefined {
+  const relative = relativeLabel?.trim() || undefined;
+  const topicLine = meetChannelTopicSubtitle(topic);
+  if (relative && topicLine) return `${relative} ${topicLine}`;
+  return relative ?? topicLine;
+}
+
 export function meetChannelComposerPlaceholder(
   channel: Pick<MeetChannel, "name" | "kind">,
 ): string {

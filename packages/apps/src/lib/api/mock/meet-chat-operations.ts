@@ -138,6 +138,13 @@ export function createMeetChatOperations(seed: {
       if (!current) throw new Error(`Unknown channel ${channelId}`);
       return replaceChannel(applyMeetChannelPatch(current, patch));
     },
+    deleteChannel: async (channelId) => {
+      state = {
+        ...state,
+        channels: state.channels.filter((row) => row.id !== channelId),
+        messages: state.messages.filter((row) => row.channelId !== channelId),
+      };
+    },
     patchChannelShareWith: async (channelId, shareWith: CollectionShareWith) => {
       const current = state.channels.find((row) => row.id === channelId);
       if (!current) throw new Error(`Unknown channel ${channelId}`);

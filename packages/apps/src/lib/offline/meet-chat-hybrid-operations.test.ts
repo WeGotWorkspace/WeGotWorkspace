@@ -46,6 +46,7 @@ vi.mock("@/lib/api/wgw/meet-chat", async (importOriginal) => {
     toggleChatReaction: vi.fn(),
     createChatChannel: vi.fn(),
     patchChatChannel: vi.fn(),
+    deleteChatChannel: vi.fn(),
     putChatReadMarker: vi.fn(),
     openChatDm: vi.fn(),
   };
@@ -59,6 +60,7 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
 
 import {
   MeetChatRequestError,
+  deleteChatChannel,
   openChatDm,
   patchChatChannel,
   patchChatMessage,
@@ -535,5 +537,51 @@ describe("createHybridMeetChatOperations", () => {
 
     const ordered = await listCachedChatMessages(username);
     expect(ordered.map((row) => row.body)).toEqual(["a", "b", "c"]);
+  });
+
+  describe("deleteChannel", () => {
+    it("DELETEs online and drops the cached row", async () => {
+      await upsertChatChannelInCache(username, {
+        id: "chat-general",
+        name: "General",
+        kind: "channel",
+        scope: "personal",
+        groupSlug: null,
+        isSharee: false,
+        shareWith: null,
+      } as WgwChatChannel);
+      vi.mocked(deleteChatChannel).mockResolvedValue(undefined);
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.deleteChannel!("chat-general");
+
+      expect(deleteChatChannel).toHaveBeenCalledWith("chat-general");
+      expect(await listCachedChatChannels(username)).toEqual([]);
+    });
+
+    it("treats a gone channel as already deleted", async () => {
+      await upsertChatChannelInCache(username, {
+        id: "chat-gone",
+        name: "Gone",
+        kind: "channel",
+        scope: "personal",
+        groupSlug: null,
+        isSharee: false,
+        shareWith: null,
+      } as WgwChatChannel);
+      vi.mocked(deleteChatChannel).mockRejectedValue(new MeetChatRequestError("gone", 404));
+
+      const operations = createHybridMeetChatOperations(username, author);
+      await operations.deleteChannel!("chat-gone");
+
+      expect(await listCachedChatChannels(username)).toEqual([]);
+    });
+
+    it("requires a connection", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+      const operations = createHybridMeetChatOperations(username, author);
+      await expect(operations.deleteChannel!("chat-general")).rejects.toThrow(/connection/i);
+      expect(deleteChatChannel).not.toHaveBeenCalled();
+    });
   });
 });

@@ -6,6 +6,7 @@ import {
   meetChannelMemberCount,
   meetChannelTitle,
   meetChannelTopicSubtitle,
+  meetMeetingHeaderSubtitle,
 } from "@/meet-core/src/meet-channel-label";
 
 describe("meetChannelHashName", () => {
@@ -28,6 +29,19 @@ describe("meetChannelTopicSubtitle", () => {
     );
     expect(meetChannelTopicSubtitle("  ")).toBeUndefined();
     expect(meetChannelTopicSubtitle(null)).toBeUndefined();
+  });
+});
+
+describe("meetMeetingHeaderSubtitle", () => {
+  it("prefers relative When and keeps the topic after an em dash", () => {
+    expect(meetMeetingHeaderSubtitle("starts in 5 minutes", "Daily sync")).toBe(
+      "starts in 5 minutes — Daily sync",
+    );
+    expect(meetMeetingHeaderSubtitle("starts today at 2:00 PM", "  ")).toBe(
+      "starts today at 2:00 PM",
+    );
+    expect(meetMeetingHeaderSubtitle(null, "Daily sync")).toBe("— Daily sync");
+    expect(meetMeetingHeaderSubtitle(undefined, undefined)).toBeUndefined();
   });
 });
 

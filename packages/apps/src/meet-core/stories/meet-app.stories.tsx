@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   MeetWorkspaceStoryHarness,
+  STORY_UPCOMING_MEETINGS,
   type MeetWorkspaceStoryArgs,
 } from "@/meet-core/stories/meet-workspace.stories.harness";
 
@@ -125,11 +127,63 @@ export const SharedWithMe: Story = {
   },
 };
 
-export const MeetingRoom: Story = {
-  name: "Meeting room",
+export const UpcomingByStart: Story = {
+  name: "Today's meetings by start",
+  args: {
+    initialChannelId: "channel-random",
+    initialCallLayout: "collapsed",
+    upcomingMeetings: STORY_UPCOMING_MEETINGS,
+    onJoinUpcomingMeeting: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(meetLabels.sidebarMeetings)).toBeInTheDocument();
+    const planning = canvas.getByText("Sprint planning");
+    const demo = canvas.getByText("Demo");
+    expect(planning.compareDocumentPosition(demo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expect(canvas.getByText("2:00 PM")).toBeInTheDocument();
+    await expect(canvas.queryByText(/starts today at/i)).not.toBeInTheDocument();
+    await userEvent.click(planning);
+    await expect(args.onJoinUpcomingMeeting).toHaveBeenCalledWith("/meet?room=aaaa-bbbb-cccc");
+  },
+};
+
+export const MeetingRelativeStart: Story = {
+  name: "Meeting relative start",
   args: {
     initialChannelId: "meeting-standup",
     initialCallLayout: "collapsed",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Standup" })).toBeInTheDocument();
+    await expect(canvas.getAllByText(/starts /i).length).toBeGreaterThan(0);
+    await expect(canvas.getByRole("button", { name: /^Meet$/ })).toBeInTheDocument();
+  },
+};
+
+export const NewMeetingInstant: Story = {
+  name: "New meeting instant",
+  args: {
+    initialChannelId: "channel-random",
+    initialCallLayout: "collapsed",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.newMeeting }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.getByRole("heading", { name: meetLabels.newMeeting })).toBeInTheDocument();
+    await expect(body.getByLabelText(defaultCalendarLabels.eventTitleLabel)).toHaveValue("");
+    await expect(body.getByRole("switch", { name: meetLabels.scheduleMeeting })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    await expect(
+      body.queryByText(defaultCalendarLabels.eventWhenSectionTitle),
+    ).not.toBeInTheDocument();
+    await userEvent.click(body.getByRole("switch", { name: meetLabels.scheduleMeeting }));
+    await expect(body.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeInTheDocument();
+    await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
   },
 };
 

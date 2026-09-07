@@ -30,4 +30,11 @@ describe("meet channel dialog surface", () => {
     expect(workspaceCss).toMatch(/--meet-panel:\s*#171826/);
     expect(workspaceCss).toMatch(/uses `\.meet-channel-dialog`/);
   });
+
+  it("puts owner delete in the dialog footer, not a header trash icon", () => {
+    expect(tsx).toMatch(/meet-channel-dialog__delete/);
+    expect(tsx).toMatch(/confirmDeleteOpen/);
+    expect(tsx).not.toMatch(/Trash2/);
+    expect(css).toMatch(/\.meet-channel-dialog__delete/);
+  });
 });

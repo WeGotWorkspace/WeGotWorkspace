@@ -938,6 +938,11 @@
   @apply size-3.5 shrink-0;
 }
 
+.meet-workspace__upcoming-time {
+  @apply max-w-[9.5rem] shrink-0 text-right text-xs font-normal leading-tight;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+}
+
 .meet-workspace__header-kind-icon {
   @apply size-4 shrink-0;
 }
@@ -1495,18 +1500,72 @@
 
 .meet-guest-channel__lobby {
   @apply flex flex-1 items-center justify-center px-6 py-12;
-  background-color: var(--workspace-home-bg, #1b1d3a);
-  color: #ffffff;
-  --field-label-color: var(--meet-muted);
-  --button-subtle-background: var(--meet-panel-soft);
-  --button-subtle-color: var(--meet-text);
-  --button-subtle-hover-background: color-mix(
-    in oklab,
-    var(--meet-text) 12%,
-    var(--meet-panel-soft)
-  );
+  /*
+   * Guest invite landing uses the same cream/dusk product chrome as
+   * `.meet-workspace--split`. Do not re-paint the navy lobby slab.
+   */
+  --meet-text: var(--color-ink);
+  --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --meet-panel: color-mix(in oklab, var(--meet-accent) 8%, var(--color-cream, #ffffff));
+  --meet-panel-soft: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --meet-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --meet-border-strong: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  --foreground: var(--color-ink);
+  --color-foreground: var(--color-ink);
+  --user-avatar-bg: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --user-avatar-fg: var(--color-ink);
+  background-color: var(--meet-surface);
+  color: var(--color-ink);
 }
 
 .meet-guest-channel__lobby .meet-workspace__title {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+
+.meet-guest-channel__lobby-join {
+  @apply w-full max-w-md;
+}
+
+.meet-guest-channel__lobby-title {
+  @apply mb-8 text-2xl font-semibold tracking-tight sm:text-3xl;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+
+.meet-guest-channel__lobby .meet-workspace__form .meet-workspace__display-name-input {
+  --foreground: var(--color-ink);
+  --color-foreground: var(--color-ink);
+  color: var(--color-ink);
+}
+
+.meet-guest-channel__lobby .meet-workspace__form .meet-device-row__trigger {
+  color: var(--color-ink);
+}
+
+.meet-guest-channel__lobby .meet-workspace__form .meet-device-row__trigger svg {
+  color: var(--meet-muted);
+}
+
+.meet-guest-channel__lobby .meet-workspace__secondary-button {
+  background-color: var(--meet-panel-soft);
+  color: var(--color-ink);
+}
+
+.meet-guest-channel__lobby .meet-call-knock-wait {
+  background-color: var(--meet-panel);
+  border-color: var(--meet-border);
+  color: var(--color-ink);
+}
+
+.meet-guest-channel__lobby .meet-call-knock-wait__icon {
   color: #ffffff;
+}
+
+.meet-guest-channel__lobby .meet-call-knock-wait__hint {
+  color: var(--meet-muted);
 }

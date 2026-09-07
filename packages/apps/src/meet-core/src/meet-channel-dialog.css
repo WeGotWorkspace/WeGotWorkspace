@@ -50,16 +50,39 @@
   @apply mt-3;
 }
 
-.meet-channel-dialog__share,
-.meet-channel-dialog__guest {
+.meet-channel-dialog__share {
   @apply mt-4;
 }
 
+.meet-channel-dialog__link-row {
+  @apply flex min-w-0 w-full items-center gap-2;
+}
+
+.meet-channel-dialog__link-row .input,
+.meet-channel-dialog__link-row input {
+  @apply min-w-0 flex-1;
+}
+
+.meet-channel-dialog__link-row .icon-button--size-sm {
+  @apply size-9 shrink-0;
+}
+
 .meet-channel-dialog__guest-hint {
-  @apply mb-2 text-sm;
+  @apply mb-4 text-sm;
   color: var(--field-label-color);
 }
 
 .meet-channel-dialog__footer {
   @apply mt-4 gap-2 sm:gap-0;
+}
+
+.meet-channel-dialog__footer .meet-channel-dialog__delete {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
+  color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .meet-channel-dialog__footer .meet-channel-dialog__delete {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
 }

@@ -1,4 +1,15 @@
+import { parseMeetInvitePath } from "@/calendar-core/src/calendar-meet-link";
 import { CHAT_URL_SPLIT_PATTERN } from "@/meet-core/src/meet-chat-urls";
+import { meetPublicChannelId } from "@/meet-core/src/meet-public-id";
+
+function meetWorkspaceHref(href: string): string | null {
+  const invite = parseMeetInvitePath(href);
+  if (!invite) return null;
+  if (invite.roomKind === "channel") {
+    return `/meet/channels/${encodeURIComponent(meetPublicChannelId(invite.room))}`;
+  }
+  return `/meet/meetings/${encodeURIComponent(invite.room)}`;
+}
 
 export function formatMeetChatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -11,12 +22,12 @@ export function renderMeetChatBody(text: string) {
     const isUrl = /^(?:https?:\/\/|www\.)/i.test(part);
     if (!isUrl) return <span key={`txt-${index}`}>{part}</span>;
     const href = /^https?:\/\//i.test(part) ? part : `https://${part}`;
+    const meetHref = meetWorkspaceHref(href);
     return (
       <a
         key={`lnk-${index}`}
-        href={href}
-        target="_blank"
-        rel="noreferrer noopener"
+        href={meetHref ?? href}
+        {...(meetHref ? {} : { target: "_blank", rel: "noreferrer noopener" })}
         className="meet-chat__link"
       >
         {part}

@@ -28,19 +28,36 @@ import {
   meetChannelHashName,
   meetChannelMemberCount,
   meetChannelTitle,
-  meetChannelTopicSubtitle,
+  meetMeetingHeaderSubtitle,
 } from "@/meet-core/src/meet-channel-label";
 import { partitionMeetChannels } from "@/meet-core/src/meet-channel-partition";
 import {
   applyMeetChannelPatch,
   buildMeetChannel,
+  canDeleteMeetChannel,
   DEFAULT_MEET_CHANNEL_COLOR,
 } from "@/meet-core/src/meet-channel-write";
 import {
   MeetChannelDialog,
+  MeetDeleteConfirmDialog,
   type MeetChannelDialogConfirmInput,
   type MeetChannelDialogState,
 } from "@/meet-core/src/meet-channel-dialog";
+import { MeetCreateMeetingDialog } from "@/meet-core/src/meet-create-meeting-dialog";
+import {
+  calendarEventsForMeetingChannel,
+  clockLabelForMeetingChannel,
+  leftoverBelongsInTodaySidebar,
+  leftoverMeetingStartLabel,
+  leftoverUpcomingMeetings,
+  preferredCalendarEventForMeeting,
+  relativeLabelForCalendarEvent,
+  shouldAutoJoinScheduledMeeting,
+  todaySidebarMeetingChannels,
+  upcomingEventIdsForChannel,
+  type MeetUpcomingMeeting,
+} from "@/meet-core/src/meet-calendar-meeting";
+import { useMeetNowClock } from "@/meet-core/src/use-meet-now-clock";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/meet-call-bar-roster";
 import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
@@ -75,6 +92,7 @@ import {
   type MeetDirectMessagePerson,
 } from "@/meet-core/src/meet-direct-messages";
 import type { ChatSendPayload } from "@/chat-ui/src/chat-types";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { ChatMessage, MeetChannel, MeetChannelKind } from "@/meet-core/src/meet-types";
 import { useMeetCallLayout } from "@/meet-core/src/use-meet-call-layout";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
@@ -186,39 +204,87 @@ function MeetDirectMessageRows({
   );
 }
 
+function MeetUpcomingRows({
+  meetings,
+  onJoin,
+  onEdit,
+  editLabel,
+}: {
+  meetings: MeetUpcomingMeeting[];
+  onJoin?: (href: string) => void;
+  onEdit?: (meeting: MeetUpcomingMeeting) => void;
+  editLabel?: string;
+}) {
+  return (
+    <>
+      {meetings.map((meeting) => {
+        const startLabel = leftoverMeetingStartLabel(meeting);
+        return (
+          <CollectionSidebarRow
+            key={meeting.id}
+            name={meeting.title}
+            color={DEFAULT_MEET_CHANNEL_COLOR}
+            leading={<CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />}
+            onSelect={() => onJoin?.(meeting.href)}
+            onEdit={onEdit ? () => onEdit(meeting) : undefined}
+            editLabel={editLabel}
+            trailing={
+              <span className="meet-workspace__upcoming-time" title={startLabel}>
+                {startLabel}
+              </span>
+            }
+          />
+        );
+      })}
+    </>
+  );
+}
+
 function MeetSidebarRows({
   channels,
   selectedId,
   onSelect,
   channelHasLiveCall,
+  startLabelForChannel,
 }: {
   channels: MeetChannel[];
   selectedId: string | null;
   onSelect: (channelId: string) => void;
   channelHasLiveCall: (channelId: string) => boolean;
+  startLabelForChannel?: (channel: MeetChannel) => string | null;
 }) {
   return (
     <>
-      {channels.map((channel) => (
-        <CollectionSidebarRow
-          key={channel.id}
-          name={meetChannelHashName(channel)}
-          color={channelDotColor(channel)}
-          selected={selectedId === channel.id}
-          leading={
-            channel.kind === "meeting" ? (
-              <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
-            ) : undefined
-          }
-          onSelect={() => onSelect(channel.id)}
-          trailing={
-            <MeetSidebarRowMeta
-              live={channelHasLiveCall(channel.id)}
-              unreadCount={channel.unreadCount}
-            />
-          }
-        />
-      ))}
+      {channels.map((channel) => {
+        const startLabel = startLabelForChannel?.(channel) ?? null;
+        return (
+          <CollectionSidebarRow
+            key={channel.id}
+            name={meetChannelHashName(channel)}
+            color={channelDotColor(channel)}
+            selected={selectedId === channel.id}
+            leading={
+              channel.kind === "meeting" ? (
+                <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
+              ) : undefined
+            }
+            onSelect={() => onSelect(channel.id)}
+            trailing={
+              <>
+                {startLabel ? (
+                  <span className="meet-workspace__upcoming-time" title={startLabel}>
+                    {startLabel}
+                  </span>
+                ) : null}
+                <MeetSidebarRowMeta
+                  live={channelHasLiveCall(channel.id)}
+                  unreadCount={channel.unreadCount}
+                />
+              </>
+            }
+          />
+        );
+      })}
     </>
   );
 }
@@ -255,8 +321,13 @@ export function MeetWorkspace({
   onCloseThread,
   onSendThreadReply,
   onCaughtUpChange,
+  upcomingMeetings = [],
+  onJoinUpcomingMeeting,
+  calendar,
 }: MeetWorkspaceProps) {
   const toast = useAppToast();
+  const nowTick = useMeetNowClock();
+  const autoJoinedMeetingRef = useRef<string | null>(null);
   // Live operations reject on auth/validation errors (mock ops never throw);
   // surface those instead of leaking unhandled rejections.
   const notifyChatError = useCallback(
@@ -278,6 +349,18 @@ export function MeetWorkspace({
     () => initialChannelId ?? data.channels?.[0]?.id ?? null,
   );
   const [dialog, setDialog] = useState<MeetChannelDialogState>(null);
+  const [pendingUpcomingDelete, setPendingUpcomingDelete] = useState<MeetUpcomingMeeting | null>(
+    null,
+  );
+  const [createMeetingOpen, setCreateMeetingOpen] = useState(false);
+  const [editMeeting, setEditMeeting] = useState<{
+    channel?: MeetChannel;
+    event?: JmapCalendarEvent | null;
+    leftover?: MeetUpcomingMeeting;
+  } | null>(null);
+  const [pendingMeetingChannelDelete, setPendingMeetingChannelDelete] = useState<string | null>(
+    null,
+  );
   const [channelCaughtUp, setChannelCaughtUp] = useState(true);
   const [threadCaughtUp, setThreadCaughtUp] = useState(true);
   const [callChatOpen, setCallChatOpen] = useState(() => {
@@ -306,7 +389,52 @@ export function MeetWorkspace({
   }, [routeChannelId]);
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
+  const leftoverUpcoming = useMemo(
+    () =>
+      leftoverUpcomingMeetings(
+        upcomingMeetings,
+        channels,
+        sections.meetings,
+        calendar?.workspaceOrigin ?? "",
+      ).filter((row) => leftoverBelongsInTodaySidebar(row, nowTick)),
+    [calendar?.workspaceOrigin, channels, nowTick, sections.meetings, upcomingMeetings],
+  );
+  const todayMeetings = useMemo(
+    () =>
+      todaySidebarMeetingChannels(
+        sections.meetings,
+        calendar?.events ?? [],
+        calendar?.workspaceOrigin ?? "",
+        nowTick,
+        channels,
+      ),
+    [calendar?.events, calendar?.workspaceOrigin, channels, nowTick, sections.meetings],
+  );
+  const meetingStartLabel = useCallback(
+    (channel: MeetChannel) =>
+      clockLabelForMeetingChannel(
+        calendar?.events ?? [],
+        channel,
+        calendar?.workspaceOrigin ?? "",
+        nowTick,
+        channels,
+      ),
+    [calendar?.events, calendar?.workspaceOrigin, channels, nowTick],
+  );
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;
+  const selectedMeetingEvent = useMemo(() => {
+    if (!selected || selected.kind !== "meeting") return null;
+    return preferredCalendarEventForMeeting(
+      calendarEventsForMeetingChannel(
+        calendar?.events ?? [],
+        selected,
+        calendar?.workspaceOrigin ?? "",
+        channels,
+      ),
+      nowTick,
+    );
+  }, [calendar?.events, calendar?.workspaceOrigin, channels, nowTick, selected]);
+  const scheduledWindowLive = shouldAutoJoinScheduledMeeting(selectedMeetingEvent, nowTick);
   const dmPeople = useMemo(
     () =>
       meetDirectMessagePeople(data.directory, {
@@ -350,6 +478,20 @@ export function MeetWorkspace({
   };
 
   const openEdit = (channel: MeetChannel) => {
+    if (channel.kind === "meeting") {
+      const origin = calendar?.workspaceOrigin ?? "";
+      const matches = calendarEventsForMeetingChannel(
+        calendar?.events ?? [],
+        channel,
+        origin,
+        channels,
+      );
+      setEditMeeting({
+        channel,
+        event: preferredCalendarEventForMeeting(matches),
+      });
+      return;
+    }
     setDialog({
       mode: "edit",
       channelId: channel.id,
@@ -362,7 +504,13 @@ export function MeetWorkspace({
       shareWith: channel.shareWith,
       canChangeOwner: !channel.isSharee,
       guestRoomCode: channel.guestRoomCode,
+      mayDelete: canDeleteMeetChannel(channel) && Boolean(operations?.deleteChannel),
     });
+  };
+
+  const openEditLeftover = (meeting: MeetUpcomingMeeting) => {
+    const event = calendar?.events?.find((row) => row.id === meeting.id) ?? null;
+    setEditMeeting({ leftover: meeting, event });
   };
 
   const replaceChannel = (next: MeetChannel) => {
@@ -393,6 +541,58 @@ export function MeetWorkspace({
       : applyMeetChannelPatch(current, { name: input.name, groupSlug: input.groupSlug });
     replaceChannel(patched);
     setDialog(null);
+  };
+
+  const deleteCalendarEvents = async (eventIds: string[]) => {
+    if (!calendar?.deleteEvent || eventIds.length === 0) return;
+    for (const eventId of eventIds) {
+      try {
+        await calendar.deleteEvent(eventId);
+        calendar.onEventDeleted?.(eventId);
+      } catch (error) {
+        notifyChatError(error);
+      }
+    }
+  };
+
+  const deleteChannel = async (channelId: string) => {
+    if (!operations?.deleteChannel) return;
+    const current = channels.find((row) => row.id === channelId);
+    if (!current || !canDeleteMeetChannel(current)) return;
+    const origin = calendar?.workspaceOrigin ?? "";
+    const matchingEventIds =
+      current.kind === "meeting"
+        ? [
+            ...new Set([
+              ...calendarEventsForMeetingChannel(
+                calendar?.events ?? [],
+                current,
+                origin,
+                channels,
+              ).map((event) => event.id),
+              ...upcomingEventIdsForChannel(upcomingMeetings, current, origin, channels),
+            ]),
+          ]
+        : [];
+    try {
+      await operations.deleteChannel(channelId);
+      const remaining = channels.filter((row) => row.id !== channelId);
+      setChannels(remaining);
+      if (selectedId === channelId) {
+        setSelectedId(remaining[0]?.id ?? null);
+      }
+      setDialog(null);
+      setEditMeeting(null);
+      await deleteCalendarEvents(matchingEventIds);
+    } catch (error) {
+      notifyChatError(error);
+    }
+  };
+
+  const deleteUpcomingLeftover = async (meeting: MeetUpcomingMeeting) => {
+    setPendingUpcomingDelete(null);
+    setEditMeeting(null);
+    await deleteCalendarEvents([meeting.id]);
   };
 
   const patchShareWith = async (channelId: string, shareWith: CollectionShareWith) => {
@@ -625,7 +825,7 @@ export function MeetWorkspace({
   );
   const channelCallActive = meetSelectedConversationLive(selected, selectedId, callActiveByChannel);
   const meetingLive = meetChannelMeetingLive({
-    channelCallActive,
+    channelCallActive: channelCallActive || scheduledWindowLive,
     localCallActive: resolvedCallActive,
   });
   const callInvite = meetCallInviteAction(meetingLive, resolvedCallActive);
@@ -647,6 +847,28 @@ export function MeetWorkspace({
     },
     [call.startCall, markChannelMeetingLive, resolvedStageLayout, selectedId],
   );
+  useEffect(() => {
+    autoJoinedMeetingRef.current = null;
+  }, [selectedId]);
+  useEffect(() => {
+    if (!selected || selected.kind !== "meeting" || !selectedId) return;
+    if (!scheduledWindowLive || resolvedCallActive) return;
+    if (liveCallChannelId && liveCallChannelId !== selectedId) return;
+    if (!operations?.startCall) return;
+    const key = `${selectedId}:${selectedMeetingEvent?.id ?? "window"}`;
+    if (autoJoinedMeetingRef.current === key) return;
+    autoJoinedMeetingRef.current = key;
+    onCallInvite();
+  }, [
+    liveCallChannelId,
+    onCallInvite,
+    operations?.startCall,
+    resolvedCallActive,
+    scheduledWindowLive,
+    selected,
+    selectedId,
+    selectedMeetingEvent?.id,
+  ]);
   const chatColumnProps = {
     messages: chat.channelMessages,
     currentUserId,
@@ -826,7 +1048,7 @@ export function MeetWorkspace({
                 mainLabel={meetLabels.newMeeting}
                 menuLabel={meetLabels.newChannelMenu}
                 icon={<Video />}
-                onMainAction={() => openCreate("meeting")}
+                onMainAction={() => setCreateMeetingOpen(true)}
                 items={[
                   {
                     id: "create-channel",
@@ -866,14 +1088,25 @@ export function MeetWorkspace({
                 />
               </SidebarSection>
             ) : null}
-            {sections.meetings.length > 0 ? (
+            {todayMeetings.length > 0 || leftoverUpcoming.length > 0 ? (
               <SidebarSection title={meetLabels.sidebarMeetings}>
-                <MeetSidebarRows
-                  channels={sections.meetings}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  channelHasLiveCall={channelHasLiveCall}
-                />
+                {todayMeetings.length > 0 ? (
+                  <MeetSidebarRows
+                    channels={todayMeetings}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    channelHasLiveCall={channelHasLiveCall}
+                    startLabelForChannel={meetingStartLabel}
+                  />
+                ) : null}
+                {leftoverUpcoming.length > 0 ? (
+                  <MeetUpcomingRows
+                    meetings={leftoverUpcoming}
+                    onJoin={onJoinUpcomingMeeting}
+                    onEdit={calendar ? (meeting) => openEditLeftover(meeting) : undefined}
+                    editLabel={meetLabels.editMeeting}
+                  />
+                ) : null}
               </SidebarSection>
             ) : null}
             {dmPeople.length > 0 ? (
@@ -896,10 +1129,15 @@ export function MeetWorkspace({
             title={headerTitle}
             titlePrefix={
               selected?.kind === "meeting" ? (
-                <Video className="meet-workspace__header-kind-icon" aria-hidden />
+                <CalendarDays className="meet-workspace__header-kind-icon" aria-hidden />
               ) : null
             }
-            subtitle={meetChannelTopicSubtitle(selected?.topic)}
+            subtitle={meetMeetingHeaderSubtitle(
+              selected?.kind === "meeting"
+                ? relativeLabelForCalendarEvent(selectedMeetingEvent, nowTick)
+                : null,
+              selected?.topic,
+            )}
             actions={
               conversationOpen ? (
                 <div className="meet-workspace__header-actions">
@@ -1083,6 +1321,89 @@ export function MeetWorkspace({
         onCopyGuestLink={(link) => {
           void navigator.clipboard?.writeText(link);
         }}
+        onDelete={
+          dialog?.mode === "edit" && dialog.mayDelete
+            ? () => {
+                void deleteChannel(dialog.channelId);
+              }
+            : undefined
+        }
+      />
+      <MeetDeleteConfirmDialog
+        open={pendingUpcomingDelete !== null || pendingMeetingChannelDelete !== null}
+        meetingKind
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingUpcomingDelete(null);
+            setPendingMeetingChannelDelete(null);
+          }
+        }}
+        onConfirm={() => {
+          if (pendingMeetingChannelDelete) {
+            void deleteChannel(pendingMeetingChannelDelete);
+            setPendingMeetingChannelDelete(null);
+            return;
+          }
+          if (pendingUpcomingDelete) void deleteUpcomingLeftover(pendingUpcomingDelete);
+        }}
+      />
+      <MeetCreateMeetingDialog
+        open={createMeetingOpen || editMeeting !== null}
+        mode={editMeeting ? "edit" : "create"}
+        event={editMeeting?.event}
+        channel={editMeeting?.channel}
+        leftover={editMeeting?.leftover}
+        calendars={calendar?.calendars ?? []}
+        createEvent={calendar?.createEvent}
+        patchEvent={calendar?.patchEvent}
+        createChannel={operations?.createChannel}
+        patchChannel={
+          operations?.patchChannel
+            ? (channelId, input) => operations.patchChannel!(channelId, input)
+            : undefined
+        }
+        meetOperations={calendar?.meetOperations}
+        sessionUsername={calendar?.sessionUsername ?? session.user.username}
+        sessionDisplayName={calendar?.sessionDisplayName ?? session.user.displayName}
+        sessionEmail={calendar?.sessionEmail ?? session.user.email}
+        workspaceOrigin={calendar?.workspaceOrigin}
+        contactCards={calendar?.contactCards}
+        directory={data.directory}
+        onClose={() => {
+          setCreateMeetingOpen(false);
+          setEditMeeting(null);
+        }}
+        onCreated={(event, created) => {
+          calendar?.onEventCreated?.(event);
+          if (created) {
+            setChannels((current) =>
+              current.some((row) => row.id === created.id) ? current : [...current, created],
+            );
+            setSelectedId(created.id);
+          }
+          setCreateMeetingOpen(false);
+        }}
+        onUpdated={(event, patched) => {
+          calendar?.onEventUpdated?.(event);
+          if (patched) replaceChannel(patched);
+          setEditMeeting(null);
+        }}
+        onDelete={
+          editMeeting?.channel
+            ? () => {
+                const channelId = editMeeting.channel!.id;
+                setEditMeeting(null);
+                setPendingMeetingChannelDelete(channelId);
+              }
+            : editMeeting?.leftover
+              ? () => {
+                  const leftover = editMeeting.leftover!;
+                  setEditMeeting(null);
+                  setPendingUpcomingDelete(leftover);
+                }
+              : undefined
+        }
+        onError={notifyChatError}
       />
     </TooltipProvider>
   );

@@ -33,4 +33,42 @@ describe("createMeetChatOperations", () => {
     expect(meeting?.guestAccess).toBe(true);
     expect(meeting?.guestRoomCode).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
   });
+
+  it("deleteChannel drops the row and its messages", async () => {
+    const ops = createMeetChatOperations({
+      channels: [
+        {
+          id: "channel-general",
+          name: "General",
+          kind: "channel",
+          scope: "personal",
+        },
+        {
+          id: "channel-random",
+          name: "Random",
+          kind: "channel",
+          scope: "personal",
+        },
+      ],
+      messages: [
+        {
+          id: "m1",
+          channelId: "channel-general",
+          authorId: "demo.user",
+          authorName: "Demo User",
+          body: "hello",
+          createdAt: 1,
+          reactions: [],
+          mentions: [],
+          previews: [],
+        },
+      ],
+      author: { id: "demo.user", displayName: "Demo User" },
+    });
+
+    await ops.deleteChannel!("channel-general");
+    const state = ops.getState();
+    expect(state.channels.map((row) => row.id)).toEqual(["channel-random"]);
+    expect(state.messages).toEqual([]);
+  });
 });

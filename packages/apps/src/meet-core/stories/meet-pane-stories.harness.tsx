@@ -71,6 +71,7 @@ export function MeetLobbyPaneHarness(
           showWaitingForHostScreen={props.showWaitingForHostScreen ?? false}
           showInviteErrorScreen={props.showInviteErrorScreen ?? false}
           canStartReservedRoom={props.canStartReservedRoom ?? props.hasSignedInIdentity ?? true}
+          displayNameLocked={props.displayNameLocked ?? false}
         />
       </div>
     </MeetStoryScope>

@@ -28,7 +28,7 @@ Returned by event endpoints. `@type` is always `"Event"`.
 | `id` | string | Object uri without `.ics`, or `{objectUri}#{veventUid}` for multi-VEVENT ICS |
 | `uid` | string | VEVENT UID |
 | `calendarIds` | map | Enabled calendar uri → `true` |
-| `title` | string | SUMMARY |
+| `title` | string | SUMMARY; required and non-empty (after trim) on create |
 | `description` | string | DESCRIPTION |
 | `start` / `end` | string | ISO 8601 or date for all-day |
 | `duration` | string | iCalendar DURATION when no DTEND |
@@ -67,7 +67,7 @@ JMAP-shaped REST equivalents of `CalendarEvent/changes`, `/set`, `/query`. Respo
   "created": { "new-1": { "id": "abc123", "state": "9f2c…" } },
   "updated": { "abc123": { "state": "1d40…" } },
   "destroyed": ["def456"],
-  "notCreated": { "bad-1": { "type": "invalidProperties", "description": "start is required.", "properties": ["start"] } },
+  "notCreated": { "bad-1": { "type": "invalidProperties", "description": "title is required.", "properties": ["title"] } },
   "notUpdated": { "ghi789": { "type": "stateMismatch", "description": "…" } },
   "notDestroyed": { "jkl012": { "type": "notFound", "description": "…" } }
 }

@@ -36,6 +36,8 @@ export type UseMeetChatCallArgs = {
   meetOperations: MeetAPIOperations;
   /** Chunk-E chat operations (hybrid Dexie + REST); wrapped with call verbs. */
   chatOperations?: MeetChatOperations;
+  /** Current workspace selection — ad-hoc calendar rooms attach call chrome here. */
+  selectedChannelId?: string | null;
 };
 
 /**
@@ -51,6 +53,7 @@ export function useMeetChatCall({
   channels,
   meetOperations,
   chatOperations,
+  selectedChannelId = null,
 }: UseMeetChatCallArgs) {
   const toast = useAppToast();
   const controller = useMeetController({
@@ -77,6 +80,9 @@ export function useMeetChatCall({
   // DM rooms are not in the sidebar channel list; remember room → virtual
   // `dm:{peer}` id so `liveCallChannelId` maps the joined call back to the rail.
   const dmRoomChannelIdsRef = useRef<Record<string, string>>({});
+  const adHocRoomChannelIdsRef = useRef<Record<string, string>>({});
+  const selectedChannelIdRef = useRef(selectedChannelId);
+  selectedChannelIdRef.current = selectedChannelId;
 
   /** Best-effort reservation so the room shows up in status polls with an owner. */
   const reserveChannelRoom = useCallback(async (room: string) => {
@@ -117,10 +123,7 @@ export function useMeetChatCall({
           room = meetChannelRoomId(channel ?? { id: channelId, kind: "channel" });
         }
         await reserveChannelRoom(room);
-        if (options?.video === false) {
-          controllerRef.current.setVideoOn(false);
-        }
-        await controllerRef.current.joinRoom(room);
+        await controllerRef.current.joinRoom(room, options);
       } catch (error) {
         // Chunk-H join policy: the server rejects direct joins from channel
         // non-members with `knock_required`. Fall back to the legacy knock
@@ -154,6 +157,47 @@ export function useMeetChatCall({
       }
     },
     [reserveChannelRoom],
+  );
+
+  const joinAdHocRoom = useCallback(
+    async (roomCode: string) => {
+      const room = roomCode.trim().toLowerCase();
+      if (!room) return;
+      const existing = meetChannelIdForRoom(channelsRef.current, room);
+      if (existing) {
+        await startCall(existing);
+        return;
+      }
+      const host = selectedChannelIdRef.current ?? channelsRef.current[0]?.id ?? null;
+      if (host) adHocRoomChannelIdsRef.current[room] = host;
+      try {
+        await reserveChannelRoom(room);
+        await controllerRef.current.joinRoom(room);
+      } catch (error) {
+        if (isMeetKnockRequiredError(error)) {
+          try {
+            await controllerRef.current.requestJoin(room);
+            return;
+          } catch (knockError) {
+            toastRef.current.showError(
+              isMeetRoomNotActiveError(knockError)
+                ? meetLabels.knockCallNotActive
+                : knockError instanceof Error && knockError.message.trim()
+                  ? knockError.message
+                  : meetLabels.couldNotStartCall,
+            );
+            throw knockError;
+          }
+        }
+        const message =
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : meetLabels.couldNotStartCall;
+        toastRef.current.showError(message);
+        throw error;
+      }
+    },
+    [reserveChannelRoom, startCall],
   );
 
   const leaveCall = useCallback(async () => {
@@ -222,7 +266,8 @@ export function useMeetChatCall({
   const liveCallChannelId = useMemo(
     () =>
       meetChannelIdForRoom(channels, joinedRoomCode) ??
-      (joinedRoomCode ? (dmRoomChannelIdsRef.current[joinedRoomCode] ?? null) : null),
+      (joinedRoomCode ? (dmRoomChannelIdsRef.current[joinedRoomCode] ?? null) : null) ??
+      (joinedRoomCode ? (adHocRoomChannelIdsRef.current[joinedRoomCode] ?? null) : null),
     [channels, joinedRoomCode],
   );
 
@@ -231,5 +276,6 @@ export function useMeetChatCall({
     callStageRoom,
     liveCallChannelId,
     joinedRoomCode,
+    joinAdHocRoom,
   };
 }

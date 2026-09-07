@@ -17,6 +17,7 @@ export default meta;
 type Story = StoryObj<typeof MeetChannelDialog>;
 
 export const CreateChannel: Story = {
+  tags: ["vitest-ci"],
   render: () => (
     <MeetStoryScope>
       <MeetChannelDialog
@@ -28,23 +29,16 @@ export const CreateChannel: Story = {
       />
     </MeetStoryScope>
   ),
-};
-
-export const CreateMeeting: Story = {
-  render: () => (
-    <MeetStoryScope>
-      <MeetChannelDialog
-        dialog={{ mode: "create", kind: "meeting" }}
-        groups={groups}
-        personalOwnerLabel={session.user.displayName}
-        onClose={() => {}}
-        onConfirm={() => {}}
-      />
-    </MeetStoryScope>
-  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.getByRole("heading", { name: meetLabels.newChannel })).toBeInTheDocument();
+    await expect(body.queryByText(meetLabels.channelKindLabel)).not.toBeInTheDocument();
+    await expect(body.queryByText(meetLabels.channelKindMeeting)).not.toBeInTheDocument();
+  },
 };
 
 export const EditChannel: Story = {
+  tags: ["vitest-ci"],
   render: () => (
     <MeetStoryScope variant="split">
       <MeetChannelDialog
@@ -58,11 +52,13 @@ export const EditChannel: Story = {
           mayShare: true,
           shareWith: { "ada.lovelace": { mayRead: true, mayWrite: true } },
           canChangeOwner: true,
+          mayDelete: true,
         }}
         groups={groups}
         personalOwnerLabel={session.user.displayName}
         onClose={() => {}}
         onConfirm={() => {}}
+        onDelete={() => {}}
         share={{
           knownPrincipals: data.directory,
           online: true,
@@ -77,8 +73,8 @@ export const EditChannel: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByText(meetLabels.shareChannelSectionTitle)).toBeInTheDocument();
     await expect(body.getByText("Ada Lovelace")).toBeInTheDocument();
-    await expect(body.queryByRole("combobox")).not.toBeInTheDocument();
     await expect(canvas.queryByText(/Can view|Can edit/i)).not.toBeInTheDocument();
+    await expect(body.getByRole("button", { name: meetLabels.deleteChannel })).toBeInTheDocument();
   },
 };
 
@@ -97,11 +93,13 @@ export const EditMeetingGuestLink: Story = {
           shareWith: null,
           canChangeOwner: true,
           guestRoomCode: "h8y8-ewp6-al8n",
+          mayDelete: true,
         }}
         groups={groups}
         personalOwnerLabel={session.user.displayName}
         onClose={() => {}}
         onConfirm={() => {}}
+        onDelete={() => {}}
         share={{
           knownPrincipals: data.directory,
           online: true,
@@ -112,4 +110,15 @@ export const EditMeetingGuestLink: Story = {
       />
     </MeetStoryScope>
   ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const link = body.getByLabelText(meetLabels.meetingLinkLabel) as HTMLInputElement;
+    await expect(link).toBeInTheDocument();
+    await expect(link).toHaveProperty("readOnly", true);
+    await expect(body.getByRole("button", { name: meetLabels.copyLink })).toBeInTheDocument();
+    const shareTitle = body.getByText(meetLabels.shareChannelSectionTitle);
+    await expect(
+      link.compareDocumentPosition(shareTitle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  },
 };

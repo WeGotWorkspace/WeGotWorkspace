@@ -1345,4 +1345,283 @@ describe("CalendarEventDialog", () => {
       expect(onRefreshContactCards).toHaveBeenCalled();
     });
   });
+
+  it("hides the calendar swatch, When card, and Meet picker in the Meet create layout", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Meeting",
+      meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+    };
+    renderDialog({
+      form,
+      title: "New meeting",
+      submitLabel: "Create",
+      layout: {
+        hideCalendarPicker: true,
+        hideLocation: true,
+        hideWhen: true,
+        hideRecurrence: true,
+        hideAlarms: true,
+        hideShowAs: true,
+        hideInvitees: true,
+        hideNotes: true,
+        meetCopyOnly: true,
+      },
+    });
+    expect(screen.queryByRole("button", { name: /Calendar: Personal/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
+    expect(screen.queryByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeNull();
+    expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
+  });
+
+  it("renders afterMeetAccessory after the Meet card and disables Create with an empty title", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      meetingUrl: "https://workspace.example.com/meet?room=h8y8-ewp6-al8n",
+    };
+    renderDialog({
+      form,
+      title: "New meeting",
+      submitLabel: "Create",
+      layout: {
+        hideCalendarPicker: true,
+        hideLocation: true,
+        hideWhen: true,
+        hideRecurrence: true,
+        hideAlarms: true,
+        hideShowAs: true,
+        hideInvitees: true,
+        hideNotes: true,
+        meetCopyOnly: true,
+      },
+      afterMeetAccessory: <div>Schedule row</div>,
+    });
+    const title = screen.getByLabelText(defaultCalendarLabels.eventTitleLabel);
+    const meet = screen.getByRole("heading", { name: defaultCalendarLabels.eventMeetSectionTitle });
+    const accessory = screen.getByText("Schedule row");
+    expect((title as HTMLInputElement).value).toBe("");
+    expect(title.compareDocumentPosition(meet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(meet.compareDocumentPosition(accessory) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  const CHANNEL_URL = "https://workspace.example.com/meet/channels/chat-01h455vb4pa9nnrjpznsav8hva";
+  const CHANNEL_GENERAL_URL = "https://workspace.example.com/meet/channels/general";
+  const MEETING_URL = "https://workspace.example.com/meet/meetings/test-meet";
+  const ROOM_URL = "https://workspace.example.com/meet/meetings/h8y8-ewp6-al8n";
+  const directoryInvitees = [
+    { username: "wouter", email: "wouter@woutervroege.nl", name: "Wouter" },
+  ];
+
+  function addTypedEmail(email: string) {
+    const add = screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd);
+    fireEvent.change(add, { target: { value: email } });
+    fireEvent.keyDown(add, { key: "Enter" });
+  }
+
+  it("prompts when an email invitee is added to a # channel Meet URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_GENERAL_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeTruthy();
+  });
+
+  it("does not prompt for a workspace invitee on a channel URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      sessionEmail: "admin@localhost",
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "wou" },
+    });
+    fireEvent.mouseDown(screen.getByRole("option", { name: /Wouter/i }));
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
+
+  it("does not prompt for email invitees on a persistent meeting URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: MEETING_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
+
+  it("does not prompt for email invitees on an ad-hoc room URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: ROOM_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
+
+  it("does not prompt when opening an event that already has both", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+      attendees: [
+        {
+          email: "guest@elsewhere.test",
+          name: "guest@elsewhere.test",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+    expect(
+      screen.getAllByText(defaultCalendarLabels.eventMeetEmailGuestsNoAccessHint).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("keep-both leaves the email invitee and shows the no-access hint", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailKeepBoth }),
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meetingUrl: CHANNEL_URL,
+        attendees: [expect.objectContaining({ email: "guest@elsewhere.test" })],
+      }),
+    );
+  });
+
+  it("strip-emails keeps the channel URL and drops email-only invitees", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+      attendees: [
+        {
+          email: "wouter@woutervroege.nl",
+          name: "Wouter",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailStripEmails }),
+    );
+    const last = onChange.mock.calls.at(-1)?.[0] as {
+      meetingUrl: string;
+      attendees: { email: string }[];
+    };
+    expect(last.meetingUrl).toBe(CHANNEL_URL);
+    expect(last.attendees.map((row) => row.email)).toEqual(["wouter@woutervroege.nl"]);
+  });
+
+  it("replace-with-room keeps email invitees and swaps in a guest room URL", async () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    const reserveRoom = vi.fn().mockResolvedValue({ reserved: true, active: false });
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      sessionUsername: "admin",
+      workspaceOrigin: "https://workspace.example.com",
+      calendars: bootstrap.data.calendars,
+      meetOperations: {
+        roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        reserveRoom,
+        patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      },
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailReplaceLink }),
+    );
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0] as {
+        meetingUrl: string;
+        attendees: { email: string }[];
+        meetGuestRoomOverride?: boolean;
+      };
+      expect(last.meetingUrl).toMatch(/\/meet\/meetings\/[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+      expect(last.meetingUrl).not.toMatch(/\/guest/);
+      expect(last.attendees.map((row) => row.email)).toEqual(["guest@elsewhere.test"]);
+      expect(last.meetGuestRoomOverride).toBe(true);
+    });
+    expect(reserveRoom).toHaveBeenCalled();
+  });
+
+  it("cancel reverts the last conflicting change", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    const last = onChange.mock.calls.at(-1)?.[0] as { attendees: unknown[] };
+    expect(last.attendees).toEqual([]);
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
 });

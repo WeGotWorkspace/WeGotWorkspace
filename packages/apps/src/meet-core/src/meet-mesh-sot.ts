@@ -301,6 +301,12 @@ export function wrapMeetChatOperationsWithMesh(
           return updated;
         }
       : undefined,
+    deleteChannel: operations.deleteChannel
+      ? async (channelId) => {
+          await operations.deleteChannel!(channelId);
+          send(channelId, { v: 1, kind: "channel-changed", channel: channelId });
+        }
+      : undefined,
     startCall: operations.startCall
       ? async (channelId, options) => {
           await operations.startCall!(channelId, options);

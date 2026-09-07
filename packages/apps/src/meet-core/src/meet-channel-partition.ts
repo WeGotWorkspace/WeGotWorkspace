@@ -7,7 +7,7 @@ export type MeetChannelSections = {
   meetings: MeetChannel[];
 };
 
-/** My channels (owned channel) → Shared with me → Upcoming meetings (owned meeting). Direct messages are directory people, not channels. */
+/** My channels (owned channel) → Shared with me → Today’s meetings (owned meeting, filtered to today in the workspace). Direct messages are directory people, not channels. */
 export function partitionMeetChannels(items: readonly MeetChannel[]): MeetChannelSections {
   const { owned, shared } = partitionOwnedAndShared(items);
   return {

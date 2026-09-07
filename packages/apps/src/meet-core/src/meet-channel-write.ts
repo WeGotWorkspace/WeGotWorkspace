@@ -42,3 +42,17 @@ export function applyMeetChannelPatch(
     shareWith: patch.shareWith === undefined ? channel.shareWith : patch.shareWith,
   };
 }
+
+/**
+ * Owner delete in the channel dialog — same gate as Notes `canDeleteNotebook`.
+ * Sharees must not see destroy (`myRights.mayDelete: false` on inbound shares).
+ */
+export function canDeleteMeetChannel(channel?: {
+  isSharee?: boolean;
+  myRights?: { mayDelete?: boolean } | null;
+}): boolean {
+  if (!channel) return false;
+  if (channel.isSharee === true) return false;
+  if (channel.myRights?.mayDelete === false) return false;
+  return true;
+}

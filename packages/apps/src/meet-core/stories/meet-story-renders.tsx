@@ -31,6 +31,7 @@ export type MeetLobbyPaneStoryArgs = {
   canStartReservedRoom: boolean;
   videoOn: boolean;
   error: string;
+  displayNameLocked?: boolean;
 };
 
 export function MeetLobbyPaneStory(args: MeetLobbyPaneStoryArgs) {
@@ -48,6 +49,7 @@ export function MeetLobbyPaneStory(args: MeetLobbyPaneStoryArgs) {
       showWaitingForHostScreen={args.showWaitingForHostScreen}
       showInviteErrorScreen={args.showInviteErrorScreen}
       canStartReservedRoom={args.canStartReservedRoom}
+      displayNameLocked={args.displayNameLocked ?? false}
       controllerOverrides={{
         displayName: args.displayName,
         videoOn: args.videoOn,

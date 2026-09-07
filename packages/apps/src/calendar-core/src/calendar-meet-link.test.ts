@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   calendarMeetJoinHref,
   calendarMeetOwnerPrincipal,
+  calendarMeetPickerChannels,
   isHttpUrl,
   isMeetChatRoomId,
   isMeetRoomCode,
@@ -29,6 +30,7 @@ const GUEST = `${ORIGIN}/meet/guest?room=${ROOM}`;
 const JOIN = `${ORIGIN}/meet/join?room=${ROOM}`;
 const CHAT_ROOM = "chat-01h455vb4pa9nnrjpznsav8hva";
 const CHAT_GUEST = `${ORIGIN}/meet/guest?room=${CHAT_ROOM}`;
+const CHAT_CHANNEL = `${ORIGIN}/meet/channels/${CHAT_ROOM}`;
 
 describe("parseCalendarMeetHref", () => {
   it("accepts a complete same-origin guest URL by origin equality", () => {
@@ -47,6 +49,12 @@ describe("parseCalendarMeetHref", () => {
       room: CHAT_ROOM,
       roomKind: "channel",
     });
+    expect(parseCalendarMeetHref(CHAT_CHANNEL, ORIGIN)).toEqual({
+      kind: "wgw",
+      href: CHAT_CHANNEL,
+      room: CHAT_ROOM,
+      roomKind: "channel",
+    });
     expect(parseCalendarMeetHref(`${ORIGIN}/meet/join?room=${CHAT_ROOM}`, ORIGIN)?.kind).toBe(
       "wgw",
     );
@@ -56,6 +64,16 @@ describe("parseCalendarMeetHref", () => {
     expect(parseCalendarMeetHref(JOIN, ORIGIN)?.kind).toBe("wgw");
     const trailing = parseCalendarMeetHref(`${ORIGIN}/meet/guest/?room=${ROOM}`, ORIGIN);
     expect(trailing?.kind === "wgw" ? trailing.room : undefined).toBe(ROOM);
+  });
+
+  it("accepts the unified /meet?room= invite URL", () => {
+    const unified = `${ORIGIN}/meet?room=${ROOM}`;
+    expect(parseCalendarMeetHref(unified, ORIGIN)).toEqual({
+      kind: "wgw",
+      href: unified,
+      room: ROOM,
+      roomKind: "code",
+    });
   });
 
   it("never treats a different origin as WGW even when the string includes the workspace origin", () => {
@@ -81,6 +99,21 @@ describe("parseCalendarMeetHref", () => {
   it("stores other https URLs without classifying them as WGW", () => {
     const zoom = "https://zoom.us/j/123";
     expect(parseCalendarMeetHref(zoom, ORIGIN)).toEqual({ kind: "https", href: zoom });
+  });
+
+  it("accepts relative /meet?room= and /meet/meetings/{id} join hrefs", () => {
+    expect(parseCalendarMeetHref(`/meet?room=${ROOM}`, ORIGIN)).toEqual({
+      kind: "wgw",
+      href: `/meet?room=${ROOM}`,
+      room: ROOM,
+      roomKind: "code",
+    });
+    expect(parseCalendarMeetHref(`/meet/meetings/${ROOM}`, ORIGIN)).toEqual({
+      kind: "wgw",
+      href: `/meet/meetings/${ROOM}`,
+      room: ROOM,
+      roomKind: "code",
+    });
   });
 
   it("rejects non-http(s) and unparseable values", () => {
@@ -146,40 +179,88 @@ describe("meet room code and links map", () => {
   });
 });
 
+describe("calendarMeetPickerChannels", () => {
+  it("drops meeting-kind rows and sorts remaining names locale-aware case-insensitive", () => {
+    const rows = [
+      { id: "chat-merge", name: "Merge smoke channel", kind: "channel" as const },
+      { id: "chat-onzin", name: "onzin", kind: "channel" as const },
+      { id: "chat-ditjes", name: "ditjes en datjes", kind: "channel" as const },
+      { id: "chat-jasja", name: "jasja", kind: "channel" as const },
+      { id: "chat-test-meet", name: "Test Meet", kind: "meeting" as const },
+      { id: "chat-week-start", name: "Week Start", kind: "meeting" as const },
+      { id: "chat-email-guest", name: "Email guest create check", kind: "meeting" as const },
+      { id: "chat-standup", name: "Standup", kind: "channel" as const },
+      { id: "chat-admins", name: "Administrators", kind: "channel" as const },
+      { id: "chat-dev", name: "Dev Team", kind: "channel" as const },
+    ];
+    expect(calendarMeetPickerChannels(rows).map((row) => row.name)).toEqual([
+      "Administrators",
+      "Dev Team",
+      "ditjes en datjes",
+      "jasja",
+      "Merge smoke channel",
+      "onzin",
+      "Standup",
+    ]);
+  });
+});
+
 describe("meetChannelCallHref", () => {
   it("uses the channel id lowercased as the room for plain channels", () => {
     const channel = { id: "CHAT-01H455VB4PA9NNRJPZNSAV8HVA", kind: "channel" as const };
     expect(meetChannelCallRoom(channel)).toBe(CHAT_ROOM);
-    expect(meetChannelCallHref(channel, ORIGIN)).toBe(CHAT_GUEST);
+    expect(meetChannelCallHref(channel, ORIGIN)).toBe(
+      `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
+    );
   });
 
-  it("uses guestRoomCode for meeting-kind channels", () => {
+  it("uses the channel path for meeting-kind channels (same as a channel)", () => {
     const meeting = {
       id: "chat-01h455vb4pa9nnrjpznsav8hvb",
       kind: "meeting" as const,
       guestRoomCode: ROOM,
     };
     expect(meetChannelCallRoom(meeting)).toBe(ROOM);
-    expect(meetChannelCallHref(meeting, ORIGIN)).toBe(GUEST);
+    expect(meetChannelCallHref(meeting, ORIGIN)).toBe(
+      `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hvb`,
+    );
   });
 
   it("falls back to the channel id when a meeting has no guestRoomCode", () => {
     const meeting = { id: CHAT_ROOM, kind: "meeting" as const, guestRoomCode: null };
     expect(meetChannelCallRoom(meeting)).toBe(CHAT_ROOM);
+    expect(meetChannelCallHref(meeting, ORIGIN)).toBe(
+      `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
+    );
   });
 
-  it("produces hrefs the join flow rewrites to /meet/join, matching the generated format", () => {
+  it("produces hrefs Join opens as the same stored invite URL", () => {
     const channel = { id: CHAT_ROOM, kind: "channel" as const };
     expect(calendarMeetJoinHref(meetChannelCallHref(channel, ORIGIN), ORIGIN)).toBe(
-      `/meet/join?room=${encodeURIComponent(CHAT_ROOM)}`,
+      `/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
     );
   });
 });
 
 describe("calendarMeetJoinHref", () => {
-  it("rewrites same-origin guest and join URLs to /meet/join", () => {
-    expect(calendarMeetJoinHref(GUEST, ORIGIN)).toBe(`/meet/join?room=${ROOM}`);
-    expect(calendarMeetJoinHref(JOIN, ORIGIN)).toBe(`/meet/join?room=${ROOM}`);
+  it("normalizes stored guest, join, and /meet URLs to the unified invite path", () => {
+    expect(calendarMeetJoinHref(GUEST, ORIGIN)).toBe(`/meet/meetings/${ROOM}`);
+    expect(calendarMeetJoinHref(JOIN, ORIGIN)).toBe(`/meet/meetings/${ROOM}`);
+    expect(calendarMeetJoinHref(`${ORIGIN}/meet?room=${ROOM}`, ORIGIN)).toBe(
+      `/meet/meetings/${ROOM}`,
+    );
+    expect(calendarMeetJoinHref(`${ORIGIN}/meet/meetings/${ROOM}`, ORIGIN)).toBe(
+      `/meet/meetings/${ROOM}`,
+    );
+    expect(
+      calendarMeetJoinHref(`http://127.0.0.1:5174/meet?room=${ROOM}`, "http://localhost:5174"),
+    ).toBe(`/meet/meetings/${ROOM}`);
+    expect(calendarMeetJoinHref(CHAT_CHANNEL, ORIGIN)).toBe(
+      `/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
+    );
+    expect(calendarMeetJoinHref(CHAT_GUEST, ORIGIN)).toBe(
+      `/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
+    );
   });
 
   it("keeps external https URLs unchanged", () => {
@@ -196,16 +277,19 @@ describe("calendarMeetJoinHref", () => {
 describe("openCalendarMeetHref", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("opens WGW Meet in a new window on /meet/join", () => {
-    const popup = { closed: false } as Window;
-    const open = vi.spyOn(window, "open").mockReturnValue(popup);
+  it("opens WGW Meet in the same tab on the stored invite URL", () => {
+    const assign = vi.fn();
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    vi.stubGlobal("location", { ...window.location, assign });
 
     const result = openCalendarMeetHref(GUEST, ORIGIN);
 
-    expect(result).toBe(popup);
-    expect(open).toHaveBeenCalledWith(`/meet/join?room=${ROOM}`, "_blank", "noopener,noreferrer");
+    expect(result).toBe(window);
+    expect(assign).toHaveBeenCalledWith(`/meet/meetings/${ROOM}`);
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("opens external https URLs in a new window", () => {

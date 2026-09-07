@@ -133,6 +133,7 @@ export type MeetChatOperations = {
   reply?: (parentId: string, body: string) => Promise<ChatMessage>;
   createChannel?: (input: MeetChannelWriteInput) => Promise<MeetChannel>;
   patchChannel?: (channelId: string, patch: MeetChannelPatchInput) => Promise<MeetChannel>;
+  deleteChannel?: (channelId: string) => Promise<void>;
   patchChannelShareWith?: (
     channelId: string,
     shareWith: CollectionShareWith,
