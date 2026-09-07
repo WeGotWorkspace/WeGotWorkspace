@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+import { meetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
 describe("MeetCallKnockQueue", () => {
@@ -51,5 +52,28 @@ describe("MeetCallKnockWaiting", () => {
     render(<MeetCallKnockWaiting />);
     expect(screen.getByText(meetLabels.knocking)).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("meetGuestChannelPhase", () => {
+  const idle = {
+    inCall: false,
+    showInviteCheckingScreen: false,
+    showWaitingForHostScreen: false,
+    showMissingInviteScreen: false,
+    showInviteErrorScreen: false,
+    endedMessage: null,
+    waitingForAdmission: false,
+  };
+
+  it("maps invite probe states onto the guest landing phases", () => {
+    expect(meetGuestChannelPhase({ ...idle, inCall: true })).toBe("in-channel");
+    expect(meetGuestChannelPhase({ ...idle, endedMessage: "Call ended" })).toBe("ended");
+    expect(meetGuestChannelPhase({ ...idle, showInviteCheckingScreen: true })).toBe("checking");
+    expect(meetGuestChannelPhase({ ...idle, showMissingInviteScreen: true })).toBe("missing");
+    expect(meetGuestChannelPhase({ ...idle, showInviteErrorScreen: true })).toBe("error");
+    expect(meetGuestChannelPhase({ ...idle, showWaitingForHostScreen: true })).toBe("waiting");
+    expect(meetGuestChannelPhase({ ...idle, waitingForAdmission: true })).toBe("knocking");
+    expect(meetGuestChannelPhase(idle)).toBe("lobby");
   });
 });

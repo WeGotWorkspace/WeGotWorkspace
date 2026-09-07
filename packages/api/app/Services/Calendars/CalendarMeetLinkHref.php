@@ -12,7 +12,7 @@ final class CalendarMeetLinkHref
     public const ROOM_CODE_PATTERN = '/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/';
 
     /** @var list<string> */
-    private const JOIN_PATHS = ['/meet/guest', '/meet/join'];
+    private const JOIN_PATHS = ['/meet', '/meet/guest', '/meet/join'];
 
     public function workspaceOrigin(): ?string
     {
@@ -49,6 +49,9 @@ final class CalendarMeetLinkHref
         }
 
         $path = '/'.trim((string) ($parts['path'] ?? ''), '/');
+        if (preg_match('#^/meet/meetings/([a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4})$#', strtolower($path), $matches) === 1) {
+            return $matches[1];
+        }
         if (! in_array($path, self::JOIN_PATHS, true)) {
             return null;
         }

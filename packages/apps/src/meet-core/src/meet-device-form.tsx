@@ -11,6 +11,7 @@ export type MeetDeviceFormProps = {
   displayName?: {
     value: string;
     onChange: (value: string) => void;
+    disabled?: boolean;
   };
   cameras: MeetDeviceOption[];
   microphones: MeetDeviceOption[];
@@ -52,6 +53,8 @@ export function MeetDeviceForm({
               id={displayNameId}
               value={displayName.value}
               onChange={(event) => displayName.onChange(event.target.value)}
+              disabled={displayName.disabled}
+              readOnly={displayName.disabled}
               className="meet-workspace__display-name-input"
             />
           </FieldLabelRow>

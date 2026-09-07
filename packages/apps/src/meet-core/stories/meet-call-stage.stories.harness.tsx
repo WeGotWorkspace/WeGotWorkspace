@@ -181,6 +181,11 @@ function buildStoryLobbySlice(
   onAdmit: () => void,
   activeSpeaker: string,
   onSpeakerChange: (value: string) => void,
+  identity: { displayName: string; hasSignedInIdentity: boolean; displayNameLocked: boolean } = {
+    displayName: "Guest",
+    hasSignedInIdentity: false,
+    displayNameLocked: false,
+  },
 ): MeetLobbyPaneProps {
   const join = async () => {
     onAdmit();
@@ -188,7 +193,7 @@ function buildStoryLobbySlice(
   const controller = createMeetStoryController(localVideoRef, {
     status: "idle",
     inCall: false,
-    displayName: "Guest",
+    displayName: identity.displayName,
     startMeeting: join,
     joinRoom: join,
     requestJoin: join,
@@ -196,9 +201,9 @@ function buildStoryLobbySlice(
 
   return {
     controller,
-    displayName: "Guest",
+    displayName: identity.displayName,
     inJoinFlow: true,
-    hasSignedInIdentity: false,
+    hasSignedInIdentity: identity.hasSignedInIdentity,
     invitedRoom: GUEST_ROOM_CODE,
     waitingForAdmission: false,
     knockDots: 2,
@@ -215,17 +220,24 @@ function buildStoryLobbySlice(
     showWaitingForHostScreen: false,
     showInviteErrorScreen: false,
     canStartReservedRoom: false,
+    displayNameLocked: identity.displayNameLocked,
   };
 }
 
 export type MeetGuestChannelStoryArgs = {
   phase: MeetGuestChannelPhase;
   callLayout: MeetCallStageLayout;
+  displayName?: string;
+  hasSignedInIdentity?: boolean;
+  displayNameLocked?: boolean;
 };
 
 export function MeetGuestChannelStoryHarness({
   phase: phaseInitial,
   callLayout: callLayoutInitial,
+  displayName = "Guest",
+  hasSignedInIdentity = false,
+  displayNameLocked = false,
 }: MeetGuestChannelStoryArgs) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [phase, setPhase] = useState<MeetGuestChannelPhase>(phaseInitial);
@@ -246,6 +258,7 @@ export function MeetGuestChannelStoryHarness({
     },
     activeSpeaker,
     setActiveSpeaker,
+    { displayName, hasSignedInIdentity, displayNameLocked },
   );
   const stage = buildStoryRoomSlice(
     localVideoRef,
@@ -255,7 +268,7 @@ export function MeetGuestChannelStoryHarness({
     setActiveSpeaker,
     {
       peers: STORY_MEET_PEERS,
-      displayName: "Guest",
+      displayName: displayName,
       switchCamera: async (deviceId) => setActiveCamera(deviceId),
       switchMic: async (deviceId) => setActiveMic(deviceId),
     },
@@ -304,7 +317,7 @@ export function MeetGuestChannelStoryHarness({
       channelName={GUEST_CHANNEL_NAME}
       phase={phase}
       lobby={lobby}
-      stage={{ ...stage, displayName: "Guest", hasSignedInIdentity: false }}
+      stage={{ ...stage, displayName, hasSignedInIdentity }}
       callLayout={callLayout}
       chat={chat}
       onLayoutChange={setCallLayout}

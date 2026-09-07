@@ -31,6 +31,8 @@ export type MeetLobbyPaneProps = {
   showWaitingForHostScreen: boolean;
   showInviteErrorScreen: boolean;
   canStartReservedRoom: boolean;
+  /** Signed-in unauthorized visitors: name is prefilled from the session and not editable. */
+  displayNameLocked?: boolean;
 };
 
 export function MeetLobbyPane({
@@ -54,6 +56,7 @@ export function MeetLobbyPane({
   showWaitingForHostScreen,
   showInviteErrorScreen,
   canStartReservedRoom,
+  displayNameLocked = false,
 }: MeetLobbyPaneProps) {
   const [previewAspect, setPreviewAspect] = useState<number | null>(null);
 
@@ -177,7 +180,8 @@ export function MeetLobbyPane({
       <MeetDeviceForm
         displayName={{
           value: controller.displayName,
-          onChange: controller.setDisplayName,
+          onChange: displayNameLocked ? () => undefined : controller.setDisplayName,
+          disabled: displayNameLocked,
         }}
         cameras={cameras}
         microphones={microphones}

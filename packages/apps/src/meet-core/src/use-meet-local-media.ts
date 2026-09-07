@@ -3,6 +3,7 @@ import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enab
 import {
   buildMeetAudioConstraints,
   buildMeetVideoConstraints,
+  meetLocalMediaGumConstraints,
 } from "@/meet-core/src/meet-media-constraints";
 import type { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
 
@@ -113,13 +114,30 @@ export function useMeetLocalMedia({
     const mic = micOnRef.current;
     const video = videoOnRef.current;
     if (localStreamRef.current) {
+      if (video && localStreamRef.current.getVideoTracks().length === 0) {
+        const updated = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: buildMeetVideoConstraints(selectedCamId ?? undefined),
+        });
+        const track = updated.getVideoTracks()[0];
+        if (track && !localStreamRef.current.getVideoTracks().includes(track)) {
+          localStreamRef.current.addTrack(track);
+          cameraTrackRef.current = track;
+          if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+          await replaceVideoTrackOnAllPeers(track);
+        }
+      }
       syncMeetLocalTrackEnabled(localStreamRef.current, { mic, video });
       return localStreamRef.current;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: buildMeetAudioConstraints(selectedMicId ?? undefined),
-      video: buildMeetVideoConstraints(selectedCamId ?? undefined),
-    });
+    const stream = await navigator.mediaDevices.getUserMedia(
+      meetLocalMediaGumConstraints({
+        micOn: mic,
+        videoOn: video,
+        micId: selectedMicId,
+        camId: selectedCamId,
+      }),
+    );
     localStreamRef.current = stream;
     cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
     syncMeetLocalTrackEnabled(stream, { mic, video });
@@ -131,6 +149,7 @@ export function useMeetLocalMedia({
     localStreamRef,
     micOnRef,
     refreshDeviceList,
+    replaceVideoTrackOnAllPeers,
     selectedCamId,
     selectedMicId,
     videoOnRef,
@@ -171,13 +190,20 @@ export function useMeetLocalMedia({
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
       const next = !prev;
+      if (next && (localStreamRef.current?.getVideoTracks().length ?? 0) === 0) {
+        void ensureLocalMedia().then((stream) => {
+          syncMeetLocalTrackEnabled(stream, { mic: micOnRef.current, video: true });
+          void announceMediaPresence(micOnRef.current, true);
+        });
+        return next;
+      }
       localStreamRef.current?.getVideoTracks().forEach((track) => {
         track.enabled = next;
       });
       void announceMediaPresence(micOnRef.current, next);
       return next;
     });
-  }, [announceMediaPresence, localStreamRef, micOnRef, setVideoOn]);
+  }, [announceMediaPresence, ensureLocalMedia, localStreamRef, micOnRef, setVideoOn]);
 
   const toggleScreenShare = useCallback(async () => {
     if (screenOn) {

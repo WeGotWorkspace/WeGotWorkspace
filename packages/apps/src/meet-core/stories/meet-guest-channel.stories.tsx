@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { MeetGuestChannel } from "@/meet-core/src/meet-guest-channel";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   MeetGuestChannelStoryHarness,
   type MeetGuestChannelStoryArgs,
@@ -8,7 +9,7 @@ import {
 import { meetStoryParameters } from "@/meet-core/stories/meet-story-shared";
 
 /**
- * Guest stripped channel: no sidebar, pre-join lobby, then chat + call stage.
+ * Guest stripped channel: no sidebar, cream/dusk lobby, then chat + call stage.
  * Start/Join is a stub that admits into the in-channel layout.
  */
 const meta = {
@@ -19,7 +20,7 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Guest landing: ViewHeader only (hideSidebarToggle). Checking / waiting / lobby use MeetLobbyPane; in-channel is chat + MeetCallStage.",
+        "Guest landing: ViewHeader only (hideSidebarToggle). Checking / waiting / missing / lobby / knocking use the split product lobby; in-channel is chat + MeetCallStage.",
       snippet: `<MeetGuestChannel
   channelName="Standup"
   phase="lobby"
@@ -31,7 +32,19 @@ const meta = {
     }),
   },
   argTypes: {
-    phase: { control: "select", options: ["checking", "waiting", "lobby", "in-channel"] as const },
+    phase: {
+      control: "select",
+      options: [
+        "checking",
+        "waiting",
+        "missing",
+        "error",
+        "ended",
+        "lobby",
+        "knocking",
+        "in-channel",
+      ] as const,
+    },
     callLayout: {
       control: "select",
       options: ["compact", "side-by-side", "fullscreen", "collapsed"] as const,
@@ -57,6 +70,7 @@ export const Checking: Story = {
 
 export const Waiting: Story = {
   name: "Waiting",
+  tags: ["vitest-ci"],
   args: {
     phase: "waiting",
     callLayout: "side-by-side",
@@ -64,6 +78,54 @@ export const Waiting: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Waiting for the host" })).toBeInTheDocument();
+    await expect(
+      canvas.getByText("This meeting has not started yet. You can join when the host arrives."),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Show sidebar" })).not.toBeInTheDocument();
+    expect(canvasElement.querySelector(".meet-workspace--split")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-channel__lobby")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-workspace__lobby")).toBeNull();
+  },
+};
+
+export const MissingInvite: Story = {
+  name: "Missing invite",
+  args: {
+    phase: "missing",
+    callLayout: "side-by-side",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("heading", { name: meetLabels.missingInviteTitle }),
+    ).toBeInTheDocument();
+    expect(canvasElement.querySelector(".meet-workspace--split")).toBeTruthy();
+  },
+};
+
+export const InviteError: Story = {
+  name: "Invite check error",
+  args: {
+    phase: "error",
+    callLayout: "side-by-side",
+  },
+};
+
+export const Knocking: Story = {
+  name: "Knocking",
+  tags: ["vitest-ci"],
+  args: {
+    phase: "knocking",
+    callLayout: "side-by-side",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(meetLabels.knockWaitTitle("Standup"))).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.knockWaitHint)).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: meetLabels.cancelRequest }),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText(`${meetLabels.knocking}..`)).not.toBeInTheDocument();
   },
 };
 
@@ -80,6 +142,24 @@ export const Lobby: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Ask to join" }));
     await expect(canvas.getByText(/Standup in five/i)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Collapse call" })).toBeInTheDocument();
+  },
+};
+
+export const SignedInUnauthorized: Story = {
+  name: "Signed-in unauthorized",
+  tags: ["vitest-ci"],
+  args: {
+    phase: "lobby",
+    callLayout: "side-by-side",
+    displayName: "Ada Lovelace",
+    hasSignedInIdentity: true,
+    displayNameLocked: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Ready to join?" })).toBeInTheDocument();
+    await expect(canvas.getByDisplayValue("Ada Lovelace")).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Ask to join" })).toBeEnabled();
   },
 };
 

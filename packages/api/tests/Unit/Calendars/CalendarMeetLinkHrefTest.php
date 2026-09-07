@@ -16,11 +16,19 @@ final class CalendarMeetLinkHrefTest extends TestCase
 
         $this->assertSame(
             'abcd-efgh-ijkl',
+            $hrefs->parseWgwRoom('https://workspace.test/meet?room=abcd-efgh-ijkl'),
+        );
+        $this->assertSame(
+            'abcd-efgh-ijkl',
             $hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-ijkl'),
         );
         $this->assertSame(
             'abcd-efgh-ijkl',
             $hrefs->parseWgwRoom('https://workspace.test/meet/join?room=ABCD-EFGH-IJKL'),
+        );
+        $this->assertSame(
+            'abcd-efgh-ijkl',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/meetings/abcd-efgh-ijkl'),
         );
         $this->assertNull($hrefs->parseWgwRoom('https://evil.workspace.test/meet/guest?room=abcd-efgh-ijkl'));
         $this->assertNull($hrefs->parseWgwRoom('https://workspace.test.evil/meet/guest?room=abcd-efgh-ijkl'));

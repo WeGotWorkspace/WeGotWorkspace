@@ -81,14 +81,7 @@ export function useMeetRoomState({
     if (!roomCode) return "";
     if (buildCallLink) return buildCallLink(roomCode);
     if (typeof window === "undefined") return "";
-    const url = new URL(window.location.href);
-    if (/\/meet\/guest\/?$/.test(url.pathname)) {
-      url.pathname = url.pathname.replace(/\/meet\/guest\/?$/, "/meet/guest");
-    } else if (/\/meet\/?$/.test(url.pathname)) {
-      url.pathname = url.pathname.replace(/\/meet\/?$/, "/meet/guest");
-    } else {
-      url.pathname = "/meet/guest";
-    }
+    const url = new URL("/meet", window.location.origin);
     url.searchParams.set("room", roomCode);
     return url.toString();
   }, [buildCallLink, roomCode]);

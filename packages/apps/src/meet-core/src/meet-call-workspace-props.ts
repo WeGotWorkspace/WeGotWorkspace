@@ -8,9 +8,9 @@ export type MeetCallWorkspaceProps = {
   listLoading?: boolean;
   /** Room id from the host route (e.g. `?room=`). */
   invitedRoom?: string | null;
-  /** True on `/meet/guest` or `/meet/join` (invite entry), not host `/meet`. */
+  /** True on an invite landing (`/meet/meetings/{id}` or `/meet/channels/{id}`). */
   isJoinRoute?: boolean;
-  /** Builds a guest invite link for the active room; host owns URL shape. */
+  /** Builds the shareable invite link for the active room; host owns URL shape. */
   buildCallLink?: (roomCode: string) => string;
   /** Emitted when the active room changes; host should sync routing. */
   onRoomChange?: (roomCode: string | null) => void;

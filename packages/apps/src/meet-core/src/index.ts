@@ -26,10 +26,15 @@ export type {
   MeetCallKnockWaitingProps,
 } from "@/meet-core/src/meet-call-knock";
 export type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
-export { MeetGuestChannel } from "@/meet-core/src/meet-guest-channel";
+export {
+  MeetGuestChannel,
+  MeetGuestChannelFrame,
+  meetGuestChannelPhase,
+} from "@/meet-core/src/meet-guest-channel";
 export type {
   MeetGuestChannelPhase,
   MeetGuestChannelProps,
+  MeetGuestChannelFrameProps,
 } from "@/meet-core/src/meet-guest-channel";
 export { MeetChannelDialog } from "@/meet-core/src/meet-channel-dialog";
 export type {
@@ -37,6 +42,7 @@ export type {
   MeetChannelDialogShare,
   MeetChannelDialogState,
 } from "@/meet-core/src/meet-channel-dialog";
+export { MeetCreateMeetingDialog } from "@/meet-core/src/meet-create-meeting-dialog";
 export type {
   ChatLinkPreview,
   ChatMessage,
@@ -75,6 +81,12 @@ export {
   meetGuestLinkAllowsHostUpgrade,
   type MeetApiSource,
 } from "@/meet-core/src/meet-api-source";
+export { MeetInviteGate, MeetChannelDeepLinkGate } from "@/meet-core/src/meet-invite-gate";
+export {
+  meetInviteAccessFromProbe,
+  resolveMeetInviteDestination,
+  type MeetInviteAccess,
+} from "@/meet-core/src/meet-invite-access";
 export {
   createDefaultMeetChatApiSource,
   createHybridMeetChatApiSource,

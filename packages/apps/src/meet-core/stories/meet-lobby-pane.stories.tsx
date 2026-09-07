@@ -24,7 +24,7 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Pre-call lobby. Requires `MeetControllerState`; stories use `MeetLobbyPaneHarness` with a mock controller.",
+        "Retired navy lobby (Storybook-only until Chunk J). Live guest/invite URLs mount Apps/Meet/Panes/MeetGuestChannel.",
       snippet: `<MeetLobbyPane
   controller={controller}
   displayName="Demo User"
@@ -58,6 +58,7 @@ const meta = {
     showWaitingForHostScreen: storyBooleanControl,
     showInviteErrorScreen: storyBooleanControl,
     canStartReservedRoom: storyBooleanControl,
+    displayNameLocked: storyBooleanControl,
     videoOn: storyBooleanControl,
     error: storyTextControl,
   },
@@ -117,8 +118,38 @@ export const GuestJoin: Story = {
     showWaitingForHostScreen: false,
     showInviteErrorScreen: false,
     canStartReservedRoom: false,
+    displayNameLocked: false,
     videoOn: true,
     error: "",
+  },
+};
+
+export const SignedInUnauthorized: Story = {
+  name: "Signed-in unauthorized",
+  tags: ["vitest-ci"],
+  args: {
+    displayName: "Ada Lovelace",
+    inJoinFlow: true,
+    hasSignedInIdentity: true,
+    invitedRoom: "demo-room",
+    waitingForAdmission: false,
+    knockDots: 1,
+    endedMessage: "",
+    showMissingInviteScreen: false,
+    showInviteCheckingScreen: false,
+    showWaitingForHostScreen: false,
+    showInviteErrorScreen: false,
+    canStartReservedRoom: false,
+    displayNameLocked: true,
+    videoOn: true,
+    error: "",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Ready to join?" })).toBeInTheDocument();
+    const name = canvas.getByDisplayValue("Ada Lovelace");
+    await expect(name).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Ask to join" })).toBeEnabled();
   },
 };
 

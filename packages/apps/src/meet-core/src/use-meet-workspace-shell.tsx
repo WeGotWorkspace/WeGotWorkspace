@@ -174,6 +174,7 @@ export function useMeetWorkspaceShell({
       showWaitingForHostScreen,
       showInviteErrorScreen,
       canStartReservedRoom,
+      displayNameLocked: hasSignedInIdentity && inJoinFlow,
     },
     room: {
       hasSignedInIdentity,

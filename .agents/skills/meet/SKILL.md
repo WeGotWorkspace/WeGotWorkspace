@@ -47,7 +47,7 @@ pnpm test:meet-api
 
 | Layer | Path |
 |-------|------|
-| App / workspace / panes | `meet-core/src/*-app.tsx`, `meet-chat-app` + `meet-workspace` (live `/meet`, Split product), `meet-call-workspace` (guest `/meet/join`), `meet-guest-channel`, `meet-*-pane.tsx` |
+| App / workspace / panes | `meet-core/src/*-app.tsx`, `meet-chat-app` + `meet-workspace` (live `/meet`, Split product), `meet-guest-channel` (invite lobby on `/meet/guest`, unauthorized `/meet/channels/{id}`, `/meet/join`), `meet-call-workspace` (retired live guest shell, still in Storybook) |
 | Shared chat UI | `packages/apps/src/chat-ui/` — `Shared/Chat/*` stories (no RTC) |
 | RTC session wrapper | `meet-core/src/meet-rtc-session.ts`, `use-meet-rtc.ts` |
 | Shared RTC kernel | `lib/rtc/` — `createRtcSession`, `RtcPeerMesh`, `signaling/http-client.ts` |
@@ -77,7 +77,7 @@ Debug: `?rtcDebug=1` on URL. Relay-only dev: `?rtcForceRelay=1` or `VITE_WGW_RTC
 |---------|-------------|
 | New product shell | `Apps/Meet` — `MeetWorkspaceStoryHarness` (`meet-workspace.stories.harness.tsx`, stories in `meet-app.stories.tsx`): channels + chat + optional call |
 | Shared chat primitives | `Shared/Chat/*` — message, list, composer, mentions, reactions, link previews, threads (product-agnostic; no RTC, no Meet CSS) |
-| Guest stripped channel | `Apps/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`) |
+| Guest stripped channel | `Apps/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`). Live guest/invite URLs mount this, not `MeetCallWorkspace`. |
 | Live `/meet` | `MeetChatApp` mounts `MeetWorkspace` on the hybrid chat client + real controller (`use-meet-chat-call.ts`); `startCall` joins the deterministic channel room (`meet-channel-room.ts`). Mock route/stories still boot `MeetCallWorkspace` with `createMeetAppBootstrap` |
 
 ```tsx
