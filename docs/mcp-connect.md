@@ -8,7 +8,7 @@ WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Curso
 - An account on the instance.
 - The **Connected assistants** kill-switch enabled (Admin → Connected assistants). It is off by default.
 
-LAN-only installs can use a tunnel (Cloudflare Tunnel, Tailscale Funnel, ngrok, or similar) so the assistant can complete HTTPS OAuth. **ngrok’s free interstitial page will fail Claude’s server check** (often shown as HTTP 500 / “Not found”). Prefer Cloudflare Quick Tunnel, or an ngrok plan that does not insert a browser warning.
+LAN-only installs can use a tunnel (ngrok, Tailscale Funnel, Cloudflare Tunnel, or similar) so the assistant can complete HTTPS OAuth. **ngrok’s free interstitial page will fail some vendors’ server checks** (often shown as HTTP 500 / “Not found”). Authenticate ngrok (`ngrok config add-authtoken`) so that warning is skipped. Do **not** rewrite the `Host` header to `wegotworkspace.localhost`: OAuth discovery must advertise the public tunnel origin (`/oauth/token` is called from the vendor’s servers).
 
 You will **sign in again** on the instance when you connect. Being signed in to the WeGotWorkspace web app in another tab is not enough: granting an assistant is a high-trust action and always asks for your username and password.
 
@@ -25,6 +25,12 @@ OAuth discovery is at the **origin root**:
 - `https://workspace.example.com/.well-known/oauth-authorization-server`
 - `https://workspace.example.com/.well-known/oauth-protected-resource`
 
+## Grok (grok.com)
+
+1. Open [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom.
+2. Paste the **public** `/mcp` URL (a hostname xAI’s servers can resolve — not `localhost`).
+3. Complete sign-in and consent on this instance. Treat the client origin (for example `https://grok.com`) as the identity.
+
 ## Claude (claude.ai)
 
 1. Open Claude → custom connectors / MCP.
@@ -39,12 +45,15 @@ Do **not** click Next to configure the connector manually. This instance require
 That warning means Claude’s probe to `/mcp` failed. Typical causes:
 
 1. **The URL is not reachable from the public internet.** `https://wegotworkspace.localhost/mcp` and `http://127.0.0.1:9080/mcp` work for Cursor / Claude Code on your machine. They never work for claude.ai.
-2. **ngrok free warning page.** Claude’s servers do not send `ngrok-skip-browser-warning`. The interstitial (or a 5xx from ngrok’s proxy) shows up as **Connect to the server → 500**. Use Cloudflare Tunnel instead:
+2. **ngrok Host rewrite.** If discovery JSON lists `https://wegotworkspace.localhost/oauth/token`, the tunnel is overwriting `Host`. Restart ngrok without that rewrite, for example:
    ```bash
-   cloudflared tunnel --url https://localhost:443
+   ngrok http https://localhost:443 --url=https://YOUR-SUBDOMAIN.ngrok-free.dev --host-header=YOUR-SUBDOMAIN.ngrok-free.dev
    ```
-   Then paste `https://<random>.trycloudflare.com/mcp`.
+   Then paste `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp` into the assistant.
 3. **Connected assistants is off.** Admin → Connected assistants must be on and saved. When it is off, `/mcp` returns 403.
+4. **Authorize URL shows the workspace 404 page** (“Page not found” / “Go to Drive”). The PWA service worker served the SPA instead of Laravel. Unregister service workers for this origin (DevTools → Application → Service Workers) and retry. A rebuilt worker ignores `/oauth`, `/mcp`, and `/.well-known/oauth-*`.
+5. **Sign-in and consent succeed, then the assistant shows “Authorization with … failed.”** The browser completed `/oauth/authorize`; the vendor’s **servers** then call `/oauth/token` and `/mcp`. They cannot reach `https://wegotworkspace.localhost`. Re-add the connector using the public tunnel origin — not `localhost`.
+6. **Sign-in succeeds, then “your account was authorized, but … returned an error when connecting.”** The vendor stored the token, then `POST /mcp` (initialize) failed. Confirm the connector URL is the public `/mcp` origin, then retry — a UI rebuild is not required. On this instance that handshake is an authenticated JSON-RPC `initialize`; HTTP 500 here is a server bug, not a missing frontend build.
 
 From a second machine (or a phone on cellular), confirm:
 
