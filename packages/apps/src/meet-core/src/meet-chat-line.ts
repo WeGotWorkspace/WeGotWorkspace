@@ -25,7 +25,10 @@ export function meetChatLineToChannelMessage(line: MeetChatLine, channelId: stri
 }
 
 function createMeetChatLineId(fromPeerId: string, prefix = fromPeerId): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
+  const bytes = new Uint8Array(2);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${prefix}-${Date.now()}-${suffix}`;
 }
 
 export function buildMeetChatLineFromPoll(

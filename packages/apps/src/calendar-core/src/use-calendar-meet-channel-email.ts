@@ -150,7 +150,7 @@ export function useCalendarMeetChannelEmailCollision({
     const source = collisionSourceRef.current;
     const saveScope = pendingSaveScopeRef.current;
     const current = collidingFormRef.current ?? form;
-    let next = current;
+    let next: typeof current;
     if (choice === "replace-with-room") {
       setCollisionBusy(true);
       const room = guestRoomReplacementForChannelUrl(current.meetingUrl, workspaceOrigin);

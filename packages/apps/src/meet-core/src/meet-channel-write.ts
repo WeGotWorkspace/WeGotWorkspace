@@ -8,7 +8,7 @@ import type {
 export const DEFAULT_MEET_CHANNEL_COLOR = "#2a1644";
 
 function nextChannelId(kind: MeetChannelWriteInput["kind"]): string {
-  return `${kind}-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 6)}`;
+  return `${kind}-${crypto.randomUUID()}`;
 }
 
 export function buildMeetChannel(input: MeetChannelWriteInput): MeetChannel {
