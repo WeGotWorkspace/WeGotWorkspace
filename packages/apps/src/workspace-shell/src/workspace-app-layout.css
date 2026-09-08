@@ -63,6 +63,11 @@
   }
 }
 
+/* Right-hand panel overlay scrim — same dim/motion tokens as `.app-sidebar__scrim`. */
+.workspace-app-layout__panel-scrim {
+  @apply absolute inset-0 z-10 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in duration-300;
+}
+
 .workspace-app-layout__user-footer .user-avatar {
   --user-avatar-bg: var(
     --workspace-user-footer-avatar-bg,

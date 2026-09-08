@@ -26,6 +26,8 @@ use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
+use App\Http\Controllers\Api\V1\Chat\ChatChannelsController;
+use App\Http\Controllers\Api\V1\Chat\ChatMessagesController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -266,6 +268,36 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('noteId', '[^/]+');
     Route::delete('notes/items/{noteId}', [NotesController::class, 'destroy'])
         ->where('noteId', '[^/]+');
+
+    // Chat channels (Epic #701, chunk B): CalDAV VJOURNAL collections with
+    // chat-/dm- URI prefixes, API-only (hidden from DAV by ChatHiddenCalendarBackend).
+    Route::get('chat/channels/changes', [ChatChannelsController::class, 'changes']);
+    Route::get('chat/channels', [ChatChannelsController::class, 'index']);
+    Route::post('chat/channels', [ChatChannelsController::class, 'store']);
+    Route::get('chat/channels/{channelId}', [ChatChannelsController::class, 'show'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::patch('chat/channels/{channelId}', [ChatChannelsController::class, 'update'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::delete('chat/channels/{channelId}', [ChatChannelsController::class, 'destroy'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    // DM provisioning (Epic #701, chunk G): find-or-create the deterministic
+    // 2-person dm- collection; DM channels are immutable via the routes above.
+    Route::post('chat/dms', [ChatChannelsController::class, 'openDm']);
+    // Chat messages (Epic #701, chunk C): VJOURNAL objects, ULID ids, author-only
+    // edit/delete, transactional reaction toggles, sync-token changes feed.
+    Route::get('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'index'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::post('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'store'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::put('chat/channels/{channelId}/read-marker', [ChatMessagesController::class, 'putReadMarker'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::get('chat/messages/changes', [ChatMessagesController::class, 'changes']);
+    Route::patch('chat/messages/{messageId}', [ChatMessagesController::class, 'update'])
+        ->where('messageId', '[^/]+');
+    Route::delete('chat/messages/{messageId}', [ChatMessagesController::class, 'destroy'])
+        ->where('messageId', '[^/]+');
+    Route::post('chat/messages/{messageId}/reactions', [ChatMessagesController::class, 'toggleReaction'])
+        ->where('messageId', '[^/]+');
 
     Route::middleware('wgw.contacts')->group(function (): void {
         Route::post('contacts/cards/import', ContactCardImportController::class);

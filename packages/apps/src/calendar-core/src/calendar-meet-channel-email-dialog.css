@@ -1,0 +1,19 @@
+@import "../../styles.css" reference;
+
+.calendar-meet-channel-email-dialog {
+  max-width: min(32rem, calc(100vw - 2rem));
+}
+
+.calendar-meet-channel-email-dialog__footer {
+  /* AlertDialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
+  @apply gap-2 sm:flex-wrap;
+}
+
+.calendar-meet-channel-email-dialog__action {
+  @apply w-full justify-center sm:w-auto;
+}
+
+.calendar-event-dialog__meet-email-hint,
+.calendar-invitees-card__meet-email-hint {
+  @apply mt-3;
+}

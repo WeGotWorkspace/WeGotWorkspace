@@ -21,10 +21,10 @@ describe("meetInviteStateFromRoomStatus", () => {
     ).toBe("active");
   });
 
-  it("waits for the host when reserved and empty", () => {
+  it("opens the join lobby for a valid reserved invite even when empty", () => {
     expect(
       meetInviteStateFromRoomStatus({ reserved: true, active: false }, { canHost: false }),
-    ).toBe("waiting-for-host");
+    ).toBe("active");
   });
 
   it("shows the join lobby when the reserved room is active", () => {

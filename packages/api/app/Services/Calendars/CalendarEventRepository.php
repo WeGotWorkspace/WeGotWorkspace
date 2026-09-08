@@ -1063,7 +1063,29 @@ final class CalendarEventRepository
             }
         }
 
+        $this->assertEventTitle($event, $existingEvent === null);
+
         return CalendarConversionSupport::normalizeEventMapKeys($event, $existingEvent);
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function assertEventTitle(array &$event, bool $requireTitle): void
+    {
+        if (! array_key_exists('title', $event)) {
+            if ($requireTitle) {
+                throw new ApiHttpException(400, 'title is required.', 'bad_request', ['title']);
+            }
+
+            return;
+        }
+
+        if (! is_string($event['title']) || trim($event['title']) === '') {
+            throw new ApiHttpException(400, 'title is required.', 'bad_request', ['title']);
+        }
+
+        $event['title'] = trim($event['title']);
     }
 
     /**

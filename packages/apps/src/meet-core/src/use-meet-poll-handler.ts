@@ -1,9 +1,10 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type { HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { buildMeetChatLineFromPoll, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { completeMeetKnockAdmission } from "@/meet-core/src/meet-knock-admission";
 import {
   buildActiveMeetRoster,
   listKnockersFromRoster,
@@ -37,6 +38,7 @@ export type UseMeetPollHandlerArgs = {
   refreshPeersRef: MutableRefObject<() => void>;
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
   meetRtcRef: MutableRefObject<MeetRtc | null>;
+  muteMicRef: MutableRefObject<null | (() => boolean)>;
   setKnockers: Dispatch<SetStateAction<MeetKnocker[]>>;
   setEndedMessage: Dispatch<SetStateAction<string | null>>;
   setStatus: Dispatch<SetStateAction<CallStatus>>;
@@ -58,6 +60,7 @@ export function useMeetPollHandler({
   refreshPeersRef,
   leaveRef,
   meetRtcRef,
+  muteMicRef,
   setKnockers,
   setEndedMessage,
   setStatus,
@@ -65,6 +68,7 @@ export function useMeetPollHandler({
   setWaitingForAdmission,
   setChatMessages,
 }: UseMeetPollHandlerArgs) {
+  const toast = useAppToast();
   return useCallback(
     async (poll: HttpSignalingPollResult) => {
       const roster = poll.peers ?? [];
@@ -93,7 +97,7 @@ export function useMeetPollHandler({
           rosterRef.current = activeRoster;
         } else {
           for (const name of listNewParticipantNames(rosterRef.current, activeRoster, selfPeerId)) {
-            toast.success(meetLabels.participantJoined(name));
+            toast.showSuccess(meetLabels.participantJoined(name));
           }
           rosterRef.current = activeRoster;
         }
@@ -115,8 +119,8 @@ export function useMeetPollHandler({
           }
           if (control.kind === "end") {
             if (statusRef.current === "in-call") {
-              setEndedMessage(`Call ended by ${control.by}.`);
-              toast.info(`Call ended by ${control.by}.`);
+              setEndedMessage(meetLabels.callEndedBy(control.by));
+              toast.show(meetLabels.callEndedBy(control.by), { severity: "info" });
               await leaveRef.current?.({ preserveEndedMessage: true });
             }
             continue;
@@ -132,18 +136,34 @@ export function useMeetPollHandler({
             }
             continue;
           }
+          if (control.kind === "mute") {
+            if (control.peerId === selfPeerId && muteMicRef.current?.()) {
+              toast.show(meetLabels.mutedByHost, { severity: "info" });
+            }
+            continue;
+          }
           if (control.kind !== "admit" && control.kind !== "deny") continue;
           if (control.peerId !== selfPeerId) continue;
           if (control.kind === "admit") {
-            if (waitingForAdmissionRef.current && roomCodeRef.current && selfPeerId) {
-              await meetRtcRef.current?.updateJoinName(displayNameRef.current.trim() || "Guest");
-              setWaitingForAdmission(false);
-              setStatus("in-call");
-              setStartedAt(Date.now());
-              toast.success("You were let in.");
-            }
+            await completeMeetKnockAdmission({
+              waiting: waitingForAdmissionRef.current,
+              roomCode: roomCodeRef.current,
+              selfPeerId,
+              displayName: displayNameRef.current,
+              updateJoinName: meetRtcRef.current
+                ? (name) => meetRtcRef.current!.updateJoinName(name)
+                : undefined,
+              setWaitingForAdmission: (value) => {
+                waitingForAdmissionRef.current = value;
+                setWaitingForAdmission(value);
+              },
+              setStatus: (status) => setStatus(status),
+              setStartedAt: (value) => setStartedAt(value),
+              onAdmitted: () => toast.showSuccess(meetLabels.youWereLetIn),
+              onRtcReady: () => meetRtcRef.current?.retryRoomPeerConnections(),
+            });
           } else if (control.kind === "deny") {
-            toast.error("The host denied your request to join.");
+            toast.showError(meetLabels.joinDenied);
             await leaveRef.current?.();
           }
           continue;
@@ -159,6 +179,7 @@ export function useMeetPollHandler({
       displayNameRef,
       leaveRef,
       meetRtcRef,
+      muteMicRef,
       participantRosterDiffReadyRef,
       peerDisclosedMediaRef,
       peerNamesRef,
@@ -173,6 +194,7 @@ export function useMeetPollHandler({
       setStatus,
       setWaitingForAdmission,
       statusRef,
+      toast,
       waitingForAdmissionRef,
     ],
   );

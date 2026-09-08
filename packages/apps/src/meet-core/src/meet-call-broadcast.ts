@@ -49,7 +49,7 @@ export function createMeetCallBroadcast(
   if (!channel) return null;
 
   const now = options.now ?? (() => Date.now());
-  const tabId = options.tabId ?? Math.random().toString(36).slice(2, 12);
+  const tabId = options.tabId ?? crypto.randomUUID();
 
   const remoteActiveTabs = new Map<string, number>();
   let localActive = false;

@@ -85,6 +85,22 @@ describe("CollectionSidebarRow", () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
+  it("renders a leading mark inside the select control", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Ada Lovelace"
+          color="#06b6d4"
+          onSelect={vi.fn()}
+          leading={<span data-testid="dm-avatar">AL</span>}
+        />
+      </ul>,
+    );
+    const select = screen.getByRole("button", { name: "Ada Lovelace" });
+    expect(select.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
+    expect(select.querySelector("[data-testid='dm-avatar']")?.textContent).toBe("AL");
+  });
+
   it("omits the checkbox when onToggleVisibility is not provided", () => {
     render(
       <ul>
@@ -151,6 +167,50 @@ describe("CollectionSidebarRow", () => {
     expect(parent?.className).not.toMatch(/collection-sidebar-row--selected/);
     expect(child?.className).toMatch(/collection-sidebar-row--nested/);
     expect(child?.className).toMatch(/collection-sidebar-row--selected/);
+  });
+
+  it("selects from leading, trailing, and color-dot chrome", () => {
+    const onSelect = vi.fn();
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Ada Lovelace"
+          color="#06b6d4"
+          onSelect={onSelect}
+          showColorDot
+          leading={<span data-testid="presence" />}
+          trailing={<span data-testid="unread">2</span>}
+        />
+      </ul>,
+    );
+    const select = screen.getByRole("button", { name: /Ada Lovelace/ });
+    expect(select.querySelector(".collection-sidebar-row__dot")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("presence"));
+    fireEvent.click(screen.getByTestId("unread"));
+    fireEvent.click(select.querySelector(".collection-sidebar-row__dot") as HTMLElement);
+    expect(onSelect).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps a trailing menu clickable without selecting the row", () => {
+    const onSelect = vi.fn();
+    const onMenu = vi.fn();
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Inbox"
+          color="#6366f1"
+          onSelect={onSelect}
+          trailing={
+            <button type="button" aria-label="Channel menu" onClick={onMenu}>
+              More
+            </button>
+          }
+        />
+      </ul>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Channel menu" }));
+    expect(onMenu).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("renders CollectionSidebarMark with the shared mark class", () => {

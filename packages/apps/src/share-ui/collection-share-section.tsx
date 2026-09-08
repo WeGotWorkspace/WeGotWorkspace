@@ -48,6 +48,11 @@ export type CollectionShareSectionProps = {
   disabled?: boolean;
   online?: boolean;
   dialogClassName?: string;
+  /**
+   * When false, grants are binary (has access / remove) — no view/edit select.
+   * Default true (Notes-style role picker).
+   */
+  accessSelect?: boolean;
   onSearchPrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
   onPatchShareWith: (collectionId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
@@ -60,6 +65,7 @@ export function CollectionShareSection({
   disabled = false,
   online = true,
   dialogClassName,
+  accessSelect = true,
   onSearchPrincipals,
   onPatchShareWith,
 }: CollectionShareSectionProps) {
@@ -124,7 +130,7 @@ export function CollectionShareSection({
               const entry = selectableResults.find((row) => row.id === option.id);
               if (!entry) return;
               void patchShare({
-                [entry.id]: shareRightsForPermission("view"),
+                [entry.id]: shareRightsForPermission(accessSelect ? "view" : "edit"),
               });
             }}
           >
@@ -157,14 +163,18 @@ export function CollectionShareSection({
               title={title}
               subtitle={grant.isGroup ? undefined : grant.id}
               access={permission === "edit" ? "edit" : "view"}
-              editable={!locked && !busy}
+              editable={accessSelect && !locked && !busy}
               removeDisabled={locked || busy}
-              permissions={NOTES_SHARE_UI_PERMISSIONS}
-              onAccessChange={(next) => {
-                void patchShare({
-                  [grant.id]: shareRightsForPermission(next),
-                });
-              }}
+              permissions={accessSelect ? NOTES_SHARE_UI_PERMISSIONS : []}
+              onAccessChange={
+                accessSelect
+                  ? (next) => {
+                      void patchShare({
+                        [grant.id]: shareRightsForPermission(next),
+                      });
+                    }
+                  : undefined
+              }
               onRemove={() => setPendingRemoval(grant.id)}
             />
           );

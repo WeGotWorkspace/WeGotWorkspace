@@ -44,6 +44,8 @@ export type CalendarInviteesCardProps = {
   contactCards?: ContactCard[];
   /** Invitee view: hide add/remove. */
   readOnly?: boolean;
+  /** Persistent warning when email guests cannot join a channel Meet. */
+  meetEmailGuestHint?: string;
   onChange: (attendees: CalendarAttendee[]) => void;
   /** Live JMAP refresh; cache remains the first paint. */
   onRefreshContactCards?: () => void;
@@ -141,6 +143,7 @@ export function CalendarInviteesCard({
   sessionEmail,
   contactCards = [],
   readOnly = false,
+  meetEmailGuestHint,
   onChange,
   onRefreshContactCards,
 }: CalendarInviteesCardProps) {
@@ -209,6 +212,10 @@ export function CalendarInviteesCard({
       footer={
         !readOnly && !canSubmitEmail ? (
           <p className="share-access-card__hint">{labels.eventAttendeesEmailUnavailable}</p>
+        ) : meetEmailGuestHint ? (
+          <p className="share-access-card__hint calendar-invitees-card__meet-email-hint">
+            {meetEmailGuestHint}
+          </p>
         ) : null
       }
       addControl={

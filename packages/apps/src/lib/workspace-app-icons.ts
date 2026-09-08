@@ -30,7 +30,7 @@ export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   drive: "#10b981",
   docs: "#3b82f6",
   settings: "#64748b",
-  meet: "#06b6d4",
+  meet: "#2a1644",
   admin: "#475569",
 };
 

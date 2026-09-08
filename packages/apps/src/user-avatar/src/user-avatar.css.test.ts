@@ -8,7 +8,7 @@ const css = readFileSync(join(here, "user-avatar.css"), "utf8");
 
 describe("user avatar mark border", () => {
   it("consumes optional border tokens without growing the mark", () => {
-    const mark = css.match(/\.user-avatar__mark \{[\s\S]*?\n\}/)?.[0];
+    const mark = css.match(/^\.user-avatar__mark \{[\s\S]*?\n\}/m)?.[0];
     expect(mark).toBeDefined();
     expect(mark).toMatch(/box-sizing:\s*border-box/);
     expect(mark).toMatch(/border-width:\s*var\(--user-avatar-border-width,\s*0\)/);
@@ -20,5 +20,20 @@ describe("user avatar mark border", () => {
     expect(button).toBeDefined();
     expect(button).not.toMatch(/border:\s*0/);
     expect(button).not.toMatch(/border-width:\s*0/);
+  });
+});
+
+describe("UserAvatar presence CSS", () => {
+  it("uses solid green / amber and a transparent offline ring", () => {
+    expect(css).toMatch(
+      /\.user-avatar__presence--online[\s\S]*--user-avatar-presence-online,\s*#22c55e/,
+    );
+    expect(css).toMatch(
+      /\.user-avatar__presence--away[\s\S]*--user-avatar-presence-away,\s*#eab308/,
+    );
+    expect(css).toMatch(/\.user-avatar__presence--offline[\s\S]*background-color:\s*transparent/);
+    expect(css).toMatch(
+      /\.user-avatar__presence--standalone\.user-avatar__presence--offline[\s\S]*border:\s*1\.5px solid/,
+    );
   });
 });

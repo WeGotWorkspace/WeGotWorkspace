@@ -120,8 +120,16 @@ export type CalendarUILabels = {
   eventLocationLabel: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
-  /** Accessible name for the generate-Meet icon button. */
+  /** Accessible name for the Meet actions menu trigger. */
   eventMeetAdd: string;
+  /** Menu item: generate an ad-hoc meeting link. */
+  eventMeetNewLink: string;
+  /** Channel-list heading inside the Meet actions menu. */
+  eventMeetPickChannel: string;
+  eventMeetChannelsLoading: string;
+  /** Shown as a retryable menu item when the channel list fetch fails. */
+  eventMeetChannelsError: string;
+  eventMeetChannelsEmpty: string;
   /** Confirm title when generating over a non-empty meeting URL. */
   eventMeetReplaceTitle: string;
   eventMeetReplaceDescription: string;
@@ -133,6 +141,14 @@ export type CalendarUILabels = {
   eventMeetApplyTo: string;
   /** GET 404 / swept room — same copy as Meet missing-invite. */
   eventMeetDeadLink: string;
+  /** Channel URL + email-only invitees — choice dialog. */
+  eventMeetChannelEmailTitle: string;
+  eventMeetChannelEmailDescription: string;
+  eventMeetChannelEmailKeepBoth: string;
+  eventMeetChannelEmailStripEmails: string;
+  eventMeetChannelEmailReplaceLink: string;
+  /** Persistent hint after keeping both. */
+  eventMeetEmailGuestsNoAccessHint: string;
   eventNotesLabel: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
@@ -348,6 +364,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
+  eventMeetNewLink: "New meeting link",
+  eventMeetPickChannel: "Attach a Meet channel link",
+  eventMeetChannelsLoading: "Loading channels…",
+  eventMeetChannelsError: "Could not load channels. Try again",
+  eventMeetChannelsEmpty: "No channels yet",
   eventMeetReplaceTitle: "Replace Meet link?",
   eventMeetReplaceDescription:
     "A new meeting link will replace the current one. The previous room will expire, and anyone with the current join URL will lose access.",
@@ -357,6 +378,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetUrlPlaceholder: "https://…",
   eventMeetApplyTo: "Apply Meet to",
   eventMeetDeadLink: "This meeting is not active. Ask the host for a fresh invite link.",
+  eventMeetChannelEmailTitle: "Email guests can't join this Meet channel",
+  eventMeetChannelEmailDescription:
+    "This meeting uses a members-only Meet channel. People invited by email only cannot join the Meet. They can still receive a calendar invitation and RSVP. Workspace members keep Meet access.",
+  eventMeetChannelEmailKeepBoth: "Ignore",
+  eventMeetChannelEmailStripEmails: "Remove Email Invites",
+  eventMeetChannelEmailReplaceLink: "Use Meeting Link",
+  eventMeetEmailGuestsNoAccessHint:
+    "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
   eventNotesLabel: "Notes",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),

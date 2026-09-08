@@ -1,6 +1,11 @@
 import type { CSSProperties } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { UserAvatar } from "../src/user-avatar";
+import {
+  UserAvatar,
+  UserPresenceDot,
+  USER_AVATAR_COLORS,
+  avatarColorForUserId,
+} from "../src/user-avatar";
 import "@/mail-core/src/mail-workspace.css";
 import "@/meet-core/src/meet-workspace.css";
 import "@/workspace-shell/src/workspace-app-layout.css";
@@ -86,6 +91,68 @@ export const MeetLobbyPreview: Story = {
       style={{ background: "var(--meet-surface)" }}
     >
       <UserAvatar displayName="Demo User" compact size="xl" />
+    </div>
+  ),
+};
+
+/** Bright hashed tiles — one stable hue per user id. */
+export const HashedColors: Story = {
+  render: () => {
+    const authors = [
+      { id: "ada.lovelace", displayName: "Ada Lovelace" },
+      { id: "grace.hopper", displayName: "Grace Hopper" },
+      { id: "demo.user", displayName: "Demo User" },
+      { id: "alan.turing", displayName: "Alan Turing" },
+      { id: "katherine.johnson", displayName: "Katherine Johnson" },
+      { id: "margaret.hamilton", displayName: "Margaret Hamilton" },
+    ];
+    return (
+      <div className="flex flex-wrap items-center gap-4 p-4">
+        {authors.map((author) => (
+          <UserAvatar
+            key={author.id}
+            displayName={author.displayName}
+            compact
+            size="sm"
+            color={avatarColorForUserId(author.id)}
+            presence="online"
+          />
+        ))}
+        {USER_AVATAR_COLORS.map((color) => (
+          <UserAvatar key={color} displayName={color} compact size="sm" color={color} />
+        ))}
+      </div>
+    );
+  },
+};
+
+/** Presence pip: solid green online, amber away, transparent + ink ring offline. */
+export const Presence: Story = {
+  render: () => (
+    <div className="flex items-center gap-4 p-4">
+      <UserAvatar displayName="Ada Lovelace" compact size="sm" presence="online" />
+      <UserAvatar displayName="Katherine Johnson" compact size="sm" presence="away" />
+      <UserAvatar displayName="Grace Hopper" compact size="sm" presence="offline" />
+    </div>
+  ),
+};
+
+/** Sidebar DM mark: presence only, no avatar. */
+export const PresenceStandalone: Story = {
+  render: () => (
+    <div className="flex items-center gap-6 p-4">
+      <span className="inline-flex items-center gap-2">
+        <UserPresenceDot presence="online" standalone />
+        Online
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <UserPresenceDot presence="away" standalone />
+        Away
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <UserPresenceDot presence="offline" standalone />
+        Offline
+      </span>
     </div>
   ),
 };

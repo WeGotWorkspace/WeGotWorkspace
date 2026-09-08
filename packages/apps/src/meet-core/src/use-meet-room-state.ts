@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
+import { meetPathOwnsInviteRoom } from "@/meet-core/src/meet-route-search";
 
 export type UseMeetRoomStateArgs = {
   defaultDisplayName: string;
@@ -81,14 +82,7 @@ export function useMeetRoomState({
     if (!roomCode) return "";
     if (buildCallLink) return buildCallLink(roomCode);
     if (typeof window === "undefined") return "";
-    const url = new URL(window.location.href);
-    if (/\/meet\/guest\/?$/.test(url.pathname)) {
-      url.pathname = url.pathname.replace(/\/meet\/guest\/?$/, "/meet/guest");
-    } else if (/\/meet\/?$/.test(url.pathname)) {
-      url.pathname = url.pathname.replace(/\/meet\/?$/, "/meet/guest");
-    } else {
-      url.pathname = "/meet/guest";
-    }
+    const url = new URL("/meet", window.location.origin);
     url.searchParams.set("room", roomCode);
     return url.toString();
   }, [buildCallLink, roomCode]);
@@ -100,6 +94,9 @@ export function useMeetRoomState({
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!roomCode) return;
+    // `/meet/meetings/{id}` already is the public invite — do not leak the
+    // internal RTC room (`chat-test`) as `?room=`.
+    if (meetPathOwnsInviteRoom(window.location.pathname)) return;
     const next = new URL(window.location.href);
     next.searchParams.set("room", roomCode);
     const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -165,6 +162,7 @@ export function useMeetRoomState({
     videoOnRef: store.videoOnRef,
     screenOnRef: store.screenOnRef,
     refreshPeersRef: store.refreshPeersRef,
+    joinInFlightRef: store.joinInFlightRef,
     callLink,
     elapsedLabel,
     inCall: status === "in-call" || status === "preparing",

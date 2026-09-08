@@ -51,7 +51,10 @@ function generateMeetButton(): HTMLElement {
 }
 
 function clickGenerateMeet(): void {
-  fireEvent.click(generateMeetButton());
+  const trigger = generateMeetButton();
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }));
 }
 
 describe("CalendarMeetCard", () => {
@@ -84,7 +87,6 @@ describe("CalendarMeetCard", () => {
     expect(urlInput.className).not.toContain("share-dialog__input--mono");
     expect(generateMeetButton().querySelector(".loading-spinner")).toBeNull();
     clickGenerateMeet();
-    clickGenerateMeet();
     expect(generateMeetButton()).toHaveProperty("disabled", true);
     expect(generateMeetButton().querySelector(".loading-spinner")).toBeTruthy();
     await waitFor(() => expect(reserveRoom).toHaveBeenCalledTimes(1));
@@ -109,7 +111,7 @@ describe("CalendarMeetCard", () => {
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
           meetRoomCode: staged,
-          meetingUrl: expect.stringContaining(`/meet/guest?room=${staged}`),
+          meetingUrl: expect.stringContaining(`/meet/meetings/${staged}`),
         }),
       ),
     );
@@ -461,5 +463,20 @@ describe("CalendarMeetCard", () => {
       ),
     );
     expect(meetOperations.patchRoomExpiresAt).not.toHaveBeenCalled();
+  });
+
+  it("copyOnly shows the URL without the Meet actions menu", () => {
+    renderCard({
+      copyOnly: true,
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        meetingUrl: `${ORIGIN}/meet/guest?room=${ROOM}`,
+      },
+    });
+    expect(screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toHaveProperty(
+      "readOnly",
+      true,
+    );
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
   });
 });

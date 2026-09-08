@@ -1,10 +1,9 @@
-import { useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Copy, Video } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
-import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
 import "@/share-ui/share-ui.css";
@@ -28,18 +27,22 @@ import {
   calendarMeetOwnerPrincipal,
   formEventEndMs,
   isHttpUrl,
+  meetChannelCallHref,
   meetRemoveExpiresAt,
   parseCalendarMeetHref,
   resolveCalendarMeetReserveScope,
   resolveMeetReserveExpiresAt,
   roomCodeFromMeetingUrl,
+  type CalendarMeetChannelOption,
   type CalendarMeetOperations,
 } from "@/calendar-core/src/calendar-meet-link";
+import { CalendarMeetChannelPicker } from "@/calendar-core/src/calendar-meet-channel-picker";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
+import { Callout } from "@/callout/src/callout";
 
 export type CalendarMeetCardProps = {
   form: CalendarEventFormValue;
@@ -55,6 +58,10 @@ export type CalendarMeetCardProps = {
   readOnly?: boolean;
   /** Parent calls this on dialog cancel/dismiss (not save) to expire a staged reserve. */
   abandonStagedReserveRef?: MutableRefObject<(() => void) | null>;
+  /** Meeting URL is copy-only; no generate menu or channel picker. */
+  copyOnly?: boolean;
+  /** Persistent warning when email guests cannot join a channel Meet. */
+  emailGuestHint?: string;
   onChange: (next: CalendarEventFormValue) => void;
   onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
   onJoin?: (href: string) => void;
@@ -75,21 +82,18 @@ function CalendarMeetUrlRow({
   labels,
   readOnly = false,
   disabled = false,
-  generateDisabled = false,
-  reserving = false,
-  onGenerate,
   onChange,
   onBlur,
+  meetMenu,
 }: {
   href: string;
   labels: CalendarUILabels;
   readOnly?: boolean;
   disabled?: boolean;
-  generateDisabled?: boolean;
-  reserving?: boolean;
-  onGenerate?: () => void;
   onChange?: (value: string) => void;
   onBlur?: () => void;
+  /** Meet actions dropdown (new link + channels) after copy. */
+  meetMenu?: ReactNode;
 }) {
   const trimmed = href.trim();
   return (
@@ -120,21 +124,7 @@ function CalendarMeetUrlRow({
           void copyShareText(trimmed);
         }}
       />
-      {onGenerate ? (
-        <IconButton
-          className="calendar-event-dialog__meet-generate"
-          label={labels.eventMeetAdd}
-          icon={
-            reserving ? <LoadingSpinner size="sm" /> : <Video className="size-3.5" aria-hidden />
-          }
-          size="sm"
-          variant="outline"
-          disabled={generateDisabled}
-          onClick={() => {
-            onGenerate();
-          }}
-        />
-      ) : null}
+      {meetMenu}
     </div>
   );
 }
@@ -151,6 +141,8 @@ export function CalendarMeetCard({
   meetOperations,
   disabled = false,
   readOnly = false,
+  copyOnly = false,
+  emailGuestHint,
   abandonStagedReserveRef,
   onChange,
   onRecurrenceSaveScopeChange,
@@ -163,12 +155,26 @@ export function CalendarMeetCard({
   const stagedRoomRef = useRef(form.meetRoomCode?.trim() ?? "");
   const reservedThisSessionRef = useRef(Boolean(form.meetRoomCode));
   const hrefDraftRef = useRef(form.meetingUrl);
+  const urlWriteGenRef = useRef(0);
+  const [draftHref, setDraftHref] = useState(form.meetingUrl);
   const canChooseScope = Boolean(recurrenceId) && !thisInstanceLocked && !readOnly;
   const scope = resolveCalendarMeetReserveScope({
     recurrencePreset: form.recurrencePreset,
     recurrenceId,
     recurrenceSaveScope: thisInstanceLocked ? "thisInstance" : recurrenceSaveScope,
   });
+
+  useEffect(() => {
+    hrefDraftRef.current = form.meetingUrl;
+    setDraftHref(form.meetingUrl);
+  }, [form.meetingUrl]);
+
+  const writeMeetingHref = (href: string, extra: Partial<CalendarEventFormValue> = {}): void => {
+    urlWriteGenRef.current += 1;
+    hrefDraftRef.current = href;
+    setDraftHref(href);
+    applyForm(form, { meetingUrl: href, ...extra }, onChange);
+  };
 
   const expireStagedRoom = async (room: string): Promise<void> => {
     const patch = meetOperations?.patchRoomExpiresAt;
@@ -293,9 +299,11 @@ export function CalendarMeetCard({
   };
 
   const onUrlBlur = async (): Promise<void> => {
+    const writeGen = urlWriteGenRef.current;
     const raw = hrefDraftRef.current.trim();
     if (!raw) {
       await expireLocalWgwRoom();
+      if (writeGen !== urlWriteGenRef.current) return;
       applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
       return;
     }
@@ -308,8 +316,10 @@ export function CalendarMeetCard({
       applyForm(form, { meetingUrl: "" }, onChange);
       return;
     }
-    if (parsed.kind === "https") {
+    if (parsed.kind === "https" || parsed.roomKind === "channel") {
+      // Channel rooms are persistent — store the href, never reserve/expire them.
       await expireLocalWgwRoom();
+      if (writeGen !== urlWriteGenRef.current) return;
       applyForm(form, { meetingUrl: raw, meetRoomCode: undefined }, onChange);
       return;
     }
@@ -330,6 +340,17 @@ export function CalendarMeetCard({
     }
   };
 
+  /**
+   * Attach a channel's call URL — same field/format as the generated link so
+   * downstream rendering/join flows are unchanged. Any ad-hoc room staged this
+   * session is expired first so its reservation does not leak.
+   */
+  const pickChannel = (channel: CalendarMeetChannelOption): void => {
+    const href = meetChannelCallHref(channel, workspaceOrigin);
+    writeMeetingHref(href, { meetRoomCode: undefined });
+    void expireLocalWgwRoom();
+  };
+
   if (readOnly) {
     if (!form.meetingUrl.trim()) return null;
     return (
@@ -346,7 +367,8 @@ export function CalendarMeetCard({
     );
   }
 
-  const canGenerate = !disabled && !reserving && Boolean(meetOperations?.reserveRoom);
+  const canGenerate = Boolean(meetOperations?.reserveRoom) && !copyOnly;
+  const listChannels = copyOnly ? undefined : meetOperations?.listChannels;
 
   return (
     <Card
@@ -378,21 +400,47 @@ export function CalendarMeetCard({
       ) : null}
       <CardRow fill>
         <CalendarMeetUrlRow
-          href={form.meetingUrl}
+          href={draftHref}
           labels={labels}
+          readOnly={copyOnly}
           disabled={disabled}
-          generateDisabled={!canGenerate}
-          reserving={reserving}
-          onGenerate={requestGenerate}
-          onChange={(value) => {
-            hrefDraftRef.current = value;
-            applyForm(form, { meetingUrl: value }, onChange);
-          }}
-          onBlur={() => {
-            void onUrlBlur();
-          }}
+          onChange={
+            copyOnly
+              ? undefined
+              : (value) => {
+                  hrefDraftRef.current = value;
+                  setDraftHref(value);
+                  applyForm(form, { meetingUrl: value }, onChange);
+                }
+          }
+          onBlur={
+            copyOnly
+              ? undefined
+              : () => {
+                  void onUrlBlur();
+                }
+          }
+          meetMenu={
+            copyOnly ? undefined : (
+              <CalendarMeetChannelPicker
+                labels={labels}
+                listChannels={listChannels}
+                disabled={disabled}
+                reserving={reserving}
+                onNewLink={canGenerate ? requestGenerate : undefined}
+                onPick={pickChannel}
+              />
+            )
+          }
         />
       </CardRow>
+      {emailGuestHint ? (
+        <Callout
+          severity="warning"
+          className="calendar-event-dialog__meet-email-hint"
+          title={emailGuestHint}
+        />
+      ) : null}
       <AlertDialog
         open={confirmReplace}
         onOpenChange={(open) => !reserving && setConfirmReplace(open)}

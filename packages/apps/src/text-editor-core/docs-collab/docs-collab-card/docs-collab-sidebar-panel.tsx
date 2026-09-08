@@ -16,6 +16,8 @@ export type DocsCollabSidebarPanelProps = {
   /** When true, renders a close action in the panel header (mobile drawer). */
   showCloseButton?: boolean;
   headerActions?: ReactNode;
+  /** Control immediately before the title (e.g. Meet thread back). */
+  titleLeading?: ReactNode;
   /** Pinned below the title row (filters, segmented controls). */
   toolbar?: ReactNode;
   scrollRef?: RefObject<HTMLDivElement | null>;
@@ -35,6 +37,7 @@ export function DocsCollabSidebarPanel({
   onClose,
   showCloseButton = false,
   headerActions,
+  titleLeading,
   toolbar,
   scrollRef,
   empty = false,
@@ -52,6 +55,7 @@ export function DocsCollabSidebarPanel({
           hideSidebarToggle
           title={title}
           titleSize={titleSize}
+          titleLeading={titleLeading}
           subtitle={countLabel || undefined}
           actions={
             headerActions || showCloseButton ? (

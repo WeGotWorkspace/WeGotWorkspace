@@ -35,8 +35,12 @@ export function AppSwitchButton({
   const compact = variant === "compact";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
-  const current =
-    WORKSPACE_APPS.find((a) => path === a.to || path.startsWith(`${a.to}/`)) ?? WORKSPACE_APPS[0];
+  const fromPath = WORKSPACE_APPS.find((a) => path === a.to || path.startsWith(`${a.to}/`));
+  const fromSubtitle =
+    subtitleProp && subtitleProp !== "Workspace"
+      ? WORKSPACE_APPS.find((a) => a.label.toLowerCase() === subtitleProp.toLowerCase())
+      : undefined;
+  const current = fromSubtitle ?? fromPath ?? WORKSPACE_APPS[0];
   const subtitle = subtitleProp ?? current.label;
   const isWorkspaceContext = subtitleProp === "Workspace";
   const menuSurfaceKey = isWorkspaceContext ? "workspace" : current.id;

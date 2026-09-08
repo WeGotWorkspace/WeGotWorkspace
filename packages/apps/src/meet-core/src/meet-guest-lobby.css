@@ -1,0 +1,88 @@
+@import "../../styles.css" reference;
+
+/**
+ * Guest invite card chrome: Meet accent lockup + primary, product serif title.
+ * Higher specificity so switch-trigger / split-workspace ink tokens do not win.
+ */
+.meet-guest-channel__lobby .meet-workspace__title,
+.meet-guest-lobby__title {
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+}
+
+.meet-guest-lobby__title {
+  @apply min-w-0 text-balance;
+}
+
+.meet-guest-lobby__status-body {
+  @apply text-sm text-balance;
+  color: var(--meet-muted);
+}
+
+.meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger {
+  @apply mb-4 size-8 rounded-md;
+  --app-switch-icon-bg: var(--meet-accent);
+  --app-switch-icon-fg: var(--color-cream, #ffffff);
+  background-color: var(--app-switch-icon-bg);
+}
+
+.meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger > svg {
+  --wai-bg: transparent;
+  --wai-fg: var(--app-switch-icon-fg);
+}
+
+.meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {
+  @apply mt-4 w-full;
+  --button-primary-bg: var(--meet-accent);
+  --button-primary-fg: var(--color-cream, #ffffff);
+  --button-icon-size: 1rem;
+}
+
+/* Beat mark `size-8` / switch-trigger `size-full` so DoorOpen + Hand stay md. */
+.meet-guest-channel__lobby .meet-guest-lobby__knock .button__icon > svg {
+  width: var(--button-icon-size, 1rem) !important;
+  height: var(--button-icon-size, 1rem) !important;
+}
+
+.meet-guest-lobby__after-knock {
+  @apply relative mt-2 grid w-full;
+  min-height: var(--control-height-md, var(--input-height, 2.25rem));
+}
+
+.meet-guest-lobby__after-knock > * {
+  grid-area: 1 / 1;
+}
+
+.meet-guest-lobby__footer[aria-hidden="true"] {
+  @apply invisible pointer-events-none;
+}
+
+.meet-guest-channel__lobby .meet-guest-lobby__cancel {
+  @apply h-full w-full;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .meet-guest-lobby__knock--waiting .button__icon > svg {
+    width: var(--button-icon-size, 1rem) !important;
+    height: var(--button-icon-size, 1rem) !important;
+    transform-origin: 70% 85%;
+    animation: meet-guest-lobby-knock 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes meet-guest-lobby-knock {
+  0%,
+  55%,
+  100% {
+    transform: rotate(0deg);
+  }
+  65% {
+    transform: rotate(-22deg);
+  }
+  75% {
+    transform: rotate(10deg);
+  }
+  85% {
+    transform: rotate(-16deg);
+  }
+}

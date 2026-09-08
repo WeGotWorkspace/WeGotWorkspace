@@ -2,6 +2,10 @@ export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
 export type { JmapNotesAdapterOptions } from "./adapter/JmapNotesAdapter.js";
 export { JmapNotesAdapter } from "./adapter/JmapNotesAdapter.js";
+export type { JmapChatAdapterOptions } from "./adapter/JmapChatAdapter.js";
+export { JmapChatAdapter } from "./adapter/JmapChatAdapter.js";
+export { CHAT_USING, JmapChatClient } from "./chat/JmapChatClient.js";
+export type { JmapChatChannel, JmapChatMessage } from "./chat/types.js";
 export type { JmapContactsAdapterOptions } from "./adapter/JmapContactsAdapter.js";
 export { JmapContactsAdapter } from "./adapter/JmapContactsAdapter.js";
 export { NOTES_USING, JmapNotesClient } from "./notes/JmapNotesClient.js";
@@ -46,6 +50,7 @@ export {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
   NOTES_CAPABILITY,
+  CHAT_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,

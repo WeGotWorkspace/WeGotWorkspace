@@ -1,10 +1,22 @@
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./collection-sidebar-row.css";
+
+const NESTED_ROW_CONTROL = "button, a, input, [role='button']";
+
+/** Keep trailing/leading menus clickable without also selecting the row. */
+function stopIfNestedControl(event: MouseEvent<HTMLElement>) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const control = target.closest(NESTED_ROW_CONTROL);
+  if (control && event.currentTarget.contains(control) && control !== event.currentTarget) {
+    event.stopPropagation();
+  }
+}
 
 export const COLLECTION_SIDEBAR_ROW_BLOCK = "collection-sidebar-row";
 
@@ -128,12 +140,13 @@ export function CollectionSidebarRow({
           onCheckedChange={() => onToggleVisibility()}
           onClick={(event) => event.stopPropagation()}
         />
-      ) : showColorDot ? (
-        <span className={bem(blocks, "__dot")} aria-hidden />
       ) : null}
       <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
+        {showColorDot && !onToggleVisibility ? (
+          <span className={bem(blocks, "__dot")} aria-hidden />
+        ) : null}
         {leading ? (
-          <span className={bem(blocks, "__leading")} aria-hidden>
+          <span className={bem(blocks, "__leading")} aria-hidden onClick={stopIfNestedControl}>
             {leading}
           </span>
         ) : null}
@@ -141,7 +154,11 @@ export function CollectionSidebarRow({
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
         </span>
-        {trailing}
+        {trailing ? (
+          <span className={bem(blocks, "__trailing")} onClick={stopIfNestedControl}>
+            {trailing}
+          </span>
+        ) : null}
       </button>
       {onEdit ? (
         <IconButton

@@ -15,8 +15,28 @@ import {
 } from "@/calendar-core/src/use-calendar-pending-sync";
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
-import { openCalendarMeetHref } from "@/calendar-core/src/calendar-meet-link";
+import {
+  openCalendarMeetHref,
+  type CalendarMeetChannelOption,
+  type CalendarMeetRequestOptions,
+} from "@/calendar-core/src/calendar-meet-link";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
+import { isWireDmChannel, listChatChannels } from "@/lib/api/wgw/meet-chat";
+
+/** Event-form channel picker source: live `/chat/channels` (DMs dropped; picker keeps `#` only). */
+async function listCalendarMeetChannels(
+  opts?: CalendarMeetRequestOptions,
+): Promise<CalendarMeetChannelOption[]> {
+  const rows = await listChatChannels(opts);
+  return rows
+    .filter((row) => !isWireDmChannel(row))
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      kind: row.kind === "meeting" ? ("meeting" as const) : ("channel" as const),
+      guestRoomCode: row.guestRoomCode ?? null,
+    }));
+}
 
 export type CalendarAppProps = {
   apiSource?: CalendarApiSource;
@@ -39,6 +59,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
       roomStatus: ops.roomStatus,
       reserveRoom: ops.reserveRoom,
       patchRoomExpiresAt: ops.patchRoomExpiresAt,
+      listChannels: listCalendarMeetChannels,
     };
   }, []);
   const workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "";

@@ -78,6 +78,25 @@ export const NoCheckbox: Story = {
   },
 };
 
+/** Meet-style chrome: presence / unread sit inside the select hit target. */
+export const LeadingAndTrailingChrome: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    onToggleVisibility: undefined,
+    showColorDot: false,
+    selected: false,
+    name: "Ada Lovelace",
+    leading: <span data-testid="presence-dot" aria-hidden />,
+    trailing: <span data-testid="unread-count">2</span>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByTestId("presence-dot"));
+    await userEvent.click(canvas.getByTestId("unread-count"));
+    await expect(args.onSelect).toHaveBeenCalledTimes(2);
+  },
+};
+
 export const WithViewOnlyMark: Story = {
   args: {
     badges: (

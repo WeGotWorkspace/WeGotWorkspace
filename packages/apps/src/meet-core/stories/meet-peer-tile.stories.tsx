@@ -32,7 +32,7 @@ export const NoVideo: Story = {
     name: "Alex Morgan",
     stream: null,
     compact: false,
-    onMuteSoon: STORY_NOOP,
+    onMuteParticipant: STORY_NOOP,
   },
 };
 
@@ -42,6 +42,17 @@ export const CompactStrip: Story = {
     name: "Jamie Lee",
     stream: null,
     compact: true,
-    onMuteSoon: STORY_NOOP,
+    onMuteParticipant: STORY_NOOP,
+  },
+};
+
+export const Speaking: Story = {
+  name: "Speaking",
+  args: {
+    name: "Alex Morgan",
+    stream: null,
+    speaking: true,
+    spotlight: true,
+    onMuteParticipant: STORY_NOOP,
   },
 };

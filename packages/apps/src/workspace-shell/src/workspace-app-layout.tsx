@@ -172,6 +172,12 @@ export function WorkspaceSidebarScrim({ open, onClick }: { open: boolean; onClic
   );
 }
 
+/** Dim behind a right-hand `workspace-app-layout__panel` while it overlays (not when docked). */
+export function WorkspacePanelScrim({ open, onClick }: { open: boolean; onClick: () => void }) {
+  if (!open) return null;
+  return <div className="workspace-app-layout__panel-scrim" onClick={onClick} aria-hidden />;
+}
+
 export function WorkspaceSidebarToggle({
   open,
   onToggle,

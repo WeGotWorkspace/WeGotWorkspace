@@ -3,6 +3,8 @@ import {
   buildMeetControlMessage,
   decodeMeetKnockerName,
   encodeMeetKnockerName,
+  isMeetKnockRequiredError,
+  isMeetRoomNotActiveError,
   MEET_KNOCK_NAME_PREFIX,
   parseMeetControlMessage,
 } from "@/meet-core/src/meet-control-messages";
@@ -51,6 +53,21 @@ describe("meet control messages", () => {
       kind: "end",
       by: "Host",
     });
+    expect(
+      parseMeetControlMessage(buildMeetControlMessage({ kind: "mute", peerId: "peer-2" })),
+    ).toEqual({
+      kind: "mute",
+      peerId: "peer-2",
+    });
+  });
+
+  it("recognizes the chunk-H join-policy error codes from the signaling client", () => {
+    expect(isMeetKnockRequiredError(new Error("knock_required"))).toBe(true);
+    expect(isMeetKnockRequiredError(new Error("forbidden"))).toBe(false);
+    expect(isMeetKnockRequiredError("knock_required")).toBe(false);
+    expect(isMeetRoomNotActiveError(new Error("room_not_active"))).toBe(true);
+    expect(isMeetRoomNotActiveError(new Error("not_found"))).toBe(false);
+    expect(isMeetRoomNotActiveError(null)).toBe(false);
   });
 
   it("rejects malformed control payloads", () => {

@@ -25,6 +25,14 @@
   @apply size-3 shrink-0 rounded-full;
 }
 
+.color-swatch-trigger__icon {
+  @apply inline-flex size-3.5 shrink-0 items-center justify-center;
+}
+
+.color-swatch-trigger__icon > svg {
+  @apply size-3.5;
+}
+
 .color-swatch-trigger__caption {
   @apply min-w-0 flex-1 truncate text-left;
 }

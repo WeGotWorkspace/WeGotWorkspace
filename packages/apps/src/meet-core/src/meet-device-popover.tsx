@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Settings as SettingsIcon } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
@@ -31,12 +32,19 @@ export function MeetDevicePopover({
   onSpeaker,
   defaultOpen,
 }: MeetDevicePopoverProps) {
+  const [open, setOpen] = useState(Boolean(defaultOpen));
   return (
-    <Popover defaultOpen={defaultOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <IconButton icon={<SettingsIcon />} label={meetLabels.devices} size="lg" variant="subtle" />
+        <IconButton
+          icon={<SettingsIcon />}
+          label={meetLabels.devices}
+          size="sm"
+          variant="subtle"
+          active={open}
+        />
       </PopoverTrigger>
-      <PopoverContent side="top" align="center" className="meet-popover-surface w-80 p-3">
+      <PopoverContent side="top" align="center" className="meet-device-popover">
         <MeetDeviceForm
           cameras={cameras}
           microphones={microphones}
@@ -47,6 +55,7 @@ export function MeetDevicePopover({
           onCameraChange={onCamera}
           onMicrophoneChange={onMicrophone}
           onSpeakerChange={onSpeaker}
+          menuClassName="meet-device-popover"
         />
       </PopoverContent>
     </Popover>

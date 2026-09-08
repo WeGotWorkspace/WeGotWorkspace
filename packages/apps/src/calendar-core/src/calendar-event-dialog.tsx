@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Clock, Repeat } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
@@ -26,6 +26,8 @@ import {
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { CalendarAlarmsCard } from "@/calendar-core/src/calendar-alarms-card";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
+import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
+import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
 import {
   calendarRespondStatus,
   CalendarRsvpSelect,
@@ -54,6 +56,19 @@ import {
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 
+export type CalendarEventDialogLayout = {
+  hideCalendarPicker?: boolean;
+  hideLocation?: boolean;
+  hideWhen?: boolean;
+  hideRecurrence?: boolean;
+  hideAlarms?: boolean;
+  hideShowAs?: boolean;
+  hideInvitees?: boolean;
+  hideNotes?: boolean;
+  /** Meeting URL is copy-only; no generate menu or channel picker. */
+  meetCopyOnly?: boolean;
+};
+
 export type CalendarEventDialogProps = {
   open: boolean;
   mode: "create" | "edit";
@@ -63,6 +78,14 @@ export type CalendarEventDialogProps = {
   /** BCP 47 tag; defaults to the same resolver the Lit calendar surface uses. */
   locale?: string;
   busy?: boolean;
+  title?: string;
+  submitLabel?: string;
+  /** Rendered after the Meet card, before When (e.g. Meet Schedule switch). */
+  afterMeetAccessory?: ReactNode;
+  contentClassName?: string;
+  layout?: CalendarEventDialogLayout;
+  /** Extra gate on Save/Create (ANDed with form validity). */
+  canSubmit?: boolean;
   onChange: (next: CalendarEventFormValue) => void;
   onClose: () => void;
   onSave: (scope?: RecurrenceEditScope) => void;
@@ -168,6 +191,12 @@ export function CalendarEventDialog({
   labels,
   locale: localeProp,
   busy = false,
+  title,
+  submitLabel,
+  afterMeetAccessory,
+  contentClassName = "calendar-dialog-surface calendar-event-dialog",
+  layout,
+  canSubmit = true,
   onChange,
   onClose,
   onSave,
@@ -241,11 +270,33 @@ export function CalendarEventDialog({
     [form.timeZone, labels.eventTimeZoneLocalLabel, locale],
   );
 
+  const {
+    commitForm,
+    trySave,
+    collisionOpen,
+    collisionBusy,
+    showEmailGuestHint,
+    cancelCollision,
+    applyChoice,
+  } = useCalendarMeetChannelEmailCollision({
+    form,
+    invitees,
+    open,
+    workspaceOrigin,
+    meetOperations,
+    calendar,
+    username: sessionUsername,
+    recurrenceId,
+    recurrenceSaveScope: meetSaveScope,
+    onChange,
+    onSave,
+  });
+
   const set = <K extends keyof CalendarEventFormValue>(
     key: K,
     value: CalendarEventFormValue[K],
   ) => {
-    onChange(patchCalendarEventForm(form, { [key]: value } as Partial<CalendarEventFormValue>));
+    commitForm(patchCalendarEventForm(form, { [key]: value } as Partial<CalendarEventFormValue>));
   };
 
   const setRecurrencePreset = (preset: EditableRecurrencePresetId) => {
@@ -259,14 +310,10 @@ export function CalendarEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && dismiss()}>
-      <DialogContent
-        className="calendar-dialog-surface calendar-event-dialog"
-        lang={locale}
-        aria-describedby={undefined}
-      >
+      <DialogContent className={contentClassName} lang={locale} aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? labels.createEventTitle : labels.editEventTitle}
+            {title ?? (mode === "create" ? labels.createEventTitle : labels.editEventTitle)}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -283,7 +330,7 @@ export function CalendarEventDialog({
               return;
             }
             if (readOnly || !valid) return;
-            onSave(form.meetingUrl.trim() || form.meetRoomCode ? meetSaveScope : undefined);
+            trySave(form.meetingUrl.trim() || form.meetRoomCode ? meetSaveScope : undefined);
           }}
         >
           <div className="calendar-event-dialog__fields">
@@ -297,29 +344,33 @@ export function CalendarEventDialog({
                 disabled={fieldsDisabled}
                 autoFocus={!readOnly}
               />
-              <CalendarEventCalendarPicker
-                calendars={calendars}
-                calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
-                labels={labels}
-                disabled={busy || (readOnly && !showInviteeRsvp)}
-                onCalendarIdChange={(calendarId) => {
-                  if (showInviteeRsvp) {
-                    setDraftCalendarId(calendarId);
-                    return;
-                  }
-                  set("calendarId", calendarId);
-                }}
-              />
+              {layout?.hideCalendarPicker ? null : (
+                <CalendarEventCalendarPicker
+                  calendars={calendars}
+                  calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
+                  labels={labels}
+                  disabled={busy || (readOnly && !showInviteeRsvp)}
+                  onCalendarIdChange={(calendarId) => {
+                    if (showInviteeRsvp) {
+                      setDraftCalendarId(calendarId);
+                      return;
+                    }
+                    set("calendarId", calendarId);
+                  }}
+                />
+              )}
             </NameColorRow>
 
-            <FieldLabelRow label={labels.eventLocationLabel}>
-              <Input
-                value={form.location}
-                onChange={(event) => set("location", event.target.value)}
-                placeholder={labels.eventLocationLabel}
-                disabled={fieldsDisabled}
-              />
-            </FieldLabelRow>
+            {layout?.hideLocation ? null : (
+              <FieldLabelRow label={labels.eventLocationLabel}>
+                <Input
+                  value={form.location}
+                  onChange={(event) => set("location", event.target.value)}
+                  placeholder={labels.eventLocationLabel}
+                  disabled={fieldsDisabled}
+                />
+              </FieldLabelRow>
+            )}
 
             <CalendarMeetCard
               form={form}
@@ -333,221 +384,246 @@ export function CalendarEventDialog({
               meetOperations={meetOperations}
               disabled={fieldsDisabled}
               readOnly={readOnly}
-              onChange={onChange}
+              copyOnly={layout?.meetCopyOnly}
+              emailGuestHint={
+                showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
+              }
+              onChange={commitForm}
               abandonStagedReserveRef={abandonStagedReserveRef}
               onRecurrenceSaveScopeChange={onRecurrenceSaveScopeChange ?? setUncontrolledMeetScope}
               onJoin={onJoinMeeting}
             />
 
-            <Card
-              className="calendar-event-dialog__card"
-              titleIcon={<Clock className="size-4" />}
-              title={labels.eventWhenSectionTitle}
-            >
-              <CardRow title={labels.eventAllDayLabel}>
-                <Switch
-                  checked={form.allDay}
-                  onCheckedChange={(checked) => set("allDay", checked === true)}
-                  aria-label={labels.eventAllDayLabel}
-                  disabled={fieldsDisabled}
-                />
-              </CardRow>
-              <CardRow title={labels.eventStartLabel}>
-                <div className="calendar-event-dialog__datetime">
-                  <LocaleDatePicker
-                    value={form.startDate}
-                    locale={locale}
-                    label={labels.eventStartLabel}
-                    onChange={(next) => set("startDate", next)}
+            {afterMeetAccessory}
+
+            {layout?.hideWhen ? null : (
+              <Card
+                className="calendar-event-dialog__card"
+                titleIcon={<Clock className="size-4" />}
+                title={labels.eventWhenSectionTitle}
+              >
+                <CardRow title={labels.eventAllDayLabel}>
+                  <Switch
+                    checked={form.allDay}
+                    onCheckedChange={(checked) => set("allDay", checked === true)}
+                    aria-label={labels.eventAllDayLabel}
                     disabled={fieldsDisabled}
                   />
-                  {!form.allDay ? (
-                    <Input
-                      type="time"
-                      lang={locale}
-                      value={form.startTime}
-                      aria-label={`${labels.eventStartLabel} time`}
+                </CardRow>
+                <CardRow title={labels.eventStartLabel}>
+                  <div className="calendar-event-dialog__datetime">
+                    <LocaleDatePicker
+                      value={form.startDate}
+                      locale={locale}
+                      label={labels.eventStartLabel}
+                      onChange={(next) => set("startDate", next)}
                       disabled={fieldsDisabled}
-                      onChange={(event) => set("startTime", event.target.value)}
                     />
-                  ) : null}
-                </div>
-              </CardRow>
-              <CardRow title={labels.eventEndLabel}>
-                <div className="calendar-event-dialog__datetime">
-                  <LocaleDatePicker
-                    value={form.endDate}
-                    locale={locale}
-                    label={labels.eventEndLabel}
-                    onChange={(next) => set("endDate", next)}
-                    disabled={fieldsDisabled}
-                  />
-                  {!form.allDay ? (
-                    <Input
-                      type="time"
-                      lang={locale}
-                      value={form.endTime}
-                      aria-label={`${labels.eventEndLabel} time`}
+                    {!form.allDay ? (
+                      <Input
+                        type="time"
+                        lang={locale}
+                        value={form.startTime}
+                        aria-label={`${labels.eventStartLabel} time`}
+                        disabled={fieldsDisabled}
+                        onChange={(event) => set("startTime", event.target.value)}
+                      />
+                    ) : null}
+                  </div>
+                </CardRow>
+                <CardRow title={labels.eventEndLabel}>
+                  <div className="calendar-event-dialog__datetime">
+                    <LocaleDatePicker
+                      value={form.endDate}
+                      locale={locale}
+                      label={labels.eventEndLabel}
+                      onChange={(next) => set("endDate", next)}
                       disabled={fieldsDisabled}
-                      onChange={(event) => set("endTime", event.target.value)}
                     />
-                  ) : null}
-                </div>
-              </CardRow>
-              {!form.allDay ? (
-                <CardRow title={labels.eventTimeZoneLabel}>
+                    {!form.allDay ? (
+                      <Input
+                        type="time"
+                        lang={locale}
+                        value={form.endTime}
+                        aria-label={`${labels.eventEndLabel} time`}
+                        disabled={fieldsDisabled}
+                        onChange={(event) => set("endTime", event.target.value)}
+                      />
+                    ) : null}
+                  </div>
+                </CardRow>
+                {!form.allDay ? (
+                  <CardRow title={labels.eventTimeZoneLabel}>
+                    <Select
+                      value={eventTimeZoneSelectValue(form.timeZone)}
+                      onValueChange={(value) =>
+                        set("timeZone", eventTimeZoneFromSelectValue(value))
+                      }
+                      disabled={fieldsDisabled}
+                    >
+                      <SelectTrigger
+                        className="calendar-event-dialog__timezone-trigger"
+                        aria-label={labels.eventTimeZoneLabel}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeZoneOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </CardRow>
+                ) : null}
+              </Card>
+            )}
+
+            {layout?.hideRecurrence ? null : (
+              <Card
+                className="calendar-event-dialog__card"
+                titleIcon={<Repeat className="size-4" />}
+                title={labels.eventRepeatLabel}
+              >
+                <CardRow fill>
                   <Select
-                    value={eventTimeZoneSelectValue(form.timeZone)}
-                    onValueChange={(value) => set("timeZone", eventTimeZoneFromSelectValue(value))}
-                    disabled={fieldsDisabled}
+                    value={form.recurrencePreset}
+                    onValueChange={(value) =>
+                      setRecurrencePreset(value as EditableRecurrencePresetId)
+                    }
+                    disabled={recurrenceLocked || fieldsDisabled}
                   >
                     <SelectTrigger
-                      className="calendar-event-dialog__timezone-trigger"
-                      aria-label={labels.eventTimeZoneLabel}
+                      className="calendar-event-dialog__repeat-trigger"
+                      aria-label={labels.eventRepeatLabel}
                     >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeZoneOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
+                      {recurrenceOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
                           {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </CardRow>
-              ) : null}
-            </Card>
+                {showRecurrenceEnds ? (
+                  <CardRow title={labels.eventRecurrenceEndsLabel}>
+                    <div className="calendar-event-dialog__recurrence-ends">
+                      <Select
+                        value={form.recurrenceEnds}
+                        onValueChange={(value) =>
+                          set("recurrenceEnds", value as RecurrenceEndsMode)
+                        }
+                        disabled={fieldsDisabled}
+                      >
+                        <SelectTrigger aria-label={labels.eventRecurrenceEndsLabel}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="never">{labels.eventRecurrenceEndsNever}</SelectItem>
+                          <SelectItem value="until">{labels.eventRecurrenceEndsOnDate}</SelectItem>
+                          <SelectItem value="count">{labels.eventRecurrenceEndsAfter}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="calendar-event-dialog__recurrence-ends-extra">
+                        {form.recurrenceEnds !== "count" ? (
+                          <LocaleDatePicker
+                            value={form.recurrenceUntilDate || form.startDate}
+                            locale={locale}
+                            label={labels.eventRecurrenceEndsOnDate}
+                            onChange={(next) => set("recurrenceUntilDate", next)}
+                            disabled={form.recurrenceEnds !== "until" || fieldsDisabled}
+                          />
+                        ) : null}
+                        {form.recurrenceEnds === "count" ? (
+                          <div className="calendar-event-dialog__recurrence-count">
+                            <Input
+                              type="number"
+                              min={1}
+                              step={1}
+                              value={form.recurrenceCount}
+                              aria-label={labels.eventRecurrenceEndsAfter}
+                              disabled={fieldsDisabled}
+                              onChange={(event) => {
+                                const parsed = Number.parseInt(event.target.value, 10);
+                                set("recurrenceCount", Number.isFinite(parsed) ? parsed : 0);
+                              }}
+                            />
+                            <span className="calendar-event-dialog__recurrence-count-suffix">
+                              {labels.eventRecurrenceEndsCountSuffix}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </CardRow>
+                ) : null}
+              </Card>
+            )}
 
-            <Card
-              className="calendar-event-dialog__card"
-              titleIcon={<Repeat className="size-4" />}
-              title={labels.eventRepeatLabel}
-            >
-              <CardRow fill>
+            {layout?.hideInvitees ? null : (
+              <CalendarInviteesCard
+                attendees={form.attendees}
+                invitees={invitees}
+                contactCards={contactCards}
+                onRefreshContactCards={onRefreshContactCards}
+                labels={labels}
+                busy={busy}
+                readOnly={readOnly}
+                canSubmitEmail={canSubmitEmail}
+                sessionEmail={sessionEmail}
+                meetEmailGuestHint={
+                  showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
+                }
+                onChange={(attendees) => set("attendees", attendees)}
+              />
+            )}
+
+            {layout?.hideAlarms ? null : (
+              <CalendarAlarmsCard
+                alerts={form.alerts}
+                labels={labels}
+                disabled={fieldsDisabled}
+                readOnly={readOnly}
+                onChange={(alerts) => set("alerts", alerts)}
+              />
+            )}
+
+            {layout?.hideShowAs ? null : (
+              <FieldLabelRow label={labels.eventShowAs}>
                 <Select
-                  value={form.recurrencePreset}
-                  onValueChange={(value) =>
-                    setRecurrencePreset(value as EditableRecurrencePresetId)
-                  }
-                  disabled={recurrenceLocked || fieldsDisabled}
+                  value={form.freeBusyStatus}
+                  onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
+                  disabled={fieldsDisabled}
                 >
                   <SelectTrigger
-                    className="calendar-event-dialog__repeat-trigger"
-                    aria-label={labels.eventRepeatLabel}
+                    className="calendar-event-dialog__show-as-trigger"
+                    aria-label={labels.eventShowAs}
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {recurrenceOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
+                    <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
                   </SelectContent>
                 </Select>
-              </CardRow>
-              {showRecurrenceEnds ? (
-                <CardRow title={labels.eventRecurrenceEndsLabel}>
-                  <div className="calendar-event-dialog__recurrence-ends">
-                    <Select
-                      value={form.recurrenceEnds}
-                      onValueChange={(value) => set("recurrenceEnds", value as RecurrenceEndsMode)}
-                      disabled={fieldsDisabled}
-                    >
-                      <SelectTrigger aria-label={labels.eventRecurrenceEndsLabel}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="never">{labels.eventRecurrenceEndsNever}</SelectItem>
-                        <SelectItem value="until">{labels.eventRecurrenceEndsOnDate}</SelectItem>
-                        <SelectItem value="count">{labels.eventRecurrenceEndsAfter}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="calendar-event-dialog__recurrence-ends-extra">
-                      {form.recurrenceEnds !== "count" ? (
-                        <LocaleDatePicker
-                          value={form.recurrenceUntilDate || form.startDate}
-                          locale={locale}
-                          label={labels.eventRecurrenceEndsOnDate}
-                          onChange={(next) => set("recurrenceUntilDate", next)}
-                          disabled={form.recurrenceEnds !== "until" || fieldsDisabled}
-                        />
-                      ) : null}
-                      {form.recurrenceEnds === "count" ? (
-                        <div className="calendar-event-dialog__recurrence-count">
-                          <Input
-                            type="number"
-                            min={1}
-                            step={1}
-                            value={form.recurrenceCount}
-                            aria-label={labels.eventRecurrenceEndsAfter}
-                            disabled={fieldsDisabled}
-                            onChange={(event) => {
-                              const parsed = Number.parseInt(event.target.value, 10);
-                              set("recurrenceCount", Number.isFinite(parsed) ? parsed : 0);
-                            }}
-                          />
-                          <span className="calendar-event-dialog__recurrence-count-suffix">
-                            {labels.eventRecurrenceEndsCountSuffix}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </CardRow>
-              ) : null}
-            </Card>
+              </FieldLabelRow>
+            )}
 
-            <CalendarInviteesCard
-              attendees={form.attendees}
-              invitees={invitees}
-              contactCards={contactCards}
-              onRefreshContactCards={onRefreshContactCards}
-              labels={labels}
-              busy={busy}
-              readOnly={readOnly}
-              canSubmitEmail={canSubmitEmail}
-              sessionEmail={sessionEmail}
-              onChange={(attendees) => set("attendees", attendees)}
-            />
-
-            <CalendarAlarmsCard
-              alerts={form.alerts}
-              labels={labels}
-              disabled={fieldsDisabled}
-              readOnly={readOnly}
-              onChange={(alerts) => set("alerts", alerts)}
-            />
-
-            <FieldLabelRow label={labels.eventShowAs}>
-              <Select
-                value={form.freeBusyStatus}
-                onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
-                disabled={fieldsDisabled}
-              >
-                <SelectTrigger
-                  className="calendar-event-dialog__show-as-trigger"
-                  aria-label={labels.eventShowAs}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
-                  <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
-                </SelectContent>
-              </Select>
-            </FieldLabelRow>
-
-            <FieldLabelRow label={labels.eventNotesLabel}>
-              <Textarea
-                value={form.description}
-                onChange={(event) => set("description", event.target.value)}
-                placeholder={labels.eventNotesLabel}
-                disabled={fieldsDisabled}
-                rows={3}
-              />
-            </FieldLabelRow>
+            {layout?.hideNotes ? null : (
+              <FieldLabelRow label={labels.eventNotesLabel}>
+                <Textarea
+                  value={form.description}
+                  onChange={(event) => set("description", event.target.value)}
+                  placeholder={labels.eventNotesLabel}
+                  disabled={fieldsDisabled}
+                  rows={3}
+                />
+              </FieldLabelRow>
+            )}
           </div>
 
           <DialogFooter className="calendar-event-dialog__footer">
@@ -579,14 +655,28 @@ export function CalendarEventDialog({
             {showSaveCancel ? (
               <Button
                 type="submit"
-                disabled={showInviteeRsvp ? !draftRsvp || busy : !valid || busy}
+                disabled={
+                  showInviteeRsvp ? !draftRsvp || busy : !valid || busy || canSubmit === false
+                }
               >
-                {labels.save}
+                {submitLabel ?? labels.save}
               </Button>
             ) : null}
           </DialogFooter>
         </form>
       </DialogContent>
+      <CalendarMeetChannelEmailDialog
+        open={collisionOpen}
+        labels={labels}
+        busy={busy || collisionBusy}
+        contentClassName={contentClassName}
+        onOpenChange={(next) => {
+          if (!next) cancelCollision();
+        }}
+        onChoice={(choice) => {
+          void applyChoice(choice);
+        }}
+      />
     </Dialog>
   );
 }

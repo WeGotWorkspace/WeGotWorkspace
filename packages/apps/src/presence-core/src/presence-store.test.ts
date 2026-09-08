@@ -150,6 +150,7 @@ type SetupOptions = {
   visibility?: FakeVisibility | null;
   now?: () => number;
   typingTtlMs?: number;
+  channelTypingTtlMs?: number;
 };
 
 function setup(options: SetupOptions = {}) {
@@ -160,6 +161,7 @@ function setup(options: SetupOptions = {}) {
     visibility: options.visibility ?? null,
     now: options.now,
     typingTtlMs: options.typingTtlMs,
+    channelTypingTtlMs: options.channelTypingTtlMs,
   });
   return { session, store };
 }
@@ -430,6 +432,121 @@ describe("PresenceStore envelope routing", () => {
   });
 });
 
+describe("PresenceStore channel typing", () => {
+  async function online(overrides: SetupOptions = {}) {
+    const now = { value: 1000 };
+    const result = setup({ now: () => now.value, channelTypingTtlMs: 100, ...overrides });
+    result.store.start(SELF);
+    await flushMicrotasks();
+    result.session.peers = [
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+      { id: "carol-bbb222", name: "Carol", user: "carol" },
+    ];
+    result.session.emit({ type: "roster" });
+    return { ...result, now };
+  }
+
+  it("tracks per-channel typing usernames and keeps channels isolated", async () => {
+    const { session, store } = await online();
+
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "typing", channel: "channel-general" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "carol-bbb222",
+      envelope: { v: 1, kind: "typing", channel: "channel-random" },
+    });
+
+    expect(store.getSnapshot().channelTyping).toEqual({
+      "channel-general": ["bob"],
+      "channel-random": ["carol"],
+    });
+    // Workspace-wide typing is untouched by channel-scoped signals.
+    expect(store.getSnapshot().typingUsernames).toEqual([]);
+  });
+
+  it("clears a typist on an explicit stop envelope", async () => {
+    const { session, store } = await online();
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "typing", channel: "channel-general" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "typing", channel: "channel-general", stop: true },
+    });
+    expect(store.getSnapshot().channelTyping).toEqual({});
+  });
+
+  it("expires channel typing after the ttl", async () => {
+    vi.useFakeTimers();
+    try {
+      const session = new FakeSession();
+      let nowValue = 1000;
+      const store = createPresenceStore({
+        createSession: () => session,
+        joinMode: "eager",
+        visibility: null,
+        now: () => nowValue,
+        channelTypingTtlMs: 100,
+      });
+      store.start(SELF);
+      await vi.runAllTimersAsync();
+      session.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+      session.emit({ type: "roster" });
+
+      session.emit({
+        type: "envelope",
+        peerId: "bob-aaa111",
+        envelope: { v: 1, kind: "typing", channel: "channel-general" },
+      });
+      expect(store.getSnapshot().channelTyping).toEqual({ "channel-general": ["bob"] });
+
+      nowValue += 200;
+      await vi.advanceTimersByTimeAsync(200);
+      expect(store.getSnapshot().channelTyping).toEqual({});
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ignores channel typing from own username (other tab)", async () => {
+    const { session, store } = await online();
+    session.peers = [...session.peers, { id: "alice-tab222", name: "Alice", user: "alice" }];
+    session.emit({
+      type: "envelope",
+      peerId: "alice-tab222",
+      envelope: { v: 1, kind: "typing", channel: "channel-general" },
+    });
+    expect(store.getSnapshot().channelTyping).toEqual({});
+  });
+
+  it("broadcasts channel typing and stop envelopes once joined, never before", async () => {
+    const { session, store } = await online();
+
+    store.sendChannelTyping("channel-general");
+    store.stopChannelTyping("channel-general");
+
+    expect(session.broadcasts).toEqual([
+      { v: 1, kind: "typing", channel: "channel-general" },
+      { v: 1, kind: "typing", channel: "channel-general", stop: true },
+    ]);
+
+    const visibility = new FakeVisibility();
+    visibility.state = "hidden";
+    const unjoined = setup({ joinMode: "lazy", visibility });
+    unjoined.store.start(SELF);
+    unjoined.store.sendChannelTyping("channel-general");
+    unjoined.store.stopChannelTyping("channel-general");
+    expect(unjoined.session.broadcasts).toEqual([]);
+  });
+});
+
 describe("PresenceStore lifecycle", () => {
   it("stop leaves the room and resets the snapshot", async () => {
     const { session, store } = setup();
@@ -457,6 +574,152 @@ describe("PresenceStore lifecycle", () => {
     session.emit({ type: "roster" });
     expect(listener).toHaveBeenCalled();
     expect(store.getSnapshot().roster).toHaveLength(1);
+  });
+});
+
+describe("PresenceStore Meet fanout", () => {
+  const channelMessage = {
+    v: 1 as const,
+    kind: "channel-message" as const,
+    message: {
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channelId: "dm:alice",
+      authorId: "bob",
+      authorName: "Bob",
+      body: "hi",
+      createdAt: 1_700_000_000_000,
+      parentId: null,
+    },
+  };
+
+  async function online() {
+    const result = setup();
+    result.store.start(SELF);
+    await flushMicrotasks();
+    result.session.peers = [
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+      { id: "bob-tab222", name: "Bob", user: "bob" },
+      { id: "carol-ccc333", name: "Carol", user: "carol" },
+    ];
+    result.session.emit({ type: "roster" });
+    return result;
+  }
+
+  it("sendToUsernames targets every live peer for those usernames and never broadcasts", async () => {
+    const { session, store } = await online();
+    store.sendToUsernames(["bob", "alice"], channelMessage);
+    expect(session.broadcasts).toEqual([]);
+    expect(session.sentTo.map((row) => row.peerId).sort()).toEqual(["bob-aaa111", "bob-tab222"]);
+    expect(session.sentTo[0]?.envelope).toEqual(channelMessage);
+  });
+
+  it("emits inbound channel-message when authorId matches the sender username", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({ type: "envelope", peerId: "bob-aaa111", envelope: channelMessage });
+    expect(listener).toHaveBeenCalledWith({
+      kind: "channel-message",
+      senderUsername: "bob",
+      message: channelMessage.message,
+    });
+  });
+
+  it("drops channel-message when authorId does not match the sender", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        ...channelMessage,
+        message: { ...channelMessage.message, authorId: "mallory" },
+      },
+    });
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("emits inbound call-active", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "call-active", channel: "chat-general", active: true },
+    });
+    expect(listener).toHaveBeenCalledWith({
+      kind: "call-active",
+      senderUsername: "bob",
+      channel: "chat-general",
+      active: true,
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        v: 1,
+        kind: "call-active",
+        channel: "chat-general",
+        active: true,
+        audioOnly: true,
+      },
+    });
+    expect(listener).toHaveBeenCalledWith({
+      kind: "call-active",
+      senderUsername: "bob",
+      channel: "chat-general",
+      active: true,
+      audioOnly: true,
+    });
+  });
+
+  it("emits inbound patch, destroy, reaction, and channel-changed", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeMeetFanout(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        v: 1,
+        kind: "channel-message-patch",
+        id: "m1",
+        channel: "chat-general",
+        body: "edited",
+        editedAt: 2,
+      },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "channel-message-destroy", id: "m1", channel: "chat-general" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: {
+        v: 1,
+        kind: "channel-reaction",
+        messageId: "m1",
+        channel: "chat-general",
+        emoji: "👍",
+        on: true,
+      },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "channel-changed", channel: "chat-new" },
+    });
+    expect(listener).toHaveBeenCalledTimes(4);
+    expect(listener.mock.calls.map((call) => call[0].kind)).toEqual([
+      "channel-message-patch",
+      "channel-message-destroy",
+      "channel-reaction",
+      "channel-changed",
+    ]);
   });
 });
 

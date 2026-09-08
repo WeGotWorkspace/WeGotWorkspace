@@ -17,6 +17,7 @@ import { getEventColorStyles } from "../utils/EventColor.js";
 import { resolveLocale } from "../utils/Locale.js";
 import { formatShortTime } from "../utils/TimeFormatting.js";
 import collectionStateStyle from "@/collection-state/src/collection-state.css?inline";
+import listStickyHeaderStyle from "@/list-sticky-header/src/list-sticky-header.css?inline";
 import { CALENDAR_LIST_EMPTY_LABEL } from "./calendar-list-empty-label.js";
 import componentStyle from "./CalendarListView.css?inline";
 
@@ -100,7 +101,12 @@ export class CalendarListView extends CalendarViewBase {
   }
 
   static get styles() {
-    return [...CalendarViewBase.styles, unsafeCSS(collectionStateStyle), unsafeCSS(componentStyle)];
+    return [
+      ...CalendarViewBase.styles,
+      unsafeCSS(collectionStateStyle),
+      unsafeCSS(listStickyHeaderStyle),
+      unsafeCSS(componentStyle),
+    ];
   }
 
   render() {
@@ -119,8 +125,8 @@ export class CalendarListView extends CalendarViewBase {
                       id=${`agenda-day-${date}`}
                       aria-label=${this.#formatLongDateLabel(date)}
                     >
-                      <span class="agenda-day-weekday">${this.#formatWeekday(date)}</span>
-                      <span class="agenda-day-date">${this.#formatDayLabel(date)}</span>
+                      <span class="list-sticky-header__emphasis">${this.#formatWeekday(date)}</span>
+                      <span class="list-sticky-header__rest">${this.#formatDayLabel(date)}</span>
                     </h2>
                     <ul class="agenda-event-list">
                       ${items.map((item) => this.#renderItem(item))}

@@ -42,6 +42,8 @@ final class CalendarSchedulingNotificationService
         $rows = Principal::query()
             ->where('uri', 'like', 'principals/%')
             ->where('uri', 'not like', 'principals/groups/%')
+            // The `principals/groups` container node is not a user either.
+            ->where('uri', '!=', 'principals/groups')
             ->orderBy('uri')
             ->get();
 

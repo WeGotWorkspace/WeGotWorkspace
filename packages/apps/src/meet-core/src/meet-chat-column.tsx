@@ -1,0 +1,116 @@
+import { memo } from "react";
+import { ChatComposer } from "@/chat-ui/src/chat-composer";
+import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
+import type {
+  ChatAuthorPresenceMap,
+  ChatMentionPrincipal,
+  ChatSendPayload,
+} from "@/chat-ui/src/chat-types";
+import type { ChatMessage as MeetChatMessage } from "@/meet-core/src/meet-types";
+import { chatMessageCanOpenThread } from "@/chat-ui/src/chat-thread-actions";
+import { meetTypingLabel } from "@/meet-core/src/meet-typing-label";
+import { cn } from "@/lib/utils";
+
+export type MeetChatColumnProps = {
+  messages: MeetChatMessage[];
+  currentUserId: string;
+  principals: readonly ChatMentionPrincipal[];
+  placeholder?: string;
+  onSend: (payload: ChatSendPayload) => void;
+  onReact: (messageId: string, emoji: string) => void;
+  onReply: (message: MeetChatMessage) => void;
+  onDelete: (messageId: string) => void;
+  authorPresence?: ChatAuthorPresenceMap;
+  editingMessageId?: string | null;
+  onStartEdit?: (messageId: string) => void;
+  onCancelEdit?: () => void;
+  onSaveEdit?: (messageId: string, payload: ChatSendPayload) => void;
+  /** Display names currently typing in this conversation (ephemeral presence signal). */
+  typingNames?: readonly string[];
+  /** Composer activity for typing broadcasts: `true` = content present, `false` = stop. */
+  onComposerTyping?: (typing: boolean) => void;
+  onCaughtUpChange?: (caughtUp: boolean) => void;
+  className?: string;
+};
+
+export const MeetChatColumn = memo(function MeetChatColumn({
+  messages,
+  currentUserId,
+  principals,
+  placeholder,
+  onSend,
+  onReact,
+  onReply,
+  onDelete,
+  authorPresence,
+  editingMessageId = null,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  typingNames = [],
+  onComposerTyping,
+  onCaughtUpChange,
+  className,
+}: MeetChatColumnProps) {
+  const typingLabel = meetTypingLabel(typingNames);
+  return (
+    <div className={cn("meet-workspace__chat-column", className)}>
+      <ChatMessageList
+        messages={messages}
+        currentUserId={currentUserId}
+        onToggleReaction={onReact}
+        onCaughtUpChange={onCaughtUpChange}
+        onOpenThread={(message) => {
+          if (!chatMessageCanOpenThread(message)) return;
+          const meetMessage = messages.find((row) => row.id === message.id);
+          if (meetMessage) onReply(meetMessage);
+        }}
+        authorPresence={authorPresence}
+        editingMessageId={editingMessageId}
+        editComposer={(message) => (
+          <ChatComposer
+            key={message.id}
+            principals={principals}
+            initialContent={message.body}
+            onSend={(payload) => onSaveEdit?.(message.id, payload)}
+            onCancel={onCancelEdit}
+            hint={null}
+          />
+        )}
+        actionsForMessage={(message) => {
+          const canWrite = message.authorId === currentUserId;
+          const canOpenThread = chatMessageCanOpenThread(message);
+          return [
+            ...(canOpenThread
+              ? [
+                  {
+                    id: "reply" as const,
+                    onClick: () => {
+                      const meetMessage = messages.find((row) => row.id === message.id);
+                      if (meetMessage) onReply(meetMessage);
+                    },
+                  },
+                ]
+              : []),
+            { id: "react", onClick: () => undefined },
+            ...(canWrite && onStartEdit
+              ? [{ id: "edit" as const, onClick: () => onStartEdit(message.id) }]
+              : []),
+            ...(canWrite ? [{ id: "delete" as const, onClick: () => onDelete(message.id) }] : []),
+          ];
+        }}
+      />
+      <div className="meet-workspace__typing" aria-live="polite">
+        {typingLabel}
+      </div>
+      <div className="meet-workspace__chat-composer">
+        <ChatComposer
+          principals={principals}
+          placeholder={placeholder}
+          onSend={onSend}
+          onTypingChange={onComposerTyping}
+        />
+      </div>
+    </div>
+  );
+});

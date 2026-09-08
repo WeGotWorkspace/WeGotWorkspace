@@ -28,7 +28,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |
 | `app_migrations` | `App\Models\AppMigration` | Legacy schema version audit (upgraded installs) |
-| `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key) |
+| `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key; optional `browser_id` for same-device leftover eviction) |
 | `meet_messages` | `App\Models\MeetMessage` | Meet signaling messages |
 | `meet_reservations` | `App\Models\MeetReservation` | Reserved Meet rooms (`id` = room code; `owner_principal`; `created_by`; nullable `expires_at`; `activated_at` when first joinable) |
 | `collab_peers` | `App\Models\CollabPeer` | Collab signaling peers |

@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
+import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
-import type { MeetChatMessage } from "@/meet-core/src/meet-chat-pane";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 
 export const STORY_MEET_DEVICES: MeetDeviceOption[] = [
@@ -42,15 +42,18 @@ export const STORY_MEET_PEERS = [
   },
 ];
 
-export const STORY_MEET_CHAT_MESSAGES: MeetChatMessage[] = [
+export const STORY_MEET_CHAT_MESSAGES: MeetChatLine[] = [
   {
     id: "1",
+    fromPeerId: "peer-1",
     fromName: "Alex Morgan",
     body: "Can everyone see the deck?",
     ts: Date.now() - 120_000,
+    isSelf: false,
   },
   {
     id: "2",
+    fromPeerId: "self-story",
     fromName: "You",
     body: "Yes — sharing now. Link: https://example.com/deck",
     ts: Date.now() - 60_000,
@@ -58,14 +61,15 @@ export const STORY_MEET_CHAT_MESSAGES: MeetChatMessage[] = [
   },
   {
     id: "3",
+    fromPeerId: "peer-2",
     fromName: "Jamie Lee",
     body: "Looks good on my side.",
     ts: Date.now() - 30_000,
+    isSelf: false,
   },
 ];
 
-export const STORY_MEET_CALL_LINK =
-  "https://workspace.example.com/meet/guest?room=demo-1234-abcd-5678";
+export const STORY_MEET_CALL_LINK = "https://workspace.example.com/meet?room=demo-1234-abcd-5678";
 
 const noop = () => {};
 const noopAsync = async () => {};
@@ -93,26 +97,30 @@ export function createMeetStoryController(
     endedMessage: null,
     chatMessages: STORY_MEET_CHAT_MESSAGES,
     localVideoRef,
+    getLocalStream: () => null,
     audioInputs: [],
     videoInputs: [],
     selectedMicId: "mic-1",
     selectedCamId: "cam-1",
-    ensureLocalMedia: noopAsync,
+    ensureLocalMedia: async () => new MediaStream(),
     startMeeting: noopAsync,
     joinRoom: noopAsync,
     requestJoin: noopAsync,
-    admitKnocker: noop,
-    denyKnocker: noop,
+    admitKnocker: noopAsync,
+    denyKnocker: noopAsync,
+    mutePeer: noopAsync,
     endCallForAll: noopAsync,
     leave: noopAsync,
-    sendChat: noop,
+    sendChat: noopAsync,
     toggleMic: noop,
     toggleVideo: noop,
+    setVideoOn: noop,
     toggleScreenShare: noopAsync,
     switchMic: noopAsync,
     switchCamera: noopAsync,
     callLink: STORY_MEET_CALL_LINK,
     inCall: true,
+    callActiveInAnotherTab: false,
     ...overrides,
   };
 }

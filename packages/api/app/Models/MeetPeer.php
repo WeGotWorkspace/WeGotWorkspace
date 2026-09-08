@@ -23,6 +23,7 @@ final class MeetPeer extends Model
         'peer_id',
         'name',
         'owner_user',
+        'browser_id',
         'seen_at',
     ];
 }

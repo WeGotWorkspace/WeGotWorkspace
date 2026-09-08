@@ -34,4 +34,23 @@ describe("SidebarSegmentedNewMenu", () => {
     expect(screen.getByRole("button", { name: "New event" }).className).toMatch(/__main--solo/);
     expect(screen.queryByRole("button", { name: "More create actions" })).toBeNull();
   });
+
+  it("accepts a custom icon, sm size, and stretch=false", () => {
+    render(
+      <SidebarSegmentedNewMenu
+        mainLabel="Meet"
+        menuLabel="More call options"
+        icon={<span data-testid="custom-icon" />}
+        size="sm"
+        stretch={false}
+        onMainAction={vi.fn()}
+        items={[{ id: "audio", label: "Meet (Audio Only)", onClick: vi.fn() }]}
+      />,
+    );
+    const main = screen.getByRole("button", { name: "Meet" });
+    const root = main.closest(".sidebar-segmented-new-menu");
+    expect(root?.className).toMatch(/--sm/);
+    expect(root?.className).not.toMatch(/--stretch/);
+    expect(screen.getByTestId("custom-icon")).toBeTruthy();
+  });
 });

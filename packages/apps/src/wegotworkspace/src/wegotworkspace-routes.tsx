@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   createRoute,
   createRouter,
   Outlet,
   redirect,
+  useNavigate,
+  useParams,
   useSearch,
   type AnyRouter,
   type RouterHistory,
@@ -19,13 +21,16 @@ import { DriveApp } from "@/drive-core/src/drive-app";
 import { validateDriveRouteSearch } from "@/drive-core/src/drive-route-search";
 import {
   meetRoomFromSearch,
+  meetSearchWithoutRoom,
   parseMeetRouteSearch,
   validateMeetRouteSearch,
 } from "@/meet-core/src/meet-route-search";
+import { MEET_MEETINGS_ROUTE, meetIsAdHocMeetingId } from "@/meet-core/src/meet-chat-route";
 import { InstallApp } from "@/install-core/src/install-app";
 import { MailApp } from "@/mail-core/src/mail-app";
-import { MeetApp } from "@/meet-core/src/meet-app";
-import { createWgwMeetGuestOrHostApiSource } from "@/meet-core/src/meet-api-source";
+import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
+import { MeetInviteGate, MeetChannelDeepLinkGate } from "@/meet-core/src/meet-invite-gate";
+import type { MeetChatRouteParams } from "@/meet-core/src/meet-chat-route";
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
@@ -174,14 +179,7 @@ function MockSettingsRoute() {
 function MockMeetRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
-  return (
-    <MeetWorkspace
-      data={bootstrap.data}
-      session={bootstrap.session}
-      listLoading={false}
-      onLogout={onLogout}
-    />
-  );
+  return <MeetWorkspace data={bootstrap.data} session={bootstrap.session} onLogout={onLogout} />;
 }
 
 function MockContactsRoute() {
@@ -235,14 +233,44 @@ function MockInstallRoute() {
   return <InstallWorkspace {...bootstrap} />;
 }
 
-function MeetGuestRoute() {
+const AuthenticatedMeetChatApp = withWeGotWorkspaceAuth(MeetChatApp);
+
+function MeetLiveRoute() {
+  const navigate = useNavigate();
+  const params = useParams({ strict: false }) as MeetChatRouteParams;
   const search = useSearch({ strict: false });
-  const room = useMemo(
-    () => meetRoomFromSearch(parseMeetRouteSearch(search as Record<string, unknown>)),
+  const parsedSearch = useMemo(
+    () => parseMeetRouteSearch(search as Record<string, unknown>),
     [search],
   );
-  const source = useMemo(() => createWgwMeetGuestOrHostApiSource(room), [room]);
-  return <MeetApp source={source} />;
+  const roomFromSearch = meetRoomFromSearch(parsedSearch);
+  const meetingId = params.meetingId?.trim() || null;
+  const adHocMeeting = meetIsAdHocMeetingId(meetingId);
+  const persistedMeetingId = meetingId && !adHocMeeting ? meetingId : null;
+  const inviteRoom = adHocMeeting ? meetingId : roomFromSearch;
+  const channelId = params.channelId ?? null;
+  const onConversationRoute = Boolean(
+    channelId || params.peerId || params.legacyId || persistedMeetingId,
+  );
+
+  useEffect(() => {
+    if (meetingId || onConversationRoute || !roomFromSearch) return;
+    void navigate({
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: roomFromSearch },
+      search: meetSearchWithoutRoom(parsedSearch),
+      replace: true,
+    });
+  }, [meetingId, navigate, onConversationRoute, parsedSearch, roomFromSearch]);
+
+  // One `/meet/meetings/{id}` pipeline: leftover codes and collection slugs.
+  // Signed-out → guest lobby; signed-in → MeetWorkspace.
+  if (meetingId || (!onConversationRoute && inviteRoom)) {
+    return (
+      <MeetInviteGate room={adHocMeeting ? meetingId : inviteRoom} channelId={persistedMeetingId} />
+    );
+  }
+  return <MeetChannelDeepLinkGate channelId={channelId} workspace={<AuthenticatedMeetChatApp />} />;
 }
 
 function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
@@ -442,7 +470,60 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/meet",
     head: meetPwaHead,
     validateSearch: validateMeetRouteSearch,
-    component: isLive ? withWeGotWorkspaceAuth(MeetApp) : MockMeetRoute,
+    beforeLoad: ({ search, location }) => {
+      const pathname = location.pathname;
+      if (
+        pathname.startsWith("/meet/meetings/") ||
+        pathname.startsWith("/meet/channels/") ||
+        pathname.startsWith("/meet/dms/")
+      ) {
+        return;
+      }
+      const parsed = parseMeetRouteSearch(search as Record<string, unknown>);
+      const room = meetRoomFromSearch(parsed);
+      if (!room) return;
+      throw redirect({
+        to: MEET_MEETINGS_ROUTE,
+        params: { meetingId: room },
+        search: meetSearchWithoutRoom(parsed),
+        replace: true,
+      });
+    },
+    // Live: Slack-like workspace. `/meet/channels/{id}` and persisted
+    // `/meet/meetings/{id}` stay mounted; only ad-hoc room codes use the
+    // invite gate. Anonymous invite landings still use the guest lobby.
+    component: isLive ? MeetLiveRoute : MockMeetRoute,
+  });
+
+  // Nested under /meet (already on UiStaticServer + FrontRoutingTest) so the
+  // workspace stays mounted when switching conversations. Type lives in the
+  // path: /meet/channels/{id} vs /meet/meetings/{id} vs /meet/dms/{peer}.
+  // /meet/guest and /meet/join stay sibling root routes so they redirect
+  // instead of matching `$legacyId`.
+  const meetChannelsRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "channels/$channelId",
+    head: meetPwaHead,
+  });
+
+  const meetMeetingsRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "meetings/$meetingId",
+    head: meetPwaHead,
+  });
+
+  const meetDmsRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "dms/$peerId",
+    head: meetPwaHead,
+  });
+
+  // Back-compat `/meet/{id}` so MeetChatApp stays mounted and can replace the
+  // URL (`dm:alice` → /meet/dms/alice, `chat-…` → /meet/channels/{id}).
+  const meetLegacyChannelRoute = createRoute({
+    getParentRoute: () => meetRoute,
+    path: "$legacyId",
+    head: meetPwaHead,
   });
 
   const meetGuestRoute = createRoute({
@@ -450,7 +531,19 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/meet/guest",
     head: meetGuestPwaHead,
     validateSearch: validateMeetRouteSearch,
-    component: MeetGuestRoute,
+    beforeLoad: ({ search }) => {
+      const parsed = parseMeetRouteSearch(search as Record<string, unknown>);
+      const room = meetRoomFromSearch(parsed);
+      if (room) {
+        throw redirect({
+          to: MEET_MEETINGS_ROUTE,
+          params: { meetingId: room },
+          search: meetSearchWithoutRoom(parsed),
+          replace: true,
+        });
+      }
+      throw redirect({ to: "/meet", search, replace: true });
+    },
   });
 
   const meetJoinRoute = createRoute({
@@ -458,8 +551,19 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/meet/join",
     head: meetGuestPwaHead,
     validateSearch: validateMeetRouteSearch,
-    // Signed-in calendar Join keeps host rights; unsigned invitees use /meet/guest.
-    component: isLive ? withWeGotWorkspaceAuth(MeetApp) : MockMeetRoute,
+    beforeLoad: ({ search }) => {
+      const parsed = parseMeetRouteSearch(search as Record<string, unknown>);
+      const room = meetRoomFromSearch(parsed);
+      if (room) {
+        throw redirect({
+          to: MEET_MEETINGS_ROUTE,
+          params: { meetingId: room },
+          search: meetSearchWithoutRoom(parsed),
+          replace: true,
+        });
+      }
+      throw redirect({ to: "/meet", search, replace: true });
+    },
   });
 
   const adminRoute = createRoute({
@@ -654,7 +758,12 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     driveRoute,
     docsRoute,
     settingsRoute,
-    meetRoute,
+    meetRoute.addChildren([
+      meetChannelsRoute,
+      meetMeetingsRoute,
+      meetDmsRoute,
+      meetLegacyChannelRoute,
+    ]),
     meetGuestRoute,
     meetJoinRoute,
     adminRoute,

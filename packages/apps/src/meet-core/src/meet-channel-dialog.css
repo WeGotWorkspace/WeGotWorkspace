@@ -1,0 +1,89 @@
+@import "../../styles.css" reference;
+
+/**
+ * Product Create/Edit channel dialog — cream/paper surface like Notes/Tasks.
+ * Lobby popovers keep `.meet-dialog-surface` (dark). In-call leave/end uses
+ * cream `.meet-call-dialog`.
+ */
+.meet-channel-dialog {
+  --meet-accent: #2a1644;
+  --meet-accent-strong: #1a0e2a;
+  --color-emerald: var(--meet-accent);
+  --button-primary-bg: var(--meet-accent-strong);
+  --button-primary-fg: #ffffff;
+  --button-outline-color: var(--color-ink);
+  --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --primary: var(--meet-accent-strong);
+  --primary-foreground: #ffffff;
+  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --foreground: var(--color-ink);
+  --color-foreground: var(--color-ink);
+  --muted-foreground: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --background: var(--color-cream, #ffffff);
+  --input-background: #ffffff;
+  --input-background-focus: #ffffff;
+  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --accent-foreground: var(--color-ink);
+  --popover: var(--color-cream, #ffffff);
+  --popover-foreground: var(--color-ink);
+  --modal-title-foreground: var(--color-ink);
+  --card-title-icon-color: var(--meet-accent);
+  --card-title-color: var(--color-ink);
+  --card-description-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --card-panel-bg: color-mix(in oklab, var(--color-ink) 3%, transparent);
+  --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
+  background-color: var(--color-cream, #ffffff);
+  color: var(--color-ink);
+  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.meet-channel-dialog .share-access-card {
+  --share-dialog-accent: var(--meet-accent);
+  --share-dialog-muted: var(--muted-foreground);
+  --share-dialog-tag-fg: var(--color-ink);
+}
+
+.meet-channel-dialog .field-label-row + .field-label-row {
+  @apply mt-3;
+}
+
+.meet-channel-dialog__share {
+  @apply mt-4;
+}
+
+.meet-channel-dialog__link-row {
+  @apply flex min-w-0 w-full items-center gap-2;
+}
+
+.meet-channel-dialog__link-row .input,
+.meet-channel-dialog__link-row input {
+  @apply min-w-0 flex-1;
+}
+
+.meet-channel-dialog__link-row .icon-button--size-sm {
+  @apply size-9 shrink-0;
+}
+
+.meet-channel-dialog__guest-hint {
+  @apply mb-4 text-sm;
+  color: var(--field-label-color);
+}
+
+.meet-channel-dialog__footer {
+  @apply mt-4 gap-2 sm:gap-0;
+}
+
+.meet-channel-dialog__footer .meet-channel-dialog__delete {
+  @apply w-full justify-center sm:w-auto sm:me-auto;
+  color: #b91c1c;
+}
+
+@media (max-width: 639px) {
+  .meet-channel-dialog__footer .meet-channel-dialog__delete {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+  }
+}

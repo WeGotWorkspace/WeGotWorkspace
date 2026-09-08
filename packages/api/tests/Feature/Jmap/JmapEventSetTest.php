@@ -226,6 +226,50 @@ final class JmapEventSetTest extends WgwDatabaseTestCase
         $this->assertSame(['start'], $args['notCreated']['no-start']['properties']);
     }
 
+    public function test_set_create_missing_title_reports_invalid_properties(): void
+    {
+        $payload = $this->sampleCalendarEventPayload();
+        unset($payload['title']);
+
+        $args = $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['no-title' => $payload]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame([], $args['created']);
+        $this->assertSame('invalidProperties', $args['notCreated']['no-title']['type']);
+        $this->assertSame(['title'], $args['notCreated']['no-title']['properties']);
+        $this->assertSame('title is required.', $args['notCreated']['no-title']['description']);
+    }
+
+    public function test_set_create_blank_title_reports_invalid_properties(): void
+    {
+        $payload = $this->sampleCalendarEventPayload();
+        $payload['title'] = '   ';
+
+        $args = $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['blank-title' => $payload]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame([], $args['created']);
+        $this->assertSame('invalidProperties', $args['notCreated']['blank-title']['type']);
+        $this->assertSame(['title'], $args['notCreated']['blank-title']['properties']);
+    }
+
+    public function test_set_update_blank_title_reports_invalid_properties(): void
+    {
+        $eventId = (string) $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => $this->sampleCalendarEventPayload()]], 'c'],
+        ])->assertOk()->json('methodResponses.0.1.created.d.id');
+
+        $args = $this->jmap([
+            ['CalendarEvent/set', ['accountId' => 'bob', 'update' => [$eventId => ['title' => '  ']]], 'u'],
+        ])->assertOk()->json('methodResponses.0.1');
+
+        $this->assertSame([], $args['updated']);
+        $this->assertSame('invalidProperties', $args['notUpdated'][$eventId]['type']);
+        $this->assertSame(['title'], $args['notUpdated'][$eventId]['properties']);
+    }
+
     public function test_set_partial_success_reports_all_six_buckets(): void
     {
         $eventId = (string) $this->jmap([

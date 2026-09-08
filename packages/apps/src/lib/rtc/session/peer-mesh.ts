@@ -922,8 +922,10 @@ export class RtcPeerMesh {
       const joined = await this.options.signaling.join({
         room: this.options.room,
         name: this.myName,
+        peerId: previousPeerId ?? undefined,
+        sessionKey: this.sessionKey ?? undefined,
       });
-      this.myId = joined.peerId ?? null;
+      this.myId = joined.peerId ?? previousPeerId ?? null;
       if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
       await this.onPoll({ peers: joined.peers, messages: [] });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });
@@ -947,6 +949,7 @@ export class RtcPeerMesh {
       room: this.options.room,
       name: this.myName,
       peerId: input.peerId,
+      sessionKey: this.sessionKey ?? undefined,
     });
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
@@ -983,8 +986,12 @@ export class RtcPeerMesh {
       room: this.options.room,
       name: this.myName,
       peerId: this.myId,
+      sessionKey: this.sessionKey ?? undefined,
     });
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+    // Same-peer rename (admit): refresh roster and dial now — do not wait for
+    // the next poll, which may already be on the idle interval.
+    await this.onPoll({ peers: joined.peers, messages: [] });
   }
 
   async sendByeToAll(): Promise<void> {

@@ -105,7 +105,10 @@ describe("CalendarListView event set", () => {
     el.events = new Map([["near", instance("near", "2026-08-26T10:00:00", "Near")]]);
     document.body.append(el);
     await el.updateComplete;
-    expect(el.shadowRoot?.querySelector(".agenda-day-date")?.textContent).toBe("Aug 26");
+    expect(el.shadowRoot?.querySelector(".list-sticky-header__emphasis")?.textContent).toBe(
+      "Wednesday",
+    );
+    expect(el.shadowRoot?.querySelector(".list-sticky-header__rest")?.textContent).toBe("Aug 26");
   });
 
   it("includes the year in headings when showYearInHeadings is set", async () => {
@@ -116,7 +119,9 @@ describe("CalendarListView event set", () => {
     el.events = new Map([["near", instance("near", "2026-08-26T10:00:00", "Near")]]);
     document.body.append(el);
     await el.updateComplete;
-    expect(el.shadowRoot?.querySelector(".agenda-day-date")?.textContent).toBe("Aug 26, 2026");
+    expect(el.shadowRoot?.querySelector(".list-sticky-header__rest")?.textContent).toBe(
+      "Aug 26, 2026",
+    );
   });
 
   it("scrolls the matching occurrence to the start of the agenda", async () => {

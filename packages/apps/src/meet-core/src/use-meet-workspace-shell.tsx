@@ -10,20 +10,20 @@ import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
 import { playMeetKnockSound } from "@/meet-core/src/meet-chat-utils";
-import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
+import type { MeetAPIOperations, MeetUIData } from "@/meet-core/src/meet-types";
+import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetController } from "@/meet-core/src/use-meet-controller";
 
-type MeetWorkspaceShellInput = Pick<
-  MeetWorkspaceProps,
-  | "data"
-  | "session"
-  | "operations"
-  | "listLoading"
-  | "invitedRoom"
-  | "isJoinRoute"
-  | "buildCallLink"
-  | "onRoomChange"
->;
+export type MeetWorkspaceShellInput = {
+  data: MeetUIData;
+  session: WorkspaceSession;
+  operations?: MeetAPIOperations;
+  listLoading?: boolean;
+  invitedRoom?: string | null;
+  isJoinRoute?: boolean;
+  buildCallLink?: (roomCode: string) => string;
+  onRoomChange?: (roomCode: string | null) => void;
+};
 
 export function useMeetWorkspaceShell({
   data,
@@ -174,6 +174,7 @@ export function useMeetWorkspaceShell({
       showWaitingForHostScreen,
       showInviteErrorScreen,
       canStartReservedRoom,
+      displayNameLocked: hasSignedInIdentity && inJoinFlow,
     },
     room: {
       hasSignedInIdentity,
@@ -191,7 +192,6 @@ export function useMeetWorkspaceShell({
       activeSpeaker,
       onSpeakerChange: setSpeakerId,
       onCopyLink: copyCallLink,
-      onMuteSoon: (name: string) => toast.show(meetLabels.muteSoon(name), { severity: "info" }),
       onToastInfo: (message: string) => toast.show(message, { severity: "info" }),
       onToastError: (message: string) => toast.showError(message),
     },

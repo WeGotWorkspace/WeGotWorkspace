@@ -65,6 +65,28 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertSame('bare', $byUsername['bare'] ?? null);
     }
 
+    public function test_invitees_exclude_group_container_and_group_principals(): void
+    {
+        // The `principals/groups` container node (and group principals under
+        // it) must never surface as invitable pseudo-users.
+        Principal::query()->firstOrCreate(
+            ['uri' => 'principals/groups'],
+            ['displayname' => 'Groups', 'email' => null],
+        );
+        Principal::query()->firstOrCreate(
+            ['uri' => 'principals/groups/staff'],
+            ['displayname' => 'Staff', 'email' => null],
+        );
+
+        $list = $this->asUser('bob')->getJson('/api/v1/calendars/scheduling/invitees')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $usernames = array_map(static fn (array $row): string => (string) $row['username'], $list);
+        $this->assertNotContains('groups', $usernames);
+        $this->assertNotContains('staff', $usernames);
+    }
+
     public function test_duplicate_request_copies_for_same_uid_list_as_one_notification(): void
     {
         $uid = 'dup-invite-uid';

@@ -120,7 +120,10 @@ final class WgwSchemaMigratorTest extends TestCase
         }
 
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'owner_user'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'admitted'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'grantee_group'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
     }
 
     private static function legacyAppMigrationVersion(\PDO $pdo): int

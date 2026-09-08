@@ -1,3 +1,4 @@
+import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import type { MeetCallStatus, MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import type { PeerInboundSample } from "@/meet-core/src/meet-inbound-media-hints";
@@ -31,6 +32,17 @@ export type MeetCallSnapshot = {
   endedMessage: string | null;
   /** Another browser tab reports an active call (BroadcastChannel signal). */
   remoteCallActive: boolean;
+  /**
+   * The Meet chat workspace is mounted but the live call's channel is not on
+   * screen (another channel selected). Lets the mini-player show inside `/meet`;
+   * legacy shells never set this, so their full-screen call keeps hiding it.
+   */
+  callUiParked: boolean;
+  /**
+   * Display label for the live call's channel/meeting/DM (mini-player title).
+   * Null for ad-hoc/legacy rooms — the mini-player falls back to "Meet".
+   */
+  callLabel: string | null;
 };
 
 function createInitialSnapshot(): MeetCallSnapshot {
@@ -51,6 +63,8 @@ function createInitialSnapshot(): MeetCallSnapshot {
     knockers: [],
     endedMessage: null,
     remoteCallActive: false,
+    callUiParked: false,
+    callLabel: null,
   };
 }
 
@@ -133,12 +147,22 @@ export class MeetCallStore {
   };
 
   /**
+   * Registered by the Meet chat workspace: selects the live call's channel.
+   * Lets the mini-player's "return to call" work while already on `/meet`
+   * (parked call), where navigation alone would not change the selection.
+   */
+  readonly focusCallChannelRef: Ref<null | (() => void)> = { current: null };
+
+  /**
    * Headless mic/camera toggles for the mini-player. Same callbacks as full Meet
    * (`useMeetLocalMedia`); both UIs read `micOn`/`videoOn` from this store.
    */
   readonly toggleMicRef: Ref<null | (() => void)> = { current: null };
 
   readonly toggleVideoRef: Ref<null | (() => void)> = { current: null };
+
+  /** Serializes join/requestJoin across remounts so a second peer is not minted. */
+  readonly joinInFlightRef: Ref<Promise<void> | null> = { current: null };
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -194,10 +218,18 @@ export class MeetCallStore {
 
   setMicOn = (value: Updater<boolean>): void => {
     this.set("micOn", value, this.micOnRef);
+    syncMeetLocalTrackEnabled(this.localStreamRef.current, {
+      mic: this.micOnRef.current,
+      video: this.videoOnRef.current,
+    });
   };
 
   setVideoOn = (value: Updater<boolean>): void => {
     this.set("videoOn", value, this.videoOnRef);
+    syncMeetLocalTrackEnabled(this.localStreamRef.current, {
+      mic: this.micOnRef.current,
+      video: this.videoOnRef.current,
+    });
   };
 
   setScreenOn = (value: Updater<boolean>): void => {
@@ -234,6 +266,14 @@ export class MeetCallStore {
 
   setRemoteCallActive = (value: Updater<boolean>): void => {
     this.set("remoteCallActive", value, this.remoteCallActiveRef);
+  };
+
+  setCallUiParked = (value: Updater<boolean>): void => {
+    this.set("callUiParked", value);
+  };
+
+  setCallLabel = (value: Updater<string | null>): void => {
+    this.set("callLabel", value);
   };
 
   resetPeerMaps = (): void => {

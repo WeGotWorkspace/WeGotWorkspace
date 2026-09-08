@@ -5,12 +5,25 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "CalendarListView.css"), "utf8");
+const ts = readFileSync(join(here, "CalendarListView.ts"), "utf8");
 
 describe("CalendarListView heading CSS", () => {
   it("lets the workspace override sticky day-heading backgrounds", () => {
     expect(css).toMatch(
       /\.agenda-day-heading \{[\s\S]*background-color:\s*var\(\s*--_lc-list-heading-bg/,
     );
+  });
+
+  it("reuses list-sticky-header split-label weights instead of agenda-only type", () => {
+    expect(ts).toMatch(/list-sticky-header\/src\/list-sticky-header\.css\?inline/);
+    expect(ts).toMatch(/list-sticky-header__emphasis/);
+    expect(ts).toMatch(/list-sticky-header__rest/);
+    expect(css).not.toMatch(/agenda-day-weekday/);
+    expect(css).not.toMatch(/agenda-day-date/);
+    expect(css).not.toMatch(/font-\[650\]/);
+    expect(css).not.toMatch(/font-\[450\]/);
+    expect(css).toMatch(/--list-sticky-header-color/);
+    expect(css).not.toMatch(/--list-sticky-header-emphasis-font-size/);
   });
 
   it("lets the workspace reserve scroll-end room under a floating field", () => {

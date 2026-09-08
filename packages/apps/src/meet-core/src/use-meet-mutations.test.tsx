@@ -25,12 +25,18 @@ function createRoomStub(): MeetRoomState {
     resetPeerMaps: vi.fn(),
     roomCodeRef: { current: "abc123" },
     selfIdRef: { current: "peer-1" },
+    joinInFlightRef: { current: null },
     statusRef: { current: "in-call" as const },
     displayNameRef: { current: "Guest" },
+    waitingForAdmissionRef: { current: false },
+    setVideoOn: vi.fn(),
   } as unknown as MeetRoomState;
 }
 
-function createSessionStub(operations?: { reserveRoom?: ReturnType<typeof vi.fn> }) {
+function createSessionStub(operations?: {
+  reserveRoom?: ReturnType<typeof vi.fn>;
+  chat?: ReturnType<typeof vi.fn>;
+}) {
   const meetRtc = {
     leave: vi.fn().mockResolvedValue(undefined),
     join: vi.fn().mockResolvedValue(undefined),
@@ -44,6 +50,97 @@ function createSessionStub(operations?: { reserveRoom?: ReturnType<typeof vi.fn>
     stopLocalMedia: vi.fn(),
   } as unknown as MeetCallSessionState;
 }
+
+describe("useMeetMutations joinRoom", () => {
+  it("does not mint a second signaling peer when the same room is already live", async () => {
+    const session = createSessionStub();
+    const room = createRoomStub();
+    room.statusRef.current = "in-call";
+    room.roomCodeRef.current = "chat-general";
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    await result.current.joinRoom("chat-general");
+    await result.current.joinRoom("chat-general");
+
+    expect(session.meetRtc.join).not.toHaveBeenCalled();
+    expect(room.setSelfId).not.toHaveBeenCalled();
+  });
+
+  it("joins once when two startCalls overlap on an idle room", async () => {
+    const session = createSessionStub();
+    const room = createRoomStub();
+    room.status = "idle";
+    room.statusRef.current = "idle";
+    room.roomCodeRef.current = null;
+    room.selfIdRef.current = null;
+    room.setStatus = vi.fn((status: string) => {
+      room.statusRef.current = status as typeof room.statusRef.current;
+    });
+    let releaseJoin: (() => void) | undefined;
+    session.meetRtc.join = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseJoin = resolve;
+        }),
+    );
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    const first = result.current.joinRoom("chat-general");
+    const second = result.current.joinRoom("chat-general");
+    await vi.waitFor(() => {
+      expect(session.meetRtc.join).toHaveBeenCalledTimes(1);
+    });
+    releaseJoin?.();
+    await Promise.all([first, second]);
+    expect(session.meetRtc.join).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useMeetMutations requestJoin", () => {
+  it("does not mint a second knock peer while waiting for admission", async () => {
+    const session = createSessionStub();
+    const room = createRoomStub();
+    room.status = "idle";
+    room.statusRef.current = "idle";
+    room.roomCodeRef.current = "chat-test";
+    room.waitingForAdmissionRef.current = true;
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    await result.current.requestJoin("chat-test");
+
+    expect(session.meetRtc.join).not.toHaveBeenCalled();
+  });
+});
 
 describe("useMeetMutations", () => {
   it("does not leave on rerender when the room object identity changes", () => {
@@ -119,5 +216,48 @@ describe("useMeetMutations", () => {
     expect(reserved.ownerPrincipal).toBe("u:bob");
     expect(reserved.room).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
     expect(session.meetRtc.join).toHaveBeenCalled();
+  });
+
+  it("sends a mute control for another peer when the caller can moderate", async () => {
+    const chat = vi.fn().mockResolvedValue({ ok: true, delivered: 1 });
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: true,
+        leaveRef,
+      }),
+    );
+
+    await result.current.mutePeer("peer-2");
+
+    expect(chat).toHaveBeenCalledTimes(1);
+    const sent = chat.mock.calls[0]?.[0] as { text: string; from: string; room: string };
+    expect(sent.room).toBe("abc123");
+    expect(sent.from).toBe("peer-1");
+    expect(sent.text).toContain('"kind":"mute"');
+    expect(sent.text).toContain('"peerId":"peer-2"');
+  });
+
+  it("does not send mute when the caller cannot moderate", async () => {
+    const chat = vi.fn().mockResolvedValue({ ok: true, delivered: 1 });
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+      }),
+    );
+
+    await result.current.mutePeer("peer-2");
+
+    expect(chat).not.toHaveBeenCalled();
   });
 });

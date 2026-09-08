@@ -33,6 +33,17 @@ export function canWriteCalendarCollection(calendar?: CalendarCollectionWriteInf
   return calendar?.mayWrite !== false;
 }
 
+/** Writable `isDefault` calendar, else the first writable collection. */
+export function pickDefaultCalendarId(
+  calendars: Array<Pick<CalendarInfo, "id" | "isDefault"> & CalendarCollectionWriteInfo>,
+  preferred?: string,
+): string | undefined {
+  const writable = calendars.filter((calendar) => canWriteCalendarCollection(calendar));
+  if (preferred && writable.some((calendar) => calendar.id === preferred)) return preferred;
+  if (preferred && calendars.some((calendar) => calendar.id === preferred)) return preferred;
+  return (writable.find((calendar) => calendar.isDefault) ?? writable[0])?.id;
+}
+
 /** Open Edit calendar — owners, team, subscriptions, and ACL sharees (name + color). */
 export function canOpenCalendarSettings(calendar?: CalendarSettingsInfo): boolean {
   if (!calendar) return false;

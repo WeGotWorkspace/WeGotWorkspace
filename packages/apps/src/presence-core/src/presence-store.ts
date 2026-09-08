@@ -5,6 +5,7 @@ import type {
   PresenceChatMessage,
   PresenceCoworker,
   PresenceEnvelope,
+  PresenceMeetFanoutEvent,
   PresenceMeshSession,
   PresenceSnapshot,
   PresenceUserStatus,
@@ -45,9 +46,13 @@ export type PresenceStoreOptions = {
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
   typingTtlMs?: number;
+  channelTypingTtlMs?: number;
 };
 
 const DEFAULT_TYPING_TTL_MS = 5000;
+
+/** Channel typing outlives the ~4s sender heartbeat so continuous typing never flickers. */
+const DEFAULT_CHANNEL_TYPING_TTL_MS = 6000;
 
 const MAX_CHAT_HISTORY = 200;
 
@@ -58,6 +63,7 @@ function createInitialSnapshot(): PresenceSnapshot {
     roster: [],
     chat: [],
     typingUsernames: [],
+    channelTyping: {},
   };
 }
 
@@ -79,6 +85,8 @@ export class PresenceStore {
 
   private readonly listeners = new Set<() => void>();
 
+  private readonly meetListeners = new Set<(event: PresenceMeetFanoutEvent) => void>();
+
   private session: PresenceMeshSession | null = null;
 
   private followerSession: FollowerPresenceSession | null = null;
@@ -98,6 +106,8 @@ export class PresenceStore {
   private readonly cancelTimeout: typeof clearTimeout;
 
   private readonly typingTtlMs: number;
+
+  private readonly channelTypingTtlMs: number;
 
   private readonly crossWindowLeader: boolean;
 
@@ -129,6 +139,11 @@ export class PresenceStore {
 
   private typingTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** channel id -> username -> typing expiry timestamp. */
+  private readonly channelTypingUntil = new Map<string, Map<string, number>>();
+
+  private channelTypingTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(private readonly options: PresenceStoreOptions) {
     this.visibility =
       options.visibility === undefined ? defaultVisibilityPort() : options.visibility;
@@ -136,6 +151,7 @@ export class PresenceStore {
     this.scheduleTimeout = options.setTimeoutFn ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.clearTimeoutFn ?? clearTimeout.bind(globalThis);
     this.typingTtlMs = options.typingTtlMs ?? DEFAULT_TYPING_TTL_MS;
+    this.channelTypingTtlMs = options.channelTypingTtlMs ?? DEFAULT_CHANNEL_TYPING_TTL_MS;
     this.crossWindowLeader = options.crossWindowLeader ?? false;
     this.createTabCoordinator =
       options.createTabCoordinator ?? ((handlers) => new PrincipalTabCoordinator(handlers));
@@ -145,6 +161,14 @@ export class PresenceStore {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+    };
+  };
+
+  /** Meet acceleration envelopes, after sender-username checks. Apply is `meet-mesh-sot`. */
+  subscribeMeetFanout = (listener: (event: PresenceMeetFanoutEvent) => void): (() => void) => {
+    this.meetListeners.add(listener);
+    return () => {
+      this.meetListeners.delete(listener);
     };
   };
 
@@ -221,6 +245,12 @@ export class PresenceStore {
       this.cancelTimeout(this.typingTimer);
       this.typingTimer = null;
     }
+    if (this.channelTypingTimer !== null) {
+      this.cancelTimeout(this.channelTypingTimer);
+      this.channelTypingTimer = null;
+    }
+    this.channelTypingUntil.clear();
+    this.meetListeners.clear();
     const session = this.session;
     this.session = null;
     this.followerSession = null;
@@ -249,6 +279,36 @@ export class PresenceStore {
   sendTyping(): void {
     if (!this.session || !this.joined) return;
     this.session.broadcast({ v: 1, kind: "typing" });
+  }
+
+  /** Heartbeat "typing in channel" signal; a no-op while the mesh is not joined. */
+  sendChannelTyping(channelId: string): void {
+    if (!channelId || !this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing", channel: channelId });
+  }
+
+  /** Early retraction (send/blur/cleared composer); receivers otherwise expire by TTL. */
+  stopChannelTyping(channelId: string): void {
+    if (!channelId || !this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing", channel: channelId, stop: true });
+  }
+
+  /**
+   * Targeted send for Meet payloads. Looks up every live peer id for each
+   * username (multi-tab) and never broadcasts — missing peers just miss the
+   * hint and wait for the JMAP/room-status poll.
+   */
+  sendToUsernames(usernames: readonly string[], envelope: PresenceEnvelope): void {
+    if (!this.session || !this.joined || usernames.length === 0) return;
+    const targets = new Set(
+      usernames.map((name) => name.trim()).filter((name) => name && name !== this.selfUsername),
+    );
+    if (targets.size === 0) return;
+    for (const peer of this.session.getRoomPeers()) {
+      const username = peer.user ?? "";
+      if (!targets.has(username)) continue;
+      this.session.sendTo(peer.id, envelope);
+    }
   }
 
   setAway(away: boolean): void {
@@ -399,10 +459,99 @@ export class PresenceStore {
     }
 
     if (envelope.kind === "typing" && senderUsername && senderUsername !== this.selfUsername) {
+      if (envelope.channel) {
+        this.handleChannelTyping(envelope.channel, senderUsername, envelope.stop === true);
+        return;
+      }
       this.typingUntil.set(senderUsername, this.now() + this.typingTtlMs);
       this.scheduleTypingExpiry();
       this.publishTyping();
+      return;
     }
+
+    if (!senderUsername || senderUsername === this.selfUsername) return;
+
+    if (envelope.kind === "channel-message") {
+      if (envelope.message.authorId !== senderUsername) return;
+      this.emitMeetFanout({
+        kind: "channel-message",
+        senderUsername,
+        message: envelope.message,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-message-patch") {
+      this.emitMeetFanout({
+        kind: "channel-message-patch",
+        senderUsername,
+        id: envelope.id,
+        channel: envelope.channel,
+        body: envelope.body,
+        editedAt: envelope.editedAt,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-message-destroy") {
+      this.emitMeetFanout({
+        kind: "channel-message-destroy",
+        senderUsername,
+        id: envelope.id,
+        channel: envelope.channel,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-reaction") {
+      this.emitMeetFanout({
+        kind: "channel-reaction",
+        senderUsername,
+        messageId: envelope.messageId,
+        channel: envelope.channel,
+        emoji: envelope.emoji,
+        on: envelope.on,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-changed") {
+      this.emitMeetFanout({
+        kind: "channel-changed",
+        senderUsername,
+        channel: envelope.channel,
+      });
+      return;
+    }
+
+    if (envelope.kind === "call-active") {
+      this.emitMeetFanout({
+        kind: "call-active",
+        senderUsername,
+        channel: envelope.channel,
+        active: envelope.active,
+        ...(envelope.audioOnly === true ? { audioOnly: true as const } : {}),
+      });
+    }
+  }
+
+  private emitMeetFanout(event: PresenceMeetFanoutEvent): void {
+    for (const listener of this.meetListeners) listener(event);
+  }
+
+  private handleChannelTyping(channelId: string, username: string, stop: boolean): void {
+    const channelMap = this.channelTypingUntil.get(channelId);
+    if (stop) {
+      if (!channelMap?.delete(username)) return;
+      if (channelMap.size === 0) this.channelTypingUntil.delete(channelId);
+      this.publishChannelTyping();
+      return;
+    }
+    const map = channelMap ?? new Map<string, number>();
+    if (!channelMap) this.channelTypingUntil.set(channelId, map);
+    map.set(username, this.now() + this.channelTypingTtlMs);
+    this.scheduleChannelTypingExpiry();
+    this.publishChannelTyping();
   }
 
   private appendChat(message: PresenceChatMessage): void {
@@ -460,6 +609,35 @@ export class PresenceStore {
       this.publishTyping();
       if (this.typingUntil.size > 0) this.scheduleTypingExpiry();
     }, this.typingTtlMs);
+  }
+
+  private currentChannelTyping(): Record<string, string[]> {
+    const now = this.now();
+    const result: Record<string, string[]> = {};
+    for (const [channelId, byUsername] of this.channelTypingUntil) {
+      for (const [username, until] of byUsername) {
+        if (until <= now) byUsername.delete(username);
+      }
+      if (byUsername.size === 0) {
+        this.channelTypingUntil.delete(channelId);
+        continue;
+      }
+      result[channelId] = [...byUsername.keys()].sort();
+    }
+    return result;
+  }
+
+  private publishChannelTyping(): void {
+    this.update({ channelTyping: this.currentChannelTyping() });
+  }
+
+  private scheduleChannelTypingExpiry(): void {
+    if (this.channelTypingTimer !== null) return;
+    this.channelTypingTimer = this.scheduleTimeout(() => {
+      this.channelTypingTimer = null;
+      this.publishChannelTyping();
+      if (this.channelTypingUntil.size > 0) this.scheduleChannelTypingExpiry();
+    }, this.channelTypingTtlMs);
   }
 
   private update(partial: Partial<PresenceSnapshot>): void {

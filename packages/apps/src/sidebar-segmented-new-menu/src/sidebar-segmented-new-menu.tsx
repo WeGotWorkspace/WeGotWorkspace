@@ -1,9 +1,13 @@
+import type { ReactNode } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
+import type { ButtonSizeProp } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 import { cn } from "@/lib/utils";
 import "./sidebar-segmented-new-menu.css";
+
+export type SidebarSegmentedNewMenuSize = Extract<ButtonSizeProp, "sm" | "lg">;
 
 export type SidebarSegmentedNewMenuProps = {
   mainLabel: string;
@@ -15,6 +19,10 @@ export type SidebarSegmentedNewMenuProps = {
   /** BEM block. Calendar passes `calendar-new-menu` to keep existing CSS. */
   blockName?: string;
   className?: string;
+  icon?: ReactNode;
+  size?: SidebarSegmentedNewMenuSize;
+  /** Stretch to the parent width (sidebar New). Header Meet passes false. */
+  stretch?: boolean;
 };
 
 export function SidebarSegmentedNewMenu({
@@ -25,14 +33,17 @@ export function SidebarSegmentedNewMenu({
   mainDisabled = false,
   blockName = "sidebar-segmented-new-menu",
   className,
+  icon,
+  size = "lg",
+  stretch = true,
 }: SidebarSegmentedNewMenuProps) {
   const hasMenu = items.length > 0;
   const mainButton = (
     <Button
       label={mainLabel}
-      icon={<Plus />}
+      icon={icon ?? <Plus />}
       onClick={onMainAction}
-      size="lg"
+      size={size}
       pill
       variant="primary"
       disabled={mainDisabled}
@@ -43,7 +54,14 @@ export function SidebarSegmentedNewMenu({
   if (!hasMenu) return mainButton;
 
   return (
-    <div className={cn(blockName, className)}>
+    <div
+      className={cn(
+        blockName,
+        size === "sm" && `${blockName}--sm`,
+        stretch && `${blockName}--stretch`,
+        className,
+      )}
+    >
       {mainButton}
       <DropdownMenu
         align="end"
@@ -51,7 +69,7 @@ export function SidebarSegmentedNewMenu({
           <IconButton
             label={menuLabel}
             icon={<ChevronDown />}
-            size="lg"
+            size={size}
             variant="primary"
             showTooltip={false}
             className={`${blockName}__menu`}

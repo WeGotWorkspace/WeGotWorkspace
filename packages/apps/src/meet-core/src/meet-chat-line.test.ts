@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildLocalMeetChatLine, buildMeetChatLineFromPoll } from "@/meet-core/src/meet-chat-line";
+import {
+  buildLocalMeetChatLine,
+  buildMeetChatLineFromPoll,
+  meetChatLineToChannelMessage,
+  mergeMeetRoomChatIntoChannel,
+} from "@/meet-core/src/meet-chat-line";
 
 describe("meet chat line", () => {
   it("builds poll chat lines with self detection", () => {
@@ -36,5 +41,32 @@ describe("meet chat line", () => {
       isSelf: true,
     });
     expect(buildLocalMeetChatLine("peer-a", "You", "hello").id).toMatch(/^me-\d+-[a-f0-9]+$/);
+  });
+
+  it("maps room chat lines onto channel messages for the guest rail", () => {
+    const line = buildLocalMeetChatLine("peer-a", "Ada", "hello", 1_700_000_000_000);
+    expect(meetChatLineToChannelMessage(line, "guest-room")).toMatchObject({
+      id: line.id,
+      channelId: "guest-room",
+      authorId: "peer-a",
+      authorName: "Ada",
+      body: "hello",
+      createdAt: 1_700_000_000_000,
+      reactions: [],
+      mentions: [],
+      previews: [],
+    });
+  });
+
+  it("merges guest room-poll lines into the host channel thread", () => {
+    const channel = meetChatLineToChannelMessage(
+      buildLocalMeetChatLine("admin", "Admin", "from host", 1),
+      "chat-test",
+    );
+    const guestLine = buildMeetChatLineFromPoll("guest-1", "Ada", "from guest", "admin", 2);
+    const selfEcho = buildLocalMeetChatLine("admin", "Admin", "echo", 3);
+    const merged = mergeMeetRoomChatIntoChannel([channel], [guestLine, selfEcho], "chat-test");
+    expect(merged.map((row) => row.body)).toEqual(["from host", "from guest"]);
+    expect(merged[1]?.channelId).toBe("chat-test");
   });
 });

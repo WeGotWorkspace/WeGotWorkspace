@@ -8,6 +8,7 @@ import {
 import { Circle, RefreshCw, Trash2, UserMinus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
+import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
@@ -183,12 +184,9 @@ function ContactsListRows({
     () =>
       groupContactCardsBySection(visibleCards).map((section) => (
         <section key={section.letter} aria-labelledby={`contacts-section-${section.letter}`}>
-          <div
-            id={`contacts-section-${section.letter}`}
-            className="contacts-list-panel__section-header"
-          >
+          <ListStickyHeader id={`contacts-section-${section.letter}`}>
             {section.letter}
-          </div>
+          </ListStickyHeader>
           {section.cards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;

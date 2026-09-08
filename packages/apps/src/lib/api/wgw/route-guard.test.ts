@@ -33,6 +33,10 @@ describe("isWgwPublicRoutePathname", () => {
   it("detects share and meet guest routes", () => {
     expect(isWgwPublicRoutePathname("/share/demo-token")).toBe(true);
     expect(isWgwPublicRoutePathname("/meet/guest")).toBe(true);
+    expect(isWgwPublicRoutePathname("/meet/channels/general")).toBe(true);
+    expect(isWgwPublicRoutePathname("/meet/meetings/h8y8-ewp6-al8n")).toBe(true);
+    expect(isWgwPublicRoutePathname("/meet")).toBe(true);
+    expect(isWgwPublicRoutePathname("/meet/dms/alice")).toBe(false);
     expect(isWgwPublicRoutePathname("/drive")).toBe(false);
   });
 });

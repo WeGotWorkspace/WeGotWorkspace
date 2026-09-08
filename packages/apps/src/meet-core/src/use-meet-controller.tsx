@@ -19,7 +19,7 @@ type UseMeetControllerArgs = {
 
 /**
  * Meet workspace controller: composes room state, RTC/media session, and mutation slices.
- * UI shell state lives in useMeetWorkspaceShell (custom lobby/room layout).
+ * UI shell state lives in useMeetWorkspaceShell.
  */
 export function useMeetController({
   session,
@@ -84,6 +84,9 @@ export function useMeetController({
     endedMessage: room.endedMessage,
     chatMessages: room.chatMessages,
     localVideoRef: callSession.localVideoRef,
+    // Live local stream for tile-based stages (MeetCallBar/MeetCallExpanded);
+    // read at render time — join/toggle state changes re-render consumers.
+    getLocalStream: callSession.getLocalStream,
     audioInputs: callSession.audioInputs,
     videoInputs: callSession.videoInputs,
     selectedMicId: callSession.selectedMicId,
@@ -94,11 +97,13 @@ export function useMeetController({
     requestJoin: mutations.requestJoin,
     admitKnocker: mutations.admitKnocker,
     denyKnocker: mutations.denyKnocker,
+    mutePeer: mutations.mutePeer,
     endCallForAll: mutations.endCallForAll,
     leave: mutations.leave,
     sendChat: mutations.sendChat,
     toggleMic: callSession.toggleMic,
     toggleVideo: callSession.toggleVideo,
+    setVideoOn: room.setVideoOn,
     toggleScreenShare: callSession.toggleScreenShare,
     switchMic: callSession.switchMic,
     switchCamera: callSession.switchCamera,
