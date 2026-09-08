@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { parseUrlList } from "@/lib/rtc/config";
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
@@ -34,6 +34,7 @@ export function useMeetCallSession({
   leaveRef,
   callStore,
 }: UseMeetCallSessionArgs) {
+  const toast = useAppToast();
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -100,7 +101,7 @@ export function useMeetCallSession({
         peerId !== room.selfIdRef.current &&
         room.selfIdRef.current
       ) {
-        toast.info(meetLabels.participantLeft(name));
+        toast.show(meetLabels.participantLeft(name), { severity: "info" });
       }
     },
     onConnectionFailed: (_peerId, peerName) => {

@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type { HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { buildMeetChatLineFromPoll, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
@@ -68,6 +68,7 @@ export function useMeetPollHandler({
   setWaitingForAdmission,
   setChatMessages,
 }: UseMeetPollHandlerArgs) {
+  const toast = useAppToast();
   return useCallback(
     async (poll: HttpSignalingPollResult) => {
       const roster = poll.peers ?? [];
@@ -96,7 +97,7 @@ export function useMeetPollHandler({
           rosterRef.current = activeRoster;
         } else {
           for (const name of listNewParticipantNames(rosterRef.current, activeRoster, selfPeerId)) {
-            toast.success(meetLabels.participantJoined(name));
+            toast.showSuccess(meetLabels.participantJoined(name));
           }
           rosterRef.current = activeRoster;
         }
@@ -118,8 +119,8 @@ export function useMeetPollHandler({
           }
           if (control.kind === "end") {
             if (statusRef.current === "in-call") {
-              setEndedMessage(`Call ended by ${control.by}.`);
-              toast.info(`Call ended by ${control.by}.`);
+              setEndedMessage(meetLabels.callEndedBy(control.by));
+              toast.show(meetLabels.callEndedBy(control.by), { severity: "info" });
               await leaveRef.current?.({ preserveEndedMessage: true });
             }
             continue;
@@ -137,7 +138,7 @@ export function useMeetPollHandler({
           }
           if (control.kind === "mute") {
             if (control.peerId === selfPeerId && muteMicRef.current?.()) {
-              toast.info(meetLabels.mutedByHost);
+              toast.show(meetLabels.mutedByHost, { severity: "info" });
             }
             continue;
           }
@@ -158,11 +159,11 @@ export function useMeetPollHandler({
               },
               setStatus: (status) => setStatus(status),
               setStartedAt: (value) => setStartedAt(value),
-              onAdmitted: () => toast.success("You were let in."),
+              onAdmitted: () => toast.showSuccess(meetLabels.youWereLetIn),
               onRtcReady: () => meetRtcRef.current?.retryRoomPeerConnections(),
             });
           } else if (control.kind === "deny") {
-            toast.error("The host denied your request to join.");
+            toast.showError(meetLabels.joinDenied);
             await leaveRef.current?.();
           }
           continue;
@@ -193,6 +194,7 @@ export function useMeetPollHandler({
       setStatus,
       setWaitingForAdmission,
       statusRef,
+      toast,
       waitingForAdmissionRef,
     ],
   );

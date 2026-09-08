@@ -3,15 +3,23 @@
  */
 import type { Dispatch, SetStateAction } from "react";
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
 
 type CallStatus = "idle" | "preparing" | "waiting" | "in-call" | "failed";
 
-vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() },
+const toastApi = {
+  show: vi.fn(),
+  showSuccess: vi.fn(),
+  showError: vi.fn(),
+  dismiss: vi.fn(),
+};
+
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => toastApi,
 }));
 
 function createPollHandler(
@@ -35,6 +43,7 @@ function createPollHandler(
   >;
   const updateJoinName = overrides.updateJoinName ?? vi.fn().mockResolvedValue(undefined);
   const retryRoomPeerConnections = vi.fn();
+  const setEndedMessage = vi.fn();
   const { result } = renderHook(() =>
     useMeetPollHandler({
       selfIdRef: { current: "self-1" },
@@ -51,7 +60,7 @@ function createPollHandler(
       meetRtcRef: { current: { updateJoinName, retryRoomPeerConnections } as never },
       muteMicRef: { current: muteMic },
       setKnockers,
-      setEndedMessage: vi.fn(),
+      setEndedMessage,
       setStatus,
       setStartedAt,
       setWaitingForAdmission,
@@ -63,11 +72,18 @@ function createPollHandler(
     muteMic,
     setWaitingForAdmission,
     setStatus,
+    setEndedMessage,
     setKnockers,
     updateJoinName,
     retryRoomPeerConnections,
   };
 }
+
+beforeEach(() => {
+  toastApi.show.mockClear();
+  toastApi.showSuccess.mockClear();
+  toastApi.showError.mockClear();
+});
 
 describe("useMeetPollHandler mute", () => {
   it("mutes the local mic when a mute control targets this peer", async () => {
@@ -189,5 +205,104 @@ describe("useMeetPollHandler knockers", () => {
       prev: { id: string; name: string }[],
     ) => { id: string; name: string }[];
     expect(last([{ id: "guest-1", name: "Ada" }])).toEqual([]);
+  });
+});
+
+describe("useMeetPollHandler call toasts", () => {
+  it("toasts through useAppToast when a participant joins", async () => {
+    const { handlePoll } = createPollHandler();
+
+    await handlePoll({
+      peers: [
+        { id: "self-1", name: "Alex" },
+        { id: "host-1", name: "Admin" },
+      ],
+      messages: [],
+    });
+
+    expect(toastApi.showSuccess).toHaveBeenCalledWith(meetLabels.participantJoined("Admin"));
+  });
+
+  it("toasts through useAppToast when the host ends the call", async () => {
+    const { handlePoll, setEndedMessage } = createPollHandler();
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "end", by: "Admin" }),
+          },
+        },
+      ],
+    });
+
+    expect(setEndedMessage).toHaveBeenCalledWith(meetLabels.callEndedBy("Admin"));
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.callEndedBy("Admin"), {
+      severity: "info",
+    });
+  });
+
+  it("toasts through useAppToast when this peer is muted", async () => {
+    const { handlePoll } = createPollHandler();
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "mute", peerId: "self-1" }),
+          },
+        },
+      ],
+    });
+
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.mutedByHost, { severity: "info" });
+  });
+
+  it("toasts through useAppToast when this peer is admitted", async () => {
+    const { handlePoll } = createPollHandler({
+      waitingForAdmissionRef: { current: true },
+    });
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
+          },
+        },
+      ],
+    });
+
+    expect(toastApi.showSuccess).toHaveBeenCalledWith(meetLabels.youWereLetIn);
+  });
+
+  it("toasts through useAppToast when this peer is denied", async () => {
+    const { handlePoll } = createPollHandler({
+      waitingForAdmissionRef: { current: true },
+    });
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "deny", peerId: "self-1" }),
+          },
+        },
+      ],
+    });
+
+    expect(toastApi.showError).toHaveBeenCalledWith(meetLabels.joinDenied);
   });
 });

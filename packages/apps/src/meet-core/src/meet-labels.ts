@@ -78,6 +78,10 @@ export const meetLabels = {
   selfPreview: (name: string) => `${name} (you)`,
   participantJoined: (name: string) => `${name} joined the call`,
   participantLeft: (name: string) => `${name} left the call`,
+  callEndedBy: (name: string) => `Call ended by ${name}.`,
+  youWereLetIn: "You were let in.",
+  joinDenied: "The host denied your request to join.",
+  couldNotSendMessage: "Could not send message.",
   callActiveInAnotherTab: "A call is already active in another tab.",
   miniPlayerLabel: "Ongoing call",
   /** Generic product title in the mini-player (room codes are opaque ids). */

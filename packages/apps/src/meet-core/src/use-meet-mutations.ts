@@ -1,5 +1,5 @@
 import { useCallback, useEffect, type MutableRefObject } from "react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import {
   buildMeetControlMessage,
@@ -38,6 +38,7 @@ export function useMeetMutations({
   leaveRef,
   persistentCall = false,
 }: UseMeetMutationsArgs) {
+  const toast = useAppToast();
   const { meetRtc, operationsRef, debugRtc, ensureLocalMedia, stopLocalMedia } = session;
 
   const leave = useCallback(
@@ -77,9 +78,9 @@ export function useMeetMutations({
 
   const warnIfCallActiveElsewhere = useCallback(() => {
     if (room.remoteCallActiveRef?.current) {
-      toast.info(meetLabels.callActiveInAnotherTab);
+      toast.show(meetLabels.callActiveInAnotherTab, { severity: "info" });
     }
-  }, [room.remoteCallActiveRef]);
+  }, [room.remoteCallActiveRef, toast]);
 
   const runSerializedJoin = useCallback(
     async (work: () => Promise<void>) => {
@@ -260,10 +261,10 @@ export function useMeetMutations({
           sessionKey: meetRtc.getSessionKey() ?? undefined,
         });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : meetLabels.couldNotMuteParticipant);
+        toast.showError(e instanceof Error ? e.message : meetLabels.couldNotMuteParticipant);
       }
     },
-    [canModerateKnocks, meetRtc, operationsRef, room],
+    [canModerateKnocks, meetRtc, operationsRef, room, toast],
   );
 
   const endCallForAll = useCallback(async () => {
@@ -311,10 +312,10 @@ export function useMeetMutations({
         });
       } catch (e) {
         room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
-        toast.error(e instanceof Error ? e.message : "Could not send message.");
+        toast.showError(e instanceof Error ? e.message : meetLabels.couldNotSendMessage);
       }
     },
-    [meetRtc, operationsRef, room],
+    [meetRtc, operationsRef, room, toast],
   );
 
   const startMeeting = useCallback(async () => {
