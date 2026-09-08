@@ -4,7 +4,8 @@
  * Server REST + JMAP / room-status poll stay authoritative. This module owns
  * every hint we put on the principal presence mesh: apply (Dexie ingest) and
  * wrap (fan out after a successful local write). Payloads are untrusted —
- * `authorId` / reactor must match the signaling sender; unknown channels are
+ * `authorId` / reactor must match the signaling sender; the sender must be a
+ * local ACL member (`shareWith` / group directory). Unknown channels are
  * dropped unless the kind is a `channel-changed` ping (then REST decides).
  */
 import {
@@ -23,7 +24,11 @@ import {
   upsertChatMessageInCache,
 } from "@/lib/offline/meet-chat-offline-store";
 import { isMeetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
-import { acceptMeetMeshChannel, applyMeetMeshChatMessage } from "@/meet-core/src/meet-mesh-inbound";
+import {
+  acceptMeetMeshSender,
+  applyMeetMeshChatMessage,
+  type MeetMeshChannelAcl,
+} from "@/meet-core/src/meet-mesh-inbound";
 import {
   meetMeshChatMessageFromApp,
   meetMeshReceiveChannelId,
@@ -76,6 +81,7 @@ async function applyMessage(
   senderUsername: string,
   message: PresenceMeetFanoutEvent & { kind: "channel-message" },
   knownChannelIds: ReadonlySet<string>,
+  acl?: MeetMeshChannelAcl,
 ): Promise<MeetMeshApplyResult> {
   const had = await getCachedChatMessage(username, message.message.id);
   const result = await applyMeetMeshChatMessage({
@@ -83,6 +89,7 @@ async function applyMessage(
     senderUsername,
     message: message.message,
     knownChannelIds,
+    acl,
   });
   if (result !== "applied" || had) return result;
   await bumpParentReplyCount(username, message.message.parentId);
@@ -93,9 +100,12 @@ async function applyPatch(
   username: string,
   event: PresenceMeetFanoutEvent & { kind: "channel-message-patch" },
   knownChannelIds: ReadonlySet<string>,
+  acl?: MeetMeshChannelAcl,
 ): Promise<MeetMeshApplyResult> {
   const channelId = receiveChannelId(event.channel, event.senderUsername);
-  if (!acceptMeetMeshChannel(channelId, knownChannelIds)) return "dropped";
+  if (!acceptMeetMeshSender(channelId, event.senderUsername, knownChannelIds, acl)) {
+    return "dropped";
+  }
   const existing = await getCachedChatMessage(username, event.id);
   if (!existing || existing.authorId !== event.senderUsername) return "dropped";
   const result = await ingestRemoteChatMessage(username, {
@@ -110,9 +120,12 @@ async function applyDestroy(
   username: string,
   event: PresenceMeetFanoutEvent & { kind: "channel-message-destroy" },
   knownChannelIds: ReadonlySet<string>,
+  acl?: MeetMeshChannelAcl,
 ): Promise<MeetMeshApplyResult> {
   const channelId = receiveChannelId(event.channel, event.senderUsername);
-  if (!acceptMeetMeshChannel(channelId, knownChannelIds)) return "dropped";
+  if (!acceptMeetMeshSender(channelId, event.senderUsername, knownChannelIds, acl)) {
+    return "dropped";
+  }
   const existing = await getCachedChatMessage(username, event.id);
   if (!existing || existing.authorId !== event.senderUsername) return "dropped";
   const result = await ingestRemoteChatMessage(username, {
@@ -129,9 +142,12 @@ async function applyReactionEvent(
   username: string,
   event: PresenceMeetFanoutEvent & { kind: "channel-reaction" },
   knownChannelIds: ReadonlySet<string>,
+  acl?: MeetMeshChannelAcl,
 ): Promise<MeetMeshApplyResult> {
   const channelId = receiveChannelId(event.channel, event.senderUsername);
-  if (!acceptMeetMeshChannel(channelId, knownChannelIds)) return "dropped";
+  if (!acceptMeetMeshSender(channelId, event.senderUsername, knownChannelIds, acl)) {
+    return "dropped";
+  }
   const existing = await getCachedChatMessage(username, event.messageId);
   if (!existing) return "dropped";
   const result = await ingestRemoteChatMessage(
@@ -167,21 +183,22 @@ export async function applyMeetMeshFanoutEvent(args: {
   username: string;
   event: PresenceMeetFanoutEvent;
   knownChannelIds: ReadonlySet<string>;
+  acl?: MeetMeshChannelAcl;
   fetchChannel?: MeetMeshFetchChannel;
 }): Promise<MeetMeshApplyResult> {
-  const { username, event, knownChannelIds } = args;
+  const { username, event, knownChannelIds, acl } = args;
   if (event.kind === "call-active") return "dropped";
   if (event.kind === "channel-message") {
-    return applyMessage(username, event.senderUsername, event, knownChannelIds);
+    return applyMessage(username, event.senderUsername, event, knownChannelIds, acl);
   }
   if (event.kind === "channel-message-patch") {
-    return applyPatch(username, event, knownChannelIds);
+    return applyPatch(username, event, knownChannelIds, acl);
   }
   if (event.kind === "channel-message-destroy") {
-    return applyDestroy(username, event, knownChannelIds);
+    return applyDestroy(username, event, knownChannelIds, acl);
   }
   if (event.kind === "channel-reaction") {
-    return applyReactionEvent(username, event, knownChannelIds);
+    return applyReactionEvent(username, event, knownChannelIds, acl);
   }
   return applyChannelChanged(username, event, args.fetchChannel ?? getChatChannel);
 }

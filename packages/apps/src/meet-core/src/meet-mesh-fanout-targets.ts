@@ -44,6 +44,39 @@ export function meetMeshFanoutUsernames(args: {
   return [...targets];
 }
 
+/**
+ * Whether the transport-authenticated sender may hint into this conversation.
+ *
+ * Mirrors {@link meetMeshFanoutUsernames}: DMs only from the peer; named
+ * channels only from a user grant in local `shareWith`; group-owned channels
+ * also from a directory *user* (same expansion as send). Group grants in
+ * `shareWith` cannot be expanded. Unknown / empty membership is fail-closed.
+ */
+export function meetMeshSenderMayHint(args: {
+  channelId: string;
+  senderUsername: string;
+  channels?: readonly MeetChannel[];
+  directory?: readonly CollectionSharePrincipal[];
+}): boolean {
+  const sender = args.senderUsername.trim();
+  if (!sender) return false;
+
+  const peer = meetDirectMessagePrincipalId(args.channelId);
+  if (peer) return peer === sender;
+
+  const channel = args.channels?.find((row) => row.id === args.channelId);
+  if (!channel) return false;
+
+  for (const grant of shareGrantEntries(channel.shareWith)) {
+    if (!grant.isGroup && grant.id === sender) return true;
+  }
+
+  if (!channel.groupSlug) return false;
+  return (args.directory ?? []).some(
+    (principal) => principal.principalType === "user" && principal.id === sender,
+  );
+}
+
 /** Union of `meetMeshFanoutUsernames` across snapshots (share add/remove, create). */
 export function meetMeshFanoutUsernamesUnion(
   args: Omit<Parameters<typeof meetMeshFanoutUsernames>[0], "channelId" | "channels">,

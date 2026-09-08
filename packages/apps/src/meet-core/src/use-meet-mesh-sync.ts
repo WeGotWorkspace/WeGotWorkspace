@@ -98,6 +98,10 @@ export function useMeetMeshSync({
         username: account,
         event,
         knownChannelIds: knownChannelIdsRef.current,
+        acl: {
+          channels: channelsRef.current,
+          directory: directoryRef.current,
+        },
       }).then((result) => {
         if (result === "applied") onAppliedRef.current?.();
       });

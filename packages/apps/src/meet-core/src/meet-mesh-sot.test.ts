@@ -45,6 +45,18 @@ function wireChannel(id: string, name = id): WgwChatChannel {
   } as WgwChatChannel;
 }
 
+const generalAcl = {
+  channels: [
+    {
+      id: "chat-general",
+      name: "general",
+      kind: "channel" as const,
+      scope: "personal" as const,
+      shareWith: { bob: { mayRead: true } },
+    } satisfies MeetChannel,
+  ],
+};
+
 function message(overrides: Partial<ChatMessage> & Pick<ChatMessage, "id">): ChatMessage {
   return {
     channelId: "chat-general",
@@ -80,6 +92,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     const result = await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-message",
         senderUsername: "bob",
@@ -102,6 +115,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-message",
         senderUsername: "bob",
@@ -121,6 +135,29 @@ describe("applyMeetMeshFanoutEvent", () => {
     );
   });
 
+  it("drops a channel-message when the sender is not in shareWith", async () => {
+    await ingestRemoteChatChannel(username, wireChannel("chat-general"));
+    const result = await applyMeetMeshFanoutEvent({
+      username,
+      knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
+      event: {
+        kind: "channel-message",
+        senderUsername: "mallory",
+        message: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FAC",
+          channelId: "chat-general",
+          authorId: "mallory",
+          authorName: "Mallory",
+          body: "spoof",
+          createdAt: 1_700_000_000_200,
+        },
+      },
+    });
+    expect(result).toBe("dropped");
+    expect(await getCachedChatMessage(username, "01ARZ3NDEKTSV4RRFFQ69G5FAC")).toBeUndefined();
+  });
+
   it("patches body when the sender authored the cached message", async () => {
     await ingestRemoteChatChannel(username, wireChannel("chat-general"));
     await ingestRemoteChatMessage(
@@ -133,6 +170,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     const result = await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-message-patch",
         senderUsername: "bob",
@@ -154,6 +192,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     const result = await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-message-patch",
         senderUsername: "mallory",
@@ -174,6 +213,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     const result = await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-message-destroy",
         senderUsername: "bob",
@@ -192,6 +232,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-reaction",
         senderUsername: "bob",
@@ -207,6 +248,7 @@ describe("applyMeetMeshFanoutEvent", () => {
     await applyMeetMeshFanoutEvent({
       username,
       knownChannelIds: new Set(["chat-general"]),
+      acl: generalAcl,
       event: {
         kind: "channel-reaction",
         senderUsername: "bob",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   meetMeshFanoutUsernames,
   meetMeshFanoutUsernamesUnion,
+  meetMeshSenderMayHint,
 } from "@/meet-core/src/meet-mesh-fanout-targets";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
@@ -87,5 +88,109 @@ describe("meetMeshFanoutUsernames", () => {
         directory,
       }),
     ).toEqual([]);
+  });
+});
+
+describe("meetMeshSenderMayHint", () => {
+  it("accepts only the DM peer", () => {
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "dm:bob",
+        senderUsername: "bob",
+      }),
+    ).toBe(true);
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "dm:bob",
+        senderUsername: "mallory",
+      }),
+    ).toBe(false);
+  });
+
+  it("drops a sender who is not in shareWith", () => {
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-secret",
+        senderUsername: "mallory",
+        channels: [
+          channel({
+            id: "chat-secret",
+            shareWith: { bob: { mayRead: true } },
+          }),
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts a sender listed in shareWith and skips group grants", () => {
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-secret",
+        senderUsername: "bob",
+        channels: [
+          channel({
+            id: "chat-secret",
+            shareWith: {
+              bob: { mayRead: true },
+              "groups/eng": { mayRead: true },
+            },
+          }),
+        ],
+        directory,
+      }),
+    ).toBe(true);
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-secret",
+        senderUsername: "carol",
+        channels: [
+          channel({
+            id: "chat-secret",
+            shareWith: {
+              bob: { mayRead: true },
+              "groups/eng": { mayRead: true },
+            },
+          }),
+        ],
+        directory,
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts directory users on group-owned channels", () => {
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-grp-eng",
+        senderUsername: "carol",
+        channels: [channel({ id: "chat-grp-eng", scope: "group", groupSlug: "eng" })],
+        directory,
+      }),
+    ).toBe(true);
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-grp-eng",
+        senderUsername: "mallory",
+        channels: [channel({ id: "chat-grp-eng", scope: "group", groupSlug: "eng" })],
+        directory,
+      }),
+    ).toBe(false);
+  });
+
+  it("is fail-closed when membership cannot be resolved", () => {
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-empty",
+        senderUsername: "bob",
+        channels: [channel({ id: "chat-empty" })],
+        directory,
+      }),
+    ).toBe(false);
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-missing",
+        senderUsername: "bob",
+        channels: [channel({ id: "chat-empty" })],
+      }),
+    ).toBe(false);
   });
 });
