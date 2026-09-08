@@ -84,6 +84,11 @@ describe("meet workspace sidebar chrome", () => {
   });
 
   it("uses ink SidebarSection titles and a cream Meet glyph on the dark purple lockup", () => {
+    expect(css).toMatch(/\.meet-workspace--split \{[\s\S]*--meet-text:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/\.meet-workspace--split \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/);
+    expect(css).toMatch(
+      /\.meet-guest-lobby__camera-off \{[\s\S]*color-mix\(in oklab,\s*var\(--color-ink\) 55%/,
+    );
     expect(css).toMatch(
       /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 60%/,
     );

@@ -214,7 +214,7 @@ describe("meetChannelCallHref", () => {
     );
   });
 
-  it("uses the channel path for meeting-kind channels (same as a channel)", () => {
+  it("uses the meetings path for meeting-kind channels", () => {
     const meeting = {
       id: "chat-01h455vb4pa9nnrjpznsav8hvb",
       kind: "meeting" as const,
@@ -222,7 +222,7 @@ describe("meetChannelCallHref", () => {
     };
     expect(meetChannelCallRoom(meeting)).toBe(ROOM);
     expect(meetChannelCallHref(meeting, ORIGIN)).toBe(
-      `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hvb`,
+      `${ORIGIN}/meet/meetings/01h455vb4pa9nnrjpznsav8hvb`,
     );
   });
 
@@ -230,7 +230,7 @@ describe("meetChannelCallHref", () => {
     const meeting = { id: CHAT_ROOM, kind: "meeting" as const, guestRoomCode: null };
     expect(meetChannelCallRoom(meeting)).toBe(CHAT_ROOM);
     expect(meetChannelCallHref(meeting, ORIGIN)).toBe(
-      `${ORIGIN}/meet/channels/01h455vb4pa9nnrjpznsav8hva`,
+      `${ORIGIN}/meet/meetings/01h455vb4pa9nnrjpznsav8hva`,
     );
   });
 

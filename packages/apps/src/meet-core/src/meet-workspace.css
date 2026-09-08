@@ -733,7 +733,13 @@
   /*
    * Product workspace chrome matches Notes / Tasks / Calendar: cream paper
    * with a quiet dusk wash from the dark purple accent — chic, not lilac.
+   * Pin ink so leftover navy `.meet-workspace` text tokens cannot leak.
    */
+  --color-ink: #042a22;
+  --meet-text: var(--color-ink);
+  --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
   --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #ffffff));
   --meet-surface: var(--color-cream, #ffffff);
   --workspace-accent: var(--meet-accent);
@@ -965,7 +971,7 @@
 
 .meet-call-bar__avatars .user-avatar--colored .user-avatar__mark,
 .meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
+  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded, .meet-guest-lobby__preview)
   .user-avatar--colored
   .user-avatar__mark {
   color: var(--color-ink);
@@ -1501,7 +1507,7 @@
 
 .meet-guest-lobby__camera-off {
   @apply text-sm;
-  color: var(--meet-muted);
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
 .meet-guest-lobby__preview-controls {
