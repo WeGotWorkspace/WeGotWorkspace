@@ -32,7 +32,7 @@ export function MeetKnockBadge({ knockers, onAdmit, onDeny, size = "sm" }: MeetK
           data-count={knockers.length}
         />
       </PopoverTrigger>
-      <PopoverContent align="end" className="meet-popover-surface meet-knock-badge__popover">
+      <PopoverContent align="end" className="meet-knock-badge__popover">
         <MeetCallKnockQueue knockers={knockers} onAdmit={onAdmit} onDeny={onDeny} />
       </PopoverContent>
     </Popover>

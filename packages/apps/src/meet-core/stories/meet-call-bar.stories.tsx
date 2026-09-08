@@ -208,5 +208,8 @@ export const WaitingToJoin: Story = {
     await expect(
       body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
     ).toBeInTheDocument();
+    const popover = canvasElement.ownerDocument.body.querySelector(".meet-knock-badge__popover");
+    await expect(popover).toBeTruthy();
+    await expect(popover?.className).not.toMatch(/meet-popover-surface/);
   },
 };

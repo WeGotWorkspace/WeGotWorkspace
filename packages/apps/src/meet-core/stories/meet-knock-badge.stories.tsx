@@ -3,16 +3,19 @@ import { expect, userEvent, within } from "storybook/test";
 import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { STORY_MEET_KNOCKERS } from "@/meet-core/stories/meet-pane-stories.fixtures";
-import {
-  meetStoryParameters,
-  STORY_NOOP,
-  renderInMeetScope,
-} from "@/meet-core/stories/meet-story-shared";
+import { meetStoryParameters, STORY_NOOP } from "@/meet-core/stories/meet-story-shared";
+import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 const meta = {
   title: "Apps/Meet/Components/MeetKnockBadge",
   component: MeetKnockBadge,
-  render: renderInMeetScope(MeetKnockBadge, "root"),
+  render: (args) => (
+    <MeetStoryScope variant="root">
+      <div className="meet-call-bar p-4">
+        <MeetKnockBadge {...args} />
+      </div>
+    </MeetStoryScope>
+  ),
   parameters: meetStoryParameters(),
 } satisfies Meta<typeof MeetKnockBadge>;
 
@@ -34,6 +37,9 @@ export const OneGuest: Story = {
     await expect(
       body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
     ).toBeInTheDocument();
+    const popover = canvasElement.ownerDocument.body.querySelector(".meet-knock-badge__popover");
+    await expect(popover).toBeTruthy();
+    await expect(popover?.className).not.toMatch(/meet-popover-surface/);
   },
 };
 

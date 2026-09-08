@@ -485,7 +485,8 @@
   @apply min-w-0 flex-1 truncate text-left;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .user-avatar__mark {
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface, .meet-knock-badge__popover)
+  .user-avatar__mark {
   font-weight: 600;
 }
 
@@ -677,61 +678,78 @@
   background-color: var(--meet-panel-soft);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-badge {
+.meet-knock-badge {
   @apply relative;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-badge::after {
+.meet-knock-badge::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
   background-color: var(--meet-accent);
   color: var(--meet-text);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-badge__popover {
-  @apply w-80 p-2;
+/*
+ * Host admit queue — cream/dusk like `.meet-call-bar`, not lobby dark.
+ * Portaled: do not reuse `.meet-popover-surface` (`#171826`).
+ */
+.meet-knock-badge__popover {
+  --meet-accent: #2a1644;
+  --meet-accent-strong: #1a0e2a;
+  --color-ink: #042a22;
+  --meet-text: var(--color-ink);
+  --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
+  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #ffffff));
+  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --meet-panel: var(--meet-call-surface);
+  --meet-panel-soft: var(--meet-call-empty);
+  --popover: var(--meet-call-surface);
+  --popover-foreground: var(--color-ink);
+  --color-popover: var(--meet-call-surface);
+  --color-popover-foreground: var(--color-ink);
+  --foreground: var(--color-ink);
+  --color-foreground: var(--color-ink);
+  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  --button-primary-bg: var(--meet-accent);
+  --button-primary-fg: var(--color-cream, #ffffff);
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
+  @apply w-80 rounded-xl p-2;
+  background-color: var(--meet-call-surface);
+  color: var(--color-ink);
+  border-color: var(--meet-call-border);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-list {
+.meet-knock-list {
   @apply flex flex-col gap-1;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-row {
+.meet-knock-row {
   @apply flex items-center gap-3 rounded-lg p-2;
-  background-color: var(--meet-panel-soft);
+  background-color: var(--meet-call-empty);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-row__copy {
+.meet-knock-row__copy {
   @apply min-w-0 flex-1;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-row__name {
+.meet-knock-row__name {
   @apply truncate text-sm font-medium;
+  color: var(--color-ink);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-row__hint {
+.meet-knock-row__hint {
   @apply text-[11px];
-  color: var(--meet-muted);
+  color: var(--meet-call-ink-muted);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-row__deny {
-  @apply inline-flex size-8 items-center justify-center rounded-md;
-  background-color: rgba(255, 255, 255, 0.06);
-  color: var(--meet-text);
-  min-height: unset;
-  height: 2rem;
-  width: 2rem;
-  padding: 0;
-}
-
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-knock-row__admit {
-  @apply inline-flex size-8 items-center justify-center rounded-md;
-  background-color: var(--meet-accent);
-  color: var(--meet-text);
-  min-height: unset;
-  height: 2rem;
-  width: 2rem;
-  padding: 0;
+.meet-knock-row__deny,
+.meet-knock-row__admit {
+  @apply shrink-0;
 }
 
 /* Knocker-side wait state (guest / non-member). Host admit lives on the action row. */

@@ -63,6 +63,9 @@ describe("MeetKnockBadge", () => {
     fireEvent.click(screen.getByRole("button", { name: meetLabels.waitingToJoin(2) }));
     fireEvent.click(screen.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }));
     expect(onAdmit).toHaveBeenCalledWith("peer-1");
+    const popover = document.querySelector(".meet-knock-badge__popover");
+    expect(popover).toBeTruthy();
+    expect(popover?.className).not.toMatch(/meet-popover-surface/);
   });
 
   it("renders nothing without knockers", () => {
