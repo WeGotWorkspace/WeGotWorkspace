@@ -159,6 +159,7 @@ export function useMeetPollHandler({
               setStatus: (status) => setStatus(status),
               setStartedAt: (value) => setStartedAt(value),
               onAdmitted: () => toast.success("You were let in."),
+              onRtcReady: () => meetRtcRef.current?.retryRoomPeerConnections(),
             });
           } else if (control.kind === "deny") {
             toast.error("The host denied your request to join.");

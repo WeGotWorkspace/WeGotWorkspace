@@ -17,6 +17,7 @@ describe("completeMeetKnockAdmission", () => {
     const onAdmitted = vi.fn(() => {
       order.push("admitted");
     });
+    const onRtcReady = vi.fn();
 
     await expect(
       completeMeetKnockAdmission({
@@ -29,6 +30,7 @@ describe("completeMeetKnockAdmission", () => {
         setStatus,
         setStartedAt,
         onAdmitted,
+        onRtcReady,
       }),
     ).resolves.toBe(true);
 
@@ -37,6 +39,7 @@ describe("completeMeetKnockAdmission", () => {
     expect(order).toContain("rejoin");
     expect(order.indexOf("waiting:false")).toBeLessThan(order.indexOf("rejoin"));
     expect(updateJoinName).toHaveBeenCalledWith("Guest");
+    expect(onRtcReady).toHaveBeenCalledTimes(1);
   });
 
   it("still leaves the wait UI when rename-rejoin throws", async () => {

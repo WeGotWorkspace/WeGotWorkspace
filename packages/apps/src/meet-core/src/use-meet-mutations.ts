@@ -108,7 +108,14 @@ export function useMeetMutations({
       const target = (roomCode ?? createMeetRoomCode()).trim().toLowerCase();
 
       await runSerializedJoin(async () => {
-        if (meetJoinAlreadyEngaged(room.statusRef.current, room.roomCodeRef.current, target)) {
+        if (
+          meetJoinAlreadyEngaged(
+            room.statusRef.current,
+            room.roomCodeRef.current,
+            target,
+            room.waitingForAdmissionRef.current,
+          )
+        ) {
           debugRtc("join-room-reuse", { room: target, peerId: room.selfIdRef.current });
           return;
         }
@@ -155,7 +162,14 @@ export function useMeetMutations({
       warnIfCallActiveElsewhere();
 
       await runSerializedJoin(async () => {
-        if (meetJoinAlreadyEngaged(room.statusRef.current, room.roomCodeRef.current, target)) {
+        if (
+          meetJoinAlreadyEngaged(
+            room.statusRef.current,
+            room.roomCodeRef.current,
+            target,
+            room.waitingForAdmissionRef.current,
+          )
+        ) {
           return;
         }
         const peerId = createMeetPeerId(10);

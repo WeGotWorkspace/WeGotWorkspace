@@ -104,6 +104,26 @@ describe("HttpSignalingClient", () => {
     expect(body.peerId).toBe("peer-1");
   });
 
+  it("includes the guest session key on join so admit rename keeps the owner marker", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ peers: [] }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({}),
+    });
+    await client.join({
+      room: "chat-test",
+      name: "Ada",
+      peerId: "peer-guest",
+      sessionKey: "guest-session-key",
+    });
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body.sessionKey).toBe("guest-session-key");
+  });
+
   it("includes session key on meet guest sends", async () => {
     const fetchImpl = vi.fn<HttpSignalingFetch>(
       async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),

@@ -83,6 +83,7 @@ import {
 import { meetThreadRailShowsBack } from "@/meet-core/src/meet-thread-placement";
 import { meetThreadPeopleCount } from "@/meet-core/src/meet-thread-people";
 import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
+import { mergeMeetRoomChatIntoChannel } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
@@ -733,8 +734,11 @@ export function MeetWorkspace({
   const onSendChannel = useCallback(
     (payload: ChatSendPayload) => {
       void chat.sendChannel(payload).catch(notifyChatError);
+      if (callStageRoom?.controller.inCall) {
+        void callStageRoom.controller.sendChat(payload.body);
+      }
     },
-    [chat.sendChannel, notifyChatError],
+    [callStageRoom, chat.sendChannel, notifyChatError],
   );
   const onReactChannel = useCallback(
     (messageId: string, emoji: string) => {
@@ -889,8 +893,23 @@ export function MeetWorkspace({
     selectedId,
     selectedMeetingEvent?.id,
   ]);
+  const liveCallMessages = useMemo(
+    () =>
+      mergeMeetRoomChatIntoChannel(
+        chat.channelMessages,
+        callStageRoom?.controller.inCall ? callStageRoom.controller.chatMessages : [],
+        selectedId ?? liveCallChannelId ?? "call",
+      ),
+    [
+      callStageRoom?.controller.chatMessages,
+      callStageRoom?.controller.inCall,
+      chat.channelMessages,
+      liveCallChannelId,
+      selectedId,
+    ],
+  );
   const chatColumnProps = {
-    messages: chat.channelMessages,
+    messages: liveCallMessages,
     currentUserId,
     principals: mentionPrincipals,
     authorPresence: data.authorPresence,

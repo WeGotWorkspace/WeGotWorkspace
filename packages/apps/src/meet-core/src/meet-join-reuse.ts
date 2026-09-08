@@ -15,9 +15,13 @@ export function meetJoinAlreadyEngaged(
   status: MeetCallStatus | null | undefined,
   currentRoom: string | null | undefined,
   targetRoom: string,
+  waitingForAdmission = false,
 ): boolean {
   const target = targetRoom.trim().toLowerCase();
   const current = currentRoom?.trim().toLowerCase() ?? "";
   if (!target || current !== target) return false;
+  // `requestJoin` sets waiting before status `preparing` so a overlapping
+  // knock (Strict Mode / double click) must not mint a second peer.
+  if (waitingForAdmission) return true;
   return meetJoinIsEngaged(status);
 }

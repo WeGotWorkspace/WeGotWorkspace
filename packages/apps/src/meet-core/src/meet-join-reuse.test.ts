@@ -15,6 +15,11 @@ describe("meetJoinAlreadyEngaged", () => {
     expect(meetJoinAlreadyEngaged("in-call", null, "chat-general")).toBe(false);
     expect(meetJoinAlreadyEngaged("in-call", "chat-general", "  ")).toBe(false);
   });
+
+  it("treats waitingForAdmission as engaged even while status is still idle", () => {
+    expect(meetJoinAlreadyEngaged("idle", "chat-test", "chat-test", true)).toBe(true);
+    expect(meetJoinAlreadyEngaged("idle", "chat-test", "chat-other", true)).toBe(false);
+  });
 });
 
 describe("meetJoinIsEngaged", () => {

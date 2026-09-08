@@ -580,6 +580,30 @@ describe("RtcPeerMesh", () => {
     await mesh.leave();
   });
 
+  it("passes the guest session key on updateJoinName so admit rejoin keeps the owner marker", async () => {
+    const signaling = createMockSignaling({
+      peerId: "guest-1",
+      peers: [{ id: "host-1", name: "Admin" }],
+      sessionKey: "guest-session-key",
+    });
+    const { mesh } = meshWithStubPc(signaling.client, {
+      shouldConnectToPeer: () => false,
+      shouldHandleRtcSignals: () => false,
+    });
+
+    await mesh.join({ name: "__wgw_knock__:Ada", peerId: "guest-1" });
+    await mesh.updateJoinName("Ada");
+
+    expect(signaling.client.join).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: "Ada",
+        peerId: "guest-1",
+        sessionKey: "guest-session-key",
+      }),
+    );
+    await mesh.leave();
+  });
+
   it("ignores inbound offers when shouldAcceptOffer returns false", async () => {
     const signaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
     const { mesh, pcs } = meshWithStubPc(signaling.client, {

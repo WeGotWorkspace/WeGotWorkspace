@@ -5,11 +5,9 @@ import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
-import {
-  buildMeetControlMessage,
-  decodeMeetKnockerName,
-} from "@/meet-core/src/meet-control-messages";
+import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media-hints";
@@ -89,9 +87,7 @@ export function useMeetCallSession({
     onLinkChange: () => room.refreshPeersRef.current(),
     onPollData: handlePollData,
     shouldConnectToPeer: (peer: RtcPeerDescriptor) =>
-      peer.id !== room.selfIdRef.current &&
-      !decodeMeetKnockerName(peer.name) &&
-      !room.waitingForAdmissionRef.current,
+      shouldConnectMeetPeer(peer, room.selfIdRef.current, room.waitingForAdmissionRef.current),
     shouldHandleRtcSignals: () => !room.waitingForAdmissionRef.current,
     onPeerRemoved: (peerId, name) => {
       room.peerNamesRef.current.delete(peerId);

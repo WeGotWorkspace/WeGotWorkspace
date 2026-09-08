@@ -28,6 +28,7 @@ function createRoomStub(): MeetRoomState {
     joinInFlightRef: { current: null },
     statusRef: { current: "in-call" as const },
     displayNameRef: { current: "Guest" },
+    waitingForAdmissionRef: { current: false },
     setVideoOn: vi.fn(),
   } as unknown as MeetRoomState;
 }
@@ -112,6 +113,32 @@ describe("useMeetMutations joinRoom", () => {
     releaseJoin?.();
     await Promise.all([first, second]);
     expect(session.meetRtc.join).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useMeetMutations requestJoin", () => {
+  it("does not mint a second knock peer while waiting for admission", async () => {
+    const session = createSessionStub();
+    const room = createRoomStub();
+    room.status = "idle";
+    room.statusRef.current = "idle";
+    room.roomCodeRef.current = "chat-test";
+    room.waitingForAdmissionRef.current = true;
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    await result.current.requestJoin("chat-test");
+
+    expect(session.meetRtc.join).not.toHaveBeenCalled();
   });
 });
 

@@ -10,6 +10,8 @@ export type CompleteMeetKnockAdmissionInput = {
   setStatus: (status: MeetKnockAdmissionStatus) => void;
   setStartedAt: (value: number) => void;
   onAdmitted?: () => void;
+  /** Dial room peers after the knocker-side wait drops (same-peer rename). */
+  onRtcReady?: () => void;
 };
 
 /**
@@ -31,5 +33,6 @@ export async function completeMeetKnockAdmission(
   } catch {
     // Already in the call chrome; signaling recorded the admit independently.
   }
+  input.onRtcReady?.();
   return true;
 }

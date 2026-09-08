@@ -76,6 +76,10 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
     [requireSession],
   );
 
+  const retryRoomPeerConnections = useCallback(() => {
+    getSessionRef().current?.retryRoomPeerConnections();
+  }, [getSessionRef]);
+
   const leave = useCallback(
     async (opts?: { sendBye?: boolean }) => {
       const sessionRef = getSessionRef();
@@ -126,6 +130,7 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
     () => ({
       join,
       updateJoinName,
+      retryRoomPeerConnections,
       leave,
       replaceAudioTrack,
       replaceVideoTrack,
@@ -145,6 +150,7 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
       leave,
       replaceAudioTrack,
       replaceVideoTrack,
+      retryRoomPeerConnections,
       updateJoinName,
     ],
   );

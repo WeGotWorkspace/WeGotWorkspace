@@ -11,6 +11,8 @@ export type HttpSignalingJoinInput = {
   room: string;
   name: string;
   peerId?: string;
+  /** Guest re-join (admit rename) must keep the same owner marker. */
+  sessionKey?: string;
 };
 
 export type HttpSignalingJoinResult = {
@@ -179,10 +181,12 @@ export class HttpSignalingClient {
     if (input.peerId) body.peerId = input.peerId;
     const browserId = this.getBrowserId?.();
     if (browserId) body.browserId = browserId;
+    const sessionKey = input.sessionKey ?? this.getAuth().sessionKey;
+    if (sessionKey) body.sessionKey = sessionKey;
     return this.post<HttpSignalingJoinResult>(
       "join",
       this.roomUrl(input.room, "/participants"),
-      this.withSessionKey(body),
+      body,
     );
   }
 

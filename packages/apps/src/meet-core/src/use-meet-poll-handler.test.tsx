@@ -16,14 +16,17 @@ function createPollHandler(
     setWaitingForAdmission?: ReturnType<typeof vi.fn>;
     setStatus?: ReturnType<typeof vi.fn>;
     setStartedAt?: ReturnType<typeof vi.fn>;
+    setKnockers?: ReturnType<typeof vi.fn>;
     updateJoinName?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
   const muteMic = vi.fn(() => true);
   const setWaitingForAdmission = overrides.setWaitingForAdmission ?? vi.fn();
+  const setKnockers = overrides.setKnockers ?? vi.fn();
   const setStatus = overrides.setStatus ?? vi.fn();
   const setStartedAt = overrides.setStartedAt ?? vi.fn();
   const updateJoinName = overrides.updateJoinName ?? vi.fn().mockResolvedValue(undefined);
+  const retryRoomPeerConnections = vi.fn();
   const { result } = renderHook(() =>
     useMeetPollHandler({
       selfIdRef: { current: "self-1" },
@@ -37,9 +40,9 @@ function createPollHandler(
       peerDisclosedMediaRef: { current: new Map() },
       refreshPeersRef: { current: () => {} },
       leaveRef: { current: vi.fn() },
-      meetRtcRef: { current: { updateJoinName } as never },
+      meetRtcRef: { current: { updateJoinName, retryRoomPeerConnections } as never },
       muteMicRef: { current: muteMic },
-      setKnockers: vi.fn(),
+      setKnockers,
       setEndedMessage: vi.fn(),
       setStatus,
       setStartedAt,
@@ -52,7 +55,9 @@ function createPollHandler(
     muteMic,
     setWaitingForAdmission,
     setStatus,
+    setKnockers,
     updateJoinName,
+    retryRoomPeerConnections,
   };
 }
 
@@ -105,7 +110,7 @@ describe("useMeetPollHandler admit", () => {
     const setWaitingForAdmission = vi.fn((value: boolean) => {
       order.push(`waiting:${String(value)}`);
     });
-    const { handlePoll } = createPollHandler({
+    const { handlePoll, retryRoomPeerConnections } = createPollHandler({
       waitingForAdmissionRef: { current: true },
       setWaitingForAdmission,
       updateJoinName,
@@ -127,12 +132,13 @@ describe("useMeetPollHandler admit", () => {
     expect(order[0]).toBe("waiting:false");
     expect(order.indexOf("waiting:false")).toBeLessThan(order.indexOf("rejoin"));
     expect(updateJoinName).toHaveBeenCalledWith("Alex");
+    expect(retryRoomPeerConnections).toHaveBeenCalledTimes(1);
   });
 
   it("still leaves the wait UI when rename-rejoin throws", async () => {
     const setWaitingForAdmission = vi.fn();
     const setStatus = vi.fn();
-    const { handlePoll } = createPollHandler({
+    const { handlePoll, retryRoomPeerConnections } = createPollHandler({
       waitingForAdmissionRef: { current: true },
       setWaitingForAdmission,
       setStatus,
@@ -154,5 +160,26 @@ describe("useMeetPollHandler admit", () => {
 
     expect(setWaitingForAdmission).toHaveBeenCalledWith(false);
     expect(setStatus).toHaveBeenCalledWith("in-call");
+    expect(retryRoomPeerConnections).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useMeetPollHandler knockers", () => {
+  it("clears leftover knocker rows once the roster has no knock names", async () => {
+    const setKnockers = vi.fn();
+    const { handlePoll } = createPollHandler({ setKnockers });
+
+    await handlePoll({
+      peers: [
+        { id: "host-1", name: "Admin" },
+        { id: "guest-1", name: "Ada" },
+      ],
+      messages: [],
+    });
+
+    const last = setKnockers.mock.calls.at(-1)?.[0] as (
+      prev: { id: string; name: string }[],
+    ) => { id: string; name: string }[];
+    expect(last([{ id: "guest-1", name: "Ada" }])).toEqual([]);
   });
 });
