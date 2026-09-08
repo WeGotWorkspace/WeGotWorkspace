@@ -29,6 +29,7 @@ Day-to-day development runs Vite HMR from `packages/apps` and a host or Docker P
 1. Open `/install/` and complete the wizard (requirements, database, first account).
 2. Sign in and connect WebDAV/CalDAV clients to your site URL.
 3. Install optional plugins via **Admin → Plugins** ([plugins.md](plugins.md)).
+4. Optional: connect Claude, ChatGPT, or Mistral as you via MCP after an administrator enables **Connected assistants** — [mcp-connect.md](mcp-connect.md). Discovery lives at the origin root (`/.well-known/oauth-*`), not under `/api`.
 
 ## Updates
 

@@ -28,6 +28,9 @@ Options -Indexes -MultiViews
     RewriteEngine On
     RewriteBase /
 
+    # Origin-root MCP OAuth discovery (/.well-known/oauth-*) falls through to
+    # index.php with other unknown paths. Do not require /api for those URLs.
+
     # Never expose runtime internals, config, or source trees directly.
     RewriteRule ^(?:wgw-modules|wgw-private|wgw-content)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:wgw-src|src|resources|vendor|scripts|patches|config|public|packages)(?:/|$) - [F,L,NC]

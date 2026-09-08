@@ -12,7 +12,7 @@ import type {
   WgwSettingsUserMailServer,
   WgwSettingsUserProfile,
 } from "@/lib/api/wgw/types";
-import type { SettingsUIData } from "@/settings-core/src/settings-types";
+import type { SettingsUIData, SettingsMcpGrant } from "@/settings-core/src/settings-types";
 
 function toUser(raw: WgwSettingsUserProfile): SettingsUIData["user"] {
   return {
@@ -108,4 +108,24 @@ export async function saveSettingsMail(
 ): Promise<SettingsUIData> {
   const state = await requestSettings("/settings/mail", input, opts);
   return mapWgwSettingsStateToUI(state);
+}
+
+export async function listSettingsMcpGrants(opts?: {
+  signal?: AbortSignal;
+}): Promise<SettingsMcpGrant[]> {
+  const res = await wgwFetch("/settings/mcp-grants", { signal: opts?.signal });
+  if (!res.ok) throw new Error(`GET /settings/mcp-grants failed (${res.status})`);
+  const payload = (await wgwReadJson(res)) as { grants?: SettingsMcpGrant[] };
+  return Array.isArray(payload.grants) ? payload.grants : [];
+}
+
+export async function revokeSettingsMcpGrant(
+  clientId: string,
+  opts?: { signal?: AbortSignal },
+): Promise<void> {
+  const res = await wgwFetch(`/settings/mcp-grants/${encodeURIComponent(clientId)}`, {
+    method: "DELETE",
+    signal: opts?.signal,
+  });
+  if (!res.ok) throw new Error(`DELETE /settings/mcp-grants/${clientId} failed (${res.status})`);
 }

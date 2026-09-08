@@ -42,6 +42,12 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'addressbook_shares',
             'addressbook_share_dismissals',
             'note_stars',
+            'oauth_clients',
+            'oauth_auth_codes',
+            'oauth_access_tokens',
+            'oauth_refresh_tokens',
+            'mcp_audit_events',
+            'mcp_sessions',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),

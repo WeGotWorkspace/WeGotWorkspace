@@ -70,6 +70,10 @@ After setup, sign in with your new account and connect clients using the same si
 
 If your install is in a subfolder, set `RewriteBase` in `.htaccess` to that subfolder path.
 
+### MCP / OAuth discovery (origin root)
+
+Assistants discover this instance at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource` on the **same origin** users open in the browser. The ZIP layout already rewrites those paths to Laravel via `index.php`. If you only expose Laravel under `Alias /api` (or another prefix) and the document root is not this install shell, add rewrite or alias rules so those two `.well-known` paths (and `/.well-known/oauth-protected-resource/<path>`) still reach Laravel. Do not tell clients to use `/api/.well-known/…`. Details: [docs/mcp-connect.md](docs/mcp-connect.md).
+
 ### Apache PWA icons (Debian/Ubuntu)
 
 Debian and Ubuntu Apache enable `Alias /icons/` to Apache’s built-in icon directory (`alias.conf`). That path shadows PWA manifest icons if the app serves them at `/icons/`. WeGotWorkspace publishes PWA icons under **`/pwa-icons/`** instead so offline/PWA works on shared Apache hosts without server config changes.

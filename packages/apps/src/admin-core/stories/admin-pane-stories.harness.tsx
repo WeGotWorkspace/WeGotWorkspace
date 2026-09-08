@@ -20,6 +20,7 @@ export type AdminStoryDataOverride = {
   rtc?: Partial<AdminUIData["rtc"]>;
   apps?: Partial<AdminUIData["apps"]>;
   webdav?: Partial<AdminUIData["webdav"]>;
+  mcp?: Partial<AdminUIData["mcp"]>;
   plugins?: AdminUIData["plugins"];
   updates?: Partial<AdminUIData["updates"]>;
   searchReindex?: Partial<AdminUIData["searchReindex"]>;
@@ -67,6 +68,7 @@ function mergeAdminStoryData(base: AdminUIData, override?: AdminStoryDataOverrid
     },
     apps: { ...base.apps, ...override.apps },
     webdav: { ...base.webdav, ...override.webdav },
+    mcp: { ...base.mcp, ...override.mcp },
     updates: { ...base.updates, ...override.updates },
     searchReindex: { ...base.searchReindex, ...override.searchReindex },
   };

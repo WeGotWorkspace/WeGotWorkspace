@@ -7,7 +7,8 @@ export type AdminSection =
   | "plugins"
   | "backups"
   | "updates"
-  | "search";
+  | "search"
+  | "mcp";
 
 export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 
@@ -98,6 +99,10 @@ export type AdminWebdavSettings = {
   timezone: string;
   baseUri: string;
   authRealm: string;
+};
+
+export type AdminMcpSettings = {
+  enabled: boolean;
 };
 
 export type AdminUpdateRelease = {
@@ -203,6 +208,7 @@ export type AdminUIData = {
   rtc: AdminRtcSettings;
   apps: AdminAppsSettings;
   webdav: AdminWebdavSettings;
+  mcp: AdminMcpSettings;
   plugins: {
     id: string;
     name: string;

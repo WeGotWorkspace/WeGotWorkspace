@@ -78,6 +78,9 @@ const DEFAULT_DATA: AdminUIData = {
     baseUri: "/",
     authRealm: "SabreDAV",
   },
+  mcp: {
+    enabled: false,
+  },
   plugins: [],
   updates: {
     installChannel: null,

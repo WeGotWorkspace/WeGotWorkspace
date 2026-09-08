@@ -39,6 +39,9 @@ export function useAdminAPI(source?: AdminApiSource) {
         baseUri: "/",
         authRealm: "SabreDAV",
       },
+      mcp: {
+        enabled: false,
+      },
       plugins: [],
       updates: {
         installChannel: null,

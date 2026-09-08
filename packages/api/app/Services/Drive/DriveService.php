@@ -281,6 +281,45 @@ final class DriveService
         }
     }
 
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{path: string, mime: string, size: int, truncated: bool, text: string}
+     */
+    public function readTextPreview(array $principal, string $path, int $maxBytes = 65536): array
+    {
+        $this->assertReadableFile($principal, $path);
+        $virtual = $this->paths->normalizeVirtualPath($path);
+        $disk = $this->disk();
+        $key = $this->paths->virtualToStorageKey($virtual);
+        $size = (int) ($disk->fileSize($key) ?: 0);
+        $mime = (string) ($disk->mimeType($key) ?: 'application/octet-stream');
+        $allowed = str_starts_with($mime, 'text/')
+            || in_array($mime, [
+                'application/json',
+                'application/xml',
+                'application/javascript',
+                'application/x-yaml',
+                'application/yaml',
+            ], true)
+            || str_ends_with(strtolower($virtual), '.md')
+            || str_ends_with(strtolower($virtual), '.txt');
+        if (! $allowed) {
+            throw new \InvalidArgumentException('File type is not available as a text preview.');
+        }
+        if ($size > $maxBytes) {
+            throw new \InvalidArgumentException('File is too large to preview via MCP.');
+        }
+        $contents = (string) $disk->read($key);
+
+        return [
+            'path' => $virtual,
+            'mime' => $mime,
+            'size' => $size,
+            'truncated' => false,
+            'text' => $contents,
+        ];
+    }
+
     public function downloadResponse(array $principal, string $path): StreamedResponse
     {
         $this->assertReadableFile($principal, $path);

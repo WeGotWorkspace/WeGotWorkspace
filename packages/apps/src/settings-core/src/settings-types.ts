@@ -3,7 +3,7 @@ import type {
   SettingsProfileRequest,
 } from "@wgw-api-generated/settings-types";
 
-export type SettingsSection = "profile" | "memberships" | "mail" | "offline";
+export type SettingsSection = "profile" | "memberships" | "mail" | "offline" | "assistants";
 
 export type SettingsSectionDescriptor = {
   id: SettingsSection;
@@ -36,6 +36,15 @@ export type SettingsMailServer = {
   smtpSecurity: string;
 };
 
+export type SettingsMcpGrant = {
+  clientId: string;
+  clientName: string;
+  clientOrigin: string;
+  connectedAt: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+};
+
 export type SettingsUIData = {
   user: SettingsUser;
   groups: SettingsGroup[];
@@ -53,4 +62,6 @@ export type SettingsAPIOperations = {
     input: SettingsMailRequest,
     opts?: { signal?: AbortSignal },
   ) => Promise<SettingsUIData>;
+  listMcpGrants: (opts?: { signal?: AbortSignal }) => Promise<SettingsMcpGrant[]>;
+  revokeMcpGrant: (clientId: string, opts?: { signal?: AbortSignal }) => Promise<void>;
 };

@@ -115,6 +115,31 @@
   --user-avatar-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
+.settings-workspace .settings-assistants-pane {
+  @apply flex flex-col gap-4 max-w-lg;
+}
+
+.settings-workspace .settings-assistants-pane__lead,
+.settings-workspace .settings-assistants-pane__empty {
+  @apply text-sm text-muted-foreground;
+}
+
+.settings-workspace .settings-assistants-pane__error {
+  @apply text-sm text-destructive;
+}
+
+.settings-workspace .settings-assistants-pane__meta {
+  @apply grid gap-2 mb-4 text-sm;
+}
+
+.settings-workspace .settings-assistants-pane__meta dt {
+  @apply text-muted-foreground;
+}
+
+.settings-workspace .settings-assistants-pane__meta dd {
+  @apply m-0;
+}
+
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .settings-story-scope {
   min-height: 100dvh;

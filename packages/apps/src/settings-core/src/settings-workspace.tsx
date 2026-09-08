@@ -14,6 +14,7 @@ import {
 import { useDocumentTitle } from "@/lib/document-title";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
+import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
@@ -85,6 +86,9 @@ function MainContent({ controller }: { controller: SettingsControllerState }) {
       ) : null}
       {controller.section === "mail" ? <SettingsMailPane mail={controller.mail} /> : null}
       {controller.section === "offline" ? <SettingsOfflinePane /> : null}
+      {controller.section === "assistants" ? (
+        <SettingsAssistantsPane assistants={controller.assistants} />
+      ) : null}
     </>
   );
 }

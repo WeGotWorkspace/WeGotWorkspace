@@ -5020,6 +5020,58 @@
         "x-wgw-access": "user"
       }
     },
+    "/settings/mcp-grants": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "List connected assistant OAuth grants",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Connected assistant grants",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SettingsMcpGrantList" }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/mcp-grants/{clientId}": {
+      "delete": {
+        "tags": ["Settings"],
+        "summary": "Revoke a connected assistant grant",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grant revoked",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OkResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Grant not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/settings/mail": {
       "put": {
         "tags": [

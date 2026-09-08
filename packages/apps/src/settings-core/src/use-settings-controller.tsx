@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
 import type { SettingsSection } from "@/settings-core/src/settings-types";
 import { useSettingsMailForm } from "@/settings-core/src/use-settings-mail-form";
+import { useSettingsMcpGrants } from "@/settings-core/src/use-settings-mcp-grants";
 import { useSettingsProfileForm } from "@/settings-core/src/use-settings-profile-form";
 import { useSettingsSidebarModel } from "@/settings-core/src/use-settings-sidebar-model";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
@@ -36,6 +37,7 @@ export function useSettingsController({
     mailServer: data.mailServer,
     operations,
   });
+  const assistants = useSettingsMcpGrants(operations);
 
   return {
     section,
@@ -47,6 +49,7 @@ export function useSettingsController({
     profile,
     memberships: data.groups,
     mail,
+    assistants,
   };
 }
 

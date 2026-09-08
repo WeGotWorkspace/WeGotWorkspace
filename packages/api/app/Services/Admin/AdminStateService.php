@@ -54,6 +54,9 @@ final class AdminStateService
                 'authRealm' => (string) ($cfg[SettingKeys::AUTH_REALM] ?? 'SabreDAV'),
             ],
             'updates' => $this->updates->snapshot(),
+            'mcp' => [
+                'enabled' => (bool) AppSetting::getValue(SettingKeys::MCP_ENABLED, false),
+            ],
             'currentUser' => $adminUsername,
             'logoutUrl' => $this->urls->logout(),
         ];

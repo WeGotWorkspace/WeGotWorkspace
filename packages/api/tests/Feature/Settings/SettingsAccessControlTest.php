@@ -32,6 +32,8 @@ final class SettingsAccessControlTest extends WgwDatabaseTestCase
         yield 'GET state' => ['GET', '/api/v1/settings/state', null];
         yield 'PUT profile' => ['PUT', '/api/v1/settings/profile', ['displayName' => 'Guest']];
         yield 'PUT mail' => ['PUT', '/api/v1/settings/mail', ['imapUsername' => 'guest@example.test', 'imapPassword' => 'secret']];
+        yield 'GET mcp grants' => ['GET', '/api/v1/settings/mcp-grants', null];
+        yield 'DELETE mcp grant' => ['DELETE', '/api/v1/settings/mcp-grants/00000000-0000-0000-0000-000000000000', null];
     }
 
     #[DataProvider('guestSettingsRoutesProvider')]
