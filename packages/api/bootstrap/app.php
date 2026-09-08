@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureContactsEnabled;
 use App\Http\Middleware\EnsureMcpEnabled;
 use App\Http\Middleware\EnsureTasksEnabled;
 use App\Http\Middleware\FilterMcpConsentScopes;
+use App\Http\Middleware\McpCors;
 use App\Http\Middleware\ProtectMcpConsent;
 use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\RequireWgwRole;
@@ -17,6 +18,7 @@ use App\Http\Middleware\WgwSecurityHeaders;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
+use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
 use Illuminate\Auth\AuthenticationException;
@@ -62,6 +64,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ProtectMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
+        $middleware->append(McpCors::class);
         $middleware->append(EnsureMcpEnabled::class);
         $middleware->append(ResolveCimdClient::class);
         $middleware->validateCsrfTokens(except: [
@@ -105,17 +108,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return response()->json([
-                'jsonrpc' => '2.0',
-                'id' => null,
-                'error' => [
-                    'code' => -32001,
-                    'message' => 'Unauthorized.',
-                ],
-            ], 401)->header(
-                'WWW-Authenticate',
-                'Bearer realm="mcp", resource_metadata="'.url('/.well-known/oauth-protected-resource/mcp').'"',
-            );
+            return McpPublicOrigin::unauthorized($request);
         });
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
             if (! $request->is('api/*')) {

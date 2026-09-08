@@ -146,6 +146,7 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         $this->assertContains('mail.send', $scopes);
         $this->assertSame(['none'], $response->json('token_endpoint_auth_methods_supported'));
         $this->assertSame(['S256'], $response->json('code_challenge_methods_supported'));
+        $this->assertTrue($response->json('client_id_metadata_document_supported'));
     }
 
     /**

@@ -8,7 +8,7 @@ WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Curso
 - An account on the instance.
 - The **Connected assistants** kill-switch enabled (Admin → Connected assistants). It is off by default.
 
-LAN-only installs can use a tunnel (Tailscale Funnel, Cloudflare Tunnel, ngrok, or similar) so the assistant can complete HTTPS OAuth.
+LAN-only installs can use a tunnel (Cloudflare Tunnel, Tailscale Funnel, ngrok, or similar) so the assistant can complete HTTPS OAuth. **ngrok’s free interstitial page will fail Claude’s server check** (often shown as HTTP 500 / “Not found”). Prefer Cloudflare Quick Tunnel, or an ngrok plan that does not insert a browser warning.
 
 You will **sign in again** on the instance when you connect. Being signed in to the WeGotWorkspace web app in another tab is not enough: granting an assistant is a high-trust action and always asks for your username and password.
 
@@ -28,9 +28,40 @@ OAuth discovery is at the **origin root**:
 ## Claude (claude.ai)
 
 1. Open Claude → custom connectors / MCP.
-2. Add a connector with this instance URL (or the `/mcp` URL if the product asks for the server URL).
+2. Add a connector with the **public** `/mcp` URL (a hostname Anthropic’s servers can resolve — not `localhost`).
 3. Complete the browser sign-in and consent pages on your instance. The page shows the **client origin** (for example `https://claude.ai`) as the identity — treat that origin as the real client, not a self-asserted name.
 4. Approve the scopes you want. Leave **offline access** checked if you want the assistant to stay connected without signing in every hour.
+
+### “Couldn’t determine the server settings”
+
+Do **not** click Next to configure the connector manually. This instance requires OAuth discovery; skipping the check leaves Claude without an authorization server.
+
+That warning means Claude’s probe to `/mcp` failed. Typical causes:
+
+1. **The URL is not reachable from the public internet.** `https://wegotworkspace.localhost/mcp` and `http://127.0.0.1:9080/mcp` work for Cursor / Claude Code on your machine. They never work for claude.ai.
+2. **ngrok free warning page.** Claude’s servers do not send `ngrok-skip-browser-warning`. The interstitial (or a 5xx from ngrok’s proxy) shows up as **Connect to the server → 500**. Use Cloudflare Tunnel instead:
+   ```bash
+   cloudflared tunnel --url https://localhost:443
+   ```
+   Then paste `https://<random>.trycloudflare.com/mcp`.
+3. **Connected assistants is off.** Admin → Connected assistants must be on and saved. When it is off, `/mcp` returns 403.
+
+From a second machine (or a phone on cellular), confirm:
+
+```bash
+curl -sI https://YOUR_PUBLIC_HOST/mcp
+```
+
+You want **401** and a `WWW-Authenticate` header that points at `/.well-known/oauth-protected-resource/mcp`. HTML, empty 405, or 5xx will fail the wizard.
+
+Also confirm discovery on the **same host** you pasted:
+
+```bash
+curl -sI https://YOUR_PUBLIC_HOST/.well-known/oauth-protected-resource/mcp
+curl -sI https://YOUR_PUBLIC_HOST/.well-known/oauth-authorization-server
+```
+
+Both should be JSON `200` (not the SPA, not Apache’s default page).
 
 ## ChatGPT
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Mcp\McpProbeController;
 use App\Http\Controllers\Mcp\OAuthMetadataController;
 use App\Http\Controllers\Mcp\OAuthRegisterController;
 use App\Http\Controllers\Mcp\OAuthSessionController;
@@ -36,3 +37,8 @@ Mcp::web('/mcp', WorkspaceServer::class)->middleware([
     'auth:api',
     TouchMcpSession::class,
 ]);
+
+// Replace laravel/mcp's GET/DELETE 405. Claude.ai probes GET /mcp as a protected
+// resource and expects RFC 9728 (401 + WWW-Authenticate), not an empty 405.
+Route::match(['GET', 'HEAD'], '/mcp', [McpProbeController::class, 'challenge']);
+Route::options('/mcp', [McpProbeController::class, 'options']);

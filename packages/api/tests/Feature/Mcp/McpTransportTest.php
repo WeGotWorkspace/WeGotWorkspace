@@ -37,11 +37,55 @@ final class McpTransportTest extends WgwDatabaseTestCase
         $www = (string) $response->headers->get('WWW-Authenticate');
         $this->assertStringContainsString('resource_metadata=', $www);
         $this->assertStringContainsString('oauth-protected-resource', $www);
+        $this->assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
     }
 
-    public function test_get_and_delete_mcp_are_method_not_allowed(): void
+    public function test_get_mcp_returns_401_with_prm_challenge(): void
     {
-        $this->get('/mcp')->assertStatus(405);
+        $response = $this->getJson('/mcp');
+
+        $response->assertUnauthorized();
+        $response->assertJsonPath('error.code', -32001);
+        $www = (string) $response->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString('resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp"', $www);
+        $this->assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
+    }
+
+    public function test_options_mcp_is_cors_preflight(): void
+    {
+        $this->call('OPTIONS', '/mcp')
+            ->assertStatus(204)
+            ->assertHeader('Access-Control-Allow-Origin', '*')
+            ->assertHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
+    }
+
+    public function test_challenge_and_metadata_use_the_request_host(): void
+    {
+        $host = 'sheep-nutmeg-zodiac.ngrok-free.dev';
+        $origin = 'https://'.$host;
+
+        $www = (string) $this->get($origin.'/mcp')
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$origin.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+
+        $this->getJson($origin.'/.well-known/oauth-authorization-server')
+            ->assertOk()
+            ->assertJsonPath('issuer', $origin)
+            ->assertJsonPath('registration_endpoint', $origin.'/oauth/register')
+            ->assertJsonPath('client_id_metadata_document_supported', true);
+
+        $this->getJson($origin.'/.well-known/oauth-protected-resource/mcp')
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+    }
+
+    public function test_delete_mcp_is_method_not_allowed(): void
+    {
         $this->delete('/mcp')->assertStatus(405);
     }
 
