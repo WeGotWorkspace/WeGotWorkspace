@@ -2,7 +2,8 @@
 
 /**
  * Product Create/Edit channel dialog — cream/paper surface like Notes/Tasks.
- * Lobby / in-call alerts keep `.meet-dialog-surface` / `.meet-call-dialog` (dark).
+ * Lobby popovers keep `.meet-dialog-surface` (dark). In-call leave/end uses
+ * cream `.meet-call-dialog`.
  */
 .meet-channel-dialog {
   --meet-accent: #2a1644;

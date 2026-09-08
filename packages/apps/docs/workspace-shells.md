@@ -36,18 +36,18 @@ IF product = multi-section config OR admin OR install wizard OR drive browser OR
   THEN entry = WorkspaceAppLayout(sidebar, mainHeader?, main)
   THEN blueprint = feature-blueprint.md
   THEN Meet guest stripped view = MeetGuestChannel (no channel sidebar; hideSidebarToggle)
-  THEN live guest/invite URL mounts MeetGuestChannel via MeetApp (not MeetCallWorkspace)
+  THEN live guest/invite URL mounts MeetGuestChannel via MeetApp
 
 IF product = list + detail collection (mail, notes, similar)
   THEN shell = collection
   THEN entry = WorkspaceApp with list/detail render props
   THEN inner layout = CollectionListWorkspace (via WorkspaceApp; do not mount alone in *Workspace)
 
-IF product = Meet guest join flow (MeetCallWorkspace on /meet/join, /meet/guest) OR other fullscreen RTC chrome that cannot map to sidebar + main OR list + detail
-  THEN shell = custom
-  THEN entry = WorkspaceShellHeader + product root layout
-  THEN do NOT force WorkspaceAppLayout or WorkspaceApp
-  NOTE: do not keep new Meet product work on Custom — that shell is Split (MeetWorkspace) above
+IF product = Meet guest invite (`/meet/meetings/{id}` unauthorized, `/meet/join`) OR other fullscreen RTC chrome that cannot map to sidebar + main OR list + detail
+  THEN shell = split (stripped) for Meet guests (`MeetGuestChannel`); otherwise custom
+  THEN Meet guest entry = MeetGuestChannel (no channel sidebar)
+  THEN do NOT force WorkspaceAppLayout on non-Meet custom chrome
+  NOTE: do not keep Meet product work on Custom — that shell is Split (MeetWorkspace) above
 
 IF product = login or standalone screen with global header only
   THEN shell = custom (header only)
@@ -161,7 +161,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 - **Hand-rolling** split chrome (`<section>`, scroll wrappers, mobile detail translate) when `WorkspaceAppLayout` split props or `WorkspaceApp` already provide it.
 - **Mounting `CollectionListWorkspace` directly** in `*Workspace` instead of going through `WorkspaceApp` (loses sidebar/detail mobile orchestration).
 - **Using split layout for mail/notes-style** list+detail — you lose shared back button, empty states, and mobile view-transition overlay.
-- **Keeping the new Meet product shell on Custom** — `MeetWorkspace` is Split (channels + chat + optional call) and owns live `/meet`. Guest invites use stripped Split `MeetGuestChannel`, not `MeetCallWorkspace`.
+- **Keeping the new Meet product shell on Custom** — `MeetWorkspace` is Split (channels + chat + optional call) and owns live `/meet`. Guest invites use stripped Split `MeetGuestChannel`.
 - **Second mobile scrim** beside `AppSidebar` — scrim is rendered inside `AppSidebar` when open.
 - **Navigation in `*-core`** — no `window.location` or router calls; expose `onLogout` / callbacks from `*App` (see workspace skill).
 - **Duplicating `workspace-split-app.css` variables** per product — import the shared sheet and override only on `.<product>-workspace`.
@@ -172,7 +172,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 | ---------- | ------------------------------------------------------------ |
 | Split      | `packages/apps/src/settings-core/src/settings-workspace.tsx` |
 | Collection | `packages/apps/src/mail-core/src/mail-workspace.tsx`         |
-| Custom     | `packages/apps/src/meet-core/src/meet-call-workspace.tsx`    |
+| Custom     | `packages/apps/src/login-core/src/login-screen.tsx`          |
 
 Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `install-workspace.tsx`, `docs-workspace.tsx`, `meet-workspace.tsx`.
 

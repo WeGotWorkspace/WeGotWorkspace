@@ -13,8 +13,8 @@ import {
 } from "@/meet-core/stories/meet-story-shared";
 
 /**
- * Thin rail around `MeetRoomPane`. Stories stub Start/Join by toggling `callActive`
- * and fixture peers — no `useMeetRtc`.
+ * Expanded call chrome around `MeetCallExpanded`. Stories stub Start/Join by
+ * toggling `callActive` and fixture peers — no `useMeetRtc`.
  */
 const meta = {
   title: "Apps/Meet/Components/MeetCallStage",

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -13,6 +13,11 @@ const guestLobbyCss = readFileSync(join(here, "meet-guest-lobby.css"), "utf8");
 const inviteGate = readFileSync(join(here, "meet-invite-gate.tsx"), "utf8");
 const meetApp = readFileSync(join(here, "meet-app.tsx"), "utf8");
 const knockBadge = readFileSync(join(here, "meet-knock-badge.tsx"), "utf8");
+const indexExports = readFileSync(join(here, "index.ts"), "utf8");
+const routes = readFileSync(
+  join(here, "../../wegotworkspace/src/wegotworkspace-routes.tsx"),
+  "utf8",
+);
 const layoutCss = readFileSync(
   join(here, "../../workspace-shell/src/workspace-app-layout.css"),
   "utf8",
@@ -348,7 +353,23 @@ describe("meet guest invite lobby chrome", () => {
     expect(lobby).toMatch(/--button-primary-bg:\s*var\(--meet-accent\)/);
   });
 
-  it("keeps live guest/invite mounts off MeetLobbyPane and MeetCallWorkspace", () => {
+  it("retired the navy MeetCallWorkspace / lobby / room / flat chat panes", () => {
+    expect(existsSync(join(here, "meet-call-workspace.tsx"))).toBe(false);
+    expect(existsSync(join(here, "meet-lobby-pane.tsx"))).toBe(false);
+    expect(existsSync(join(here, "meet-lobby-status-card.tsx"))).toBe(false);
+    expect(existsSync(join(here, "meet-room-pane.tsx"))).toBe(false);
+    expect(existsSync(join(here, "meet-room-status-bar.tsx"))).toBe(false);
+    expect(existsSync(join(here, "meet-chat-pane.tsx"))).toBe(false);
+    expect(indexExports).not.toMatch(/MeetCallWorkspace/);
+    expect(indexExports).not.toMatch(/MeetLobbyPane[^P]/);
+    expect(indexExports).not.toMatch(/MeetRoomPane/);
+    expect(indexExports).not.toMatch(/MeetChatPane/);
+    expect(indexExports).not.toMatch(/MeetLobbyStatusCard/);
+    expect(indexExports).not.toMatch(/MeetRoomStatusBar/);
+    expect(routes).toMatch(/<MeetWorkspace/);
+    expect(routes).not.toMatch(/MeetCallWorkspace/);
+    expect(css).not.toMatch(/\.meet-workspace__lobby/);
+    expect(css).not.toMatch(/\.meet-chat \{/);
     expect(guestChannel).not.toMatch(/import \{ MeetLobbyPane /);
     expect(guestChannel).not.toMatch(/<MeetCallKnockWaiting/);
     expect(guestChannel).toMatch(
@@ -484,5 +505,28 @@ describe("meet host admit knock popover", () => {
     expect(css).not.toMatch(
       /:is\(\.meet-workspace,\s*\.meet-dialog-surface,\s*\.meet-popover-surface\) \.meet-knock-badge__popover/,
     );
+  });
+});
+
+describe("meet leave/end call dialog", () => {
+  it("paints cream/dusk call chrome, not the lobby dark island", () => {
+    const dialog = css.match(/\.meet-call-dialog \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(dialog).toMatch(/--meet-accent:\s*#2a1644/);
+    expect(dialog).toMatch(
+      /--meet-call-surface:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%/,
+    );
+    expect(dialog).toMatch(/--modal-title-foreground:\s*var\(--color-ink\)/);
+    expect(dialog).toMatch(/--muted-foreground:\s*var\(--meet-muted\)/);
+    expect(dialog).toMatch(/--button-outline-color:\s*var\(--color-ink\)/);
+    expect(dialog).toMatch(/--button-destructive-bg:\s*var\(--color-red-500/);
+    expect(dialog).toMatch(/background-color:\s*var\(--meet-call-surface\)/);
+    expect(dialog).toMatch(/color:\s*var\(--color-ink\)/);
+    expect(dialog).not.toMatch(/#171826/);
+    expect(dialog).not.toMatch(/background-color:\s*var\(--meet-panel\)\s*!important/);
+    expect(css).toMatch(
+      /\.meet-call-dialog \.ui-modal-title \{[\s\S]*var\(--modal-title-foreground\)/,
+    );
+    expect(css).toMatch(/\.meet-call-dialog \.meet-call-dialog__cancel/);
+    expect(css).not.toMatch(/\.meet-dialog-surface,\s*\.meet-call-dialog,/);
   });
 });

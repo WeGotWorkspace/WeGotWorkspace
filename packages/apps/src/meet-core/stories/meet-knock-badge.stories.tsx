@@ -16,7 +16,10 @@ const meta = {
       </div>
     </MeetStoryScope>
   ),
-  parameters: meetStoryParameters(),
+  parameters: meetStoryParameters({
+    componentDescription:
+      "Host admit control used by MeetCallKnockQueue. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
+  }),
 } satisfies Meta<typeof MeetKnockBadge>;
 
 export default meta;

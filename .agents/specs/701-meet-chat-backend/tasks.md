@@ -21,7 +21,7 @@ Source plan: [plan.md](./plan.md)
 | `chunk-i-knock-ui` | later | meet, apps-ui, storybook | knock/admit in `MeetCallStage`, pending-knock list, stories | stories + Storybook coverage | done |
 | `chunk-k-typing` | later | meet, apps-ui | presence-core typing wiring, typing-indicator UI, stories | targeted Vitest + stories | pending |
 | `chunk-l-calendar-picker` | later | workspace, apps-ui | calendar event form Meet-channel conferencing picker | targeted Vitest + calendar stories | pending |
-| `chunk-j-cleanup` | later | meet, document | delete `MeetCallWorkspace` + lobby/room panes + old chat pane + stories; docs/exports | Storybook coverage + typecheck | pending |
+| `chunk-j-cleanup` | later | meet, document | delete `MeetCallWorkspace` + lobby/room panes + old chat pane + stories; docs/exports | Storybook coverage + typecheck | done |
 | `chunk-m-group-defaults` | builder (this phase) | api | `ChatGroupDefaultChannelProvisioner`, `ChatCollectionUris::groupDefaultUri`, `default_for_group` migration, repository guards, admin create hook | `composer test` chat/JMAP/meet suites; `pnpm test:api-done-gate` | done |
 | `chunk-v-verify` | later | testing | done gates, verify-issue #702–#709, cross-chunk verifier | `pnpm test:api-done-gate`; `pnpm test:apps-done-gate` | pending |
 

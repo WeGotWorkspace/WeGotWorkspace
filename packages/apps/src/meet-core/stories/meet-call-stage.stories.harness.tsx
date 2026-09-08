@@ -20,7 +20,7 @@ import {
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
-import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
+import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 import { MeetGuestChannel, type MeetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetLocalMediaGumConstraints } from "@/meet-core/src/meet-media-constraints";

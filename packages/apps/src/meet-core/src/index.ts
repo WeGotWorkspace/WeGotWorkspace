@@ -7,8 +7,6 @@ export {
   meetChannelRoomId,
   meetGuestChatChannelId,
 } from "@/meet-core/src/meet-channel-room";
-export { MeetCallWorkspace } from "@/meet-core/src/meet-call-workspace";
-export type { MeetCallWorkspaceProps } from "@/meet-core/src/meet-call-workspace-props";
 export { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 export type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
 export {
@@ -60,15 +58,8 @@ export type {
 } from "@/meet-core/src/meet-types";
 export { meetLabels } from "@/meet-core/src/meet-labels";
 export type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
-export { MeetLobbyPane } from "@/meet-core/src/meet-lobby-pane";
-export type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
-export { MeetRoomPane } from "@/meet-core/src/meet-room-pane";
-export type { MeetRoomPaneProps } from "@/meet-core/src/meet-room-pane";
-export { MeetChatPane } from "@/meet-core/src/meet-chat-pane";
-export type { MeetChatMessage } from "@/meet-core/src/meet-chat-pane";
+export type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 export { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
-export { MeetRoomStatusBar } from "@/meet-core/src/meet-room-status-bar";
-export { MeetLobbyStatusCard } from "@/meet-core/src/meet-lobby-status-card";
 export {
   WorkspaceShellHeader,
   type WorkspaceShellHeaderProps,
@@ -76,6 +67,7 @@ export {
 export { useMeetWorkspaceShell } from "@/meet-core/src/use-meet-workspace-shell";
 export type {
   MeetWorkspaceShellController,
+  MeetWorkspaceShellInput,
   MeetWorkspaceShellState,
 } from "@/meet-core/src/use-meet-workspace-shell";
 export {

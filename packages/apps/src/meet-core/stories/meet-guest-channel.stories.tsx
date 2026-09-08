@@ -21,7 +21,7 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Guest landing: no ViewHeader on invite/lobby (preview + invite card only). Checking / waiting-for-host / missing / error use the invite-column status card (Meet mark + serif title, no camera). Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage with no call-collapse control.",
+        "Guest landing (MeetGuestChannelFrame, no ViewHeader): invite/lobby is preview + invite card only. Checking / waiting-for-host / missing / error use the invite-column status card (Meet mark + serif title, no camera). Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage with no call-collapse control.",
       snippet: `<MeetGuestChannel
   channelName="Design"
   channelTopic="Pixels, prototypes and critiques"

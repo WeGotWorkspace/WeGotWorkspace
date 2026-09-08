@@ -25,10 +25,17 @@ describe("meet channel dialog surface", () => {
     expect(css).toMatch(/--card-title-color:\s*var\(--color-ink\)/);
   });
 
-  it("leaves lobby/in-call dialogs on the dark surface class", () => {
-    expect(workspaceCss).toMatch(/\.meet-dialog-surface,\s*\.meet-call-dialog/);
+  it("leaves lobby popovers on the dark surface; in-call leave/end is cream", () => {
+    expect(workspaceCss).toMatch(/\.meet-dialog-surface,\s*\.meet-popover-surface/);
+    expect(workspaceCss).not.toMatch(/\.meet-dialog-surface,\s*\.meet-call-dialog/);
     expect(workspaceCss).toMatch(/--meet-panel:\s*#171826/);
-    expect(workspaceCss).toMatch(/uses `\.meet-channel-dialog`/);
+    expect(workspaceCss).toMatch(/`\.meet-channel-dialog`/);
+    expect(workspaceCss).toMatch(
+      /\.meet-call-dialog \{[\s\S]*?--modal-title-foreground:\s*var\(--color-ink\)/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.meet-call-dialog \{[\s\S]*?--meet-call-surface:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%/,
+    );
   });
 
   it("puts owner delete in the dialog footer, not a header trash icon", () => {

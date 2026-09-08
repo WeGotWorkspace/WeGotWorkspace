@@ -19,7 +19,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Slack-like Meet workspace: channel sidebar, chat main, compact in-call bar under ViewHeader, expanded light stage + peer strip, and one right rail that swaps thread vs in-call chat. Call chrome is keyed to the channel that owns the session.",
+          "Slack-like Meet workspace (live `/meet` is MeetChatApp → MeetWorkspace; invite gates are MeetInviteGate / MeetChannelDeepLinkGate): channel sidebar, chat main, compact in-call bar under ViewHeader, expanded light stage + peer strip, and one right rail that swaps thread vs in-call chat. Call chrome is keyed to the channel that owns the session.",
       },
     },
   },

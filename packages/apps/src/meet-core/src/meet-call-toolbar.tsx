@@ -133,16 +133,22 @@ export function MeetCallToolbar({
               />
             </AlertDialogTrigger>
             <AlertDialogContent className="meet-call-dialog">
-              <AlertDialogHeader>
+              <AlertDialogHeader className="meet-call-dialog__header">
                 <AlertDialogTitle>{callExitTitle}</AlertDialogTitle>
                 <AlertDialogDescription>{callExitDescription}</AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              <AlertDialogFooter className="meet-call-dialog__footer">
                 <AlertDialogCancel asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline" className="meet-call-dialog__cancel">
+                    {meetLabels.cancel}
+                  </Button>
                 </AlertDialogCancel>
                 <AlertDialogAction asChild>
-                  <Button variant="destructive" onClick={onConfirmExit}>
+                  <Button
+                    variant="destructive"
+                    className="meet-call-dialog__confirm"
+                    onClick={onConfirmExit}
+                  >
                     {callExitLabel}
                   </Button>
                 </AlertDialogAction>

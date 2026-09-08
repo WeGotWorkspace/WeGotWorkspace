@@ -12,7 +12,7 @@ import {
   MeetGuestLobbyHeading,
   MeetGuestLobbyStatus,
 } from "@/meet-core/src/meet-guest-lobby-card";
-import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
+import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 import { MeetMicLevelBar } from "@/meet-core/src/meet-mic-level-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannelKind } from "@/meet-core/src/meet-types";

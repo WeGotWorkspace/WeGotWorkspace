@@ -8,7 +8,7 @@ import {
   type MeetCallStageLayout,
 } from "@/meet-core/src/meet-call-stage-layout";
 import { MeetGuestLobby } from "@/meet-core/src/meet-guest-lobby";
-import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
+import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannelKind } from "@/meet-core/src/meet-types";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";

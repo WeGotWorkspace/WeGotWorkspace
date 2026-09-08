@@ -4,14 +4,30 @@ import {
   meetCallStageShowsStage,
   type MeetCallStageLayout,
 } from "@/meet-core/src/meet-call-stage-layout";
+import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
+import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetRoomPaneProps } from "@/meet-core/src/meet-room-pane";
 import { cn } from "@/lib/utils";
 
-export type MeetCallStageRoomProps = Omit<
-  MeetRoomPaneProps,
-  "chatOpen" | "onToggleChat" | "hideChatToggle" | "statusEndActions"
->;
+export type MeetCallStageRoomProps = {
+  controller: MeetControllerState;
+  displayName: string;
+  hasSignedInIdentity: boolean;
+  participantCount: number;
+  callExitLabel: string;
+  callExitTitle: string;
+  callExitDescription: string;
+  cameras: MeetDeviceOption[];
+  microphones: MeetDeviceOption[];
+  speakers: MeetDeviceOption[];
+  activeCamera: string;
+  activeMic: string;
+  activeSpeaker: string;
+  onSpeakerChange: (value: string) => void;
+  onCopyLink: () => void;
+  onToastInfo: (message: string) => void;
+  onToastError: (message: string) => void;
+};
 
 export type MeetCallStageProps = MeetCallStageRoomProps & {
   layout?: MeetCallStageLayout;

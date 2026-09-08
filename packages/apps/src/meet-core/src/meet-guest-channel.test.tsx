@@ -2,7 +2,7 @@ import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MeetGuestChannel, meetGuestChannelStageLayout } from "@/meet-core/src/meet-guest-channel";
-import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
+import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {

@@ -7,14 +7,15 @@ import { meetChatLineToChannelMessage } from "@/meet-core/src/meet-chat-line";
 import { MeetGuestChannel, meetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
 import { meetGuestInviteChannel } from "@/meet-core/src/meet-guest-invite-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetCallWorkspaceProps } from "@/meet-core/src/meet-call-workspace-props";
 import { useMeetAPI } from "@/meet-core/src/use-meet-api";
 import { useMeetRouteSync } from "@/meet-core/src/use-meet-route-sync";
-import { useMeetWorkspaceShell } from "@/meet-core/src/use-meet-workspace-shell";
+import {
+  useMeetWorkspaceShell,
+  type MeetWorkspaceShellInput,
+} from "@/meet-core/src/use-meet-workspace-shell";
 
 /**
- * Live guest/invite surface: Storybook `MeetGuestChannel` (cream/dusk lobby + call stage),
- * not the retired `MeetCallWorkspace` shell.
+ * Live guest/invite surface: cream/dusk `MeetGuestChannel` (lobby + call stage).
  */
 export function MeetApp({ source }: MeetAppProps = {}) {
   const { phase, error, retry, successVersion, listLoading, data, session, operations } =
@@ -59,17 +60,7 @@ function MeetGuestChannelLive({
   meetingId = null,
   buildCallLink,
   onRoomChange,
-}: Pick<
-  MeetCallWorkspaceProps,
-  | "data"
-  | "session"
-  | "operations"
-  | "listLoading"
-  | "invitedRoom"
-  | "isJoinRoute"
-  | "buildCallLink"
-  | "onRoomChange"
-> & {
+}: MeetWorkspaceShellInput & {
   channelId?: string | null;
   meetingId?: string | null;
 }) {

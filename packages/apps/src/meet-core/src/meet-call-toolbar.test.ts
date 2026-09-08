@@ -31,4 +31,16 @@ describe("MeetCallToolbar", () => {
     expect(toolbar).toMatch(/variant="subtle"/);
     expect(toolbar).toMatch(/variant="destructive"/);
   });
+
+  it("opens leave/end confirm on the cream call dialog, not lobby dark", () => {
+    expect(toolbar).toMatch(/className="meet-call-dialog"/);
+    expect(toolbar).toMatch(/meet-call-dialog__header/);
+    expect(toolbar).toMatch(/meet-call-dialog__footer/);
+    expect(toolbar).toMatch(/meet-call-dialog__cancel/);
+    expect(toolbar).toMatch(/meet-call-dialog__confirm/);
+    expect(toolbar).toMatch(/variant="outline"/);
+    expect(toolbar).toMatch(/meetLabels\.cancel/);
+    expect(toolbar).not.toMatch(/meet-dialog-surface/);
+    expect(toolbar).not.toMatch(/meet-popover-surface/);
+  });
 });

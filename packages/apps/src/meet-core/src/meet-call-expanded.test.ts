@@ -33,8 +33,8 @@ describe("MeetCallExpanded", () => {
     expect(stage).toMatch(/MeetCallExpanded/);
     expect(stage).toMatch(/meet-call-stage-host/);
     expect(stage).toMatch(/meet-workspace__surface--parked/);
-    expect(stage).toMatch(/import type \{ MeetRoomPaneProps \}/);
-    expect(stage).not.toMatch(/<MeetRoomPane/);
+    expect(stage).toMatch(/export type MeetCallStageRoomProps/);
+    expect(stage).not.toMatch(/MeetRoomPane/);
   });
 
   it("toggles the shared workspace rail — it does not own a second chat drawer", () => {

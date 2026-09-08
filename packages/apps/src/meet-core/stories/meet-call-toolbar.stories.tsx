@@ -14,6 +14,7 @@ import {
   STORY_NOOP,
   storyBooleanControl,
 } from "@/meet-core/stories/meet-story-shared";
+import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 type MeetCallToolbarStoryArgs = {
   micOn: boolean;
@@ -38,7 +39,10 @@ function MeetCallToolbarStory({
   const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
   return (
-    <div className="flex flex-1 flex-col justify-end pb-8">
+    <MeetStoryScope
+      variant="split"
+      className="meet-workspace--call-active flex h-auto min-h-0 flex-col justify-end p-6"
+    >
       <MeetCallToolbar
         micOn={micOn}
         videoOn={videoOn}
@@ -63,7 +67,7 @@ function MeetCallToolbarStory({
         onAdmitKnocker={showKnockers ? STORY_NOOP : undefined}
         onDenyKnocker={showKnockers ? STORY_NOOP : undefined}
       />
-    </div>
+    </MeetStoryScope>
   );
 }
 
@@ -152,6 +156,34 @@ export const LeaveCall: Story = {
     callExitLabel: meetLabels.leaveCall,
     callExitTitle: meetLabels.leaveCallTitle,
     callExitDescription: meetLabels.leaveCallDescription,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.leaveCall }));
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole("alertdialog");
+    const inDialog = within(dialog);
+    await expect(dialog).toHaveClass("meet-call-dialog");
+    await expect(inDialog.getByText(meetLabels.leaveCallTitle)).toBeInTheDocument();
+    await expect(inDialog.getByText(meetLabels.leaveCallDescription)).toBeInTheDocument();
+    await expect(inDialog.getByRole("button", { name: meetLabels.cancel })).toBeInTheDocument();
+    await expect(inDialog.getByRole("button", { name: meetLabels.leaveCall })).toBeInTheDocument();
+  },
+};
+
+export const EndCall: Story = {
+  name: "End call for everyone",
+  args: baseArgs,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.endCall }));
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole("alertdialog");
+    const inDialog = within(dialog);
+    await expect(dialog).toHaveClass("meet-call-dialog");
+    await expect(inDialog.getByText(meetLabels.endCallTitle)).toBeInTheDocument();
+    await expect(inDialog.getByText(meetLabels.endCallDescription)).toBeInTheDocument();
+    await expect(inDialog.getByRole("button", { name: meetLabels.cancel })).toBeInTheDocument();
   },
 };
 
