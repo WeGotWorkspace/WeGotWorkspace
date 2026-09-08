@@ -13971,7 +13971,7 @@
                     "Meetings"
                 ],
                 "summary": "Meeting room reservation status",
-                "description": "Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.",
+                "description": "Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404. Meeting-kind collection slugs (`test`, `chat-test`) resolve as reserved.",
                 "parameters": [
                     {
                         "name": "roomId",
