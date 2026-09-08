@@ -22,7 +22,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Grouped message list with sticky day separators (Today / Yesterday), empty and auto-scroll states. Previews travel on each message; the harness attaches them from the fixture unfurl map.",
+          "Grouped message list with sticky day separators (bold Today / Yesterday plus regular date rest), empty and auto-scroll states. Previews travel on each message; the harness attaches them from the fixture unfurl map.",
       },
     },
   },

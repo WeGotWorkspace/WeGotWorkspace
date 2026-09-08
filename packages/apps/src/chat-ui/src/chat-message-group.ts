@@ -54,9 +54,16 @@ export function chatMessageDayKey(timestamp: number): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+export type ChatDayLabelParts = {
+  emphasis: string;
+  rest: string;
+};
+
 export type ChatDaySection = {
   key: string;
   label: string;
+  emphasis: string;
+  rest: string;
   timestamp: number;
   groups: ChatMessageGroup[];
 };
@@ -75,9 +82,12 @@ export function groupChatMessagesByDay(
       last.groups.push(group);
       continue;
     }
+    const parts = formatChatDayLabelParts(timestamp, now);
     sections.push({
       key,
-      label: formatChatDayLabel(timestamp, now),
+      label: joinChatDayLabel(parts),
+      emphasis: parts.emphasis,
+      rest: parts.rest,
       timestamp,
       groups: [group],
     });
@@ -85,16 +95,35 @@ export function groupChatMessagesByDay(
   return sections;
 }
 
-export function formatChatDayLabel(timestamp: number, now = Date.now()): string {
-  const day = startOfLocalDay(timestamp);
-  const today = startOfLocalDay(now);
-  if (day === today) return chatUiLabels.today;
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (day === yesterday.getTime()) return chatUiLabels.yesterday;
+function formatChatDayRest(timestamp: number, withYear = false): string {
   return new Date(timestamp).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    ...(withYear ? { year: "numeric" as const } : {}),
   });
+}
+
+export function formatChatDayLabelParts(timestamp: number, now = Date.now()): ChatDayLabelParts {
+  const day = startOfLocalDay(timestamp);
+  const today = startOfLocalDay(now);
+  if (day === today) {
+    return { emphasis: chatUiLabels.today, rest: formatChatDayRest(timestamp) };
+  }
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (day === yesterday.getTime()) {
+    return { emphasis: chatUiLabels.yesterday, rest: formatChatDayRest(timestamp) };
+  }
+  return {
+    emphasis: new Date(timestamp).toLocaleDateString(undefined, { weekday: "long" }),
+    rest: formatChatDayRest(timestamp, true),
+  };
+}
+
+export function joinChatDayLabel(parts: ChatDayLabelParts): string {
+  return `${parts.emphasis} ${parts.rest}`;
+}
+
+export function formatChatDayLabel(timestamp: number, now = Date.now()): string {
+  return joinChatDayLabel(formatChatDayLabelParts(timestamp, now));
 }

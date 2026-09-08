@@ -82,7 +82,9 @@ describe("CalendarSearchResultsList paging", () => {
     await list?.updateComplete;
     expect(list?.events?.size).toBe(CALENDAR_SEARCH_PAGE_SIZE);
     expect(list?.showYearInHeadings).toBe(true);
-    expect(list?.shadowRoot?.querySelector(".agenda-day-date")?.textContent).toMatch(/2026/);
+    expect(list?.shadowRoot?.querySelector(".list-sticky-header__rest")?.textContent).toMatch(
+      /2026/,
+    );
 
     const scope = document.querySelector(".calendar-search-results__scope");
     const tags = [...(scope?.querySelectorAll(".tag") ?? [])].map((tag) => tag.textContent?.trim());

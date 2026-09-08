@@ -88,3 +88,18 @@ describe("ChatMessageList jump chip", () => {
     expect(screen.queryByRole("button", { name: chatUiLabels.newMessages })).toBeNull();
   });
 });
+
+describe("ChatMessageList sticky day labels", () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
+  it("splits sticky day labels into shared emphasis and rest", () => {
+    render(<ChatMessageList messages={[msg("1")]} currentUserId={CURRENT_USER} />);
+    expect(document.querySelector(".list-sticky-header__emphasis")?.textContent).toBe("Today");
+    expect(document.querySelector(".list-sticky-header__rest")?.textContent).toMatch(/\d/);
+    expect(document.querySelector(".list-sticky-header")?.getAttribute("aria-label")).toMatch(
+      /Today/,
+    );
+  });
+});

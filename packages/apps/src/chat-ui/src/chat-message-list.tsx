@@ -149,7 +149,12 @@ export function ChatMessageList({
                 className="chat-message-list__day-section"
                 aria-labelledby={`chat-day-${day.key}`}
               >
-                <ListStickyHeader id={`chat-day-${day.key}`}>{day.label}</ListStickyHeader>
+                <ListStickyHeader
+                  id={`chat-day-${day.key}`}
+                  label={day.label}
+                  emphasis={day.emphasis}
+                  rest={day.rest}
+                />
                 {day.groups.map((group) => (
                   <div key={group.id} className="chat-message-list__group">
                     {group.messages.map((message, index) => (

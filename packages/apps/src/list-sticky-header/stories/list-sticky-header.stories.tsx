@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Sticky section row used by contacts letter groups and chat day separators. Scroll the list stories to confirm the hairline + label stay pinned until the next section.",
+          "Sticky section row used by contacts letter groups and chat day separators. Date labels split into a bold lead and regular rest (same treatment as calendar list headings). Scroll the list stories to confirm the hairline + label stay pinned until the next section.",
       },
     },
   },
@@ -54,12 +54,22 @@ export const ChatDays: Story = {
   name: "Chat days",
   render: () => (
     <div className="list-sticky-header-story-scroll list-sticky-header-story-scroll--chat">
-      {(["Yesterday", "Today"] as const).map((label) => (
-        <section key={label} aria-labelledby={`list-sticky-story-day-${label}`}>
-          <ListStickyHeader id={`list-sticky-story-day-${label}`}>{label}</ListStickyHeader>
+      {(
+        [
+          { emphasis: "Yesterday", rest: "Aug 31" },
+          { emphasis: "Today", rest: "Sep 1" },
+        ] as const
+      ).map(({ emphasis, rest }) => (
+        <section key={emphasis} aria-labelledby={`list-sticky-story-day-${emphasis}`}>
+          <ListStickyHeader
+            id={`list-sticky-story-day-${emphasis}`}
+            label={`${emphasis} ${rest}`}
+            emphasis={emphasis}
+            rest={rest}
+          />
           {Array.from({ length: 10 }, (_, index) => (
             <div key={index} className="list-sticky-header-story-row">
-              {label} message {index + 1}
+              {emphasis} message {index + 1}
             </div>
           ))}
         </section>

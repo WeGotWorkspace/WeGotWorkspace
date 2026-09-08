@@ -35,11 +35,16 @@ export {
   CHAT_MESSAGE_GROUP_WINDOW_MS,
   chatMessageDayKey,
   formatChatDayLabel,
+  formatChatDayLabelParts,
   formatChatTime,
   groupChatMessages,
   groupChatMessagesByDay,
 } from "@/chat-ui/src/chat-message-group";
-export type { ChatDaySection, ChatMessageGroup } from "@/chat-ui/src/chat-message-group";
+export type {
+  ChatDayLabelParts,
+  ChatDaySection,
+  ChatMessageGroup,
+} from "@/chat-ui/src/chat-message-group";
 export { chatFileKindFromName } from "@/chat-ui/src/chat-file-kind";
 export type {
   ChatAuthorPresence,

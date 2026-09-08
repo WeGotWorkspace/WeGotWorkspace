@@ -4,6 +4,7 @@ import {
   CHAT_MESSAGE_GROUP_WINDOW_MS,
   chatMessageDayKey,
   formatChatDayLabel,
+  formatChatDayLabelParts,
   formatChatTime,
   groupChatMessages,
   groupChatMessagesByDay,
@@ -63,9 +64,21 @@ describe("groupChatMessagesByDay", () => {
     ]);
     const days = groupChatMessagesByDay(groups, now);
 
-    expect(days.map((day) => [day.key, day.label, day.groups.map((group) => group.id)])).toEqual([
-      ["2026-08-31", "Yesterday", ["y1"]],
-      ["2026-09-01", "Today", ["t1", "t2"]],
+    expect(days.map((day) => [day.key, day.emphasis, day.groups.map((group) => group.id)])).toEqual(
+      [
+        ["2026-08-31", "Yesterday", ["y1"]],
+        ["2026-09-01", "Today", ["t1", "t2"]],
+      ],
+    );
+    expect(days[0]?.rest).toBe(
+      new Date(yesterday).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    );
+    expect(days[1]?.rest).toBe(
+      new Date(todayMorning).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    );
+    expect(days.map((day) => day.label)).toEqual([
+      `Yesterday ${days[0]!.rest}`,
+      `Today ${days[1]!.rest}`,
     ]);
   });
 });
@@ -73,9 +86,33 @@ describe("groupChatMessagesByDay", () => {
 describe("formatChatDayLabel", () => {
   const now = new Date(2026, 8, 1, 15, 0, 0).getTime();
 
-  it("labels today and yesterday", () => {
-    expect(formatChatDayLabel(new Date(2026, 8, 1, 10, 14, 0).getTime(), now)).toBe("Today");
-    expect(formatChatDayLabel(new Date(2026, 7, 31, 18, 0, 0).getTime(), now)).toBe("Yesterday");
+  it("labels today and yesterday with a regular date rest", () => {
+    const today = new Date(2026, 8, 1, 10, 14, 0).getTime();
+    const yesterday = new Date(2026, 7, 31, 18, 0, 0).getTime();
+    expect(formatChatDayLabelParts(today, now)).toEqual({
+      emphasis: "Today",
+      rest: new Date(today).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    });
+    expect(formatChatDayLabelParts(yesterday, now)).toEqual({
+      emphasis: "Yesterday",
+      rest: new Date(yesterday).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    });
+    expect(formatChatDayLabel(today, now)).toBe(
+      `Today ${formatChatDayLabelParts(today, now).rest}`,
+    );
+  });
+
+  it("uses weekday + dated rest for older days", () => {
+    const older = new Date(2026, 7, 26, 9, 0, 0).getTime();
+    const parts = formatChatDayLabelParts(older, now);
+    expect(parts.emphasis).toBe(new Date(older).toLocaleDateString(undefined, { weekday: "long" }));
+    expect(parts.rest).toBe(
+      new Date(older).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    );
   });
 
   it("uses a calendar key that changes with the local day", () => {

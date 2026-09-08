@@ -664,7 +664,7 @@ export const SearchTruncated: Story = {
         expect(items?.length).toBeGreaterThan(0);
         expect(items?.length).toBeLessThanOrEqual(100);
         const headingDates = [
-          ...(list?.shadowRoot?.querySelectorAll(".agenda-day-date") ?? []),
+          ...(list?.shadowRoot?.querySelectorAll(".list-sticky-header__rest") ?? []),
         ].map((node) => node.textContent ?? "");
         expect(headingDates.some((label) => /\d{4}/.test(label))).toBe(true);
       },

@@ -4,7 +4,6 @@
   @apply relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col;
   --chat-list-surface: #ffffff;
   --list-sticky-header-bg: #ffffff;
-  --list-sticky-header-font-size: 0.9375rem;
   background-color: var(--chat-list-surface, #ffffff);
 }
 

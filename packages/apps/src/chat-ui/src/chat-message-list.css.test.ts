@@ -13,12 +13,16 @@ describe("chat-message-list day chrome", () => {
       /import \{ ListStickyHeader \} from "@\/list-sticky-header\/src\/list-sticky-header"/,
     );
     expect(tsx).toMatch(/groupChatMessagesByDay/);
-    expect(tsx).toMatch(/<ListStickyHeader/);
+    expect(tsx).toMatch(/emphasis=\{day\.emphasis\}/);
+    expect(tsx).toMatch(/rest=\{day\.rest\}/);
     expect(tsx).not.toMatch(/chat-message-list__day-label/);
     expect(css).toMatch(/--list-sticky-header-bg:\s*#ffffff/);
-    expect(css).toMatch(/--list-sticky-header-font-size:\s*0\.9375rem/);
+    expect(css).not.toMatch(/--list-sticky-header-font-size/);
+    expect(css).not.toMatch(/--list-sticky-header-color/);
     expect(css).not.toMatch(/chat-message-list__day-label/);
     expect(css).not.toMatch(/rounded-full/);
+    expect(css).not.toMatch(/font-\[650\]/);
+    expect(css).not.toMatch(/font-\[450\]/);
   });
 
   it("anchors a New messages jump chip at the bottom of a relative list", () => {

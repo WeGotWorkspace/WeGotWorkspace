@@ -29,7 +29,8 @@
 
 .agenda-day-heading {
   @apply box-border m-0 flex items-baseline gap-2.5 w-full px-1.5 pt-1 pb-2.5 text-sm font-normal sticky top-0;
-  color: light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%));
+  /* Same ink as `.list-sticky-header` — split-label color/weight live there. */
+  color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
   z-index: var(--_lc-z-sticky);
   /* Opaque surface so event cards scrolling underneath don't show through.
      Workspace can set --_lc-list-heading-bg (e.g. transparent under the
@@ -38,24 +39,6 @@
     --_lc-list-heading-bg,
     var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)))
   );
-}
-
-.agenda-day-weekday {
-  @apply text-sm font-[650] leading-[1.2];
-}
-
-.agenda-day-date {
-  @apply text-[13px] font-[450] leading-[1.2] opacity-[0.82];
-}
-
-@container (min-width: 420px) {
-  .agenda-day-weekday {
-    @apply text-[15px];
-  }
-
-  .agenda-day-date {
-    @apply text-sm;
-  }
 }
 
 .agenda-event-list {
