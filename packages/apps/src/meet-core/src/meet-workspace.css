@@ -737,7 +737,7 @@
    */
   --color-ink: #042a22;
   --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --meet-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --user-avatar-fg: var(--color-ink);
   --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #ffffff));
@@ -768,7 +768,7 @@
    * SidebarSection titles use `field-label-row__label` → `--field-label-color`.
    * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
    */
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: #ffffff;
   /* ViewHeader Start matches Calendar Today idle (ink wash, not lobby dark slab). */
@@ -782,12 +782,20 @@
   --chat-list-surface: var(--color-cream, #ffffff);
   --chat-hover: color-mix(in oklab, var(--meet-accent) 8%, transparent);
   --chat-accent: var(--meet-accent-strong);
-  --chat-muted: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  --chat-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --chat-day-bg: var(--chat-list-surface);
   --chat-action-surface: #ffffff;
   --user-avatar-presence-ring: var(--chat-list-surface);
   background-color: var(--meet-surface);
   color: var(--color-ink);
+}
+
+.meet-workspace--split .user-avatar--colored .user-avatar__mark {
+  color: var(--color-ink);
+}
+
+.meet-workspace--split .chat-ui {
+  --chat-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
 }
 
 .meet-workspace .workspace-app-layout__main-header {
@@ -1419,12 +1427,12 @@
    * `.meet-workspace--split`. Do not re-paint the navy lobby slab.
    */
   --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --meet-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-panel: color-mix(in oklab, var(--meet-accent) 8%, var(--color-cream, #ffffff));
   --meet-panel-soft: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
   --meet-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --meet-border-strong: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
@@ -1507,7 +1515,7 @@
 
 .meet-guest-lobby__camera-off {
   @apply text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 80%, transparent);
 }
 
 .meet-guest-lobby__preview-controls {

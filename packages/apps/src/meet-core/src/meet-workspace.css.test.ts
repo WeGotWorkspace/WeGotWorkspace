@@ -87,17 +87,19 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/\.meet-workspace--split \{[\s\S]*--meet-text:\s*var\(--color-ink\)/);
     expect(css).toMatch(/\.meet-workspace--split \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/);
     expect(css).toMatch(
-      /\.meet-guest-lobby__camera-off \{[\s\S]*color-mix\(in oklab,\s*var\(--color-ink\) 55%/,
+      /\.meet-guest-lobby__camera-off \{[\s\S]*color-mix\(in oklab,\s*var\(--color-ink\) 80%/,
     );
     expect(css).toMatch(
-      /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 60%/,
+      /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 72%/,
     );
     expect(css).toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
     expect(css).toMatch(/--wai-fg:\s*var\(--app-switch-icon-fg\)/);
     expect(css).toMatch(
       /\.meet-workspace--split \.app-sidebar[\s\S]*--user-avatar-presence-ring:\s*var\(--meet-sidebar\)/,
     );
-    expect(css).toMatch(/\.meet-workspace__sidebar-kind-icon[\s\S]*size-3\.5/);
+    expect(css).toMatch(
+      /\.meet-workspace--split \.chat-ui \{[\s\S]*--chat-muted:\s*color-mix\(in oklab,\s*var\(--color-ink\) 72%/,
+    );
   });
 
   it("uses ViewHeader for the channel main header, not a custom title bar", () => {
