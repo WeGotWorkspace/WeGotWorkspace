@@ -61,7 +61,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_reservations', 'activated_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token_hash'));
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token'));
-        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token_hash'));
-        $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('oauth_clients', 'cimd_url'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
     }
 }

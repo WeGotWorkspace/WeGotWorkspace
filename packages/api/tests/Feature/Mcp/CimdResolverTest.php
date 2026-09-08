@@ -23,6 +23,14 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         $this->bindPublicDns(['203.0.113.10']);
     }
 
+    public function test_oversized_client_id_is_rejected_before_fetch(): void
+    {
+        $url = 'https://metadata.example.test/'.str_repeat('a', CimdResolver::URL_MAX_LENGTH);
+        $this->expectException(CimdException::class);
+        $this->expectExceptionMessage('maximum length');
+        app(CimdResolver::class)->resolve($url);
+    }
+
     public function test_http_metadata_url_is_rejected(): void
     {
         $this->expectException(CimdException::class);

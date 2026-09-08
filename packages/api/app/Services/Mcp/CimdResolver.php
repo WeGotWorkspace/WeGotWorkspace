@@ -13,6 +13,9 @@ use Laravel\Passport\Passport;
 
 final class CimdResolver
 {
+    /** MySQL utf8mb4 InnoDB unique indexes cannot exceed 3072 bytes. */
+    public const URL_MAX_LENGTH = 768;
+
     public function __construct(
         private ClientRepository $clients,
         private PublicHostResolver $dns,
@@ -28,6 +31,9 @@ final class CimdResolver
     {
         if (! $this->looksLikeMetadataUrl($clientId)) {
             throw new CimdException('client_id is not a CIMD metadata URL.', 400);
+        }
+        if (strlen($clientId) > self::URL_MAX_LENGTH) {
+            throw new CimdException('CIMD client_id exceeds maximum length.', 400);
         }
 
         $this->gc->prune();

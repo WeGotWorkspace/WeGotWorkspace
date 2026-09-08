@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Database\Migrations\WgwMigration;
+use App\Services\Mcp\CimdResolver;
 use Illuminate\Database\Schema\Blueprint;
 
 return new class extends WgwMigration
@@ -20,11 +21,11 @@ return new class extends WgwMigration
                 $table->text('grant_types');
                 $table->text('scopes')->nullable();
                 $table->boolean('revoked')->default(false);
-                $table->string('cimd_url', 2048)->nullable();
+                // utf8mb4 unique indexes are capped at 3072 bytes (768 chars).
+                $table->string('cimd_url', CimdResolver::URL_MAX_LENGTH)->nullable()->unique();
                 $table->string('cimd_origin', 255)->nullable();
                 $table->timestamp('cimd_fetched_at')->nullable();
                 $table->timestamps();
-                $table->unique('cimd_url');
             });
         }
 
