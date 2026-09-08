@@ -257,7 +257,7 @@ describe("MeetCreateMeetingDialog", () => {
       "@type": "Event" as const,
       id: "cal-standup",
       uid: "urn:uuid:cal-standup",
-      calendarIds: { default: true },
+      calendarIds: { default: true as const },
       title: "Standup",
       start: "2026-09-07T15:00:00",
       duration: "PT30M",

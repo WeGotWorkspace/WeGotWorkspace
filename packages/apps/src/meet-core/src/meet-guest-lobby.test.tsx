@@ -1,7 +1,8 @@
-import { createRef } from "react";
+import { createRef, type Dispatch, type SetStateAction } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
+import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
 import { MeetGuestLobby } from "@/meet-core/src/meet-guest-lobby";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
@@ -18,7 +19,7 @@ function renderGuestLobby(
     leave?: () => Promise<void>;
     toggleMic?: () => void;
     toggleVideo?: () => void;
-    setDisplayName?: (value: string) => void;
+    setDisplayName?: MeetControllerState["setDisplayName"];
     endedMessage?: string | null;
     showMissingInviteScreen?: boolean;
     showInviteCheckingScreen?: boolean;
@@ -31,7 +32,7 @@ function renderGuestLobby(
   const leave = overrides.leave ?? vi.fn(async () => {});
   const toggleMic = overrides.toggleMic ?? vi.fn();
   const toggleVideo = overrides.toggleVideo ?? vi.fn();
-  const setDisplayName = overrides.setDisplayName ?? vi.fn();
+  const setDisplayName = (overrides.setDisplayName ?? vi.fn()) as Dispatch<SetStateAction<string>>;
   const controller = createMeetStoryController(localVideoRef, {
     status: "idle",
     inCall: false,

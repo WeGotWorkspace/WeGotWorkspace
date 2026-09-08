@@ -1,10 +1,14 @@
 /**
  * @vitest-environment jsdom
  */
+import type { Dispatch, SetStateAction } from "react";
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
+import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
+
+type CallStatus = "idle" | "preparing" | "waiting" | "in-call" | "failed";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() },
@@ -21,10 +25,14 @@ function createPollHandler(
   } = {},
 ) {
   const muteMic = vi.fn(() => true);
-  const setWaitingForAdmission = overrides.setWaitingForAdmission ?? vi.fn();
-  const setKnockers = overrides.setKnockers ?? vi.fn();
-  const setStatus = overrides.setStatus ?? vi.fn();
-  const setStartedAt = overrides.setStartedAt ?? vi.fn();
+  const setWaitingForAdmission = (overrides.setWaitingForAdmission ?? vi.fn()) as Dispatch<
+    SetStateAction<boolean>
+  >;
+  const setKnockers = (overrides.setKnockers ?? vi.fn()) as Dispatch<SetStateAction<MeetKnocker[]>>;
+  const setStatus = (overrides.setStatus ?? vi.fn()) as Dispatch<SetStateAction<CallStatus>>;
+  const setStartedAt = (overrides.setStartedAt ?? vi.fn()) as Dispatch<
+    SetStateAction<number | null>
+  >;
   const updateJoinName = overrides.updateJoinName ?? vi.fn().mockResolvedValue(undefined);
   const retryRoomPeerConnections = vi.fn();
   const { result } = renderHook(() =>

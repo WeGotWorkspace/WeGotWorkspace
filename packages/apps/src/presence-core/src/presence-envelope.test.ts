@@ -53,7 +53,7 @@ describe("presence envelope", () => {
 
   it("round-trips channel-message and call-active envelopes", () => {
     const message = {
-      v: 1,
+      v: 1 as const,
       kind: "channel-message" as const,
       message: {
         id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
@@ -65,7 +65,12 @@ describe("presence envelope", () => {
         parentId: null,
       },
     };
-    const call = { v: 1, kind: "call-active" as const, channel: "chat-general", active: true };
+    const call = {
+      v: 1 as const,
+      kind: "call-active" as const,
+      channel: "chat-general",
+      active: true,
+    };
     const audioOnly = presenceCallActiveEnvelope("chat-general", true, true);
 
     expect(parsePresenceEnvelope(serializePresenceEnvelope(message))).toEqual(message);
@@ -110,7 +115,7 @@ describe("presence envelope", () => {
 
   it("round-trips Meet patch, destroy, reaction, and channel-changed envelopes", () => {
     const patch = {
-      v: 1,
+      v: 1 as const,
       kind: "channel-message-patch" as const,
       id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       channel: "chat-general",
@@ -118,20 +123,24 @@ describe("presence envelope", () => {
       editedAt: 1_700_000_000_100,
     };
     const destroy = {
-      v: 1,
+      v: 1 as const,
       kind: "channel-message-destroy" as const,
       id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       channel: "chat-general",
     };
     const reaction = {
-      v: 1,
+      v: 1 as const,
       kind: "channel-reaction" as const,
       messageId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       channel: "dm:bob",
       emoji: "👍",
       on: true,
     };
-    const changed = { v: 1, kind: "channel-changed" as const, channel: "chat-general" };
+    const changed = {
+      v: 1 as const,
+      kind: "channel-changed" as const,
+      channel: "chat-general",
+    };
 
     expect(parsePresenceEnvelope(serializePresenceEnvelope(patch))).toEqual(patch);
     expect(parsePresenceEnvelope(serializePresenceEnvelope(destroy))).toEqual(destroy);
