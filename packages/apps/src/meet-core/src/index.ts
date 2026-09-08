@@ -2,7 +2,11 @@ export { MeetApp } from "@/meet-core/src/meet-app";
 export type { MeetAppProps } from "@/meet-core/src/meet-app-props";
 export { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 export type { MeetChatAppProps } from "@/meet-core/src/meet-chat-app";
-export { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
+export {
+  meetChannelIdForRoom,
+  meetChannelRoomId,
+  meetGuestChatChannelId,
+} from "@/meet-core/src/meet-channel-room";
 export { MeetCallWorkspace } from "@/meet-core/src/meet-call-workspace";
 export type { MeetCallWorkspaceProps } from "@/meet-core/src/meet-call-workspace-props";
 export { MeetWorkspace } from "@/meet-core/src/meet-workspace";
@@ -30,6 +34,7 @@ export {
   MeetGuestChannel,
   MeetGuestChannelFrame,
   meetGuestChannelPhase,
+  meetGuestChannelStageLayout,
 } from "@/meet-core/src/meet-guest-channel";
 export type {
   MeetGuestChannelPhase,

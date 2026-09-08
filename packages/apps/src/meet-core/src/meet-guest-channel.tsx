@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Video } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { ViewHeader } from "@/view-header/src/view-header";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage, type MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import {
@@ -36,7 +34,6 @@ export type MeetGuestChannelProps = {
   stage: MeetCallStageRoomProps;
   callLayout?: MeetCallStageLayout;
   chat?: ReactNode;
-  onLayoutChange?: (layout: MeetCallStageLayout) => void;
   className?: string;
 };
 
@@ -66,6 +63,14 @@ export function meetGuestChannelPhase(input: {
   return "lobby";
 }
 
+/**
+ * Guests have no signed-in chat column behind the stage. Compact/collapsed
+ * would park the call and leave only the navy chat strip.
+ */
+export function meetGuestChannelStageLayout(layout: MeetCallStageLayout): MeetCallStageLayout {
+  return meetCallStageShowsStage(layout) ? layout : "side-by-side";
+}
+
 /** Cream/dusk invite chrome without ViewHeader — the card is preview + invite only. */
 export function MeetGuestChannelFrame({ children, className }: MeetGuestChannelFrameProps) {
   return (
@@ -88,12 +93,12 @@ export function MeetGuestChannel({
   stage,
   callLayout = "side-by-side",
   chat,
-  onLayoutChange,
   className,
 }: MeetGuestChannelProps) {
   const knocking = phase === "knocking" || lobby.waitingForAdmission;
   const inChannel = phase === "in-channel" && !knocking;
-  const showStage = inChannel && meetCallStageShowsStage(callLayout);
+  const stageLayout = meetGuestChannelStageLayout(callLayout);
+  const showStage = inChannel;
   const [chatOpen, setChatOpen] = useState(defaultMeetWorkspacePanelOpen);
   const chatTitle = meetLabels.chatInChannel(channelName);
 
@@ -139,23 +144,12 @@ export function MeetGuestChannel({
             {chat}
           </MeetWorkspaceRail>
         }
-        mainHeader={
-          showStage ? undefined : (
-            <ViewHeader
-              hideSidebarToggle
-              title={channelName}
-              titlePrefix={<Video className="meet-workspace__header-kind-icon" aria-hidden />}
-            />
-          )
-        }
         main={
           <MeetCallStage
-            layout={callLayout}
-            chat={showStage ? undefined : chat}
+            layout={stageLayout}
             channelTitle={channelName}
             chatOpen={chatOpen}
             onToggleChat={() => setChatOpen((open) => !open)}
-            onLayoutChange={onLayoutChange}
             {...stage}
           />
         }

@@ -525,7 +525,6 @@ export function MeetGuestChannelStoryHarness({
         stage={{ ...stage, displayName: guestName, hasSignedInIdentity }}
         callLayout={callLayout}
         chat={chat}
-        onLayoutChange={setCallLayout}
       />
     </MeetStoryScope>
   );

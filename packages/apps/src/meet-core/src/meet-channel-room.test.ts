@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
+import {
+  meetChannelIdForRoom,
+  meetChannelRoomId,
+  meetGuestChatChannelId,
+} from "@/meet-core/src/meet-channel-room";
 
 const chatChannel = { id: "chat-01ARZ3NDEKTSV4RRFFQ69G5FAV", kind: "channel" as const };
 const dmChannel = { id: "dm-alice-bob", kind: "channel" as const };
@@ -42,5 +46,23 @@ describe("meetChannelIdForRoom", () => {
     expect(meetChannelIdForRoom(channels, "zzzz-zzzz-zzzz")).toBeNull();
     expect(meetChannelIdForRoom(channels, null)).toBeNull();
     expect(meetChannelIdForRoom(channels, "  ")).toBeNull();
+  });
+});
+
+describe("meetGuestChatChannelId", () => {
+  it("uses the host meeting collection id, not a leftover public slug", () => {
+    expect(
+      meetGuestChatChannelId({
+        channels: [meetingWithRoom],
+        invitedRoom: "q1w2-e3r4-t5y6",
+        meetingId: "standup",
+      }),
+    ).toBe(meetingWithRoom.id);
+    expect(meetGuestChatChannelId({ invitedRoom: "chat-test", meetingId: "test" })).toBe(
+      "chat-test",
+    );
+    expect(meetGuestChatChannelId({ meetingId: "test" })).toBe("chat-test");
+    expect(meetGuestChatChannelId({ invitedRoom: "h8y8-ewp6-al8n" })).toBe("h8y8-ewp6-al8n");
+    expect(meetGuestChatChannelId({})).toBe("guest");
   });
 });

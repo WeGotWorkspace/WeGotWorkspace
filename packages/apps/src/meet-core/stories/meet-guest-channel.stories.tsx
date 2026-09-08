@@ -21,7 +21,7 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Guest landing: no ViewHeader on invite/lobby (preview + invite card only). Checking / waiting-for-host / missing / error use the invite-column status card (Meet mark + serif title, no camera). Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage.",
+        "Guest landing: no ViewHeader on invite/lobby (preview + invite card only). Checking / waiting-for-host / missing / error use the invite-column status card (Meet mark + serif title, no camera). Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage with no call-collapse control.",
       snippet: `<MeetGuestChannel
   channelName="Design"
   channelTopic="Pixels, prototypes and critiques"
@@ -50,7 +50,7 @@ const meta = {
     },
     callLayout: {
       control: "select",
-      options: ["compact", "side-by-side", "fullscreen", "collapsed"] as const,
+      options: ["side-by-side", "fullscreen"] as const,
     },
   },
 } satisfies Meta<MeetGuestChannelStoryArgs>;
@@ -263,8 +263,24 @@ export const SignedInUnauthorized: Story = {
 
 export const InChannel: Story = {
   name: "In channel",
+  tags: ["vitest-ci"],
   args: {
     phase: "in-channel",
     callLayout: "side-by-side",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvasElement.querySelector(".meet-guest-channel")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-workspace--call-active")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-call-expanded")).toBeTruthy();
+    expect(canvasElement.querySelector(".workspace-app-layout__main-header")).toBeNull();
+    expect(canvasElement.querySelector(".meet-chat")).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.chatEmpty)).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("heading", { name: meetLabels.meetInChannel("Design") }),
+    ).toBeInTheDocument();
   },
 };

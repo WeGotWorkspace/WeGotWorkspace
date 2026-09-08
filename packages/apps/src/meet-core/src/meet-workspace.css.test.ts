@@ -12,6 +12,7 @@ const guestLobbyCard = readFileSync(join(here, "meet-guest-lobby-card.tsx"), "ut
 const guestLobbyCss = readFileSync(join(here, "meet-guest-lobby.css"), "utf8");
 const inviteGate = readFileSync(join(here, "meet-invite-gate.tsx"), "utf8");
 const meetApp = readFileSync(join(here, "meet-app.tsx"), "utf8");
+const knockBadge = readFileSync(join(here, "meet-knock-badge.tsx"), "utf8");
 const layoutCss = readFileSync(
   join(here, "../../workspace-shell/src/workspace-app-layout.css"),
   "utf8",
@@ -370,6 +371,12 @@ describe("meet guest invite lobby chrome", () => {
     expect(meetApp).toMatch(/MeetGuestChannel/);
     expect(meetApp).toMatch(/meetGuestChannelPhase/);
     expect(meetApp).not.toMatch(/<MeetCallWorkspace/);
+    expect(meetApp).toMatch(/MeetChatColumn/);
+    expect(meetApp).not.toMatch(/MeetChatPane/);
+    expect(meetApp).not.toMatch(/onLayoutChange=\{setCallLayout\}/);
+    expect(guestChannel).toMatch(/meetGuestChannelStageLayout/);
+    expect(guestChannel).not.toMatch(/onLayoutChange=\{onLayoutChange\}/);
+    expect(guestChannel).not.toMatch(/titlePrefix=\{<Video/);
   });
 
   it("reuses call-tile camera-off surface, bordered device selects, and no invite ViewHeader", () => {
@@ -451,6 +458,31 @@ describe("meet guest invite lobby chrome", () => {
     expect(micFill).not.toMatch(/--meet-live/);
     expect(css).toMatch(
       /prefers-reduced-motion: no-preference[\s\S]*\.meet-guest-lobby__mic-level-fill \{[\s\S]*transition-\[width\]/,
+    );
+  });
+});
+
+describe("meet host admit knock popover", () => {
+  it("paints cream/dusk call chrome, not the lobby dark island", () => {
+    const popover = css.match(/\.meet-knock-badge__popover \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(knockBadge).toMatch(/className="meet-knock-badge__popover"/);
+    expect(knockBadge).not.toMatch(/meet-popover-surface/);
+    expect(popover).toMatch(/--meet-accent:\s*#2a1644/);
+    expect(popover).toMatch(
+      /--meet-call-surface:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%/,
+    );
+    expect(popover).toMatch(/--popover:\s*var\(--meet-call-surface\)/);
+    expect(popover).toMatch(/--button-subtle-color:\s*color-mix\(in oklab,\s*var\(--color-ink\)/);
+    expect(popover).toMatch(/--button-primary-bg:\s*var\(--meet-accent\)/);
+    expect(popover).toMatch(/background-color:\s*var\(--meet-call-surface\)/);
+    expect(popover).toMatch(/color:\s*var\(--color-ink\)/);
+    expect(popover).not.toMatch(/#171826/);
+    expect(css).toMatch(/\.meet-knock-row \{[\s\S]*background-color:\s*var\(--meet-call-empty\)/);
+    expect(css).toMatch(/\.meet-knock-row__name \{[\s\S]*color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/\.meet-knock-row__hint \{[\s\S]*color:\s*var\(--meet-call-ink-muted\)/);
+    expect(css).not.toMatch(/meet-knock-row__deny[\s\S]{0,280}rgba\(255,\s*255,\s*255,\s*0\.06\)/);
+    expect(css).not.toMatch(
+      /:is\(\.meet-workspace,\s*\.meet-dialog-surface,\s*\.meet-popover-surface\) \.meet-knock-badge__popover/,
     );
   });
 });

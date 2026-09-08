@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MeetGuestChannel } from "@/meet-core/src/meet-guest-channel";
+import { MeetGuestChannel, meetGuestChannelStageLayout } from "@/meet-core/src/meet-guest-channel";
 import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import { meetLabels } from "@/meet-core/src/meet-labels";
@@ -101,5 +101,35 @@ describe("MeetGuestChannel knock wait", () => {
     expect(screen.queryByText(meetLabels.knockWaitTitle("Design"))).toBeNull();
     expect(screen.queryByText(meetLabels.knockingHint)).toBeNull();
     expect(document.querySelector(".meet-call-knock-wait")).toBeNull();
+  });
+
+  it("keeps the in-channel stage even when callLayout is collapsed", () => {
+    const lobby = guestLobby(false);
+    render(
+      <MeetGuestChannel
+        channelName="yes"
+        phase="in-channel"
+        lobby={lobby}
+        stage={guestStage(lobby)}
+        callLayout="collapsed"
+        chat={<div>guest-chat</div>}
+      />,
+    );
+    expect(document.querySelector(".meet-workspace--call-active")).toBeTruthy();
+    expect(document.querySelector(".meet-call-expanded")).toBeTruthy();
+    expect(document.querySelector(".workspace-app-layout__main-header")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "yes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.collapseCall })).toBeNull();
+    expect(screen.getByText("guest-chat")).toBeTruthy();
+    expect(document.querySelector(".meet-chat")).toBeNull();
+  });
+});
+
+describe("meetGuestChannelStageLayout", () => {
+  it("never parks the guest stage onto the signed-in collapsed chat column", () => {
+    expect(meetGuestChannelStageLayout("collapsed")).toBe("side-by-side");
+    expect(meetGuestChannelStageLayout("compact")).toBe("side-by-side");
+    expect(meetGuestChannelStageLayout("side-by-side")).toBe("side-by-side");
+    expect(meetGuestChannelStageLayout("fullscreen")).toBe("fullscreen");
   });
 });

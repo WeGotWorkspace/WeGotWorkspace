@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import type { MeetAppProps } from "@/meet-core/src/meet-app-props";
-import { MeetChatPane } from "@/meet-core/src/meet-chat-pane";
+import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
+import { meetGuestChatChannelId } from "@/meet-core/src/meet-channel-room";
+import { meetChatLineToChannelMessage } from "@/meet-core/src/meet-chat-line";
 import { MeetGuestChannel, meetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
 import { meetGuestInviteChannel } from "@/meet-core/src/meet-guest-invite-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallWorkspaceProps } from "@/meet-core/src/meet-call-workspace-props";
 import { useMeetAPI } from "@/meet-core/src/use-meet-api";
 import { useMeetRouteSync } from "@/meet-core/src/use-meet-route-sync";
@@ -82,7 +83,6 @@ function MeetGuestChannelLive({
     buildCallLink,
     onRoomChange,
   });
-  const [callLayout, setCallLayout] = useState<MeetCallStageLayout>("side-by-side");
   const invite = meetGuestInviteChannel({
     channels: data.channels,
     invitedRoom,
@@ -99,13 +99,31 @@ function MeetGuestChannelLive({
     endedMessage: shell.lobby.endedMessage,
     waitingForAdmission: shell.lobby.waitingForAdmission,
   });
+  const guestChatChannelId = meetGuestChatChannelId({
+    channels: data.channels,
+    invitedRoom,
+    channelId,
+    meetingId,
+  });
+  const chatMessages = useMemo(
+    () =>
+      shell.controller.chatMessages.map((line) =>
+        meetChatLineToChannelMessage(line, guestChatChannelId),
+      ),
+    [guestChatChannelId, shell.controller.chatMessages],
+  );
   const chat = (
-    <MeetChatPane
-      messages={shell.controller.chatMessages}
-      draft={shell.chat.draft}
-      onDraftChange={shell.chat.onDraftChange}
-      onSend={shell.chat.onSend}
-      onClose={shell.chat.onClose}
+    <MeetChatColumn
+      messages={chatMessages}
+      currentUserId={shell.controller.selfId ?? "guest"}
+      principals={[]}
+      placeholder={meetLabels.chatPlaceholder}
+      onSend={(payload) => {
+        void shell.controller.sendChat(payload.body);
+      }}
+      onReact={() => undefined}
+      onReply={() => undefined}
+      onDelete={() => undefined}
     />
   );
 
@@ -127,9 +145,8 @@ function MeetGuestChannelLive({
         displayName: shell.displayName,
         ...stageRoom,
       }}
-      callLayout={callLayout}
+      callLayout="side-by-side"
       chat={chat}
-      onLayoutChange={setCallLayout}
     />
   );
 }
