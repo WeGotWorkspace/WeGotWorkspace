@@ -91,6 +91,8 @@ export function useSettingsAPI(source?: SettingsApiSource) {
         applySettingsState(next);
         return next;
       },
+      listMcpGrants: baseOperations.listMcpGrants,
+      revokeMcpGrant: baseOperations.revokeMcpGrant,
     };
     return operations;
   }, [baseOperations, patchBootstrap]);

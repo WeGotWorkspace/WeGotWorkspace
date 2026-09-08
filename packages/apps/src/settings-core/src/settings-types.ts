@@ -62,6 +62,6 @@ export type SettingsAPIOperations = {
     input: SettingsMailRequest,
     opts?: { signal?: AbortSignal },
   ) => Promise<SettingsUIData>;
-  listMcpGrants: (opts?: { signal?: AbortSignal }) => Promise<SettingsMcpGrant[]>;
-  revokeMcpGrant: (clientId: string, opts?: { signal?: AbortSignal }) => Promise<void>;
+  listMcpGrants?: (opts?: { signal?: AbortSignal }) => Promise<SettingsMcpGrant[]>;
+  revokeMcpGrant?: (clientId: string, opts?: { signal?: AbortSignal }) => Promise<void>;
 };
