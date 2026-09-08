@@ -24,15 +24,16 @@ function emptyClientRectList(): DOMRectList {
   } as DOMRectList;
 }
 
-function stubClientRects(proto: {
-  getClientRects?: () => DOMRectList;
-  getBoundingClientRect?: () => DOMRect;
-}) {
-  if (typeof proto.getClientRects !== "function") {
-    proto.getClientRects = emptyClientRectList;
+function stubClientRects(proto: object) {
+  const target = proto as {
+    getClientRects?: () => DOMRectList;
+    getBoundingClientRect?: () => DOMRect;
+  };
+  if (typeof target.getClientRects !== "function") {
+    target.getClientRects = emptyClientRectList;
   }
-  if (typeof proto.getBoundingClientRect !== "function") {
-    proto.getBoundingClientRect = emptyClientRect;
+  if (typeof target.getBoundingClientRect !== "function") {
+    target.getBoundingClientRect = emptyClientRect;
   }
 }
 
