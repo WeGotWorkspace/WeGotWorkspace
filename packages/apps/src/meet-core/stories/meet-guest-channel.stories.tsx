@@ -11,6 +11,7 @@ import { meetStoryParameters } from "@/meet-core/stories/meet-story-shared";
 /**
  * Guest stripped channel: no sidebar, cream/dusk lobby, then chat + call stage.
  * Ready to knock and Waiting after knock share the two-column invite card.
+ * Checking / waiting-for-host / missing / error use the same card without media.
  */
 const meta = {
   title: "Apps/Meet/Panes/MeetGuestChannel",
@@ -20,7 +21,7 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Guest landing: no ViewHeader on invite/lobby (preview + invite card only). Checking / waiting-for-host / missing stay status cards; Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage.",
+        "Guest landing: no ViewHeader on invite/lobby (preview + invite card only). Checking / waiting-for-host / missing / error use the invite-column status card (Meet mark + serif title, no camera). Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage.",
       snippet: `<MeetGuestChannel
   channelName="Design"
   channelTopic="Pixels, prototypes and critiques"
@@ -65,7 +66,17 @@ export const Checking: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "Checking meeting" })).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("heading", { name: meetLabels.checkingInviteTitle }),
+    ).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.checkingInviteBody)).toBeInTheDocument();
+    expect(canvasElement.querySelector(".meet-guest-lobby__card--status")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__mark")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__media")).toBeNull();
+    await expect(canvas.queryByText(meetLabels.cameraOff)).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.knockToJoin }),
+    ).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Show sidebar" })).not.toBeInTheDocument();
   },
 };
@@ -83,6 +94,13 @@ export const Waiting: Story = {
     await expect(
       canvas.getByText("This meeting has not started yet. You can join when the host arrives."),
     ).toBeInTheDocument();
+    expect(canvasElement.querySelector(".meet-guest-lobby__card--status")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__mark")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__media")).toBeNull();
+    await expect(canvas.queryByText(meetLabels.cameraOff)).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.knockToJoin }),
+    ).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Show sidebar" })).not.toBeInTheDocument();
     expect(canvasElement.querySelector(".meet-workspace--split")).toBeTruthy();
     expect(canvasElement.querySelector(".meet-guest-channel__lobby")).toBeTruthy();
@@ -103,6 +121,10 @@ export const MissingInvite: Story = {
     await expect(
       canvas.getByRole("heading", { name: meetLabels.missingInviteTitle }),
     ).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.missingInviteBody)).toBeInTheDocument();
+    expect(canvasElement.querySelector(".meet-guest-lobby__card--status")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__mark")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__media")).toBeNull();
     expect(canvasElement.querySelector(".meet-workspace--split")).toBeTruthy();
   },
 };
@@ -112,6 +134,17 @@ export const InviteError: Story = {
   args: {
     phase: "error",
     callLayout: "side-by-side",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("heading", { name: meetLabels.inviteErrorTitle }),
+    ).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.inviteErrorBody)).toBeInTheDocument();
+    expect(canvasElement.querySelector(".meet-guest-lobby__card--status")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__mark")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__media")).toBeNull();
+    await expect(canvas.queryByText(meetLabels.cameraOff)).not.toBeInTheDocument();
   },
 };
 
@@ -133,7 +166,12 @@ export const Knocking: Story = {
     await expect(knock).toBeDisabled();
     expect(knock.className).toContain("meet-guest-lobby__knock--waiting");
     await expect(canvas.getByRole("button", { name: meetLabels.cancelKnock })).toBeInTheDocument();
-    await expect(canvas.queryByText(meetLabels.knockNoAccount)).not.toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.knockNoAccount)).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(canvasElement.querySelector(".meet-guest-lobby__after-knock")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__card--status")).toBeNull();
     await expect(canvas.queryByText(meetLabels.knockWaitHint)).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.knockingHint)).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.knockWaitTitle("Design"))).not.toBeInTheDocument();
@@ -156,6 +194,7 @@ export const Knocking: Story = {
     await userEvent.click(canvas.getByRole("button", { name: meetLabels.cancelKnock }));
     await expect(canvas.getByRole("button", { name: meetLabels.knockToJoin })).toBeEnabled();
     await expect(canvas.getByText(meetLabels.knockNoAccount)).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.knockNoAccount)).not.toHaveAttribute("aria-hidden");
   },
 };
 
@@ -173,6 +212,10 @@ export const Lobby: Story = {
       canvas.getByRole("heading", { name: meetLabels.invitedTitle }),
     ).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.knockNoAccount)).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.knockNoAccount)).not.toHaveAttribute("aria-hidden");
+    expect(canvasElement.querySelector(".meet-guest-lobby__after-knock")).toBeTruthy();
+    expect(canvasElement.querySelector(".meet-guest-lobby__card--status")).toBeNull();
+    expect(canvasElement.querySelector(".meet-guest-lobby__media")).toBeTruthy();
     await expect(canvas.queryByText("design")).not.toBeInTheDocument();
     await expect(canvas.queryByText(/Pixels, prototypes and critiques/)).not.toBeInTheDocument();
     await expect(canvas.queryByRole("heading", { name: "Design" })).not.toBeInTheDocument();
@@ -188,7 +231,10 @@ export const Lobby: Story = {
     await userEvent.click(canvas.getByRole("button", { name: meetLabels.knockToJoin }));
     await expect(canvas.getByRole("button", { name: meetLabels.knockToJoin })).toBeDisabled();
     await expect(canvas.getByRole("button", { name: meetLabels.cancelKnock })).toBeInTheDocument();
-    await expect(canvas.queryByText(meetLabels.knockNoAccount)).not.toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.knockNoAccount)).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
     await expect(canvas.queryByText(meetLabels.knockWaitHint)).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.knockingHint)).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.knockWaitTitle("Design"))).not.toBeInTheDocument();

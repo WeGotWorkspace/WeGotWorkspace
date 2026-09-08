@@ -8,6 +8,7 @@ const tsx = readFileSync(join(here, "meet-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "meet-workspace.css"), "utf8");
 const guestChannel = readFileSync(join(here, "meet-guest-channel.tsx"), "utf8");
 const guestLobby = readFileSync(join(here, "meet-guest-lobby.tsx"), "utf8");
+const guestLobbyCard = readFileSync(join(here, "meet-guest-lobby-card.tsx"), "utf8");
 const guestLobbyCss = readFileSync(join(here, "meet-guest-lobby.css"), "utf8");
 const inviteGate = readFileSync(join(here, "meet-invite-gate.tsx"), "utf8");
 const meetApp = readFileSync(join(here, "meet-app.tsx"), "utf8");
@@ -357,7 +358,11 @@ describe("meet guest invite lobby chrome", () => {
     expect(guestLobby).not.toMatch(/MeetCallKnockWaiting/);
     expect(guestLobby).toMatch(/meet-guest-lobby__knock--waiting/);
     expect(guestLobby).toMatch(/meetLabels.cancelKnock/);
+    expect(guestLobby).toMatch(/MeetGuestLobbyStatus/);
+    expect(guestLobby).not.toMatch(/MeetLobbyStatusCard/);
     expect(inviteGate).toMatch(/MeetGuestChannelFrame/);
+    expect(inviteGate).toMatch(/MeetGuestLobbyStatus/);
+    expect(inviteGate).not.toMatch(/MeetLobbyStatusCard/);
     expect(inviteGate).toMatch(/sessionHint \|\| !channelId \|\| access === "member"/);
     expect(inviteGate).toContain("meetNavigateTargetFromSelection");
     expect(inviteGate).not.toMatch(/to: MEET_CHANNELS_ROUTE/);
@@ -390,11 +395,17 @@ describe("meet guest invite lobby chrome", () => {
     expect(css).toMatch(
       /:is\(\.meet-call-bar,\s*\.meet-call-stage,\s*\.meet-call-expanded,\s*\.meet-guest-lobby__preview\)[\s\S]*icon-button--active/,
     );
-    expect(guestLobby).toMatch(/meet-workspace__title meet-workspace__title--lg/);
-    expect(guestLobby).toMatch(/variant="switch-trigger"/);
+    expect(guestLobbyCard).toMatch(/meet-workspace__title meet-workspace__title--lg/);
+    expect(guestLobbyCard).toMatch(/variant="switch-trigger"/);
+    expect(guestLobbyCard).toMatch(/variant === "status"/);
+    expect(guestLobbyCard).toMatch(/meet-guest-lobby__card--status/);
+    expect(guestLobbyCard).toMatch(/meet-guest-lobby__status-body/);
     expect(css).toMatch(/\.meet-guest-lobby__preview-idle \{[\s\S]*@apply[\s\S]*pb-16/);
     expect(css).toMatch(/grid-template-areas:[\s\S]*"heading"[\s\S]*"media"[\s\S]*"invite"/);
-    expect(guestLobby).toMatch(/meet-guest-lobby__heading/);
+    expect(css).toMatch(
+      /\.meet-guest-lobby__card--status \{[\s\S]*grid-template-areas:[\s\S]*"heading"[\s\S]*"invite"/,
+    );
+    expect(guestLobbyCard).toMatch(/meet-guest-lobby__heading/);
     expect(guestLobbyCss).toMatch(
       /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--meet-accent\)/,
     );
@@ -403,7 +414,20 @@ describe("meet guest invite lobby chrome", () => {
     );
     expect(guestLobbyCss).toMatch(/font-family:\s*var\(--font-serif\)/);
     expect(guestLobbyCss).toMatch(/meet-guest-lobby-knock/);
-    expect(guestLobbyCss).toMatch(/\.meet-guest-lobby__cancel \{[\s\S]*@apply mt-2 w-full/);
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-lobby__after-knock \{[\s\S]*min-height:\s*var\(--control-height-md/,
+    );
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-lobby__after-knock > \* \{[\s\S]*grid-area:\s*1 \/ 1/,
+    );
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-lobby__footer\[aria-hidden="true"\] \{[\s\S]*@apply invisible pointer-events-none/,
+    );
+    expect(guestLobbyCss).toMatch(/\.meet-guest-lobby__cancel \{[\s\S]*@apply h-full w-full/);
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-lobby__status-body \{[\s\S]*@apply text-sm text-balance/,
+    );
+    expect(guestLobby).toMatch(/meet-guest-lobby__after-knock/);
     expect(css).not.toMatch(/meet-call-knock-wait--guest/);
     const micFill = css.match(/\.meet-guest-lobby__mic-level-fill \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(micFill).toMatch(/background-color:\s*var\(--meet-accent\)/);

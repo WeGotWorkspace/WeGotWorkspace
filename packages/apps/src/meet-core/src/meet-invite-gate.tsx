@@ -21,13 +21,13 @@ import {
   meetCollectionIdFromPublic,
 } from "@/meet-core/src/meet-public-id";
 import { MeetGuestChannelFrame } from "@/meet-core/src/meet-guest-channel";
+import { MeetGuestLobbyStatus } from "@/meet-core/src/meet-guest-lobby-card";
 import {
   resolveMeetInviteDestination,
   type MeetInviteAccess,
   type MeetInviteAccessChannel,
   type MeetInviteAccessIo,
 } from "@/meet-core/src/meet-invite-access";
-import { MeetLobbyStatusCard } from "@/meet-core/src/meet-lobby-status-card";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import "@/meet-core/src/meet-workspace.css";
 
@@ -101,10 +101,9 @@ export type MeetChannelDeepLinkGateProps = {
 function InviteCheckingScreen() {
   return (
     <MeetGuestChannelFrame>
-      <MeetLobbyStatusCard
+      <MeetGuestLobbyStatus
         title={meetLabels.checkingInviteTitle}
         body={meetLabels.checkingInviteBody}
-        titleSize="md"
       />
     </MeetGuestChannelFrame>
   );

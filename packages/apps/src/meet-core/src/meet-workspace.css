@@ -1553,6 +1553,13 @@
   box-shadow: 0 18px 48px color-mix(in oklab, var(--color-ink) 10%, transparent);
 }
 
+.meet-guest-lobby__card--status {
+  @apply max-w-md;
+  grid-template-areas:
+    "heading"
+    "invite";
+}
+
 @media (min-width: 768px) {
   .meet-guest-lobby__card {
     grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.9fr);
@@ -1561,6 +1568,15 @@
       "media heading"
       "media invite";
     align-items: center;
+  }
+
+  .meet-guest-lobby__card--status {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "heading"
+      "invite";
+    align-items: start;
   }
 }
 
@@ -1647,7 +1663,7 @@
 }
 
 .meet-guest-lobby__footer {
-  @apply mt-3 text-center text-xs;
+  @apply flex items-center justify-center text-center text-xs;
   color: var(--meet-muted);
 }
 

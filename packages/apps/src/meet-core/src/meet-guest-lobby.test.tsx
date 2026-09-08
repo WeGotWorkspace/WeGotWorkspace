@@ -19,6 +19,11 @@ function renderGuestLobby(
     toggleMic?: () => void;
     toggleVideo?: () => void;
     setDisplayName?: (value: string) => void;
+    endedMessage?: string | null;
+    showMissingInviteScreen?: boolean;
+    showInviteCheckingScreen?: boolean;
+    showWaitingForHostScreen?: boolean;
+    showInviteErrorScreen?: boolean;
   } = {},
 ) {
   const localVideoRef = createRef<HTMLVideoElement | null>();
@@ -57,11 +62,11 @@ function renderGuestLobby(
         activeMic={STORY_MEET_MICROPHONES[0]!.id}
         activeSpeaker={STORY_MEET_SPEAKERS[0]!.id}
         onSpeakerChange={() => {}}
-        endedMessage={null}
-        showMissingInviteScreen={false}
-        showInviteCheckingScreen={false}
-        showWaitingForHostScreen={false}
-        showInviteErrorScreen={false}
+        endedMessage={overrides.endedMessage ?? null}
+        showMissingInviteScreen={overrides.showMissingInviteScreen ?? false}
+        showInviteCheckingScreen={overrides.showInviteCheckingScreen ?? false}
+        showWaitingForHostScreen={overrides.showWaitingForHostScreen ?? false}
+        showInviteErrorScreen={overrides.showInviteErrorScreen ?? false}
         canStartReservedRoom={false}
         channelName="Design"
         channelTopic="Pixels, prototypes and critiques"
@@ -83,6 +88,11 @@ describe("MeetGuestLobby", () => {
     ).toBeTruthy();
     expect(screen.getByDisplayValue("Wouter")).toBeTruthy();
     expect(screen.getByText(meetLabels.knockNoAccount)).toBeTruthy();
+    expect(screen.getByText(meetLabels.knockNoAccount).getAttribute("aria-hidden")).toBeNull();
+    expect(document.querySelector(".meet-guest-lobby__after-knock")).toBeTruthy();
+    expect(document.querySelector(".meet-guest-lobby__card")).toBeTruthy();
+    expect(document.querySelector(".meet-guest-lobby__card--status")).toBeNull();
+    expect(document.querySelector(".meet-guest-lobby__media")).toBeTruthy();
     expect(screen.queryByText("design")).toBeNull();
     expect(screen.queryByText(/Pixels, prototypes and critiques/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: meetLabels.knockToJoin }));
@@ -98,7 +108,8 @@ describe("MeetGuestLobby", () => {
     expect((knock as HTMLButtonElement).disabled).toBe(true);
     expect(knock.className).toContain("meet-guest-lobby__knock--waiting");
     expect(knock.getAttribute("aria-busy")).toBe("true");
-    expect(screen.queryByText(meetLabels.knockNoAccount)).toBeNull();
+    expect(screen.getByText(meetLabels.knockNoAccount).getAttribute("aria-hidden")).toBe("true");
+    expect(document.querySelector(".meet-guest-lobby__after-knock")).toBeTruthy();
     expect(screen.queryByText(meetLabels.knockWaitHint)).toBeNull();
     expect(screen.queryByText(meetLabels.knockingHint)).toBeNull();
     expect(screen.queryByText("design")).toBeNull();
@@ -119,6 +130,43 @@ describe("MeetGuestLobby", () => {
     fireEvent.click(screen.getByRole("button", { name: meetLabels.enableVideo }));
     expect(toggleMic).toHaveBeenCalledTimes(1);
     expect(toggleVideo).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      name: "checking",
+      flags: { showInviteCheckingScreen: true },
+      title: meetLabels.checkingInviteTitle,
+      body: meetLabels.checkingInviteBody,
+    },
+    {
+      name: "waiting for host",
+      flags: { showWaitingForHostScreen: true },
+      title: meetLabels.waitingForHostTitle,
+      body: meetLabels.waitingForHostBody,
+    },
+    {
+      name: "missing invite",
+      flags: { showMissingInviteScreen: true },
+      title: meetLabels.missingInviteTitle,
+      body: meetLabels.missingInviteBody,
+    },
+    {
+      name: "invite check error",
+      flags: { showInviteErrorScreen: true },
+      title: meetLabels.inviteErrorTitle,
+      body: meetLabels.inviteErrorBody,
+    },
+  ] as const)("renders $name as a status variant of the invite card", ({ flags, title, body }) => {
+    renderGuestLobby(flags);
+    expect(screen.getByRole("heading", { name: title })).toBeTruthy();
+    expect(screen.getByText(body)).toBeTruthy();
+    expect(document.querySelector(".meet-guest-lobby__card--status")).toBeTruthy();
+    expect(document.querySelector(".meet-guest-lobby__mark")).toBeTruthy();
+    expect(document.querySelector(".meet-guest-lobby__media")).toBeNull();
+    expect(screen.queryByText(meetLabels.cameraOff)).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.knockToJoin })).toBeNull();
+    expect(screen.queryByText(meetLabels.invitedTitle)).toBeNull();
   });
 
   it("keeps the local preview muted when the camera is on", () => {
