@@ -161,6 +161,9 @@ export class MeetCallStore {
 
   readonly toggleVideoRef: Ref<null | (() => void)> = { current: null };
 
+  /** Serializes join/requestJoin across remounts so a second peer is not minted. */
+  readonly joinInFlightRef: Ref<Promise<void> | null> = { current: null };
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => {

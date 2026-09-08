@@ -869,6 +869,22 @@ describe("RtcPeerMesh", () => {
     await mesh.leave();
   });
 
+  it("recovers unknown_peer by re-joining the same peer id", async () => {
+    const signaling = createMockSignaling({ peerId: "PEER_HIGH_ID", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, { recoverOnUnknownPeer: true });
+    await mesh.join({ name: "Host", peerId: "PEER_HIGH_ID" });
+    signaling.client.join.mockClear();
+    signaling.client.poll.mockRejectedValueOnce(new Error("unknown_peer"));
+
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(signaling.client.join).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Host", peerId: "PEER_HIGH_ID" }),
+    );
+    await mesh.leave();
+  });
+
   it("does not run overlapping poll requests when poll is rescheduled", async () => {
     const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
     let resolvePoll: ((value: HttpSignalingPollResult) => void) | null = null;

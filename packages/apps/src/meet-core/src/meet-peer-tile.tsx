@@ -23,6 +23,11 @@ type MeetPeerTileProps = {
   /** Self tile: mirrors dock mic. When set with onToggleMic, mute toggles local mic. */
   micOn?: boolean;
   onToggleMic?: () => void;
+  /**
+   * Mute `<video>` playback. Defaults on for the self tile so local mic never
+   * loops through speakers. Remote tiles stay unmuted (they carry remote audio).
+   */
+  muted?: boolean;
   /** Host/moderator: force-mute this remote peer. Omitted for guests and self. */
   onMuteParticipant?: () => void;
 };
@@ -40,6 +45,7 @@ export function MeetPeerTile({
   micOn,
   onToggleMic,
   onMuteParticipant,
+  muted,
 }: MeetPeerTileProps) {
   const { cameraRendering, micLive } = usePeerStreamPresence(stream);
   const [remoteVideoOk, setRemoteVideoOk] = useState(true);
@@ -68,6 +74,7 @@ export function MeetPeerTile({
   const playbackStream = stream && stream.getTracks().length > 0 ? stream : null;
   const avatarSize = spotlight ? "xl" : compact ? "md" : "lg";
   const isSelfMute = typeof onToggleMic === "function";
+  const playbackMuted = muted ?? isSelfMute;
   const canForceMute = !isSelfMute && typeof onMuteParticipant === "function";
   const showMute = isSelfMute || canForceMute;
   const mutePressed = isSelfMute ? Boolean(micOn) : true;
@@ -119,6 +126,7 @@ export function MeetPeerTile({
           <MeetStreamVideo
             stream={playbackStream}
             mirrored={mirrored}
+            muted={playbackMuted}
             onPresentationViable={showRemoteVideo ? onPresentationViable : undefined}
             className={cn(
               "meet-peer-tile__stream h-full w-full",

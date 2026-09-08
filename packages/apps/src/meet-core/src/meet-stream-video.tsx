@@ -5,6 +5,11 @@ type MeetStreamVideoProps = {
   stream: MediaStream | null;
   className?: string;
   mirrored?: boolean;
+  /**
+   * Mute speaker playback. Required for local camera/mic/screen preview — the
+   * capture track must never loop through speakers. Remote tiles stay unmuted.
+   */
+  muted?: boolean;
   /** When set, detect blank/zero-size frames (remote camera off while track stays "live") and notify. */
   onPresentationViable?: (viable: boolean) => void;
 };
@@ -13,6 +18,7 @@ export function MeetStreamVideo({
   stream,
   className,
   mirrored = false,
+  muted = false,
   onPresentationViable,
 }: MeetStreamVideoProps) {
   const ref = useRef<HTMLVideoElement | null>(null);
@@ -29,6 +35,9 @@ export function MeetStreamVideo({
       });
     };
 
+    node.muted = muted;
+    node.defaultMuted = muted;
+    node.volume = muted ? 0 : 1;
     node.srcObject = stream;
     play();
 
@@ -39,7 +48,7 @@ export function MeetStreamVideo({
       stream.removeEventListener("addtrack", onAddTrack);
       node.srcObject = null;
     };
-  }, [stream]);
+  }, [muted, stream]);
 
   useEffect(() => {
     const el = ref.current;
@@ -95,6 +104,7 @@ export function MeetStreamVideo({
     <video
       ref={ref}
       autoPlay
+      muted={muted}
       playsInline
       className={cn("meet-stream-video", className)}
       style={{

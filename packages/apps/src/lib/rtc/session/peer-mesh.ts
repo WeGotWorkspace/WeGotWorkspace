@@ -922,8 +922,9 @@ export class RtcPeerMesh {
       const joined = await this.options.signaling.join({
         room: this.options.room,
         name: this.myName,
+        peerId: previousPeerId ?? undefined,
       });
-      this.myId = joined.peerId ?? null;
+      this.myId = joined.peerId ?? previousPeerId ?? null;
       if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
       await this.onPoll({ peers: joined.peers, messages: [] });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });

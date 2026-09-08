@@ -89,7 +89,9 @@ export function useMeetCallSession({
     onLinkChange: () => room.refreshPeersRef.current(),
     onPollData: handlePollData,
     shouldConnectToPeer: (peer: RtcPeerDescriptor) =>
-      !decodeMeetKnockerName(peer.name) && !room.waitingForAdmissionRef.current,
+      peer.id !== room.selfIdRef.current &&
+      !decodeMeetKnockerName(peer.name) &&
+      !room.waitingForAdmissionRef.current,
     shouldHandleRtcSignals: () => !room.waitingForAdmissionRef.current,
     onPeerRemoved: (peerId, name) => {
       room.peerNamesRef.current.delete(peerId);
@@ -132,7 +134,9 @@ export function useMeetCallSession({
 
   const refreshPeers = useCallback(() => {
     const next: MeetRemotePeer[] = [];
+    const selfId = room.selfIdRef.current ?? meetRtc.getMyId();
     for (const id of meetRtc.getPeerIds()) {
+      if (selfId && id === selfId) continue;
       const pc = meetRtc.getPeerConnection(id);
       const name = room.peerNamesRef.current.get(id) ?? "Peer";
       const stream = meetRtc.getRemoteStream(id);
