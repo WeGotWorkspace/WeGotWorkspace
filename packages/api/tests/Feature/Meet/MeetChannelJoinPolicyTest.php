@@ -119,6 +119,20 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
     }
 
+    public function test_guest_can_knock_on_an_empty_meeting_collection(): void
+    {
+        $meetingId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Test', 'kind' => 'meeting',
+        ])->assertCreated()->json('id');
+        $this->assertSame('chat-test', $meetingId);
+
+        $knock = $this->guestJoin($meetingId, 'peer-guest', self::KNOCK_PREFIX.'Visitor')->assertOk();
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $knock->json('sessionKey'));
+
+        $this->guestJoin($meetingId, 'peer-walkin', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+    }
+
     public function test_meeting_room_code_resolves_to_the_channel_acl(): void
     {
         $meetingId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [

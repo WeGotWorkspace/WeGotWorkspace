@@ -66,6 +66,39 @@ final class MeetChannelJoinPolicy
     }
 
     /**
+     * Shared `/meet/meetings/{id}` lookup: leftover room codes, collection
+     * ids (`chat-test`), and public slugs (`test`) resolve to the signaling
+     * room when the id is a meeting-kind channel. Null → unknown invite.
+     */
+    public function resolveMeetingInviteRoom(string $room): ?string
+    {
+        $id = strtolower(trim($room));
+        if ($id === '') {
+            return null;
+        }
+        $candidates = [$id];
+        if (! ChatCollectionUris::isChatUri($id)) {
+            $candidates[] = ChatCollectionUris::PREFIX_CHANNEL.$id;
+        }
+
+        foreach ($candidates as $candidate) {
+            $channel = $this->resolveChannelForRoom($candidate);
+            if ($channel === null || $channel->isDm) {
+                continue;
+            }
+            $meta = ChatChannelMeta::query()->where('calendarid', $channel->calendarId)->first(['kind', 'room_code']);
+            if ($meta === null || $meta->kind !== ChatChannelMeta::KIND_MEETING) {
+                continue;
+            }
+            $guestRoom = is_string($meta->room_code) ? strtolower(trim($meta->room_code)) : '';
+
+            return $guestRoom !== '' ? $guestRoom : $channel->channelUri;
+        }
+
+        return null;
+    }
+
+    /**
      * Channel ACL read access — owner, sharee (dismissals honored), or group
      * member; the exact accessibility rule the REST/JMAP chat surface uses.
      */

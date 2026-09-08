@@ -79,8 +79,9 @@ final class MeetSignalingService
                     $this->assertNonMemberChannelJoin($channel, $username, $room, $peerId, $ownerMarker, $isKnockRequest);
                 }
             } elseif ($ownerMarker === null) {
-                // Non-channel rooms keep the legacy behavior exactly.
-                if ($isKnockRequest && ! $this->roomHasJoinablePeer($room)) {
+                // Non-channel rooms: unknown leftovers stay room_not_active
+                // when empty; a reserved leftover invite may knock and wait.
+                if ($isKnockRequest && ! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
                     $this->fail('room_not_active', 404);
                 }
                 $guestSessionKey = $this->actors->readGuestSessionKey($body) ?? $this->actors->newGuestSessionKey();
@@ -231,9 +232,10 @@ final class MeetSignalingService
 
     /**
      * Non-member (guest or authenticated non-member) join on a channel room:
-     * knock joins mirror the legacy guest gating (nobody in the call to admit
-     * → room_not_active); non-knock joins pass only for a previously admitted
-     * peer (same owner marker); guests never enter dm- rooms.
+     * knock joins on a known meeting invite may wait in an empty room; other
+     * channel rooms still require someone joinable (`room_not_active`).
+     * Non-knock joins pass only for a previously admitted peer; guests never
+     * enter dm- rooms.
      */
     private function assertNonMemberChannelJoin(
         MeetChannelRoom $channel,
@@ -247,7 +249,7 @@ final class MeetSignalingService
             $this->fail('forbidden', 403, 'Guests cannot join direct-message calls.');
         }
         if ($isKnockRequest) {
-            if (! $this->roomHasJoinablePeer($room)) {
+            if (! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
                 $this->fail('room_not_active', 404);
             }
 
@@ -282,6 +284,16 @@ final class MeetSignalingService
         }
 
         $this->store->markPeerAdmitted($room, $peerId);
+    }
+
+    /** Known `/meet/meetings/{id}` invite (meeting collection or reserved leftover). */
+    private function allowsEmptyGuestKnock(string $room): bool
+    {
+        if ($this->channelJoinPolicy->resolveMeetingInviteRoom($room) !== null) {
+            return true;
+        }
+
+        return $this->reservations->find($room) !== null;
     }
 
     private function roomHasJoinablePeer(string $room): bool

@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\MeetReserveRoomRequest;
 use App\Http\Resources\Api\V1\MeetRoomResource;
 use App\Models\MeetReservation;
 use App\Services\Meet\MeetActorResolver;
+use App\Services\Meet\MeetChannelJoinPolicy;
 use App\Services\Meet\MeetReservationService;
 use App\Services\Meet\MeetResponseException;
 use App\Services\Meet\MeetSignalingService;
@@ -23,6 +24,7 @@ final class MeetingsController
         private MeetSignalingService $meet,
         private MeetReservationService $reservations,
         private MeetActorResolver $actors,
+        private MeetChannelJoinPolicy $channels,
     ) {}
 
     public function store(MeetReserveRoomRequest $request): JsonResponse
@@ -58,10 +60,28 @@ final class MeetingsController
     public function show(Request $request, string $roomId): JsonResponse
     {
         $this->reservations->sweepExpiredNeverActivated();
-        $row = $this->reservations->require($roomId);
         $username = $this->actors->tryAuthenticatedUsername($request);
 
-        return $this->reservationResponse($roomId, $username, includeRoomId: false, row: $row);
+        $row = $this->reservations->find($roomId);
+        if ($row instanceof MeetReservation) {
+            return $this->reservationResponse($roomId, $username, includeRoomId: false, row: $row);
+        }
+
+        $signalingRoom = $this->channels->resolveMeetingInviteRoom($roomId);
+        if ($signalingRoom === null) {
+            throw new MeetResponseException(404, [
+                'error' => 'not_found',
+                'message' => 'Meeting room is not reserved.',
+            ]);
+        }
+        $linked = $this->reservations->find($signalingRoom);
+        if ($linked instanceof MeetReservation) {
+            return $this->reservationResponse($signalingRoom, $username, includeRoomId: false, row: $linked);
+        }
+
+        $active = $this->meet->roomStatus(['room' => $signalingRoom])['active'];
+
+        return (new MeetRoomResource(false, ['active' => $active]))->response();
     }
 
     public function update(MeetPatchRoomRequest $request, string $roomId): JsonResponse

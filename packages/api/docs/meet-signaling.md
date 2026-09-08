@@ -24,7 +24,7 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 | Chat | `POST /rooms/{roomId}/messages` |
 | RTC config | `GET /rooms/{roomId}/configuration` |
 | Reserve room | `POST /meetings/rooms` (`room` + `ownerPrincipal`, optional `expiresAt`) |
-| Room status | `GET /meetings/rooms/{roomId}` — guests `{ reserved, active }`; owner-principal member or `createdBy` get the full body; **404** = not reserved |
+| Room status | `GET /meetings/rooms/{roomId}` — guests `{ reserved, active }`; owner-principal member or `createdBy` get the full body; **404** = unknown. Leftover room codes and meeting-kind slugs (`test` / `chat-test`) share this lookup. |
 | Patch expiry | `PATCH /meetings/rooms/{roomId}` (`expiresAt`; `createdBy` or owner-principal member) |
 
 For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
@@ -34,7 +34,7 @@ For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
 A call in a chat channel uses the deterministic room id = the channel collection id (`chat-{ulid}` / `dm-…`); a meeting channel's guest link uses its `chat_channel_meta.room_code`. Both resolve to the channel via `MeetChannelJoinPolicy`, and `MeetSignalingService::join` then enforces server-side (Epic #701 chunk H):
 
 - **Channel member** (owner / sharee / group member — any ACL read access via `ChatChannelRepository`): joins directly, never knocks, and is a host (any member may admit).
-- **Internal non-member and guest**: forced onto the knock path. A non-knock join is rejected with `knock_required` (403) unless the peer was previously admitted; a knock join requires somebody joinable in the room (`room_not_active` 404 otherwise, same as legacy guest gating).
+- **Internal non-member and guest**: forced onto the knock path. A non-knock join is rejected with `knock_required` (403) unless the peer was previously admitted. Knock on a **meeting invite** (`chat-{slug}` / reserved leftover) may wait in an empty room; other channel rooms and unknown leftovers still return `room_not_active` 404 when nobody is joinable.
 - **Admission** is recorded server-side when a channel *member* sends an `admit` control message through the chat endpoint: the target peer row in `meet_peers` gets `admitted = 1`, so the knocker's non-knock re-join (same peer id + owner marker) passes. The flag dies with the peer row, and every re-knock clears it. Admits from non-members/guests still deliver but record nothing.
 - **Guests never join `dm-` rooms** (`forbidden` 403), knock or not.
 - Rooms that resolve to no channel keep the legacy behavior exactly (guest lobby gating stays a client convention there).
