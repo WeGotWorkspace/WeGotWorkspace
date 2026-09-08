@@ -32,21 +32,22 @@ describe("useSettingsMcpGrants", () => {
   });
 
   it("revokes a grant and drops it from the list", async () => {
+    const listMcpGrants = vi.fn().mockResolvedValue([
+      {
+        clientId: "abc",
+        clientName: "Claude",
+        clientOrigin: "https://claude.ai",
+        connectedAt: "2026-09-08T10:00:00Z",
+        scopes: ["drive"],
+        lastUsedAt: null,
+      },
+    ]);
     const revokeMcpGrant = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
       useSettingsMcpGrants({
         saveProfile: vi.fn(),
         saveMail: vi.fn(),
-        listMcpGrants: async () => [
-          {
-            clientId: "abc",
-            clientName: "Claude",
-            clientOrigin: "https://claude.ai",
-            connectedAt: "2026-09-08T10:00:00Z",
-            scopes: ["drive"],
-            lastUsedAt: null,
-          },
-        ],
+        listMcpGrants,
         revokeMcpGrant,
       }),
     );

@@ -6,22 +6,24 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations) {
   const [loading, setLoading] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const listMcpGrants = operations?.listMcpGrants;
+  const revokeMcpGrant = operations?.revokeMcpGrant;
 
   const refresh = useCallback(async () => {
-    if (!operations?.listMcpGrants) {
+    if (!listMcpGrants) {
       setGrants([]);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      setGrants(await operations.listMcpGrants());
+      setGrants(await listMcpGrants());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load connected assistants.");
     } finally {
       setLoading(false);
     }
-  }, [operations]);
+  }, [listMcpGrants]);
 
   useEffect(() => {
     void refresh();
@@ -29,11 +31,11 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations) {
 
   const revoke = useCallback(
     async (clientId: string) => {
-      if (!operations?.revokeMcpGrant) return;
+      if (!revokeMcpGrant) return;
       setRevokingId(clientId);
       setError(null);
       try {
-        await operations.revokeMcpGrant(clientId);
+        await revokeMcpGrant(clientId);
         setGrants((prev) => prev.filter((grant) => grant.clientId !== clientId));
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Could not revoke this assistant.");
@@ -41,7 +43,7 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations) {
         setRevokingId(null);
       }
     },
-    [operations],
+    [revokeMcpGrant],
   );
 
   return { grants, loading, revokingId, error, refresh, revoke };
