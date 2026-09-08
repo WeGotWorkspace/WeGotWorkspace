@@ -14,6 +14,11 @@ final class PassportKeyStore
 
     public function ensure(): void
     {
+        // CryptKey emits E_USER_NOTICE unless the key file is 600/640/660.
+        // New keys are written 0640; existing 0644 public keys are tightened below.
+        // The flag stays off so a chmod failure on a bind mount cannot 500 /mcp.
+        Passport::$validateKeyPermissions = false;
+
         $private = config('passport.private_key');
         $public = config('passport.public_key');
         if (is_string($private) && $private !== '' && is_string($public) && $public !== '') {
@@ -33,6 +38,7 @@ final class PassportKeyStore
         if (! File::exists($privatePath) || ! File::exists($publicPath)) {
             $this->generatePemPair($privatePath, $publicPath);
         }
+        $this->tightenWorldReadablePublicKey($publicPath);
         Passport::loadKeysFrom($dir);
     }
 
@@ -81,6 +87,17 @@ final class PassportKeyStore
         File::put($privatePath, $privatePem);
         File::put($publicPath, $details['key']);
         @chmod($privatePath, 0600);
-        @chmod($publicPath, 0644);
+        @chmod($publicPath, 0640);
+    }
+
+    private function tightenWorldReadablePublicKey(string $publicPath): void
+    {
+        $perms = @fileperms($publicPath);
+        if ($perms === false) {
+            return;
+        }
+        if (($perms & 0777) === 0644) {
+            @chmod($publicPath, 0640);
+        }
     }
 }

@@ -7,9 +7,14 @@ namespace Tests\Support;
 use App\Models\User;
 use App\Services\Mcp\McpScopes;
 use App\Services\Settings\SettingKeys;
+use DateTimeImmutable;
+use Laravel\Passport\Bridge\AccessToken;
+use Laravel\Passport\Bridge\Client as BridgeClient;
+use Laravel\Passport\Bridge\Scope;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
+use League\OAuth2\Server\CryptKey;
 
 trait ConfiguresMcp
 {
@@ -67,5 +72,27 @@ trait ConfiguresMcp
         ]);
 
         return $id;
+    }
+
+    /**
+     * @param  list<string>  $scopes
+     */
+    protected function mcpBearerToken(User $user, Client $client, array $scopes = []): string
+    {
+        $scopes = $scopes === [] ? [McpScopes::DRIVE] : $scopes;
+        $id = $this->issueMcpGrant($user, $client, $scopes);
+        $redirects = $client->redirect_uris;
+        $redirectUris = is_array($redirects) ? array_map(strval(...), $redirects) : [];
+        $token = new AccessToken(
+            (string) $user->getAuthIdentifier(),
+            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new BridgeClient((string) $client->getKey(), (string) $client->name, $redirectUris, false),
+        );
+        $token->setIdentifier($id);
+        $token->setExpiryDateTime(new DateTimeImmutable('+1 hour'));
+        $private = (string) config('passport.private_key');
+        $token->setPrivateKey(new CryptKey($private, null, false));
+
+        return $token->toString();
     }
 }

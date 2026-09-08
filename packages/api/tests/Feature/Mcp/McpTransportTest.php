@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mcp;
 
+use App\Models\McpSession;
 use App\Services\Mcp\McpScopes;
 use Laravel\Passport\Passport;
 use Tests\Support\ConfiguresMcp;
@@ -18,6 +19,37 @@ final class McpTransportTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->configureWgwJwtKeys();
         $this->enableMcp();
+    }
+
+    public function test_passport_does_not_reject_world_readable_public_keys(): void
+    {
+        $this->assertFalse(Passport::$validateKeyPermissions);
+    }
+
+    public function test_passport_bearer_initialize_returns_server_info(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        $jwt = $this->mcpBearerToken($user, $client, [McpScopes::SETTINGS]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$jwt,
+            'Accept' => 'application/json, text/event-stream',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'initialize',
+            'params' => [
+                'protocolVersion' => '2025-11-25',
+                'capabilities' => [],
+                'clientInfo' => ['name' => 'test', 'version' => '1'],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('result.serverInfo.name', 'WeGotWorkspace')
+            ->assertJsonPath('result.protocolVersion', '2025-11-25');
+
+        $this->assertSame(1, McpSession::query()->where('user_id', $user->getAuthIdentifier())->count());
     }
 
     public function test_unauthenticated_post_returns_401_with_prm_challenge(): void
@@ -47,7 +79,7 @@ final class McpTransportTest extends WgwDatabaseTestCase
         $response->assertUnauthorized();
         $response->assertJsonPath('error.code', -32001);
         $www = (string) $response->headers->get('WWW-Authenticate');
-        $this->assertStringContainsString('resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp"', $www);
+        $this->assertStringContainsString('/.well-known/oauth-protected-resource/mcp', $www);
         $this->assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
     }
 
@@ -61,7 +93,7 @@ final class McpTransportTest extends WgwDatabaseTestCase
 
     public function test_challenge_and_metadata_use_the_request_host(): void
     {
-        $host = 'sheep-nutmeg-zodiac.ngrok-free.dev';
+        $host = 'mcp-tunnel.example.com';
         $origin = 'https://'.$host;
 
         $www = (string) $this->get($origin.'/mcp')
@@ -79,6 +111,40 @@ final class McpTransportTest extends WgwDatabaseTestCase
             ->assertJsonPath('client_id_metadata_document_supported', true);
 
         $this->getJson($origin.'/.well-known/oauth-protected-resource/mcp')
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+    }
+
+    public function test_challenge_and_metadata_use_forwarded_tunnel_host(): void
+    {
+        $host = 'mcp-tunnel.example.com';
+        $origin = 'https://'.$host;
+        $server = [
+            'HTTP_HOST' => 'wegotworkspace.localhost',
+            'HTTP_X_FORWARDED_HOST' => $host,
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+            'HTTPS' => 'on',
+        ];
+
+        $www = (string) $this->call('GET', '/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$origin.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+
+        $this->call('GET', '/.well-known/oauth-authorization-server', [], [], [], $server + [
+            'HTTP_ACCEPT' => 'application/json',
+        ])
+            ->assertOk()
+            ->assertJsonPath('issuer', $origin)
+            ->assertJsonPath('token_endpoint', $origin.'/oauth/token');
+
+        $this->call('GET', '/.well-known/oauth-protected-resource/mcp', [], [], [], $server + [
+            'HTTP_ACCEPT' => 'application/json',
+        ])
             ->assertOk()
             ->assertJsonPath('resource', $origin.'/mcp')
             ->assertJsonPath('authorization_servers.0', $origin);
