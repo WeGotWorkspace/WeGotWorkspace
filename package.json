@@ -36,7 +36,7 @@
     "docker:up": "docker compose -f compose.dev.yml up -d --build",
     "docker:down": "docker compose -f compose.dev.yml down",
     "docker:logs": "docker compose -f compose.dev.yml logs -f",
-    "docker:up:https": "docker compose -f compose.dev.yml -f compose.local.yml up -d --build",
+    "docker:up:https": "bash tools/docker-up-https.sh",
     "docker:down:https": "docker compose -f compose.dev.yml -f compose.local.yml down",
     "docker:logs:https": "docker compose -f compose.dev.yml -f compose.local.yml logs -f",
     "docker:ssl:setup": "bash tools/docker-ssl-setup.sh",
