@@ -410,7 +410,24 @@ describe("meet guest invite lobby chrome", () => {
       /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--meet-accent\)/,
     );
     expect(guestLobbyCss).toMatch(
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__knock\.button--variant-primary \{[\s\S]*--button-icon-size:\s*1rem/,
+    );
+    expect(guestLobbyCss).toMatch(
       /\.meet-guest-channel__lobby \.meet-guest-lobby__knock\.button--variant-primary \{[\s\S]*--button-primary-bg:\s*var\(--meet-accent\)/,
+    );
+    const knockIcon =
+      guestLobbyCss.match(
+        /\.meet-guest-channel__lobby \.meet-guest-lobby__knock \.button__icon > svg \{[\s\S]*?\n\}/,
+      )?.[0] ?? "";
+    expect(knockIcon).toMatch(/width:\s*var\(--button-icon-size, 1rem\)\s*!important/);
+    expect(knockIcon).toMatch(/height:\s*var\(--button-icon-size, 1rem\)\s*!important/);
+    expect(knockIcon).not.toMatch(/size-8|size-12|size-full/);
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*@apply mb-4 size-8/,
+    );
+    expect(guestLobbyCss).not.toMatch(/\.meet-guest-lobby__knock[^{]*\{[^}]*size-8/);
+    expect(guestLobbyCss).not.toMatch(
+      /\.meet-guest-lobby(?!__mark)[^\n{]* svg[^\n{]*\{[\s\S]*?size-8/,
     );
     expect(guestLobbyCss).toMatch(/font-family:\s*var\(--font-serif\)/);
     expect(guestLobbyCss).toMatch(/meet-guest-lobby-knock/);
