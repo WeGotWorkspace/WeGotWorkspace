@@ -124,6 +124,11 @@
   @apply text-sm text-muted-foreground;
 }
 
+.settings-workspace .settings-assistants-pane a {
+  @apply underline underline-offset-2;
+  color: var(--settings-accent);
+}
+
 .settings-workspace .settings-assistants-pane__error {
   @apply text-sm text-destructive;
 }
